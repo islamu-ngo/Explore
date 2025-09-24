@@ -1,0 +1,9 @@
+C:\ISLAMU\GitHub\openislamu.org\OpenISLAMU.Blazor.Client\obj\Debug\net9.0\staticwebassets.build.json
+C:\ISLAMU\GitHub\islamu.ngo\OpenISLAMU.Blazor.Client\obj\Debug\net9.0\staticwebassets.build.json
+C:\ISLAMU\GitHub\Events\Explore.Blazor.Client\obj\Debug\net9.0\staticwebassets.build.json
+C:\ISLAMU\GitHub\Events\Explore.Blazor.Client\obj\Debug\net9.0\staticwebassets.build.json
+C:\ISLAMU\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\staticwebassets.build.json
+C:\ISLAMU\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\staticwebassets.build.json
+C:\ISLAMU\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\staticwebassets.build.json
+C:\ISLAMU\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\staticwebassets.build.json
+C:\ISLAMU\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\staticwebassets.build.json

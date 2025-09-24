@@ -1,0 +1,156 @@
+﻿/* Reset */
+* {
+    margin: 0;
+    padding: 0;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+ul {
+    list-style: none;
+}
+
+/* Header Block */
+/*.header {
+    background: #fff;
+    border-bottom: 1px solid #eee;
+    padding: 1rem 0;
+}*/
+
+/*Main*/
+
+/* Footer Block */
+
+.footer {
+    background: #f8f9fa;
+    flex-shrink: 0; /* Prevent footer from shrinking */
+    padding: 3rem 0 1rem;
+    margin-top: auto;
+    bottom: 0;
+    position: fixed;
+    width: 100%;
+}
+
+.footer__content {
+    /*padding: 20px 0; now padding is in .wrapper class!*/
+}
+
+.footer__top {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px; /* Space between columns */
+    margin-bottom: 0px;
+    flex-wrap: wrap; /* Allow wrapping */
+}
+
+
+/* Link Group Block */
+
+.footer__link-group {
+    flex: 1; /* Allow it to grow and fill available space */
+    flex-direction: column;
+}
+
+.link-group__title {
+    font-weight: bold;
+    color: #333;
+}
+
+.link-group__list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.link-group__link {
+    color: #666;
+    font-size: 0.875rem;
+    transition: color 0.2s;
+}
+
+    .link-group__link:hover {
+        color: #ff6b6b;
+    }
+
+/* Separator Block */
+.footer__separator {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    margin: 1rem 0;
+}
+
+.separator__line {
+    flex: 1;
+    height: 1px;
+    background: #ddd;
+}
+
+
+/* Footer Bottom Block */
+
+.footer__bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+/* Copyright Block */
+.footer__copyright {
+    font-size: 0.875rem;
+    color: #666;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    html {
+        font-size: 16px;
+    }
+
+    .header__content {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .nav__list {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .footer__top {
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .footer__bottom {
+        flex-direction: column;
+        text-align: center;
+        gap: 1rem;
+    }
+
+    .social {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .wrapper {
+        padding: 0 15px;
+    }
+
+    .brand__name {
+        font-size: 1.25rem;
+    }
+
+    .nav__list {
+        gap: 1rem;
+    }
+
+    .footer__link-group {
+        min-width: auto;
+    }
+}

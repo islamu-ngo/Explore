@@ -1,0 +1,69 @@
+/* /Pages/Home.razor.rz.scp.css */
+body[b-78aldthjbv] {
+}
+
+.hero[b-78aldthjbv] {
+    justify-content: center;
+}
+
+/* Quote Section */
+.quran-quote[b-78aldthjbv] {
+    text-align: center;
+    margin-top: 40px;
+    Space above quote in footer margin-bottom: 30px;
+    Space below quote padding: 0;
+    Remove padding border: none;
+    Remove borders
+}
+
+.quran-quote__source[b-78aldthjbv] {
+    font-weight: bold;
+}
+
+.quran-quote__content[b-78aldthjbv] {
+    font-size: 1.2em;
+    font-style: italic;
+}
+
+/* Waitlist Section */
+.waitlist[b-78aldthjbv] {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+    .waitlist p[b-78aldthjbv] {
+        margin-bottom: 15px;
+    }
+
+.waitlist__form[b-78aldthjbv] {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    Space between elements flex-wrap: wrap;
+    Allow wrapping on smaller screens
+}
+
+    .waitlist__form input[type="email"][b-78aldthjbv] {
+        padding: 10px 15px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-family: inherit;
+        Use the same font min-width: 250px;
+        Minimum width
+    }
+
+    .waitlist__form button[b-78aldthjbv] {
+        padding: 10px 15px;
+        border: 1px solid #555;
+        background-color: #fff;
+        color: #333;
+        font-family: inherit;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+
+        .waitlist__form button:hover[b-78aldthjbv] {
+            background-color: #f0f0f0;
+        }

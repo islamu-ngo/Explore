@@ -1,0 +1,68 @@
+﻿body {
+}
+
+.hero {
+    justify-content: center;
+}
+
+/* Quote Section */
+.quran-quote {
+    text-align: center;
+    margin-top: 40px;
+    Space above quote in footer margin-bottom: 30px;
+    Space below quote padding: 0;
+    Remove padding border: none;
+    Remove borders
+}
+
+.quran-quote__source {
+    font-weight: bold;
+}
+
+.quran-quote__content {
+    font-size: 1.2em;
+    font-style: italic;
+}
+
+/* Waitlist Section */
+.waitlist {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+    .waitlist p {
+        margin-bottom: 15px;
+    }
+
+.waitlist__form {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    Space between elements flex-wrap: wrap;
+    Allow wrapping on smaller screens
+}
+
+    .waitlist__form input[type="email"] {
+        padding: 10px 15px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-family: inherit;
+        Use the same font min-width: 250px;
+        Minimum width
+    }
+
+    .waitlist__form button {
+        padding: 10px 15px;
+        border: 1px solid #555;
+        background-color: #fff;
+        color: #333;
+        font-family: inherit;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+
+        .waitlist__form button:hover {
+            background-color: #f0f0f0;
+        }

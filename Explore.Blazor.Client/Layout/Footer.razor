@@ -1,0 +1,77 @@
+﻿<MudGrid class="footer">
+    <MudContainer MaxWidth="MaxWidth.Large" Class="wrapper footer__content">
+        <div class="footer__top">
+            <MudGrid>
+                <MudItem class="footer__link-group" xs="12" sm="6" md="3">
+                        <MudText Typo="Typo.h6" Class="link-group__title">Product</MudText>
+                        <MudStack Class="link-group__list" Spacing="1">
+                            <MudLink Href="#" Class="link-group__link">Download</MudLink>
+                            <MudLink Href="#" Class="link-group__link">Github</MudLink>
+                        </MudStack>
+                </MudItem>
+
+                <MudItem class="footer__link-group" xs="12" sm="6" md="3">
+                        <MudText Typo="Typo.h6" Class="link-group__title">Resources</MudText>
+                        <MudStack Class="link-group__list" Spacing="1">
+                            <MudLink Href="/blog" Class="link-group__link">Blog</MudLink>
+                            <MudLink Href="#" Class="link-group__link">Newsletter</MudLink>
+                        </MudStack>
+                </MudItem>
+
+                <MudItem class="footer__link-group" xs="12" sm="6" md="3">
+                        <MudText Typo="Typo.h6" Class="link-group__title">Myself</MudText>
+                        <MudStack Class="link-group__list" Spacing="1">
+                            <MudLink Href="#" Class="link-group__link">About</MudLink>
+                        </MudStack>
+                </MudItem>
+
+                <MudItem class="footer__link-group" xs="12" sm="6" md="3">
+                        <MudText Typo="Typo.h6" Class="link-group__title">Get in Touch</MudText>
+                        <MudStack Class="link-group__list" Spacing="1">
+                            <MudLink Href="#" Class="link-group__link">Contact</MudLink>
+                        </MudStack>
+                </MudItem>
+            </MudGrid>
+        </div>
+
+        <div class="footer__separator">
+            <MudDivider Class="separator__line" />
+            <div class="brand">
+                <MudIcon Icon="@Icons.Material.Filled.Favorite" Class="brand__logo" Color="Color.Error" />
+                <MudText Class="brand__name">ILoveIbadah</MudText>
+            </div>
+            <MudDivider Class="separator__line" />
+        </div>
+
+        <div class="footer__bottom">
+            <MudGrid AlignItems="Center" Justify="Justify.SpaceBetween">
+                <MudItem class="footer__copyright" xs="12" md="4">
+                        <MudText Typo="Typo.body2">&copy; 2025 ISLAMU. All rights reserved.</MudText>
+                </MudItem>
+
+                <MudItem xs="12" md="4" Class="nav d-flex justify-center">
+                        <MudStack Row Spacing="2" Class="nav__list">
+                            <MudLink Href="#" Class="nav__link">Terms and Conditions</MudLink>
+                            <MudLink Href="#" Class="nav__link">Privacy</MudLink>
+                        </MudStack>
+                </MudItem>
+
+                <MudItem xs="12" md="4" Class="social d-flex justify-end">
+                        <MudIconButton Icon="@Icons.Custom.Brands.Discord"
+                                       Class="social__link"
+                                       Title="Discord"
+                                       Size="Size.Small" />
+                        <MudIconButton Icon="@Icons.Custom.Brands.Twitter"
+                                       Class="social__link"
+                                       Title="X"
+                                       Size="Size.Small" />
+                        <MudIconButton Icon="@Icons.Custom.Brands.GitHub"
+                                       Class="social__link"
+                                       Title="Github"
+                                       Size="Size.Small" />
+                </MudItem>
+            </MudGrid>
+        </div>
+    </MudContainer>
+</MudGrid>
+<!-- look at https://github.com/MudBlazor/MudBlazor/blob/dev/src/MudBlazor.Docs/Shared/Footer.razor which is mudblazor impleemntation of footer!-->

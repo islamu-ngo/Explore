@@ -1,0 +1,4 @@
+wwwroot\favicon.ico
+wwwroot\css\site.css
+C:\ISLAMU\GitHub\Explore\Explore.Blazor\wwwroot\favicon.ico
+C:\ISLAMU\GitHub\Explore\Explore.Blazor\wwwroot\css\site.css

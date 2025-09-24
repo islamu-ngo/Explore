@@ -1,0 +1,41 @@
+﻿
+
+@* <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
+    <MudNavLink Href="counter" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Add">Counter</MudNavLink>
+    
+    <MudNavLink Href="weather" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.List">Weather</MudNavLink> *@
+    <MudStack Row="true" Spacing="1">
+        <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">ISLAMU Explore</MudNavLink>
+    </MudStack>
+
+    <MudSpacer />
+
+    <!-- Center: main links -->
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+        <MudMenu Label="Explore" Dense>
+            <MudMenuItem Label="Events" href="/event"/>
+        </MudMenu>
+
+        <MudTextField @bind-Value="_searchInput" placeholder="Search" Label="Normal" Variant="Variant.Outlined" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search" Style="min-width: 300px; max-width: 400px;"/>
+        
+    </MudStack>
+
+    <MudSpacer />
+
+    <!-- Right: auth buttons -->
+    <MudStack Row="true" Spacing="1" AlignItems.Center>
+        <MudIconButton Icon="@Icons.Material.Rounded.AutoMode"
+                       Color="Color.Inherit"
+                       OnClick="@OnToggleTheme" />
+                       
+        <MudNavLink Href="" Match="NavLinkMatch.All">Add to Explore</MudNavLink>
+        <MudNavLink Href="" Match="NavLinkMatch.All">Register</MudNavLink>
+        @*Needs link to Centralized Auth Server!*@
+        <MudNavLink Href="" Match="NavLinkMatch.All">Login</MudNavLink>
+
+    </MudStack>
+
+    @code {
+        [Parameter] public EventCallback OnToggleTheme { get; set; }
+        string _searchInput;
+    }
