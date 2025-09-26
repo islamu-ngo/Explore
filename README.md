@@ -1,4 +1,6 @@
-# ISLAMU Explore - Webapp
+# ISLAMU Explore
+
+# Local & Digital Islamic Event Explorer 
 
 This is the repository for the ISLAMU Explore Webapp!
 
@@ -10,7 +12,7 @@ This is the repository for the ISLAMU Explore Webapp!
 [![GitHub last commit](https://img.shields.io/github/last-commit/islamu-ngo/Explore?color=594ae2&style=flat-square&logo=github)](https://github.com/islamu-ngo/Explore)
 [![Contributors](https://img.shields.io/github/contributors/islamu-ngo/Explore?color=594ae2&style=flat-square&logo=github)](https://github.com/islamu-ngo/Explore/graphs/contributors)
 [![Discussions](https://img.shields.io/github/discussions/islamu-ngo/Explore?color=594ae2&logo=github&style=flat-square)](https://github.com/islamu-ngo/Explore/discussions)
-[![Discord](https://img.shields.io/discord/786656789310865418?color=%237289da&label=Discord&logo=discord&logoColor=%237289da&style=flat-square)](https://discord.gg/wrkY824Yv5)
+[![Discord](https://img.shields.io/discord/1357505436479131668?color=%237289da&label=Discord&logo=discord&logoColor=%237289da&style=flat-square)](https://discord.gg/wrkY824Yv5)
 
 ## Quick Note
 
@@ -23,16 +25,18 @@ by donating to the [Palestinian Red Crescent Society](https://www.palestinercs.o
 Banner from: https://github.com/Safouene1/support-palestine-banner/
 
 ## Why Use ISLAMU Explore ?
-ISLAMU Explore is an ambitious Event Explorer that both Allows Muslims to explore the local and digital Events that are coming and Allows Event Organizators to Increase their visibility.
+ISLAMU Explore is an ambitious Islamic Event Explorer that both Allows Muslims to explore the local and digital Events that are coming and Allows Event Organizators to Increase their visibility.
 
 **🌐 [Documentation]() (TODO)**
 
-🎨 Beautiful User Interface (UI) for the best User Experience (UX), Dark/White Themes. (TODO)
+🎨 Beautiful User Interface (UI) built with MudBlazor for the best User Experience (UX), Dark/White Themes. (TODO)
 💻 Fully Free & Open Source.
+📱 PWA (Progressive Web App) for seamless user experience. (TODO)
+🌎 Multiple Language Support (TODO English, French and Arabic).
 📖 Rich documentation. (TODO).
 🚀 Build in Public! (TODO Access Plane Kanban, Plane wiki and more coming soon).
 
-## Repo Stats
+## 📊 Repo Stats
 ![Alt](https://repobeats.axiom.co/api/embed/a0f11a3d9b80342b5f5965127c2c45871c9d3397.svg "Repobeats analytics image")
 
 ## Contributing
