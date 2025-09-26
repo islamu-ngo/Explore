@@ -37,7 +37,16 @@ ISLAMU Explore is an ambitious Islamic Event Explorer that both Allows Muslims t
 🚀 Build in Public! (TODO Access Plane Kanban, Plane wiki and more coming soon).
 
 ## 📊 Repo Stats
+
 ![Alt](https://repobeats.axiom.co/api/embed/a0f11a3d9b80342b5f5965127c2c45871c9d3397.svg "Repobeats analytics image")
+
+### Contributors:
+ 
+I am deeply grateful to all our amazing contributors!
+ 
+<a href="https://github.com/islamu-ngo/explore/graphs/contributors">
+ <img src="https://contrib.rocks/image?repo=islamu-ngo/explore" />
+</a>
 
 ## Contributing
 
@@ -48,7 +57,7 @@ ISLAMU Explore is an ambitious Islamic Event Explorer that both Allows Muslims t
 
 - [MudBlazor](https://www.mudblazor.com/): A Blazor UI library that simplifies the creation of Beautifull Websites/webapps.
 - [MudBlocks](https://mudblocks.cc/): A collection of MudBlazor Components.
-- more TODO
+- [OpenAuth](https://openauth.js.org/): Universal, standards-based auth provider.
 
 ## Contact
 
