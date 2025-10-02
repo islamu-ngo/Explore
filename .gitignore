@@ -1,0 +1,121 @@
+# Visual Studio files
+.vs/
+**/bin/
+**/obj/
+**/*.user
+*.suo
+*.cache
+*.dtbcache.v2
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Files built by Visual Studio
+*_i.c
+*_p.c
+*_h.h
+*.ilk
+*.meta
+*.obj
+*.iobj
+*.pch
+*.pdb
+*.ipdb
+*.pgc
+*.pgd
+*.rsp
+*.sbr
+*.tlb
+*.tli
+*.tlh
+*.tmp
+*.tmp_proj
+*_wpftmp.csproj
+*.log
+*.tlog
+*.vspscc
+*.vssscc
+.builds
+*.pidb
+*.svclog
+*.scc
+
+# Blazor WebAssembly
+**/wwwroot/framework/
+**/wwwroot/_framework/
+**/wwwroot/css/
+**/*.blazor.boot.json
+**/*.blazor.boot.json.gz
+**/*.dll
+**/*.pdb
+**/*.wasm
+**/blazor.*.js
+**/dotnet.*
+*.staticwebassets.*
+
+# Visual Studio cache/options directory
+.vs/
+.vscode/
+
+# ReSharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# NuGet
+*.nuget.props
+*.nuget.targets
+**/packages/*
+!**/packages/build/
+*.nupkg
+*.snupkg
+
+# Visual Studio cache files
+*.[Cc]ache
+!?*.[Cc]ache/
+
+# Copilot
+.vsls.json
+**/CopilotIndices/
+**/*.db
+**/*.db-*
+**/*.db-wal
+**/*.db-shm
+
+# IDE Settings
+**/*.csproj.user
+**/launchSettings.json
+
+# Build Analysis
+**/*.binlog
+**/*.analyzers
+**/*.AssemblyReference.cache
+**/*.assets.cache
+**/*.BuildWithSkipAnalyzers
+**/*.CopyComplete
+**/FileContentIndex/
+**/DesignTimeBuild/
+
+# Generated files
+*.Generated.cs
+*.g.cs
+*.g.i.cs
