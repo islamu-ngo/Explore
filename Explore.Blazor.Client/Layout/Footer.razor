@@ -1,77 +1,72 @@
-﻿<MudGrid class="footer">
-    <MudContainer MaxWidth="MaxWidth.Large" Class="wrapper footer__content">
-        <div class="footer__top">
-            <MudGrid>
-                <MudItem class="footer__link-group" xs="12" sm="6" md="3">
-                        <MudText Typo="Typo.h6" Class="link-group__title">Product</MudText>
-                        <MudStack Class="link-group__list" Spacing="1">
-                            <MudLink Href="#" Class="link-group__link">Download</MudLink>
-                            <MudLink Href="#" Class="link-group__link">Github</MudLink>
+﻿<MudGrid Class="mt-8">
+    <MudContainer MaxWidth="MaxWidth.Large">
+        <MudGrid>
+            <MudItem xs="12" md="4">
+                <MudStack>
+                    <MudStack Row AlignItems="AlignItems.Center">
+                        <MudIcon Icon="@Icons.Material.Filled.Favorite" Color="Color.Error" />
+                        <MudText Typo="Typo.h6">ISLAMU Explore</MudText>
+                    </MudStack>
+                    <MudText Typo="Typo.body2">Connecting Muslims through meaningful events and gatherings.</MudText>
+                </MudStack>
+            </MudItem>
+
+            <MudItem xs="12" md="8">
+                <MudGrid>
+                    <MudItem xs="6" sm="3">
+                        <MudText Typo="Typo.subtitle2" Class="mb-4">Explore</MudText>
+                        <MudStack Spacing="2">
+                            <MudLink Href="/event">Events</MudLink>
+                            <MudLink Href="/event/categories">Categories</MudLink>
+                            <MudLink Href="/event/create">Create Event</MudLink>
                         </MudStack>
-                </MudItem>
+                    </MudItem>
 
-                <MudItem class="footer__link-group" xs="12" sm="6" md="3">
-                        <MudText Typo="Typo.h6" Class="link-group__title">Resources</MudText>
-                        <MudStack Class="link-group__list" Spacing="1">
-                            <MudLink Href="/blog" Class="link-group__link">Blog</MudLink>
-                            <MudLink Href="#" Class="link-group__link">Newsletter</MudLink>
+                    <MudItem xs="6" sm="3">
+                        <MudText Typo="Typo.subtitle2" Class="mb-4">Company</MudText>
+                        <MudStack Spacing="2">
+                            <MudLink Href="/about">About</MudLink>
+                            <MudLink Href="/contact">Contact</MudLink>
+                            <MudLink Href="/careers">Careers</MudLink>
                         </MudStack>
-                </MudItem>
+                    </MudItem>
 
-                <MudItem class="footer__link-group" xs="12" sm="6" md="3">
-                        <MudText Typo="Typo.h6" Class="link-group__title">Myself</MudText>
-                        <MudStack Class="link-group__list" Spacing="1">
-                            <MudLink Href="#" Class="link-group__link">About</MudLink>
+                    <MudItem xs="6" sm="3">
+                        <MudText Typo="Typo.subtitle2" Class="mb-4">Resources</MudText>
+                        <MudStack Spacing="2">
+                            <MudLink Href="/blog">Blog</MudLink>
+                            <MudLink Href="/help">Help Center</MudLink>
+                            <MudLink Href="/guidelines">Guidelines</MudLink>
                         </MudStack>
-                </MudItem>
+                    </MudItem>
 
-                <MudItem class="footer__link-group" xs="12" sm="6" md="3">
-                        <MudText Typo="Typo.h6" Class="link-group__title">Get in Touch</MudText>
-                        <MudStack Class="link-group__list" Spacing="1">
-                            <MudLink Href="#" Class="link-group__link">Contact</MudLink>
+                    <MudItem xs="6" sm="3">
+                        <MudText Typo="Typo.subtitle2" Class="mb-4">Legal</MudText>
+                        <MudStack Spacing="2">
+                            <MudLink Href="/privacy">Privacy</MudLink>
+                            <MudLink Href="/terms">Terms</MudLink>
+                            <MudLink Href="/cookies">Cookie Policy</MudLink>
                         </MudStack>
-                </MudItem>
-            </MudGrid>
-        </div>
+                    </MudItem>
+                </MudGrid>
+            </MudItem>
+        </MudGrid>
 
-        <div class="footer__separator">
-            <MudDivider Class="separator__line" />
-            <div class="brand">
-                <MudIcon Icon="@Icons.Material.Filled.Favorite" Class="brand__logo" Color="Color.Error" />
-                <MudText Class="brand__name">ILoveIbadah</MudText>
-            </div>
-            <MudDivider Class="separator__line" />
-        </div>
+        <MudDivider Class="my-6" />
 
-        <div class="footer__bottom">
-            <MudGrid AlignItems="Center" Justify="Justify.SpaceBetween">
-                <MudItem class="footer__copyright" xs="12" md="4">
-                        <MudText Typo="Typo.body2">&copy; 2025 ISLAMU. All rights reserved.</MudText>
-                </MudItem>
-
-                <MudItem xs="12" md="4" Class="nav d-flex justify-center">
-                        <MudStack Row Spacing="2" Class="nav__list">
-                            <MudLink Href="#" Class="nav__link">Terms and Conditions</MudLink>
-                            <MudLink Href="#" Class="nav__link">Privacy</MudLink>
-                        </MudStack>
-                </MudItem>
-
-                <MudItem xs="12" md="4" Class="social d-flex justify-end">
-                        <MudIconButton Icon="@Icons.Custom.Brands.Discord"
-                                       Class="social__link"
-                                       Title="Discord"
-                                       Size="Size.Small" />
-                        <MudIconButton Icon="@Icons.Custom.Brands.Twitter"
-                                       Class="social__link"
-                                       Title="X"
-                                       Size="Size.Small" />
-                        <MudIconButton Icon="@Icons.Custom.Brands.GitHub"
-                                       Class="social__link"
-                                       Title="Github"
-                                       Size="Size.Small" />
-                </MudItem>
-            </MudGrid>
-        </div>
+        <MudGrid AlignItems="AlignItems.Center">
+            <MudItem xs="12" sm="6">
+                <MudText Typo="Typo.body2">&copy; 2025 ISLAMU. All rights reserved.</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" Class="d-flex justify-end">
+                <MudStack Row>
+                    <MudIconButton Icon="@Icons.Custom.Brands.Facebook" Color="Color.Default" Size="Size.Small" />
+                    <MudIconButton Icon="@Icons.Custom.Brands.Twitter" Color="Color.Default" Size="Size.Small" />
+                    <MudIconButton Icon="@Icons.Custom.Brands.Instagram" Color="Color.Default" Size="Size.Small" />
+                    <MudIconButton Icon="@Icons.Custom.Brands.YouTube" Color="Color.Default" Size="Size.Small" />
+                </MudStack>
+            </MudItem>
+        </MudGrid>
     </MudContainer>
 </MudGrid>
 <!-- look at https://github.com/MudBlazor/MudBlazor/blob/dev/src/MudBlazor.Docs/Shared/Footer.razor which is mudblazor impleemntation of footer!-->

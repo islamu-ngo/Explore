@@ -1,41 +1,27 @@
 ﻿
 
-@* <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
-    <MudNavLink Href="counter" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Add">Counter</MudNavLink>
-    
-    <MudNavLink Href="weather" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.List">Weather</MudNavLink> *@
     <MudStack Row="true" Spacing="1">
-        <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">ISLAMU Explore</MudNavLink>
+        <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Favorite" Color="Color.Error">ISLAMU Explore</MudNavLink>
     </MudStack>
 
     <MudSpacer />
 
     <!-- Center: main links -->
-    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-        <MudMenu Label="Explore" Dense>
-            <MudMenuItem Label="Events" href="/event"/>
-        </MudMenu>
-
-        <MudTextField @bind-Value="_searchInput" placeholder="Search" Label="Normal" Variant="Variant.Outlined" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search" Style="min-width: 300px; max-width: 400px;"/>
-        
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+        <MudNavLink Href="/event" Match="NavLinkMatch.Prefix">Events</MudNavLink>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="/event/create">Create</MudButton>
     </MudStack>
 
     <MudSpacer />
 
     <!-- Right: auth buttons -->
-    <MudStack Row="true" Spacing="1" AlignItems.Center>
+    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
         <MudIconButton Icon="@Icons.Material.Rounded.AutoMode"
-                       Color="Color.Inherit"
-                       OnClick="@OnToggleTheme" />
-                       
-        <MudNavLink Href="" Match="NavLinkMatch.All">Add to Explore</MudNavLink>
-        <MudNavLink Href="" Match="NavLinkMatch.All">Register</MudNavLink>
-        @*Needs link to Centralized Auth Server!*@
-        <MudNavLink Href="" Match="NavLinkMatch.All">Login</MudNavLink>
-
+                      Color="Color.Inherit"
+                      OnClick="@OnToggleTheme" />
+        <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/login">Login</MudButton>
     </MudStack>
 
     @code {
         [Parameter] public EventCallback OnToggleTheme { get; set; }
-        string _searchInput;
     }
