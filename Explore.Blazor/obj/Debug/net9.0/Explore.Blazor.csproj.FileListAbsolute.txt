@@ -215,4 +215,4 @@ C:\ISLAMU\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\Explore.Blazor.pdb
 C:\ISLAMU\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\Explore.Blazor.genruntimeconfig.cache
 C:\ISLAMU\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\ref\Explore.Blazor.dll
 C:\ISLAMU\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\compressed\si1gz4jgxh-{0}-zisbf1byeh-zisbf1byeh.gz
-C:\ISLAMU\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\compressed\r6czgqjppv-{0}-x1ua23t277-x1ua23t277.gz
+C:\ISLAMU\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\compressed\r6czgqjppv-{0}-nfh1qgjuw3-nfh1qgjuw3.gz

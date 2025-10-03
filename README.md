@@ -4,6 +4,8 @@
 
 This is the repository for the ISLAMU Explore Webapp!
 
+Give it a star ⭐️
+
 ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/islamu-ngo/Explore/build.yml?branch=main&logo=github&style=flat-square)
 [![Codecov](https://img.shields.io/codecov/c/github/islamu-ngo/Explore)](https://app.codecov.io/github/islamu-ngo/Explore)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=islamu-ngo_Explore&metric=alert_status)](https://sonarcloud.io/summary/overall?id=islamu-ngo_Explore)
@@ -30,17 +32,26 @@ ISLAMU Explore is an ambitious Islamic Event Explorer that both Allows Muslims t
 **🌐 [Documentation]() (TODO)**
 
 🎨 Beautiful User Interface (UI) built with MudBlazor for the best User Experience (UX), Dark/White Themes. (TODO)
+
 💻 Fully Free & Open Source.
+
 📱 PWA (Progressive Web App) for seamless user experience. (TODO)
+
 🌎 Multiple Language Support (TODO English, French and Arabic).
+
 📖 Rich documentation. (TODO).
-🚀 Build in Public! (TODO Access Plane Kanban, Plane wiki and more coming soon).
+
+🚀 Build in Public! (Roadmap, Discord, Notes & more coming soon).
+
+## Roadmap
+
+[Plane Publish Kanban View](https://sites.plane.so/issues/bfc2e9e8e4504d1baa4bfb8dfdab90b5/?board=kanban): All the Work Items, go vote, comment and more!
 
 ## 📊 Repo Stats
 
 ![Alt](https://repobeats.axiom.co/api/embed/a0f11a3d9b80342b5f5965127c2c45871c9d3397.svg "Repobeats analytics image")
 
-### Contributors:
+## Contributors:
  
 I am deeply grateful to all our amazing contributors!
  
@@ -57,7 +68,11 @@ I am deeply grateful to all our amazing contributors!
 
 - [MudBlazor](https://www.mudblazor.com/): A Blazor UI library that simplifies the creation of Beautifull Websites/webapps.
 - [MudBlocks](https://mudblocks.cc/): A collection of MudBlazor Components.
-- [OpenAuth](https://openauth.js.org/): Universal, standards-based auth provider.
+
+## ISLAMU Solutions
+
+- [Explore](https://github.com/islamu-ngo/explore): Local & Digital Islamic Event Explorer
+- [Identity](https://github.com/islamu-ngo/identity): Centralized Authentication for ISLAMU Solutions
 
 ## Contact
 
