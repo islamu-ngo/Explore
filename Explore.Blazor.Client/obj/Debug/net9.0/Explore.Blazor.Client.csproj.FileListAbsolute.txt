@@ -2095,10 +2095,10 @@ C:\ISLAMU\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\scopedcss\Pages\
 C:\ISLAMU\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\scopedcss\projectbundle\Explore.Blazor.Client.bundle.scp.css
 C:\ISLAMU\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\compressed\2qm2gpmdyk-{0}-kopktvpz0h-kopktvpz0h.gz
 C:\ISLAMU\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\compressed\fx6wl8685c-{0}-kopktvpz0h-kopktvpz0h.gz
-C:\ISLAMU\GitHub\Explore\Explore.Blazor.Client\bin\Debug\net9.0\wwwroot\_framework\Explore.Blazor.Client.9qy2b59wru.wasm
-C:\ISLAMU\GitHub\Explore\Explore.Blazor.Client\bin\Debug\net9.0\wwwroot\_framework\Explore.Blazor.Client.1cp51z8w28.pdb
-C:\ISLAMU\GitHub\Explore\Explore.Blazor.Client\bin\Debug\net9.0\wwwroot\_framework\Explore.Blazor.Client.9qy2b59wru.wasm.gz
-C:\ISLAMU\GitHub\Explore\Explore.Blazor.Client\bin\Debug\net9.0\wwwroot\_framework\Explore.Blazor.Client.1cp51z8w28.pdb.gz
-C:\ISLAMU\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\compressed\51hrig95kh-{0}-9qy2b59wru-9qy2b59wru.gz
-C:\ISLAMU\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\compressed\uyv5tm8k60-{0}-1cp51z8w28-1cp51z8w28.gz
-C:\ISLAMU\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\compressed\m947p5r7g1-{0}-izlvq4yeea-izlvq4yeea.gz
+C:\ISLAMU\GitHub\Explore\Explore.Blazor.Client\bin\Debug\net9.0\wwwroot\_framework\Explore.Blazor.Client.6hdliikbmk.wasm
+C:\ISLAMU\GitHub\Explore\Explore.Blazor.Client\bin\Debug\net9.0\wwwroot\_framework\Explore.Blazor.Client.19xodos14x.pdb
+C:\ISLAMU\GitHub\Explore\Explore.Blazor.Client\bin\Debug\net9.0\wwwroot\_framework\Explore.Blazor.Client.6hdliikbmk.wasm.gz
+C:\ISLAMU\GitHub\Explore\Explore.Blazor.Client\bin\Debug\net9.0\wwwroot\_framework\Explore.Blazor.Client.19xodos14x.pdb.gz
+C:\ISLAMU\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\compressed\51hrig95kh-{0}-6hdliikbmk-6hdliikbmk.gz
+C:\ISLAMU\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\compressed\uyv5tm8k60-{0}-19xodos14x-19xodos14x.gz
+C:\ISLAMU\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\compressed\m947p5r7g1-{0}-lxidr8fd6a-lxidr8fd6a.gz
