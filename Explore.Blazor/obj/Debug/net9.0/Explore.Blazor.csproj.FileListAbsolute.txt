@@ -313,7 +313,6 @@ C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\compress
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\compressed\0wz98yz2xy-tjzqk7tnel.gz
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\compressed\shtv3y4ygz-nfh1qgjuw3.gz
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\compressed\z307mjzlop-2jeq8efc6q.gz
-C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\compressed\z3o3eo0xiu-zisbf1byeh.gz
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\staticwebassets.build.json
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\staticwebassets.build.json.cache
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\staticwebassets.development.json
@@ -325,3 +324,4 @@ C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\refint\E
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\Explore.Blazor.pdb
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\Explore.Blazor.genruntimeconfig.cache
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\ref\Explore.Blazor.dll
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\compressed\z3o3eo0xiu-7e0mzckttc.gz
