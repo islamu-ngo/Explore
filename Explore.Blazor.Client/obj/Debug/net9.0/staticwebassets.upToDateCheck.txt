@@ -1,4 +1,4 @@
 wwwroot\appsettings.Development.json
 wwwroot\appsettings.json
-C:\ISLAMU\GitHub\Explore\Explore.Blazor.Client\wwwroot\appsettings.Development.json
-C:\ISLAMU\GitHub\Explore\Explore.Blazor.Client\wwwroot\appsettings.json
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\wwwroot\appsettings.Development.json
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\wwwroot\appsettings.json

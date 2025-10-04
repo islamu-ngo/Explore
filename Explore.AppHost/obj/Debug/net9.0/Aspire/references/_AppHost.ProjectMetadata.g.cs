@@ -8,5 +8,5 @@ namespace Projects;
 public class Explore_AppHost
 {
     private Explore_AppHost() { }
-    public static string ProjectPath => """C:\ISLAMU\GitHub\Explore\Explore.AppHost""";
+    public static string ProjectPath => """C:\Users\Zah_N\Documents\GitHub\Explore\Explore.AppHost""";
 }

@@ -8,3 +8,12 @@ C:\ISLAMU\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\staticwebassets.
 C:\ISLAMU\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\staticwebassets.build.json
 C:\ISLAMU\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\staticwebassets.build.json
 C:\ISLAMU\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\staticwebassets.build.json
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\staticwebassets.build.json
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\staticwebassets.build.json
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\staticwebassets.build.json
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\staticwebassets.build.json
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\staticwebassets.build.json
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\staticwebassets.build.json
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\staticwebassets.build.json
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\staticwebassets.build.json
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\staticwebassets.build.json

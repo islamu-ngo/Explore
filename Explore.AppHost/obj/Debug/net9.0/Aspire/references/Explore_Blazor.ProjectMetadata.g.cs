@@ -7,5 +7,5 @@ namespace Projects;
 [global::System.Diagnostics.DebuggerDisplay("Type = {GetType().Name,nq}, ProjectPath = {ProjectPath}")]
 public class Explore_Blazor : global::Aspire.Hosting.IProjectMetadata
 {
-    public string ProjectPath => """C:\ISLAMU\GitHub\Explore\Explore.Blazor\Explore.Blazor.csproj""";
+    public string ProjectPath => """C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor\Explore.Blazor.csproj""";
 }

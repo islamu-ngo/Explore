@@ -31,7 +31,8 @@
       },
       "Microsoft.AspNetCore.Components/9.0.9": {
         "dependencies": {
-          "Microsoft.AspNetCore.Authorization": "9.0.9"
+          "Microsoft.AspNetCore.Authorization": "9.0.9",
+          "Microsoft.AspNetCore.Components.Analyzers": "9.0.9"
         },
         "runtime": {
           "lib/net9.0/Microsoft.AspNetCore.Components.dll": {
@@ -40,6 +41,7 @@
           }
         }
       },
+      "Microsoft.AspNetCore.Components.Analyzers/9.0.9": {},
       "Microsoft.AspNetCore.Components.Forms/9.0.9": {
         "dependencies": {
           "Microsoft.AspNetCore.Components": "9.0.9"
@@ -251,6 +253,7 @@
           }
         }
       },
+      "Microsoft.Extensions.Features/8.0.15": {},
       "Microsoft.Extensions.FileProviders.Abstractions/9.0.9": {
         "dependencies": {
           "Microsoft.Extensions.Primitives": "9.0.9"
@@ -319,7 +322,8 @@
           "Microsoft.Extensions.DependencyInjection.AutoActivation": "9.4.0",
           "Microsoft.Extensions.Http": "9.0.4",
           "Microsoft.Extensions.Options.ConfigurationExtensions": "9.0.4",
-          "Microsoft.Extensions.Telemetry": "9.4.0"
+          "Microsoft.Extensions.Telemetry": "9.4.0",
+          "System.IO.Pipelines": "9.0.4"
         },
         "runtime": {
           "lib/net9.0/Microsoft.Extensions.Http.Diagnostics.dll": {
@@ -470,6 +474,7 @@
           "Microsoft.Extensions.Configuration.Abstractions": "9.0.9",
           "Microsoft.Extensions.Configuration.Binder": "9.0.9",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.9",
+          "Microsoft.Extensions.Features": "8.0.15",
           "Microsoft.Extensions.Http": "9.0.4",
           "Microsoft.Extensions.Logging.Abstractions": "9.0.9",
           "Microsoft.Extensions.Options": "9.0.9",
@@ -488,6 +493,7 @@
           "Microsoft.Extensions.Configuration.Abstractions": "9.0.9",
           "Microsoft.Extensions.Configuration.Binder": "9.0.9",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.9",
+          "Microsoft.Extensions.Features": "8.0.15",
           "Microsoft.Extensions.Logging.Abstractions": "9.0.9",
           "Microsoft.Extensions.Options": "9.0.9",
           "Microsoft.Extensions.Primitives": "9.0.9"
@@ -547,7 +553,7 @@
           }
         }
       },
-      "MudBlazor/8.12.0": {
+      "MudBlazor/8.13.0": {
         "dependencies": {
           "Microsoft.AspNetCore.Components": "9.0.9",
           "Microsoft.AspNetCore.Components.Web": "9.0.9",
@@ -555,8 +561,8 @@
         },
         "runtime": {
           "lib/net9.0/MudBlazor.dll": {
-            "assemblyVersion": "8.12.0.0",
-            "fileVersion": "8.12.0.0"
+            "assemblyVersion": "8.13.0.0",
+            "fileVersion": "8.13.0.0"
           }
         }
       },
@@ -574,6 +580,9 @@
         }
       },
       "OpenTelemetry.Api/1.12.0": {
+        "dependencies": {
+          "System.Diagnostics.DiagnosticSource": "9.0.0"
+        },
         "runtime": {
           "lib/net9.0/OpenTelemetry.Api.dll": {
             "assemblyVersion": "1.0.0.0",
@@ -674,7 +683,8 @@
       },
       "Polly.RateLimiting/8.4.2": {
         "dependencies": {
-          "Polly.Core": "8.4.2"
+          "Polly.Core": "8.4.2",
+          "System.Threading.RateLimiting": "8.0.0"
         },
         "runtime": {
           "lib/net8.0/Polly.RateLimiting.dll": {
@@ -683,10 +693,13 @@
           }
         }
       },
+      "System.Diagnostics.DiagnosticSource/9.0.0": {},
+      "System.IO.Pipelines/9.0.4": {},
+      "System.Threading.RateLimiting/8.0.0": {},
       "Explore.Blazor.Client/1.0.0": {
         "dependencies": {
           "Microsoft.AspNetCore.Components.WebAssembly": "9.0.9",
-          "MudBlazor": "8.12.0"
+          "MudBlazor": "8.13.0"
         },
         "runtime": {
           "Explore.Blazor.Client.dll": {
@@ -733,6 +746,13 @@
       "sha512": "sha512-n8hjxdgIAWTtYOu1bitWwi8HYR7OT78syKpNSzJ8jSvzv5xnJFMf7BaZCorNx+Y76CINKrG9TBNY6ovBSnNahQ==",
       "path": "microsoft.aspnetcore.components/9.0.9",
       "hashPath": "microsoft.aspnetcore.components.9.0.9.nupkg.sha512"
+    },
+    "Microsoft.AspNetCore.Components.Analyzers/9.0.9": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-jmT0+VkIoSq3VNshj8XX44aV/oQtA82xYa7ScqmAa7I2avXgMiQZzGEbd5dmn2PjKqYvI9MlK+gLyja1TYPzzQ==",
+      "path": "microsoft.aspnetcore.components.analyzers/9.0.9",
+      "hashPath": "microsoft.aspnetcore.components.analyzers.9.0.9.nupkg.sha512"
     },
     "Microsoft.AspNetCore.Components.Forms/9.0.9": {
       "type": "package",
@@ -859,6 +879,13 @@
       "sha512": "sha512-Ht5TQmWfYh7cbZTPTTWAUkgQmJhDg1JINvXSnxutx1sfZL1gkk1OXoF0Uh2383FLk9cm4le/cWfdgDslFeVigA==",
       "path": "microsoft.extensions.diagnostics.exceptionsummarization/9.4.0",
       "hashPath": "microsoft.extensions.diagnostics.exceptionsummarization.9.4.0.nupkg.sha512"
+    },
+    "Microsoft.Extensions.Features/8.0.15": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-QUBxyUDGAyHppX5lDgE5XogfQ9fFtm3o4Un8cb46OMinto5hgYfKj3zZTR68QHAqKIM1iOoO6qrh1UbHUZkDQw==",
+      "path": "microsoft.extensions.features/8.0.15",
+      "hashPath": "microsoft.extensions.features.8.0.15.nupkg.sha512"
     },
     "Microsoft.Extensions.FileProviders.Abstractions/9.0.9": {
       "type": "package",
@@ -1021,12 +1048,12 @@
       "path": "microsoft.jsinterop.webassembly/9.0.9",
       "hashPath": "microsoft.jsinterop.webassembly.9.0.9.nupkg.sha512"
     },
-    "MudBlazor/8.12.0": {
+    "MudBlazor/8.13.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-ZwgHPt2DwiQoFeP8jxPzNEsUmJF17ljtospVH+uMUKUKpklz6jEkdE5vNs7PnHaPH9HEbpFEQgJw8QPlnFZjsQ==",
-      "path": "mudblazor/8.12.0",
-      "hashPath": "mudblazor.8.12.0.nupkg.sha512"
+      "sha512": "sha512-Y6JW93zf8tiVhMSkkL0mZ3ruqjOTNftvVoX3sik6NEnIye+Gs0FXI8rhXfrH2LU79Mw/fOtT5ms3L/Q4TKx2kA==",
+      "path": "mudblazor/8.13.0",
+      "hashPath": "mudblazor.8.13.0.nupkg.sha512"
     },
     "OpenTelemetry/1.12.0": {
       "type": "package",
@@ -1104,6 +1131,27 @@
       "sha512": "sha512-ehTImQ/eUyO07VYW2WvwSmU9rRH200SKJ/3jku9rOkyWE0A2JxNFmAVms8dSn49QLSjmjFRRSgfNyOgr/2PSmA==",
       "path": "polly.ratelimiting/8.4.2",
       "hashPath": "polly.ratelimiting.8.4.2.nupkg.sha512"
+    },
+    "System.Diagnostics.DiagnosticSource/9.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-ddppcFpnbohLWdYKr/ZeLZHmmI+DXFgZ3Snq+/E7SwcdW4UnvxmaugkwGywvGVWkHPGCSZjCP+MLzu23AL5SDw==",
+      "path": "system.diagnostics.diagnosticsource/9.0.0",
+      "hashPath": "system.diagnostics.diagnosticsource.9.0.0.nupkg.sha512"
+    },
+    "System.IO.Pipelines/9.0.4": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-luF2Xba+lTe2GOoNQdZLe8q7K6s7nSpWZl9jIwWNMszN4/Yv0lmxk9HISgMmwdyZ83i3UhAGXaSY9o6IJBUuuA==",
+      "path": "system.io.pipelines/9.0.4",
+      "hashPath": "system.io.pipelines.9.0.4.nupkg.sha512"
+    },
+    "System.Threading.RateLimiting/8.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-7mu9v0QDv66ar3DpGSZHg9NuNcxDaaAcnMULuZlaTpP9+hwXhrxNGsF5GmLkSHxFdb5bBc1TzeujsRgTrPWi+Q==",
+      "path": "system.threading.ratelimiting/8.0.0",
+      "hashPath": "system.threading.ratelimiting.8.0.0.nupkg.sha512"
     },
     "Explore.Blazor.Client/1.0.0": {
       "type": "project",

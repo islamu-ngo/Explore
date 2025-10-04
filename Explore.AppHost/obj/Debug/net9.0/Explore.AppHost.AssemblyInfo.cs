@@ -12,21 +12,21 @@ using System;
 using System.Reflection;
 
 [assembly: Microsoft.Extensions.Configuration.UserSecrets.UserSecretsIdAttribute("cf2496b7-15ad-4167-8905-1b67f7d20442")]
-[assembly: System.Reflection.AssemblyMetadata("dcpclipath", "C:\\Users\\AM5\\.nuget\\packages\\aspire.hosting.orchestration.win-x64\\9.3.1\\tools\\dcp" +
-    ".exe")]
-[assembly: System.Reflection.AssemblyMetadata("dcpextensionpaths", "C:\\Users\\AM5\\.nuget\\packages\\aspire.hosting.orchestration.win-x64\\9.3.1\\tools\\ext" +
-    "\\")]
-[assembly: System.Reflection.AssemblyMetadata("dcpbinpath", "C:\\Users\\AM5\\.nuget\\packages\\aspire.hosting.orchestration.win-x64\\9.3.1\\tools\\ext" +
-    "\\bin\\")]
-[assembly: System.Reflection.AssemblyMetadata("apphostprojectpath", "C:\\ISLAMU\\GitHub\\Explore\\Explore.AppHost")]
+[assembly: System.Reflection.AssemblyMetadata("dcpclipath", "C:\\Users\\Zah_N\\.nuget\\packages\\aspire.hosting.orchestration.win-x64\\9.3.1\\tools\\d" +
+    "cp.exe")]
+[assembly: System.Reflection.AssemblyMetadata("dcpextensionpaths", "C:\\Users\\Zah_N\\.nuget\\packages\\aspire.hosting.orchestration.win-x64\\9.3.1\\tools\\e" +
+    "xt\\")]
+[assembly: System.Reflection.AssemblyMetadata("dcpbinpath", "C:\\Users\\Zah_N\\.nuget\\packages\\aspire.hosting.orchestration.win-x64\\9.3.1\\tools\\e" +
+    "xt\\bin\\")]
+[assembly: System.Reflection.AssemblyMetadata("apphostprojectpath", "C:\\Users\\Zah_N\\Documents\\GitHub\\Explore\\Explore.AppHost")]
 [assembly: System.Reflection.AssemblyMetadata("apphostprojectname", "Explore.AppHost.csproj")]
-[assembly: System.Reflection.AssemblyMetadata("aspiredashboardpath", "C:\\Users\\AM5\\.nuget\\packages\\aspire.dashboard.sdk.win-x64\\9.3.1\\tools\\Aspire.Dash" +
-    "board.exe")]
-[assembly: System.Reflection.AssemblyMetadataAttribute("apphostprojectbaseintermediateoutputpath", "C:\\ISLAMU\\GitHub\\Explore\\Explore.AppHost\\obj\\")]
+[assembly: System.Reflection.AssemblyMetadata("aspiredashboardpath", "C:\\Users\\Zah_N\\.nuget\\packages\\aspire.dashboard.sdk.win-x64\\9.3.1\\tools\\Aspire.Da" +
+    "shboard.exe")]
+[assembly: System.Reflection.AssemblyMetadataAttribute("apphostprojectbaseintermediateoutputpath", "C:\\Users\\Zah_N\\Documents\\GitHub\\Explore\\Explore.AppHost\\obj\\")]
 [assembly: System.Reflection.AssemblyCompanyAttribute("Explore.AppHost")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+10d694f83c9de253f36177fe4f784ef9d8917985")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+9a09539bafd309704663853e33f52fcde2201254")]
 [assembly: System.Reflection.AssemblyProductAttribute("Explore.AppHost")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Explore.AppHost")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -3,4 +3,13 @@
         <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
         <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>
+    <NotFound>
+        <PageTitle>Not found</PageTitle>
+        <LayoutView Layout="typeof(Layout.MainLayout)">
+            <MudContainer>
+                <MudText Typo="Typo.h3" Class="mt-8">Page not found</MudText>
+                <MudText Typo="Typo.body1">The page you requested could not be found.</MudText>
+            </MudContainer>
+        </LayoutView>
+    </NotFound>
 </Router>

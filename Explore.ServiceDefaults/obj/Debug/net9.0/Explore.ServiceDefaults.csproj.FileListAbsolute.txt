@@ -24,3 +24,16 @@ C:\ISLAMU\GitHub\Explore\Explore.ServiceDefaults\obj\Debug\net9.0\Explore.Servic
 C:\ISLAMU\GitHub\Explore\Explore.ServiceDefaults\obj\Debug\net9.0\refint\Explore.ServiceDefaults.dll
 C:\ISLAMU\GitHub\Explore\Explore.ServiceDefaults\obj\Debug\net9.0\Explore.ServiceDefaults.pdb
 C:\ISLAMU\GitHub\Explore\Explore.ServiceDefaults\obj\Debug\net9.0\ref\Explore.ServiceDefaults.dll
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.ServiceDefaults\bin\Debug\net9.0\Explore.ServiceDefaults.deps.json
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.ServiceDefaults\bin\Debug\net9.0\Explore.ServiceDefaults.dll
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.ServiceDefaults\bin\Debug\net9.0\Explore.ServiceDefaults.pdb
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.ServiceDefaults\obj\Debug\net9.0\Explore.ServiceDefaults.csproj.AssemblyReference.cache
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.ServiceDefaults\obj\Debug\net9.0\Explore.ServiceDefaults.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.ServiceDefaults\obj\Debug\net9.0\Explore.ServiceDefaults.AssemblyInfoInputs.cache
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.ServiceDefaults\obj\Debug\net9.0\Explore.ServiceDefaults.AssemblyInfo.cs
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.ServiceDefaults\obj\Debug\net9.0\Explore.ServiceDefaults.csproj.CoreCompileInputs.cache
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.ServiceDefaults\obj\Debug\net9.0\Explore.ServiceDefaults.sourcelink.json
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.ServiceDefaults\obj\Debug\net9.0\Explore.ServiceDefaults.dll
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.ServiceDefaults\obj\Debug\net9.0\refint\Explore.ServiceDefaults.dll
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.ServiceDefaults\obj\Debug\net9.0\Explore.ServiceDefaults.pdb
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.ServiceDefaults\obj\Debug\net9.0\ref\Explore.ServiceDefaults.dll

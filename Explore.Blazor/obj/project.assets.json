@@ -865,7 +865,7 @@
           }
         }
       },
-      "MudBlazor/8.12.0": {
+      "MudBlazor/8.13.0": {
         "type": "package",
         "dependencies": {
           "Microsoft.AspNetCore.Components": "9.0.1",
@@ -1134,7 +1134,7 @@
         "framework": ".NETCoreApp,Version=v9.0",
         "dependencies": {
           "Microsoft.AspNetCore.Components.WebAssembly": "9.0.0",
-          "MudBlazor": "8.0.0"
+          "MudBlazor": "8.13.0"
         },
         "compile": {
           "bin/placeholder/Explore.Blazor.Client.dll": {}
@@ -2281,10 +2281,10 @@
         "microsoft.jsinterop.webassembly.nuspec"
       ]
     },
-    "MudBlazor/8.12.0": {
-      "sha512": "ZwgHPt2DwiQoFeP8jxPzNEsUmJF17ljtospVH+uMUKUKpklz6jEkdE5vNs7PnHaPH9HEbpFEQgJw8QPlnFZjsQ==",
+    "MudBlazor/8.13.0": {
+      "sha512": "Y6JW93zf8tiVhMSkkL0mZ3ruqjOTNftvVoX3sik6NEnIye+Gs0FXI8rhXfrH2LU79Mw/fOtT5ms3L/Q4TKx2kA==",
       "type": "package",
-      "path": "mudblazor/8.12.0",
+      "path": "mudblazor/8.13.0",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
@@ -2302,7 +2302,7 @@
         "lib/net8.0/MudBlazor.xml",
         "lib/net9.0/MudBlazor.dll",
         "lib/net9.0/MudBlazor.xml",
-        "mudblazor.8.12.0.nupkg.sha512",
+        "mudblazor.8.13.0.nupkg.sha512",
         "mudblazor.nuspec",
         "staticwebassets/MudBlazor.min.css",
         "staticwebassets/MudBlazor.min.js"
@@ -2718,23 +2718,23 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\AM5\\.nuget\\packages\\": {},
+    "C:\\Users\\Zah_N\\.nuget\\packages\\": {},
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Blazor\\Explore.Blazor.csproj",
+      "projectUniqueName": "C:\\Users\\Zah_N\\Documents\\GitHub\\Explore\\Explore.Blazor\\Explore.Blazor.csproj",
       "projectName": "Explore.Blazor",
-      "projectPath": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Blazor\\Explore.Blazor.csproj",
-      "packagesPath": "C:\\Users\\AM5\\.nuget\\packages\\",
-      "outputPath": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Blazor\\obj\\",
+      "projectPath": "C:\\Users\\Zah_N\\Documents\\GitHub\\Explore\\Explore.Blazor\\Explore.Blazor.csproj",
+      "packagesPath": "C:\\Users\\Zah_N\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\Zah_N\\Documents\\GitHub\\Explore\\Explore.Blazor\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
       ],
       "configFilePaths": [
-        "C:\\Users\\AM5\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\Zah_N\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
@@ -2750,11 +2750,11 @@
         "net9.0": {
           "targetAlias": "net9.0",
           "projectReferences": {
-            "C:\\ISLAMU\\GitHub\\Explore\\Explore.Blazor.Client\\Explore.Blazor.Client.csproj": {
-              "projectPath": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Blazor.Client\\Explore.Blazor.Client.csproj"
+            "C:\\Users\\Zah_N\\Documents\\GitHub\\Explore\\Explore.Blazor.Client\\Explore.Blazor.Client.csproj": {
+              "projectPath": "C:\\Users\\Zah_N\\Documents\\GitHub\\Explore\\Explore.Blazor.Client\\Explore.Blazor.Client.csproj"
             },
-            "C:\\ISLAMU\\GitHub\\Explore\\Explore.ServiceDefaults\\Explore.ServiceDefaults.csproj": {
-              "projectPath": "C:\\ISLAMU\\GitHub\\Explore\\Explore.ServiceDefaults\\Explore.ServiceDefaults.csproj"
+            "C:\\Users\\Zah_N\\Documents\\GitHub\\Explore\\Explore.ServiceDefaults\\Explore.ServiceDefaults.csproj": {
+              "projectPath": "C:\\Users\\Zah_N\\Documents\\GitHub\\Explore\\Explore.ServiceDefaults\\Explore.ServiceDefaults.csproj"
             }
           }
         }
@@ -2769,7 +2769,7 @@
         "auditLevel": "low",
         "auditMode": "direct"
       },
-      "SdkAnalysisLevel": "10.0.100"
+      "SdkAnalysisLevel": "9.0.300"
     },
     "frameworks": {
       "net9.0": {
@@ -2799,7 +2799,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.100-rc.1.25451.107/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.305/PortableRuntimeIdentifierGraph.json"
       }
     }
   }
