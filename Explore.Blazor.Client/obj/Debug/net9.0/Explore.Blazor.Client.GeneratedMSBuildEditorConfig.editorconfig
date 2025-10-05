@@ -66,3 +66,7 @@ build_metadata.AdditionalFiles.CssScope =
 [C:/GitHub/Explore/Explore.Blazor.Client/Pages/Home.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXNcSG9tZS5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = b-78aldthjbv
+
+[C:/GitHub/Explore/Explore.Blazor.Client/Pages/Landing/LandingPageForUsers.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcTGFuZGluZ1xMYW5kaW5nUGFnZUZvclVzZXJzLnJhem9y
+build_metadata.AdditionalFiles.CssScope = b-fmwbc5em0p

@@ -8,18 +8,22 @@
     ".NETCoreApp,Version=v9.0": {
       "Explore.AppHost/1.0.0": {
         "dependencies": {
-          "Aspire.Hosting.AppHost": "9.3.1"
+          "Aspire.Dashboard.Sdk.win-x64": "9.3.1",
+          "Aspire.Hosting.AppHost": "9.3.1",
+          "Aspire.Hosting.Orchestration.win-x64": "9.3.1"
         },
         "runtime": {
           "Explore.AppHost.dll": {}
         }
       },
+      "Aspire.Dashboard.Sdk.win-x64/9.3.1": {},
       "Aspire.Hosting/9.3.1": {
         "dependencies": {
           "AspNetCore.HealthChecks.Uris": "9.0.0",
           "Google.Protobuf": "3.30.2",
           "Grpc.AspNetCore": "2.71.0",
           "Grpc.Net.ClientFactory": "2.71.0",
+          "Grpc.Tools": "2.72.0",
           "Humanizer.Core": "2.14.1",
           "JsonPatch.Net": "3.3.0",
           "KubernetesClient": "16.0.7",
@@ -93,6 +97,7 @@
           "Google.Protobuf": "3.30.2",
           "Grpc.AspNetCore": "2.71.0",
           "Grpc.Net.ClientFactory": "2.71.0",
+          "Grpc.Tools": "2.72.0",
           "Humanizer.Core": "2.14.1",
           "JsonPatch.Net": "3.3.0",
           "KubernetesClient": "16.0.7",
@@ -118,6 +123,7 @@
           }
         }
       },
+      "Aspire.Hosting.Orchestration.win-x64/9.3.1": {},
       "AspNetCore.HealthChecks.Uris/9.0.0": {
         "dependencies": {
           "Microsoft.Extensions.Diagnostics.HealthChecks": "9.0.4",
@@ -149,7 +155,8 @@
       "Grpc.AspNetCore/2.71.0": {
         "dependencies": {
           "Google.Protobuf": "3.30.2",
-          "Grpc.AspNetCore.Server.ClientFactory": "2.71.0"
+          "Grpc.AspNetCore.Server.ClientFactory": "2.71.0",
+          "Grpc.Tools": "2.72.0"
         }
       },
       "Grpc.AspNetCore.Server/2.71.0": {
@@ -218,6 +225,7 @@
           }
         }
       },
+      "Grpc.Tools/2.72.0": {},
       "Humanizer.Core/2.14.1": {
         "runtime": {
           "lib/net6.0/Humanizer.dll": {
@@ -807,7 +815,9 @@
         "dependencies": {
           "Microsoft.Bcl.AsyncInterfaces": "8.0.0",
           "Microsoft.VisualStudio.Threading.Only": "17.13.61",
-          "Microsoft.VisualStudio.Validation": "17.8.8"
+          "Microsoft.VisualStudio.Validation": "17.8.8",
+          "System.IO.Pipelines": "8.0.0",
+          "System.Runtime.CompilerServices.Unsafe": "6.1.0"
         },
         "runtime": {
           "lib/net6.0/Nerdbank.Streams.dll": {
@@ -839,7 +849,8 @@
           "Microsoft.VisualStudio.Threading.Only": "17.13.61",
           "Microsoft.VisualStudio.Validation": "17.8.8",
           "Nerdbank.Streams": "2.11.90",
-          "Newtonsoft.Json": "13.0.3"
+          "Newtonsoft.Json": "13.0.3",
+          "System.IO.Pipelines": "8.0.0"
         },
         "runtime": {
           "lib/net8.0/StreamJsonRpc.dll": {
@@ -913,6 +924,8 @@
           }
         }
       },
+      "System.IO.Pipelines/8.0.0": {},
+      "System.Runtime.CompilerServices.Unsafe/6.1.0": {},
       "YamlDotNet/16.3.0": {
         "runtime": {
           "lib/net8.0/YamlDotNet.dll": {
@@ -929,6 +942,13 @@
       "serviceable": false,
       "sha512": ""
     },
+    "Aspire.Dashboard.Sdk.win-x64/9.3.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-0BAjVEMMBOkGaxVK3AioTiJKN2nyB+0hjvf8k2ek9LUIMowE2WvQfGUZhdZJaqmfqUCMdmFuhqNzkgubclIcXQ==",
+      "path": "aspire.dashboard.sdk.win-x64/9.3.1",
+      "hashPath": "aspire.dashboard.sdk.win-x64.9.3.1.nupkg.sha512"
+    },
     "Aspire.Hosting/9.3.1": {
       "type": "package",
       "serviceable": true,
@@ -942,6 +962,13 @@
       "sha512": "sha512-U7lENUUkk97FpGsu6BLi2OA9RNaHKriyLw/t6Q/YOZrsch3PoEH09Hs7UCHfZIErKT40BczHjOvGP0uebNU8Tw==",
       "path": "aspire.hosting.apphost/9.3.1",
       "hashPath": "aspire.hosting.apphost.9.3.1.nupkg.sha512"
+    },
+    "Aspire.Hosting.Orchestration.win-x64/9.3.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-8tA+G0AHRF2DCg0WVwvXTwDGZYXetRlG9E+5UIfdB10lj6MqOSEVr6/1h9lIAQuTwy8HWtI7o8GyDotKg5AWeQ==",
+      "path": "aspire.hosting.orchestration.win-x64/9.3.1",
+      "hashPath": "aspire.hosting.orchestration.win-x64.9.3.1.nupkg.sha512"
     },
     "AspNetCore.HealthChecks.Uris/9.0.0": {
       "type": "package",
@@ -1012,6 +1039,13 @@
       "sha512": "sha512-v0c8R97TwRYwNXlC8GyRXwYTCNufpDfUtj9la+wUrZFzVWkFJuNAltU+c0yI3zu0jl54k7en6u2WKgZgd57r2Q==",
       "path": "grpc.net.common/2.71.0",
       "hashPath": "grpc.net.common.2.71.0.nupkg.sha512"
+    },
+    "Grpc.Tools/2.72.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-BCiuQ03EYjLHCo9hqZmY5barsz5vvcz/+/ICt5wCbukaePHZmMPDGelKlkxWx3q+f5xOMNHa9zXQ2N6rQZ4B+w==",
+      "path": "grpc.tools/2.72.0",
+      "hashPath": "grpc.tools.2.72.0.nupkg.sha512"
     },
     "Humanizer.Core/2.14.1": {
       "type": "package",
@@ -1341,6 +1375,20 @@
       "sha512": "sha512-WogPvgAFqQORFD8Iyha6RZ+/1QB3dsWRWxbwi8/HHVgiGQ8z0oMWpwe8Kk3Ti+Roe+P6a3sBg+WwBfEsyziZKg==",
       "path": "system.io.hashing/9.0.4",
       "hashPath": "system.io.hashing.9.0.4.nupkg.sha512"
+    },
+    "System.IO.Pipelines/8.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-FHNOatmUq0sqJOkTx+UF/9YK1f180cnW5FVqnQMvYUN0elp6wFzbtPSiqbo1/ru8ICp43JM1i7kKkk6GsNGHlA==",
+      "path": "system.io.pipelines/8.0.0",
+      "hashPath": "system.io.pipelines.8.0.0.nupkg.sha512"
+    },
+    "System.Runtime.CompilerServices.Unsafe/6.1.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-5o/HZxx6RVqYlhKSq8/zronDkALJZUT2Vz0hx43f0gwe8mwlM0y2nYlqdBwLMzr262Bwvpikeb/yEwkAa5PADg==",
+      "path": "system.runtime.compilerservices.unsafe/6.1.0",
+      "hashPath": "system.runtime.compilerservices.unsafe.6.1.0.nupkg.sha512"
     },
     "YamlDotNet/16.3.0": {
       "type": "package",
