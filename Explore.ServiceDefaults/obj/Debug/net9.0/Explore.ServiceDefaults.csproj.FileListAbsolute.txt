@@ -37,3 +37,16 @@ C:\Users\Zah_N\Documents\GitHub\Explore\Explore.ServiceDefaults\obj\Debug\net9.0
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.ServiceDefaults\obj\Debug\net9.0\refint\Explore.ServiceDefaults.dll
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.ServiceDefaults\obj\Debug\net9.0\Explore.ServiceDefaults.pdb
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.ServiceDefaults\obj\Debug\net9.0\ref\Explore.ServiceDefaults.dll
+C:\GitHub\Explore\Explore.ServiceDefaults\bin\Debug\net9.0\Explore.ServiceDefaults.deps.json
+C:\GitHub\Explore\Explore.ServiceDefaults\bin\Debug\net9.0\Explore.ServiceDefaults.dll
+C:\GitHub\Explore\Explore.ServiceDefaults\bin\Debug\net9.0\Explore.ServiceDefaults.pdb
+C:\GitHub\Explore\Explore.ServiceDefaults\obj\Debug\net9.0\Explore.ServiceDefaults.csproj.AssemblyReference.cache
+C:\GitHub\Explore\Explore.ServiceDefaults\obj\Debug\net9.0\Explore.ServiceDefaults.GeneratedMSBuildEditorConfig.editorconfig
+C:\GitHub\Explore\Explore.ServiceDefaults\obj\Debug\net9.0\Explore.ServiceDefaults.AssemblyInfoInputs.cache
+C:\GitHub\Explore\Explore.ServiceDefaults\obj\Debug\net9.0\Explore.ServiceDefaults.AssemblyInfo.cs
+C:\GitHub\Explore\Explore.ServiceDefaults\obj\Debug\net9.0\Explore.ServiceDefaults.csproj.CoreCompileInputs.cache
+C:\GitHub\Explore\Explore.ServiceDefaults\obj\Debug\net9.0\Explore.ServiceDefaults.sourcelink.json
+C:\GitHub\Explore\Explore.ServiceDefaults\obj\Debug\net9.0\Explore.ServiceDefaults.dll
+C:\GitHub\Explore\Explore.ServiceDefaults\obj\Debug\net9.0\refint\Explore.ServiceDefaults.dll
+C:\GitHub\Explore\Explore.ServiceDefaults\obj\Debug\net9.0\Explore.ServiceDefaults.pdb
+C:\GitHub\Explore\Explore.ServiceDefaults\obj\Debug\net9.0\ref\Explore.ServiceDefaults.dll

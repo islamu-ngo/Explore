@@ -5,12 +5,12 @@
     <RestoreTool Condition=" '$(RestoreTool)' == '' ">NuGet</RestoreTool>
     <ProjectAssetsFile Condition=" '$(ProjectAssetsFile)' == '' ">$(MSBuildThisFileDirectory)project.assets.json</ProjectAssetsFile>
     <NuGetPackageRoot Condition=" '$(NuGetPackageRoot)' == '' ">$(UserProfile)\.nuget\packages\</NuGetPackageRoot>
-    <NuGetPackageFolders Condition=" '$(NuGetPackageFolders)' == '' ">C:\Users\Zah_N\.nuget\packages\;C:\Program Files (x86)\Microsoft Visual Studio\Shared\NuGetPackages</NuGetPackageFolders>
+    <NuGetPackageFolders Condition=" '$(NuGetPackageFolders)' == '' ">C:\Users\wassi\.nuget\packages\;C:\Program Files (x86)\Microsoft Visual Studio\Shared\NuGetPackages</NuGetPackageFolders>
     <NuGetProjectStyle Condition=" '$(NuGetProjectStyle)' == '' ">PackageReference</NuGetProjectStyle>
     <NuGetToolVersion Condition=" '$(NuGetToolVersion)' == '' ">6.14.1</NuGetToolVersion>
   </PropertyGroup>
   <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
-    <SourceRoot Include="C:\Users\Zah_N\.nuget\packages\" />
+    <SourceRoot Include="C:\Users\wassi\.nuget\packages\" />
     <SourceRoot Include="C:\Program Files (x86)\Microsoft Visual Studio\Shared\NuGetPackages\" />
   </ItemGroup>
   <ImportGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
@@ -19,8 +19,8 @@
     <Import Project="$(NuGetPackageRoot)aspire.dashboard.sdk.win-x64\9.3.1\buildTransitive\Aspire.Dashboard.Sdk.win-x64.props" Condition="Exists('$(NuGetPackageRoot)aspire.dashboard.sdk.win-x64\9.3.1\buildTransitive\Aspire.Dashboard.Sdk.win-x64.props')" />
   </ImportGroup>
   <PropertyGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
-    <PkgGrpc_Tools Condition=" '$(PkgGrpc_Tools)' == '' ">C:\Users\Zah_N\.nuget\packages\grpc.tools\2.72.0</PkgGrpc_Tools>
-    <PkgAspire_Hosting_Orchestration_win-x64 Condition=" '$(PkgAspire_Hosting_Orchestration_win-x64)' == '' ">C:\Users\Zah_N\.nuget\packages\aspire.hosting.orchestration.win-x64\9.3.1</PkgAspire_Hosting_Orchestration_win-x64>
-    <PkgAspire_Dashboard_Sdk_win-x64 Condition=" '$(PkgAspire_Dashboard_Sdk_win-x64)' == '' ">C:\Users\Zah_N\.nuget\packages\aspire.dashboard.sdk.win-x64\9.3.1</PkgAspire_Dashboard_Sdk_win-x64>
+    <PkgGrpc_Tools Condition=" '$(PkgGrpc_Tools)' == '' ">C:\Users\wassi\.nuget\packages\grpc.tools\2.72.0</PkgGrpc_Tools>
+    <PkgAspire_Hosting_Orchestration_win-x64 Condition=" '$(PkgAspire_Hosting_Orchestration_win-x64)' == '' ">C:\Users\wassi\.nuget\packages\aspire.hosting.orchestration.win-x64\9.3.1</PkgAspire_Hosting_Orchestration_win-x64>
+    <PkgAspire_Dashboard_Sdk_win-x64 Condition=" '$(PkgAspire_Dashboard_Sdk_win-x64)' == '' ">C:\Users\wassi\.nuget\packages\aspire.dashboard.sdk.win-x64\9.3.1</PkgAspire_Dashboard_Sdk_win-x64>
   </PropertyGroup>
 </Project>

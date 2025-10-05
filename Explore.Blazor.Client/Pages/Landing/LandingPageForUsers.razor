@@ -1,0 +1,98 @@
+﻿@page "/"
+@using MudBlazor
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="landing content">
+    <!-- HERO -->
+    <MudGrid Spacing="3" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mt-6">
+        <MudItem xs="12" md="6">
+            <MudText Typo="Typo.h3" Class="mb-2">
+                Never miss<br />knowledge again
+            </MudText>
+
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2"
+                       StartIcon="@Icons.Material.Filled.Event" Href="/events">
+                Discover our community events
+            </MudButton>
+
+            <MudText Typo="Typo.subtitle2" Class="mt-3 mud-text-secondary">
+                “Seeking knowledge is an obligation upon every Muslim.”
+            </MudText>
+        </MudItem>
+
+        <MudItem xs="12" md="5" Class="flex-center">
+            <MudPaper Elevation="0" Class="logoBox">
+                <img src="image/Icon_landingpage.png" alt="Landing page image" class="landing-image" />
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <!-- EXPLORE -->
+    <MudText Typo="Typo.h5" Class="mt-8 mb-3">Explore</MudText>
+
+    <MudGrid Spacing="3">
+        <MudItem xs="12" sm="4">
+            <MudPaper Class="tile" Elevation="1">
+                <div class="tile-content">
+                    <MudIcon Icon="@Icons.Material.Filled.Place" Size="Size.Large" />
+                    <MudText Typo="Typo.h6">Local</MudText>
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">Find near you</MudText>
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="4">
+            <MudPaper Class="tile" Elevation="1">
+                <div class="tile-content">
+                    <MudIcon Icon="@Icons.Material.Filled.DesktopWindows" Size="Size.Large" />
+                    <MudText Typo="Typo.h6">Digital</MudText>
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">Find online</MudText>
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="4">
+            <MudPaper Class="tile" Elevation="1">
+                <div class="tile-content">
+                    <MudIcon Icon="@Icons.Material.Filled.Download" Size="Size.Large" />
+                    <MudText Typo="Typo.h6">Archive</MudText>
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">Watch recording</MudText>
+                </div>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <!-- THIS WEEK -->
+    <MudGrid Class="mt-8" AlignItems="AlignItems.Center">
+        <MudItem xs="12" md="8">
+            <MudText Typo="Typo.h5">This Week</MudText>
+        </MudItem>
+        <MudItem xs="12" md="4" Class="text-right">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/events">
+                Go there for the best Immersion Experience
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+
+    <MudGrid Spacing="3" Class="mt-2">
+        @foreach (var d in Dates)
+        {
+            <MudItem xs="12" sm="4">
+                <MudCard Class="eventCard">
+                    <MudCardMedia Class="eventThumb" />
+                    <MudCardContent>
+                        <MudText Typo="Typo.caption" Align="Align.Center">@d.ToString("dd/MM/yyyy")</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>
+</MudContainer>
+
+@code {
+    private readonly DateTime[] Dates =
+    {
+        DateTime.Today.AddDays(1),
+        DateTime.Today.AddDays(2),
+        DateTime.Today.AddDays(3)
+    };
+}
