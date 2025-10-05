@@ -58,3 +58,6 @@ C:\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\staticwebassets.build.j
 C:\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\staticwebassets.build.json
 C:\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\staticwebassets.build.json
 C:\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\staticwebassets.build.json
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\staticwebassets.build.json
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\staticwebassets.build.json
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\staticwebassets.build.json

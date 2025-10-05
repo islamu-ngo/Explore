@@ -1,6 +1,7 @@
 using MudBlazor.Services;
 using Explore.Blazor.Client.Pages;
 using Explore.Blazor.Components;
+using Explore.Blazor.Client.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,6 +9,9 @@ builder.AddServiceDefaults();
 
 // Add MudBlazor services
 builder.Services.AddMudServices();
+
+// Add custom services
+builder.Services.AddScoped<IEventService, EventService>();
 
 // Add services to the container.
 builder.Services.AddRazorComponents()

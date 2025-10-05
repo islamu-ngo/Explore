@@ -1,0 +1,2 @@
+C:\GitHub\Explore\Explore.Blazor.Client\wwwroot\appsettings.Development.json
+C:\GitHub\Explore\Explore.Blazor.Client\wwwroot\appsettings.json

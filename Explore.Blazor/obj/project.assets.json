@@ -2718,23 +2718,23 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\wassi\\.nuget\\packages\\": {},
+    "C:\\Users\\Zah_N\\.nuget\\packages\\": {},
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\GitHub\\Explore\\Explore.Blazor\\Explore.Blazor.csproj",
+      "projectUniqueName": "C:\\Users\\Zah_N\\Documents\\GitHub\\Explore\\Explore.Blazor\\Explore.Blazor.csproj",
       "projectName": "Explore.Blazor",
-      "projectPath": "C:\\GitHub\\Explore\\Explore.Blazor\\Explore.Blazor.csproj",
-      "packagesPath": "C:\\Users\\wassi\\.nuget\\packages\\",
-      "outputPath": "C:\\GitHub\\Explore\\Explore.Blazor\\obj\\",
+      "projectPath": "C:\\Users\\Zah_N\\Documents\\GitHub\\Explore\\Explore.Blazor\\Explore.Blazor.csproj",
+      "packagesPath": "C:\\Users\\Zah_N\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\Zah_N\\Documents\\GitHub\\Explore\\Explore.Blazor\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
       ],
       "configFilePaths": [
-        "C:\\Users\\wassi\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\Zah_N\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
@@ -2750,11 +2750,11 @@
         "net9.0": {
           "targetAlias": "net9.0",
           "projectReferences": {
-            "C:\\GitHub\\Explore\\Explore.Blazor.Client\\Explore.Blazor.Client.csproj": {
-              "projectPath": "C:\\GitHub\\Explore\\Explore.Blazor.Client\\Explore.Blazor.Client.csproj"
+            "C:\\Users\\Zah_N\\Documents\\GitHub\\Explore\\Explore.Blazor.Client\\Explore.Blazor.Client.csproj": {
+              "projectPath": "C:\\Users\\Zah_N\\Documents\\GitHub\\Explore\\Explore.Blazor.Client\\Explore.Blazor.Client.csproj"
             },
-            "C:\\GitHub\\Explore\\Explore.ServiceDefaults\\Explore.ServiceDefaults.csproj": {
-              "projectPath": "C:\\GitHub\\Explore\\Explore.ServiceDefaults\\Explore.ServiceDefaults.csproj"
+            "C:\\Users\\Zah_N\\Documents\\GitHub\\Explore\\Explore.ServiceDefaults\\Explore.ServiceDefaults.csproj": {
+              "projectPath": "C:\\Users\\Zah_N\\Documents\\GitHub\\Explore\\Explore.ServiceDefaults\\Explore.ServiceDefaults.csproj"
             }
           }
         }

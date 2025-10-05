@@ -324,7 +324,6 @@ C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\refint\E
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\Explore.Blazor.pdb
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\Explore.Blazor.genruntimeconfig.cache
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\ref\Explore.Blazor.dll
-C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\compressed\z3o3eo0xiu-7e0mzckttc.gz
 C:\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\Explore.Blazor.dll
 C:\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\refint\Explore.Blazor.dll
 C:\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\Explore.Blazor.pdb
@@ -434,3 +433,4 @@ C:\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\Explore..AED2444E.Up2Date
 C:\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\Explore.Blazor.genruntimeconfig.cache
 C:\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\ref\Explore.Blazor.dll
 C:\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\compressed\z3o3eo0xiu-la3ufly8bn.gz
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\compressed\z3o3eo0xiu-pbppaa9zkx.gz
