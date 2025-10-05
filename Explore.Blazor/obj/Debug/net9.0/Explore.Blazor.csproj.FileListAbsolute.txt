@@ -325,3 +325,6 @@ C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\Explore.
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\Explore.Blazor.genruntimeconfig.cache
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\ref\Explore.Blazor.dll
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\compressed\z3o3eo0xiu-7e0mzckttc.gz
+C:\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\Explore.Blazor.dll
+C:\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\refint\Explore.Blazor.dll
+C:\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\Explore.Blazor.pdb
