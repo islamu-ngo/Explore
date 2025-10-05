@@ -3820,8 +3820,6 @@ C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\bin\Debug\net9.0\w
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\bin\Debug\net9.0\wwwroot\_framework\mscorlib.xd6mv31d55.wasm
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\bin\Debug\net9.0\wwwroot\_framework\netstandard.kaml52uspo.wasm
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\bin\Debug\net9.0\wwwroot\_framework\System.Private.CoreLib.uqnhzdwypx.wasm
-C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\bin\Debug\net9.0\wwwroot\_framework\Explore.Blazor.Client.tib3ukkqi2.wasm
-C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\bin\Debug\net9.0\wwwroot\_framework\Explore.Blazor.Client.cqcjrfxeys.pdb
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\bin\Debug\net9.0\wwwroot\_framework\Microsoft.AspNetCore.Authorization.z6jo10m0rd.wasm.gz
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\bin\Debug\net9.0\wwwroot\_framework\Microsoft.AspNetCore.Components.65wbz7t8mt.wasm.gz
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\bin\Debug\net9.0\wwwroot\_framework\Microsoft.AspNetCore.Components.Forms.ysqd97eroy.wasm.gz
@@ -4014,8 +4012,6 @@ C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\bin\Debug\net9.0\w
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\bin\Debug\net9.0\wwwroot\_framework\mscorlib.xd6mv31d55.wasm.gz
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\bin\Debug\net9.0\wwwroot\_framework\netstandard.kaml52uspo.wasm.gz
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\bin\Debug\net9.0\wwwroot\_framework\System.Private.CoreLib.uqnhzdwypx.wasm.gz
-C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\bin\Debug\net9.0\wwwroot\_framework\Explore.Blazor.Client.tib3ukkqi2.wasm.gz
-C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\bin\Debug\net9.0\wwwroot\_framework\Explore.Blazor.Client.cqcjrfxeys.pdb.gz
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\scopedcss\Pages\Landing\LandingPageForUsers.razor.rz.scp.css
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\compressed\6gz0zfx9k4-8luvt2t966.gz
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\compressed\atvxwj5vgb-8luvt2t966.gz
@@ -4211,6 +4207,10 @@ C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\c
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\compressed\g6fa5og891-xd6mv31d55.gz
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\compressed\omi9n1qnn5-kaml52uspo.gz
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\compressed\o3uakkrx4n-uqnhzdwypx.gz
-C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\compressed\1hy6detigc-tib3ukkqi2.gz
-C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\compressed\2jdxrb81gr-cqcjrfxeys.gz
-C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\compressed\m947p5r7g1-i8pn225x9j.gz
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\bin\Debug\net9.0\wwwroot\_framework\Explore.Blazor.Client.maqfvdpcxt.wasm
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\bin\Debug\net9.0\wwwroot\_framework\Explore.Blazor.Client.knp935yxpr.pdb
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\bin\Debug\net9.0\wwwroot\_framework\Explore.Blazor.Client.maqfvdpcxt.wasm.gz
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\bin\Debug\net9.0\wwwroot\_framework\Explore.Blazor.Client.knp935yxpr.pdb.gz
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\compressed\1hy6detigc-maqfvdpcxt.gz
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\compressed\2jdxrb81gr-knp935yxpr.gz
+C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor.Client\obj\Debug\net9.0\compressed\m947p5r7g1-xo8bu6whes.gz
