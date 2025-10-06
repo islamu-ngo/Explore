@@ -1,2 +1,0 @@
-C:\GitHub\Explore\Explore.Blazor\wwwroot\css\site.css
-C:\GitHub\Explore\Explore.Blazor\wwwroot\favicon.ico
