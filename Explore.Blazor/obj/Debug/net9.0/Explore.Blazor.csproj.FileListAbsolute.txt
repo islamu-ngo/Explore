@@ -325,9 +325,8 @@ C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\Explore.
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\Explore.Blazor.genruntimeconfig.cache
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\ref\Explore.Blazor.dll
 C:\Users\Zah_N\Documents\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\compressed\z3o3eo0xiu-7e0mzckttc.gz
-C:\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\Explore.Blazor.dll
-C:\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\refint\Explore.Blazor.dll
-C:\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\Explore.Blazor.pdb
+C:\GitHub\Explore\Explore.Blazor\bin\Debug\net9.0\Explore.Blazor.Client.staticwebassets.runtime.json
+C:\GitHub\Explore\Explore.Blazor\bin\Debug\net9.0\Explore.Blazor.Client.staticwebassets.endpoints.json
 C:\GitHub\Explore\Explore.Blazor\bin\Debug\net9.0\appsettings.Development.json
 C:\GitHub\Explore\Explore.Blazor\bin\Debug\net9.0\appsettings.json
 C:\GitHub\Explore\Explore.Blazor\bin\Debug\net9.0\BlazorDebugProxy\BrowserDebugHost.dll
@@ -341,8 +340,6 @@ C:\GitHub\Explore\Explore.Blazor\bin\Debug\net9.0\BlazorDebugProxy\Microsoft.Fil
 C:\GitHub\Explore\Explore.Blazor\bin\Debug\net9.0\BlazorDebugProxy\Microsoft.NET.WebAssembly.Webcil.dll
 C:\GitHub\Explore\Explore.Blazor\bin\Debug\net9.0\BlazorDebugProxy\Microsoft.SymbolStore.dll
 C:\GitHub\Explore\Explore.Blazor\bin\Debug\net9.0\BlazorDebugProxy\Newtonsoft.Json.dll
-C:\GitHub\Explore\Explore.Blazor\bin\Debug\net9.0\Explore.Blazor.Client.staticwebassets.runtime.json
-C:\GitHub\Explore\Explore.Blazor\bin\Debug\net9.0\Explore.Blazor.Client.staticwebassets.endpoints.json
 C:\GitHub\Explore\Explore.Blazor\bin\Debug\net9.0\Explore.Blazor.staticwebassets.runtime.json
 C:\GitHub\Explore\Explore.Blazor\bin\Debug\net9.0\Explore.Blazor.staticwebassets.endpoints.json
 C:\GitHub\Explore\Explore.Blazor\bin\Debug\net9.0\Explore.Blazor.exe
@@ -425,12 +422,15 @@ C:\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\compressed\tzxjg6is5z-jk5eo7zo
 C:\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\compressed\0wz98yz2xy-tjzqk7tnel.gz
 C:\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\compressed\shtv3y4ygz-nfh1qgjuw3.gz
 C:\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\compressed\z307mjzlop-2jeq8efc6q.gz
+C:\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\compressed\z3o3eo0xiu-p0bvt38qor.gz
 C:\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\staticwebassets.build.json
 C:\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\staticwebassets.build.json.cache
 C:\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\staticwebassets.development.json
 C:\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\staticwebassets.build.endpoints.json
 C:\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\staticwebassets.upToDateCheck.txt
 C:\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\Explore..AED2444E.Up2Date
+C:\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\Explore.Blazor.dll
+C:\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\refint\Explore.Blazor.dll
+C:\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\Explore.Blazor.pdb
 C:\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\Explore.Blazor.genruntimeconfig.cache
 C:\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\ref\Explore.Blazor.dll
-C:\GitHub\Explore\Explore.Blazor\obj\Debug\net9.0\compressed\z3o3eo0xiu-la3ufly8bn.gz

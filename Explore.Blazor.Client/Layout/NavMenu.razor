@@ -1,27 +1,42 @@
-﻿
+﻿<!-- Left: Logo / Home -->
+<MudStack Row="true" Spacing="1">
+    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Favorite" Color="Color.Error">
+        ISLAMU Explore
+    </MudNavLink>
+</MudStack>
 
-    <MudStack Row="true" Spacing="1">
-        <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Favorite" Color="Color.Error">ISLAMU Explore</MudNavLink>
-    </MudStack>
+<MudSpacer />
 
-    <MudSpacer />
+<!-- Center: main links -->
+<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+    <!-- All Events -->
+    <MudNavLink Href="/events" Match="NavLinkMatch.Prefix">
+        Events
+    </MudNavLink>
 
-    <!-- Center: main links -->
-    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
-        <MudNavLink Href="/events" Match="NavLinkMatch.Prefix">Events</MudNavLink>
-        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="/myevents">Create</MudButton>
-    </MudStack>
+    <!-- Create Event -->
+    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="/create">
+        Create 
+    </MudButton>
 
-    <MudSpacer />
+    <!-- My Events -->
+    <MudNavLink Href="/myevents" Match="NavLinkMatch.Prefix">
+        My Events
+    </MudNavLink>
+</MudStack>
 
-    <!-- Right: auth buttons -->
-    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-        <MudIconButton Icon="@Icons.Material.Rounded.AutoMode"
-                      Color="Color.Inherit"
-                      OnClick="@OnToggleTheme" />
-        <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/login">Login</MudButton>
-    </MudStack>
+<MudSpacer />
 
-    @code {
-        [Parameter] public EventCallback OnToggleTheme { get; set; }
-    }
+<!-- Right: Theme toggle + Auth -->
+<MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+    <MudIconButton Icon="@Icons.Material.Rounded.AutoMode"
+                   Color="Color.Inherit"
+                   OnClick="@OnToggleTheme" />
+    <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/login">
+        Login
+    </MudButton>
+</MudStack>
+
+@code {
+    [Parameter] public EventCallback OnToggleTheme { get; set; }
+}
