@@ -1,0 +1,164 @@
+﻿@page "/create"
+@using System.ComponentModel.DataAnnotations
+@using MudBlazor
+@using Microsoft.AspNetCore.Components.Forms
+
+<MudContainer Class="create-page" DisableGutters="true">
+    <MudPaper Class="event-form" Elevation="1">
+
+        <MudText Typo="Typo.h4" Class="title">Create a new event</MudText>
+
+        <!-- Image picker with preview -->
+        <div class="image-row mb-4">
+            <label class="image-picker">
+                <MudIcon Icon="@Icons.Material.Filled.AddPhotoAlternate" Size="Size.Large" />
+                <div class="image-text">
+                    <MudText Typo="Typo.body1">Add an image</MudText>
+                    @if (!string.IsNullOrEmpty(SelectedFileName))
+                    {
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary">@SelectedFileName</MudText>
+                    }
+                </div>
+
+                <!-- Hidden but clickable file input -->
+                <InputFile OnChange="OnFileSelected" accept="image/*" class="hidden-file-input" />
+            </label>
+
+            @if (!string.IsNullOrEmpty(ImageDataUrl))
+            {
+                <img src="@ImageDataUrl" alt="Selected image preview" class="image-preview" />
+            }
+        </div>
+
+        <!-- Form -->
+        <MudForm @ref="form" Model="Model" OnValidSubmit="OnCreate">
+            <MudStack Spacing="3">
+
+                <MudTextField class="mb-4"
+                              @bind-Value="Model.Title"
+                              For="@(() => Model.Title)"
+                              Label="Title"
+                              Required="true"
+                              Immediate="true"
+                              Margin="Margin.Normal" />
+
+                <MudTextField class="mb-4"
+                              @bind-Value="Model.Description"
+                              For="@(() => Model.Description)"
+                              Label="Description"
+                              TextArea="true"
+                              Lines="4"
+                              Margin="Margin.Normal" />
+
+                <!-- Date / Time / Type -->
+                <MudGrid Class="mb-4">
+                    <MudItem xs="12" sm="4" Class="mb-4 sm:mb-0">
+                        <MudDatePicker @bind-Date="Model.Date"
+                                       For="@(() => Model.Date)"
+                                       Label="Date"
+                                       Required="true"
+                                       CloseToSelectableDate="true" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="4" Class="mb-4 sm:mb-0">
+                        <MudTimePicker @bind-Time="Model.Time"
+                                       For="@(() => Model.Time)"
+                                       Label="Time"
+                                       AmPm="true" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="4">
+                        <MudRadioGroup T="string"
+                                       @bind-SelectedOption="Model.Type"
+                                       For="@(() => Model.Type)"
+                                       Label="Tag / Event type"
+                                       Required="true"
+                                       Class="radio-col">
+                            <MudRadio T="string" Option="Digital" Label="Digital" />
+                            <MudRadio T="string" Option="Local" Label="Local" />
+                        </MudRadioGroup>
+                    </MudItem>
+                </MudGrid>
+
+                <MudTextField class="mb-4"
+                              @bind-Value="Model.Location"
+                              For="@(() => Model.Location)"
+                              Label="Location / Link"
+                              Margin="Margin.Normal" />
+
+                <MudStack Direction="Row" Spacing="2" Class="actions">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               ButtonType="ButtonType.Submit">
+                        CREATE EVENT
+                    </MudButton>
+
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Default"
+                               Href="/">
+                        CANCEL
+                    </MudButton>
+                </MudStack>
+
+                <MudValidationErrors />
+            </MudStack>
+        </MudForm>
+
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private MudForm? form;
+    private string? SelectedFileName;
+    private string? ImageDataUrl; // data: URL for the preview
+    private EventCreateModel Model = new();
+
+    private async Task OnCreate()
+    {
+        await form!.Validate();
+        // TODO: save/navigate
+    }
+
+    // Read the selected image and build a data URL for preview
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file is null)
+        {
+            SelectedFileName = null;
+            ImageDataUrl = null;
+            return;
+        }
+
+        SelectedFileName = file.Name;
+
+        // Limit read size (e.g., 10 MB) to protect from huge files
+        const long max = 10 * 1024 * 1024;
+
+        using var stream = file.OpenReadStream(max);
+        using var ms = new MemoryStream();
+        await stream.CopyToAsync(ms);
+
+        var bytes = ms.ToArray();
+        var base64 = Convert.ToBase64String(bytes);
+        ImageDataUrl = $"data:{file.ContentType};base64,{base64}";
+    }
+
+    private class EventCreateModel
+    {
+        [Required(ErrorMessage = "Please enter a title.")]
+        public string? Title { get; set; }
+
+        public string? Description { get; set; }
+
+        [Required(ErrorMessage = "Please choose a date.")]
+        public DateTime? Date { get; set; }
+
+        public TimeSpan? Time { get; set; }
+
+        [Required]
+        public string? Type { get; set; } = "Digital";
+
+        public string? Location { get; set; }
+    }
+}
