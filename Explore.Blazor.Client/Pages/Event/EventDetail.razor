@@ -1,0 +1,176 @@
+@page "/event/detail/{eventId:int}"
+@using MudBlazor
+@inject NavigationManager Navigation
+
+<PageTitle>Event Detail</PageTitle>
+
+<MudContainer Class="py-4">
+    <MudGrid>
+        <!-- Back button and title -->
+        <MudItem xs="12" Class="mb-4">
+            <MudButton StartIcon="@Icons.Material.Filled.ArrowBack" 
+                      Variant="Variant.Text" 
+                      Color="Color.Primary"
+                      OnClick="@(() => Navigation.NavigateTo("/events"))">
+                Back to Events
+            </MudButton>
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudText Typo="Typo.h3" Class="mb-6">Event Detail</MudText>
+        </MudItem>
+
+        @if (selectedEvent != null)
+        {
+            <MudItem xs="12" md="6">
+                <MudPaper Class="pa-4" Elevation="2">
+                    <MudImage Src="@($"https://dummyimage.com/600x400/{selectedEvent.Color}/ffffff&text={selectedEvent.Title}")" 
+                             Alt="@selectedEvent.Title" 
+                             Class="rounded-lg"
+                             Style="width: 100%; height: 300px; object-fit: cover;" />
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudPaper Class="pa-6" Elevation="1">
+                    <MudStack Spacing="4">
+                        <div>
+                            <MudText Typo="Typo.h5" Class="mb-2">Title: @selectedEvent.Title</MudText>
+                        </div>
+
+                        <MudDivider />
+
+                        <div>
+                            <MudText Typo="Typo.h6" Class="mb-2">Description:</MudText>
+                            <MudText Typo="Typo.body1" Style="line-height: 1.6;">
+                                @selectedEvent.Description
+                            </MudText>
+                        </div>
+
+                        <MudDivider />
+
+                        <div>
+                            <MudText Typo="Typo.h6">Date: @selectedEvent.Date.ToString("dd/MM/yyyy - HH:mm")</MudText>
+                        </div>
+
+                        <MudDivider />
+
+                        <div>
+                            <MudText Typo="Typo.h6">Event Type: @selectedEvent.Category</MudText>
+                        </div>
+
+                        <MudDivider />
+
+                        <div>
+                            <MudText Typo="Typo.h6">Location: @selectedEvent.Location</MudText>
+                        </div>
+
+                        <MudSpacer />
+
+                        <MudButton Variant="Variant.Filled" 
+                                  Color="Color.Primary" 
+                                  Size="Size.Large"
+                                  FullWidth="true"
+                                  Class="mt-4">
+                            Join us
+                        </MudButton>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+        }
+        else
+        {
+            <MudItem xs="12">
+                <MudAlert Severity="Severity.Warning">
+                    Event not found.
+                </MudAlert>
+            </MudItem>
+        }
+    </MudGrid>
+</MudContainer>
+
+@code {
+    [Parameter] public int EventId { get; set; }
+    
+    private MockEvent? selectedEvent;
+
+    private class MockEvent
+    {
+        public int Id { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string Category { get; set; } = string.Empty;
+        public DateTime Date { get; set; }
+        public string Description { get; set; } = string.Empty;
+        public string Location { get; set; } = string.Empty;
+        public string Color { get; set; } = string.Empty;
+    }
+
+    private List<MockEvent> mockEvents = new()
+    {
+        new MockEvent 
+        {
+            Id = 1,
+            Title = "Islamic Finance Workshop",
+            Category = "workshop",
+            Date = DateTime.Now.AddDays(1),
+            Description = "Learn about Islamic finance principles and their modern applications in this interactive workshop.",
+            Location = "Nieuwezijds Voorburgwal 100, 1012 SH Amsterdam, Netherlands",
+            Color = "5D4037"
+        },
+        new MockEvent
+        {
+            Id = 2,
+            Title = "Quran Study Circle",
+            Category = "lecture",
+            Date = DateTime.Now.AddDays(7),
+            Description = "Weekly study circle focused on understanding and implementing Quranic teachings.",
+            Location = "Westersingel 82, 3015 LC Rotterdam, Netherlands",
+            Color = "2E7D32"
+        },
+        new MockEvent
+        {
+            Id = 3,
+            Title = "Community Iftar",
+            Category = "social",
+            Date = DateTime.Now.AddDays(14),
+            Description = "Join us for a community iftar during Ramadan. All are welcome to break fast together.",
+            Location = "Rue de la Loi 170, 1048 Brussels, Belgium",
+            Color = "1565C0"
+        },
+        new MockEvent
+        {
+            Id = 4,
+            Title = "Youth Leadership Program",
+            Category = "workshop",
+            Date = DateTime.Now.AddDays(2),
+            Description = "Developing future leaders through Islamic principles and modern leadership skills.",
+            Location = "Online",
+            Color = "6A1B9A"
+        },
+        new MockEvent
+        {
+            Id = 5,
+            Title = "Food Bank Distribution",
+            Category = "charity",
+            Date = DateTime.Now,
+            Description = "Help distribute food packages to families in need. Volunteers needed.",
+            Location = "Alexanderplatz 5, 10178 Berlin, Germany",
+            Color = "C62828"
+        },
+        new MockEvent
+        {
+            Id = 6,
+            Title = "Islamic Art Exhibition",
+            Category = "social",
+            Date = DateTime.Now.AddDays(5),
+            Description = "Showcasing contemporary Islamic art from local and international artists.",
+            Location = "Online",
+            Color = "00695C"
+        }
+    };
+
+    protected override void OnInitialized()
+    {
+        selectedEvent = mockEvents.FirstOrDefault(e => e.Id == EventId);
+    }
+}
