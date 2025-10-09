@@ -5,14 +5,27 @@
 
 <style>
     .filter-paper {
-        background-color: rgb(15,15,27);
+        background-color: var(--mud-palette-surface);
+        border: 1px solid var(--mud-palette-lines-default);
         border-radius: 4px;
         cursor: pointer;
-        transition: background-color 0.3s;
+        transition: all 0.3s ease;
+        color: var(--mud-palette-text-primary);
     }
 
     .filter-paper:hover {
-        background-color: rgb(25,25,37);
+        background-color: var(--mud-palette-action-hover);
+        border-color: var(--mud-palette-primary);
+    }
+
+    .filter-popover {
+        background-color: var(--mud-palette-surface) !important;
+        border: 1px solid var(--mud-palette-lines-default) !important;
+        box-shadow: var(--mud-elevation-8) !important;
+    }
+
+    .filter-popover .mud-text {
+        color: var(--mud-palette-text-primary) !important;
     }
 </style>
 
@@ -25,7 +38,7 @@
             <MudItem xs="12">
                 <MudGrid>
                     <MudItem xs="12" md="3">
-                        <MudPopover Open="@isCountryOpen" Fixed="true" Class="px-4 py-3" Style="background-color: rgb(15,15,27);">
+                        <MudPopover Open="@isCountryOpen" Fixed="true" Class="filter-popover px-4 py-3">
                             <div class="d-flex flex-column gap-3">
                                 <MudText>Country</MudText>
                                 <div class="d-flex flex-column gap-2">
@@ -56,7 +69,7 @@
                     </MudItem>
 
                     <MudItem xs="12" md="3">
-                        <MudPopover Open="@isDateOpen" Fixed="true" Class="px-4 py-3" Style="background-color: rgb(15,15,27);">
+                        <MudPopover Open="@isDateOpen" Fixed="true" Class="filter-popover px-4 py-3">
                             <div class="d-flex flex-column gap-3">
                                 <MudText>Date</MudText>
                                 <div class="d-flex flex-column gap-2">
@@ -95,7 +108,7 @@
                     </MudItem>
 
                     <MudItem xs="12" md="3">
-                        <MudPopover Open="@isCategoryOpen" Fixed="true" Class="px-4 py-3" Style="background-color: rgb(15,15,27);">
+                        <MudPopover Open="@isCategoryOpen" Fixed="true" Class="filter-popover px-4 py-3">
                             <div class="d-flex flex-column gap-3">
                                 <MudText>Category</MudText>
                                 <div class="d-flex flex-column gap-2">
