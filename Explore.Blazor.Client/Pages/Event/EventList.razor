@@ -179,7 +179,19 @@
 
             <!-- Pagination -->
             <MudItem xs="12" Class="d-flex justify-center mt-6">
-                <MudPagination Count="3" Selected="1" Color="Color.Primary" />
+                <MudPagination Count="@totalPages" 
+                              Selected="@currentPage" 
+                              SelectedChanged="@((int page) => OnPageChanged(page))"
+                              Color="Color.Primary" 
+                              ShowFirstButton="true" 
+                              ShowLastButton="true" />
+            </MudItem>
+            
+            <!-- Results info -->
+            <MudItem xs="12" Class="d-flex justify-center mt-2">
+                <MudText Typo="Typo.body2" Color="Color.Surface">
+                    Showing @((currentPage - 1) * itemsPerPage + 1) - @(Math.Min(currentPage * itemsPerPage, AllFilteredEvents.Count)) of @AllFilteredEvents.Count events
+                </MudText>
             </MudItem>
         </MudGrid>
     </MudPaper>
@@ -193,6 +205,11 @@
     private bool isCountryOpen;
     private bool isDateOpen;
     private bool isCategoryOpen;
+    
+    // Pagination variables
+    private int currentPage = 1;
+    private int itemsPerPage = 6;
+    private int totalPages = 1;
 
     private class MockEvent
     {
@@ -266,10 +283,50 @@
             Description = "Showcasing contemporary Islamic art from local and international artists.",
             Location = "Online",
             Color = "00695C"
+        },
+        new MockEvent
+        {
+            Id = 7,
+            Title = "Halal Food Festival",
+            Category = "social",
+            Date = DateTime.Now.AddDays(8),
+            Description = "Celebrate diverse halal cuisines from around the world with local vendors.",
+            Location = "Vondelpark 1, 1071 AA Amsterdam, Netherlands",
+            Color = "FF5722"
+        },
+        new MockEvent
+        {
+            Id = 8,
+            Title = "Arabic Language Course",
+            Category = "lecture",
+            Date = DateTime.Now.AddDays(10),
+            Description = "Begin your journey learning Arabic with experienced native speakers.",
+            Location = "Online",
+            Color = "9C27B0"
+        },
+        new MockEvent
+        {
+            Id = 9,
+            Title = "Community Garden Project",
+            Category = "charity",
+            Date = DateTime.Now.AddDays(12),
+            Description = "Help establish a community garden to provide fresh produce for local families.",
+            Location = "Marktplatz 15, 50667 Köln, Germany",
+            Color = "4CAF50"
+        },
+        new MockEvent
+        {
+            Id = 10,
+            Title = "Youth Sports Tournament",
+            Category = "social",
+            Date = DateTime.Now.AddDays(15),
+            Description = "Annual football tournament bringing together youth from different communities.",
+            Location = "Sportpark De Toekomst, 1101 DB Amsterdam, Netherlands",
+            Color = "FF9800"
         }
     };
 
-    private List<MockEvent> FilteredEvents => mockEvents
+    private List<MockEvent> AllFilteredEvents => mockEvents
         .Where(e => string.IsNullOrEmpty(searchText) || 
                     e.Title.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
                     e.Description.Contains(searchText, StringComparison.OrdinalIgnoreCase))
@@ -284,9 +341,24 @@
                     (selectedDate == "thismonth" && e.Date.Month == DateTime.Now.Month))
         .ToList();
 
+    private List<MockEvent> FilteredEvents
+    {
+        get
+        {
+            var allEvents = AllFilteredEvents;
+            totalPages = (int)Math.Ceiling((double)allEvents.Count / itemsPerPage);
+            
+            return allEvents
+                .Skip((currentPage - 1) * itemsPerPage)
+                .Take(itemsPerPage)
+                .ToList();
+        }
+    }
+
     private void OnSearch(string value)
     {
         searchText = value;
+        currentPage = 1; // Reset to first page when filtering
         StateHasChanged();
     }
 
@@ -294,6 +366,7 @@
     {
         selectedCountry = value;
         isCountryOpen = false;
+        currentPage = 1; // Reset to first page when filtering
         StateHasChanged();
     }
 
@@ -301,6 +374,7 @@
     {
         selectedDate = value;
         isDateOpen = false;
+        currentPage = 1; // Reset to first page when filtering
         StateHasChanged();
     }
 
@@ -308,6 +382,13 @@
     {
         selectedCategory = value;
         isCategoryOpen = false;
+        currentPage = 1; // Reset to first page when filtering
+        StateHasChanged();
+    }
+
+    private void OnPageChanged(int page)
+    {
+        currentPage = page;
         StateHasChanged();
     }
 
@@ -316,11 +397,10 @@
         if (location == "Online")
             return "Online";
             
-        // Extract country from full address (last part after last comma)
         var parts = location.Split(',');
         if (parts.Length > 0)
         {
-            return parts[^1].Trim(); // Get last part and trim whitespace
+            return parts[^1].Trim();
         }
         
         return location;
