@@ -1,6 +1,7 @@
 ﻿@page "/event"
 @page "/events"
 @using MudBlazor
+@inject NavigationManager Navigation
 
 <style>
     .filter-paper {
@@ -163,10 +164,11 @@
                                 <MudCardActions Class="justify-space-between pa-4 pt-0">
                                     <MudButton Variant="Variant.Text" 
                                              EndIcon="@Icons.Material.Filled.ArrowForward" 
-                                             Color="Color.Primary">View Details</MudButton>
+                                             Color="Color.Primary"
+                                             OnClick="@(() => Navigation.NavigateTo($"/event/detail/{evt.Id}"))">View Details</MudButton>
                                     <MudStack Row="true">
                                         <MudIcon Icon="@Icons.Material.Filled.LocationOn" />
-                                        <MudText>@evt.Location</MudText>
+                                        <MudText>@GetCountryFromLocation(evt.Location)</MudText>
                                     </MudStack>
                                 </MudCardActions>
                             </MudCard>
@@ -194,6 +196,7 @@
 
     private class MockEvent
     {
+        public int Id { get; set; }
         public string Title { get; set; } = string.Empty;
         public string Category { get; set; } = string.Empty;
         public DateTime Date { get; set; }
@@ -206,56 +209,62 @@
     {
         new MockEvent 
         {
+            Id = 1,
             Title = "Islamic Finance Workshop",
             Category = "workshop",
             Date = DateTime.Now.AddDays(1),
             Description = "Learn about Islamic finance principles and their modern applications in this interactive workshop.",
-            Location = "Netherlands",
+            Location = "Nieuwezijds Voorburgwal 100, 1012 SH Amsterdam, Netherlands",
             Color = "5D4037"
         },
         new MockEvent
         {
+            Id = 2,
             Title = "Quran Study Circle",
             Category = "lecture",
             Date = DateTime.Now.AddDays(7),
             Description = "Weekly study circle focused on understanding and implementing Quranic teachings.",
-            Location = "Netherlands",
+            Location = "Westersingel 82, 3015 LC Rotterdam, Netherlands",
             Color = "2E7D32"
         },
         new MockEvent
         {
+            Id = 3,
             Title = "Community Iftar",
             Category = "social",
             Date = DateTime.Now.AddDays(14),
             Description = "Join us for a community iftar during Ramadan. All are welcome to break fast together.",
-            Location = "Belgium",
+            Location = "Rue de la Loi 170, 1048 Brussels, Belgium",
             Color = "1565C0"
         },
         new MockEvent
         {
+            Id = 4,
             Title = "Youth Leadership Program",
             Category = "workshop",
             Date = DateTime.Now.AddDays(2),
             Description = "Developing future leaders through Islamic principles and modern leadership skills.",
-            Location = "Belgium",
+            Location = "Online",
             Color = "6A1B9A"
         },
         new MockEvent
         {
+            Id = 5,
             Title = "Food Bank Distribution",
             Category = "charity",
             Date = DateTime.Now,
             Description = "Help distribute food packages to families in need. Volunteers needed.",
-            Location = "Germany",
+            Location = "Alexanderplatz 5, 10178 Berlin, Germany",
             Color = "C62828"
         },
         new MockEvent
         {
+            Id = 6,
             Title = "Islamic Art Exhibition",
             Category = "social",
             Date = DateTime.Now.AddDays(5),
             Description = "Showcasing contemporary Islamic art from local and international artists.",
-            Location = "Germany",
+            Location = "Online",
             Color = "00695C"
         }
     };
@@ -300,5 +309,20 @@
         selectedCategory = value;
         isCategoryOpen = false;
         StateHasChanged();
+    }
+
+    private string GetCountryFromLocation(string location)
+    {
+        if (location == "Online")
+            return "Online";
+            
+        // Extract country from full address (last part after last comma)
+        var parts = location.Split(',');
+        if (parts.Length > 0)
+        {
+            return parts[^1].Trim(); // Get last part and trim whitespace
+        }
+        
+        return location;
     }
 }
