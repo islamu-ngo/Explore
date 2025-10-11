@@ -162,8 +162,7 @@
 
     private void EditEvent(Event evt)
     {
-        EventService.UpdateEvent(evt);
-        LoadEvents();
+        Navigation.NavigateTo($"/eventedit/{evt.Id}");
     }
 
     private void DeleteEvent(Event evt)
