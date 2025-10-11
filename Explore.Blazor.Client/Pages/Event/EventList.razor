@@ -1,17 +1,31 @@
 ﻿@page "/event"
 @page "/events"
 @using MudBlazor
+@inject NavigationManager Navigation
 
 <style>
     .filter-paper {
-        background-color: rgb(15,15,27);
+        background-color: var(--mud-palette-surface);
+        border: 1px solid var(--mud-palette-lines-default);
         border-radius: 4px;
         cursor: pointer;
-        transition: background-color 0.3s;
+        transition: all 0.3s ease;
+        color: var(--mud-palette-text-primary);
     }
 
     .filter-paper:hover {
-        background-color: rgb(25,25,37);
+        background-color: var(--mud-palette-action-hover);
+        border-color: var(--mud-palette-primary);
+    }
+
+    .filter-popover {
+        background-color: var(--mud-palette-surface) !important;
+        border: 1px solid var(--mud-palette-lines-default) !important;
+        box-shadow: var(--mud-elevation-8) !important;
+    }
+
+    .filter-popover .mud-text {
+        color: var(--mud-palette-text-primary) !important;
     }
 </style>
 
@@ -24,7 +38,7 @@
             <MudItem xs="12">
                 <MudGrid>
                     <MudItem xs="12" md="3">
-                        <MudPopover Open="@isCountryOpen" Fixed="true" Class="px-4 py-3" Style="background-color: rgb(15,15,27);">
+                        <MudPopover Open="@isCountryOpen" Fixed="true" Class="filter-popover px-4 py-3">
                             <div class="d-flex flex-column gap-3">
                                 <MudText>Country</MudText>
                                 <div class="d-flex flex-column gap-2">
@@ -55,7 +69,7 @@
                     </MudItem>
 
                     <MudItem xs="12" md="3">
-                        <MudPopover Open="@isDateOpen" Fixed="true" Class="px-4 py-3" Style="background-color: rgb(15,15,27);">
+                        <MudPopover Open="@isDateOpen" Fixed="true" Class="filter-popover px-4 py-3">
                             <div class="d-flex flex-column gap-3">
                                 <MudText>Date</MudText>
                                 <div class="d-flex flex-column gap-2">
@@ -94,7 +108,7 @@
                     </MudItem>
 
                     <MudItem xs="12" md="3">
-                        <MudPopover Open="@isCategoryOpen" Fixed="true" Class="px-4 py-3" Style="background-color: rgb(15,15,27);">
+                        <MudPopover Open="@isCategoryOpen" Fixed="true" Class="filter-popover px-4 py-3">
                             <div class="d-flex flex-column gap-3">
                                 <MudText>Category</MudText>
                                 <div class="d-flex flex-column gap-2">
@@ -163,10 +177,11 @@
                                 <MudCardActions Class="justify-space-between pa-4 pt-0">
                                     <MudButton Variant="Variant.Text" 
                                              EndIcon="@Icons.Material.Filled.ArrowForward" 
-                                             Color="Color.Primary">View Details</MudButton>
+                                             Color="Color.Primary"
+                                             OnClick="@(() => Navigation.NavigateTo($"/event/detail/{evt.Id}"))">View Details</MudButton>
                                     <MudStack Row="true">
                                         <MudIcon Icon="@Icons.Material.Filled.LocationOn" />
-                                        <MudText>@evt.Location</MudText>
+                                        <MudText>@GetCountryFromLocation(evt.Location)</MudText>
                                     </MudStack>
                                 </MudCardActions>
                             </MudCard>
@@ -177,7 +192,19 @@
 
             <!-- Pagination -->
             <MudItem xs="12" Class="d-flex justify-center mt-6">
-                <MudPagination Count="3" Selected="1" Color="Color.Primary" />
+                <MudPagination Count="@totalPages" 
+                              Selected="@currentPage" 
+                              SelectedChanged="@((int page) => OnPageChanged(page))"
+                              Color="Color.Primary" 
+                              ShowFirstButton="true" 
+                              ShowLastButton="true" />
+            </MudItem>
+            
+            <!-- Results info -->
+            <MudItem xs="12" Class="d-flex justify-center mt-2">
+                <MudText Typo="Typo.body2" Color="Color.Surface">
+                    Showing @((currentPage - 1) * itemsPerPage + 1) - @(Math.Min(currentPage * itemsPerPage, AllFilteredEvents.Count)) of @AllFilteredEvents.Count events
+                </MudText>
             </MudItem>
         </MudGrid>
     </MudPaper>
@@ -191,9 +218,15 @@
     private bool isCountryOpen;
     private bool isDateOpen;
     private bool isCategoryOpen;
+    
+    // Pagination variables
+    private int currentPage = 1;
+    private int itemsPerPage = 6;
+    private int totalPages = 1;
 
     private class MockEvent
     {
+        public int Id { get; set; }
         public string Title { get; set; } = string.Empty;
         public string Category { get; set; } = string.Empty;
         public DateTime Date { get; set; }
@@ -206,61 +239,107 @@
     {
         new MockEvent 
         {
+            Id = 1,
             Title = "Islamic Finance Workshop",
             Category = "workshop",
             Date = DateTime.Now.AddDays(1),
             Description = "Learn about Islamic finance principles and their modern applications in this interactive workshop.",
-            Location = "Netherlands",
+            Location = "Nieuwezijds Voorburgwal 100, 1012 SH Amsterdam, Netherlands",
             Color = "5D4037"
         },
         new MockEvent
         {
+            Id = 2,
             Title = "Quran Study Circle",
             Category = "lecture",
             Date = DateTime.Now.AddDays(7),
             Description = "Weekly study circle focused on understanding and implementing Quranic teachings.",
-            Location = "Netherlands",
+            Location = "Westersingel 82, 3015 LC Rotterdam, Netherlands",
             Color = "2E7D32"
         },
         new MockEvent
         {
+            Id = 3,
             Title = "Community Iftar",
             Category = "social",
             Date = DateTime.Now.AddDays(14),
             Description = "Join us for a community iftar during Ramadan. All are welcome to break fast together.",
-            Location = "Belgium",
+            Location = "Rue de la Loi 170, 1048 Brussels, Belgium",
             Color = "1565C0"
         },
         new MockEvent
         {
+            Id = 4,
             Title = "Youth Leadership Program",
             Category = "workshop",
             Date = DateTime.Now.AddDays(2),
             Description = "Developing future leaders through Islamic principles and modern leadership skills.",
-            Location = "Belgium",
+            Location = "Online",
             Color = "6A1B9A"
         },
         new MockEvent
         {
+            Id = 5,
             Title = "Food Bank Distribution",
             Category = "charity",
             Date = DateTime.Now,
             Description = "Help distribute food packages to families in need. Volunteers needed.",
-            Location = "Germany",
+            Location = "Alexanderplatz 5, 10178 Berlin, Germany",
             Color = "C62828"
         },
         new MockEvent
         {
+            Id = 6,
             Title = "Islamic Art Exhibition",
             Category = "social",
             Date = DateTime.Now.AddDays(5),
             Description = "Showcasing contemporary Islamic art from local and international artists.",
-            Location = "Germany",
+            Location = "Online",
             Color = "00695C"
+        },
+        new MockEvent
+        {
+            Id = 7,
+            Title = "Halal Food Festival",
+            Category = "social",
+            Date = DateTime.Now.AddDays(8),
+            Description = "Celebrate diverse halal cuisines from around the world with local vendors.",
+            Location = "Vondelpark 1, 1071 AA Amsterdam, Netherlands",
+            Color = "FF5722"
+        },
+        new MockEvent
+        {
+            Id = 8,
+            Title = "Arabic Language Course",
+            Category = "lecture",
+            Date = DateTime.Now.AddDays(10),
+            Description = "Begin your journey learning Arabic with experienced native speakers.",
+            Location = "Online",
+            Color = "9C27B0"
+        },
+        new MockEvent
+        {
+            Id = 9,
+            Title = "Community Garden Project",
+            Category = "charity",
+            Date = DateTime.Now.AddDays(12),
+            Description = "Help establish a community garden to provide fresh produce for local families.",
+            Location = "Marktplatz 15, 50667 Köln, Germany",
+            Color = "4CAF50"
+        },
+        new MockEvent
+        {
+            Id = 10,
+            Title = "Youth Sports Tournament",
+            Category = "social",
+            Date = DateTime.Now.AddDays(15),
+            Description = "Annual football tournament bringing together youth from different communities.",
+            Location = "Sportpark De Toekomst, 1101 DB Amsterdam, Netherlands",
+            Color = "FF9800"
         }
     };
 
-    private List<MockEvent> FilteredEvents => mockEvents
+    private List<MockEvent> AllFilteredEvents => mockEvents
         .Where(e => string.IsNullOrEmpty(searchText) || 
                     e.Title.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
                     e.Description.Contains(searchText, StringComparison.OrdinalIgnoreCase))
@@ -275,9 +354,24 @@
                     (selectedDate == "thismonth" && e.Date.Month == DateTime.Now.Month))
         .ToList();
 
+    private List<MockEvent> FilteredEvents
+    {
+        get
+        {
+            var allEvents = AllFilteredEvents;
+            totalPages = (int)Math.Ceiling((double)allEvents.Count / itemsPerPage);
+            
+            return allEvents
+                .Skip((currentPage - 1) * itemsPerPage)
+                .Take(itemsPerPage)
+                .ToList();
+        }
+    }
+
     private void OnSearch(string value)
     {
         searchText = value;
+        currentPage = 1; // Reset to first page when filtering
         StateHasChanged();
     }
 
@@ -285,6 +379,7 @@
     {
         selectedCountry = value;
         isCountryOpen = false;
+        currentPage = 1; // Reset to first page when filtering
         StateHasChanged();
     }
 
@@ -292,6 +387,7 @@
     {
         selectedDate = value;
         isDateOpen = false;
+        currentPage = 1; // Reset to first page when filtering
         StateHasChanged();
     }
 
@@ -299,6 +395,27 @@
     {
         selectedCategory = value;
         isCategoryOpen = false;
+        currentPage = 1; // Reset to first page when filtering
         StateHasChanged();
+    }
+
+    private void OnPageChanged(int page)
+    {
+        currentPage = page;
+        StateHasChanged();
+    }
+
+    private string GetCountryFromLocation(string location)
+    {
+        if (location == "Online")
+            return "Online";
+            
+        var parts = location.Split(',');
+        if (parts.Length > 0)
+        {
+            return parts[^1].Trim();
+        }
+        
+        return location;
     }
 }
