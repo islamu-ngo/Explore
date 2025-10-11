@@ -6,5 +6,6 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
 builder.Services.AddMudServices();
 builder.Services.AddScoped<IEventService, EventService>();
+builder.Services.AddScoped<HttpClient>();
 
 await builder.Build().RunAsync();
