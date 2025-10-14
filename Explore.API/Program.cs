@@ -26,7 +26,7 @@ builder.Services.AddAuthentication()
             "true",
             StringComparison.OrdinalIgnoreCase
         );
-
+        
         options.Authority = authority;
         options.Audience = audience;
 

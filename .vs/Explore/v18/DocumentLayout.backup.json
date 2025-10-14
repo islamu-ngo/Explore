@@ -3,20 +3,27 @@
   "WorkspaceRootPath": "C:\\ISLAMU\\GitHub\\Explore\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{6A955E23-24C4-4EB1-B6D3-6825D3B01E8F}|Explore.Blazor\\Explore.Blazor.csproj|c:\\islamu\\github\\explore\\explore.blazor\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{6A955E23-24C4-4EB1-B6D3-6825D3B01E8F}|Explore.Blazor\\Explore.Blazor.csproj|solutionrelative:explore.blazor\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\AM5\\AppData\\Local\\SourceServer\\c62c97348cd9f144393b1a1d6a6e94e41edc9b3ea1f3b21f529fe096c24b1ef0\\Explore.API\\Program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{D629E55A-C370-3AF7-574F-E187C26AFB0D}|Explore.API\\Explore.API.csproj|c:\\islamu\\github\\explore\\explore.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{D629E55A-C370-3AF7-574F-E187C26AFB0D}|Explore.API\\Explore.API.csproj|solutionrelative:explore.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{E2F80BEA-5CAA-4CBA-BF1B-035DB1705C05}|Explore.Persistence\\Explore.Persistence.csproj|c:\\islamu\\github\\explore\\explore.persistence\\class1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{E2F80BEA-5CAA-4CBA-BF1B-035DB1705C05}|Explore.Persistence\\Explore.Persistence.csproj|solutionrelative:explore.persistence\\class1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{6A955E23-24C4-4EB1-B6D3-6825D3B01E8F}|Explore.Blazor\\Explore.Blazor.csproj|c:\\islamu\\github\\explore\\explore.blazor\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6A955E23-24C4-4EB1-B6D3-6825D3B01E8F}|Explore.Blazor\\Explore.Blazor.csproj|solutionrelative:explore.blazor\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{7670877A-1031-4974-8DFB-88E108CE3896}|Explore.Infrastructure\\Explore.Infrastructure.csproj|c:\\islamu\\github\\explore\\explore.infrastructure\\class1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{7670877A-1031-4974-8DFB-88E108CE3896}|Explore.Infrastructure\\Explore.Infrastructure.csproj|solutionrelative:explore.infrastructure\\class1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{8C62B549-2CCC-4552-9918-2E64C6FBF8DE}|Explore.AppHost\\Explore.AppHost.csproj|c:\\islamu\\github\\explore\\explore.apphost\\apphost.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{8C62B549-2CCC-4552-9918-2E64C6FBF8DE}|Explore.AppHost\\Explore.AppHost.csproj|solutionrelative:explore.apphost\\apphost.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7670877A-1031-4974-8DFB-88E108CE3896}|Explore.Infrastructure\\Explore.Infrastructure.csproj|c:\\islamu\\github\\explore\\explore.infrastructure\\infrastructureserviceregistration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7670877A-1031-4974-8DFB-88E108CE3896}|Explore.Infrastructure\\Explore.Infrastructure.csproj|solutionrelative:explore.infrastructure\\infrastructureserviceregistration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E2F80BEA-5CAA-4CBA-BF1B-035DB1705C05}|Explore.Persistence\\Explore.Persistence.csproj|c:\\islamu\\github\\explore\\explore.persistence\\class1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E2F80BEA-5CAA-4CBA-BF1B-035DB1705C05}|Explore.Persistence\\Explore.Persistence.csproj|solutionrelative:explore.persistence\\class1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{B426B091-F657-40E8-87FC-4153C833188E}|Explore.Domain\\Explore.Domain.csproj|c:\\islamu\\github\\explore\\explore.domain\\class1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -25,10 +32,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{1BD3C4A6-57BC-4CFA-9C4B-761248D462DA}|Explore.Application\\Explore.Application.csproj|c:\\islamu\\github\\explore\\explore.application\\class1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{1BD3C4A6-57BC-4CFA-9C4B-761248D462DA}|Explore.Application\\Explore.Application.csproj|solutionrelative:explore.application\\class1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{8C62B549-2CCC-4552-9918-2E64C6FBF8DE}|Explore.AppHost\\Explore.AppHost.csproj|c:\\islamu\\github\\explore\\explore.apphost\\apphost.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{8C62B549-2CCC-4552-9918-2E64C6FBF8DE}|Explore.AppHost\\Explore.AppHost.csproj|solutionrelative:explore.apphost\\apphost.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{8C62B549-2CCC-4552-9918-2E64C6FBF8DE}|Explore.AppHost\\Explore.AppHost.csproj|c:\\islamu\\github\\explore\\explore.apphost\\explore.apphost.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
@@ -105,72 +108,25 @@
       "VerticalTabListWidth": 256,
       "DocumentGroups": [
         {
-          "DockedWidth": 279,
-          "SelectedChildIndex": 5,
+          "DockedWidth": 215,
+          "SelectedChildIndex": 3,
           "Children": [
             {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{40ea2e6b-2121-4bb8-a43e-c83c04b51041}"
-            },
-            {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
-            },
-            {
               "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "Class1.cs",
-              "DocumentMoniker": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Persistence\\Class1.cs",
-              "RelativeDocumentMoniker": "Explore.Persistence\\Class1.cs",
-              "ToolTip": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Persistence\\Class1.cs",
-              "RelativeToolTip": "Explore.Persistence\\Class1.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-10-14T06:51:46.094Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "Class1.cs",
-              "DocumentMoniker": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Infrastructure\\Class1.cs",
-              "RelativeDocumentMoniker": "Explore.Infrastructure\\Class1.cs",
-              "ToolTip": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Infrastructure\\Class1.cs",
-              "RelativeToolTip": "Explore.Infrastructure\\Class1.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "DocumentIndex": 4,
+              "Title": "InfrastructureServiceRegistration.cs",
+              "DocumentMoniker": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Infrastructure\\InfrastructureServiceRegistration.cs",
+              "RelativeDocumentMoniker": "Explore.Infrastructure\\InfrastructureServiceRegistration.cs",
+              "ToolTip": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Infrastructure\\InfrastructureServiceRegistration.cs",
+              "RelativeToolTip": "Explore.Infrastructure\\InfrastructureServiceRegistration.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-10-14T06:51:17.051Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
-              "Title": "Class1.cs",
-              "DocumentMoniker": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Domain\\Class1.cs",
-              "RelativeDocumentMoniker": "Explore.Domain\\Class1.cs",
-              "ToolTip": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Domain\\Class1.cs",
-              "RelativeToolTip": "Explore.Domain\\Class1.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-10-14T06:50:07.482Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "Program.cs",
-              "DocumentMoniker": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Blazor\\Program.cs",
-              "RelativeDocumentMoniker": "Explore.Blazor\\Program.cs",
-              "ToolTip": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Blazor\\Program.cs",
-              "RelativeToolTip": "Explore.Blazor\\Program.cs",
-              "ViewState": "AgIAAEUAAAAAAAAAAAAAAEwAAAAaAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-24T17:02:49.53Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 7,
               "Title": "Class1.cs",
               "DocumentMoniker": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Application\\Class1.cs",
               "RelativeDocumentMoniker": "Explore.Application\\Class1.cs",
@@ -178,12 +134,61 @@
               "RelativeToolTip": "Explore.Application\\Class1.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAIAAAAXAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-10-14T06:49:38.606Z",
+              "WhenOpened": "2025-10-14T06:49:38.606Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "AppHost.cs",
+              "DocumentMoniker": "C:\\ISLAMU\\GitHub\\Explore\\Explore.AppHost\\AppHost.cs",
+              "RelativeDocumentMoniker": "Explore.AppHost\\AppHost.cs",
+              "ToolTip": "C:\\ISLAMU\\GitHub\\Explore\\Explore.AppHost\\AppHost.cs",
+              "RelativeToolTip": "Explore.AppHost\\AppHost.cs",
+              "ViewState": "AgIAAFQAAAAAAAAAAAAAAGQAAABDAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-24T16:14:44.263Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 9,
+              "DocumentIndex": 2,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Blazor\\Program.cs",
+              "RelativeDocumentMoniker": "Explore.Blazor\\Program.cs",
+              "ToolTip": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Blazor\\Program.cs",
+              "RelativeToolTip": "Explore.Blazor\\Program.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAACUAAABEAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-24T17:02:49.53Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "Class1.cs",
+              "DocumentMoniker": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Domain\\Class1.cs",
+              "RelativeDocumentMoniker": "Explore.Domain\\Class1.cs",
+              "ToolTip": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Domain\\Class1.cs",
+              "RelativeToolTip": "Explore.Domain\\Class1.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-14T06:50:07.482Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "Class1.cs",
+              "DocumentMoniker": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Persistence\\Class1.cs",
+              "RelativeDocumentMoniker": "Explore.Persistence\\Class1.cs",
+              "ToolTip": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Persistence\\Class1.cs",
+              "RelativeToolTip": "Explore.Persistence\\Class1.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-14T06:51:46.094Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
               "Title": "appsettings.Development.json",
               "DocumentMoniker": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Blazor.Client\\wwwroot\\appsettings.Development.json",
               "RelativeDocumentMoniker": "Explore.Blazor.Client\\wwwroot\\appsettings.Development.json",
@@ -191,25 +196,11 @@
               "RelativeToolTip": "Explore.Blazor.Client\\wwwroot\\appsettings.Development.json",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2025-10-07T07:41:03.742Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-07T07:41:03.742Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
-              "Title": "AppHost.cs",
-              "DocumentMoniker": "C:\\ISLAMU\\GitHub\\Explore\\Explore.AppHost\\AppHost.cs",
-              "RelativeDocumentMoniker": "Explore.AppHost\\AppHost.cs",
-              "ToolTip": "C:\\ISLAMU\\GitHub\\Explore\\Explore.AppHost\\AppHost.cs",
-              "RelativeToolTip": "Explore.AppHost\\AppHost.cs",
-              "ViewState": "AgIAAFEAAAAAAAAAAAAAAGIAAAAuAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-24T16:14:44.263Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 10,
+              "DocumentIndex": 11,
               "Title": "MainLayout.razor",
               "DocumentMoniker": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Blazor.Client\\Layout\\MainLayout.razor",
               "RelativeDocumentMoniker": "Explore.Blazor.Client\\Layout\\MainLayout.razor",
@@ -217,12 +208,11 @@
               "RelativeToolTip": "Explore.Blazor.Client\\Layout\\MainLayout.razor",
               "ViewState": "AgIAAA0AAAAAAAAAAABBwC8AAAAkAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2025-09-24T16:41:49.592Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-24T16:41:49.592Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 12,
+              "DocumentIndex": 13,
               "Title": "Footer.razor",
               "DocumentMoniker": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Blazor.Client\\Layout\\Footer.razor",
               "RelativeDocumentMoniker": "Explore.Blazor.Client\\Layout\\Footer.razor",
@@ -230,12 +220,11 @@
               "RelativeToolTip": "Explore.Blazor.Client\\Layout\\Footer.razor",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAAWAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2025-09-24T21:05:54.842Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-24T21:05:54.842Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 13,
+              "DocumentIndex": 14,
               "Title": "App.razor",
               "DocumentMoniker": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Blazor\\Components\\App.razor",
               "RelativeDocumentMoniker": "Explore.Blazor\\Components\\App.razor",
@@ -243,12 +232,11 @@
               "RelativeToolTip": "Explore.Blazor\\Components\\App.razor",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAkAAAAYAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2025-09-24T17:43:22.519Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-24T17:43:22.519Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 14,
+              "DocumentIndex": 15,
               "Title": "site.css",
               "DocumentMoniker": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Blazor\\wwwroot\\css\\site.css",
               "RelativeDocumentMoniker": "Explore.Blazor\\wwwroot\\css\\site.css",
@@ -256,12 +244,11 @@
               "RelativeToolTip": "Explore.Blazor\\wwwroot\\css\\site.css",
               "ViewState": "AgIAAA8AAAAAAAAAACBjwCgAAAAOAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003000|",
-              "WhenOpened": "2025-09-24T17:47:00.675Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-24T17:47:00.675Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 15,
+              "DocumentIndex": 16,
               "Title": "Home.razor.css",
               "DocumentMoniker": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Blazor.Client\\Pages\\Home.razor.css",
               "RelativeDocumentMoniker": "Explore.Blazor.Client\\Pages\\Home.razor.css",
@@ -269,12 +256,11 @@
               "RelativeToolTip": "Explore.Blazor.Client\\Pages\\Home.razor.css",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAB8AAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003000|",
-              "WhenOpened": "2025-09-24T17:25:14.429Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-24T17:25:14.429Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 16,
+              "DocumentIndex": 17,
               "Title": "Home.razor",
               "DocumentMoniker": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Blazor.Client\\Pages\\Home.razor",
               "RelativeDocumentMoniker": "Explore.Blazor.Client\\Pages\\Home.razor",
@@ -282,12 +268,11 @@
               "RelativeToolTip": "Explore.Blazor.Client\\Pages\\Home.razor",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAADoAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2025-09-24T16:44:22.666Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-24T16:44:22.666Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 17,
+              "DocumentIndex": 18,
               "Title": "EventList.razor",
               "DocumentMoniker": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Blazor.Client\\Pages\\Event\\EventList.razor",
               "RelativeDocumentMoniker": "Explore.Blazor.Client\\Pages\\Event\\EventList.razor",
@@ -295,12 +280,11 @@
               "RelativeToolTip": "Explore.Blazor.Client\\Pages\\Event\\EventList.razor",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAIAAAAQAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2025-09-24T16:46:17.801Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-24T16:46:17.801Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 18,
+              "DocumentIndex": 19,
               "Title": "Error.razor",
               "DocumentMoniker": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Blazor\\Components\\Pages\\Error.razor",
               "RelativeDocumentMoniker": "Explore.Blazor\\Components\\Pages\\Error.razor",
@@ -308,12 +292,11 @@
               "RelativeToolTip": "Explore.Blazor\\Components\\Pages\\Error.razor",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2025-09-24T17:43:18.658Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-24T17:43:18.658Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 19,
+              "DocumentIndex": 20,
               "Title": "_Imports.razor",
               "DocumentMoniker": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Blazor\\Components\\_Imports.razor",
               "RelativeDocumentMoniker": "Explore.Blazor\\Components\\_Imports.razor",
@@ -321,12 +304,11 @@
               "RelativeToolTip": "Explore.Blazor\\Components\\_Imports.razor",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2025-09-24T17:43:21.071Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-24T17:43:21.071Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 21,
+              "DocumentIndex": 22,
               "Title": "Routes.razor",
               "DocumentMoniker": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Blazor.Client\\Routes.razor",
               "RelativeDocumentMoniker": "Explore.Blazor.Client\\Routes.razor",
@@ -334,12 +316,11 @@
               "RelativeToolTip": "Explore.Blazor.Client\\Routes.razor",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2025-09-24T17:31:05.355Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-24T17:31:05.355Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 20,
+              "DocumentIndex": 21,
               "Title": "_Imports.razor",
               "DocumentMoniker": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Blazor.Client\\_Imports.razor",
               "RelativeDocumentMoniker": "Explore.Blazor.Client\\_Imports.razor",
@@ -352,7 +333,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 22,
+              "DocumentIndex": 23,
               "Title": "Weather.razor",
               "DocumentMoniker": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Blazor.Client\\Pages\\Weather.razor",
               "RelativeDocumentMoniker": "Explore.Blazor.Client\\Pages\\Weather.razor",
@@ -360,12 +341,11 @@
               "RelativeToolTip": "Explore.Blazor.Client\\Pages\\Weather.razor",
               "ViewState": "AgIAAAwAAAAAAAAAACBjwAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2025-09-24T17:41:50.253Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-24T17:41:50.253Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 23,
+              "DocumentIndex": 24,
               "Title": "Counter.razor",
               "DocumentMoniker": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Blazor.Client\\Pages\\Counter.razor",
               "RelativeDocumentMoniker": "Explore.Blazor.Client\\Pages\\Counter.razor",
@@ -373,31 +353,38 @@
               "RelativeToolTip": "Explore.Blazor.Client\\Pages\\Counter.razor",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2025-09-24T16:47:38.367Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-24T16:47:38.367Z"
             }
           ]
         },
         {
-          "DockedWidth": 121,
-          "SelectedChildIndex": 2,
+          "DockedWidth": 185,
+          "SelectedChildIndex": 0,
           "Children": [
             {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\Users\\AM5\\AppData\\Local\\SourceServer\\c62c97348cd9f144393b1a1d6a6e94e41edc9b3ea1f3b21f529fe096c24b1ef0\\Explore.API\\Program.cs",
+              "RelativeDocumentMoniker": "..\\..\\..\\Users\\AM5\\AppData\\Local\\SourceServer\\c62c97348cd9f144393b1a1d6a6e94e41edc9b3ea1f3b21f529fe096c24b1ef0\\Explore.API\\Program.cs",
+              "ToolTip": "C:\\Users\\AM5\\AppData\\Local\\SourceServer\\c62c97348cd9f144393b1a1d6a6e94e41edc9b3ea1f3b21f529fe096c24b1ef0\\Explore.API\\Program.cs",
+              "RelativeToolTip": "..\\..\\..\\Users\\AM5\\AppData\\Local\\SourceServer\\c62c97348cd9f144393b1a1d6a6e94e41edc9b3ea1f3b21f529fe096c24b1ef0\\Explore.API\\Program.cs",
+              "ViewState": "AgIAACYAAAAAAAAAAAAmwDoAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-14T08:06:55.889Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
-              "Title": "Explore.AppHost",
+              "DocumentIndex": 8,
+              "Title": "Explore.AppHost.csproj",
               "DocumentMoniker": "C:\\ISLAMU\\GitHub\\Explore\\Explore.AppHost\\Explore.AppHost.csproj",
               "RelativeDocumentMoniker": "Explore.AppHost\\Explore.AppHost.csproj",
               "ToolTip": "C:\\ISLAMU\\GitHub\\Explore\\Explore.AppHost\\Explore.AppHost.csproj",
               "RelativeToolTip": "Explore.AppHost\\Explore.AppHost.csproj",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-              "WhenOpened": "2025-10-14T06:14:19.628Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-14T06:14:19.628Z"
             },
             {
               "$type": "Document",
@@ -407,14 +394,14 @@
               "RelativeDocumentMoniker": "Explore.API\\Program.cs",
               "ToolTip": "C:\\ISLAMU\\GitHub\\Explore\\Explore.API\\Program.cs",
               "RelativeToolTip": "Explore.API\\Program.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAACYAAAAkAAAAAAAAAA==",
+              "ViewState": "AgIAAAkAAAAAAAAAAAAAABwAAAAIAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-10-14T06:08:57.263Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 11,
+              "DocumentIndex": 12,
               "Title": "launchSettings.json",
               "DocumentMoniker": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Blazor\\Properties\\launchSettings.json",
               "RelativeDocumentMoniker": "Explore.Blazor\\Properties\\launchSettings.json",
@@ -422,12 +409,11 @@
               "RelativeToolTip": "Explore.Blazor\\Properties\\launchSettings.json",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2025-10-06T22:04:10.405Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-06T22:04:10.405Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 9,
               "Title": "NavMenu.razor",
               "DocumentMoniker": "C:\\ISLAMU\\GitHub\\Explore\\Explore.Blazor.Client\\Layout\\NavMenu.razor",
               "RelativeDocumentMoniker": "Explore.Blazor.Client\\Layout\\NavMenu.razor",
@@ -435,8 +421,7 @@
               "RelativeToolTip": "Explore.Blazor.Client\\Layout\\NavMenu.razor",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAARAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2025-09-24T16:23:08.75Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-24T16:23:08.75Z"
             }
           ]
         }
