@@ -7,7 +7,11 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
 builder.Services.AddMudServices();
 builder.Services.AddScoped<IEventService, EventService>();
-builder.Services.AddScoped<HttpClient>();
+
+builder.Services.AddScoped(sp => new HttpClient
+{
+    BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)
+});
 
 // wanted to have webassembly as client for keycloak but went with blazor server the correct choice so these are not needed so commented
 //var keycloakConfig = builder.Configuration.GetSection("Keycloak");
