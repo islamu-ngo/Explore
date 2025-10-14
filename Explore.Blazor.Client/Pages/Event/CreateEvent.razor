@@ -2,256 +2,240 @@
 @using System.ComponentModel.DataAnnotations
 @using MudBlazor
 @using Microsoft.AspNetCore.Components.Forms
+@using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Models
 
 <style>
-/* ---- Page framing ---- */
 .create-page {
     max-width: 960px;
     margin: 0 auto;
     padding: 0 16px;
 }
-
-/* ---- Form card ---- */
 .event-form {
     padding: 20px;
     border-radius: 12px;
     background: var(--mud-palette-background-paper);
 }
-
-/* ---- Title ---- */
 .title {
     margin: 4px 0 16px;
     font-weight: 600;
 }
-
-/* ---- Image picker ---- */
-.image-row {
-    position: relative;
-}
-
-/* Clickable label styled like a dashed box */
-.image-picker {
-    position: relative;
+.image-preview {
+    width: 300px;
+    height: 200px;
+    border: 2px dashed #ccc;
+    border-radius: 8px;
     display: flex;
     align-items: center;
-    gap: 12px;
-    width: 100%;
-    padding: 14px 16px;
-    border: 1px dashed var(--mud-palette-lines-default);
-    border-radius: 12px;
-    cursor: pointer;
-    background: transparent;
-}
-
-    /* Hide the actual input while keeping it clickable (fills the label) */
-    .hidden-file-input,
-    .image-picker input[type="file"] {
-        position: absolute;
-        inset: 0;
-        opacity: 0;
-        width: 100%;
-        height: 100%;
-        cursor: pointer;
-    }
-
-/* Preview under the picker */
-.image-preview {
-    display: block;
-    margin-top: 12px;
-    max-width: 100%;
-    max-height: 220px;
-    object-fit: cover;
-    border-radius: 10px;
-    border: 1px solid var(--mud-palette-lines-default);
-}
-
-/* Helper: ensure caption shows on its own line */
-.image-text .mud-typography-caption {
-    display: block;
-}
-
-/* ---- Radios stacked neatly ---- */
-.radio-col .mud-radio {
-    display: inline-block;
-    margin-right: 32px;
-    margin-bottom: 0;
-}
-
-/* ---- Dropdown spacing ---- */
-.event-type-select {
-    margin-top: 16px;
+    justify-content: center;
     margin-bottom: 16px;
+    position: relative;
+    background-color: #f8f9fa;
 }
-
-/* ---- Event type radio spacing ---- */
-.event-type-radio .mud-radio {
-    display: block;
-    margin-bottom: 12px;
-}
-
-/* ---- Fallback margin utilities ---- */
-.mb-4 {
-    margin-bottom: 16px !important;
-}
-
-.sm\:mb-0 {
-    margin-bottom: 0 !important;
-}
-
-/* ---- Event type row ---- */
-.event-type-row {
-    display: flex;
-    align-items: flex-end;
-    gap: 24px;
-}
-
-.event-type-select {
-    min-width: 180px;
-    margin: 0;
-}
-
-.event-type-select select {
-    width: 100%;
-    padding: 10px 12px;
-    border-radius: 6px;
-    border: 1px solid var(--mud-palette-lines-default);
-    background: var(--mud-palette-background-paper);
-    color: var(--mud-palette-text-primary);
-    font-size: 1rem;
-}
-
-.event-type-select label {
-    font-weight: 500;
-    margin-bottom: 4px;
-    display: block;
-}
-
 </style>
 
 <MudContainer Class="create-page" DisableGutters="true">
     <MudPaper Class="event-form" Elevation="1">
         <MudText Typo="Typo.h4" Class="title">Create a new event</MudText>
-
-        <!-- Image picker with preview -->
-        <div class="image-row mb-4">
-            <label class="image-picker">
-                <MudIcon Icon="@Icons.Material.Filled.AddPhotoAlternate" Size="Size.Large" />
-                <div class="image-text">
-                    <MudText Typo="Typo.body1">Add an image</MudText>
-                    @if (!string.IsNullOrEmpty(SelectedFileName))
-                    {
-                        <MudText Typo="Typo.caption" Class="mud-text-secondary">@SelectedFileName</MudText>
-                    }
-                </div>
-
-                <!-- Hidden but clickable file input -->
-                <InputFile OnChange="OnFileSelected" accept="image/*" class="hidden-file-input" />
-            </label>
-
-            @if (!string.IsNullOrEmpty(ImageDataUrl))
-            {
-                <img src="@ImageDataUrl" alt="Selected image preview" class="image-preview" />
-            }
-        </div>
-
-        <!-- Form -->
-        <MudForm @ref="form" Model="Model" OnValidSubmit="OnCreate">
-            <MudStack Spacing="3">
-
-                <MudTextField class="mb-4"
-                              @bind-Value="Model.Title"
-                              For="@(() => Model.Title)"
-                              Label="Title"
-                              Required="true"
-                              Immediate="true"
-                              Margin="Margin.Normal" />
-
-                <MudTextField class="mb-4"
-                              @bind-Value="Model.Description"
-                              For="@(() => Model.Description)"
-                              Label="Description"
-                              TextArea="true"
-                              Lines="4"
-                              Margin="Margin.Normal" />
-
-                <!-- Date / Time / Type -->
-                <MudGrid Class="mb-4">
-                    <MudItem xs="12" sm="4" Class="mb-4 sm:mb-0">
-                        <MudDatePicker @bind-Date="Model.Date"
-                                       For="@(() => Model.Date)"
-                                       Label="Date"
-                                       Required="true"
-                                       CloseToSelectableDate="true" />
-                    </MudItem>
-                    <MudItem xs="12" sm="4" Class="mb-4 sm:mb-0">
-                        <MudTimePicker @bind-Time="Model.Time"
-                                       For="@(() => Model.Time)"
-                                       Label="Time"
-                                       AmPm="true" />
-                    </MudItem>
-                    <MudItem xs="12" sm="4">
-                        <!-- intentionally left empty for spacing -->
-                    </MudItem>
-                    <MudItem xs="12" sm="6">
-                        <MudRadioGroup T="string"
-                                       @bind-SelectedOption="Model.Type"
-                                       For="@(() => Model.Type)"
-                                       Label="Tag / Event type"
-                                       Required="true"
-                                       Class="radio-col">
-                            <MudRadio T="string" Option="Digital" Label="Digital" />
-                            <MudRadio T="string" Option="Local" Label="Local" />
-                        </MudRadioGroup>
-                    </MudItem>
-                    <MudItem xs="12" sm="6">
-                        <div class="event-type-select">
-                            <label for="eventCategory">Event Category</label>
-                            <select id="eventCategory" name="eventCategory">
-                                <option>All Categories</option>
-                                <option>Lecture</option>
-                                <option>Workshop</option>
-                                <option>Social</option>
-                                <option>Charity</option>
-                            </select>
+        <EditForm Model="Model" OnValidSubmit="OnCreate">
+            <DataAnnotationsValidator />
+            <MudForm @ref="form" Model="Model">
+            <!-- Image Upload Section -->
+            <div class="mb-4">
+                <MudText Typo="Typo.h6" Class="mb-3">Event Image</MudText>
+                <MudPaper Class="pa-4" Style="background-color: var(--mud-palette-background-grey);">
+                    <div class="d-flex flex-column align-items-center">
+                        <div class="image-preview">
+                            @if (!string.IsNullOrEmpty(ImageDataUrl))
+                            {
+                                <img src="@ImageDataUrl" alt="Event image" style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px;" />
+                            }
+                            else
+                            {
+                                <div class="d-flex flex-column align-items-center gap-2">
+                                    <MudIcon Icon="Icons.Material.Filled.Image" Size="Size.Large" Color="Color.Default" Style="font-size: 48px; color: #9e9e9e;" />
+                                    <MudText Typo="Typo.body2" Style="color: #9e9e9e;">No image selected</MudText>
+                                    <MudText Typo="Typo.caption" Style="color: #bdbdbd;">Click below to add an image</MudText>
+                                </div>
+                            }
                         </div>
+                        <div class="d-flex gap-2 flex-wrap justify-center">
+                            <InputFile id="imageUpload" OnChange="OnFileSelected" accept="image/*" style="display: none;" />
+                            <MudButton HtmlTag="label" Variant="Variant.Outlined" Color="Color.Primary" StartIcon="Icons.Material.Filled.CloudUpload" for="imageUpload">
+                                @(string.IsNullOrEmpty(ImageDataUrl) ? "Upload Image" : "Replace Image")
+                            </MudButton>
+                            @if (!string.IsNullOrEmpty(ImageDataUrl))
+                            {
+                                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="Icons.Material.Filled.Delete" OnClick="RemoveImage">
+                                    Remove
+                                </MudButton>
+                            }
+                        </div>
+                        <MudText Typo="Typo.caption" Class="mt-2 text-center" Style="color: #757575;">Supported formats: JPG, PNG, GIF (Max 10MB)</MudText>
+                    </div>
+                </MudPaper>
+            </div>
+            <!-- Event Title -->
+            <MudTextField @bind-Value="Model.Title" Label="Event Title" Variant="Variant.Outlined" Required FullWidth Class="mb-3" />
+            <ValidationMessage For="@(() => Model.Title)" />
+            <!-- Event Description -->
+            <MudTextField @bind-Value="Model.Description" Label="Event Description" Variant="Variant.Outlined" Lines="4" FullWidth Class="mb-3" />
+            <!-- Event Type Toggle -->
+            <MudText Typo="Typo.h6" Class="mb-3">Event Type</MudText>
+            <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
+                <MudGrid Spacing="2">
+                    <MudItem xs="6">
+                        <MudButton FullWidth StartIcon="Icons.Material.Filled.LocationOn" Color="@(!Model.IsOnline ? Color.Primary : Color.Default)" Variant="@(!Model.IsOnline ? Variant.Filled : Variant.Outlined)" Size="Size.Large" Style="@(!Model.IsOnline ? "box-shadow: 0 4px 8px rgba(0,0,0,0.2); transform: scale(1.02);" : "")" OnClick="@(() => SetEventType(false))">
+                            <div class="d-flex flex-column align-items-center">
+                                <MudText Typo="Typo.button" Style="font-weight: bold;">Local Event</MudText>
+                                <MudText Typo="Typo.caption" Style="font-size: 0.7rem;">Physical location</MudText>
+                            </div>
+                        </MudButton>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudButton FullWidth StartIcon="Icons.Material.Filled.Computer" Color="@(Model.IsOnline ? Color.Primary : Color.Default)" Variant="@(Model.IsOnline ? Variant.Filled : Variant.Outlined)" Size="Size.Large" Style="@(Model.IsOnline ? "box-shadow: 0 4px 8px rgba(0,0,0,0.2); transform: scale(1.02);" : "")" OnClick="@(() => SetEventType(true))">
+                            <div class="d-flex flex-column align-items-center">
+                                <MudText Typo="Typo.button" Style="font-weight: bold;">Digital Event</MudText>
+                                <MudText Typo="Typo.caption" Style="font-size: 0.7rem;">Online meeting</MudText>
+                            </div>
+                        </MudButton>
                     </MudItem>
                 </MudGrid>
-
-                <MudTextField class="mb-4"
-                              @bind-Value="Model.Location"
-                              For="@(() => Model.Location)"
-                              Label="Location / Link"
-                              Margin="Margin.Normal" />
-
-                <MudStack Direction="Row" Spacing="2" Class="actions">
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               ButtonType="ButtonType.Submit">
-                        CREATE EVENT
-                    </MudButton>
-
-                    <MudButton Variant="Variant.Outlined"
-                               Color="Color.Default"
-                               Href="/">
-                        CANCEL
-                    </MudButton>
-                </MudStack>
-            </MudStack>
-        </MudForm>
-
+                <div class="mt-3 text-center">
+                    <MudAlert Severity="Severity.Info" NoIcon="false" Icon="@(!Model.IsOnline ? Icons.Material.Filled.LocationOn : Icons.Material.Filled.Computer)" Class="py-2">
+                        <MudText Typo="Typo.body2" Style="font-weight: 500;">
+                            @(!Model.IsOnline ? "Local Event Selected" : "Digital Event Selected")
+                        </MudText>
+                    </MudAlert>
+                </div>
+            </MudPaper>
+            <!-- Location or URL based on event type -->
+            @if (!Model.IsOnline)
+            {
+                <MudText Typo="Typo.h6" Class="mb-3">Event Location</MudText>
+                <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
+                    <MudGrid Spacing="3">
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="Model.Address" Label="Address" Variant="Variant.Outlined" FullWidth Placeholder="Street name and number" Adornment="Adornment.Start" AdornmentIcon="Icons.Material.Filled.Home" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="Model.City" Label="City" Variant="Variant.Outlined" FullWidth Placeholder="City name" Adornment="Adornment.Start" AdornmentIcon="Icons.Material.Filled.LocationCity" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudSelect @bind-Value="Model.LocationCountry" Label="Country" Variant="Variant.Outlined" FullWidth>
+                                <MudSelectItem Value="@Netherlands">@Netherlands</MudSelectItem>
+                                <MudSelectItem Value="@Belgium">@Belgium</MudSelectItem>
+                                <MudSelectItem Value="@Germany">@Germany</MudSelectItem>
+                                <MudSelectItem Value="@France">@France</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            }
+            else
+            {
+                <MudTextField @bind-Value="Model.Url" Label="Event URL" Variant="Variant.Outlined" FullWidth Adornment="Adornment.Start" AdornmentIcon="Icons.Material.Filled.Link" Class="mb-4" />
+            }
+            <!-- Event Date and Time -->
+            <MudText Typo="Typo.h6" Class="mb-3">Event Date & Time</MudText>
+            <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
+                <MudGrid Spacing="3">
+                    <MudItem xs="12" sm="6">
+                        <MudDatePicker @bind-Date="Model.Date" Label="Event Date" Variant="Variant.Outlined" FullWidth MinDate="DateTime.Today" Required />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTimePicker @bind-Time="Model.Time" Label="Event Time" Variant="Variant.Outlined" FullWidth AmPm="false" Required />
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+            <!-- Category -->
+            <MudSelect @bind-Value="Model.EventCategory" Label="Category" Variant="Variant.Outlined" FullWidth Class="mb-3">
+                <MudSelectItem Value="@Lecture">Lecture</MudSelectItem>
+                <MudSelectItem Value="@Workshop">Workshop</MudSelectItem>
+                <MudSelectItem Value="@Social">Social</MudSelectItem>
+                <MudSelectItem Value="@Charity">Charity</MudSelectItem>
+            </MudSelect>
+            <!-- Action Buttons -->
+            <div class="d-flex justify-content-between mt-4">
+                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="/">
+                    Cancel
+                </MudButton>
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">
+                    Create Event
+                </MudButton>
+            </div>
+            </MudForm>
+        </EditForm>
     </MudPaper>
 </MudContainer>
 
 @code {
+    // Country constants
+    private static readonly string Netherlands = "Netherlands";
+    private static readonly string Belgium = "Belgium";
+    private static readonly string Germany = "Germany";
+    private static readonly string France = "France";
+
+    // Event category constants
+    private static readonly string Lecture = "lecture";
+    private static readonly string Workshop = "workshop";
+    private static readonly string Social = "social";
+    private static readonly string Charity = "charity";
+
     private MudForm? form;
     private string? SelectedFileName;
     private string? ImageDataUrl; // data: URL for the preview
     private EventCreateModel Model = new();
 
-    private async Task OnCreate()
+    private void SetEventType(bool isOnline)
+    {
+        Model.IsOnline = isOnline;
+        if (isOnline)
+        {
+            Model.Address = string.Empty;
+            Model.City = string.Empty;
+            Model.LocationCountry = string.Empty;
+        }
+        else
+        {
+            Model.Url = string.Empty;
+        }
+    }
+
+    [Inject]
+    private IEventService EventService { get; set; } = default!;
+    [Inject]
+    private NavigationManager NavigationManager { get; set; } = default!;
+
+    private async Task OnCreate(EditContext context)
     {
         await form!.Validate();
-        // TODO: save/navigate
+        if (context.Validate() && form.IsValid)
+        {
+            var newEvent = new Models.Event
+            {
+                Title = Model.Title ?? string.Empty,
+                Description = Model.Description ?? string.Empty,
+                Date = Model.Date ?? DateTime.Now,
+                Category = Model.EventCategory ?? Lecture,
+                IsOnline = Model.IsOnline,
+                Address = Model.Address ?? string.Empty,
+                City = Model.City ?? string.Empty,
+                LocationCountry = Model.LocationCountry ?? string.Empty,
+                Url = Model.Url,
+                ImageUrl = ImageDataUrl ?? string.Empty
+            };
+
+            try
+            {
+                EventService.UpdateEvent(newEvent);
+                NavigationManager.NavigateTo("/events");
+            }
+            catch (Exception)
+            {
+                // Handle error
+            }
+        }
     }
 
     // Read the selected image and build a data URL for preview
@@ -279,6 +263,12 @@
         ImageDataUrl = $"data:{file.ContentType};base64,{base64}";
     }
 
+    private void RemoveImage()
+    {
+        ImageDataUrl = null;
+        SelectedFileName = null;
+    }
+
     private class EventCreateModel
     {
         [Required(ErrorMessage = "Please enter a title.")]
@@ -292,10 +282,19 @@
         public TimeSpan? Time { get; set; }
 
         [Required]
+        public string? EventCategory { get; set; } = Lecture;
+
         public string? Type { get; set; } = "Digital";
 
-        [Required]
-        public string? EventCategory { get; set; } = "Lecture"; // mock value
+        public bool IsOnline { get; set; } = true;
+
+        public string? Address { get; set; }
+
+        public string? City { get; set; }
+
+        public string? LocationCountry { get; set; }
+
+        public string? Url { get; set; }
 
         public string? Location { get; set; }
     }
