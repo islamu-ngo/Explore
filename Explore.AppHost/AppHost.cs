@@ -1,3 +1,4 @@
+using Aspire.Hosting;
 using Infisical.Sdk;
 using Infisical.Sdk.Model;
 using Microsoft.Extensions.DependencyInjection;
@@ -97,6 +98,7 @@ builder.AddProject<Projects.Explore_Blazor>("explore-blazor")
     .WithEnvironment("Keycloak__Authority", authority)
     .WithEnvironment("keycloak__Audience", "explore-api")
     .WithEnvironment("keycloak__Realm", realm)
+    .WithEnvironment("keycloak__ClientId", "explore-blazor-server")
     .WithEnvironment("keycloak__ClientSecret", keycloakSecrets.TryGetValue("EXPLORE_BLAZOR_SERVER_CLIENT_SECRET", out var n) ? n : "")
     .WithEnvironment("Keycloak__RequireHttpsMetadata", "false")
     .WithReference(ExploreDB)

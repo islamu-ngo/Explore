@@ -35,7 +35,7 @@ builder.Services.AddAuthentication(options =>
     {
         // From configuration/Infisical
         options.Authority = builder.Configuration["Keycloak:Authority"];
-        options.ClientId = builder.Configuration["Keycloak:ClientId"];       // explore-web
+        options.ClientId = builder.Configuration["Keycloak:ClientId"];       // explore-blazor-server
         options.ClientSecret = builder.Configuration["Keycloak:ClientSecret"]; // confidential
         options.ResponseType = "code";
         options.UsePkce = true;
