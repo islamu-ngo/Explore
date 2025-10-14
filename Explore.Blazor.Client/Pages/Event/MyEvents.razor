@@ -7,25 +7,36 @@
 
 <style>
     .filter-paper {
-        background-color: rgb(15,15,27);
+        background-color: var(--mud-palette-surface);
+        border: 1px solid var(--mud-palette-lines-default);
         border-radius: 4px;
         cursor: pointer;
-        transition: background-color 0.3s;
+        transition: all 0.3s ease;
+        color: var(--mud-palette-text-primary);
     }
 
     .filter-paper:hover {
-        background-color: rgb(25,25,37);
+        background-color: var(--mud-palette-action-hover);
+        border-color: var(--mud-palette-primary);
     }
-</style>
 
-<MudContainer Class="mt-16">
+    .filter-popover {
+        background-color: var(--mud-palette-surface) !important;
+        border: 1px solid var(--mud-palette-lines-default) !important;
+        box-shadow: var(--mud-elevation-8) !important;
+    }
+
+    .filter-popover .mud-text {
+        color: var(--mud-palette-text-primary) !important;
+    }
+</style><MudContainer Class="mt-16">
     <MudGrid>
         <MudItem xs="12" Class="d-flex justify-space-between align-center mb-4">
             <MudText Typo="Typo.h3">My Events</MudText>
-            <MudButton Variant="Variant.Filled" 
-                      Color="Color.Primary" 
-                      StartIcon="@Icons.Material.Filled.Add"
-                      OnClick="@(() => Navigation.NavigateTo("/event/create"))">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="@NavigateToCreate">
                 Organize Event
             </MudButton>
         </MudItem>
@@ -34,64 +45,64 @@
             <MudPaper Class="pa-4">
                 <MudGrid>
                     <MudItem xs="12" md="4">
-                        <MudPopover Open="@isCountryOpen" Fixed="true" Class="px-4 py-3" Style="background-color: rgb(15,15,27);">
+                        <MudPopover Open="@isCountryOpen" Fixed="true" Class="filter-popover px-4 py-3">
                             <div class="d-flex flex-column gap-3">
                                 <MudText>Country</MudText>
                                 <div class="d-flex flex-column gap-2">
                                     <MudText Typo="Typo.body2" Color="@(selectedCountry == "" ? Color.Primary : Color.Default)"
-                                            Class="cursor-pointer" @onclick="@(() => OnCountryChanged(""))">
+                                             Class="cursor-pointer" @onclick="@(() => OnCountryChanged(""))">
                                         All Countries
                                     </MudText>
                                     <MudText Typo="Typo.body2" Color="@(selectedCountry == "Netherlands" ? Color.Primary : Color.Default)"
-                                            Class="cursor-pointer" @onclick="@(() => OnCountryChanged("Netherlands"))">
+                                             Class="cursor-pointer" @onclick="@(() => OnCountryChanged("Netherlands"))">
                                         Netherlands
                                     </MudText>
                                     <MudText Typo="Typo.body2" Color="@(selectedCountry == "Belgium" ? Color.Primary : Color.Default)"
-                                            Class="cursor-pointer" @onclick="@(() => OnCountryChanged("Belgium"))">
+                                             Class="cursor-pointer" @onclick="@(() => OnCountryChanged("Belgium"))">
                                         Belgium
                                     </MudText>
                                 </div>
                             </div>
                         </MudPopover>
-                        <MudPaper @onclick="@(() => isCountryOpen = !isCountryOpen)" 
-                                 Class="filter-paper d-flex justify-space-between align-center pa-2">
+                        <MudPaper @onclick="@(() => isCountryOpen = !isCountryOpen)"
+                                  Class="filter-paper d-flex justify-space-between align-center pa-2">
                             <MudText Class="ml-2">@(string.IsNullOrEmpty(selectedCountry) ? "All Countries" : selectedCountry)</MudText>
                             <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" />
                         </MudPaper>
                     </MudItem>
                     <MudItem xs="12" md="4">
-                        <MudPopover Open="@isCategoryOpen" Fixed="true" Class="px-4 py-3" Style="background-color: rgb(15,15,27);">
+                        <MudPopover Open="@isCategoryOpen" Fixed="true" Class="filter-popover px-4 py-3">
                             <div class="d-flex flex-column gap-3">
                                 <MudText>Category</MudText>
                                 <div class="d-flex flex-column gap-2">
                                     <MudText Typo="Typo.body2" Color="@(selectedCategory == "" ? Color.Primary : Color.Default)"
-                                            Class="cursor-pointer" @onclick="@(() => OnCategoryChanged(""))">
+                                             Class="cursor-pointer" @onclick="@(() => OnCategoryChanged(""))">
                                         All Categories
                                     </MudText>
                                     <MudText Typo="Typo.body2" Color="@(selectedCategory == "Education" ? Color.Primary : Color.Default)"
-                                            Class="cursor-pointer" @onclick="@(() => OnCategoryChanged("Education"))">
+                                             Class="cursor-pointer" @onclick="@(() => OnCategoryChanged("Education"))">
                                         Education
                                     </MudText>
                                     <MudText Typo="Typo.body2" Color="@(selectedCategory == "Workshop" ? Color.Primary : Color.Default)"
-                                            Class="cursor-pointer" @onclick="@(() => OnCategoryChanged("Workshop"))">
+                                             Class="cursor-pointer" @onclick="@(() => OnCategoryChanged("Workshop"))">
                                         Workshop
                                     </MudText>
                                 </div>
                             </div>
                         </MudPopover>
                         <MudPaper @onclick="@(() => isCategoryOpen = !isCategoryOpen)"
-                                 Class="filter-paper d-flex justify-space-between align-center pa-2">
+                                  Class="filter-paper d-flex justify-space-between align-center pa-2">
                             <MudText Class="ml-2">@(string.IsNullOrEmpty(selectedCategory) ? "All Categories" : selectedCategory)</MudText>
                             <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" />
                         </MudPaper>
                     </MudItem>
                     <MudItem xs="12" md="4">
                         <MudTextField @bind-Value="searchString" Placeholder="Search" Adornment="Adornment.Start"
-                            AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" 
-                            Immediate="true"
-                            DebounceInterval="500"
-                            TextChanged="OnSearch"
-                            Class="mt-0"></MudTextField>
+                                      AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium"
+                                      Immediate="true"
+                                      DebounceInterval="500"
+                                      TextChanged="OnSearch"
+                                      Class="mt-0"></MudTextField>
                     </MudItem>
                 </MudGrid>
             </MudPaper>
@@ -101,9 +112,9 @@
         {
             <MudItem xs="12" sm="6" md="4">
                 <MudCard Elevation="2" Class="rounded-lg">
-                    <MudCardMedia Image="@($"https://dummyimage.com/800x400/5D4037/ffffff.png&text={evt.Title}")" 
-                                Height="200" 
-                                Class="rounded-t-lg" />
+                    <MudCardMedia Image="@($"https://dummyimage.com/800x400/5D4037/ffffff.png&text={evt.Title}")"
+                                  Height="200"
+                                  Class="rounded-t-lg" />
                     <MudCardContent>
                         <MudStack Row="true" Class="mb-4">
                             <MudChip T="string" Size="Size.Small" Color="Color.Primary">@evt.Category</MudChip>
@@ -151,8 +162,7 @@
 
     private void EditEvent(Event evt)
     {
-        EventService.UpdateEvent(evt);
-        LoadEvents();
+        Navigation.NavigateTo($"/eventedit/{evt.Id}");
     }
 
     private void DeleteEvent(Event evt)
@@ -181,5 +191,8 @@
         LoadEvents();
     }
 
-
+    private void NavigateToCreate()
+    {
+        Navigation.NavigateTo("/create");
+    }
 }

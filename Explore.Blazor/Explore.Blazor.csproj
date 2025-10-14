@@ -6,6 +6,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <ItemGroup>
+    <None Include="..\Explore.Blazor.Client\Pages\Event\Component.razor" Link="Component.razor" />
+  </ItemGroup>
+
 
   <ItemGroup>
     <ProjectReference Include="..\Explore.Blazor.Client\Explore.Blazor.Client.csproj" />

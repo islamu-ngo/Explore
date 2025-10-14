@@ -1,0 +1,209 @@
+@page "/welcome"
+@using MudBlazor
+
+<style>
+.nonuser-hero {
+    padding: 64px 0 48px 0;
+    text-align: center;
+}
+.register-section {
+    display: flex;
+    flex-wrap: wrap;
+    background: var(--mud-palette-background-paper);
+    border-radius: 16px;
+    padding: 0;
+    margin-bottom: 32px;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.10);
+    min-height: 340px;
+}
+.register-left {
+    flex: 1 1 340px;
+    padding: 40px 32px 32px 32px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.register-form {
+    background: #232345;
+    border-radius: 12px;
+    padding: 24px 20px 20px 20px;
+    margin-bottom: 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+}
+.register-btn {
+    margin-top: 18px;
+    min-width: 180px;
+    font-size: 1.1rem;
+}
+.register-steps {
+    margin-top: 12px;
+    color: var(--mud-palette-text-secondary);
+}
+.register-right {
+    flex: 1 1 340px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #eae6f7;
+    border-radius: 0 16px 16px 0;
+    min-height: 340px;
+}
+.register-img {
+    max-width: 320px;
+    width: 100%;
+    border-radius: 12px;
+    object-fit: cover;
+}
+.explain-section {
+    margin: 48px 0;
+    text-align: center;
+}
+.event-carousel-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 48px;
+    margin-top: 32px;
+}
+.event-carousel {
+    display: flex;
+    align-items: stretch;
+    gap: 32px;
+    overflow-x: auto;
+    padding: 16px 0;
+    scroll-behavior: smooth;
+}
+.event-card {
+    min-width: 340px;
+    max-width: 340px;
+    background: var(--mud-palette-background-paper);
+    border-radius: 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.10);
+    padding: 0 0 18px 0;
+    text-align: left;
+    cursor: pointer;
+    opacity: 0.85;
+    transition: opacity .2s, box-shadow .2s;
+    border: 2px solid transparent;
+    margin-bottom: 8px;
+}
+.event-card:hover {
+    opacity: 1;
+    border-color: var(--mud-palette-primary-main);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+}
+.event-banner {
+    background: #6d4c41;
+    border-radius: 16px 16px 0 0;
+    height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 1.5rem;
+    font-family: inherit;
+    font-weight: 400;
+    letter-spacing: 1px;
+}
+.event-chips {
+    display: flex;
+    gap: 10px;
+    margin: 16px 0 8px 0;
+}
+.event-title {
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+.event-desc {
+    color: var(--mud-palette-text-secondary);
+    font-size: 1rem;
+}
+.carousel-arrow {
+    font-size: 2.2rem;
+    cursor: pointer;
+    color: var(--mud-palette-primary-main);
+    user-select: none;
+    margin: 0 8px;
+}
+.section-space {
+    margin-bottom: 80px;
+}
+</style>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="nonuser-landing">
+    <!-- Register Section -->
+    <div class="register-section section-space" id="register">
+        <div class="register-left">
+            <MudText Typo="Typo.h4" Class="mb-2" Color="Color.Primary">Register to join our Muslim community</MudText>
+            <MudText Typo="Typo.subtitle1" Class="mb-4">Create an account to access all events, lectures, and activities!</MudText>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="register-btn" StartIcon="@Icons.Material.Filled.PersonAdd" Href="/register">
+                Register Now
+            </MudButton>
+            <MudText Typo="Typo.caption" Class="mt-2 mud-text-secondary">Already have an account? <MudLink Href="/login">Login</MudLink></MudText>
+            <div class="register-steps mt-4">
+                <MudText Typo="Typo.body2"><MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Primary" /> 1. Register your account</MudText>
+                <MudText Typo="Typo.body2"><MudIcon Icon="@Icons.Material.Filled.EventAvailable" Color="Color.Primary" /> 2. Get access to all Muslim events</MudText>
+            </div>
+        </div>
+        <div class="register-right">
+            <img src="image/landing_image_nonuser.png" alt="Landing page non-user" class="register-img" />
+        </div>
+    </div>
+
+    <!-- Hero Section -->
+    <div class="nonuser-hero section-space">
+        <MudText Typo="Typo.h3" Class="mb-2">Never Miss a Muslim Event Again</MudText>
+        <MudText Typo="Typo.subtitle2" Class="mud-text-secondary">Lectures, workshops, charity, and social gatherings for every Muslim. Discover, connect, and grow!</MudText>
+    </div>
+
+    <!-- Explanation Section -->
+    <div class="explain-section section-space">
+        <MudText Typo="Typo.h5" Class="mb-2">Why Join?</MudText>
+        <MudText Typo="Typo.body1">Unlock access to exclusive Islamic lectures, Quran study circles, youth workshops, charity events, and more. Be part of a vibrant Muslim community and stay informed about every opportunity to learn and give back.</MudText>
+    </div>
+
+    <!-- Event Carousel Section -->
+    <MudText Typo="Typo.h5" Class="mb-2">Upcoming Muslim Events</MudText>
+    <div class="event-carousel-wrap">
+        <span class="carousel-arrow" @onclick="ScrollLeft">&#8592;</span>
+        <div class="event-carousel" id="eventCarousel">
+            @foreach (var evt in Events)
+            {
+                <div class="event-card" @onclick="ScrollToRegister">
+                    <div class="event-banner">@evt.Title</div>
+                    <div class="event-chips">
+                        <MudChip T="string" Color="Color.Secondary">@evt.Type</MudChip>
+                        <MudChip T="string" Color="Color.Error">@evt.Date.ToString("dd/MM/yyyy")</MudChip>
+                    </div>
+                    <MudText Typo="Typo.h6" Class="event-title">@evt.Title</MudText>
+                    <MudText Typo="Typo.body2" Class="event-desc">@evt.Description</MudText>
+                </div>
+            }
+        </div>
+        <span class="carousel-arrow" @onclick="ScrollRight">&#8594;</span>
+    </div>
+    <MudText Typo="Typo.caption" Class="mt-2 mud-text-secondary">Want to join? Click any event to register and unlock full details!</MudText>
+</MudContainer>
+
+@code {
+    private List<EventMock> Events = new()
+    {
+        new EventMock { Title = "Islamic Finance Workshop", Date = DateTime.Today.AddDays(1), Type = "workshop", Description = "Learn about Islamic finance principles and their modern applications in this interactive workshop." },
+        new EventMock { Title = "Quran Study Circle", Date = DateTime.Today.AddDays(3), Type = "lecture", Description = "Join our Quran study circle to deepen your understanding and connection." },
+        new EventMock { Title = "Community Iftar", Date = DateTime.Today.AddDays(5), Type = "social", Description = "Share a meal and connect with fellow Muslims at our community iftar." },
+        new EventMock { Title = "Charity Drive: Food Bank", Date = DateTime.Today.AddDays(7), Type = "charity", Description = "Support those in need by participating in our food bank charity drive." },
+        new EventMock { Title = "Lecture: History of Islam", Date = DateTime.Today.AddDays(9), Type = "lecture", Description = "Explore the rich history of Islam in this engaging lecture." },
+    };
+
+    private void ScrollLeft() { /* JS interop or scroll logic can be added later */ }
+    private void ScrollRight() { /* JS interop or scroll logic can be added later */ }
+    private void ScrollToRegister() { /* Scroll to registration section, JS interop can be added later */ }
+
+    private class EventMock
+    {
+        public string Title { get; set; } = "";
+        public DateTime Date { get; set; }
+        public string Type { get; set; } = "";
+        public string Description { get; set; } = "";
+    }
+}

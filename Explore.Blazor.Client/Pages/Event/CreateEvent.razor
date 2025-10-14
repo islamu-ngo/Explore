@@ -3,9 +3,133 @@
 @using MudBlazor
 @using Microsoft.AspNetCore.Components.Forms
 
+<style>
+/* ---- Page framing ---- */
+.create-page {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 16px;
+}
+
+/* ---- Form card ---- */
+.event-form {
+    padding: 20px;
+    border-radius: 12px;
+    background: var(--mud-palette-background-paper);
+}
+
+/* ---- Title ---- */
+.title {
+    margin: 4px 0 16px;
+    font-weight: 600;
+}
+
+/* ---- Image picker ---- */
+.image-row {
+    position: relative;
+}
+
+/* Clickable label styled like a dashed box */
+.image-picker {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 14px 16px;
+    border: 1px dashed var(--mud-palette-lines-default);
+    border-radius: 12px;
+    cursor: pointer;
+    background: transparent;
+}
+
+    /* Hide the actual input while keeping it clickable (fills the label) */
+    .hidden-file-input,
+    .image-picker input[type="file"] {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        width: 100%;
+        height: 100%;
+        cursor: pointer;
+    }
+
+/* Preview under the picker */
+.image-preview {
+    display: block;
+    margin-top: 12px;
+    max-width: 100%;
+    max-height: 220px;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 1px solid var(--mud-palette-lines-default);
+}
+
+/* Helper: ensure caption shows on its own line */
+.image-text .mud-typography-caption {
+    display: block;
+}
+
+/* ---- Radios stacked neatly ---- */
+.radio-col .mud-radio {
+    display: inline-block;
+    margin-right: 32px;
+    margin-bottom: 0;
+}
+
+/* ---- Dropdown spacing ---- */
+.event-type-select {
+    margin-top: 16px;
+    margin-bottom: 16px;
+}
+
+/* ---- Event type radio spacing ---- */
+.event-type-radio .mud-radio {
+    display: block;
+    margin-bottom: 12px;
+}
+
+/* ---- Fallback margin utilities ---- */
+.mb-4 {
+    margin-bottom: 16px !important;
+}
+
+.sm\:mb-0 {
+    margin-bottom: 0 !important;
+}
+
+/* ---- Event type row ---- */
+.event-type-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 24px;
+}
+
+.event-type-select {
+    min-width: 180px;
+    margin: 0;
+}
+
+.event-type-select select {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--mud-palette-lines-default);
+    background: var(--mud-palette-background-paper);
+    color: var(--mud-palette-text-primary);
+    font-size: 1rem;
+}
+
+.event-type-select label {
+    font-weight: 500;
+    margin-bottom: 4px;
+    display: block;
+}
+
+</style>
+
 <MudContainer Class="create-page" DisableGutters="true">
     <MudPaper Class="event-form" Elevation="1">
-
         <MudText Typo="Typo.h4" Class="title">Create a new event</MudText>
 
         <!-- Image picker with preview -->
@@ -59,15 +183,16 @@
                                        Required="true"
                                        CloseToSelectableDate="true" />
                     </MudItem>
-
                     <MudItem xs="12" sm="4" Class="mb-4 sm:mb-0">
                         <MudTimePicker @bind-Time="Model.Time"
                                        For="@(() => Model.Time)"
                                        Label="Time"
                                        AmPm="true" />
                     </MudItem>
-
                     <MudItem xs="12" sm="4">
+                        <!-- intentionally left empty for spacing -->
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
                         <MudRadioGroup T="string"
                                        @bind-SelectedOption="Model.Type"
                                        For="@(() => Model.Type)"
@@ -77,6 +202,18 @@
                             <MudRadio T="string" Option="Digital" Label="Digital" />
                             <MudRadio T="string" Option="Local" Label="Local" />
                         </MudRadioGroup>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <div class="event-type-select">
+                            <label for="eventCategory">Event Category</label>
+                            <select id="eventCategory" name="eventCategory">
+                                <option>All Categories</option>
+                                <option>Lecture</option>
+                                <option>Workshop</option>
+                                <option>Social</option>
+                                <option>Charity</option>
+                            </select>
+                        </div>
                     </MudItem>
                 </MudGrid>
 
@@ -99,8 +236,6 @@
                         CANCEL
                     </MudButton>
                 </MudStack>
-
-                <MudValidationErrors />
             </MudStack>
         </MudForm>
 
@@ -158,6 +293,9 @@
 
         [Required]
         public string? Type { get; set; } = "Digital";
+
+        [Required]
+        public string? EventCategory { get; set; } = "Lecture"; // mock value
 
         public string? Location { get; set; }
     }
