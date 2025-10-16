@@ -96,11 +96,12 @@ var authority = $"http://localhost:8080/auth/realms/{realm}";
 
 builder.AddProject<Projects.Explore_Blazor>("explore-blazor")
     .WithEnvironment("Keycloak__Authority", authority)
-    .WithEnvironment("keycloak__Audience", "explore-api")
+    //.WithEnvironment("keycloak__Audience", "explore-api") there is no audiance for the blazor server...
     .WithEnvironment("keycloak__Realm", realm)
     .WithEnvironment("keycloak__ClientId", "explore-blazor-server")
     .WithEnvironment("keycloak__ClientSecret", keycloakSecrets.TryGetValue("EXPLORE_BLAZOR_SERVER_CLIENT_SECRET", out var n) ? n : "")
     .WithEnvironment("Keycloak__RequireHttpsMetadata", "false")
+    .WithEnvironment("ExploreAPI__BaseUrl","https://localhost:7039/")
     .WithReference(ExploreDB)
     .WaitFor(ExploreDB);
 
@@ -109,6 +110,7 @@ var exploreAPI = builder.AddProject<Projects.Explore_API>("explore-api")
     .WithEnvironment("Keycloak__Authority", authority)
     .WithEnvironment("keycloak__Audience", "explore-api")
     .WithEnvironment("keycloak__Realm", realm)
+    .WithEnvironment("keycloak__ClientId", "explore-api")
     .WithEnvironment("Keycloak__RequireHttpsMetadata", "false")
     .WithReference(ExploreDB)
     .WaitFor(ExploreDB);

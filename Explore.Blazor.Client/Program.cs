@@ -13,6 +13,12 @@ builder.Services.AddScoped(sp => new HttpClient
     BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)
 });
 
+builder.Services.AddScoped<BffClient>();
+
+builder.Services.AddAuthorizationCore();
+
+await builder.Build().RunAsync();
+
 // wanted to have webassembly as client for keycloak but went with blazor server the correct choice so these are not needed so commented
 //var keycloakConfig = builder.Configuration.GetSection("Keycloak");
 
@@ -34,5 +40,3 @@ builder.Services.AddScoped(sp => new HttpClient
 //    options.ProviderOptions.DefaultScopes.Add("profile");
 //    options.ProviderOptions.DefaultScopes.Add("email");
 //});
-
-await builder.Build().RunAsync();

@@ -1,22 +1,34 @@
-﻿<!DOCTYPE html>
+﻿@using Explore.Blazor.Client.Layout
+
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <base href="/" />  
-    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
-    <link href=@Assets["_content/MudBlazor/MudBlazor.min.css"] rel="stylesheet" />
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	@* <meta http-equiv="Content-Security-Policy"
+	      content="default-src 'self';
+               script-src 'self' 'wasm-unsafe-eval';
+               style-src 'self' 'unsafe-inline';
+               connect-src 'self' http://localhost:8080 http://keycloak:8080;
+               img-src 'self' data:;
+               font-src 'self' https://fonts.gstatic.com;"> *@
+	<base href="/" />  
+	<link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
+	<link href=@Assets["_content/MudBlazor/MudBlazor.min.css"] rel="stylesheet" />
 	<link href="css/site.css" rel="stylesheet" />
-    <ImportMap />
-    <link rel="icon" type="image/ico" href="favicon.ico" />
-    <HeadOutlet @rendermode="InteractiveAuto" />
+	<ImportMap />
+	<link rel="icon" type="image/ico" href="favicon.ico" />
+	<HeadOutlet @rendermode="InteractiveAuto" />
 </head>
 
 <body>
-    <Routes @rendermode="InteractiveAuto" />
-    <script src="_framework/blazor.web.js"></script>
-    <script src=@Assets["_content/MudBlazor/MudBlazor.min.js"]></script>
+	<CascadingAuthenticationState>
+		<Routes @rendermode="InteractiveAuto" />
+	</CascadingAuthenticationState>
+	<script src="_framework/blazor.web.js"></script>
+	<script src=@Assets["_content/MudBlazor/MudBlazor.min.js"]></script>
 </body>
 
 </html>
+
