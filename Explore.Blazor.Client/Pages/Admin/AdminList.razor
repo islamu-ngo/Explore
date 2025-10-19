@@ -1,0 +1,132 @@
+@page "/admin"
+@using MudBlazor
+
+<style>
+    .admin-page {
+        padding: 24px;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .page-title {
+        margin-bottom: 24px;
+    }
+</style>
+
+<div class="admin-page">
+    <MudText Typo="Typo.h4" Class="page-title">Admin Management</MudText>
+
+    <MudPaper Elevation="2">
+        <MudTable Items="@_organizationRequests" Hover="true" Breakpoint="Breakpoint.Sm">
+            <HeaderContent>
+                <MudTh>ID</MudTh>
+                <MudTh>Organisation</MudTh>
+                <MudTh Style="text-align: center">Actions</MudTh>
+                <MudTh Style="text-align: center">Details</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="ID">@context.Id</MudTd>
+                <MudTd DataLabel="Organisation">@context.OrganizationName</MudTd>
+                <MudTd Style="text-align: center">
+                    <div class="d-flex justify-center gap-2">
+                        <MudIconButton Icon="@Icons.Material.Filled.Check"
+                                     Color="Color.Success"
+                                     Size="Size.Small"
+                                     OnClick="@(() => AcceptOrganization(context.Id))"
+                                     Title="Accept" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                     Color="Color.Error"
+                                     Size="Size.Small"
+                                     OnClick="@(() => RejectOrganization(context.Id))"
+                                     Title="Reject" />
+                    </div>
+                </MudTd>
+                <MudTd Style="text-align: center">
+                    <MudButton Variant="Variant.Filled" 
+                              Color="Color.Primary" 
+                              Size="Size.Small"
+                              OnClick="@(() => ViewDetails(context.Id))">
+                        Details
+                    </MudButton>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudPaper>
+</div>
+
+@code {
+    private List<OrganizationRequestModel> _organizationRequests = new();
+
+    protected override void OnInitialized()
+    {
+        // Mock data
+        _organizationRequests = new List<OrganizationRequestModel>
+        {
+            new() { Id = "2065651", OrganizationName = "Organisation 1" },
+            new() { Id = "2065652", OrganizationName = "Organisation 2" },
+            new() { Id = "2065653", OrganizationName = "Organisation 3" },
+            new() { Id = "2065654", OrganizationName = "Organisation 4" },
+            new() { Id = "2065655", OrganizationName = "Organisation 5" },
+            new() { Id = "2065656", OrganizationName = "Organisation 6" }
+        };
+    }
+
+    [Inject]
+    private NavigationManager NavigationManager { get; set; } = default!;
+
+    private void ViewDetails(string id)
+    {
+        NavigationManager.NavigateTo($"/admin/organization/{id}");
+    }
+
+    private async Task AcceptOrganization(string id)
+    {
+        var organization = _organizationRequests.FirstOrDefault(o => o.Id == id);
+        if (organization != null)
+        {
+            bool? result = await DialogService.ShowMessageBox(
+                "Confirm Accept",
+                $"Are you sure you want to accept the organization {organization.OrganizationName}?",
+                yesText: "Accept", noText: "Cancel");
+
+            if (result == true)
+            {
+                await ShowSuccessMessage($"Organization {organization.OrganizationName} has been accepted");
+            }
+        }
+    }
+
+    private async Task RejectOrganization(string id)
+    {
+        var organization = _organizationRequests.FirstOrDefault(o => o.Id == id);
+        if (organization != null)
+        {
+            bool? result = await DialogService.ShowMessageBox(
+                "Confirm Reject",
+                $"Are you sure you want to reject the organization {organization.OrganizationName}?",
+                yesText: "Reject", noText: "Cancel");
+
+            if (result == true)
+            {
+                await ShowSuccessMessage($"Organization {organization.OrganizationName} has been rejected");
+            }
+        }
+    }
+
+    private async Task ShowSuccessMessage(string message)
+    {
+        Snackbar.Add(message, Severity.Success);
+    }
+
+    [Inject]
+    private IDialogService DialogService { get; set; } = default!;
+
+    [Inject]
+    private ISnackbar Snackbar { get; set; } = default!;
+
+    private class OrganizationRequestModel
+    {
+        public string Id { get; set; } = string.Empty;
+        public string OrganizationName { get; set; } = string.Empty;
+    }
+}
