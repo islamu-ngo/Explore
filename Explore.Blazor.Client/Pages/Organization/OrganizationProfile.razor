@@ -1,0 +1,204 @@
+@page "/organization/profile"
+@using MudBlazor
+
+<PageTitle>Organization Profile</PageTitle>
+
+<MudContainer Class="py-6">
+    <!-- Organization Info Card -->
+    <MudCard Class="mb-6">
+        <MudCardContent Class="pa-6">
+            <MudStack Row AlignItems="AlignItems.Center" Spacing="4">
+                <!-- Organization Logo -->
+                <MudAvatar Size="Size.Large" Style="width: 120px; height: 120px;">
+                    <MudImage Src="https://via.placeholder.com/120x120/2196F3/FFFFFF?text=ORG" Alt="Organization Logo"/>
+                </MudAvatar>
+
+                <!-- Organization Details -->
+                <MudStack Spacing="2" Style="flex: 1;">
+                    <MudText Typo="Typo.h4" Class="mb-2">Muslim Community Center Amsterdam</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        <MudIcon Icon="Icons.Material.Filled.Star" Size="Size.Small" Class="mr-1" Style="color: #FFD700;"/>
+                        Verified Organization
+                    </MudText>
+
+                    <!-- Statistics -->
+                    <MudGrid Class="mt-4">
+                        <MudItem xs="4" Class="text-center">
+                            <MudText Typo="Typo.h5" Style="color: var(--mud-palette-primary);">127</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">reviews</MudText>
+                        </MudItem>
+                        <MudItem xs="4" Class="text-center">
+                            <MudStack AlignItems="AlignItems.Center" Spacing="1">
+                                <MudText Typo="Typo.h5" Style="color: var(--mud-palette-primary);">4.87★</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">overall rating</MudText>
+                            </MudStack>
+                        </MudItem>
+                        <MudItem xs="4" Class="text-center">
+                            <MudText Typo="Typo.h5" Style="color: var(--mud-palette-primary);">8</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">years hosting</MudText>
+                        </MudItem>
+                    </MudGrid>
+                </MudStack>
+            </MudStack>
+        </MudCardContent>
+    </MudCard>
+
+    <!-- Organization Information -->
+    <MudCard Class="mb-6">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h6">About the Organization</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudStack Spacing="3">
+                <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                    <MudIcon Icon="Icons.Material.Filled.Work" Color="Color.Primary"/>
+                    <MudText Typo="Typo.body1">Organization type: Religious organization</MudText>
+                </MudStack>
+                
+                <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                    <MudIcon Icon="Icons.Material.Filled.LocationOn" Color="Color.Primary"/>
+                    <MudText Typo="Typo.body1">Location: Amsterdam, Netherlands</MudText>
+                </MudStack>
+                
+                <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                    <MudIcon Icon="Icons.Material.Filled.FavoriteBorder" Color="Color.Primary"/>
+                    <MudText Typo="Typo.body1">Specialties: Community and educational events</MudText>
+                </MudStack>
+                
+                <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                    <MudIcon Icon="Icons.Material.Filled.Favorite" Color="Color.Primary"/>
+                    <MudText Typo="Typo.body1">What defines us: Building connections in the Muslim community</MudText>
+                </MudStack>
+            </MudStack>
+
+            <MudButton Variant="Variant.Outlined" 
+                     Class="mt-4"
+                     FullWidth="false">
+                Show all
+            </MudButton>
+        </MudCardContent>
+    </MudCard>
+
+    <!-- Reviews Section -->
+    <MudCard>
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                    <MudText Typo="Typo.h6">Reviews for this Organization</MudText>
+                    <MudIconButton Icon="Icons.Material.Filled.ChevronRight" Color="Color.Primary"/>
+                </MudStack>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudGrid>
+                <!-- Review 1 -->
+                <MudItem xs="12" md="4">
+                    <MudPaper Class="pa-4" Style="border-radius: 12px; background-color: var(--mud-palette-background-grey);">
+                        <MudStack Spacing="2">
+                            <!-- Reviewer Info -->
+                            <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                                <MudAvatar Size="Size.Medium">
+                                    <MudImage Src="https://via.placeholder.com/40x40/FF5722/FFFFFF?text=A" Alt="Ahmed"/>
+                                </MudAvatar>
+                                <MudStack Spacing="0">
+                                    <MudText Typo="Typo.subtitle2">Ahmed</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Amsterdam</MudText>
+                                </MudStack>
+                            </MudStack>
+
+                            <!-- Rating -->
+                            <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                                <MudRating ReadOnly="true" @bind-SelectedValue="@review1Rating" MaxValue="5"/>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">3 days ago</MudText>
+                            </MudStack>
+
+                            <!-- Review Text -->
+                            <MudText Typo="Typo.body2">
+                                I attended an excellent event organized by this organization. 
+                The welcome was warm and the organization was perfect. The event was very enriching 
+                and I was able to meet many wonderful people.
+                            </MudText>
+                        </MudStack>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Review 2 -->
+                <MudItem xs="12" md="4">
+                    <MudPaper Class="pa-4" Style="border-radius: 12px; background-color: var(--mud-palette-background-grey);">
+                        <MudStack Spacing="2">
+                            <!-- Reviewer Info -->
+                            <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                                <MudAvatar Size="Size.Medium">
+                                    <MudImage Src="https://via.placeholder.com/40x40/4CAF50/FFFFFF?text=F" Alt="Fatima"/>
+                                </MudAvatar>
+                                <MudStack Spacing="0">
+                                    <MudText Typo="Typo.subtitle2">Fatima</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Rotterdam</MudText>
+                                </MudStack>
+                            </MudStack>
+
+                            <!-- Rating -->
+                            <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                                <MudRating ReadOnly="true" @bind-SelectedValue="@review2Rating" MaxValue="5"/>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">1 week ago</MudText>
+                            </MudStack>
+
+                            <!-- Review Text -->
+                            <MudText Typo="Typo.body2">
+                                Very professional and welcoming organization. The events are 
+                always well prepared and the activities are varied. I highly recommend 
+                this organization to the entire community.
+                            </MudText>
+                        </MudStack>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Review 3 -->
+                <MudItem xs="12" md="4">
+                    <MudPaper Class="pa-4" Style="border-radius: 12px; background-color: var(--mud-palette-background-grey);">
+                        <MudStack Spacing="2">
+                            <!-- Reviewer Info -->
+                            <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                                <MudAvatar Size="Size.Medium">
+                                    <MudImage Src="https://via.placeholder.com/40x40/9C27B0/FFFFFF?text=Y" Alt="Yusuf"/>
+                                </MudAvatar>
+                                <MudStack Spacing="0">
+                                    <MudText Typo="Typo.subtitle2">Yusuf</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Den Haag</MudText>
+                                </MudStack>
+                            </MudStack>
+
+                            <!-- Rating -->
+                            <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                                <MudRating ReadOnly="true" @bind-SelectedValue="@review3Rating" MaxValue="5"/>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">2 weeks ago</MudText>
+                            </MudStack>
+
+                            <!-- Review Text -->
+                            <MudText Typo="Typo.body2">
+                                Excellent organization that does remarkable work to bring together 
+                the community. The events are high quality and the atmosphere is always 
+                friendly. Thank you for everything you do!
+                            </MudText>
+                        </MudStack>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+
+            <MudButton Variant="Variant.Outlined" 
+                     Class="mt-6"
+                     FullWidth="false"
+                     StartIcon="Icons.Material.Filled.RateReview">
+                Show more reviews
+            </MudButton>
+        </MudCardContent>
+    </MudCard>
+</MudContainer>
+
+@code {
+    private int review1Rating = 5;
+    private int review2Rating = 5;
+    private int review3Rating = 4;
+}
