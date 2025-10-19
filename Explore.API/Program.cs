@@ -2,6 +2,7 @@ using Explore.API.Middleware;
 using Explore.Application;
 using Explore.Infrastructure;
 using Explore.Persistence;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Scalar.AspNetCore;
@@ -103,8 +104,8 @@ builder.Host.UseSerilog((ctx, lc) =>
     lc.WriteTo.Console().ReadFrom.Configuration(ctx.Configuration));
 
 
-builder.Services.AddAuthentication()
-    .AddKeycloakJwtBearer("keycloak", realm: realm, options =>
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddKeycloakJwtBearer(JwtBearerDefaults.AuthenticationScheme, realm: realm, options =>
     {
         // will require when in prod... needs to fix this hardcoded value later...
         //options.RequireHttpsMetadata = false;
@@ -121,6 +122,7 @@ builder.Services.AddAuthentication()
 
         options.TokenValidationParameters = new TokenValidationParameters
         {
+            ValidateAudience = true,
             ValidateIssuer = true,
             // it only checks if envirement variable isnullorempty... I need audience to contain identity-api !!
             //ValidateAudience = !string.IsNullOrEmpty(builder.Configuration["Keycloak:Audience"]),
@@ -154,11 +156,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseMiddleware<ExceptionMiddleware>();
 app.MapControllers();
-
-app.UseEndpoints(endpoints =>
-{
-    endpoints.MapControllers();
-});
 
 app.Run();
 

@@ -73,7 +73,7 @@ var postgresqlSecrets = await LoadInfisicalEnvAsync(
     "/postgresql"
 );
 
-var startAfter = DateTime.Now.AddMinutes(1); // Set the start time to 1 minute from now
+var startAfter = DateTime.Now.AddSeconds(20); //set the start time later
 
 builder.Services.AddHealthChecks().AddCheck("mycheck", () =>
 {
@@ -92,26 +92,31 @@ var ExploreServer = builder.AddPostgres("ExploreServer", password: passwordParam
 var ExploreDB = ExploreServer.AddDatabase("ExploreDB");
 
 var realm = keycloakSecrets.TryGetValue("KEYCLOAK_REALM", out var r) ? r : "islamu-dev";
-var authority = $"http://localhost:8080/auth/realms/{realm}";
+var authority = $"https://keycloak.openislamu.org/realms/{realm}";
 
-builder.AddProject<Projects.Explore_Blazor>("explore-blazor")
+var exploreBlazor = builder.AddProject<Projects.Explore_Blazor>("explore-blazor")
     .WithEnvironment("Keycloak__Authority", authority)
     //.WithEnvironment("keycloak__Audience", "explore-api") there is no audiance for the blazor server...
-    .WithEnvironment("keycloak__Realm", realm)
-    .WithEnvironment("keycloak__ClientId", "explore-blazor-server")
-    .WithEnvironment("keycloak__ClientSecret", keycloakSecrets.TryGetValue("EXPLORE_BLAZOR_SERVER_CLIENT_SECRET", out var n) ? n : "")
-    .WithEnvironment("Keycloak__RequireHttpsMetadata", "false")
+    .WithEnvironment("Keycloak__Realm", realm)
+    .WithEnvironment("Keycloak__ClientId", "explore-blazor-server")
+    .WithEnvironment("Keycloak__ClientSecret", keycloakSecrets.TryGetValue("EXPLORE_BLAZOR_SERVER_CLIENT_SECRET_COOLIFY", out var n) ? n : "")
+    .WithEnvironment("Keycloak__RequireHttpsMetadata", "true")
     .WithEnvironment("ExploreAPI__BaseUrl","https://localhost:7039/")
     .WithReference(ExploreDB)
     .WaitFor(ExploreDB);
 
+// for url accessible from the internet, not needed!
+//var tunnel = builder.AddDevTunnel("tunnel", "islamu-dev-tunnel")
+//    .WithAnonymousAccess()
+//    .WaitFor(exploreBlazor)
+//    .WithReference(exploreBlazor);
 
 var exploreAPI = builder.AddProject<Projects.Explore_API>("explore-api")
     .WithEnvironment("Keycloak__Authority", authority)
-    .WithEnvironment("keycloak__Audience", "explore-api")
-    .WithEnvironment("keycloak__Realm", realm)
-    .WithEnvironment("keycloak__ClientId", "explore-api")
-    .WithEnvironment("Keycloak__RequireHttpsMetadata", "false")
+    .WithEnvironment("Keycloak__Audience", "explore-api")
+    .WithEnvironment("Keycloak__Realm", realm)
+    .WithEnvironment("Keycloak__ClientId", "explore-api")
+    .WithEnvironment("Keycloak__RequireHttpsMetadata", "true")
     .WithReference(ExploreDB)
     .WaitFor(ExploreDB);
 

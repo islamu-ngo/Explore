@@ -17,4 +17,8 @@
     <ProjectReference Include="..\Explore.Domain\Explore.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Contracts\Persistence\" />
+  </ItemGroup>
+
 </Project>

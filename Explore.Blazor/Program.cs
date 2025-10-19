@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Duende.AccessTokenManagement.OpenIdConnect;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using MudBlazor.Services;
 
@@ -27,11 +28,13 @@ builder.Services.AddAuthentication(options =>
     {
         options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
         options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
+        options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+        options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
     })
-    .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, o =>
+    .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
     {
-        o.LoginPath = "/login";
-        o.LogoutPath = "/logout";
+        options.LoginPath = "/login";
+        options.LogoutPath = "/logout";
         // Optional: secure cookie tweaks
         // o.Cookie.SameSite = SameSiteMode.Lax;
         // o.Cookie.SecurePolicy = CookieSecurePolicy.Always;
@@ -54,9 +57,9 @@ builder.Services.AddAuthentication(options =>
             StringComparison.OrdinalIgnoreCase
         );
 
-        // Default callback paths:
-        // options.CallbackPath = "/signin-oidc";
-        // options.SignedOutCallbackPath = "/signout-callback-oidc";
+        //Default callback paths:
+        options.CallbackPath = "/signin-oidc";
+        options.SignedOutCallbackPath = "/signout-callback-oidc";
 
         options.TokenValidationParameters = new TokenValidationParameters
         {
@@ -94,7 +97,24 @@ builder.Services.AddHttpClient("ExploreApi", client =>
         builder.Configuration["ExploreApi:BaseUrl"]
         ?? "https://localhost:7039/"
     );
-}).AddUserAccessTokenHandler();
+})
+    .AddUserAccessTokenHandler()
+    .ConfigurePrimaryHttpMessageHandler(() =>
+    {
+        var handler = new HttpClientHandler();
+
+        if (builder.Environment.IsDevelopment())
+        {
+            handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
+            {
+                // Accepter uniquement pour localhost
+                var isLocalhost = message.RequestUri?.Host.Contains("localhost") ?? false;
+                return isLocalhost || errors == System.Net.Security.SslPolicyErrors.None;
+            };
+        }
+
+        return handler;
+    });
 
 var app = builder.Build();
 
@@ -104,6 +124,96 @@ app.MapDefaultEndpoints();
 if (app.Environment.IsDevelopment())
 {
     app.UseWebAssemblyDebugging();
+    app.UseDeveloperExceptionPage();
+    app.MapGet("/test-api", async (HttpContext ctx, IHttpClientFactory f) =>
+    {
+        if (!ctx.User.Identity?.IsAuthenticated ?? true)
+        {
+            return Results.Content(@"
+                <html>
+                <body>
+                    <h1>? Non authentifié</h1>
+                    <p>Vous devez être connecté pour tester l'API.</p>
+                    <a href='/login?returnUrl=/test-api'>Se connecter</a>
+                </body>
+                </html>
+            ", "text/html");
+        }
+
+        try
+        {
+            var http = f.CreateClient("ExploreApi");
+
+            // Récupérer le token pour l'afficher
+            var token = await ctx.GetUserAccessTokenAsync();
+
+            // Appel à l'API
+            var response = await http.GetAsync("weatherforecast");
+            var content = await response.Content.ReadAsStringAsync();
+
+            var html = $@"
+                <html>
+                <head>
+                    <style>
+                        body {{ font-family: Arial, sans-serif; margin: 20px; }}
+                        .success {{ color: green; }}
+                        .error {{ color: red; }}
+                        pre {{ background: #f4f4f4; padding: 10px; border-radius: 5px; overflow-x: auto; }}
+                        .token {{ word-break: break-all; background: #ffffcc; padding: 10px; }}
+                    </style>
+                </head>
+                <body>
+                    <h1>Test d'appel API</h1>
+                    
+                    <h2>Utilisateur connecté</h2>
+                    <p><strong>Nom:</strong> {ctx.User.Identity?.Name}</p>
+                    
+                    <h2>Access Token (Bearer)</h2>
+                    <div class='token'>
+                        <small>{token}</small>
+                    </div>
+                    
+                    <h2>Résultat de l'appel à /weatherforecast</h2>
+                    {(response.IsSuccessStatusCode
+                        ? $"<p class='success'>? Succès - Status: {(int)response.StatusCode} {response.StatusCode}</p>"
+                        : $"<p class='error'>? Échec - Status: {(int)response.StatusCode} {response.StatusCode}</p>")}
+                    
+                    <h3>Réponse JSON:</h3>
+                    <pre>{System.Web.HttpUtility.HtmlEncode(content)}</pre>
+                    
+                    <h3>Claims utilisateur:</h3>
+                    <pre>{string.Join("\n", ctx.User.Claims.Select(c => $"{c.Type}: {c.Value}"))}</pre>
+                    
+                    <hr>
+                    <a href='/'>Retour à l'accueil</a> | 
+                    <a href='/test-api'>Rafraîchir</a> | 
+                    <a href='/logout'>Se déconnecter</a>
+                </body>
+                </html>
+            ";
+
+            return Results.Content(html, "text/html");
+        }
+        catch (Exception ex)
+        {
+            var errorHtml = $@"
+                <html>
+                <body>
+                    <h1 style='color: red;'>? Erreur lors de l'appel API</h1>
+                    <h2>Exception:</h2>
+                    <pre>{System.Web.HttpUtility.HtmlEncode(ex.ToString())}</pre>
+                    <hr>
+                    <a href='/test-api'>Réessayer</a> | 
+                    <a href='/'>Retour à l'accueil</a>
+                </body>
+                </html>
+            ";
+            return Results.Content(errorHtml, "text/html");
+        }
+    });
+}
+else
+{
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
     app.UseHsts();
 }
@@ -158,6 +268,7 @@ app.MapGet("/logout", async ctx =>
         OpenIdConnectDefaults.AuthenticationScheme,
         new AuthenticationProperties { RedirectUri = "/" }
     );
+    // return redirect to home page!
 });
 
 // BFF endpoints (server proxies to explore.api with the user token)
@@ -168,6 +279,17 @@ bff.MapGet("/events", async (IHttpClientFactory f) =>
 {
     var http = f.CreateClient("ExploreApi");
     var r = await http.GetAsync("events");
+    r.EnsureSuccessStatusCode();
+    return Results.Stream(
+        await r.Content.ReadAsStreamAsync(),
+        r.Content.Headers.ContentType?.ToString()
+    );
+});
+
+bff.MapGet("/weatherforecast", async (IHttpClientFactory f) =>
+{
+    var http = f.CreateClient("ExploreApi");
+    var r = await http.GetAsync("weatherforecast");
     r.EnsureSuccessStatusCode();
     return Results.Stream(
         await r.Content.ReadAsStreamAsync(),

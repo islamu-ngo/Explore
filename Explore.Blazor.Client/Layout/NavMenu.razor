@@ -28,10 +28,36 @@
                       Color="Color.Inherit"
                       OnClick="@OnToggleTheme" />
         <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="/myevents">Create</MudButton>
+        <AuthorizeView>
+	        <Authorized Context="auth">
+		        <MudMenu Dense="true">
+			        <ActivatorContent>
+				        <MudButton Variant="Variant.Text" Color="Color.Primary">
+					        @auth.User.Identity?.Name
+				        </MudButton>
+				        <MudButton OnClick="@Logout">Logout</MudButton>
+			        </ActivatorContent>
+		        </MudMenu>
+	        </Authorized>
+	        <NotAuthorized>
+		        <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="@Login">Login</MudButton>
+	        </NotAuthorized>
+        </AuthorizeView>
     </MudStack>
 
 @code {
     [Parameter] public EventCallback OnToggleTheme { get; set; }
     
     private string searchText = "";
+
+    private void Login()
+    {
+	    var returnUrl = Uri.EscapeDataString(Nav.Uri);
+	    Nav.NavigateTo($"/login?returnUrl={returnUrl}", forceLoad: true);
+    }
+
+    private void Logout()
+    {
+	    Nav.NavigateTo("/logout", forceLoad: true);
+    }
 }
