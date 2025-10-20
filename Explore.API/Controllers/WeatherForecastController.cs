@@ -5,7 +5,7 @@ namespace Explore.API.Controllers;
 
 [ApiController]
 [Route("[controller]")]
-//[Authorize]
+[Authorize]
 //[Authorize("Admin")]
 public class WeatherForecastController : ControllerBase
 {

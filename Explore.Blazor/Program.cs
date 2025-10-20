@@ -1,4 +1,4 @@
-using System.Net.Http.Headers;
+using Duende.AccessTokenManagement.OpenIdConnect;
 using Explore.Blazor.Client.Pages;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Components;
@@ -6,10 +6,13 @@ using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
-using Duende.AccessTokenManagement.OpenIdConnect;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using MudBlazor.Services;
+using System.Net.Http.Headers;
+//using NetEscapades.AspNetCore.SecurityHeaders.Infrastructure;
+// from this blazor bff template: https://github.com/damienbod/Blazor.BFF.OpenIDConnect.Template/blob/main/BlazorBffOpenIdConnect/Server/Program.cs
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,12 +27,40 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
     .AddInteractiveWebAssemblyComponents();
 
+builder.Services.AddHttpClient("ExploreApi", client =>
+    {
+        client.BaseAddress = new Uri(
+            builder.Configuration["ExploreApi:BaseUrl"]
+            ?? "https://localhost:7039/"
+        );
+    })
+    .AddUserAccessTokenHandler()
+    .ConfigurePrimaryHttpMessageHandler(() =>
+    {
+        var handler = new HttpClientHandler();
+
+        if (builder.Environment.IsDevelopment())
+        {
+            handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
+            {
+                // Accepter uniquement pour localhost
+                var isLocalhost = message.RequestUri?.Host.Contains("localhost") ?? false;
+                return isLocalhost || errors == System.Net.Security.SslPolicyErrors.None;
+            };
+        }
+
+        return handler;
+    });
+
+builder.Services.AddOptions();
+
+
 builder.Services.AddAuthentication(options =>
     {
         options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
         options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
-        options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-        options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+        //options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+        //options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
     })
     .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
     {
@@ -61,6 +92,9 @@ builder.Services.AddAuthentication(options =>
         options.CallbackPath = "/signin-oidc";
         options.SignedOutCallbackPath = "/signout-callback-oidc";
 
+        options.SignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+        options.ResponseType = OpenIdConnectResponseType.Code;
+
         options.TokenValidationParameters = new TokenValidationParameters
         {
             NameClaimType = "preferred_username",
@@ -91,30 +125,8 @@ builder.Services.AddOpenIdConnectAccessTokenManagement();
 
 builder.Services.AddCascadingAuthenticationState();
 
-builder.Services.AddHttpClient("ExploreApi", client =>
-{
-    client.BaseAddress = new Uri(
-        builder.Configuration["ExploreApi:BaseUrl"]
-        ?? "https://localhost:7039/"
-    );
-})
-    .AddUserAccessTokenHandler()
-    .ConfigurePrimaryHttpMessageHandler(() =>
-    {
-        var handler = new HttpClientHandler();
-
-        if (builder.Environment.IsDevelopment())
-        {
-            handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
-            {
-                // Accepter uniquement pour localhost
-                var isLocalhost = message.RequestUri?.Host.Contains("localhost") ?? false;
-                return isLocalhost || errors == System.Net.Security.SslPolicyErrors.None;
-            };
-        }
-
-        return handler;
-    });
+builder.Services.AddControllersWithViews(options =>
+    options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()));
 
 var app = builder.Build();
 
@@ -244,9 +256,12 @@ app.Use(async (ctx, next) =>
     await next();
 });
 
+app.UseRouting();
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
+app.MapControllers();
 
 // OIDC endpoints (instant 302 redirects)
 app.MapGet("/login", async ctx =>

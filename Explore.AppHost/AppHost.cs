@@ -93,6 +93,8 @@ var ExploreDB = ExploreServer.AddDatabase("ExploreDB");
 
 var realm = keycloakSecrets.TryGetValue("KEYCLOAK_REALM", out var r) ? r : "islamu-dev";
 var authority = $"https://keycloak.openislamu.org/realms/{realm}";
+var metadataAddress = $"{authority}/.well-known/openid-configuration";
+var authorizationUrl = $"{authority}/protocol/openid-connect/auth";
 
 var exploreBlazor = builder.AddProject<Projects.Explore_Blazor>("explore-blazor")
     .WithEnvironment("Keycloak__Authority", authority)
@@ -115,7 +117,10 @@ var exploreAPI = builder.AddProject<Projects.Explore_API>("explore-api")
     .WithEnvironment("Keycloak__Authority", authority)
     .WithEnvironment("Keycloak__Audience", "explore-api")
     .WithEnvironment("Keycloak__Realm", realm)
+    .WithEnvironment("Keycloak__MetadataAddress", metadataAddress)
+    .WithEnvironment("Keycloak__AuthorizationUrl", authorizationUrl)
     .WithEnvironment("Keycloak__ClientId", "explore-api")
+    //.WithEnvironment("Keycloak__ClientSecret", keycloakSecrets.TryGetValue("EXPLORE_API_CLIENT_SECRET_COOLIFY", out var y) ? n : "")
     .WithEnvironment("Keycloak__RequireHttpsMetadata", "true")
     .WithReference(ExploreDB)
     .WaitFor(ExploreDB);
