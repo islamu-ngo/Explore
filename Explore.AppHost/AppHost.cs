@@ -123,9 +123,9 @@ var exploreAPI = builder.AddProject<Projects.Explore_API>("explore-api")
     .WithEnvironment("Keycloak__AuthorizationUrl", authorizationUrl)
     .WithEnvironment("Keycloak__ClientId", "explore-api")
     //.WithEnvironment("Keycloak__ClientSecret", keycloakSecrets.TryGetValue("EXPLORE_API_CLIENT_SECRET_COOLIFY", out var y) ? n : "")
-    .WithEnvironment("Keycloak__RequireHttpsMetadata", "true")
-    .WithReference(ExploreDB)
-    .WaitFor(ExploreDB);
+    .WithEnvironment("Keycloak__RequireHttpsMetadata", "true");
+//.WithReference(ExploreDB)
+//.WaitFor(ExploreDB);
 
 foreach (var kv in apiSecrets)
 {
