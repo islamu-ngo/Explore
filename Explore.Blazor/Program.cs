@@ -11,6 +11,10 @@ using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using MudBlazor.Services;
 using System.Net.Http.Headers;
+using Explore.Blazor;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Server;
+
 //using NetEscapades.AspNetCore.SecurityHeaders.Infrastructure;
 // from this blazor bff template: https://github.com/damienbod/Blazor.BFF.OpenIDConnect.Template/blob/main/BlazorBffOpenIdConnect/Server/Program.cs
 
@@ -27,6 +31,9 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
     .AddInteractiveWebAssemblyComponents();
 
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddTransient<AuthorizationHandler>();
+
 builder.Services.AddHttpClient("ExploreApi", client =>
     {
         client.BaseAddress = new Uri(
@@ -34,6 +41,7 @@ builder.Services.AddHttpClient("ExploreApi", client =>
             ?? "https://localhost:7039/"
         );
     })
+    //.AddHttpMessageHandler<AuthorizationHandler>()
     .AddUserAccessTokenHandler()
     .ConfigurePrimaryHttpMessageHandler(() =>
     {
@@ -52,8 +60,80 @@ builder.Services.AddHttpClient("ExploreApi", client =>
         return handler;
     });
 
+//builder.Services.AddHttpClient("ExploreApi", client =>
+//    {
+//        client.BaseAddress = new Uri(
+//            builder.Configuration["ExploreApi:BaseUrl"]
+//            ?? "https://localhost:7039/"
+//        );
+//    })
+//    .AddUserAccessTokenHandler()
+//    .ConfigurePrimaryHttpMessageHandler(() =>
+//    {
+//        var handler = new HttpClientHandler();
+
+//        if (builder.Environment.IsDevelopment())
+//        {
+//            handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
+//            {
+//                // Accepter uniquement pour localhost
+//                var isLocalhost = message.RequestUri?.Host.Contains("localhost") ?? false;
+//                return isLocalhost || errors == System.Net.Security.SslPolicyErrors.None;
+//            };
+//        }
+
+//        return handler;
+//    });
+
 builder.Services.AddOptions();
 
+//var authBuilder = builder.Services.AddAuthentication("Keycloak");
+
+//authBuilder
+//    .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme)
+//    .AddOpenIdConnect(authenticationScheme: "Keycloak", options =>
+//    {
+//        // From configuration/Infisical
+//        options.Authority = builder.Configuration["Keycloak:Authority"];
+//        options.ClientId = builder.Configuration["Keycloak:ClientId"];       // explore-blazor-server
+//        options.ClientSecret = builder.Configuration["Keycloak:ClientSecret"]; // confidential
+//        options.ResponseType = "code";
+//        options.UsePkce = true;
+//        options.SaveTokens = true; // keep access/refresh tokens in auth cookie
+//        options.GetClaimsFromUserInfoEndpoint = true;
+
+//        options.RequireHttpsMetadata = string.Equals(
+//            builder.Configuration["Keycloak:RequireHttpsMetadata"],
+//            "true",
+//            StringComparison.OrdinalIgnoreCase
+//        );
+
+//        //Default callback paths:
+//        options.CallbackPath = "/signin-oidc";
+//        options.SignedOutCallbackPath = "/signout-callback-oidc";
+
+//        options.SignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+//        options.ResponseType = OpenIdConnectResponseType.Code;
+
+//        options.TokenValidationParameters = new TokenValidationParameters
+//        {
+//            NameClaimType = "preferred_username",
+//            RoleClaimType = "roles" // add a Keycloak mapper to emit flat "roles"
+//        };
+
+//        //The Scope.Clear() + Scope.Add() pattern exists because:
+//        //1.Default scopes: The OIDC handler adds default scopes automatically(openid, profile, and sometimes others depending on the library version)
+//        //2.Explicit control: Some developers want to be 100 % sure of what's being requested
+//        //3.Legacy / documentation: Many examples show this pattern for clarity 
+//        //You don't actually need it
+
+//        //options.Scope.Clear();
+//        //options.Scope.Add("openid");
+//        //options.Scope.Add("profile");
+//        //options.Scope.Add("email");
+//        // If you created a custom audience scope for the API, request it here too
+//        // options.Scope.Add("aud-identity-api");
+//    });
 
 builder.Services.AddAuthentication(options =>
     {
@@ -106,7 +186,7 @@ builder.Services.AddAuthentication(options =>
         //2.Explicit control: Some developers want to be 100 % sure of what's being requested
         //3.Legacy / documentation: Many examples show this pattern for clarity 
         //You don't actually need it
-        
+
         //options.Scope.Clear();
         //options.Scope.Add("openid");
         //options.Scope.Add("profile");
@@ -115,14 +195,22 @@ builder.Services.AddAuthentication(options =>
         // options.Scope.Add("aud-identity-api");
     });
 
-builder.Services.AddAuthorization();
-
 // Antiforgery for BFF endpoints
 builder.Services.AddAntiforgery(o => o.HeaderName = "X-CSRF-TOKEN");
 
 // Automatic user access token attach/refresh for calls to explore.api
+//builder.Services.AddOpenIdConnectAccessTokenManagement(options =>
+//{
+//    options.ChallengeScheme = "Keycloak";
+//    options.
+//});
+
 builder.Services.AddOpenIdConnectAccessTokenManagement();
 
+
+builder.Services.AddAuthorizationBuilder();
+//builder.Services.AddAuthorization();
+builder.Services.AddScoped<AuthenticationStateProvider, ServerAuthenticationStateProvider>();
 builder.Services.AddCascadingAuthenticationState();
 
 builder.Services.AddControllersWithViews(options =>
@@ -263,7 +351,14 @@ app.UseAuthorization();
 app.UseAntiforgery();
 app.MapControllers();
 
-// OIDC endpoints (instant 302 redirects)
+app.MapGet("/authentication/login", () =>
+{
+    return TypedResults.Challenge(
+        new AuthenticationProperties { RedirectUri = "/" }
+        , ["Keycloak"]);
+}).AllowAnonymous();
+
+//OIDC endpoints(instant 302 redirects)
 app.MapGet("/login", async ctx =>
 {
     var returnUrl = ctx.Request.Query["returnUrl"].ToString();

@@ -80,16 +80,17 @@ builder.Services.AddHealthChecks().AddCheck("mycheck", () =>
     return DateTime.Now > startAfter ? HealthCheckResult.Healthy() : HealthCheckResult.Unhealthy();
 });
 
-string postgresPassword = postgresqlSecrets.TryGetValue("POSTGRESQL_SERVER_PASSWORD", out var pgServerPass) && pgServerPass != null
-    ? pgServerPass
-    : "defaultpassword";
+// Below is the code to add Postgres, I now will add an already deployed postgresql connection information
+//string postgresPassword = postgresqlSecrets.TryGetValue("POSTGRESQL_SERVER_PASSWORD", out var pgServerPass) && pgServerPass != null
+//    ? pgServerPass
+//    : "defaultpassword";
 
-var passwordParam = builder.AddParameter("postgres-password", postgresPassword);
+//var passwordParam = builder.AddParameter("postgres-password", postgresPassword);
 
-var ExploreServer = builder.AddPostgres("ExploreServer", password: passwordParam)
-    .WithDataVolume(isReadOnly: false)
-    .WithHealthCheck("mycheck");
-var ExploreDB = ExploreServer.AddDatabase("ExploreDB");
+//var ExploreServer = builder.AddPostgres("ExploreServer", password: passwordParam)
+//    .WithDataVolume(isReadOnly: false)
+//    .WithHealthCheck("mycheck");
+//var ExploreDB = ExploreServer.AddDatabase("ExploreDB");
 
 var realm = keycloakSecrets.TryGetValue("KEYCLOAK_REALM", out var r) ? r : "islamu-dev";
 var authority = $"https://keycloak.openislamu.org/realms/{realm}";
@@ -101,11 +102,12 @@ var exploreBlazor = builder.AddProject<Projects.Explore_Blazor>("explore-blazor"
     //.WithEnvironment("keycloak__Audience", "explore-api") there is no audiance for the blazor server...
     .WithEnvironment("Keycloak__Realm", realm)
     .WithEnvironment("Keycloak__ClientId", "explore-blazor-server")
-    .WithEnvironment("Keycloak__ClientSecret", keycloakSecrets.TryGetValue("EXPLORE_BLAZOR_SERVER_CLIENT_SECRET_COOLIFY", out var n) ? n : "")
+    .WithEnvironment("Keycloak__ClientSecret",
+        keycloakSecrets.TryGetValue("EXPLORE_BLAZOR_SERVER_CLIENT_SECRET_COOLIFY", out var n) ? n : "")
     .WithEnvironment("Keycloak__RequireHttpsMetadata", "true")
-    .WithEnvironment("ExploreAPI__BaseUrl","https://localhost:7039/")
-    .WithReference(ExploreDB)
-    .WaitFor(ExploreDB);
+    .WithEnvironment("ExploreAPI__BaseUrl", "https://localhost:7039/");
+    //.WithReference(ExploreDB)
+    //.WaitFor(ExploreDB);
 
 // for url accessible from the internet, not needed!
 //var tunnel = builder.AddDevTunnel("tunnel", "islamu-dev-tunnel")
