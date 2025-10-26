@@ -4,13 +4,16 @@ using Explore.Application;
 using Explore.Infrastructure;
 using Explore.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
+//using Microsoft.OpenApi.Models;
 using Scalar.AspNetCore;
 using Serilog;
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text.RegularExpressions;
+using Microsoft.OpenApi;
+using static Microsoft.AspNetCore.Http.StatusCodes;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -36,46 +39,46 @@ builder.Services.AddEndpointsApiExplorer();
 //builder.Services.AddSwaggerGen(); // moved to AddSwaggerGenWithAuth extension method
 builder.Services.AddSwaggerGenWithAuth(builder.Configuration);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi(opt =>
-{
-    opt.AddDocumentTransformer((document, context, CancellationToken) =>
-    {
-        document.Info.Title = "ISLAMU Explore API";
-        document.Info.Contact = new OpenApiContact()
-        {
-            Name = "Amir",
-            Email = "contact@openislamu.org"
-        };
+//builder.Services.AddOpenApi(opt =>
+//{
+//    opt.AddDocumentTransformer((document, context, CancellationToken) =>
+//    {
+//        document.Info.Title = "ISLAMU Explore API";
+//        document.Info.Contact = new OpenApiContact()
+//        {
+//            Name = "Amir",
+//            Email = "contact@openislamu.org"
+//        };
 
-        // Add JWT Bearer security scheme
-        document.Components ??= new();
-        document.Components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
-        {
-            Type = SecuritySchemeType.Http,
-            Scheme = "bearer",
-            BearerFormat = "JWT",
-            Description = "Enter JWT Bearer token"
-        };
+//        // Add JWT Bearer security scheme
+//        document.Components ??= new();
+//        document.Components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
+//        {
+//            Type = SecuritySchemeType.Http,
+//            Scheme = "bearer",
+//            BearerFormat = "JWT",
+//            Description = "Enter JWT Bearer token"
+//        };
 
-        // Add global security requirement
-        document.SecurityRequirements.Add(new OpenApiSecurityRequirement
-        {
-            {
-                new OpenApiSecurityScheme
-                {
-                    Reference = new OpenApiReference
-                    {
-                        Type = ReferenceType.SecurityScheme,
-                        Id = "Bearer"
-                    }
-                },
-                Array.Empty<string>()
-            }
-        });
+//        // Add global security requirement
+//        document.SecurityRequirements.Add(new OpenApiSecurityRequirement
+//        {
+//            {
+//                new OpenApiSecurityScheme
+//                {
+//                    Reference = new OpenApiReference
+//                    {
+//                        Type = ReferenceType.SecurityScheme,
+//                        Id = "Bearer"
+//                    }
+//                },
+//                Array.Empty<string>()
+//            }
+//        });
 
-        return Task.CompletedTask;
-    });
-});
+//        return Task.CompletedTask;
+//    });
+//});
 
 builder.Services.AddCors(options =>
 {
@@ -142,59 +145,29 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ServerCertificateCustomValidationCallback =
                 HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
         };
-
-        options.Events = new JwtBearerEvents
-        {
-            OnMessageReceived = ctx =>
-            {
-                var raw = ctx.Request.Headers["Authorization"].FirstOrDefault();
-                if (string.IsNullOrWhiteSpace(raw))
-                {
-                    Console.WriteLine("[JWT] No Authorization header");
-                    return Task.CompletedTask;
-                }
-
-                if (!AuthenticationHeaderValue.TryParse(raw, out var header))
-                {
-                    Console.WriteLine("[JWT] Cannot parse Authorization header");
-                    return Task.CompletedTask;
-                }
-
-                if (!"Bearer".Equals(header.Scheme, StringComparison.OrdinalIgnoreCase))
-                {
-                    Console.WriteLine("[JWT] Authorization scheme is not Bearer");
-                    return Task.CompletedTask;
-                }
-
-                var token = header.Parameter?.Trim().Trim('"', '\'');
-                if (!string.IsNullOrWhiteSpace(token))
-                {
-                    // Optional sanity check (3 segments)
-                    var dots = token.Count(c => c == '.');
-                    Console.WriteLine($"[JWT] Using token, dots={dots}");
-                    ctx.Token = token;
-                }
-                else
-                {
-                    Console.WriteLine("[JWT] Bearer token parameter is empty");
-                }
-
-                return Task.CompletedTask;
-            },
-            OnAuthenticationFailed = context =>
-            {
-                Console.WriteLine("???????????????????????????????????????");
-                Console.WriteLine("? ÉCHEC D'AUTHENTIFICATION JWT");
-                Console.WriteLine($"Exception: {context.Exception.GetType().Name}");
-                Console.WriteLine($"Message: {context.Exception.Message}");
-                Console.WriteLine("???????????????????????????????????????");
-                return Task.CompletedTask;
-            }
-        };
     });
 
 builder.Services.AddAuthorizationBuilder();
 //builder.Services.AddAuthorization();
+
+builder.Services.AddHsts(options =>
+{
+    options.Preload = true;
+    options.IncludeSubDomains = true;
+    options.MaxAge = TimeSpan.FromDays(365);
+    //options.ExcludedHosts.Add("example.com");
+    //options.ExcludedHosts.Add("www.example.com");
+});
+
+// En dev, votre HTTPS local est sur 7039; en prod, laissez null (443 par défaut)
+builder.Services.AddHttpsRedirection(options =>
+{
+    options.RedirectStatusCode = StatusCodes.Status308PermanentRedirect;
+    if (builder.Environment.IsDevelopment())
+    {
+        options.HttpsPort = 7039;
+    }
+});
 
 var app = builder.Build();
 
@@ -203,38 +176,6 @@ if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
     Microsoft.IdentityModel.Logging.IdentityModelEventSource.ShowPII = true;
-
-    app.MapGet("/debug/jwks", async () =>
-    {
-        try
-        {
-            var handler = new HttpClientHandler
-            {
-                ServerCertificateCustomValidationCallback =
-                    HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
-            };
-
-            var client = new HttpClient(handler);
-            var jwksUrl = $"{authority}/protocol/openid-connect/certs";
-            var response = await client.GetStringAsync(jwksUrl);
-
-            return Results.Ok(new
-            {
-                jwksUrl,
-                success = true,
-                response
-            });
-        }
-        catch (Exception ex)
-        {
-            return Results.Ok(new
-            {
-                success = false,
-                error = ex.Message,
-                innerError = ex.InnerException?.Message
-            });
-        }
-    });
 
     //Microsoft.IdentityModel.Tokens.JsonWebTokenHandler.DefaultMapInboundClaims = false;
     app.MapOpenApi();
@@ -246,7 +187,17 @@ if (app.Environment.IsDevelopment())
 else
 {
     app.UseCors("InternalAppPolicy");
+    app.UseExceptionHandler("/Error");
+    app.UseHsts();
 }
+
+//app.UseForwardedHeaders(new ForwardedHeadersOptions
+//{
+//    ForwardedHeaders = ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedFor,
+//    // En environnement conteneur/proxy, on nettoie pour accepter les proxies dynamiques
+//    KnownNetworks = { }, // vide
+//    KnownProxies = { }   // vide
+//});
 
 app.UseHttpsRedirection();
 app.UseRouting();
@@ -255,10 +206,10 @@ app.UseAuthorization();
 app.UseMiddleware<ExceptionMiddleware>();
 app.MapControllers();
 
-app.MapGet("users/me", (ClaimsPrincipal claimsPrincipal) =>
-{
-    return claimsPrincipal.Claims.ToDictionary(c => c.Type, c => c.Value);
-}).RequireAuthorization();
+//app.MapGet("users/me", (ClaimsPrincipal claimsPrincipal) =>
+//{
+//    return claimsPrincipal.Claims.ToDictionary(c => c.Type, c => c.Value);
+//}).RequireAuthorization();
 
 app.Run();
 

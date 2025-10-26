@@ -35,7 +35,7 @@
 				        <MudButton Variant="Variant.Text" Color="Color.Primary">
 					        @auth.User.Identity?.Name
 				        </MudButton>
-				        <MudButton OnClick="@Logout">Logout</MudButton>
+						<MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="@Logout">Logout</MudButton>
 			        </ActivatorContent>
 		        </MudMenu>
 	        </Authorized>
@@ -53,6 +53,7 @@
     private void Login()
     {
 	    var returnUrl = Uri.EscapeDataString(Nav.Uri);
+	    //Nav.NavigateTo($"/authentication/login", forceLoad: true);
 	    Nav.NavigateTo($"/login?returnUrl={returnUrl}", forceLoad: true);
     }
 
