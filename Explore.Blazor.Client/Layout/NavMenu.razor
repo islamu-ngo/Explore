@@ -9,8 +9,6 @@
 
     <!-- Center: main links -->
     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
-        <!-- Home link - will be updated dynamically -->
-        <MudNavLink Href="@homeUrl" Match="NavLinkMatch.Prefix" id="home-link">Home</MudNavLink>
         <MudNavLink Href="/events" Match="NavLinkMatch.Prefix">Events</MudNavLink>
         <MudTextField @bind-Value="searchText" 
                      Placeholder="Search events..." 
@@ -41,7 +39,6 @@
     [Parameter] public EventCallback OnToggleTheme { get; set; }
     
     private string searchText = "";
-    private string homeUrl = "/welcome"; // Default to welcome page
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -64,15 +61,11 @@
                             credentials: 'same-origin'
                         });
                         const authButtons = document.getElementById('auth-buttons');
-                        const homeLink = document.getElementById('home-link');
                         
                         if (response.ok && response.status === 200) {
                             const authInfo = await response.json();
                             if (authInfo.isAuthenticated && authInfo.name) {
                                 // User is authenticated
-                                if (homeLink) {
-                                    homeLink.href = '/';
-                                }
                                 if (authButtons) {
                                     authButtons.innerHTML = `
                                         <div class='mud-menu mud-menu-dense'>
@@ -97,9 +90,6 @@
                                 }
                             } else {
                                 // User is not authenticated
-                                if (homeLink) {
-                                    homeLink.href = '/welcome';
-                                }
                                 if (authButtons) {
                                     authButtons.innerHTML = `
                                         <a href='/login' class='mud-button-root mud-button mud-button-text mud-button-text-primary mud-button-text-size-medium mud-ripple'>
@@ -115,17 +105,10 @@
                             }
                         } else {
                             // Default to not authenticated
-                            if (homeLink) {
-                                homeLink.href = '/welcome';
-                            }
                         }
                     } catch (error) {
                         console.log('Auth UI update failed:', error);
                         // Default to not authenticated on error
-                        const homeLink = document.getElementById('home-link');
-                        if (homeLink) {
-                            homeLink.href = '/welcome';
-                        }
                     }
                 })();
             ");
