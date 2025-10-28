@@ -1,0 +1,189 @@
+@page "/dashboard"
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+@using MudBlazor
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Nav
+
+<PageTitle>ISLAMU Explore - Dashboard</PageTitle>
+
+<style>
+.user-dashboard {
+    padding: 32px 0;
+}
+.welcome-section {
+    background: linear-gradient(135deg, #1976D2 0%, #42A5F5 100%);
+    color: white;
+    padding: 48px 32px;
+    border-radius: 16px;
+    margin-bottom: 32px;
+    text-align: center;
+}
+.quick-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 24px;
+    margin-bottom: 32px;
+}
+.action-card {
+    padding: 24px;
+    background: var(--mud-palette-background-paper);
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    text-align: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.action-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+}
+.recent-events {
+    margin-top: 32px;
+}
+</style>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="user-dashboard">
+    <!-- Welcome Section -->
+    <div class="welcome-section">
+        <MudText Typo="Typo.h3" Style="margin-bottom: 16px; font-weight: 600;">
+            Welcome back!
+        </MudText>
+        <MudText Typo="Typo.h6" Style="opacity: 0.9;">
+            Ready to explore and connect with your Islamic community?
+        </MudText>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+        <div class="action-card">
+            <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Large" Color="Color.Primary" Style="margin-bottom: 16px;" />
+            <MudText Typo="Typo.h6" Style="margin-bottom: 8px; font-weight: 600;">Create Event</MudText>
+            <MudText Typo="Typo.body2" Style="margin-bottom: 16px; color: var(--mud-palette-text-secondary);">
+                Organize and share events with the community
+            </MudText>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Href="/myevents">
+                Create New Event
+            </MudButton>
+        </div>
+
+        <div class="action-card">
+            <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Large" Color="Color.Secondary" Style="margin-bottom: 16px;" />
+            <MudText Typo="Typo.h6" Style="margin-bottom: 8px; font-weight: 600;">Browse Events</MudText>
+            <MudText Typo="Typo.body2" Style="margin-bottom: 16px; color: var(--mud-palette-text-secondary);">
+                Discover upcoming events in your community
+            </MudText>
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" FullWidth="true" Href="/events">
+                View All Events
+            </MudButton>
+        </div>
+
+        <div class="action-card">
+            <MudIcon Icon="@Icons.Material.Filled.Group" Size="Size.Large" Color="Color.Tertiary" Style="margin-bottom: 16px;" />
+            <MudText Typo="Typo.h6" Style="margin-bottom: 8px; font-weight: 600;">My Events</MudText>
+            <MudText Typo="Typo.body2" Style="margin-bottom: 16px; color: var(--mud-palette-text-secondary);">
+                Manage events you've created or joined
+            </MudText>
+            <MudButton Variant="Variant.Outlined" Color="Color.Tertiary" FullWidth="true" Href="/my-events">
+                Manage Events
+            </MudButton>
+        </div>
+    </div>
+
+    <!-- Recent Events Section -->
+    <div class="recent-events">
+        <MudText Typo="Typo.h4" Style="margin-bottom: 24px; font-weight: 600;">
+            Upcoming Events Near You
+        </MudText>
+        
+        <MudGrid>
+            @foreach (var eventItem in RecentEvents)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <MudCard Style="height: 100%; cursor: pointer;" @onclick="() => ViewEvent(eventItem)">
+                        <MudCardContent>
+                            <MudText Typo="Typo.h6" Style="margin-bottom: 8px; font-weight: 600;">
+                                @eventItem.Title
+                            </MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Primary" Style="margin-bottom: 8px;">
+                                @eventItem.Date.ToString("MMM dd, yyyy") · @eventItem.Type.ToUpper()
+                            </MudText>
+                            <MudText Typo="Typo.body2" Style="color: var(--mud-palette-text-secondary);">
+                                @eventItem.Description
+                            </MudText>
+                        </MudCardContent>
+                        <MudCardActions>
+                            <MudButton Size="Size.Small" Color="Color.Primary">Learn More</MudButton>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+
+        @if (!RecentEvents.Any())
+        {
+            <MudAlert Severity="Severity.Info" Style="margin-top: 16px;">
+                No upcoming events found. Check back soon or create your own event to get started!
+            </MudAlert>
+        }
+    </div>
+</MudContainer>
+
+@code {
+    private List<EventMock> RecentEvents = new()
+    {
+        new EventMock { Title = "Islamic Finance Workshop", Date = DateTime.Today.AddDays(1), Type = "workshop", Description = "Learn about Islamic finance principles and their modern applications." },
+        new EventMock { Title = "Quran Study Circle", Date = DateTime.Today.AddDays(3), Type = "lecture", Description = "Join our Quran study circle to deepen your understanding." },
+        new EventMock { Title = "Community Iftar", Date = DateTime.Today.AddDays(5), Type = "social", Description = "Share a meal and connect with fellow Muslims." },
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Verify user is authenticated, redirect if not
+        try
+        {
+            var isAuthenticated = await JSRuntime.InvokeAsync<bool>("eval", @"
+                (async function() {
+                    try {
+                        const response = await fetch('/auth/status');
+                        if (response.ok) {
+                            const authStatus = await response.json();
+                            return authStatus && authStatus.isAuthenticated;
+                        }
+                        return false;
+                    } catch (error) {
+                        return false;
+                    }
+                })();
+            ");
+
+            if (!isAuthenticated)
+            {
+                Nav.NavigateTo("/welcome", true);
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            // If there's an error checking auth, redirect to welcome
+            Console.WriteLine($"Error checking authentication: {ex.Message}");
+            Nav.NavigateTo("/welcome", true);
+            return;
+        }
+
+        await base.OnInitializedAsync();
+    }
+
+    private void ViewEvent(EventMock eventItem)
+    {
+        // Navigate to event details (to be implemented)
+        Nav.NavigateTo($"/events/{eventItem.Title.Replace(" ", "-").ToLower()}");
+    }
+
+    private class EventMock
+    {
+        public string Title { get; set; } = "";
+        public DateTime Date { get; set; }
+        public string Type { get; set; } = "";
+        public string Description { get; set; } = "";
+    }
+}

@@ -1,5 +1,5 @@
 ﻿@inject NavigationManager Nav
-@using Microsoft.AspNetCore.Components.Authorization
+@inject IJSRuntime JSRuntime
 
     <MudStack Row="true" Spacing="1">
         <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Favorite" Color="Color.Error">ISLAMU Explore</MudNavLink>
@@ -9,6 +9,8 @@
 
     <!-- Center: main links -->
     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+        <!-- Home link - will be updated dynamically -->
+        <MudNavLink Href="@homeUrl" Match="NavLinkMatch.Prefix" id="home-link">Home</MudNavLink>
         <MudNavLink Href="/events" Match="NavLinkMatch.Prefix">Events</MudNavLink>
         <MudTextField @bind-Value="searchText" 
                      Placeholder="Search events..." 
@@ -28,37 +30,110 @@
                       Color="Color.Inherit"
                       OnClick="@OnToggleTheme" />
         <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="/myevents">Create</MudButton>
-        <AuthorizeView>
-	        <Authorized Context="auth">
-		        <MudMenu Dense="true">
-			        <ActivatorContent>
-				        <MudButton Variant="Variant.Text" Color="Color.Primary">
-					        @auth.User.Identity?.Name
-				        </MudButton>
-						<MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="@Logout">Logout</MudButton>
-			        </ActivatorContent>
-		        </MudMenu>
-	        </Authorized>
-	        <NotAuthorized>
-		        <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="@Login">Login</MudButton>
-	        </NotAuthorized>
-        </AuthorizeView>
+        
+        <!-- Auth buttons - will be updated dynamically -->
+        <div id="auth-buttons">
+            <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/login" StartIcon="@Icons.Material.Filled.Login">Login</MudButton>
+        </div>
     </MudStack>
 
 @code {
     [Parameter] public EventCallback OnToggleTheme { get; set; }
     
     private string searchText = "";
+    private string homeUrl = "/welcome"; // Default to welcome page
 
-    private void Login()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-	    var returnUrl = Uri.EscapeDataString(Nav.Uri);
-	    //Nav.NavigateTo($"/authentication/login", forceLoad: true);
-	    Nav.NavigateTo($"/login?returnUrl={returnUrl}", forceLoad: true);
+        if (firstRender)
+        {
+            // Update navigation based on authentication status
+            await UpdateAuthenticationUI();
+        }
     }
 
-    private void Logout()
+    private async Task UpdateAuthenticationUI()
     {
-	    Nav.NavigateTo("/logout", forceLoad: true);
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                (async function() {
+                    try {
+                        const response = await fetch('/auth/status', {
+                            method: 'GET',
+                            credentials: 'same-origin'
+                        });
+                        const authButtons = document.getElementById('auth-buttons');
+                        const homeLink = document.getElementById('home-link');
+                        
+                        if (response.ok && response.status === 200) {
+                            const authInfo = await response.json();
+                            if (authInfo.isAuthenticated && authInfo.name) {
+                                // User is authenticated
+                                if (homeLink) {
+                                    homeLink.href = '/';
+                                }
+                                if (authButtons) {
+                                    authButtons.innerHTML = `
+                                        <div class='mud-menu mud-menu-dense'>
+                                            <button class='mud-button-root mud-button mud-button-text mud-button-text-primary mud-button-text-size-medium mud-ripple' type='button'>
+                                                <span class='mud-button-start-icon-container'>
+                                                    <svg class='mud-icon-root mud-svg-icon mud-icon-size-medium' focusable='false' viewBox='0 0 24 24' aria-hidden='true'>
+                                                        <path d='M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 1.5V3H9V1.5L3 7V9H4L5 16L6 21H18L19 16L20 9H21ZM7 9H17L16.5 14H7.5L7 9Z'></path>
+                                                    </svg>
+                                                </span>
+                                                <span class='mud-button-label'>${authInfo.name}</span>
+                                            </button>
+                                        </div>
+                                        <a href='/logout' class='mud-button-root mud-button mud-button-text mud-button-text-primary mud-button-text-size-medium mud-ripple' style='margin-left: 8px;'>
+                                            <span class='mud-button-start-icon-container'>
+                                                <svg class='mud-icon-root mud-svg-icon mud-icon-size-medium' focusable='false' viewBox='0 0 24 24' aria-hidden='true'>
+                                                    <path d='M17,7L15.59,8.41L18.17,11H8V13H18.17L15.59,15.59L17,17L22,12L17,7M4,5H12V3H4C2.89,3 2,3.9 2,5V19A2,2 0 0,0 4,21H12V19H4V5Z'></path>
+                                                </svg>
+                                            </span>
+                                            <span class='mud-button-label'>Logout</span>
+                                        </a>
+                                    `;
+                                }
+                            } else {
+                                // User is not authenticated
+                                if (homeLink) {
+                                    homeLink.href = '/welcome';
+                                }
+                                if (authButtons) {
+                                    authButtons.innerHTML = `
+                                        <a href='/login' class='mud-button-root mud-button mud-button-text mud-button-text-primary mud-button-text-size-medium mud-ripple'>
+                                            <span class='mud-button-start-icon-container'>
+                                                <svg class='mud-icon-root mud-svg-icon mud-icon-size-medium' focusable='false' viewBox='0 0 24 24' aria-hidden='true'>
+                                                    <path d='M10,17V14H3V10H10V7L15,12L10,17M10,2H19A2,2 0 0,1 21,4V20A2,2 0 0,1 19,22H10A2,2 0 0,1 8,20V18H10V20H19V4H10V6H8V4A2,2 0 0,1 10,2Z'></path>
+                                                </svg>
+                                            </span>
+                                            <span class='mud-button-label'>Login</span>
+                                        </a>
+                                    `;
+                                }
+                            }
+                        } else {
+                            // Default to not authenticated
+                            if (homeLink) {
+                                homeLink.href = '/welcome';
+                            }
+                        }
+                    } catch (error) {
+                        console.log('Auth UI update failed:', error);
+                        // Default to not authenticated on error
+                        const homeLink = document.getElementById('home-link');
+                        if (homeLink) {
+                            homeLink.href = '/welcome';
+                        }
+                    }
+                })();
+            ");
+        }
+        catch (Exception ex)
+        {
+            // Fallback - keep default values
+            Console.WriteLine($"Failed to update auth UI: {ex.Message}");
+        }
     }
 }

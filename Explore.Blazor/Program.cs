@@ -232,8 +232,8 @@ if (app.Environment.IsDevelopment())
             return Results.Content(@"
                 <html>
                 <body>
-                    <h1>? Non authentifié</h1>
-                    <p>Vous devez être connecté pour tester l'API.</p>
+                    <h1>? Non authentifiï¿½</h1>
+                    <p>Vous devez ï¿½tre connectï¿½ pour tester l'API.</p>
                     <a href='/login?returnUrl=/test-api'>Se connecter</a>
                 </body>
                 </html>
@@ -244,10 +244,10 @@ if (app.Environment.IsDevelopment())
         {
             var http = f.CreateClient("ExploreApi");
 
-            // Récupérer le token pour l'afficher
+            // Rï¿½cupï¿½rer le token pour l'afficher
             var token = await ctx.GetUserAccessTokenAsync();
 
-            // Appel à l'API
+            // Appel ï¿½ l'API
             var response = await http.GetAsync("weatherforecast");
             var content = await response.Content.ReadAsStringAsync();
 
@@ -265,7 +265,7 @@ if (app.Environment.IsDevelopment())
                 <body>
                     <h1>Test d'appel API</h1>
                     
-                    <h2>Utilisateur connecté</h2>
+                    <h2>Utilisateur connectï¿½</h2>
                     <p><strong>Nom:</strong> {ctx.User.Identity?.Name}</p>
                     
                     <h2>Access Token (Bearer)</h2>
@@ -273,21 +273,21 @@ if (app.Environment.IsDevelopment())
                         <small>{token}</small>
                     </div>
                     
-                    <h2>Résultat de l'appel à /weatherforecast</h2>
+                    <h2>Rï¿½sultat de l'appel ï¿½ /weatherforecast</h2>
                     {(response.IsSuccessStatusCode
-                        ? $"<p class='success'>? Succès - Status: {(int)response.StatusCode} {response.StatusCode}</p>"
-                        : $"<p class='error'>? Échec - Status: {(int)response.StatusCode} {response.StatusCode}</p>")}
+                        ? $"<p class='success'>? Succï¿½s - Status: {(int)response.StatusCode} {response.StatusCode}</p>"
+                        : $"<p class='error'>? ï¿½chec - Status: {(int)response.StatusCode} {response.StatusCode}</p>")}
                     
-                    <h3>Réponse JSON:</h3>
+                    <h3>Rï¿½ponse JSON:</h3>
                     <pre>{System.Web.HttpUtility.HtmlEncode(content)}</pre>
                     
                     <h3>Claims utilisateur:</h3>
                     <pre>{string.Join("\n", ctx.User.Claims.Select(c => $"{c.Type}: {c.Value}"))}</pre>
                     
                     <hr>
-                    <a href='/'>Retour à l'accueil</a> | 
-                    <a href='/test-api'>Rafraîchir</a> | 
-                    <a href='/logout'>Se déconnecter</a>
+                    <a href='/'>Retour ï¿½ l'accueil</a> | 
+                    <a href='/test-api'>Rafraï¿½chir</a> | 
+                    <a href='/logout'>Se dï¿½connecter</a>
                 </body>
                 </html>
             ";
@@ -303,8 +303,8 @@ if (app.Environment.IsDevelopment())
                     <h2>Exception:</h2>
                     <pre>{System.Web.HttpUtility.HtmlEncode(ex.ToString())}</pre>
                     <hr>
-                    <a href='/test-api'>Réessayer</a> | 
-                    <a href='/'>Retour à l'accueil</a>
+                    <a href='/test-api'>Rï¿½essayer</a> | 
+                    <a href='/'>Retour ï¿½ l'accueil</a>
                 </body>
                 </html>
             ";
@@ -434,6 +434,24 @@ bff.MapGet("/me", (HttpContext ctx) =>
         name = u.Identity?.Name,
         claims = u.Claims.Select(c => new { c.Type, c.Value })
     });
+});
+
+// Public endpoint to check authentication status without triggering redirect
+app.MapGet("/auth/status", (HttpContext ctx) =>
+{
+    if (ctx.User.Identity?.IsAuthenticated == true)
+    {
+        return Results.Ok(new
+        {
+            isAuthenticated = true,
+            name = ctx.User.Identity.Name,
+            claims = ctx.User.Claims.Select(c => new { c.Type, c.Value })
+        });
+    }
+    else
+    {
+        return Results.Ok(new { isAuthenticated = false });
+    }
 });
 
 app.MapStaticAssets();

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Components.WebAssembly.Authentication;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MudBlazor.Services;
 using Explore.Blazor.Client.Services;
+using Microsoft.AspNetCore.Components.Authorization;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
@@ -16,6 +17,9 @@ builder.Services.AddScoped(sp => new HttpClient
 builder.Services.AddScoped<BffClient>();
 
 builder.Services.AddAuthorizationCore();
+
+// Add a basic AuthenticationStateProvider that always returns not authenticated for WebAssembly
+builder.Services.AddScoped<AuthenticationStateProvider, AnonymousAuthenticationStateProvider>();
 
 await builder.Build().RunAsync();
 
