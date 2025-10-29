@@ -1,14 +1,90 @@
 @page "/organization/create"
 @using MudBlazor
+@inject NavigationManager NavigationManager
 
 <PageTitle>Create Organization</PageTitle>
+
+<style>
+    .stepper {
+        margin-bottom: 2rem;
+    }
+
+    .step-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: relative;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        z-index: 1;
+    }
+
+    .step-circle {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 8px;
+        transition: all 0.3s ease;
+    }
+
+    .step-title {
+        font-size: 0.875rem;
+        color: var(--mud-palette-text-secondary);
+        transition: all 0.3s ease;
+        text-align: center;
+        max-width: 140px;
+    }
+
+    .step-line {
+        position: absolute;
+        height: 2px;
+        background-color: var(--mud-palette-lines-default);
+        top: 20px;
+        left: 70px;
+        right: 70px;
+        z-index: 0;
+    }
+
+    .step-line-progress {
+        position: absolute;
+        height: 2px;
+        background-color: var(--mud-palette-primary);
+        top: 0;
+        left: 0;
+        transition: width 0.3s ease;
+    }
+
+    .active .step-circle {
+        background-color: var(--mud-palette-primary);
+        color: white;
+    }
+
+    .active .step-title {
+        color: var(--mud-palette-primary);
+        font-weight: 500;
+    }
+
+    .completed .step-circle {
+        background-color: var(--mud-palette-success);
+        color: white;
+    }
+</style>
 
 <MudContainer Class="py-6">
     <MudCard Class="mx-auto" Style="max-width: 900px;">
         <MudCardHeader>
             <CardHeaderContent>
                 <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
-                    <MudIcon Icon="Icons.Material.Filled.Business" Size="Size.Large" Color="Color.Primary"/>
+                    <MudIcon Icon="Icons.Material.Filled.Business" Size="Size.Large" Color="Color.Primary" />
                     <div>
                         <MudText Typo="Typo.h4">Create Organization</MudText>
                         <MudText Typo="Typo.body2" Color="Color.Secondary">
@@ -19,282 +95,358 @@
             </CardHeaderContent>
         </MudCardHeader>
 
-        <MudCardContent>
-            <EditForm Model="organization" OnValidSubmit="HandleSubmit">
-                
-                <!-- Logo Upload Section -->
-                <MudPaper Class="pa-4 mb-6" Style="background-color: var(--mud-palette-background-grey);">
-                    <MudText Typo="Typo.h6" Class="mb-3">Organization Logo</MudText>
-                    <MudStack Row AlignItems="AlignItems.Center" Spacing="4">
-                        <div style="width: 120px; height: 120px; border: 2px dashed var(--mud-palette-lines-default); border-radius: 8px; display: flex; align-items: center; justify-content: center; background-color: var(--mud-palette-surface);">
-                            @if (!string.IsNullOrEmpty(logoPreview))
+        <div class="stepper">
+            <div class="step-container">
+                <div class="step-line">
+                    <div class="step-line-progress" style="width: @GetProgressWidth()"></div>
+                </div>
+
+                @foreach (var stepInfo in steps)
+                {
+                    <div class="step @GetStepClass(stepInfo.Step)">
+                        <div class="step-circle">
+                            @if (IsStepCompleted(stepInfo.Step))
                             {
-                                <MudImage Src="@logoPreview" Alt="Logo Preview" Style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px;"/>
+                                <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" />
                             }
                             else
                             {
-                                <MudStack AlignItems="AlignItems.Center" Spacing="1">
-                                    <MudIcon Icon="Icons.Material.Filled.Business" Size="Size.Large" Color="Color.Secondary"/>
-                                    <MudText Typo="Typo.caption" Color="Color.Secondary">No logo</MudText>
-                                </MudStack>
+                                @(stepInfo.Step + 1)
                             }
                         </div>
-                        <MudStack Spacing="2">
-                            <MudFileUpload T="IBrowserFile" FilesChanged="OnLogoSelected" Accept=".jpg,.jpeg,.png,.gif">
-                                <ActivatorContent>
-                                    <MudButton Variant="Variant.Outlined" 
-                                             StartIcon="Icons.Material.Filled.CloudUpload"
-                                             Color="Color.Primary">
-                                        Upload Logo
-                                    </MudButton>
-                                </ActivatorContent>
-                            </MudFileUpload>
-                            @if (!string.IsNullOrEmpty(logoPreview))
-                            {
-                                <MudButton Variant="Variant.Text" 
-                                         Color="Color.Error" 
-                                         Size="Size.Small" 
-                                         OnClick="RemoveLogo"
-                                         StartIcon="Icons.Material.Filled.Delete">
-                                    Remove Logo
-                                </MudButton>
-                            }
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                Supported formats: JPG, PNG, GIF (Max 2MB)
-                            </MudText>
-                        </MudStack>
-                    </MudStack>
-                </MudPaper>
+                        <div class="step-title">@stepInfo.Title</div>
+                    </div>
+                }
+            </div>
+        </div>
 
-                <!-- Basic Information -->
-                <MudText Typo="Typo.h6" Class="mb-4">
-                    <MudIcon Icon="Icons.Material.Filled.Info" Class="mr-2"/>
-                    Basic Information
-                </MudText>
-                
-                <MudGrid Class="mb-6">
-                    <MudItem xs="12">
-                        <MudTextField @bind-Value="organization.Name" 
-                                    Label="Organization Name" 
-                                    Variant="Variant.Outlined"
-                                    Required 
-                                    HelperText="Enter the official name of your organization"
-                                    Counter="100" 
-                                    MaxLength="100"
-                                    StartAdornment="Icons.Material.Filled.Business"/>
-                    </MudItem>
+        <MudCardContent>
+            <EditForm Model="organization">
+                @switch (currentStep)
+                {
+                    case 0:
+                        <MudPaper Class="pa-4 mb-6" Style="background-color: var(--mud-palette-background-grey);">
+                            <MudText Typo="Typo.h6" Class="mb-3">Organization Logo</MudText>
+                            <MudStack Row AlignItems="AlignItems.Center" Spacing="4">
+                                <div style="width: 120px; height: 120px; border: 2px dashed var(--mud-palette-lines-default); border-radius: 8px; display: flex; align-items: center; justify-content: center; background-color: var(--mud-palette-surface);">
+                                    @if (!string.IsNullOrEmpty(logoPreview))
+                                    {
+                                        <MudImage Src="@logoPreview" Alt="Logo Preview" Style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px;" />
+                                    }
+                                    else
+                                    {
+                                        <MudStack AlignItems="AlignItems.Center" Spacing="1">
+                                            <MudIcon Icon="Icons.Material.Filled.Business" Size="Size.Large" Color="Color.Secondary" />
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">No logo</MudText>
+                                        </MudStack>
+                                    }
+                                </div>
+                                <MudStack Spacing="2">
+                                    <MudFileUpload T="IBrowserFile" FilesChanged="OnLogoSelected" Accept=".jpg,.jpeg,.png,.gif">
+                                        <ActivatorContent>
+                                            <MudButton Variant="Variant.Outlined" StartIcon="Icons.Material.Filled.CloudUpload" Color="Color.Primary">
+                                                Upload Logo
+                                            </MudButton>
+                                        </ActivatorContent>
+                                    </MudFileUpload>
+                                    @if (!string.IsNullOrEmpty(logoPreview))
+                                    {
+                                        <MudButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small" OnClick="@(() => RemoveLogo())" StartIcon="@Icons.Material.Filled.Delete">
+                                            Remove Logo
+                                        </MudButton>
+                                    }
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        Supported formats: JPG, PNG, GIF (Max 2MB)
+                                    </MudText>
+                                </MudStack>
+                            </MudStack>
+                        </MudPaper>
 
-                    <MudItem xs="12">
-                        <MudTextField @bind-Value="organization.Description" 
-                                    Label="Description" 
-                                    Variant="Variant.Outlined"
-                                    Lines="4" 
-                                    Required
-                                    HelperText="Describe your organization's mission, goals and activities"
-                                    Counter="500" 
-                                    MaxLength="500"/>
-                    </MudItem>
-
-                    <MudItem xs="12" md="6">
-                        <MudTextField @bind-Value="organization.CompanyRegistrationNumber" 
-                                    Label="Company Registration Number" 
-                                    Variant="Variant.Outlined"
-                                    Required
-                                    HelperText="Official company registration number"
-                                    StartAdornment="Icons.Material.Filled.Numbers"/>
-                    </MudItem>
-
-                    <MudItem xs="12" md="6">
-                        <MudSelect @bind-Value="organization.OrganizationType" 
-                                 Label="Organization Type" 
-                                 Variant="Variant.Outlined"
-                                 Required>
-                            <MudSelectItem Value="@("Non-Profit")">Non-Profit Organization</MudSelectItem>
-                            <MudSelectItem Value="@("Religious")">Religious Organization</MudSelectItem>
-                            <MudSelectItem Value="@("Educational")">Educational Institution</MudSelectItem>
-                            <MudSelectItem Value="@("Community")">Community Group</MudSelectItem>
-                            <MudSelectItem Value="@("Cultural")">Cultural Association</MudSelectItem>
-                            <MudSelectItem Value="@("Charity")">Charity</MudSelectItem>
-                        </MudSelect>
-                    </MudItem>
-                </MudGrid>
-
-                <!-- Contact Information -->
-                <MudText Typo="Typo.h6" Class="mb-4">
-                    <MudIcon Icon="Icons.Material.Filled.ContactMail" Class="mr-2"/>
-                    Contact Information
-                </MudText>
-                
-                <MudGrid Class="mb-6">
-                    <MudItem xs="12" md="6">
-                        <MudTextField @bind-Value="organization.ContactEmail" 
-                                    Label="Contact Email" 
-                                    Variant="Variant.Outlined"
-                                    InputType="InputType.Email"
-                                    Required
-                                    HelperText="Primary contact email for the organization"
-                                    StartAdornment="Icons.Material.Filled.Email"/>
-                    </MudItem>
-
-                    <MudItem xs="12" md="6">
-                        <MudTextField @bind-Value="organization.ContactPhone" 
-                                    Label="Contact Phone"
-                                    Variant="Variant.Outlined"
-                                    HelperText="Phone number (optional)"
-                                    StartAdornment="Icons.Material.Filled.Phone"/>
-                    </MudItem>
-
-                    <MudItem xs="12" md="6">
-                        <MudTextField @bind-Value="organization.Website" 
-                                    Label="Website"
-                                    Variant="Variant.Outlined"
-                                    HelperText="Organization website (optional)"
-                                    StartAdornment="Icons.Material.Filled.Language"/>
-                    </MudItem>
-
-                    <MudItem xs="12" md="6">
-                        <MudTextField @bind-Value="organization.SocialMedia" 
-                                    Label="Social Media"
-                                    Variant="Variant.Outlined"
-                                    HelperText="Main social media handle (optional)"
-                                    StartAdornment="Icons.Material.Filled.Share"/>
-                    </MudItem>
-                </MudGrid>
-
-                <!-- Address Information -->
-                <MudText Typo="Typo.h6" Class="mb-4">
-                    <MudIcon Icon="Icons.Material.Filled.LocationOn" Class="mr-2"/>
-                    Address Information
-                </MudText>
-                
-                <MudGrid Class="mb-6">
-                    <MudItem xs="12">
-                        <MudTextField @bind-Value="organization.Address" 
-                                    Label="Street Address"
-                                    Variant="Variant.Outlined"
-                                    Required
-                                    HelperText="Complete street address including house number"
-                                    StartAdornment="Icons.Material.Filled.Home"/>
-                    </MudItem>
-
-                    <MudItem xs="12" md="4">
-                        <MudTextField @bind-Value="organization.PostalCode" 
-                                    Label="Postal Code"
-                                    Variant="Variant.Outlined"
-                                    Required
-                                    HelperText="Postal/ZIP code"
-                                    StartAdornment="Icons.Material.Filled.Pin"/>
-                    </MudItem>
-
-                    <MudItem xs="12" md="4">
-                        <MudTextField @bind-Value="organization.City" 
-                                    Label="City"
-                                    Variant="Variant.Outlined"
-                                    Required
-                                    StartAdornment="Icons.Material.Filled.LocationCity"/>
-                    </MudItem>
-
-                    <MudItem xs="12" md="4">
-                        <MudSelect @bind-Value="organization.Country" 
-                                 Label="Country" 
-                                 Variant="Variant.Outlined"
-                                 Required>
-                            <MudSelectItem Value="@("Netherlands")">Netherlands</MudSelectItem>
-                            <MudSelectItem Value="@("Belgium")">Belgium</MudSelectItem>
-                            <MudSelectItem Value="@("Germany")">Germany</MudSelectItem>
-                            <MudSelectItem Value="@("France")">France</MudSelectItem>
-                            <MudSelectItem Value="@("United Kingdom")">United Kingdom</MudSelectItem>
-                            <MudSelectItem Value="@("Spain")">Spain</MudSelectItem>
-                            <MudSelectItem Value="@("Other")">Other</MudSelectItem>
-                        </MudSelect>
-                    </MudItem>
-                </MudGrid>
-
-                <!-- Additional Information -->
-                <MudText Typo="Typo.h6" Class="mb-4">
-                    <MudIcon Icon="Icons.Material.Filled.Assignment" Class="mr-2"/>
-                    Additional Information
-                </MudText>
-                
-                <MudGrid Class="mb-6">
-                    <MudItem xs="12" md="6">
-                        <MudNumericField @bind-Value="organization.EstablishedYear" 
-                                       Label="Established Year"
-                                       Variant="Variant.Outlined"
-                                       Min="1800" 
-                                       Max="2025"
-                                       HelperText="Year the organization was established"
-                                       StartAdornment="Icons.Material.Filled.CalendarToday"/>
-                    </MudItem>
-
-                    <MudItem xs="12" md="6">
-                        <MudNumericField @bind-Value="organization.MemberCount" 
-                                       Label="Number of Members"
-                                       Variant="Variant.Outlined"
-                                       Min="1"
-                                       HelperText="Approximate number of active members"
-                                       StartAdornment="Icons.Material.Filled.Groups"/>
-                    </MudItem>
-
-                    <MudItem xs="12">
-                        <MudTextField @bind-Value="organization.AdditionalNotes" 
-                                    Label="Additional Notes"
-                                    Variant="Variant.Outlined"
-                                    Lines="3"
-                                    HelperText="Any additional information you'd like to share (optional)"
-                                    Counter="300" 
-                                    MaxLength="300"/>
-                    </MudItem>
-                </MudGrid>
-
-                <!-- Terms and Conditions -->
-                <MudAlert Severity="Severity.Info" Class="mb-4">
-                    <MudCheckBox @bind-Value="acceptTerms" 
-                               Color="Color.Primary"
-                               Label="I agree to the Terms and Conditions for Organization Creators"/>
-
-                    @if (!acceptTerms)
-                    {
-                        <MudText Typo="Typo.caption" Color="Color.Error" Class="ml-8 mt-2">
-                            You must accept the terms and conditions to continue
+                        <MudText Typo="Typo.h6" Class="mb-4">
+                            <MudIcon Icon="Icons.Material.Filled.Info" Class="mr-2" />
+                            Basic Information
                         </MudText>
-                    }
 
-                    <MudCheckBox @bind-Value="confirmInformation" 
-                               Color="Color.Primary"
-                               Class="mt-2"
-                               Label="I confirm that all provided information is accurate and up-to-date"/>
-                </MudAlert>
+                        <MudGrid Class="mb-6">
+                            <MudItem xs="12">
+                                <MudTextField @bind-Value="organization.Name"
+                                              Label="Organization Name"
+                                              Variant="Variant.Outlined"
+                                              Required
+                                              HelperText="Enter the official name of your organization"
+                                              Counter="100" MaxLength="100"
+                                              Adornment="Adornment.Start"
+                                              AdornmentIcon="@Icons.Material.Filled.Business" />
+                            </MudItem>
 
-                <!-- Review Process Information -->
-                <MudAlert Severity="Severity.Info" Class="mb-4">
-                    <MudText Typo="Typo.body2">
-                        <strong>Review Process:</strong><br/>
-                        • Your organization request will be submitted for admin review<br/>
-                        • We'll verify your company registration and contact information<br/>
-                        • You'll receive an email notification within 3-5 business days<br/>
-                        • Once approved, you can start creating and managing events
-                    </MudText>
-                </MudAlert>
+                            <MudItem xs="12">
+                                <MudTextField @bind-Value="organization.Description"
+                                              Label="Description"
+                                              Variant="Variant.Outlined"
+                                              Lines="4" Required
+                                              HelperText="Describe your organization's mission, goals and activities"
+                                              Counter="500" MaxLength="500" />
+                            </MudItem>
 
+                            <MudItem xs="12" md="6">
+                                <MudTextField @bind-Value="organization.CompanyRegistrationNumber"
+                                              Label="Company Registration Number"
+                                              Variant="Variant.Outlined"
+                                              Required
+                                              HelperText="Official company registration number"
+                                              Adornment="Adornment.Start"
+                                              AdornmentIcon="@Icons.Material.Filled.Numbers" />
+                            </MudItem>
+
+                            <MudItem xs="12" md="6">
+                                <MudSelect @bind-Value="organization.OrganizationType"
+                                           Label="Organization Type"
+                                           Variant="Variant.Outlined"
+                                           Required>
+                                    <MudSelectItem Value="@("Non-Profit")">Non-Profit Organization</MudSelectItem>
+                                    <MudSelectItem Value="@("Religious")">Religious Organization</MudSelectItem>
+                                    <MudSelectItem Value="@("Educational")">Educational Institution</MudSelectItem>
+                                    <MudSelectItem Value="@("Community")">Community Group</MudSelectItem>
+                                    <MudSelectItem Value="@("Cultural")">Cultural Association</MudSelectItem>
+                                    <MudSelectItem Value="@("Charity")">Charity</MudSelectItem>
+                                </MudSelect>
+                            </MudItem>
+                        </MudGrid>
+
+                        <MudText Typo="Typo.h6" Class="mb-4">
+                            <MudIcon Icon="Icons.Material.Filled.Assignment" Class="mr-2" />
+                            Additional Information
+                        </MudText>
+
+                        <MudGrid Class="mb-6">
+                            <MudItem xs="12" md="6">
+                                <MudNumericField @bind-Value="organization.EstablishedYear"
+                                                 Label="Established Year"
+                                                 Variant="Variant.Outlined"
+                                                 Min="1800" Max="2025"
+                                                 HelperText="Year the organization was established"
+                                                 Adornment="Adornment.Start"
+                                                 AdornmentIcon="@Icons.Material.Filled.CalendarToday" />
+                            </MudItem>
+
+                            <MudItem xs="12" md="6">
+                                <MudNumericField @bind-Value="organization.MemberCount"
+                                                 Label="Number of Members"
+                                                 Variant="Variant.Outlined"
+                                                 Min="1"
+                                                 HelperText="Approximate number of active members"
+                                                 Adornment="Adornment.Start"
+                                                 AdornmentIcon="@Icons.Material.Filled.Groups" />
+                            </MudItem>
+
+                            <MudItem xs="12">
+                                <MudTextField @bind-Value="organization.AdditionalNotes"
+                                              Label="Additional Notes"
+                                              Variant="Variant.Outlined"
+                                              Lines="3"
+                                              HelperText="Any additional information you'd like to share (optional)"
+                                              Counter="300" MaxLength="300" />
+                            </MudItem>
+                        </MudGrid>
+                        break;
+
+                    case 1:
+                        <MudText Typo="Typo.h6" Class="mb-4">
+                            <MudIcon Icon="Icons.Material.Filled.ContactMail" Class="mr-2" />
+                            Contact Information
+                        </MudText>
+
+                        <MudGrid Class="mb-6">
+                            <MudItem xs="12" md="6">
+                                <MudTextField @bind-Value="organization.ContactEmail"
+                                              Label="Contact Email"
+                                              Variant="Variant.Outlined"
+                                              InputType="InputType.Email" Required
+                                              HelperText="Primary contact email for the organization"
+                                              Adornment="Adornment.Start"
+                                              AdornmentIcon="@Icons.Material.Filled.Email" />
+                            </MudItem>
+
+                            <MudItem xs="12" md="6">
+                                <MudTextField @bind-Value="organization.ContactPhone"
+                                              Label="Contact Phone"
+                                              Variant="Variant.Outlined"
+                                              HelperText="Phone number (optional)"
+                                              Adornment="Adornment.Start"
+                                              AdornmentIcon="@Icons.Material.Filled.Phone" />
+                            </MudItem>
+
+                            <MudItem xs="12" md="6">
+                                <MudTextField @bind-Value="organization.Website"
+                                              Label="Website"
+                                              Variant="Variant.Outlined"
+                                              HelperText="Organization website (optional)"
+                                              Adornment="Adornment.Start"
+                                              AdornmentIcon="@Icons.Material.Filled.Language" />
+                            </MudItem>
+
+                            <MudItem xs="12" md="6">
+                                <MudTextField @bind-Value="organization.SocialMedia"
+                                              Label="Social Media"
+                                              Variant="Variant.Outlined"
+                                              HelperText="Main social media handle (optional)"
+                                              Adornment="Adornment.Start"
+                                              AdornmentIcon="@Icons.Material.Filled.Share" />
+                            </MudItem>
+                        </MudGrid>
+
+                        <MudText Typo="Typo.h6" Class="mb-4">
+                            <MudIcon Icon="Icons.Material.Filled.LocationOn" Class="mr-2" />
+                            Address Information
+                        </MudText>
+
+                        <MudGrid Class="mb-6">
+                            <MudItem xs="12">
+                                <MudTextField @bind-Value="organization.Address"
+                                              Label="Street Address"
+                                              Variant="Variant.Outlined" Required
+                                              HelperText="Complete street address including house number"
+                                              Adornment="Adornment.Start"
+                                              AdornmentIcon="@Icons.Material.Filled.Home" />
+                            </MudItem>
+
+                            <MudItem xs="12" md="4">
+                                <MudTextField @bind-Value="organization.PostalCode"
+                                              Label="Postal Code"
+                                              Variant="Variant.Outlined" Required
+                                              HelperText="Postal/ZIP code"
+                                              Adornment="Adornment.Start"
+                                              AdornmentIcon="@Icons.Material.Filled.Pin" />
+                            </MudItem>
+
+                            <MudItem xs="12" md="4">
+                                <MudTextField @bind-Value="organization.City"
+                                              Label="City"
+                                              Variant="Variant.Outlined" Required
+                                              Adornment="Adornment.Start"
+                                              AdornmentIcon="@Icons.Material.Filled.LocationCity" />
+                            </MudItem>
+
+                            <MudItem xs="12" md="4">
+                                <MudSelect @bind-Value="organization.Country"
+                                           Label="Country" Variant="Variant.Outlined" Required>
+                                    <MudSelectItem Value="@("Netherlands")">Netherlands</MudSelectItem>
+                                    <MudSelectItem Value="@("Belgium")">Belgium</MudSelectItem>
+                                    <MudSelectItem Value="@("Germany")">Germany</MudSelectItem>
+                                    <MudSelectItem Value="@("France")">France</MudSelectItem>
+                                    <MudSelectItem Value="@("United Kingdom")">United Kingdom</MudSelectItem>
+                                    <MudSelectItem Value="@("Spain")">Spain</MudSelectItem>
+                                    <MudSelectItem Value="@("Other")">Other</MudSelectItem>
+                                </MudSelect>
+                            </MudItem>
+                        </MudGrid>
+                        break;
+
+                    case 2:
+                        <MudText Typo="Typo.h6" Class="mb-4">Review Your Information</MudText>
+
+                        <MudPaper Class="pa-4 mb-4" Style="background: var(--mud-palette-background-grey);">
+                            <MudText Typo="Typo.subtitle1" Class="mb-3">Logo</MudText>
+                            @if (!string.IsNullOrWhiteSpace(organization.LogoUrl))
+                            {
+                                <MudStack Row AlignItems="AlignItems.Center" Spacing="3">
+                                    <MudImage Src="@organization.LogoUrl"
+                                              Alt="Organization Logo"
+                                              Style="width: 120px; height: 120px; object-fit: cover; border-radius: 8px;" />
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        Dit is het logo dat voor uw organisatie wordt gebruikt.
+                                    </MudText>
+                                </MudStack>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">Geen logo geüpload.</MudText>
+                            }
+                        </MudPaper>
+
+                        <MudPaper Class="pa-4 mb-4" Style="background: var(--mud-palette-background-grey);">
+                            <MudStack Spacing="2">
+                                <MudText Typo="Typo.subtitle1">Basic & Additional</MudText>
+                                <MudText><b>Name:</b> @organization.Name</MudText>
+                                <MudText><b>Description:</b> @organization.Description</MudText>
+                                <MudText><b>Company Reg. No.:</b> @organization.CompanyRegistrationNumber</MudText>
+                                <MudText><b>Type:</b> @organization.OrganizationType</MudText>
+                                <MudText><b>Established Year:</b> @(organization.EstablishedYear?.ToString() ?? "-")</MudText>
+                                <MudText><b>Members:</b> @(organization.MemberCount?.ToString() ?? "-")</MudText>
+                                <MudText><b>Notes:</b> @(string.IsNullOrWhiteSpace(organization.AdditionalNotes) ? "-" : organization.AdditionalNotes)</MudText>
+                            </MudStack>
+                        </MudPaper>
+
+                        <MudPaper Class="pa-4 mb-4" Style="background: var(--mud-palette-background-grey);">
+                            <MudStack Spacing="2">
+                                <MudText Typo="Typo.subtitle1">Contact & Address</MudText>
+                                <MudText><b>Email:</b> @organization.ContactEmail</MudText>
+                                <MudText><b>Phone:</b> @(string.IsNullOrWhiteSpace(organization.ContactPhone) ? "-" : organization.ContactPhone)</MudText>
+                                <MudText><b>Website:</b> @(string.IsNullOrWhiteSpace(organization.Website) ? "-" : organization.Website)</MudText>
+                                <MudText><b>Social:</b> @(string.IsNullOrWhiteSpace(organization.SocialMedia) ? "-" : organization.SocialMedia)</MudText>
+                                <MudText><b>Address:</b> @organization.Address, @organization.PostalCode @organization.City, @organization.Country</MudText>
+                            </MudStack>
+                        </MudPaper>
+
+                        <MudAlert Severity="Severity.Info" Class="mb-4">
+                            <MudCheckBox @bind-Value="acceptTerms"
+                                         Color="Color.Primary"
+                                         Label="I agree to the Terms and Conditions for Organization Creators" />
+
+                            @if (!acceptTerms)
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Error" Class="ml-8 mt-2">
+                                    U moet akkoord gaan met de voorwaarden om verder te gaan.
+                                </MudText>
+                            }
+
+                            <MudCheckBox @bind-Value="confirmInformation"
+                                         Color="Color.Primary"
+                                         Class="mt-2"
+                                         Label="I confirm that all provided information is accurate and up-to-date" />
+                        </MudAlert>
+
+                        <MudAlert Severity="Severity.Info" Class="mb-4">
+                            <MudText Typo="Typo.body2">
+                                <strong>Review Process:</strong><br />
+                                • Your organization request will be submitted for admin review<br />
+                                • We'll verify your company registration and contact information<br />
+                                • You'll receive an email notification within 3-5 business days<br />
+                                • Once approved, you can start creating and managing events
+                            </MudText>
+                        </MudAlert>
+                        break;
+                }
             </EditForm>
         </MudCardContent>
 
         <MudCardActions Class="justify-space-between pa-4">
-            <MudButton Variant="Variant.Text" 
-                     StartIcon="Icons.Material.Filled.ArrowBack"
-                     OnClick="@(() => GoBack())">
-                Back
+            <MudButton Variant="Variant.Text"
+                       StartIcon="@Icons.Material.Filled.ArrowBack"
+                       OnClick="@(async () => await (currentStep == 0 ? GoBack() : GoToPreviousStep()))"
+                       Disabled="@(currentStep == 0)">
+                @(currentStep == 0 ? "Cancel" : "Previous")
             </MudButton>
-            
-            <MudButton Variant="Variant.Filled" 
-                     Color="Color.Primary" 
-                     StartIcon="Icons.Material.Filled.Send"
-                     OnClick="HandleSubmit"
-                     Disabled="@(!CanSubmit() || isSubmitting)">
+
+            @if (currentStep < 2)
+            {
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           EndIcon="@Icons.Material.Filled.ArrowForward"
+                           OnClick="@(async () => await GoToNextStep())">
+                    Next
+                </MudButton>
+            }
+            else
+            {
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Send"
+                           OnClick="@(async () => await HandleSubmit())"
+                           Disabled="@(!CanSubmit() || isSubmitting)">
                     @if (isSubmitting)
                     {
-                        <MudProgressCircular Size="Size.Small" Indeterminate/>
+                        <MudProgressCircular Size="Size.Small" Indeterminate />
                         <span class="ml-2">Submitting...</span>
                     }
                     else
@@ -302,6 +454,7 @@
                         <span>Submit for Review</span>
                     }
                 </MudButton>
+            }
         </MudCardActions>
     </MudCard>
 </MudContainer>
@@ -312,6 +465,79 @@
     private bool confirmInformation = false;
     private bool isSubmitting = false;
     private string logoPreview = string.Empty;
+    private int currentStep = 0;
+
+    private class StepInfo
+    {
+        public int Step { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string Icon { get; set; } = string.Empty;
+    }
+
+    private readonly StepInfo[] steps = new[]
+    {
+        new StepInfo { Step = 0, Title = "Basic & Additional", Icon = Icons.Material.Filled.Edit },
+        new StepInfo { Step = 1, Title = "Contact & Address",  Icon = Icons.Material.Filled.Description },
+        new StepInfo { Step = 2, Title = "Review & Submit",    Icon = Icons.Material.Filled.Done }
+    };
+
+    private string GetStepClass(int step)
+    {
+        if (step < currentStep) return "completed";
+        if (step == currentStep) return "active";
+        return "";
+    }
+
+    private bool IsStepCompleted(int step) => step < currentStep;
+
+    private string GetProgressWidth() => currentStep switch
+    {
+        0 => "0%",
+        1 => "50%",
+        2 => "100%",
+        _ => "0%"
+    };
+
+    private Task GoToNextStep()
+    {
+        // Stap-validatie (NL): controleer verplichte velden per stap
+        if (currentStep == 0)
+        {
+            if (string.IsNullOrWhiteSpace(organization.Name)
+                || string.IsNullOrWhiteSpace(organization.Description)
+                || string.IsNullOrWhiteSpace(organization.CompanyRegistrationNumber)
+                || string.IsNullOrWhiteSpace(organization.OrganizationType))
+            {
+                Console.WriteLine("Vul de vereiste velden in Stap 1 in.");
+                return Task.CompletedTask;
+            }
+        }
+        else if (currentStep == 1)
+        {
+            if (string.IsNullOrWhiteSpace(organization.ContactEmail)
+                || string.IsNullOrWhiteSpace(organization.Address)
+                || string.IsNullOrWhiteSpace(organization.PostalCode)
+                || string.IsNullOrWhiteSpace(organization.City)
+                || string.IsNullOrWhiteSpace(organization.Country))
+            {
+                Console.WriteLine("Vul de vereiste velden in Stap 2 in.");
+                return Task.CompletedTask;
+            }
+        }
+
+        if (currentStep < steps.Length - 1) currentStep++;
+        return Task.CompletedTask;
+    }
+
+    private Task GoToPreviousStep()
+    {
+        if (currentStep > 0)
+        {
+            currentStep--;
+            StateHasChanged();
+        }
+        return Task.CompletedTask;
+    }
 
     public class Organization
     {
@@ -340,14 +566,10 @@
         isSubmitting = true;
         try
         {
-            // Simulate API call
+            // API-call simulatie (NL)
             await Task.Delay(2000);
-            
-            // Show success message (placeholder)
-            // In real implementation, this would call the API
             Console.WriteLine("Organization submitted for review!");
-            
-            // Navigate to success page or show confirmation
+            // NavigationManager.NavigateTo("/organization/success");
         }
         catch (Exception ex)
         {
@@ -363,45 +585,48 @@
     {
         if (file != null)
         {
-            if (file.Size > 2 * 1024 * 1024) // 2MB
+            if (file.Size > 2 * 1024 * 1024)
             {
-                Console.WriteLine("File size must be less than 2MB");
+                Console.WriteLine("Bestandsgrootte moet minder dan 2MB zijn.");
                 return;
             }
 
             var allowedTypes = new[] { "image/jpeg", "image/png", "image/gif" };
             if (!allowedTypes.Contains(file.ContentType))
             {
-                Console.WriteLine("Only JPG, PNG, and GIF files are allowed");
+                Console.WriteLine("Alleen JPG, PNG en GIF zijn toegestaan.");
                 return;
             }
 
             using var stream = file.OpenReadStream(maxAllowedSize: 2 * 1024 * 1024);
             using var memoryStream = new MemoryStream();
             await stream.CopyToAsync(memoryStream);
-            
+
             var base64 = Convert.ToBase64String(memoryStream.ToArray());
             logoPreview = $"data:{file.ContentType};base64,{base64}";
             organization.LogoUrl = logoPreview;
         }
     }
 
-    private void RemoveLogo()
+    private Task RemoveLogo()
     {
         logoPreview = string.Empty;
         organization.LogoUrl = string.Empty;
+        return Task.CompletedTask;
     }
 
-    private void GoBack()
+    private async Task GoBack()
     {
-        // Navigate back to previous page
-        Console.WriteLine("Going back...");
+        if (currentStep == 0)
+            NavigationManager.NavigateTo("/");
+        else
+            await GoToPreviousStep();
     }
 
     private bool CanSubmit()
     {
-        return acceptTerms && 
-               confirmInformation && 
+        return acceptTerms &&
+               confirmInformation &&
                !string.IsNullOrWhiteSpace(organization.Name) &&
                !string.IsNullOrWhiteSpace(organization.Description) &&
                !string.IsNullOrWhiteSpace(organization.CompanyRegistrationNumber) &&
