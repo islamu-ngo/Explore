@@ -500,7 +500,7 @@
 
     private Task GoToNextStep()
     {
-        // Stap-validatie (NL): controleer verplichte velden per stap
+        // Stap-validatie : controleer verplichte velden per stap
         if (currentStep == 0)
         {
             if (string.IsNullOrWhiteSpace(organization.Name)
@@ -566,7 +566,7 @@
         isSubmitting = true;
         try
         {
-            // API-call simulatie (NL)
+            // API-call simulatie
             await Task.Delay(2000);
             Console.WriteLine("Organization submitted for review!");
             // NavigationManager.NavigateTo("/organization/success");
