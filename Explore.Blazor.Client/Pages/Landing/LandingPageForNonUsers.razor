@@ -1,209 +1,352 @@
 @page "/welcome"
 @using MudBlazor
+@inject IJSRuntime JS
 
 <style>
-.nonuser-hero {
-    padding: 64px 0 48px 0;
+:root{
+    --hero-grad-1:#5b7cfa;
+    --hero-grad-2:#7f56d9;
+    --hero-grad-3:#1f2937;
+}
+
+/* ---------- HERO ---------- */
+.hero {
+    position: relative;
+    isolation: isolate;
+    padding: 96px 0 64px 0;
     text-align: center;
+    background: radial-gradient(1200px 600px at 50% -10%, rgba(127,86,217,.35), transparent 60%),
+                linear-gradient(180deg, #0e1026 0%, #0b0f24 100%);
+    color: #fff;
+    overflow: hidden;
 }
-.register-section {
-    display: flex;
-    flex-wrap: wrap;
-    background: var(--mud-palette-background-paper);
-    border-radius: 16px;
-    padding: 0;
-    margin-bottom: 32px;
-    box-shadow: 0 2px 16px rgba(0,0,0,0.10);
-    min-height: 340px;
+.hero::before{
+    content:"";
+    position:absolute; inset:-20% -20% auto -20%;
+    height:120%;
+    background: conic-gradient(from 180deg at 50% 50%, var(--hero-grad-1), var(--hero-grad-2), var(--hero-grad-1));
+    filter: blur(120px) saturate(140%) opacity(.35);
+    animation: swirl 14s linear infinite;
+    z-index:-1;
 }
-.register-left {
-    flex: 1 1 340px;
-    padding: 40px 32px 32px 32px;
+@@keyframes swirl { to { transform: rotate(360deg);} }
+
+.hero h1 { letter-spacing: .3px; }
+.hero-sub { opacity:.92; max-width: 840px; margin: 12px auto 0 auto; }
+
+/* ---------- REGISTER STRIP (glass card) ---------- */
+.register-strip{
+    margin-top: 36px;
+    display: grid;
+    grid-template-columns: 1.15fr .85fr;
+    gap: 18px;
+}
+@@media (max-width: 900px){
+    .register-strip{ grid-template-columns: 1fr; }
+}
+
+.glass{
+    background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 18px;
+    box-shadow: 0 8px 40px rgba(0,0,0,.25);
+    backdrop-filter: blur(10px);
+}
+
+/* CTA button big */
+.cta-primary .mud-button-label { font-size: 1.05rem; font-weight:600; }
+.cta-secondary .mud-button-label { font-weight:600; }
+
+/* ---------- SOCIAL PROOF / STATS ---------- */
+.stats { display:flex; gap:18px; justify-content:center; flex-wrap:wrap; margin-top:24px;}
+.stat{
+    background: #111428;
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:14px; padding:14px 18px;
+    min-width: 180px;
+}
+.stat b{ font-size:1.25rem; }
+.stat span{ opacity:.8; }
+
+/* ---------- BENEFITS GRID ---------- */
+.benefits{
+    margin: 72px 0 16px 0;
+}
+.benefit-grid{
+    display:grid; gap:18px;
+    grid-template-columns: repeat(3, 1fr);
+}
+@@media (max-width: 900px){
+    .benefit-grid{ grid-template-columns:1fr; }
+}
+
+/* ---------- EVENTS CAROUSEL ---------- */
+.carousel-wrap{
+    margin: 36px 0 8px 0;
+}
+
+/* Force carousel to show full height */
+.carousel-wrap .mud-carousel,
+.carousel-wrap .mud-carousel-item,
+.carousel-wrap .mud-carousel-content {
+    height: auto !important;
+    min-height: 450px;
+}
+
+.event-card{
+    width: 340px; max-width: 92vw;
+    cursor: pointer;
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+    border-radius:16px;
+    height: 100%;
     display: flex;
     flex-direction: column;
-    justify-content: center;
 }
-.register-form {
-    background: #232345;
-    border-radius: 12px;
-    padding: 24px 20px 20px 20px;
-    margin-bottom: 18px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.10);
-}
-.register-btn {
-    margin-top: 18px;
-    min-width: 180px;
-    font-size: 1.1rem;
-}
-.register-steps {
-    margin-top: 12px;
-    color: var(--mud-palette-text-secondary);
-}
-.register-right {
-    flex: 1 1 340px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #eae6f7;
-    border-radius: 0 16px 16px 0;
-    min-height: 340px;
-}
-.register-img {
-    max-width: 320px;
-    width: 100%;
-    border-radius: 12px;
-    object-fit: cover;
-}
-.explain-section {
-    margin: 48px 0;
-    text-align: center;
-}
-.event-carousel-wrap {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 48px;
-    margin-top: 32px;
-}
-.event-carousel {
-    display: flex;
-    align-items: stretch;
-    gap: 32px;
-    overflow-x: auto;
-    padding: 16px 0;
-    scroll-behavior: smooth;
-}
-.event-card {
-    min-width: 340px;
-    max-width: 340px;
-    background: var(--mud-palette-background-paper);
-    border-radius: 16px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.10);
-    padding: 0 0 18px 0;
-    text-align: left;
-    cursor: pointer;
-    opacity: 0.85;
-    transition: opacity .2s, box-shadow .2s;
-    border: 2px solid transparent;
-    margin-bottom: 8px;
-}
-.event-card:hover {
-    opacity: 1;
-    border-color: var(--mud-palette-primary-main);
-    box-shadow: 0 4px 24px rgba(0,0,0,0.18);
-}
-.event-banner {
-    background: #6d4c41;
-    border-radius: 16px 16px 0 0;
+.event-card:hover{ transform: translateY(-3px); }
+.event-banner{
     height: 140px;
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-size:1.15rem; letter-spacing:.3px;
+    background: linear-gradient(135deg, #6b5cff, #a855f7);
+    border-radius: 16px 16px 0 0;
+}
+.event-body{ 
+    padding: 14px 16px 18px 16px; 
+    flex: 1;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    font-size: 1.5rem;
-    font-family: inherit;
-    font-weight: 400;
-    letter-spacing: 1px;
+    flex-direction: column;
 }
-.event-chips {
-    display: flex;
-    gap: 10px;
-    margin: 16px 0 8px 0;
-}
-.event-title {
-    font-weight: 600;
-    margin-bottom: 6px;
-}
-.event-desc {
-    color: var(--mud-palette-text-secondary);
-    font-size: 1rem;
-}
-.carousel-arrow {
-    font-size: 2.2rem;
-    cursor: pointer;
-    color: var(--mud-palette-primary-main);
-    user-select: none;
-    margin: 0 8px;
-}
-.section-space {
-    margin-bottom: 80px;
+.event-chips{ display:flex; gap:8px; margin: 10px 0 8px 0; }
+
+/* ---------- FAQ ---------- */
+.faq{ margin-top: 32px; }
+
+/* ---------- UTIL ---------- */
+.section { margin: 56px 0; }
+.section h2 { margin-bottom: 6px; }
+.muted { color: var(--mud-palette-text-secondary); }
+.kicker { letter-spacing:.18em; text-transform:uppercase; font-size:.82rem; opacity:.8; }
+
+@@media (prefers-reduced-motion: reduce){
+    .hero::before{ animation:none; }
 }
 </style>
 
-<MudContainer MaxWidth="MaxWidth.Medium" Class="nonuser-landing">
-    <!-- Register Section -->
-    <div class="register-section section-space" id="register">
-        <div class="register-left">
-            <MudText Typo="Typo.h4" Class="mb-2" Color="Color.Primary">Register to join our Muslim community</MudText>
-            <MudText Typo="Typo.subtitle1" Class="mb-4">Create an account to access all events, lectures, and activities!</MudText>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="register-btn" StartIcon="@Icons.Material.Filled.PersonAdd" Href="/login">
-                Register Now
-            </MudButton>
-            <MudText Typo="Typo.caption" Class="mt-2 mud-text-secondary">Already have an account? <MudLink Href="/login">Login</MudLink></MudText>
-            <div class="register-steps mt-4">
-                <MudText Typo="Typo.body2"><MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Primary" /> 1. Register your account</MudText>
-                <MudText Typo="Typo.body2"><MudIcon Icon="@Icons.Material.Filled.EventAvailable" Color="Color.Primary" /> 2. Get access to all Muslim events</MudText>
-            </div>
-        </div>
-        <div class="register-right">
-            <img src="image/landing_image_nonuser.png" alt="Landing page non-user" class="register-img" />
-        </div>
-    </div>
+<!-- HERO - Full width -->
+<section class="hero">
+    <MudContainer MaxWidth="MaxWidth.Large">
+        <MudText Typo="Typo.overline" Class="kicker">Community • Events • Growth</MudText>
+        <MudText Typo="Typo.h2" Align="Align.Center" Class="mt-1">Never Miss a Muslim Event Again</MudText>
+        <MudText Typo="Typo.subtitle1" Align="Align.Center" Class="hero-sub">
+            Lectures, workshops, charity drives, and social gatherings. Discover, connect, and grow with a thriving Muslim community.
+        </MudText>
 
-    <!-- Hero Section -->
-    <div class="nonuser-hero section-space">
-        <MudText Typo="Typo.h3" Class="mb-2">Never Miss a Muslim Event Again</MudText>
-        <MudText Typo="Typo.subtitle2" Class="mud-text-secondary">Lectures, workshops, charity, and social gatherings for every Muslim. Discover, connect, and grow!</MudText>
-    </div>
+        <!-- CTA + image -->
+        <div class="register-strip">
+            <div class="glass" style="padding:24px;">
+                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Justify="Justify.Center">
+                    <MudButton Href="/login" Color="Color.Primary" Variant="Variant.Filled" Size="Size.Large" Class="cta-primary" StartIcon="@Icons.Material.Filled.PersonAdd">
+                        Create Account
+                    </MudButton>
+                    <MudButton Href="/login" Color="Color.Secondary" Variant="Variant.Outlined" Size="Size.Large" Class="cta-secondary" StartIcon="@Icons.Material.Filled.Login">
+                        I already have one
+                    </MudButton>
+                </MudStack>
 
-    <!-- Explanation Section -->
-    <div class="explain-section section-space">
-        <MudText Typo="Typo.h5" Class="mb-2">Why Join?</MudText>
-        <MudText Typo="Typo.body1">Unlock access to exclusive Islamic lectures, Quran study circles, youth workshops, charity events, and more. Be part of a vibrant Muslim community and stay informed about every opportunity to learn and give back.</MudText>
-    </div>
-
-    <!-- Event Carousel Section -->
-    <MudText Typo="Typo.h5" Class="mb-2">Upcoming Muslim Events</MudText>
-    <div class="event-carousel-wrap">
-        <span class="carousel-arrow" @onclick="ScrollLeft">&#8592;</span>
-        <div class="event-carousel" id="eventCarousel">
-            @foreach (var evt in Events)
-            {
-                <div class="event-card" @onclick="ScrollToRegister">
-                    <div class="event-banner">@evt.Title</div>
-                    <div class="event-chips">
-                        <MudChip T="string" Color="Color.Secondary">@evt.Type</MudChip>
-                        <MudChip T="string" Color="Color.Error">@evt.Date.ToString("dd/MM/yyyy")</MudChip>
-                    </div>
-                    <MudText Typo="Typo.h6" Class="event-title">@evt.Title</MudText>
-                    <MudText Typo="Typo.body2" Class="event-desc">@evt.Description</MudText>
+                <div class="stats">
+                    <div class="stat"><b>@MembersCount+</b><br /><span>Active members</span></div>
+                    <div class="stat"><b>@Events.Count</b><br /><span>Upcoming events</span></div>
+                    <div class="stat"><b>98%</b><br /><span>Positive feedback</span></div>
                 </div>
-            }
+
+                <MudText Typo="Typo.caption" Class="mt-2" Style="opacity:.75;">
+                    Free to join. Cancel anytime. No credit card required.
+                </MudText>
+            </div>
+
+            <MudPaper Elevation="0" Class="glass" Style="display:flex;align-items:center;justify-content:center;padding:0;">
+                <img src="image/landing_image_nonuser.png" alt="Community and events illustration" style="max-width:100%; border-radius:18px;" />
+            </MudPaper>
         </div>
-        <span class="carousel-arrow" @onclick="ScrollRight">&#8594;</span>
-    </div>
-    <MudText Typo="Typo.caption" Class="mt-2 mud-text-secondary">Want to join? Click any event to register and unlock full details!</MudText>
+    </MudContainer>
+</section>
+
+<MudContainer MaxWidth="MaxWidth.Large">
+
+    <!-- BENEFITS -->
+    <section class="section benefits" id="benefits">
+        <MudText Typo="Typo.h4" Align="Align.Center">Why Join?</MudText>
+        <MudText Typo="Typo.subtitle2" Align="Align.Center" Class="muted mb-4">
+            Unlock access to exclusive Islamic content and stay informed about every opportunity to learn and give back.
+        </MudText>
+
+        <div class="benefit-grid">
+            <MudPaper Class="glass" Style="padding:22px;">
+                <MudStack Spacing="1">
+                    <MudIcon Icon="@Icons.Material.Filled.AutoStories" Size="Size.Large" Color="Color.Primary" />
+                    <MudText Typo="Typo.h6">Knowledge & Faith</MudText>
+                    <MudText Typo="Typo.body2" Class="muted">
+                        Join Quran study circles, lectures, and themed workshops guided by trusted speakers.
+                    </MudText>
+                </MudStack>
+            </MudPaper>
+
+            <MudPaper Class="glass" Style="padding:22px;">
+                <MudStack Spacing="1">
+                    <MudIcon Icon="@Icons.Material.Filled.Handshake" Size="Size.Large" Color="Color.Secondary" />
+                    <MudText Typo="Typo.h6">Meet & Connect</MudText>
+                    <MudText Typo="Typo.body2" Class="muted">
+                        Make meaningful connections, collaborate on projects, and expand your network locally.
+                    </MudText>
+                </MudStack>
+            </MudPaper>
+
+            <MudPaper Class="glass" Style="padding:22px;">
+                <MudStack Spacing="1">
+                    <MudIcon Icon="@Icons.Material.Filled.VolunteerActivism" Size="Size.Large" Color="Color.Success" />
+                    <MudText Typo="Typo.h6">Act & Give Back</MudText>
+                    <MudText Typo="Typo.body2" Class="muted">
+                        Take part in charity drives, social causes, and community-building initiatives.
+                    </MudText>
+                </MudStack>
+            </MudPaper>
+        </div>
+    </section>
+
+    <!-- UPCOMING EVENTS -->
+    <section class="section">
+        <MudStack Spacing="1" AlignItems="AlignItems.Center">
+            <MudText Typo="Typo.overline" Class="kicker">Upcoming</MudText>
+            <MudText Typo="Typo.h4" Align="Align.Center">Don’t Miss These Events</MudText>
+            <MudText Typo="Typo.subtitle2" Align="Align.Center" Class="muted">
+                Click any event to register and unlock full details.
+            </MudText>
+        </MudStack>
+
+        <div class="carousel-wrap">
+            <MudCarousel TData="object" AutoCycle="true" CycleInterval="7000" ShowArrows="true" FullHeight="false" Style="height: auto; min-height: 450px;">
+                @foreach (var chunk in Chunk(Events, 3))
+                {
+                    <MudCarouselItem Style="height: auto; padding: 20px 0;">
+                        <MudStack Row="true" Gap="16px" Justify="Justify.Center" AlignItems="AlignItems.Stretch" Style="flex-wrap:wrap; height: 100%;">
+                            @foreach (var evt in chunk)
+                            {
+                                <MudCard Class="event-card glass" @onclick="@(() => ScrollToRegister())">
+                                    <MudCardMedia Class="event-banner">
+                                        <span>@evt.Title</span>
+                                    </MudCardMedia>
+                                    <MudCardContent Class="event-body">
+                                        <div class="event-chips">
+                                            <MudChip T="string" Color="Color.Secondary" Variant="Variant.Filled" Size="Size.Small" StartIcon="@Icons.Material.Filled.Category">
+                                                @evt.Type
+                                            </MudChip>
+                                            <MudChip T="string" Color="Color.Info" Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Filled.Event">
+                                                @evt.Date.ToString("dd/MM/yyyy")
+                                            </MudChip>
+                                        </div>
+                                        <MudText Typo="Typo.h6" Class="mb-1">@evt.Title</MudText>
+                                        <MudText Typo="Typo.body2" Class="muted" Style="flex: 1;">@evt.Description</MudText>
+                                    </MudCardContent>
+                                    <MudCardActions Style="margin-top: auto;">
+                                        <MudButton Color="Color.Primary" Variant="Variant.Text" EndIcon="@Icons.Material.Filled.ArrowForward">Join Now</MudButton>
+                                    </MudCardActions>
+                                </MudCard>
+                            }
+                        </MudStack>
+                    </MudCarouselItem>
+                }
+            </MudCarousel>
+        </div>
+
+        <MudStack AlignItems="AlignItems.Center" Class="mt-2">
+            <MudText Typo="Typo.caption" Class="muted">Ready to join? Click any event to sign up and get full access.</MudText>
+        </MudStack>
+    </section>
+
+    <!-- FAQ -->
+    <section class="section faq">
+        <MudText Typo="Typo.h5" Align="Align.Center">Frequently Asked Questions</MudText>
+        <MudText Typo="Typo.subtitle2" Align="Align.Center" Class="muted mb-2">All you need to know before getting started</MudText>
+
+        <MudExpansionPanels Elevation="0">
+            <MudExpansionPanel Text="Is registration free?" Dense="true">
+                <MudText Typo="Typo.body2">Yes, signing up is completely free. Some events might have a fee, but most are open to everyone.</MudText>
+            </MudExpansionPanel>
+            <MudExpansionPanel Text="How are events selected?" Dense="true">
+                <MudText Typo="Typo.body2">We carefully verify organizers and feature only trustworthy, relevant, and community-oriented events.</MudText>
+            </MudExpansionPanel>
+            <MudExpansionPanel Text="Can I cancel my participation?" Dense="true">
+                <MudText Typo="Typo.body2">Absolutely. You can cancel any event with one click from your dashboard.</MudText>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+    </section>
+
+    <!-- CALL TO ACTION FINAL -->
+    <section class="section" id="register">
+        <MudPaper Elevation="0" Class="glass" Style="padding:28px; text-align:center;">
+            <MudText Typo="Typo.h5">Ready to Join the Community?</MudText>
+            <MudText Typo="Typo.body2" Class="muted mb-2">Create your account now and get full access to all upcoming events.</MudText>
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Justify="Justify.Center">
+                <MudButton Href="/login" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.PersonAdd" Class="cta-primary">Sign Up</MudButton>
+                <MudButton Href="/login" Color="Color.Default" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Visibility">Explore First</MudButton>
+            </MudStack>
+        </MudPaper>
+    </section>
 </MudContainer>
 
 @code {
-    private List<EventMock> Events = new()
+    private List<EventItem> Events = new()
     {
-        new EventMock { Title = "Islamic Finance Workshop", Date = DateTime.Today.AddDays(1), Type = "workshop", Description = "Learn about Islamic finance principles and their modern applications in this interactive workshop." },
-        new EventMock { Title = "Quran Study Circle", Date = DateTime.Today.AddDays(3), Type = "lecture", Description = "Join our Quran study circle to deepen your understanding and connection." },
-        new EventMock { Title = "Community Iftar", Date = DateTime.Today.AddDays(5), Type = "social", Description = "Share a meal and connect with fellow Muslims at our community iftar." },
-        new EventMock { Title = "Charity Drive: Food Bank", Date = DateTime.Today.AddDays(7), Type = "charity", Description = "Support those in need by participating in our food bank charity drive." },
-        new EventMock { Title = "Lecture: History of Islam", Date = DateTime.Today.AddDays(9), Type = "lecture", Description = "Explore the rich history of Islam in this engaging lecture." },
+        // Educational & Spiritual
+        new EventItem { Title = "Tafsir Al-Baqarah Study Circle", Date = DateTime.Today.AddDays(1), Type = "Education", Description = "Join Sheikh Abdullah for an in-depth study of Surah Al-Baqarah verses 1-50. Discover the profound meanings and practical applications for daily life.", Location = "Islamic Center Brussels", Capacity = 80 },
+        new EventItem { Title = "Islamic Finance & Halal Investment", Date = DateTime.Today.AddDays(2), Type = "Workshop", Description = "Understanding sharia-compliant banking, Islamic mortgages, sukuk bonds, and ethical investment opportunities for Muslims in Europe.", Location = "Business Center Antwerp", Capacity = 120 },
+        new EventItem { Title = "Fiqh of Marriage & Family", Date = DateTime.Today.AddDays(4), Type = "Lecture", Description = "Comprehensive guidance on Islamic marriage contracts, family rights, divorce procedures, and raising children in Western societies.", Location = "Ghent Mosque Complex", Capacity = 200 },
+        
+        // Community Events
+        new EventItem { Title = "Eid Al-Fitr Community Festival", Date = DateTime.Today.AddDays(7), Type = "Festival", Description = "Grand Eid celebration with traditional Middle Eastern and North African cuisine, cultural performances, children's activities, and community prizes.", Location = "Parc du Cinquantenaire", Capacity = 1000 },
+        new EventItem { Title = "Sisters Weekly Halaqah", Date = DateTime.Today.AddDays(3), Type = "Study Circle", Description = "Women-only Islamic study circle focusing on Quranic reflections, hadith discussions, and practical spirituality in modern life.", Location = "Women's Islamic Center", Capacity = 50 },
+        new EventItem { Title = "Youth Leadership Program", Date = DateTime.Today.AddDays(5), Type = "Youth", Description = "Empowering young Muslims aged 16-25 through leadership workshops, career mentoring, and Islamic identity building sessions.", Location = "University of Brussels", Capacity = 75 },
+        
+        // Charity & Outreach
+        new EventItem { Title = "Syria Relief Fundraising Gala", Date = DateTime.Today.AddDays(8), Type = "Charity", Description = "Elegant fundraising dinner for Syrian refugee families. Guest keynote by Dr. Amina Hassan, international humanitarian coordinator.", Location = "Brussels Convention Center", Capacity = 300 },
+        new EventItem { Title = "Food Bank Distribution Drive", Date = DateTime.Today.AddDays(6), Type = "Volunteer", Description = "Monthly food package distribution to underprivileged Muslim families. Volunteers help with sorting, packing, and delivery coordination.", Location = "Islamic Relief Belgium", Capacity = 40 },
+        
+        // Sports & Recreation  
+        new EventItem { Title = "Inter-Mosque Football Championship", Date = DateTime.Today.AddDays(10), Type = "Sports", Description = "Annual tournament between 16 mosque teams across Belgium. Includes youth categories, professional referees, and trophy ceremony.", Location = "Sports Complex Leuven", Capacity = 200 },
+        new EventItem { Title = "Family Nature Retreat", Date = DateTime.Today.AddDays(12), Type = "Recreation", Description = "Day-long family outing with guided forest hiking, outdoor prayers, halal barbecue picnic, and children's treasure hunt activities.", Location = "Ardennes National Park", Capacity = 150 },
+        
+        // Professional Development
+        new EventItem { Title = "Muslim Entrepreneurs Network", Date = DateTime.Today.AddDays(9), Type = "Business", Description = "Networking summit for Muslim business owners featuring startup pitches, partnership opportunities, halal business certification, and investor meetings.", Location = "Brussels Business Hub", Capacity = 90 },
+        new EventItem { Title = "Career Fair for Muslims", Date = DateTime.Today.AddDays(15), Type = "Career", Description = "Connect with 50+ employers offering Muslim-friendly workplace policies, prayer facilities, halal catering, and flexible religious observance.", Location = "Brussels Expo Center", Capacity = 500 }
     };
 
-    private void ScrollLeft() { /* JS interop or scroll logic can be added later */ }
-    private void ScrollRight() { /* JS interop or scroll logic can be added later */ }
-    private void ScrollToRegister() { /* Scroll to registration section, JS interop can be added later */ }
+    private int MembersCount = 1200;
 
-    private class EventMock
+    private class EventItem
     {
         public string Title { get; set; } = "";
         public DateTime Date { get; set; }
         public string Type { get; set; } = "";
         public string Description { get; set; } = "";
+        public string Location { get; set; } = "";
+        public int Capacity { get; set; } = 0;
     }
+
+    private IEnumerable<List<T>> Chunk<T>(IEnumerable<T> source, int size)
+    {
+        var bucket = new List<T>(size);
+        foreach (var item in source)
+        {
+            bucket.Add(item);
+            if (bucket.Count == size)
+            {
+                yield return bucket;
+                bucket = new List<T>(size);
+            }
+        }
+        if (bucket.Count > 0) yield return bucket;
+    }
+
+    private async Task ScrollToRegister()
+        => await JS.InvokeVoidAsync("eval", "document.getElementById('register').scrollIntoView({behavior:'smooth',block:'start'});");
 }
