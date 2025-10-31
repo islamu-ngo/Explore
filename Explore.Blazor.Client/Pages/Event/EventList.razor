@@ -4,210 +4,320 @@
 @inject NavigationManager Navigation
 
 <style>
-    .filter-paper {
-        background-color: var(--mud-palette-surface);
-        border: 1px solid var(--mud-palette-lines-default);
-        border-radius: 4px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        color: var(--mud-palette-text-primary);
-    }
+/* ===== TOKENS ===== */
+:root{
+    --fx-ring: color-mix(in srgb, var(--mud-palette-primary) 30%, transparent);
+}
 
-    .filter-paper:hover {
-        background-color: var(--mud-palette-action-hover);
-        border-color: var(--mud-palette-primary);
-    }
+/* ===== WRAPPER ===== */
+.page-wrap{ padding-block: 20px 32px; }
 
-    .filter-popover {
-        background-color: var(--mud-palette-surface) !important;
-        border: 1px solid var(--mud-palette-lines-default) !important;
-        box-shadow: var(--mud-elevation-8) !important;
-    }
+/* ===== BAR: filters ===== */
+.filters-bar{
+    display:grid; gap:12px;
+    grid-template-columns: repeat(12, 1fr);
+    align-items:stretch;
+}
+@@media (max-width: 960px){
+    .filters-bar{ grid-template-columns: 1fr; }
+}
 
-    .filter-popover .mud-text {
-        color: var(--mud-palette-text-primary) !important;
-    }
+.filter-cell{ grid-column: span 3; }
+.filter-cell.search{ grid-column: span 3; }
+@@media (max-width: 960px){
+    .filter-cell, .filter-cell.search{ grid-column: 1/-1; }
+}
+
+/* Pill trigger */
+.filter-paper{
+    background-color: var(--mud-palette-surface);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease, background .12s ease;
+    color: var(--mud-palette-text-primary);
+    padding-inline: 12px;
+}
+.filter-paper:hover{
+    transform: translateY(-1px);
+    background-color: color-mix(in srgb, var(--mud-palette-primary) 6%, var(--mud-palette-surface));
+    border-color: var(--mud-palette-primary);
+    box-shadow: 0 0 0 3px var(--fx-ring);
+}
+
+/* Chevron */
+.filter-paper .mud-icon-root{ opacity:.85; }
+
+/* Popover styling */
+.filter-popover{
+    background-color: var(--mud-palette-surface) !important;
+    border: 1px solid var(--mud-palette-lines-default) !important;
+    box-shadow: var(--mud-elevation-8) !important;
+    border-radius: 12px !important;
+}
+.filter-popover .mud-text{ color: var(--mud-palette-text-primary) !important; }
+.filter-option{
+    padding: 6px 10px;
+    border-radius: 8px;
+    transition: background .12s ease, color .12s ease;
+    cursor: pointer;
+}
+.filter-option:hover{
+    background: color-mix(in srgb, var(--mud-palette-primary) 10%, transparent);
+}
+
+/* ===== SECTION HEADER ===== */
+.section-head{
+    display:flex; align-items:flex-end; justify-content:space-between;
+    gap:16px; margin-bottom: 16px;
+}
+.kicker{ letter-spacing:.18em; text-transform:uppercase; font-size:.82rem; opacity:.7; }
+
+/* ===== CARDS ===== */
+.card{
+    border-radius: 16px;
+    overflow:hidden;
+    border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.card:hover{
+    transform: translateY(-3px);
+    box-shadow: 0 16px 36px rgba(0,0,0,.16);
+    border-color: color-mix(in srgb, var(--mud-palette-primary) 40%, var(--mud-palette-lines-default));
+}
+
+/* Media with subtle overlay */
+.card-media{
+    position: relative; height: 200px; overflow: hidden;
+}
+.card-media::after{
+    content:""; position:absolute; inset:0;
+    background: linear-gradient(180deg, rgba(0,0,0,0) 50%, rgba(0,0,0,.25) 100%);
+}
+
+/* Badges row */
+.badges{ display:flex; gap:8px; align-items:center; margin: 10px 0 6px 0; }
+
+/* Location row */
+.loc{
+    display:flex; align-items:center; gap:6px; opacity:.85;
+}
+
+/* ===== PAGINATION & INFO ===== */
+.pager{
+    display:flex; justify-content:center; margin-top: 24px;
+}
+.results{
+    display:flex; justify-content:center; margin-top: 8px; opacity:.8;
+}
+
+/* ===== SEARCH FIELD ===== */
+.search-input .mud-input-root{ border-radius: 999px !important; }
+.search-input .mud-input:not(.mud-input-disabled):focus-within{
+    box-shadow: 0 0 0 3px var(--fx-ring);
+    border-color: var(--mud-palette-primary);
+}
 </style>
 
 <PageTitle>Explore Events</PageTitle>
 
-<MudContainer Class="py-4">
-    <MudPaper Class="pa-4">
+<MudContainer Class="page-wrap">
+    <div class="pa-4">
+
+        <!-- Header -->
+        <div class="section-head">
+            <div>
+                <MudText Typo="Typo.overline" Class="kicker">Discover</MudText>
+                <MudText Typo="Typo.h5">Explore Events</MudText>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters-bar mb-4">
+            <!-- Country -->
+            <div class="filter-cell">
+                <MudPopover Open="@isCountryOpen" Fixed="true" Class="filter-popover px-4 py-3">
+                    <div class="d-flex flex-column gap-3" style="min-width:220px">
+                        <MudText Typo="Typo.subtitle2">Country</MudText>
+                        <div class="d-flex flex-column gap-1">
+                            <MudText Typo="Typo.body2"
+                                     Color="@(selectedCountry == "" ? Color.Primary : Color.Default)"
+                                     Class="filter-option"
+                                     @onclick="@(() => OnCountryChanged(""))">All Countries</MudText>
+                            <MudText Typo="Typo.body2"
+                                     Color="@(selectedCountry == "Netherlands" ? Color.Primary : Color.Default)"
+                                     Class="filter-option"
+                                     @onclick="@(() => OnCountryChanged("Netherlands"))">Netherlands</MudText>
+                            <MudText Typo="Typo.body2"
+                                     Color="@(selectedCountry == "Belgium" ? Color.Primary : Color.Default)"
+                                     Class="filter-option"
+                                     @onclick="@(() => OnCountryChanged("Belgium"))">Belgium</MudText>
+                            <MudText Typo="Typo.body2"
+                                     Color="@(selectedCountry == "Germany" ? Color.Primary : Color.Default)"
+                                     Class="filter-option"
+                                     @onclick="@(() => OnCountryChanged("Germany"))">Germany</MudText>
+                        </div>
+                    </div>
+                </MudPopover>
+                <MudPaper @onclick="@(() => isCountryOpen = !isCountryOpen)" 
+                          Class="filter-paper d-flex justify-space-between align-center">
+                    <MudText Class="ml-2">
+                        @(string.IsNullOrEmpty(selectedCountry) ? "All Countries" : selectedCountry)
+                    </MudText>
+                    <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" />
+                </MudPaper>
+            </div>
+
+            <!-- Date -->
+            <div class="filter-cell">
+                <MudPopover Open="@isDateOpen" Fixed="true" Class="filter-popover px-4 py-3">
+                    <div class="d-flex flex-column gap-3" style="min-width:220px">
+                        <MudText Typo="Typo.subtitle2">Date</MudText>
+                        <div class="d-flex flex-column gap-1">
+                            <MudText Typo="Typo.body2"
+                                     Color="@(selectedDate == "" ? Color.Primary : Color.Default)"
+                                     Class="filter-option"
+                                     @onclick="@(() => OnDateChanged(""))">Any Time</MudText>
+                            <MudText Typo="Typo.body2"
+                                     Color="@(selectedDate == "today" ? Color.Primary : Color.Default)"
+                                     Class="filter-option"
+                                     @onclick="@(() => OnDateChanged("today"))">Today</MudText>
+                            <MudText Typo="Typo.body2"
+                                     Color="@(selectedDate == "tomorrow" ? Color.Primary : Color.Default)"
+                                     Class="filter-option"
+                                     @onclick="@(() => OnDateChanged("tomorrow"))">Tomorrow</MudText>
+                            <MudText Typo="Typo.body2"
+                                     Color="@(selectedDate == "thisweek" ? Color.Primary : Color.Default)"
+                                     Class="filter-option"
+                                     @onclick="@(() => OnDateChanged("thisweek"))">This Week</MudText>
+                            <MudText Typo="Typo.body2"
+                                     Color="@(selectedDate == "thismonth" ? Color.Primary : Color.Default)"
+                                     Class="filter-option"
+                                     @onclick="@(() => OnDateChanged("thismonth"))">This Month</MudText>
+                        </div>
+                    </div>
+                </MudPopover>
+                <MudPaper @onclick="@(() => isDateOpen = !isDateOpen)"
+                          Class="filter-paper d-flex justify-space-between align-center">
+                    <MudText Class="ml-2">
+                        @(string.IsNullOrEmpty(selectedDate) ? "Any Time" :
+                            (selectedDate == "today" ? "Today" :
+                            selectedDate == "tomorrow" ? "Tomorrow" :
+                            selectedDate == "thisweek" ? "This Week" :
+                            selectedDate == "thismonth" ? "This Month" : selectedDate))
+                    </MudText>
+                    <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" />
+                </MudPaper>
+            </div>
+
+            <!-- Category -->
+            <div class="filter-cell">
+                <MudPopover Open="@isCategoryOpen" Fixed="true" Class="filter-popover px-4 py-3">
+                    <div class="d-flex flex-column gap-3" style="min-width:220px">
+                        <MudText Typo="Typo.subtitle2">Category</MudText>
+                        <div class="d-flex flex-column gap-1">
+                            <MudText Typo="Typo.body2"
+                                     Color="@(selectedCategory == "" ? Color.Primary : Color.Default)"
+                                     Class="filter-option"
+                                     @onclick="@(() => OnCategoryChanged(""))">All Categories</MudText>
+                            <MudText Typo="Typo.body2"
+                                     Color="@(selectedCategory == "lecture" ? Color.Primary : Color.Default)"
+                                     Class="filter-option"
+                                     @onclick="@(() => OnCategoryChanged("lecture"))">Lecture</MudText>
+                            <MudText Typo="Typo.body2"
+                                     Color="@(selectedCategory == "workshop" ? Color.Primary : Color.Default)"
+                                     Class="filter-option"
+                                     @onclick="@(() => OnCategoryChanged("workshop"))">Workshop</MudText>
+                            <MudText Typo="Typo.body2"
+                                     Color="@(selectedCategory == "social" ? Color.Primary : Color.Default)"
+                                     Class="filter-option"
+                                     @onclick="@(() => OnCategoryChanged("social"))">Social</MudText>
+                            <MudText Typo="Typo.body2"
+                                     Color="@(selectedCategory == "charity" ? Color.Primary : Color.Default)"
+                                     Class="filter-option"
+                                     @onclick="@(() => OnCategoryChanged("charity"))">Charity</MudText>
+                        </div>
+                    </div>
+                </MudPopover>
+                <MudPaper @onclick="@(() => isCategoryOpen = !isCategoryOpen)"
+                          Class="filter-paper d-flex justify-space-between align-center">
+                    <MudText Class="ml-2">
+                        @(string.IsNullOrEmpty(selectedCategory) ? "All Categories" : selectedCategory)
+                    </MudText>
+                    <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" />
+                </MudPaper>
+            </div>
+
+            <!-- Search -->
+            <div class="filter-cell search">
+                <MudTextField @bind-Value="searchText"
+                              Class="search-input"
+                              Placeholder="Search"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              IconSize="Size.Medium"
+                              Immediate="true"
+                              DebounceInterval="500"
+                              TextChanged="OnSearch"
+                              Margin="Margin.Dense" />
+            </div>
+        </div>
+
+        <!-- Cards -->
         <MudGrid>
-            <!-- Filters -->
-            <MudItem xs="12">
-                <MudGrid>
-                    <MudItem xs="12" md="3">
-                        <MudPopover Open="@isCountryOpen" Fixed="true" Class="filter-popover px-4 py-3">
-                            <div class="d-flex flex-column gap-3">
-                                <MudText>Country</MudText>
-                                <div class="d-flex flex-column gap-2">
-                                    <MudText Typo="Typo.body2" Color="@(selectedCountry == "" ? Color.Primary : Color.Default)"
-                                            Class="cursor-pointer" @onclick="@(() => OnCountryChanged(""))">
-                                        All Countries
-                                    </MudText>
-                                    <MudText Typo="Typo.body2" Color="@(selectedCountry == "Netherlands" ? Color.Primary : Color.Default)"
-                                            Class="cursor-pointer" @onclick="@(() => OnCountryChanged("Netherlands"))">
-                                        Netherlands
-                                    </MudText>
-                                    <MudText Typo="Typo.body2" Color="@(selectedCountry == "Belgium" ? Color.Primary : Color.Default)"
-                                            Class="cursor-pointer" @onclick="@(() => OnCountryChanged("Belgium"))">
-                                        Belgium
-                                    </MudText>
-                                    <MudText Typo="Typo.body2" Color="@(selectedCountry == "Germany" ? Color.Primary : Color.Default)"
-                                            Class="cursor-pointer" @onclick="@(() => OnCountryChanged("Germany"))">
-                                        Germany
-                                    </MudText>
-                                </div>
+            @foreach (var evt in FilteredEvents)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <MudCard Elevation="0" Class="card">
+                        <MudCardMedia Class="card-media"
+                                      Image="@($"https://dummyimage.com/1200x800/{GetEventColor(evt)}/ffffff&text={Uri.EscapeDataString(evt.Title)}")" />
+                        <MudCardContent>
+                            <div class="badges">
+                                <MudChip T="string" Size="Size.Small" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Category">
+                                    @evt.Category
+                                </MudChip>
+                                <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Event">
+                                    @evt.Date.ToShortDateString()
+                                </MudChip>
                             </div>
-                        </MudPopover>
-                        <MudPaper @onclick="@(() => isCountryOpen = !isCountryOpen)" 
-                                 Class="filter-paper d-flex justify-space-between align-center pa-2">
-                            <MudText Class="ml-2">@(string.IsNullOrEmpty(selectedCountry) ? "All Countries" : selectedCountry)</MudText>
-                            <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" />
-                        </MudPaper>
-                    </MudItem>
-
-                    <MudItem xs="12" md="3">
-                        <MudPopover Open="@isDateOpen" Fixed="true" Class="filter-popover px-4 py-3">
-                            <div class="d-flex flex-column gap-3">
-                                <MudText>Date</MudText>
-                                <div class="d-flex flex-column gap-2">
-                                    <MudText Typo="Typo.body2" Color="@(selectedDate == "" ? Color.Primary : Color.Default)"
-                                            Class="cursor-pointer" @onclick="@(() => OnDateChanged(""))">
-                                        Any Time
-                                    </MudText>
-                                    <MudText Typo="Typo.body2" Color="@(selectedDate == "today" ? Color.Primary : Color.Default)"
-                                            Class="cursor-pointer" @onclick="@(() => OnDateChanged("today"))">
-                                        Today
-                                    </MudText>
-                                    <MudText Typo="Typo.body2" Color="@(selectedDate == "tomorrow" ? Color.Primary : Color.Default)"
-                                            Class="cursor-pointer" @onclick="@(() => OnDateChanged("tomorrow"))">
-                                        Tomorrow
-                                    </MudText>
-                                    <MudText Typo="Typo.body2" Color="@(selectedDate == "thisweek" ? Color.Primary : Color.Default)"
-                                            Class="cursor-pointer" @onclick="@(() => OnDateChanged("thisweek"))">
-                                        This Week
-                                    </MudText>
-                                    <MudText Typo="Typo.body2" Color="@(selectedDate == "thismonth" ? Color.Primary : Color.Default)"
-                                            Class="cursor-pointer" @onclick="@(() => OnDateChanged("thismonth"))">
-                                        This Month
-                                    </MudText>
-                                </div>
+                            <MudText Typo="Typo.h6" Class="mb-1">@evt.Title</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Surface" Style="opacity:.85;">
+                                @evt.Description
+                            </MudText>
+                        </MudCardContent>
+                        <MudCardActions Class="justify-space-between pa-4 pt-0">
+                            <MudButton Variant="Variant.Text"
+                                       EndIcon="@Icons.Material.Filled.ArrowForward"
+                                       Color="Color.Primary"
+                                       OnClick="@(() => Navigation.NavigateTo($"/event/detail/{evt.Id}"))">
+                                View Details
+                            </MudButton>
+                            <div class="loc">
+                                <MudIcon Icon="@Icons.Material.Filled.LocationOn" />
+                                <MudText>@GetCountryFromLocation(evt.Location)</MudText>
                             </div>
-                        </MudPopover>
-                        <MudPaper @onclick="@(() => isDateOpen = !isDateOpen)"
-                                 Class="filter-paper d-flex justify-space-between align-center pa-2">
-                            <MudText Class="ml-2">@(string.IsNullOrEmpty(selectedDate) ? "Any Time" : 
-                                (selectedDate == "today" ? "Today" :
-                                selectedDate == "tomorrow" ? "Tomorrow" :
-                                selectedDate == "thisweek" ? "This Week" :
-                                selectedDate == "thismonth" ? "This Month" : selectedDate))</MudText>
-                            <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" />
-                        </MudPaper>
-                    </MudItem>
-
-                    <MudItem xs="12" md="3">
-                        <MudPopover Open="@isCategoryOpen" Fixed="true" Class="filter-popover px-4 py-3">
-                            <div class="d-flex flex-column gap-3">
-                                <MudText>Category</MudText>
-                                <div class="d-flex flex-column gap-2">
-                                    <MudText Typo="Typo.body2" Color="@(selectedCategory == "" ? Color.Primary : Color.Default)"
-                                            Class="cursor-pointer" @onclick="@(() => OnCategoryChanged(""))">
-                                        All Categories
-                                    </MudText>
-                                    <MudText Typo="Typo.body2" Color="@(selectedCategory == "lecture" ? Color.Primary : Color.Default)"
-                                            Class="cursor-pointer" @onclick="@(() => OnCategoryChanged("lecture"))">
-                                        Lecture
-                                    </MudText>
-                                    <MudText Typo="Typo.body2" Color="@(selectedCategory == "workshop" ? Color.Primary : Color.Default)"
-                                            Class="cursor-pointer" @onclick="@(() => OnCategoryChanged("workshop"))">
-                                        Workshop
-                                    </MudText>
-                                    <MudText Typo="Typo.body2" Color="@(selectedCategory == "social" ? Color.Primary : Color.Default)"
-                                            Class="cursor-pointer" @onclick="@(() => OnCategoryChanged("social"))">
-                                        Social
-                                    </MudText>
-                                    <MudText Typo="Typo.body2" Color="@(selectedCategory == "charity" ? Color.Primary : Color.Default)"
-                                            Class="cursor-pointer" @onclick="@(() => OnCategoryChanged("charity"))">
-                                        Charity
-                                    </MudText>
-                                </div>
-                            </div>
-                        </MudPopover>
-                        <MudPaper @onclick="@(() => isCategoryOpen = !isCategoryOpen)"
-                                 Class="filter-paper d-flex justify-space-between align-center pa-2">
-                            <MudText Class="ml-2">@(string.IsNullOrEmpty(selectedCategory) ? "All Categories" : selectedCategory)</MudText>
-                            <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" />
-                        </MudPaper>
-                    </MudItem>
-
-                    <MudItem xs="12" md="3">
-                        <MudTextField @bind-Value="searchText" 
-                                    Placeholder="Search" 
-                                    Adornment="Adornment.Start"
-                                    AdornmentIcon="@Icons.Material.Filled.Search" 
-                                    IconSize="Size.Medium" 
-                                    Immediate="true"
-                                    DebounceInterval="500"
-                                    TextChanged="OnSearch"
-                                    Class="mt-0" />
-                    </MudItem>
-                </MudGrid>
-            </MudItem>
-
-            <!-- Event Cards -->
-            <MudItem xs="12">
-                <MudGrid>
-                    @foreach (var evt in FilteredEvents)
-                    {
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudCard Elevation="0" Class="rounded-lg">
-                                <MudCardMedia Image="@($"https://dummyimage.com/600x400/{evt.Color}/ffffff&text={evt.Title}")" Height="200" Class="rounded-t-lg" />
-                                <MudCardContent>
-                                    <MudStack Row="true" Class="mb-4">
-                                        <MudChip T="string" Size="Size.Small" Color="Color.Primary">@evt.Category</MudChip>
-                                        <MudChip T="string" Size="Size.Small" Color="Color.Secondary">@evt.Date.ToShortDateString()</MudChip>
-                                    </MudStack>
-                                    <MudText Typo="Typo.h6" Class="mb-2">@evt.Title</MudText>
-                                    <MudText Typo="Typo.body2" Color="Color.Surface" Style="opacity: 0.8">
-                                        @evt.Description
-                                    </MudText>
-                                </MudCardContent>
-                                <MudCardActions Class="justify-space-between pa-4 pt-0">
-                                    <MudButton Variant="Variant.Text" 
-                                             EndIcon="@Icons.Material.Filled.ArrowForward" 
-                                             Color="Color.Primary"
-                                             OnClick="@(() => Navigation.NavigateTo($"/event/detail/{evt.Id}"))">View Details</MudButton>
-                                    <MudStack Row="true">
-                                        <MudIcon Icon="@Icons.Material.Filled.LocationOn" />
-                                        <MudText>@GetCountryFromLocation(evt.Location)</MudText>
-                                    </MudStack>
-                                </MudCardActions>
-                            </MudCard>
-                        </MudItem>
-                    }
-                </MudGrid>
-            </MudItem>
-
-            <!-- Pagination -->
-            <MudItem xs="12" Class="d-flex justify-center mt-6">
-                <MudPagination Count="@totalPages" 
-                              Selected="@currentPage" 
-                              SelectedChanged="@((int page) => OnPageChanged(page))"
-                              Color="Color.Primary" 
-                              ShowFirstButton="true" 
-                              ShowLastButton="true" />
-            </MudItem>
-            
-            <!-- Results info -->
-            <MudItem xs="12" Class="d-flex justify-center mt-2">
-                <MudText Typo="Typo.body2" Color="Color.Surface">
-                    Showing @((currentPage - 1) * itemsPerPage + 1) - @(Math.Min(currentPage * itemsPerPage, AllFilteredEvents.Count)) of @AllFilteredEvents.Count events
-                </MudText>
-            </MudItem>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
         </MudGrid>
-    </MudPaper>
+
+        <!-- Pagination + info -->
+        <div class="pager">
+            <MudPagination Count="@TotalPages"
+                           Selected="@currentPage"
+                           SelectedChanged="@((int page) => OnPageChanged(page))"
+                           Color="Color.Primary"
+                           ShowFirstButton="true"
+                           ShowLastButton="true" />
+        </div>
+        <div class="results">
+            <MudText Typo="Typo.body2" Color="Color.Surface">
+                Showing @((currentPage - 1) * itemsPerPage + 1) - @(Math.Min(currentPage * itemsPerPage, AllFilteredEvents.Count)) of @AllFilteredEvents.Count events (Page @currentPage of @TotalPages)
+            </MudText>
+        </div>
+
+    </div>
 </MudContainer>
 
 @code {
@@ -218,11 +328,10 @@
     private bool isCountryOpen;
     private bool isDateOpen;
     private bool isCategoryOpen;
-    
+
     // Pagination variables
     private int currentPage = 1;
     private int itemsPerPage = 6;
-    private int totalPages = 1;
 
     private class MockEvent
     {
@@ -237,110 +346,41 @@
 
     private List<MockEvent> mockEvents = new()
     {
-        new MockEvent 
-        {
-            Id = 1,
-            Title = "Islamic Finance Workshop",
-            Category = "workshop",
-            Date = DateTime.Now.AddDays(1),
-            Description = "Learn about Islamic finance principles and their modern applications in this interactive workshop.",
-            Location = "Nieuwezijds Voorburgwal 100, 1012 SH Amsterdam, Netherlands",
-            Color = "5D4037"
-        },
-        new MockEvent
-        {
-            Id = 2,
-            Title = "Quran Study Circle",
-            Category = "lecture",
-            Date = DateTime.Now.AddDays(7),
-            Description = "Weekly study circle focused on understanding and implementing Quranic teachings.",
-            Location = "Westersingel 82, 3015 LC Rotterdam, Netherlands",
-            Color = "2E7D32"
-        },
-        new MockEvent
-        {
-            Id = 3,
-            Title = "Community Iftar",
-            Category = "social",
-            Date = DateTime.Now.AddDays(14),
-            Description = "Join us for a community iftar during Ramadan. All are welcome to break fast together.",
-            Location = "Rue de la Loi 170, 1048 Brussels, Belgium",
-            Color = "1565C0"
-        },
-        new MockEvent
-        {
-            Id = 4,
-            Title = "Youth Leadership Program",
-            Category = "workshop",
-            Date = DateTime.Now.AddDays(2),
-            Description = "Developing future leaders through Islamic principles and modern leadership skills.",
-            Location = "Online",
-            Color = "6A1B9A"
-        },
-        new MockEvent
-        {
-            Id = 5,
-            Title = "Food Bank Distribution",
-            Category = "charity",
-            Date = DateTime.Now,
-            Description = "Help distribute food packages to families in need. Volunteers needed.",
-            Location = "Alexanderplatz 5, 10178 Berlin, Germany",
-            Color = "C62828"
-        },
-        new MockEvent
-        {
-            Id = 6,
-            Title = "Islamic Art Exhibition",
-            Category = "social",
-            Date = DateTime.Now.AddDays(5),
-            Description = "Showcasing contemporary Islamic art from local and international artists.",
-            Location = "Online",
-            Color = "00695C"
-        },
-        new MockEvent
-        {
-            Id = 7,
-            Title = "Halal Food Festival",
-            Category = "social",
-            Date = DateTime.Now.AddDays(8),
-            Description = "Celebrate diverse halal cuisines from around the world with local vendors.",
-            Location = "Vondelpark 1, 1071 AA Amsterdam, Netherlands",
-            Color = "FF5722"
-        },
-        new MockEvent
-        {
-            Id = 8,
-            Title = "Arabic Language Course",
-            Category = "lecture",
-            Date = DateTime.Now.AddDays(10),
-            Description = "Begin your journey learning Arabic with experienced native speakers.",
-            Location = "Online",
-            Color = "9C27B0"
-        },
-        new MockEvent
-        {
-            Id = 9,
-            Title = "Community Garden Project",
-            Category = "charity",
-            Date = DateTime.Now.AddDays(12),
-            Description = "Help establish a community garden to provide fresh produce for local families.",
-            Location = "Marktplatz 15, 50667 Köln, Germany",
-            Color = "4CAF50"
-        },
-        new MockEvent
-        {
-            Id = 10,
-            Title = "Youth Sports Tournament",
-            Category = "social",
-            Date = DateTime.Now.AddDays(15),
-            Description = "Annual football tournament bringing together youth from different communities.",
-            Location = "Sportpark De Toekomst, 1101 DB Amsterdam, Netherlands",
-            Color = "FF9800"
-        }
+        // Page 1 (6 events) - IDs 101-106
+        new MockEvent { Id = 101, Title = "Islamic Finance Workshop", Category = "workshop", Date = DateTime.Now.AddDays(1), Description = "Learn about Islamic finance principles and their modern applications in this interactive workshop.", Location = "Nieuwezijds Voorburgwal 100, 1012 SH Amsterdam, Netherlands", Color = "5D4037" },
+        new MockEvent { Id = 102, Title = "Quran Study Circle", Category = "lecture", Date = DateTime.Now.AddDays(7), Description = "Weekly study circle focused on understanding and implementing Quranic teachings.", Location = "Westersingel 82, 3015 LC Rotterdam, Netherlands", Color = "2E7D32" },
+        new MockEvent { Id = 103, Title = "Community Iftar", Category = "social", Date = DateTime.Now.AddDays(14), Description = "Join us for a community iftar during Ramadan. All are welcome to break fast together.", Location = "Rue de la Loi 170, 1048 Brussels, Belgium", Color = "1565C0" },
+        new MockEvent { Id = 104, Title = "Youth Leadership Program", Category = "workshop", Date = DateTime.Now.AddDays(2), Description = "Developing future leaders through Islamic principles and modern leadership skills.", Location = "Online", Color = "6A1B9A" },
+        new MockEvent { Id = 105, Title = "Food Bank Distribution", Category = "charity", Date = DateTime.Now, Description = "Help distribute food packages to families in need. Volunteers needed.", Location = "Alexanderplatz 5, 10178 Berlin, Germany", Color = "C62828" },
+        new MockEvent { Id = 106, Title = "Islamic Art Exhibition", Category = "social", Date = DateTime.Now.AddDays(5), Description = "Showcasing contemporary Islamic art from local and international artists.", Location = "Online", Color = "00695C" },
+        
+        // Page 2 (6 events) - IDs 107-112
+        new MockEvent { Id = 107, Title = "Halal Food Festival", Category = "social", Date = DateTime.Now.AddDays(8), Description = "Celebrate diverse halal cuisines from around the world with local vendors.", Location = "Vondelpark 1, 1071 AA Amsterdam, Netherlands", Color = "FF5722" },
+        new MockEvent { Id = 108, Title = "Arabic Language Course", Category = "lecture", Date = DateTime.Now.AddDays(10), Description = "Begin your journey learning Arabic with experienced native speakers.", Location = "Online", Color = "9C27B0" },
+        new MockEvent { Id = 109, Title = "Community Garden Project", Category = "charity", Date = DateTime.Now.AddDays(12), Description = "Help establish a community garden to provide fresh produce for local families.", Location = "Marktplatz 15, 50667 Köln, Germany", Color = "4CAF50" },
+        new MockEvent { Id = 110, Title = "Youth Sports Tournament", Category = "social", Date = DateTime.Now.AddDays(15), Description = "Annual football tournament bringing together youth from different communities.", Location = "Sportpark De Toekomst, 1101 DB Amsterdam, Netherlands", Color = "FF9800" },
+        new MockEvent { Id = 111, Title = "Islamic History Lecture", Category = "lecture", Date = DateTime.Now.AddDays(16), Description = "Exploring the golden age of Islamic civilization and its contributions to modern society.", Location = "University of Brussels, Brussels, Belgium", Color = "795548" },
+        new MockEvent { Id = 112, Title = "Sisters Book Club", Category = "social", Date = DateTime.Now.AddDays(18), Description = "Monthly book discussion focusing on Islamic literature and personal development.", Location = "Online", Color = "E91E63" },
+        
+        // Page 3 (6 events) - IDs 113-118
+        new MockEvent { Id = 113, Title = "Dawah Training Workshop", Category = "workshop", Date = DateTime.Now.AddDays(20), Description = "Learn effective methods of sharing Islam with wisdom and beautiful preaching.", Location = "Islamic Center Hamburg, Hamburg, Germany", Color = "3F51B5" },
+        new MockEvent { Id = 114, Title = "Charity Clothing Drive", Category = "charity", Date = DateTime.Now.AddDays(22), Description = "Collecting winter clothes for refugees and underprivileged families.", Location = "Mosque Al-Nour, Rotterdam, Netherlands", Color = "009688" },
+        new MockEvent { Id = 115, Title = "Eid Preparation Workshop", Category = "workshop", Date = DateTime.Now.AddDays(25), Description = "Learn traditional Eid recipes and decoration ideas for the upcoming celebration.", Location = "Community Center Antwerp, Belgium", Color = "FF9800" },
+        new MockEvent { Id = 116, Title = "Islamic Finance Seminar", Category = "lecture", Date = DateTime.Now.AddDays(27), Description = "Advanced seminar on Islamic banking, sukuk, and sharia-compliant investments.", Location = "Business School Amsterdam, Netherlands", Color = "607D8B" },
+        new MockEvent { Id = 117, Title = "Youth Quran Competition", Category = "social", Date = DateTime.Now.AddDays(30), Description = "Annual Quran recitation and memorization competition for ages 8-18.", Location = "Islamic School Berlin, Germany", Color = "8BC34A" },
+        new MockEvent { Id = 118, Title = "Interfaith Dialogue", Category = "lecture", Date = DateTime.Now.AddDays(32), Description = "Building bridges between different faith communities through respectful dialogue.", Location = "Peace Center Brussels, Belgium", Color = "FF5722" },
+        
+        // Page 4 (6 events) - IDs 119-124
+        new MockEvent { Id = 119, Title = "Hajj Preparation Course", Category = "workshop", Date = DateTime.Now.AddDays(35), Description = "Comprehensive guide to performing Hajj with practical tips and spiritual preparation.", Location = "Travel Agency The Hague, Netherlands", Color = "673AB7" },
+        new MockEvent { Id = 120, Title = "Islamic Parenting Workshop", Category = "workshop", Date = DateTime.Now.AddDays(37), Description = "Raising children with Islamic values in a Western society.", Location = "Online", Color = "E91E63" },
+        new MockEvent { Id = 121, Title = "Mosque Open Day", Category = "social", Date = DateTime.Now.AddDays(40), Description = "Welcome neighbors to learn about Islam and visit our beautiful mosque.", Location = "Central Mosque Cologne, Germany", Color = "2196F3" },
+        new MockEvent { Id = 122, Title = "Halal Cooking Class", Category = "workshop", Date = DateTime.Now.AddDays(42), Description = "Learn to prepare delicious Middle Eastern and South Asian halal dishes.", Location = "Culinary School Ghent, Belgium", Color = "FF5722" },
+        new MockEvent { Id = 123, Title = "Islamic Art Workshop", Category = "workshop", Date = DateTime.Now.AddDays(45), Description = "Create beautiful Islamic geometric patterns and Arabic calligraphy.", Location = "Art Studio Utrecht, Netherlands", Color = "9C27B0" },
+        new MockEvent { Id = 124, Title = "Community Clean-up", Category = "charity", Date = DateTime.Now.AddDays(47), Description = "Volunteer to clean local parks and streets as part of our environmental stewardship.", Location = "Tiergarten Park, Berlin, Germany", Color = "4CAF50" }
     };
 
     private List<MockEvent> AllFilteredEvents => mockEvents
-        .Where(e => string.IsNullOrEmpty(searchText) || 
+        .Where(e => string.IsNullOrEmpty(searchText) ||
                     e.Title.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
                     e.Description.Contains(searchText, StringComparison.OrdinalIgnoreCase))
         .Where(e => string.IsNullOrEmpty(selectedCountry) ||
@@ -359,8 +399,6 @@
         get
         {
             var allEvents = AllFilteredEvents;
-            totalPages = (int)Math.Ceiling((double)allEvents.Count / itemsPerPage);
-            
             return allEvents
                 .Skip((currentPage - 1) * itemsPerPage)
                 .Take(itemsPerPage)
@@ -368,10 +406,19 @@
         }
     }
 
+    private int TotalPages
+    {
+        get
+        {
+            var count = AllFilteredEvents.Count;
+            return count > 0 ? (int)Math.Ceiling((double)count / itemsPerPage) : 1;
+        }
+    }
+
     private void OnSearch(string value)
     {
         searchText = value;
-        currentPage = 1; // Reset to first page when filtering
+        currentPage = 1;
         StateHasChanged();
     }
 
@@ -379,7 +426,7 @@
     {
         selectedCountry = value;
         isCountryOpen = false;
-        currentPage = 1; // Reset to first page when filtering
+        currentPage = 1;
         StateHasChanged();
     }
 
@@ -387,7 +434,7 @@
     {
         selectedDate = value;
         isDateOpen = false;
-        currentPage = 1; // Reset to first page when filtering
+        currentPage = 1;
         StateHasChanged();
     }
 
@@ -395,7 +442,7 @@
     {
         selectedCategory = value;
         isCategoryOpen = false;
-        currentPage = 1; // Reset to first page when filtering
+        currentPage = 1;
         StateHasChanged();
     }
 
@@ -409,13 +456,26 @@
     {
         if (location == "Online")
             return "Online";
-            
+
         var parts = location.Split(',');
         if (parts.Length > 0)
         {
             return parts[^1].Trim();
         }
-        
         return location;
+    }
+
+    private string GetEventColor(MockEvent evt)
+    {
+        // Generate color based on category or use a default color scheme
+        return evt.Category switch
+        {
+            "lecture" => "2196F3",    // Blue
+            "workshop" => "FF9800",   // Orange
+            "social" => "4CAF50",     // Green
+            "charity" => "E91E63",    // Pink
+            "education" => "9C27B0",  // Purple
+            _ => "607D8B"             // Blue Grey
+        };
     }
 }
