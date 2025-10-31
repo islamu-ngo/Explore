@@ -4,78 +4,214 @@
 
 <PageTitle>Event Detail</PageTitle>
 
-<MudContainer Class="py-4">
-    <MudGrid>
-        <!-- Back button and title -->
-        <MudItem xs="12" Class="mb-4">
-            <MudButton StartIcon="@Icons.Material.Filled.ArrowBack" 
-                      Variant="Variant.Text" 
-                      Color="Color.Primary"
-                      OnClick="@(() => Navigation.NavigateTo("/events"))">
-                Back to Events
-            </MudButton>
-        </MudItem>
+<style>
+/* ===== TOKENS ===== */
+:root{
+  --ring: color-mix(in srgb, var(--mud-palette-primary) 30%, transparent);
+}
 
-        <MudItem xs="12">
-            <MudText Typo="Typo.h3" Class="mb-6">Event Detail</MudText>
+/* ===== HERO ===== */
+.hero{
+  position: relative; border-radius: 16px; overflow: hidden;
+  height: 320px; margin-bottom: 16px;
+  box-shadow: 0 16px 40px rgba(0,0,0,.18);
+}
+.hero img{ width:100%; height:100%; object-fit:cover; display:block; }
+.hero::after{
+  content:""; position:absolute; inset:0;
+  background: linear-gradient(180deg, rgba(0,0,0,.15) 0%, rgba(0,0,0,.45) 100%);
+}
+.hero-content{
+  position:absolute; inset:0; display:flex; flex-direction:column; justify-content:flex-end;
+  padding: 18px;
+  color:#fff;
+}
+.hero-chips{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+.hero-title{ margin: 2px 0 4px 0; }
+
+/* ===== LAYOUT ===== */
+.page-wrap{ padding-block: 18px 32px; }
+.info-grid{ display:grid; gap:16px; grid-template-columns: 2fr 1fr; }
+@@media (max-width: 1024px){ .info-grid{ grid-template-columns: 1fr; } }
+
+/* ===== BODY CARD ===== */
+.body-card{
+  border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
+  border-radius: 16px; overflow: hidden;
+}
+.body-section{ padding: 18px; }
+.body-section + .body-section{ border-top: 1px solid var(--mud-palette-lines-default); }
+
+/* Info list */
+.detail-list{ display:grid; gap:10px; }
+.detail-row{ display:flex; align-items:flex-start; gap:10px; }
+.detail-row .mud-icon-root{ opacity:.9; }
+
+/* ===== STICKY ASIDE ===== */
+.sticky{
+  position: sticky; top: 84px;
+  border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
+  border-radius: 16px; padding: 16px;
+}
+.aside-row{ display:flex; align-items:center; gap:8px; opacity:.9; }
+.aside-divider{ margin: 12px 0; }
+.cta .mud-button-root{ width:100%; border-radius: 10px; }
+.cta .mud-button-root:focus-visible{ box-shadow: 0 0 0 3px var(--ring); }
+
+/* Map placeholder */
+.mapbox{
+  height: 160px; border-radius: 12px; overflow:hidden;
+  background: linear-gradient(135deg, #e5e7eb, #f3f4f6);
+  display:grid; place-items:center; color: var(--mud-palette-text-secondary);
+}
+
+/* Back link */
+.back-link .mud-button-root{ padding-left: 0; }
+.back-link .mud-button-label{ font-weight:600; }
+
+/* Text rhythm */
+p{ line-height: 1.6; }
+</style>
+
+<MudContainer Class="page-wrap">
+    <MudGrid>
+
+        <!-- Back -->
+        <MudItem xs="12" Class="mb-2">
+            <div class="back-link">
+                <MudButton StartIcon="@Icons.Material.Filled.ArrowBack"
+                           Variant="Variant.Text"
+                           Color="Color.Primary"
+                           OnClick="@(() => Navigation.NavigateTo("/events"))">
+                    Back to Events
+                </MudButton>
+            </div>
         </MudItem>
 
         @if (selectedEvent != null)
         {
-            <MudItem xs="12" md="6">
-                <MudPaper Class="pa-4" Elevation="2">
-                    <MudImage Src="@($"https://dummyimage.com/600x400/{selectedEvent.Color}/ffffff&text={selectedEvent.Title}")" 
-                             Alt="@selectedEvent.Title" 
-                             Class="rounded-lg"
-                             Style="width: 100%; height: 300px; object-fit: cover;" />
-                </MudPaper>
+            <!-- HERO -->
+            <MudItem xs="12">
+                <div class="hero">
+                    <img src="@($"https://dummyimage.com/1600x900/{GetEventColor(selectedEvent)}/ffffff&text={Uri.EscapeDataString(selectedEvent.Title)}")" alt="@selectedEvent.Title" />
+                    <div class="hero-content">
+                        <div class="hero-chips">
+                            <MudChip T="string" 
+                                     Color="Color.Primary" 
+                                     StartIcon="@Icons.Material.Filled.Category" 
+                                     Size="Size.Small"
+                                     Style="background-color: rgba(33, 150, 243, 0.9); color: white; font-weight: 500;">
+                                @selectedEvent.Category
+                            </MudChip>
+                            <MudChip T="string" 
+                                     Color="Color.Info" 
+                                     StartIcon="@Icons.Material.Filled.Event" 
+                                     Size="Size.Small"
+                                     Style="background-color: rgba(255, 255, 255, 0.9); color: #333; font-weight: 500;">
+                                @selectedEvent.Date.ToString("dd/MM/yyyy • HH:mm")
+                            </MudChip>
+                            <MudChip T="string" 
+                                     Color="Color.Secondary" 
+                                     StartIcon="@Icons.Material.Filled.Place" 
+                                     Size="Size.Small"
+                                     Style="background-color: rgba(255, 255, 255, 0.9); color: #333; font-weight: 500;">
+                                @(selectedEvent.Location == "Online" ? "Online" : GetCountryFromLocation(selectedEvent.Location))
+                            </MudChip>
+                        </div>
+                        <MudText Typo="Typo.h4" Class="hero-title">@selectedEvent.Title</MudText>
+                    </div>
+                </div>
             </MudItem>
 
-            <MudItem xs="12" md="6">
-                <MudPaper Class="pa-6" Elevation="1">
-                    <MudStack Spacing="4">
-                        <div>
-                            <MudText Typo="Typo.h5" Class="mb-2">Title: @selectedEvent.Title</MudText>
-                        </div>
+            <!-- CONTENT -->
+            <MudItem xs="12">
+                <div class="info-grid">
 
-                        <MudDivider />
+                    <!-- LEFT: description & details -->
+                    <div>
+                        <MudPaper Elevation="0" Class="body-card">
+                            <div class="body-section">
+                                <MudText Typo="Typo.h6" Class="mb-1">About this event</MudText>
+                                <MudText Typo="Typo.body1">
+                                    @selectedEvent.Description
+                                </MudText>
+                            </div>
 
-                        <div>
-                            <MudText Typo="Typo.h6" Class="mb-2">Description:</MudText>
-                            <MudText Typo="Typo.body1" Style="line-height: 1.6;">
-                                @selectedEvent.Description
-                            </MudText>
-                        </div>
+                            <div class="body-section">
+                                <MudText Typo="Typo.h6" Class="mb-2">Details</MudText>
+                                <div class="detail-list">
+                                    <div class="detail-row">
+                                        <MudIcon Icon="@Icons.Material.Filled.Event" />
+                                        <MudText>@selectedEvent.Date.ToString("dddd dd MMMM yyyy • HH:mm")</MudText>
+                                    </div>
+                                    <div class="detail-row">
+                                        <MudIcon Icon="@Icons.Material.Filled.Category" />
+                                        <MudText>@selectedEvent.Category</MudText>
+                                    </div>
+                                    <div class="detail-row">
+                                        <MudIcon Icon="@Icons.Material.Filled.LocationOn" />
+                                        <MudText>@selectedEvent.Location</MudText>
+                                    </div>
+                                </div>
+                            </div>
 
-                        <MudDivider />
+                            <div class="body-section">
+                                <MudText Typo="Typo.h6" Class="mb-2">Share</MudText>
+                                <MudStack Row="true" Spacing="1">
+                                    <MudIconButton Icon="@Icons.Custom.Brands.Facebook" Color="Color.Default" Size="Size.Small" aria-label="Share on Facebook" />
+                                    <MudIconButton Icon="@Icons.Custom.Brands.Twitter" Color="Color.Default" Size="Size.Small" aria-label="Share on X" />
+                                    <MudIconButton Icon="@Icons.Custom.Brands.WhatsApp" Color="Color.Default" Size="Size.Small" aria-label="Share on WhatsApp" />
+                                    <MudIconButton Icon="@Icons.Custom.Brands.LinkedIn" Color="Color.Default" Size="Size.Small" aria-label="Share on LinkedIn" />
+                                </MudStack>
+                            </div>
+                        </MudPaper>
+                    </div>
 
-                        <div>
-                            <MudText Typo="Typo.h6">Date: @selectedEvent.Date.ToString("dd/MM/yyyy - HH:mm")</MudText>
-                        </div>
+                    <!-- RIGHT: sticky actions -->
+                    <div>
+                        <MudPaper Elevation="0" Class="sticky">
+                            <MudStack Spacing="2">
+                                <MudText Typo="Typo.subtitle1">Attend this event</MudText>
 
-                        <MudDivider />
+                                <div class="aside-row">
+                                    <MudIcon Icon="@Icons.Material.Filled.Schedule" />
+                                    <MudText>@selectedEvent.Date.ToString("dd/MM/yyyy • HH:mm")</MudText>
+                                </div>
+                                <div class="aside-row">
+                                    <MudIcon Icon="@Icons.Material.Filled.Place" />
+                                    <MudText>@(selectedEvent.Location == "Online" ? "Online" : GetCountryFromLocation(selectedEvent.Location))</MudText>
+                                </div>
 
-                        <div>
-                            <MudText Typo="Typo.h6">Event Type: @selectedEvent.Category</MudText>
-                        </div>
+                                <MudDivider Class="aside-divider" />
 
-                        <MudDivider />
+                                <div class="cta">
+                                    <MudButton Variant="Variant.Filled"
+                                               Color="Color.Primary"
+                                               Size="Size.Large"
+                                               FullWidth="true">
+                                        Join us
+                                    </MudButton>
+                                </div>
 
-                        <div>
-                            <MudText Typo="Typo.h6">Location: @selectedEvent.Location</MudText>
-                        </div>
+                                <MudDivider Class="aside-divider" />
 
-                        <MudSpacer />
+                                @if (selectedEvent.Location != "Online")
+                                {
+                                    <div class="mapbox">
+                                        <MudText Typo="Typo.caption">Map preview</MudText>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true">
+                                        Online event — link will be provided by the organizer.
+                                    </MudAlert>
+                                }
+                            </MudStack>
+                        </MudPaper>
+                    </div>
 
-                        <MudButton Variant="Variant.Filled" 
-                                  Color="Color.Primary" 
-                                  Size="Size.Large"
-                                  FullWidth="true"
-                                  Class="mt-4">
-                            Join us
-                        </MudButton>
-                    </MudStack>
-                </MudPaper>
+                </div>
             </MudItem>
         }
         else
@@ -91,7 +227,7 @@
 
 @code {
     [Parameter] public int EventId { get; set; }
-    
+
     private MockEvent? selectedEvent;
 
     private class MockEvent
@@ -107,110 +243,65 @@
 
     private List<MockEvent> mockEvents = new()
     {
-        new MockEvent 
-        {
-            Id = 1,
-            Title = "Islamic Finance Workshop",
-            Category = "workshop",
-            Date = DateTime.Now.AddDays(1),
-            Description = "Learn about Islamic finance principles and their modern applications in this interactive workshop.",
-            Location = "Nieuwezijds Voorburgwal 100, 1012 SH Amsterdam, Netherlands",
-            Color = "5D4037"
-        },
-        new MockEvent
-        {
-            Id = 2,
-            Title = "Quran Study Circle",
-            Category = "lecture",
-            Date = DateTime.Now.AddDays(7),
-            Description = "Weekly study circle focused on understanding and implementing Quranic teachings.",
-            Location = "Westersingel 82, 3015 LC Rotterdam, Netherlands",
-            Color = "2E7D32"
-        },
-        new MockEvent
-        {
-            Id = 3,
-            Title = "Community Iftar",
-            Category = "social",
-            Date = DateTime.Now.AddDays(14),
-            Description = "Join us for a community iftar during Ramadan. All are welcome to break fast together.",
-            Location = "Rue de la Loi 170, 1048 Brussels, Belgium",
-            Color = "1565C0"
-        },
-        new MockEvent
-        {
-            Id = 4,
-            Title = "Youth Leadership Program",
-            Category = "workshop",
-            Date = DateTime.Now.AddDays(2),
-            Description = "Developing future leaders through Islamic principles and modern leadership skills.",
-            Location = "Online",
-            Color = "6A1B9A"
-        },
-        new MockEvent
-        {
-            Id = 5,
-            Title = "Food Bank Distribution",
-            Category = "charity",
-            Date = DateTime.Now,
-            Description = "Help distribute food packages to families in need. Volunteers needed.",
-            Location = "Alexanderplatz 5, 10178 Berlin, Germany",
-            Color = "C62828"
-        },
-        new MockEvent
-        {
-            Id = 6,
-            Title = "Islamic Art Exhibition",
-            Category = "social",
-            Date = DateTime.Now.AddDays(5),
-            Description = "Showcasing contemporary Islamic art from local and international artists.",
-            Location = "Online",
-            Color = "00695C"
-        },
-        new MockEvent
-        {
-            Id = 7,
-            Title = "Halal Food Festival",
-            Category = "social",
-            Date = DateTime.Now.AddDays(8),
-            Description = "Celebrate diverse halal cuisines from around the world with local vendors.",
-            Location = "Vondelpark 1, 1071 AA Amsterdam, Netherlands",
-            Color = "FF5722"
-        },
-        new MockEvent
-        {
-            Id = 8,
-            Title = "Arabic Language Course",
-            Category = "lecture",
-            Date = DateTime.Now.AddDays(10),
-            Description = "Begin your journey learning Arabic with experienced native speakers.",
-            Location = "Online",
-            Color = "9C27B0"
-        },
-        new MockEvent
-        {
-            Id = 9,
-            Title = "Community Garden Project",
-            Category = "charity",
-            Date = DateTime.Now.AddDays(12),
-            Description = "Help establish a community garden to provide fresh produce for local families.",
-            Location = "Marktplatz 15, 50667 Köln, Germany",
-            Color = "4CAF50"
-        },
-        new MockEvent
-        {
-            Id = 10,
-            Title = "Youth Sports Tournament",
-            Category = "social",
-            Date = DateTime.Now.AddDays(15),
-            Description = "Annual football tournament bringing together youth from different communities.",
-            Location = "Sportpark De Toekomst, 1101 DB Amsterdam, Netherlands",
-            Color = "FF9800"
-        }
+        // MyEvents data (from EventService) - IDs 1-10
+        new MockEvent { Id = 1, Title = "Islamic Finance Workshop", Category = "lecture", Date = DateTime.Now.AddDays(7), Description = "Learn about Islamic finance principles and banking systems in this comprehensive workshop.", Location = "Amsterdam Conference Center, Zuidplein 36, Netherlands", Color = "2196F3" },
+        new MockEvent { Id = 2, Title = "DeepDives Seminar", Category = "workshop", Date = DateTime.Now.AddDays(14), Description = "Deep dive into advanced topics with industry experts and thought leaders.", Location = "Brussels Convention Hall, Rue Ducale 29, Belgium", Color = "FF9800" },
+        new MockEvent { Id = 3, Title = "Online Tech Conference", Category = "social", Date = DateTime.Now.AddDays(21), Description = "Virtual conference exploring the latest in technology and innovation.", Location = "Online", Color = "4CAF50" },
+        new MockEvent { Id = 4, Title = "Business Networking Event", Category = "charity", Date = DateTime.Now.AddDays(28), Description = "Connect with business professionals and expand your network in this exciting event.", Location = "Berlin Business Center, Potsdamer Platz 1, Germany", Color = "E91E63" },
+        new MockEvent { Id = 5, Title = "Cultural Heritage Workshop", Category = "workshop", Date = DateTime.Now.AddDays(35), Description = "Explore cultural heritage preservation and its importance in modern society.", Location = "Paris Cultural Institute, Champs-Élysées 25, France", Color = "FF9800" },
+        new MockEvent { Id = 6, Title = "Virtual Leadership Summit", Category = "lecture", Date = DateTime.Now.AddDays(42), Description = "Online summit featuring leadership strategies and management techniques.", Location = "Online", Color = "2196F3" },
+        new MockEvent { Id = 7, Title = "Innovation Lab", Category = "social", Date = DateTime.Now.AddDays(49), Description = "Hands-on innovation laboratory exploring cutting-edge technologies and solutions.", Location = "Antwerp Innovation Hub, Meir 15, Belgium", Color = "4CAF50" },
+        new MockEvent { Id = 8, Title = "Digital Marketing Masterclass", Category = "workshop", Date = DateTime.Now.AddDays(56), Description = "Master the art of digital marketing with expert-led sessions and practical exercises.", Location = "Munich Digital Campus, Maximilianstrasse 42, Germany", Color = "FF9800" },
+        new MockEvent { Id = 9, Title = "Online Community Meetup", Category = "social", Date = DateTime.Now.AddDays(63), Description = "Virtual community meetup to connect with like-minded individuals and share experiences.", Location = "Online", Color = "4CAF50" },
+        new MockEvent { Id = 10, Title = "Sustainable Development Forum", Category = "charity", Date = DateTime.Now.AddDays(70), Description = "Forum discussing sustainable development practices and environmental conservation.", Location = "Lyon Convention Center, Place Bellecour 12, France", Color = "E91E63" },
+
+        // EventList data - IDs 101-124 (to avoid conflicts)
+        new MockEvent { Id = 101, Title = "Islamic Finance Workshop", Category = "workshop", Date = DateTime.Now.AddDays(1), Description = "Learn about Islamic finance principles and their modern applications in this interactive workshop.", Location = "Nieuwezijds Voorburgwal 100, 1012 SH Amsterdam, Netherlands", Color = "5D4037" },
+        new MockEvent { Id = 102, Title = "Quran Study Circle", Category = "lecture", Date = DateTime.Now.AddDays(7), Description = "Weekly study circle focused on understanding and implementing Quranic teachings.", Location = "Westersingel 82, 3015 LC Rotterdam, Netherlands", Color = "2E7D32" },
+        new MockEvent { Id = 103, Title = "Community Iftar", Category = "social", Date = DateTime.Now.AddDays(14), Description = "Join us for a community iftar during Ramadan. All are welcome to break fast together.", Location = "Rue de la Loi 170, 1048 Brussels, Belgium", Color = "1565C0" },
+        new MockEvent { Id = 104, Title = "Youth Leadership Program", Category = "workshop", Date = DateTime.Now.AddDays(2), Description = "Developing future leaders through Islamic principles and modern leadership skills.", Location = "Online", Color = "6A1B9A" },
+        new MockEvent { Id = 105, Title = "Food Bank Distribution", Category = "charity", Date = DateTime.Now, Description = "Help distribute food packages to families in need. Volunteers needed.", Location = "Alexanderplatz 5, 10178 Berlin, Germany", Color = "C62828" },
+        new MockEvent { Id = 106, Title = "Islamic Art Exhibition", Category = "social", Date = DateTime.Now.AddDays(5), Description = "Showcasing contemporary Islamic art from local and international artists.", Location = "Online", Color = "00695C" },
+        new MockEvent { Id = 107, Title = "Halal Food Festival", Category = "social", Date = DateTime.Now.AddDays(8), Description = "Celebrate diverse halal cuisines from around the world with local vendors.", Location = "Vondelpark 1, 1071 AA Amsterdam, Netherlands", Color = "FF5722" },
+        new MockEvent { Id = 108, Title = "Arabic Language Course", Category = "lecture", Date = DateTime.Now.AddDays(10), Description = "Begin your journey learning Arabic with experienced native speakers.", Location = "Online", Color = "9C27B0" },
+        new MockEvent { Id = 109, Title = "Community Garden Project", Category = "charity", Date = DateTime.Now.AddDays(12), Description = "Help establish a community garden to provide fresh produce for local families.", Location = "Marktplatz 15, 50667 Köln, Germany", Color = "4CAF50" },
+        new MockEvent { Id = 110, Title = "Youth Sports Tournament", Category = "social", Date = DateTime.Now.AddDays(15), Description = "Annual football tournament bringing together youth from different communities.", Location = "Sportpark De Toekomst, 1101 DB Amsterdam, Netherlands", Color = "FF9800" },
+        new MockEvent { Id = 111, Title = "Islamic History Lecture", Category = "lecture", Date = DateTime.Now.AddDays(16), Description = "Exploring the golden age of Islamic civilization and its contributions to modern society.", Location = "University of Brussels, Brussels, Belgium", Color = "795548" },
+        new MockEvent { Id = 112, Title = "Sisters Book Club", Category = "social", Date = DateTime.Now.AddDays(18), Description = "Monthly book discussion focusing on Islamic literature and personal development.", Location = "Online", Color = "E91E63" },
+        new MockEvent { Id = 113, Title = "Dawah Training Workshop", Category = "workshop", Date = DateTime.Now.AddDays(20), Description = "Learn effective methods of sharing Islam with wisdom and beautiful preaching.", Location = "Islamic Center Hamburg, Hamburg, Germany", Color = "3F51B5" },
+        new MockEvent { Id = 114, Title = "Charity Clothing Drive", Category = "charity", Date = DateTime.Now.AddDays(22), Description = "Collecting winter clothes for refugees and underprivileged families.", Location = "Mosque Al-Nour, Rotterdam, Netherlands", Color = "009688" },
+        new MockEvent { Id = 115, Title = "Eid Preparation Workshop", Category = "workshop", Date = DateTime.Now.AddDays(25), Description = "Learn traditional Eid recipes and decoration ideas for the upcoming celebration.", Location = "Community Center Antwerp, Belgium", Color = "FF9800" },
+        new MockEvent { Id = 116, Title = "Islamic Finance Seminar", Category = "lecture", Date = DateTime.Now.AddDays(27), Description = "Advanced seminar on Islamic banking, sukuk, and sharia-compliant investments.", Location = "Business School Amsterdam, Netherlands", Color = "607D8B" },
+        new MockEvent { Id = 117, Title = "Youth Quran Competition", Category = "social", Date = DateTime.Now.AddDays(30), Description = "Annual Quran recitation and memorization competition for ages 8-18.", Location = "Islamic School Berlin, Germany", Color = "8BC34A" },
+        new MockEvent { Id = 118, Title = "Interfaith Dialogue", Category = "lecture", Date = DateTime.Now.AddDays(32), Description = "Building bridges between different faith communities through respectful dialogue.", Location = "Peace Center Brussels, Belgium", Color = "FF5722" },
+        new MockEvent { Id = 119, Title = "Hajj Preparation Course", Category = "workshop", Date = DateTime.Now.AddDays(35), Description = "Comprehensive guide to performing Hajj with practical tips and spiritual preparation.", Location = "Travel Agency The Hague, Netherlands", Color = "673AB7" },
+        new MockEvent { Id = 120, Title = "Islamic Parenting Workshop", Category = "workshop", Date = DateTime.Now.AddDays(37), Description = "Raising children with Islamic values in a Western society.", Location = "Online", Color = "E91E63" },
+        new MockEvent { Id = 121, Title = "Mosque Open Day", Category = "social", Date = DateTime.Now.AddDays(40), Description = "Welcome neighbors to learn about Islam and visit our beautiful mosque.", Location = "Central Mosque Cologne, Germany", Color = "2196F3" },
+        new MockEvent { Id = 122, Title = "Halal Cooking Class", Category = "workshop", Date = DateTime.Now.AddDays(42), Description = "Learn to prepare delicious Middle Eastern and South Asian halal dishes.", Location = "Culinary School Ghent, Belgium", Color = "FF5722" },
+        new MockEvent { Id = 123, Title = "Islamic Art Workshop", Category = "workshop", Date = DateTime.Now.AddDays(45), Description = "Create beautiful Islamic geometric patterns and Arabic calligraphy.", Location = "Art Studio Utrecht, Netherlands", Color = "9C27B0" },
+        new MockEvent { Id = 124, Title = "Community Clean-up", Category = "charity", Date = DateTime.Now.AddDays(47), Description = "Volunteer to clean local parks and streets as part of our environmental stewardship.", Location = "Tiergarten Park, Berlin, Germany", Color = "4CAF50" }
     };
 
     protected override void OnInitialized()
     {
         selectedEvent = mockEvents.FirstOrDefault(e => e.Id == EventId);
+    }
+
+    private string GetCountryFromLocation(string location)
+        => location == "Online" ? "Online"
+           : (location.Split(',').LastOrDefault()?.Trim() ?? location);
+
+    private string GetEventColor(MockEvent evt)
+    {
+        // Generate color based on category or use a default color scheme
+        return evt.Category switch
+        {
+            "lecture" => "2196F3",    // Blue
+            "workshop" => "FF9800",   // Orange
+            "social" => "4CAF50",     // Green
+            "charity" => "E91E63",    // Pink
+            "education" => "9C27B0",  // Purple
+            _ => "607D8B"             // Blue Grey
+        };
     }
 }
