@@ -1,22 +1,117 @@
-﻿<!-- Full-width footer with background -->
-<footer style="background: var(--mud-palette-background-gray, #151521); border-top: 1px solid var(--mud-palette-lines-default, #33323e); margin-top: 64px; padding: 48px 0 24px 0; width: 100%;">
+﻿<!-- FOOTER -->
+<style>
+/* ====== THEME TOKENS ====== */
+:root{
+    --ft-bg: linear-gradient(180deg, #0e1024 0%, #0b0f1e 100%);
+    --ft-topline: linear-gradient(90deg, #6b5cff, #a855f7, #22d3ee);
+    --ft-text: rgba(255,255,255,.86);
+    --ft-muted: rgba(255,255,255,.64);
+    --ft-line: rgba(255,255,255,.12);
+}
+
+/* ====== WRAPPER ====== */
+.site-footer{
+    position:relative; width:100%;
+    margin-top:64px; padding:56px 0 24px 0;
+    background: var(--ft-bg);
+    color: var(--ft-text);
+    border-top: 1px solid var(--ft-line);
+    overflow:hidden;
+}
+.site-footer::before{
+    /* fine top glow line */
+    content:""; position:absolute; top:0; left:0; right:0; height:2px;
+    background: var(--ft-topline); opacity:.7;
+}
+
+/* ====== TYPO ====== */
+.site-footer .mud-typography{ color: var(--ft-text); }
+.site-footer .mud-typography-body2{ color: var(--ft-muted); }
+
+/* Headings (columns) */
+.ft-head{
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    font-weight: 700;
+    font-size: .85rem;
+    color: var(--ft-text);
+    opacity: .9;
+}
+
+/* ====== LINKS ====== */
+.ft-links a{
+    color: var(--ft-muted);
+    text-decoration: none;
+    position: relative;
+    display: inline-block;
+    width: fit-content;
+}
+.ft-links a::after{
+    content:""; position:absolute; left:0; right:0; bottom:-2px; height:2px;
+    background: currentColor; transform: scaleX(0); transform-origin:left;
+    transition: transform .18s ease;
+    opacity:.85;
+}
+.ft-links a:hover{
+    color: var(--ft-text);
+}
+.ft-links a:hover::after{
+    transform: scaleX(1);
+}
+
+/* ====== BRAND ROW ====== */
+.brandstack{ gap:10px; }
+
+/* ====== DIVIDER ====== */
+.site-footer .mud-divider{
+    border-color: var(--ft-line);
+}
+
+/* ====== SOCIAL ====== */
+.social-row{
+    display:flex; gap:10px; align-items:center;
+}
+.social-pill{
+    width:36px; height:36px; border-radius:999px;
+    display:grid; place-items:center;
+    background: rgba(255,255,255,.06);
+    border: 1px solid var(--ft-line);
+    transition: transform .12s ease, background .12s ease, border-color .12s ease;
+}
+.social-pill:hover{
+    transform: translateY(-2px);
+    background: rgba(255,255,255,.12);
+    border-color: rgba(255,255,255,.22);
+}
+
+/* ====== RESPONSIVE ====== */
+@@media (max-width: 960px){
+    .site-footer{ padding-top:44px; }
+}
+</style>
+
+<footer class="site-footer">
     <MudContainer MaxWidth="MaxWidth.Large">
         <MudGrid>
+            <!-- Brand / intro -->
             <MudItem xs="12" md="4">
                 <MudStack>
-                    <MudStack Row AlignItems="AlignItems.Center">
+                    <MudStack Row AlignItems="AlignItems.Center" Class="brandstack">
                         <MudIcon Icon="@Icons.Material.Filled.Favorite" Color="Color.Error" />
                         <MudText Typo="Typo.h6">ISLAMU Explore</MudText>
                     </MudStack>
-                    <MudText Typo="Typo.body2">Connecting Muslims through meaningful events and gatherings.</MudText>
+                    <MudText Typo="Typo.body2">
+                        Connecting Muslims through meaningful events and gatherings.
+                    </MudText>
                 </MudStack>
             </MudItem>
 
+            <!-- Link columns -->
             <MudItem xs="12" md="8">
                 <MudGrid>
                     <MudItem xs="6" sm="3">
-                        <MudText Typo="Typo.subtitle2" Class="mb-4">Explore</MudText>
-                        <MudStack Spacing="2">
+                        <MudText Typo="Typo.subtitle2" Class="ft-head mb-3">Explore</MudText>
+                        <MudStack Spacing="2" Class="ft-links">
                             <MudLink Href="/event">Events</MudLink>
                             <MudLink Href="/event/categories">Categories</MudLink>
                             <MudLink Href="/event/create">Create Event</MudLink>
@@ -24,8 +119,8 @@
                     </MudItem>
 
                     <MudItem xs="6" sm="3">
-                        <MudText Typo="Typo.subtitle2" Class="mb-4">Company</MudText>
-                        <MudStack Spacing="2">
+                        <MudText Typo="Typo.subtitle2" Class="ft-head mb-3">Company</MudText>
+                        <MudStack Spacing="2" Class="ft-links">
                             <MudLink Href="/about">About</MudLink>
                             <MudLink Href="/contact">Contact</MudLink>
                             <MudLink Href="/careers">Careers</MudLink>
@@ -33,8 +128,8 @@
                     </MudItem>
 
                     <MudItem xs="6" sm="3">
-                        <MudText Typo="Typo.subtitle2" Class="mb-4">Resources</MudText>
-                        <MudStack Spacing="2">
+                        <MudText Typo="Typo.subtitle2" Class="ft-head mb-3">Resources</MudText>
+                        <MudStack Spacing="2" Class="ft-links">
                             <MudLink Href="/blog">Blog</MudLink>
                             <MudLink Href="/help">Help Center</MudLink>
                             <MudLink Href="/guidelines">Guidelines</MudLink>
@@ -42,8 +137,8 @@
                     </MudItem>
 
                     <MudItem xs="6" sm="3">
-                        <MudText Typo="Typo.subtitle2" Class="mb-4">Legal</MudText>
-                        <MudStack Spacing="2">
+                        <MudText Typo="Typo.subtitle2" Class="ft-head mb-3">Legal</MudText>
+                        <MudStack Spacing="2" Class="ft-links">
                             <MudLink Href="/privacy">Privacy</MudLink>
                             <MudLink Href="/terms">Terms</MudLink>
                             <MudLink Href="/cookies">Cookie Policy</MudLink>
@@ -57,17 +152,18 @@
 
         <MudGrid AlignItems="AlignItems.Center">
             <MudItem xs="12" sm="6">
-                <MudText Typo="Typo.body2">&copy; 2025 ISLAMU. All rights reserved.</MudText>
+                <MudText Typo="Typo.body2">
+                    &copy; @DateTime.Now.Year ISLAMU. All rights reserved.
+                </MudText>
             </MudItem>
             <MudItem xs="12" sm="6" Class="d-flex justify-end">
-                <MudStack Row>
-                    <MudIconButton Icon="@Icons.Custom.Brands.Facebook" Color="Color.Default" Size="Size.Small" />
-                    <MudIconButton Icon="@Icons.Custom.Brands.Twitter" Color="Color.Default" Size="Size.Small" />
-                    <MudIconButton Icon="@Icons.Custom.Brands.Instagram" Color="Color.Default" Size="Size.Small" />
-                    <MudIconButton Icon="@Icons.Custom.Brands.YouTube" Color="Color.Default" Size="Size.Small" />
-                </MudStack>
+                <div class="social-row">
+                    <MudIconButton Class="social-pill" Icon="@Icons.Custom.Brands.Facebook" Color="Color.Default" Size="Size.Small" aria-label="Facebook" />
+                    <MudIconButton Class="social-pill" Icon="@Icons.Custom.Brands.Twitter" Color="Color.Default" Size="Size.Small" aria-label="Twitter/X" />
+                    <MudIconButton Class="social-pill" Icon="@Icons.Custom.Brands.Instagram" Color="Color.Default" Size="Size.Small" aria-label="Instagram" />
+                    <MudIconButton Class="social-pill" Icon="@Icons.Custom.Brands.YouTube" Color="Color.Default" Size="Size.Small" aria-label="YouTube" />
+                </div>
             </MudItem>
         </MudGrid>
     </MudContainer>
 </footer>
-<!-- TODO look at https://github.com/MudBlazor/MudBlazor/blob/dev/src/MudBlazor.Docs/Shared/Footer.razor which is mudblazor impleemntation of footer!-->
