@@ -1,50 +1,208 @@
 ﻿@inject NavigationManager Nav
 @inject IJSRuntime JSRuntime
 
-    <MudStack Row="true" Spacing="1">
-        <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Favorite" Color="Color.Error">ISLAMU Explore</MudNavLink>
-    </MudStack>
+<style>
+/* ===== NAV WRAP ===== */
+.topnav {
+    position: sticky; top: 0; z-index: 50;
+    width: 100%;
+    padding: 10px 24px;
+    background: color-mix(in srgb, var(--mud-palette-background-paper) 95%, transparent);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid color-mix(in srgb, var(--mud-palette-text-primary) 8%, transparent);
+    box-shadow: 0 2px 20px rgba(0,0,0,.08);
+}
 
-    <MudSpacer />
+/* Layout rows */
+.nav-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+}
 
-    <!-- Center: main links -->
-    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
-        <MudNavLink Href="/events" Match="NavLinkMatch.Prefix">Events</MudNavLink>
-        <MudTextField @bind-Value="searchText" 
-                     Placeholder="Search events..." 
-                     Adornment="Adornment.End" 
-                     AdornmentIcon="@Icons.Material.Filled.Search" 
-                     IconSize="Size.Medium"
-                     Variant="Variant.Outlined"
-                     Margin="Margin.Dense"
-                     Style="min-width: 250px;" />
-    </MudStack>
+.nav-row {
+    display: flex; 
+    align-items: center; 
+    justify-content: space-between;
+    gap: 24px;
+    min-height: 60px;
+}
 
-    <MudSpacer />
+/* ===== LEFT BRAND / HOME ===== */
+.brand a.mud-nav-link {
+    border-radius: 999px;
+    padding: 8px 12px;
+    font-weight: 700;
+    letter-spacing: .2px;
+    background: color-mix(in srgb, var(--mud-palette-primary) 10%, transparent);
+    color: var(--mud-palette-primary-contrast-text) !important;
+    box-shadow: 0 6px 16px color-mix(in srgb, var(--mud-palette-primary) 25%, transparent);
+}
+.brand a.mud-nav-link:hover {
+    transform: translateY(-1px);
+}
 
-    <!-- Right: auth buttons -->
-    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-        <MudIconButton Icon="@Icons.Material.Rounded.AutoMode"
-                      Color="Color.Inherit"
-                      OnClick="@OnToggleTheme" />
-        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="/myevents">Create</MudButton>
-        
-        <!-- Auth buttons - will be updated dynamically -->
-        <div id="auth-buttons">
-            <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/login" StartIcon="@Icons.Material.Filled.Login">Login</MudButton>
+/* ===== CENTER LINKS ===== */
+.center-links {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    max-width: 500px;
+    margin: 0 auto;
+    gap: 16px;
+}
+
+.pill a.mud-nav-link {
+    border-radius: 999px;
+    padding: 8px 16px;
+    transition: background .15s ease, color .15s ease, transform .15s ease;
+    white-space: nowrap;
+    max-width: 100px;
+    text-align: center;
+    font-size: 0.875rem;
+}
+.pill a.mud-nav-link:hover {
+    background: color-mix(in srgb, var(--mud-palette-primary) 10%, transparent);
+    transform: translateY(-1px);
+}
+
+/* Active underline (subtle) */
+a.mud-nav-link.mud-nav-link-active {
+    position: relative;
+}
+a.mud-nav-link.mud-nav-link-active::after {
+    content: ""; position: absolute; left: 12px; right: 12px; bottom: 4px; height: 2px;
+    border-radius: 2px;
+    background: var(--mud-palette-primary);
+    opacity: .9;
+}
+
+/* ===== SEARCH ===== */
+.nav-search {
+    flex: 1;
+    max-width: 320px;
+    min-width: 240px;
+}
+
+.nav-search .mud-input-root {
+    border-radius: 999px !important;
+}
+.nav-search input.mud-input-slot {
+    padding-left: 16px; 
+    padding-right: 40px;
+}
+.nav-search .mud-input-adornment {
+    opacity: .85;
+}
+.nav-search .mud-input:not(.mud-input-disabled):focus-within {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--mud-palette-primary) 30%, transparent);
+    border-color: var(--mud-palette-primary);
+}
+
+/* ===== RIGHT SIDE ===== */
+.nav-actions .mud-button-root {
+    border-radius: 999px;
+}
+.nav-actions .mud-icon-button-root {
+    border-radius: 10px;
+}
+.nav-actions .mud-icon-button-root:hover {
+    background: color-mix(in srgb, var(--mud-palette-text-primary) 8%, transparent);
+}
+
+/* ===== RESPONSIVE ===== */
+@@media (max-width: 900px){
+    .nav-row { 
+        flex-wrap: wrap; 
+        gap: 12px;
+        justify-content: center;
+    }
+    
+    .brand { 
+        order: 1; 
+        width: 100%; 
+        justify-content: center; 
+    }
+    
+    .center-links { 
+        order: 2; 
+        width: 100%; 
+        justify-content: center;
+        max-width: none;
+        margin: 0;
+    }
+    
+    .nav-search { 
+        flex: 1 1 100%; 
+        max-width: none;
+        margin: 0 20px;
+    }
+    
+    .nav-actions { 
+        order: 3; 
+        width: 100%; 
+        justify-content: center; 
+    }
+}
+</style>
+
+<div class="topnav">
+    <div class="nav-container">
+        <div class="nav-row">
+
+            <!-- Left: brand / home -->
+            <MudStack Row="true" Spacing="1" Class="brand">
+                <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Favorite" Color="Color.Error">
+                    ISLAMU Explore
+                </MudNavLink>
+            </MudStack>
+
+            <!-- Center: main links + search -->
+            <div class="center-links">
+                <div class="pill">
+                    <MudNavLink Href="/events" Match="NavLinkMatch.Prefix">Events</MudNavLink>
+                </div>
+                <MudTextField @bind-Value="searchText"
+                              Class="nav-search"
+                              Placeholder="Search events..."
+                              Adornment="Adornment.End"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              IconSize="Size.Medium"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense" />
+            </div>
+
+            <!-- Right: actions (theme + create + auth) -->
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="nav-actions">
+                <MudIconButton Icon="@Icons.Material.Rounded.AutoMode"
+                               Color="Color.Inherit"
+                               OnClick="@OnToggleTheme"
+                               aria-label="Toggle theme" />
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="/myevents" StartIcon="@Icons.Material.Filled.Add">
+                    Create
+                </MudButton>
+
+                <!-- Auth buttons -->
+                <div id="auth-buttons">
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/login" StartIcon="@Icons.Material.Filled.Login">Login</MudButton>
+                </div>
+            </MudStack>
+
         </div>
-    </MudStack>
+    </div>
+</div>
 
 @code {
     [Parameter] public EventCallback OnToggleTheme { get; set; }
-    
+
     private string searchText = "";
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            // Update navigation based on authentication status
+            // Update navigation based on authentication status (unchanged)
             await UpdateAuthenticationUI();
         }
     }
@@ -65,7 +223,6 @@
                         if (response.ok && response.status === 200) {
                             const authInfo = await response.json();
                             if (authInfo.isAuthenticated && authInfo.name) {
-                                // User is authenticated
                                 if (authButtons) {
                                     authButtons.innerHTML = `
                                         <div class='mud-menu mud-menu-dense'>
@@ -89,7 +246,6 @@
                                     `;
                                 }
                             } else {
-                                // User is not authenticated
                                 if (authButtons) {
                                     authButtons.innerHTML = `
                                         <a href='/login' class='mud-button-root mud-button mud-button-text mud-button-text-primary mud-button-text-size-medium mud-ripple'>
@@ -103,19 +259,15 @@
                                     `;
                                 }
                             }
-                        } else {
-                            // Default to not authenticated
                         }
                     } catch (error) {
                         console.log('Auth UI update failed:', error);
-                        // Default to not authenticated on error
                     }
                 })();
             ");
         }
         catch (Exception ex)
         {
-            // Fallback - keep default values
             Console.WriteLine($"Failed to update auth UI: {ex.Message}");
         }
     }
