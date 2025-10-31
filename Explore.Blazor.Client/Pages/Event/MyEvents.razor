@@ -6,140 +6,329 @@
 @inject NavigationManager Navigation
 
 <style>
-    .filter-paper {
-        background-color: var(--mud-palette-surface);
-        border: 1px solid var(--mud-palette-lines-default);
-        border-radius: 4px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        color: var(--mud-palette-text-primary);
-    }
+/* ===== TOKENS ===== */
+:root{
+    --fx-ring: color-mix(in srgb, var(--mud-palette-primary) 30%, transparent);
+}
 
-    .filter-paper:hover {
-        background-color: var(--mud-palette-action-hover);
-        border-color: var(--mud-palette-primary);
-    }
+/* ===== WRAPPER ===== */
+.page-wrap{ padding-block: 20px 32px; }
 
-    .filter-popover {
-        background-color: var(--mud-palette-surface) !important;
-        border: 1px solid var(--mud-palette-lines-default) !important;
-        box-shadow: var(--mud-elevation-8) !important;
-    }
+/* ===== BAR: filters ===== */
+.filters-bar{
+    display:grid; gap:12px;
+    grid-template-columns: repeat(12, 1fr);
+    align-items:stretch;
+}
+@@media (max-width: 960px){
+    .filters-bar{ grid-template-columns: 1fr; }
+}
 
-    .filter-popover .mud-text {
-        color: var(--mud-palette-text-primary) !important;
-    }
-</style><MudContainer Class="mt-16">
-    <MudGrid>
-        <MudItem xs="12" Class="d-flex justify-space-between align-center mb-4">
-            <MudText Typo="Typo.h3">My Events</MudText>
+.filter-cell{ grid-column: span 3; }
+.filter-cell.search{ grid-column: span 3; }
+@@media (max-width: 960px){
+    .filter-cell, .filter-cell.search{ grid-column: 1/-1; }
+}
+
+/* Pill trigger */
+.filter-paper{
+    background-color: var(--mud-palette-surface);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease, background .12s ease;
+    color: var(--mud-palette-text-primary);
+    padding-inline: 12px;
+}
+.filter-paper:hover{
+    transform: translateY(-1px);
+    background-color: color-mix(in srgb, var(--mud-palette-primary) 6%, var(--mud-palette-surface));
+    border-color: var(--mud-palette-primary);
+    box-shadow: 0 0 0 3px var(--fx-ring);
+}
+
+/* Chevron */
+.filter-paper .mud-icon-root{ opacity:.85; }
+
+/* Popover styling */
+.filter-popover{
+    background-color: var(--mud-palette-surface) !important;
+    border: 1px solid var(--mud-palette-lines-default) !important;
+    box-shadow: var(--mud-elevation-8) !important;
+    border-radius: 12px !important;
+}
+.filter-popover .mud-text{ color: var(--mud-palette-text-primary) !important; }
+.filter-option{
+    padding: 6px 10px;
+    border-radius: 8px;
+    transition: background .12s ease, color .12s ease;
+    cursor: pointer;
+}
+.filter-option:hover{
+    background: color-mix(in srgb, var(--mud-palette-primary) 10%, transparent);
+}
+
+/* ===== SECTION HEADER ===== */
+.section-head{
+    display:flex; align-items:flex-end; justify-content:space-between;
+    gap:16px; margin-bottom: 16px;
+}
+.kicker{ letter-spacing:.18em; text-transform:uppercase; font-size:.82rem; opacity:.7; }
+
+/* ===== CARDS ===== */
+.card{
+    border-radius: 16px;
+    overflow:hidden;
+    border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.card:hover{
+    transform: translateY(-3px);
+    box-shadow: 0 16px 36px rgba(0,0,0,.16);
+    border-color: color-mix(in srgb, var(--mud-palette-primary) 40%, var(--mud-palette-lines-default));
+}
+
+/* Media with subtle overlay */
+.card-media{
+    position: relative; height: 200px; overflow: hidden;
+}
+.card-media::after{
+    content:""; position:absolute; inset:0;
+    background: linear-gradient(180deg, rgba(0,0,0,0) 50%, rgba(0,0,0,.25) 100%);
+}
+
+/* Badges row */
+.badges{ display:flex; gap:8px; align-items:center; margin: 10px 0 6px 0; }
+
+/* Location row */
+.loc{
+    display:flex; align-items:center; gap:6px; opacity:.85;
+}
+
+/* ===== PAGINATION & INFO ===== */
+.pager{
+    display:flex; justify-content:center; margin-top: 24px;
+}
+.results{
+    display:flex; justify-content:center; margin-top: 8px; opacity:.8;
+}
+
+/* ===== SEARCH FIELD ===== */
+.search-input .mud-input-root{ border-radius: 999px !important; }
+.search-input .mud-input:not(.mud-input-disabled):focus-within{
+    box-shadow: 0 0 0 3px var(--fx-ring);
+    border-color: var(--mud-palette-primary);
+}
+
+/* ===== MENU ACTIONS ===== */
+.actions-menu{
+    position: absolute; top: 12px; right: 12px;
+    z-index: 10;
+}
+.actions-menu .mud-menu{
+    background: rgba(255,255,255,0.9);
+    backdrop-filter: blur(8px);
+    border-radius: 8px;
+}
+</style><PageTitle>My Events</PageTitle>
+
+<MudContainer Class="page-wrap">
+    <div class="pa-4">
+
+        <!-- Header -->
+        <div class="section-head">
+            <div>
+                <MudText Typo="Typo.overline" Class="kicker">Manage</MudText>
+                <MudText Typo="Typo.h5">My Events</MudText>
+            </div>
             <MudButton Variant="Variant.Filled"
                        Color="Color.Primary"
                        StartIcon="@Icons.Material.Filled.Add"
                        OnClick="@NavigateToCreate">
                 Organize Event
             </MudButton>
-        </MudItem>
+        </div>
 
-        <MudItem xs="12">
-            <MudPaper Class="pa-4">
-                <MudGrid>
-                    <MudItem xs="12" md="4">
-                        <MudPopover Open="@isCountryOpen" Fixed="true" Class="filter-popover px-4 py-3">
-                            <div class="d-flex flex-column gap-3">
-                                <MudText>Country</MudText>
-                                <div class="d-flex flex-column gap-2">
-                                    <MudText Typo="Typo.body2" Color="@(selectedCountry == "" ? Color.Primary : Color.Default)"
-                                             Class="cursor-pointer" @onclick="@(() => OnCountryChanged(""))">
-                                        All Countries
-                                    </MudText>
-                                    <MudText Typo="Typo.body2" Color="@(selectedCountry == "Netherlands" ? Color.Primary : Color.Default)"
-                                             Class="cursor-pointer" @onclick="@(() => OnCountryChanged("Netherlands"))">
-                                        Netherlands
-                                    </MudText>
-                                    <MudText Typo="Typo.body2" Color="@(selectedCountry == "Belgium" ? Color.Primary : Color.Default)"
-                                             Class="cursor-pointer" @onclick="@(() => OnCountryChanged("Belgium"))">
-                                        Belgium
-                                    </MudText>
-                                </div>
-                            </div>
-                        </MudPopover>
-                        <MudPaper @onclick="@(() => isCountryOpen = !isCountryOpen)"
-                                  Class="filter-paper d-flex justify-space-between align-center pa-2">
-                            <MudText Class="ml-2">@(string.IsNullOrEmpty(selectedCountry) ? "All Countries" : selectedCountry)</MudText>
-                            <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" />
-                        </MudPaper>
-                    </MudItem>
-                    <MudItem xs="12" md="4">
-                        <MudPopover Open="@isCategoryOpen" Fixed="true" Class="filter-popover px-4 py-3">
-                            <div class="d-flex flex-column gap-3">
-                                <MudText>Category</MudText>
-                                <div class="d-flex flex-column gap-2">
-                                    <MudText Typo="Typo.body2" Color="@(selectedCategory == "" ? Color.Primary : Color.Default)"
-                                             Class="cursor-pointer" @onclick="@(() => OnCategoryChanged(""))">
-                                        All Categories
-                                    </MudText>
-                                    <MudText Typo="Typo.body2" Color="@(selectedCategory == "Education" ? Color.Primary : Color.Default)"
-                                             Class="cursor-pointer" @onclick="@(() => OnCategoryChanged("Education"))">
-                                        Education
-                                    </MudText>
-                                    <MudText Typo="Typo.body2" Color="@(selectedCategory == "Workshop" ? Color.Primary : Color.Default)"
-                                             Class="cursor-pointer" @onclick="@(() => OnCategoryChanged("Workshop"))">
-                                        Workshop
-                                    </MudText>
-                                </div>
-                            </div>
-                        </MudPopover>
-                        <MudPaper @onclick="@(() => isCategoryOpen = !isCategoryOpen)"
-                                  Class="filter-paper d-flex justify-space-between align-center pa-2">
-                            <MudText Class="ml-2">@(string.IsNullOrEmpty(selectedCategory) ? "All Categories" : selectedCategory)</MudText>
-                            <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" />
-                        </MudPaper>
-                    </MudItem>
-                    <MudItem xs="12" md="4">
-                        <MudTextField @bind-Value="searchString" Placeholder="Search" Adornment="Adornment.Start"
-                                      AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium"
-                                      Immediate="true"
-                                      DebounceInterval="500"
-                                      TextChanged="OnSearch"
-                                      Class="mt-0"></MudTextField>
-                    </MudItem>
-                </MudGrid>
-            </MudPaper>
-        </MudItem>
+        <!-- Filters -->
+        <div class="filters-bar mb-4">
+            <!-- Country -->
+            <div class="filter-cell">
+                <MudPopover Open="@isCountryOpen" Fixed="true" Class="filter-popover px-4 py-3">
+                    <div class="d-flex flex-column gap-3" style="min-width:220px">
+                        <MudText Typo="Typo.subtitle2">Country</MudText>
+                        <div class="d-flex flex-column gap-1">
+                            <MudText Typo="Typo.body2"
+                                     Color="@(selectedCountry == "" ? Color.Primary : Color.Default)"
+                                     Class="filter-option"
+                                     @onclick="@(() => OnCountryChanged(""))">All Countries</MudText>
+                            <MudText Typo="Typo.body2"
+                                     Color="@(selectedCountry == "Netherlands" ? Color.Primary : Color.Default)"
+                                     Class="filter-option"
+                                     @onclick="@(() => OnCountryChanged("Netherlands"))">Netherlands</MudText>
+                            <MudText Typo="Typo.body2"
+                                     Color="@(selectedCountry == "Belgium" ? Color.Primary : Color.Default)"
+                                     Class="filter-option"
+                                     @onclick="@(() => OnCountryChanged("Belgium"))">Belgium</MudText>
+                            <MudText Typo="Typo.body2"
+                                     Color="@(selectedCountry == "Germany" ? Color.Primary : Color.Default)"
+                                     Class="filter-option"
+                                     @onclick="@(() => OnCountryChanged("Germany"))">Germany</MudText>
+                        </div>
+                    </div>
+                </MudPopover>
+                <MudPaper @onclick="@(() => isCountryOpen = !isCountryOpen)" 
+                          Class="filter-paper d-flex justify-space-between align-center">
+                    <MudText Class="ml-2">
+                        @(string.IsNullOrEmpty(selectedCountry) ? "All Countries" : selectedCountry)
+                    </MudText>
+                    <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" />
+                </MudPaper>
+            </div>
 
-        @foreach (var evt in Events)
+            <!-- Category -->
+            <div class="filter-cell">
+                <MudPopover Open="@isCategoryOpen" Fixed="true" Class="filter-popover px-4 py-3">
+                    <div class="d-flex flex-column gap-3" style="min-width:220px">
+                        <MudText Typo="Typo.subtitle2">Category</MudText>
+                        <div class="d-flex flex-column gap-1">
+                            <MudText Typo="Typo.body2"
+                                     Color="@(selectedCategory == "" ? Color.Primary : Color.Default)"
+                                     Class="filter-option"
+                                     @onclick="@(() => OnCategoryChanged(""))">All Categories</MudText>
+                            <MudText Typo="Typo.body2"
+                                     Color="@(selectedCategory == "lecture" ? Color.Primary : Color.Default)"
+                                     Class="filter-option"
+                                     @onclick="@(() => OnCategoryChanged("lecture"))">Lecture</MudText>
+                            <MudText Typo="Typo.body2"
+                                     Color="@(selectedCategory == "workshop" ? Color.Primary : Color.Default)"
+                                     Class="filter-option"
+                                     @onclick="@(() => OnCategoryChanged("workshop"))">Workshop</MudText>
+                            <MudText Typo="Typo.body2"
+                                     Color="@(selectedCategory == "social" ? Color.Primary : Color.Default)"
+                                     Class="filter-option"
+                                     @onclick="@(() => OnCategoryChanged("social"))">Social</MudText>
+                            <MudText Typo="Typo.body2"
+                                     Color="@(selectedCategory == "charity" ? Color.Primary : Color.Default)"
+                                     Class="filter-option"
+                                     @onclick="@(() => OnCategoryChanged("charity"))">Charity</MudText>
+                        </div>
+                    </div>
+                </MudPopover>
+                <MudPaper @onclick="@(() => isCategoryOpen = !isCategoryOpen)"
+                          Class="filter-paper d-flex justify-space-between align-center">
+                    <MudText Class="ml-2">
+                        @(string.IsNullOrEmpty(selectedCategory) ? "All Categories" : selectedCategory)
+                    </MudText>
+                    <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" />
+                </MudPaper>
+            </div>
+
+            <!-- Empty cell for spacing -->
+            <div class="filter-cell">
+            </div>
+
+            <!-- Search -->
+            <div class="filter-cell search">
+                <MudTextField @bind-Value="searchString"
+                              Class="search-input"
+                              Placeholder="Search"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              IconSize="Size.Medium"
+                              Immediate="true"
+                              DebounceInterval="500"
+                              TextChanged="OnSearch"
+                              Margin="Margin.Dense" />
+            </div>
+        </div>
+
+        <!-- Cards -->
+        <MudGrid>
+            @foreach (var evt in FilteredEvents)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <MudCard Elevation="0" Class="card" Style="position: relative;">
+                        <MudCardMedia Class="card-media"
+                                      Image="@($"https://dummyimage.com/1200x800/{GetEventColor(evt)}/ffffff&text={Uri.EscapeDataString(evt.Title)}")" />
+                        
+                        <!-- Actions Menu positioned on card -->
+                        <div class="actions-menu">
+                            <MudMenu Icon="@Icons.Material.Filled.MoreVert" 
+                                     Dense="true" 
+                                     Color="Color.Primary"
+                                     Variant="Variant.Filled"
+                                     Size="Size.Small"
+                                     Style="background: rgba(255,255,255,0.9); backdrop-filter: blur(8px);">
+                                <MudMenuItem OnClick="@(() => EditEvent(evt))">
+                                    <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-2" Size="Size.Small" /> Edit
+                                </MudMenuItem>
+                                <MudMenuItem OnClick="@(() => ViewEventDetails(evt))">
+                                    <MudIcon Icon="@Icons.Material.Filled.Visibility" Class="mr-2" Size="Size.Small" /> View Details
+                                </MudMenuItem>
+                                <MudMenuItem OnClick="@(() => DeleteEvent(evt))" Class="text-error">
+                                    <MudIcon Icon="@Icons.Material.Filled.Delete" Class="mr-2" Size="Size.Small" /> Delete
+                                </MudMenuItem>
+                            </MudMenu>
+                        </div>
+
+                        <MudCardContent>
+                            <div class="badges">
+                                <MudChip T="string" Size="Size.Small" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Category">
+                                    @evt.Category
+                                </MudChip>
+                                <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Event">
+                                    @evt.Date.ToShortDateString()
+                                </MudChip>
+                            </div>
+                            <MudText Typo="Typo.h6" Class="mb-1">@evt.Title</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Surface" Style="opacity:.85;">
+                                @evt.Description
+                            </MudText>
+                        </MudCardContent>
+                        <MudCardActions Class="justify-space-between pa-4 pt-0">
+                            <MudButton Variant="Variant.Text"
+                                       EndIcon="@Icons.Material.Filled.Edit"
+                                       Color="Color.Primary"
+                                       OnClick="@(() => EditEvent(evt))">
+                                Edit Event
+                            </MudButton>
+                            <div class="loc">
+                                <MudIcon Icon="@Icons.Material.Filled.LocationOn" />
+                                <MudText>@evt.Country</MudText>
+                            </div>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+
+        <!-- No events message -->
+        @if (!FilteredEvents.Any())
         {
-            <MudItem xs="12" sm="6" md="4">
-                <MudCard Elevation="2" Class="rounded-lg">
-                    <MudCardMedia Image="@($"https://dummyimage.com/800x400/5D4037/ffffff.png&text={evt.Title}")"
-                                  Height="200"
-                                  Class="rounded-t-lg" />
-                    <MudCardContent>
-                        <MudStack Row="true" Class="mb-4">
-                            <MudChip T="string" Size="Size.Small" Color="Color.Primary">@evt.Category</MudChip>
-                            <MudChip T="string" Size="Size.Small" Color="Color.Secondary">@evt.Date.ToShortDateString()</MudChip>
-                        </MudStack>
-                        <MudText Typo="Typo.h6" Class="mb-2">@evt.Title</MudText>
-                        <MudStack Row="true" AlignItems="AlignItems.Center">
-                            <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" />
-                            <MudText Typo="Typo.body2">@evt.Country</MudText>
-                        </MudStack>
-                    </MudCardContent>
-                    <MudCardActions Class="justify-end pa-4 pt-0">
-                        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Dense="true" Edge="Edge.End">
-                            <MudMenuItem OnClick="@(() => EditEvent(evt))">
-                                <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-2" Size="Size.Small" /> Edit
-                            </MudMenuItem>
-                            <MudMenuItem OnClick="@(() => DeleteEvent(evt))" Class="text-error">
-                                <MudIcon Icon="@Icons.Material.Filled.Delete" Class="mr-2" Size="Size.Small" /> Delete
-                            </MudMenuItem>
-                        </MudMenu>
-                    </MudCardActions>
-                </MudCard>
-            </MudItem>
+            <MudAlert Severity="Severity.Info" Class="mt-4">
+                <MudText>No events found matching your criteria.</MudText>
+            </MudAlert>
         }
-    </MudGrid>
+
+        <!-- Pagination + info -->
+        @if (FilteredEvents.Any())
+        {
+            <div class="pager">
+                <MudPagination Count="@TotalPages"
+                               Selected="@currentPage"
+                               SelectedChanged="@((int page) => OnPageChanged(page))"
+                               Color="Color.Primary"
+                               ShowFirstButton="true"
+                               ShowLastButton="true" />
+            </div>
+            <div class="results">
+                <MudText Typo="Typo.body2" Color="Color.Surface">
+                    Showing @((currentPage - 1) * itemsPerPage + 1) - @(Math.Min(currentPage * itemsPerPage, AllFilteredEvents.Count)) of @AllFilteredEvents.Count events (Page @currentPage of @TotalPages)
+                </MudText>
+            </div>
+        }
+
+    </div>
 </MudContainer>
 
 @code {
@@ -149,6 +338,10 @@
     private List<Event> Events = new();
     private bool isCountryOpen;
     private bool isCategoryOpen;
+
+    // Pagination variables
+    private int currentPage = 1;
+    private int itemsPerPage = 6;
 
     protected override void OnInitialized()
     {
@@ -160,39 +353,110 @@
         Events = EventService.GetUserEvents(searchString, selectedCountry, selectedCategory);
     }
 
+    // Filtered events logic for pagination
+    private List<Event> AllFilteredEvents => Events
+        .Where(e => string.IsNullOrEmpty(searchString) ||
+                    e.Title.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
+                    (e.Description != null && e.Description.Contains(searchString, StringComparison.OrdinalIgnoreCase)))
+        .Where(e => string.IsNullOrEmpty(selectedCountry) ||
+                    e.Country.Contains(selectedCountry, StringComparison.OrdinalIgnoreCase))
+        .Where(e => string.IsNullOrEmpty(selectedCategory) ||
+                    e.Category.Equals(selectedCategory, StringComparison.OrdinalIgnoreCase))
+        .ToList();
+
+    private List<Event> FilteredEvents
+    {
+        get
+        {
+            var allEvents = AllFilteredEvents;
+            return allEvents
+                .Skip((currentPage - 1) * itemsPerPage)
+                .Take(itemsPerPage)
+                .ToList();
+        }
+    }
+
+    private int TotalPages
+    {
+        get
+        {
+            var count = AllFilteredEvents.Count;
+            return count > 0 ? (int)Math.Ceiling((double)count / itemsPerPage) : 1;
+        }
+    }
+
     private void EditEvent(Event evt)
     {
         Navigation.NavigateTo($"/eventedit/{evt.Id}");
+    }
+
+    private void ViewEventDetails(Event evt)
+    {
+        // Navigate to event details - assuming you have a details page
+        Navigation.NavigateTo($"/event/detail/{evt.Id}");
     }
 
     private void DeleteEvent(Event evt)
     {
         EventService.DeleteEvent(evt.Id);
         LoadEvents();
+        // Reset to first page if current page becomes invalid
+        var maxPages = TotalPages;
+        if (currentPage > maxPages)
+        {
+            currentPage = Math.Max(1, maxPages);
+        }
+        StateHasChanged();
     }
 
     private void OnSearch(string value)
     {
         searchString = value;
+        currentPage = 1; // Reset to first page when searching
         LoadEvents();
+        StateHasChanged();
     }
 
     private void OnCountryChanged(string value)
     {
         selectedCountry = value;
         isCountryOpen = false;
+        currentPage = 1; // Reset to first page when filtering
         LoadEvents();
+        StateHasChanged();
     }
 
     private void OnCategoryChanged(string value)
     {
         selectedCategory = value;
         isCategoryOpen = false;
+        currentPage = 1; // Reset to first page when filtering
         LoadEvents();
+        StateHasChanged();
+    }
+
+    private void OnPageChanged(int page)
+    {
+        currentPage = page;
+        StateHasChanged();
     }
 
     private void NavigateToCreate()
     {
         Navigation.NavigateTo("/create");
+    }
+
+    private string GetEventColor(Event evt)
+    {
+        // Generate color based on category or use a default color scheme
+        return evt.Category switch
+        {
+            "lecture" => "2196F3",    // Blue
+            "workshop" => "FF9800",   // Orange
+            "social" => "4CAF50",     // Green
+            "charity" => "E91E63",    // Pink
+            "education" => "9C27B0",  // Purple
+            _ => "607D8B"             // Blue Grey
+        };
     }
 }
