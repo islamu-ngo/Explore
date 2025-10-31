@@ -1,199 +1,236 @@
 ﻿@using MudBlazor
+@inject IJSRuntime JS
 
 <style>
-/* ===== width ===== */
-.content {
-    max-width: 960px;
-    margin: 0 auto;
-    padding: 0 16px;
+:root{
+    --hero-grad-1:#5b7cfa;
+    --hero-grad-2:#7f56d9;
 }
 
-/* Spacing*/
-.mt-6 {
-    margin-top: 1.5rem;
+/* ---------- LAYOUT WIDTH ---------- */
+.content { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
+
+/* ---------- HERO ---------- */
+.hero {
+    position: relative; isolation:isolate;
+    padding: 86px 0 60px 0; text-align:center; color:#fff;
+    background: radial-gradient(1200px 600px at 50% -10%, rgba(127,86,217,.35), transparent 60%),
+                linear-gradient(180deg, #0e1026 0%, #0b0f24 100%);
+    overflow:hidden;
+}
+.hero::before{
+    content:""; position:absolute; inset:-20% -20% auto -20%; height:120%;
+    background: conic-gradient(from 180deg at 50% 50%, var(--hero-grad-1), var(--hero-grad-2), var(--hero-grad-1));
+    filter: blur(120px) saturate(140%) opacity(.35);
+    animation: swirl 14s linear infinite; z-index:-1;
+}
+@@keyframes swirl { to { transform: rotate(360deg);} }
+.kicker { letter-spacing:.18em; text-transform:uppercase; font-size:.82rem; opacity:.85; }
+.hero h1 { letter-spacing:.2px; }
+.hero-sub { opacity:.92; max-width: 820px; margin: 10px auto 0; }
+
+/* Logo */
+.logoBox{ display:flex; align-items:center; justify-content:center; background:transparent; }
+.landing-image { width:100%; height:auto; max-width: 170px; object-fit:contain; filter: drop-shadow(0 6px 22px rgba(0,0,0,.35)); }
+
+/* CTA cluster */
+.cta-row{ display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-top:18px; }
+.cta-primary .mud-button-label{ font-size:1.02rem; font-weight:600; }
+
+/* ---------- GLASS UTIL ---------- */
+.glass{
+    background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 18px; backdrop-filter: blur(10px);
+    box-shadow: 0 10px 40px rgba(0,0,0,.25);
 }
 
-/* ===== Logo ===== */
-.logoBox {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    padding: 0;
-}
+/* ---------- SECTION UTILS ---------- */
+.section { margin: 56px 0; }
+.section h2 { margin-bottom: 6px; }
+.muted { color: var(--mud-palette-text-secondary); }
+.text-right { text-align:right; }
+.mt-6 { margin-top: 1.5rem; }
 
-.landing-image {
-    width: 100%;
-    height: auto;
-    max-width: 160px;
-    object-fit: contain;
-}
-
-/* ===== EXPLORE : middle ===== */
+/* ---------- EXPLORE TILES ---------- */
 .tile {
-    position: relative; 
-    height: 180px;
-    padding: 14px 16px;
-    border-radius: 14px;
-    border: 1px solid rgba(255,255,255,.06);
-    background: #1f202b; /* dark */
-    box-shadow: 0 1px 0 rgba(0,0,0,.25) inset;
-    overflow: hidden;
-    transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+    position: relative; height: 180px; padding: 14px 16px;
+    border-radius: 16px; border: 1px solid rgba(255,255,255,.08);
+    background: #1b1d2a; box-shadow: 0 1px 0 rgba(0,0,0,.25) inset;
+    overflow:hidden; transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
 }
-
-/* bloc centre */
+.tile:hover { transform: translateY(-3px); box-shadow: 0 12px 26px rgba(0,0,0,.35); border-color: rgba(255,255,255,.18); }
 .tile-content {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    gap: 6px;
-    width: max-content;
-    max-width: calc(100% - 32px); 
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    display:flex; flex-direction:column; align-items:center; text-align:center; gap:6px; max-width: calc(100% - 32px);
+}
+.tile .mud-icon-root { font-size: 42px !important; line-height:1; margin:0 0 6px 0; opacity:.9; }
+.tile .mud-typography-h6 { font-weight: 600; line-height:1.25; }
+.tile .mud-typography-caption { margin-top:2px; line-height:1.35; opacity:.78; }
+
+/* Clickable tile link */
+.tile-link{ display:block; text-decoration:none; color:inherit; }
+
+/* ---------- CAROUSEL ---------- */
+.carousel-wrap{
+    margin: 36px 0 8px 0;
 }
 
-/* Icon*/
-.tile .mud-icon-root {
-    display: block;
-    font-size: 42px !important;
-    line-height: 1;
-    margin: 0 0 6px 0;
-    opacity: .85;
+/* Force carousel to show full height */
+.carousel-wrap .mud-carousel,
+.carousel-wrap .mud-carousel-item,
+.carousel-wrap .mud-carousel-content {
+    height: auto !important;
+    min-height: 400px;
 }
 
-/* Typo */
-.tile .mud-typography {
-    margin: 0;
-    width: auto;
-    max-width: 100%;
-    text-align: center;
+/* ---------- THIS WEEK CARDS ---------- */
+.eventCard { 
+    border-radius: 14px; overflow:hidden; transition: transform .18s ease, box-shadow .18s ease; 
+    height: 100%; display: flex; flex-direction: column;
 }
-
-.tile .mud-typography-h6 {
-    font-weight: 600;
-    line-height: 1.25;
-}
-
-.tile .mud-typography-caption {
-    margin-top: 2px;
-    line-height: 1.35;
-    opacity: .75;
-}
-
-/* Hover */
-.tile:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 10px 24px rgba(0,0,0,.35);
-    border-color: rgba(255,255,255,.12);
-}
-
-/* ===== alignement ===== */
-.text-right {
-    text-align: right;
-}
-/* ===== Cards “This Week” ===== */
-.eventCard {
-    border-radius: 12px;
-    overflow: hidden;
-}
-
+.eventCard:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(0,0,0,.3); }
 .eventThumb {
-    height: 180px;
-    background: #2a2b37;
+    height: 180px; display:flex; align-items:center; justify-content:center;
+    background: linear-gradient(135deg, #6b5cff, #a855f7); color:#fff; letter-spacing:.3px; font-weight:600;
+}
+.eventMeta{ display:flex; justify-content:center; gap:8px; margin-top:8px; }
+
+/* Responsive tweaks */
+@@media (max-width: 900px){
+    .text-right{ text-align:left; }
+}
+@@media (prefers-reduced-motion: reduce){
+    .hero::before{ animation:none; }
 }
 </style>
 
-<MudContainer MaxWidth="MaxWidth.Medium" Class="landing content">
-    <!-- HERO -->
-    <MudGrid Spacing="3" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mt-6">
-        <MudItem xs="12" md="6">
-            <MudText Typo="Typo.h3" Class="mb-2">
-                Never miss<br />knowledge again
-            </MudText>
+<!-- HERO - Full width -->
+<section class="hero">
+    <MudContainer MaxWidth="MaxWidth.Large">
+        <MudGrid Spacing="3" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+            <MudItem xs="12" md="7">
+                <MudText Typo="Typo.overline" Class="kicker">Community • Events • Knowledge</MudText>
+                <MudText Typo="Typo.h3" Class="mb-1">Never miss<br />knowledge again</MudText>
+                <MudText Typo="Typo.subtitle1" Class="hero-sub">
+                    “Seeking knowledge is an obligation upon every Muslim.”
+                </MudText>
 
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2"
-                       StartIcon="@Icons.Material.Filled.Event" Href="/events">
-                Discover our community events
-            </MudButton>
+                <div class="cta-row">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Event" Href="/events" Class="cta-primary">
+                        Discover community events
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Explore" Href="#explore">
+                        Explore categories
+                    </MudButton>
+                </div>
+            </MudItem>
 
-            <MudText Typo="Typo.subtitle2" Class="mt-3 mud-text-secondary">
-                “Seeking knowledge is an obligation upon every Muslim.”
-            </MudText>
-        </MudItem>
+            <MudItem xs="12" md="5">
+                <MudPaper Elevation="0" Class="logoBox glass" Style="padding:18px;">
+                    <img src="image/Icon_landingpage.png" alt="Landing page illustration" class="landing-image" />
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    </MudContainer>
+</section>
 
-        <MudItem xs="12" md="5" Class="flex-center">
-            <MudPaper Elevation="0" Class="logoBox">
-                <img src="image/Icon_landingpage.png" alt="Landing page image" class="landing-image" />
-            </MudPaper>
-        </MudItem>
-    </MudGrid>
+<MudContainer MaxWidth="MaxWidth.Large" Class="content">
 
     <!-- EXPLORE -->
-    <MudText Typo="Typo.h5" Class="mt-8 mb-3">Explore</MudText>
+    <section class="section" id="explore">
+        <MudText Typo="Typo.h5" Class="mb-2">Explore</MudText>
+        <MudText Typo="Typo.subtitle2" Class="muted mb-3">Find what fits you best — near you, online, or on-demand.</MudText>
 
-    <MudGrid Spacing="3">
-        <MudItem xs="12" sm="4">
-            <MudPaper Class="tile" Elevation="1">
-                <div class="tile-content">
-                    <MudIcon Icon="@Icons.Material.Filled.Place" Size="Size.Large" />
-                    <MudText Typo="Typo.h6">Local</MudText>
-                    <MudText Typo="Typo.caption" Class="mud-text-secondary">Find near you</MudText>
-                </div>
-            </MudPaper>
-        </MudItem>
-
-        <MudItem xs="12" sm="4">
-            <MudPaper Class="tile" Elevation="1">
-                <div class="tile-content">
-                    <MudIcon Icon="@Icons.Material.Filled.DesktopWindows" Size="Size.Large" />
-                    <MudText Typo="Typo.h6">Digital</MudText>
-                    <MudText Typo="Typo.caption" Class="mud-text-secondary">Find online</MudText>
-                </div>
-            </MudPaper>
-        </MudItem>
-
-        <MudItem xs="12" sm="4">
-            <MudPaper Class="tile" Elevation="1">
-                <div class="tile-content">
-                    <MudIcon Icon="@Icons.Material.Filled.Download" Size="Size.Large" />
-                    <MudText Typo="Typo.h6">Archive</MudText>
-                    <MudText Typo="Typo.caption" Class="mud-text-secondary">Watch recording</MudText>
-                </div>
-            </MudPaper>
-        </MudItem>
-    </MudGrid>
-
-    <!-- THIS WEEK -->
-    <MudGrid Class="mt-8" AlignItems="AlignItems.Center">
-        <MudItem xs="12" md="8">
-            <MudText Typo="Typo.h5">This Week</MudText>
-        </MudItem>
-        <MudItem xs="12" md="4" Class="text-right">
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/events">
-                Go there for the best Immersion Experience
-            </MudButton>
-        </MudItem>
-    </MudGrid>
-
-    <MudGrid Spacing="3" Class="mt-2">
-        @foreach (var d in Dates)
-        {
+        <MudGrid Spacing="3">
             <MudItem xs="12" sm="4">
-                <MudCard Class="eventCard">
-                    <MudCardMedia Class="eventThumb" />
-                    <MudCardContent>
-                        <MudText Typo="Typo.caption" Align="Align.Center">@d.ToString("dd/MM/yyyy")</MudText>
-                    </MudCardContent>
-                </MudCard>
+                <MudLink Href="/events?mode=local" Class="tile-link" aria-label="Browse local events">
+                    <MudPaper Class="tile" Elevation="1" role="button" tabindex="0">
+                        <div class="tile-content">
+                            <MudIcon Icon="@Icons.Material.Filled.Place" Size="Size.Large" />
+                            <MudText Typo="Typo.h6">Local</MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary">Find near you</MudText>
+                        </div>
+                    </MudPaper>
+                </MudLink>
             </MudItem>
-        }
-    </MudGrid>
+
+            <MudItem xs="12" sm="4">
+                <MudLink Href="/events?mode=digital" Class="tile-link" aria-label="Browse digital events">
+                    <MudPaper Class="tile" Elevation="1" role="button" tabindex="0">
+                        <div class="tile-content">
+                            <MudIcon Icon="@Icons.Material.Filled.DesktopWindows" Size="Size.Large" />
+                            <MudText Typo="Typo.h6">Digital</MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary">Find online</MudText>
+                        </div>
+                    </MudPaper>
+                </MudLink>
+            </MudItem>
+
+            <MudItem xs="12" sm="4">
+                <MudLink Href="/archive" Class="tile-link" aria-label="Browse archive">
+                    <MudPaper Class="tile" Elevation="1" role="button" tabindex="0">
+                        <div class="tile-content">
+                            <MudIcon Icon="@Icons.Material.Filled.Download" Size="Size.Large" />
+                            <MudText Typo="Typo.h6">Archive</MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary">Watch recordings</MudText>
+                        </div>
+                    </MudPaper>
+                </MudLink>
+            </MudItem>
+        </MudGrid>
+    </section>
+
+    <!-- THIS WEEK - Carousel -->
+    <section class="section">
+        <MudGrid AlignItems="AlignItems.Center">
+            <MudItem xs="12" md="8">
+                <MudText Typo="Typo.h5">This Week</MudText>
+                <MudText Typo="Typo.subtitle2" Class="muted">Fresh picks to keep you inspired and engaged.</MudText>
+            </MudItem>
+            <MudItem xs="12" md="4" Class="text-right">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/events" StartIcon="@Icons.Material.Filled.PlaylistAddCheck">
+                    Best Immersion Experience
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+
+        <div class="carousel-wrap">
+            <MudCarousel TData="object" AutoCycle="true" CycleInterval="6000" ShowArrows="true" FullHeight="false" Style="height: auto; min-height: 400px;">
+                @foreach (var chunk in Chunk(Dates, 3))
+                {
+                    <MudCarouselItem Style="height: auto; padding: 20px 0;">
+                        <MudStack Row="true" Gap="16px" Justify="Justify.Center" AlignItems="AlignItems.Stretch" Style="flex-wrap:wrap; height: 100%;">
+                            @foreach (var d in chunk)
+                            {
+                                <MudCard Class="eventCard" Style="width: 340px; max-width: 92vw;">
+                                    <MudCardMedia Class="eventThumb">
+                                        <span>@d.ToString("ddd").ToUpper()</span>
+                                    </MudCardMedia>
+                                    <MudCardContent>
+                                        <MudText Typo="Typo.caption" Align="Align.Center">@d.ToString("dd/MM/yyyy")</MudText>
+                                        <div class="eventMeta">
+                                            <MudChip T="string" Color="Color.Info" Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Filled.Event">
+                                                @d.ToString("dddd")
+                                            </MudChip>
+                                            <MudChip T="string" Color="Color.Secondary" Variant="Variant.Filled" Size="Size.Small">
+                                                Featured
+                                            </MudChip>
+                                        </div>
+                                    </MudCardContent>
+                                    <MudCardActions Style="justify-content:center;">
+                                        <MudButton Color="Color.Primary" Variant="Variant.Text" Href="/events" EndIcon="@Icons.Material.Filled.ArrowForward">
+                                            View details
+                                        </MudButton>
+                                    </MudCardActions>
+                                </MudCard>
+                            }
+                        </MudStack>
+                    </MudCarouselItem>
+                }
+            </MudCarousel>
+        </div>
+    </section>
 </MudContainer>
 
 @code {
@@ -201,6 +238,24 @@
     {
         DateTime.Today.AddDays(1),
         DateTime.Today.AddDays(2),
-        DateTime.Today.AddDays(3)
+        DateTime.Today.AddDays(3),
+        DateTime.Today.AddDays(4),
+        DateTime.Today.AddDays(5),
+        DateTime.Today.AddDays(6)
     };
+
+    private IEnumerable<List<T>> Chunk<T>(IEnumerable<T> source, int size)
+    {
+        var bucket = new List<T>(size);
+        foreach (var item in source)
+        {
+            bucket.Add(item);
+            if (bucket.Count == size)
+            {
+                yield return bucket;
+                bucket = new List<T>(size);
+            }
+        }
+        if (bucket.Count > 0) yield return bucket;
+    }
 }
