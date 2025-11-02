@@ -154,6 +154,25 @@
 }
 </style>
 
+@if (IsLoading)
+{
+    <MudContainer Class="py-6">
+        <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Style="min-height: 400px;">
+            <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+            <MudText Typo="Typo.h6">Loading profile...</MudText>
+        </MudStack>
+    </MudContainer>
+}
+else if (UserData == null)
+{
+    <MudContainer Class="py-6">
+        <MudAlert Severity="Severity.Warning">
+            Unable to load user profile. Please try logging in again.
+        </MudAlert>
+    </MudContainer>
+}
+else
+{
 <MudContainer Class="py-6">
 
     <!-- User Info (Hero + Header + Stats) -->
@@ -169,20 +188,22 @@
 
                 <!-- Name + Stats -->
                 <div style="flex:1;">
-                    <MudText Typo="Typo.h4" Class="mb-1">Ahmed Saïd</MudText>
-                    <MudText Typo="Typo.body1" Color="Color.Secondary">@@ahmedsaid • Amsterdam, Netherlands</MudText>
+                    <MudText Typo="Typo.h4" Class="mb-1">@UserData.FullName</MudText>
+                    <MudText Typo="Typo.body1" Color="Color.Secondary">
+                        @("@" + UserData.Username) • @UserData.DisplayLocation
+                    </MudText>
 
                     <div class="stat-grid">
                         <div class="stat">
-                            <MudText Typo="Typo.h5" Class="num">42</MudText>
+                            <MudText Typo="Typo.h5" Class="num">@UserData.EventsAttended</MudText>
                             <MudText Typo="Typo.caption" Color="Color.Secondary">Events Attended</MudText>
                         </div>
                         <div class="stat">
-                            <MudText Typo="Typo.h5" Class="num">18</MudText>
+                            <MudText Typo="Typo.h5" Class="num">@UserData.ReviewsGiven</MudText>
                             <MudText Typo="Typo.caption" Color="Color.Secondary">Reviews Given</MudText>
                         </div>
                         <div class="stat">
-                            <MudText Typo="Typo.h5" Class="num">2.5</MudText>
+                            <MudText Typo="Typo.h5" Class="num">@UserData.YearsActive</MudText>
                             <MudText Typo="Typo.caption" Color="Color.Secondary">Years Active</MudText>
                         </div>
                     </div>
@@ -209,13 +230,31 @@
                     </MudText>
 
                     <div class="info-list">
-                        <div class="info-row">
-                            <MudIcon Icon="@Icons.Material.Filled.LocationOn" Color="Color.Primary" />
-                            <MudText Typo="Typo.body2">Lives in Amsterdam</MudText>
-                        </div>
+                        @if (!string.IsNullOrEmpty(UserData.Email))
+                        {
+                            <div class="info-row">
+                                <MudIcon Icon="@Icons.Material.Filled.Email" Color="Color.Primary" />
+                                <MudStack Spacing="0">
+                                    <MudText Typo="Typo.body2">@UserData.Email</MudText>
+                                    @if (UserData.EmailVerified)
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Success">
+                                            <MudIcon Icon="@Icons.Material.Filled.Verified" Size="Size.Small" /> Verified
+                                        </MudText>
+                                    }
+                                </MudStack>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(UserData.DisplayLocation))
+                        {
+                            <div class="info-row">
+                                <MudIcon Icon="@Icons.Material.Filled.LocationOn" Color="Color.Primary" />
+                                <MudText Typo="Typo.body2">Lives in @UserData.DisplayLocation</MudText>
+                            </div>
+                        }
                         <div class="info-row">
                             <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Color="Color.Primary" />
-                            <MudText Typo="Typo.body2">Joined March 2023</MudText>
+                            <MudText Typo="Typo.body2">Joined @UserData.JoinDate.ToString("MMMM yyyy")</MudText>
                         </div>
                     </div>
                 </MudCardContent>
@@ -380,7 +419,4 @@
         </MudItem>
     </MudGrid>
 </MudContainer>
-
-@code {
-    // Mock data - no logic needed for design-only page
 }
