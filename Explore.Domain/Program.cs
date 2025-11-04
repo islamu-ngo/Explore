@@ -19,18 +19,18 @@ namespace Explore.Domain
         [ForeignKey("AudienceAge")]
         public int AudienceAgeId { get; set; }
         public AudienceAge AudienceAge { get; set; }
-        public int OrganizationId { get; set; }
-        public int AudienceAttendees { get; set; }
+        public Guid OrganizationId { get; set; }
+        public int? AudienceAttendees { get; set; }
         public double Price { get; set; }
-        [ForeignKey("File")]
-        public int FeaturedImage { get; set; }
-        public File File { get; set; }
+        [ForeignKey("FeaturedImage")]
+        public Guid? FeaturedImageId { get; set; }
+        public StorageObject? FeaturedImage { get; set; }
         public int TotalViews { get; set; }
-        public bool IsRegistrationRequired { get; set; }
-        public string Country { get; set; }
-        public string City { get; set; }
-        public int PostCode { get; set; }
-        public string Address { get; set; }
-        public string ProgramUrl { get; set; }
+        public bool? IsRegistrationRequired { get; set; }
+        public string? Country { get; set; }
+        public string? City { get; set; }
+        public int? PostCode { get; set; }
+        public string? Address { get; set; }
+        public string? ProgramUrl { get; set; }
     }
 }

@@ -7,7 +7,7 @@ namespace Explore.Domain
 {
     public class ProgramRegistartion
     {
-        public int Id { get; set; }
+        public Guid Id { get; set; }
         public Guid UserId { get; set; }
         [ForeignKey("Program")]
         public Guid ProgramId { get; set; }

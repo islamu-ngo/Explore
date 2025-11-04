@@ -1,12 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Text;
 
 namespace Explore.Domain
 {
-    public class File
+    public class StorageObject
     {
-        public int Id { get; set; }
+        public Guid Id { get; set; }
+        [ForeignKey("FileType")]
+        public int FileTypeId { get; set; }
+        public FileType FileType { get; set; }
         public string Uri { get; set; }
         public string FullName { get; set; }
         public string Extension { get; set; }

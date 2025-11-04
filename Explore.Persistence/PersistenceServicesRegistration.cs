@@ -3,6 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Explore.Application.Contracts.Persistence;
+using Explore.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence
@@ -19,34 +21,35 @@ namespace Explore.Persistence
         public static IServiceCollection CongfigurePersistenceServices(this IServiceCollection services,
             IConfiguration configuration)
         {
+            var connectionString = configuration["ConnectionStrings:DefaultConnection"];
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                throw new InvalidOperationException(
+                    "Connection string 'DefaultConnection' not found in configuration.");
+            }
             services.AddDbContext<ExploreDbContext>(options =>
             {
-                var connectionString = configuration.GetConnectionString("ExploreDB");
-                options.UseNpgsql(connectionString);
+                options.UseNpgsql(connectionString)
+                    .UseSnakeCaseNamingConvention()
+                    .EnableSensitiveDataLogging() //temporarly to resolve bug! TODO remove in prod
+                    .EnableDetailedErrors();
             });
 
-            //services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
-            //services.AddScoped<IBlogRepository, BlogRepository>();
-            //services.AddScoped<IBlogLikeRepository, BlogLikeRepository>();
-            //services.AddScoped<IBlogCategoryMappingRepository, BlogCategoryMappingRepository>();
-            //services.AddScoped<IBlogTagMappingRepository, BlogTagMappingRepository>();
-            //services.AddScoped<ITagRepository, TagRepository>();
-            //services.AddScoped<ICommentLikeRepository, CommentLikeRepository>();
-            //services.AddScoped<ICommentRepository, CommentRepository>();
-            //services.AddScoped<ICategoryRepository, CategoryRepository>();
-            //services.AddScoped<IUserAccountRepository, UserAccountRepository>();
-            //services.AddScoped<IUserSalahActivityRepository, UserSalahActivityRepository>();
-            //services.AddScoped<IUserSalahOverviewRepository, UserSalahOverviewRepository>();
-            //services.AddScoped<IUserDhikrActivityRepository, UserDhikrActivityRepository>();
-            //services.AddScoped<IUserDhikrOverviewRepository, UserDhikrOverviewRepository>();
-            //services.AddScoped<ISalahTypeRepository, SalahTypeRepository>();
-            //services.AddScoped<IDhikrTypeRepository, DhikrTypeRepository>();
-            //services.AddScoped<IProfilePictureTypeRepository, ProfilePictureTypeRepository>();
-            //services.AddScoped<IPermissionTypeRepository, PermissionTypeRepository>();
-            //services.AddScoped<IRoleTypeRepository, RoleTypeRepository>();
-            //services.AddScoped<IBlobFileRepository, BlobFileRepository>();
-            //services.AddScoped<IUserAccountRoleTypeMappingRepository, UserAccountRoleTypeMappingRepository>();
-            //services.AddScoped<IRoleTypePermissionTypeMappingRepository, RoleTypePermissionTypeMappingRepository>();
+            services.AddScoped(typeof(IGenericRepository<,>), typeof(GenericRepository<,>));
+
+            services.AddScoped<IAudienceAgeRepository, AudienceAgeRepository>();
+            services.AddScoped<IAudienceGenderRepository, AudienceGenderRepository>();
+            services.AddScoped<IEducationRepository, EducationRepository>();
+            services.AddScoped<IEducationTypeRepository, EducationTypeRepository>();
+            services.AddScoped<IEventRepository, EventRepository>();
+            services.AddScoped<IEventTypeRepository, EventTypeRepository>();
+            services.AddScoped<IOrganizationRepository, OrganizationRepository>();
+            services.AddScoped<IOrganizationMemberRepository, OrganizationMemberRepository>();
+            services.AddScoped<IProgramRepository, ProgramRepository>();
+            services.AddScoped<IProgramRegistrationRepository, ProgramRegistrationRepository>();
+            services.AddScoped<IProgramTypeRepository, ProgramTypeRepository>();
+            services.AddScoped<IStatusTypeRepository, StatusTypeRepository>();
+            services.AddScoped<IStorageObjectRepository, StorageObjectRepository>();
 
             return services;
         }
