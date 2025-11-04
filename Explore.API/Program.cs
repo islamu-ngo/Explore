@@ -12,7 +12,9 @@ using Serilog;
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text.RegularExpressions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
+using Polly.Bulkhead;
 using static Microsoft.AspNetCore.Http.StatusCodes;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -183,6 +185,24 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Explore API v1"));
     app.MapScalarApiReference();
     app.UseCors("DevPolicy"); // for development purposes only
+
+    app.MapPost("/admin/migrate", async (ExploreDbContext context, ILogger<Program> logger) =>
+        {
+            try
+            {
+                logger.LogInformation(" Applying database migrations...");
+                logger.LogInformation(builder.Configuration["ConnectionStrings:DefaultConnection"]);
+                await context.Database.MigrateAsync();
+                logger.LogInformation(" Database migrations applied successfully!");
+                return Results.Ok(new { message = "Migrations applied successfully" });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, " An error occurred while migrating the database.");
+                return Results.Problem("Migration failed: " + ex.Message);
+            }
+        })
+        .RequireAuthorization(); // Sécurisez cet endpoint !
 }
 else
 {
