@@ -1,0 +1,422 @@
+@page "/user/profile"
+
+<PageTitle>User Profile</PageTitle>
+
+<style>
+/* ===== TOKENS ===== */
+:root{
+  --ring: color-mix(in srgb, var(--mud-palette-primary) 30%, transparent);
+}
+
+/* ===== HERO / HEADER ===== */
+.user-hero{
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--mud-palette-primary) 22%, #0000), color-mix(in srgb, var(--mud-palette-secondary) 18%, #0000));
+  min-height: 200px;
+}
+.user-hero::after{
+  content:""; position:absolute; inset:0;
+  background: linear-gradient(180deg, rgba(0,0,0,.08), rgba(0,0,0,.18));
+}
+.user-header{
+  display:flex; gap:24px; align-items:flex-end; padding: 24px; position: relative; z-index: 1;
+}
+.user-avatar{
+  width:140px; height:140px; border-radius: 50%; overflow:hidden;
+  border: 4px solid rgba(255,255,255,.85);
+  box-shadow: 0 12px 32px rgba(0,0,0,.22);
+  background: var(--mud-palette-surface);
+}
+
+/* ===== NAME ===== */
+
+/* ===== STATS ===== */
+.stat-grid{ 
+  display:grid; 
+  grid-template-columns: repeat(3, 1fr); 
+  gap:16px; 
+  margin-top: 16px; 
+}
+.stat{
+  text-align:center; 
+  padding:16px 12px; 
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--mud-palette-primary) 8%, var(--mud-palette-surface));
+  border: 1px solid color-mix(in srgb, var(--mud-palette-primary) 20%, var(--mud-palette-lines-default));
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.stat:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0,0,0,.1);
+}
+.stat .num{ 
+  color: var(--mud-palette-primary); 
+  font-weight: 800; 
+  font-size: 1.75rem;
+}
+
+/* ===== CARDS ===== */
+.section-card{
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
+  overflow: hidden;
+  background: var(--mud-palette-surface);
+}
+.section-body{ padding: 20px; }
+.section-body + .section-body{ border-top: 1px solid var(--mud-palette-lines-default); }
+
+/* Info list */
+.info-list{ display:grid; gap:14px; }
+.info-row{ 
+  display:flex; 
+  align-items:center; 
+  gap:12px;
+  padding: 12px;
+  border-radius: 10px;
+  transition: background .12s ease;
+}
+.info-row:hover{
+  background: color-mix(in srgb, var(--mud-palette-primary) 5%, transparent);
+}
+
+/* ===== INTERESTS / TAGS ===== */
+.tags-wrap{
+  display:flex; gap:8px; flex-wrap:wrap;
+}
+.tag{
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--mud-palette-primary) 12%, var(--mud-palette-surface));
+  border: 1px solid color-mix(in srgb, var(--mud-palette-primary) 25%, var(--mud-palette-lines-default));
+  font-weight: 600;
+  font-size: .9rem;
+  transition: transform .12s ease, background .12s ease;
+}
+.tag:hover{
+  transform: translateY(-2px);
+  background: color-mix(in srgb, var(--mud-palette-primary) 20%, var(--mud-palette-surface));
+}
+
+/* ===== ACTIVITY CARD ===== */
+.activity-item{
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
+  background: color-mix(in srgb, var(--mud-palette-background) 85%, var(--mud-palette-surface));
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+}
+.activity-item:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(0,0,0,.12);
+  border-color: color-mix(in srgb, var(--mud-palette-primary) 40%, var(--mud-palette-lines-default));
+}
+
+/* ===== REVIEWS ===== */
+.review-card{
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
+  background: color-mix(in srgb, var(--mud-palette-background) 85%, var(--mud-palette-surface));
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+}
+.review-card:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(0,0,0,.12);
+  border-color: color-mix(in srgb, var(--mud-palette-primary) 35%, var(--mud-palette-lines-default));
+}
+
+/* ===== Star Rating Display ===== */
+.star-rating {
+    display: inline-flex;
+    gap: 2px;
+    color: #FFC107; /* gold color for stars */
+}
+
+.star-rating .mud-icon-root {
+    font-size: 1.1rem;
+}
+
+/* Buttons */
+.btn-outline .mud-button-root{
+  border-radius: 10px;
+}
+.btn-outline .mud-button-root:focus-visible{
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+/* Responsive */
+@@media (max-width: 960px){
+  .user-header{ align-items: center; flex-direction: column; text-align: center; }
+  .stat-grid{ grid-template-columns: repeat(2, 1fr); }
+}
+@@media (max-width: 600px){
+  .stat-grid{ grid-template-columns: repeat(1, 1fr); }
+}
+</style>
+
+@if (IsLoading)
+{
+    <MudContainer Class="py-6">
+        <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Style="min-height: 400px;">
+            <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+            <MudText Typo="Typo.h6">Loading profile...</MudText>
+        </MudStack>
+    </MudContainer>
+}
+else if (UserData == null)
+{
+    <MudContainer Class="py-6">
+        <MudAlert Severity="Severity.Warning">
+            Unable to load user profile. Please try logging in again.
+        </MudAlert>
+    </MudContainer>
+}
+else
+{
+<MudContainer Class="py-6">
+
+    <!-- User Info (Hero + Header + Stats) -->
+    <MudCard Class="mb-6 section-card" Elevation="0">
+        <div class="user-hero"></div>
+
+        <MudCardContent Class="section-body" Style="padding-top:0;">
+            <div class="user-header">
+                <!-- Avatar -->
+                <div class="user-avatar">
+                    <MudImage Src="https://via.placeholder.com/280x280/7E6FFF/FFFFFF?text=AS" Alt="User Avatar" Style="width:100%; height:100%; object-fit:cover;" />
+                </div>
+
+                <!-- Name + Stats -->
+                <div style="flex:1;">
+                    <MudText Typo="Typo.h4" Class="mb-1">@UserData.FullName</MudText>
+                    <MudText Typo="Typo.body1" Color="Color.Secondary">
+                        @("@" + UserData.Username) • @UserData.DisplayLocation
+                    </MudText>
+
+                    <div class="stat-grid">
+                        <div class="stat">
+                            <MudText Typo="Typo.h5" Class="num">@UserData.EventsAttended</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Events Attended</MudText>
+                        </div>
+                        <div class="stat">
+                            <MudText Typo="Typo.h5" Class="num">@UserData.ReviewsGiven</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Reviews Given</MudText>
+                        </div>
+                        <div class="stat">
+                            <MudText Typo="Typo.h5" Class="num">@UserData.YearsActive</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Years Active</MudText>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </MudCardContent>
+    </MudCard>
+
+    <MudGrid>
+        <!-- Left Column -->
+        <MudItem xs="12" md="4">
+            <!-- About Section -->
+            <MudCard Class="mb-6 section-card" Elevation="0">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">About</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+
+                <MudCardContent Class="section-body">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                        Passionate about connecting with the Muslim community through meaningful events and gatherings. 
+                        Love exploring new cultures and making lasting friendships.
+                    </MudText>
+
+                    <div class="info-list">
+                        @if (!string.IsNullOrEmpty(UserData.Email))
+                        {
+                            <div class="info-row">
+                                <MudIcon Icon="@Icons.Material.Filled.Email" Color="Color.Primary" />
+                                <MudStack Spacing="0">
+                                    <MudText Typo="Typo.body2">@UserData.Email</MudText>
+                                    @if (UserData.EmailVerified)
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Success">
+                                            <MudIcon Icon="@Icons.Material.Filled.Verified" Size="Size.Small" /> Verified
+                                        </MudText>
+                                    }
+                                </MudStack>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(UserData.DisplayLocation))
+                        {
+                            <div class="info-row">
+                                <MudIcon Icon="@Icons.Material.Filled.LocationOn" Color="Color.Primary" />
+                                <MudText Typo="Typo.body2">Lives in @UserData.DisplayLocation</MudText>
+                            </div>
+                        }
+                        <div class="info-row">
+                            <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Color="Color.Primary" />
+                            <MudText Typo="Typo.body2">Joined @UserData.JoinDate.ToString("MMMM yyyy")</MudText>
+                        </div>
+                    </div>
+                </MudCardContent>
+            </MudCard>
+
+            <!-- Interests Section -->
+            <MudCard Class="mb-6 section-card" Elevation="0">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Interests</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+
+                <MudCardContent Class="section-body">
+                    <div class="tags-wrap">
+                        <div class="tag">🕌 Religious Events</div>
+                        <div class="tag">📚 Education</div>
+                        <div class="tag">⚽ Sports</div>
+                        <div class="tag">🍽️ Food & Culture</div>
+                        <div class="tag">🎨 Arts</div>
+                        <div class="tag">🌍 Travel</div>
+                        <div class="tag">🤝 Networking</div>
+                        <div class="tag">💼 Professional</div>
+                    </div>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <!-- Right Column -->
+        <MudItem xs="12" md="8">
+            <!-- User Reviews Section -->
+            <MudCard Class="section-card" Elevation="0">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Style="width:100%;">
+                            <MudText Typo="Typo.h6">My Reviews</MudText>
+                            <MudChip T="string" Size="Size.Small" Color="Color.Primary">18 total</MudChip>
+                        </MudStack>
+                    </CardHeaderContent>
+                </MudCardHeader>
+
+                <MudCardContent Class="section-body">
+                    <MudStack Spacing="4">
+                        <!-- Review 1 -->
+                        <MudPaper Class="pa-4 review-card" Elevation="0">
+                            <MudStack Spacing="2">
+                                <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                    <MudText Typo="Typo.subtitle1" Style="font-weight:600;">
+                                        Islamic Leadership Conference 2025
+                                    </MudText>
+                                    <div class="star-rating">
+                                        <MudIcon Icon="@Icons.Material.Filled.Star" />
+                                        <MudIcon Icon="@Icons.Material.Filled.Star" />
+                                        <MudIcon Icon="@Icons.Material.Filled.Star" />
+                                        <MudIcon Icon="@Icons.Material.Filled.Star" />
+                                        <MudIcon Icon="@Icons.Material.Filled.Star" />
+                                    </div>
+                                </MudStack>
+                                
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    Amsterdam Convention Center • 3 days ago
+                                </MudText>
+
+                                <MudText Typo="Typo.body2">
+                                    Outstanding conference with incredible speakers and valuable networking opportunities. 
+                                    The organization was impeccable and the topics were highly relevant to today's Muslim community. 
+                                    I particularly enjoyed the panel discussions on leadership in modern times.
+                                </MudText>
+                            </MudStack>
+                        </MudPaper>
+
+                        <!-- Review 2 -->
+                        <MudPaper Class="pa-4 review-card" Elevation="0">
+                            <MudStack Spacing="2">
+                                <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                    <MudText Typo="Typo.subtitle1" Style="font-weight:600;">
+                                        Friday Prayer Gathering
+                                    </MudText>
+                                    <div class="star-rating">
+                                        <MudIcon Icon="@Icons.Material.Filled.Star" />
+                                        <MudIcon Icon="@Icons.Material.Filled.Star" />
+                                        <MudIcon Icon="@Icons.Material.Filled.Star" />
+                                        <MudIcon Icon="@Icons.Material.Filled.Star" />
+                                        <MudIcon Icon="@Icons.Material.Filled.Star" />
+                                    </div>
+                                </MudStack>
+                                
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    Amsterdam Mosque • 1 week ago
+                                </MudText>
+
+                                <MudText Typo="Typo.body2">
+                                    Amazing community spirit and beautiful recitation. The khutbah was inspiring and thought-provoking. 
+                                    The mosque was well-organized and welcoming to all attendees. Looking forward to attending more gatherings here.
+                                </MudText>
+                            </MudStack>
+                        </MudPaper>
+
+                        <!-- Review 3 -->
+                        <MudPaper Class="pa-4 review-card" Elevation="0">
+                            <MudStack Spacing="2">
+                                <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                    <MudText Typo="Typo.subtitle1" Style="font-weight:600;">
+                                        Young Muslims Sports Day
+                                    </MudText>
+                                    <div class="star-rating">
+                                        <MudIcon Icon="@Icons.Material.Filled.Star" />
+                                        <MudIcon Icon="@Icons.Material.Filled.Star" />
+                                        <MudIcon Icon="@Icons.Material.Filled.Star" />
+                                        <MudIcon Icon="@Icons.Material.Filled.Star" />
+                                        <MudIcon Icon="@Icons.Material.Outlined.StarBorder" />
+                                    </div>
+                                </MudStack>
+                                
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    Amsterdam Sports Center • 2 weeks ago
+                                </MudText>
+
+                                <MudText Typo="Typo.body2">
+                                    Great event for the youth to come together and stay active! Well-organized with various sports activities. 
+                                    The only improvement would be better refreshment options. Overall, a fantastic initiative for building community bonds.
+                                </MudText>
+                            </MudStack>
+                        </MudPaper>
+
+                        <!-- Review 4 -->
+                        <MudPaper Class="pa-4 review-card" Elevation="0">
+                            <MudStack Spacing="2">
+                                <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                    <MudText Typo="Typo.subtitle1" Style="font-weight:600;">
+                                        Ramadan Iftar Community Dinner
+                                    </MudText>
+                                    <div class="star-rating">
+                                        <MudIcon Icon="@Icons.Material.Filled.Star" />
+                                        <MudIcon Icon="@Icons.Material.Filled.Star" />
+                                        <MudIcon Icon="@Icons.Material.Filled.Star" />
+                                        <MudIcon Icon="@Icons.Material.Filled.Star" />
+                                        <MudIcon Icon="@Icons.Material.Filled.Star" />
+                                    </div>
+                                </MudStack>
+                                
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    Rotterdam Community Center • 3 weeks ago
+                                </MudText>
+
+                                <MudText Typo="Typo.body2">
+                                    Heartwarming experience with delicious food and wonderful company. The organizers did an excellent job 
+                                    accommodating everyone and creating a welcoming atmosphere. The post-iftar lecture was very beneficial. 
+                                    May Allah reward all the volunteers!
+                                </MudText>
+                            </MudStack>
+                        </MudPaper>
+                    </MudStack>
+
+                    <div class="btn-outline" style="display:flex; justify-content:center;">
+                        <MudButton Variant="Variant.Outlined" Class="mt-6" StartIcon="@Icons.Material.Filled.RateReview">
+                            View All Reviews
+                        </MudButton>
+                    </div>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+}
