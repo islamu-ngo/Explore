@@ -1,9 +1,6 @@
 ﻿using Explore.Application.DTOs.Organization;
-using Explore.Application.DTOs.Program;
 using Explore.Application.Features.Organizations.Requests.Commands;
 using Explore.Application.Features.Organizations.Requests.Queries;
-using Explore.Application.Features.Programs.Requests.Commands;
-using Explore.Application.Features.Programs.Requests.Queries;
 using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
