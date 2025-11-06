@@ -26,14 +26,20 @@ builder.AddServiceDefaults();
 builder.Services.AddMudServices();
 builder.Services.AddScoped<IEventService, EventService>();
 
-// Add HttpClient for API calls
+// Add HttpClient for server-side prerendering (without token)
 builder.Services.AddScoped(sp =>
 {
-    var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
-    return httpClientFactory.CreateClient("ExploreApi");
+    var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
+    var request = httpContextAccessor.HttpContext?.Request;
+    
+    var baseAddress = request != null
+        ? $"{request.Scheme}://{request.Host}"
+        : builder.Configuration["SelfUrl"] ?? "https://localhost:7071";
+    
+    return new HttpClient { BaseAddress = new Uri(baseAddress) };
 });
 
-// Register ProgramService
+// Register ProgramService for server-side prerendering
 builder.Services.AddScoped<IProgramService, ProgramService>();
 
 // Blazor
@@ -44,6 +50,7 @@ builder.Services.AddRazorComponents()
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddTransient<AuthorizationHandler>();
 
+// HttpClient for authenticated requests
 builder.Services.AddHttpClient("ExploreApi", client =>
     {
         client.BaseAddress = new Uri(
@@ -53,6 +60,31 @@ builder.Services.AddHttpClient("ExploreApi", client =>
     })
     //.AddHttpMessageHandler<AuthorizationHandler>()
     .AddUserAccessTokenHandler()
+    .ConfigurePrimaryHttpMessageHandler(() =>
+    {
+        var handler = new HttpClientHandler();
+
+        if (builder.Environment.IsDevelopment())
+        {
+            handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
+            {
+                // Accepter uniquement pour localhost
+                var isLocalhost = message.RequestUri?.Host.Contains("localhost") ?? false;
+                return isLocalhost || errors == System.Net.Security.SslPolicyErrors.None;
+            };
+        }
+
+        return handler;
+    });
+
+// HttpClient for public/anonymous requests (no token)
+builder.Services.AddHttpClient("ExploreApiPublic", client =>
+    {
+        client.BaseAddress = new Uri(
+            builder.Configuration["ExploreApi:BaseUrl"]
+            ?? "https://localhost:7039/"
+        );
+    })
     .ConfigurePrimaryHttpMessageHandler(() =>
     {
         var handler = new HttpClientHandler();
@@ -392,12 +424,14 @@ app.MapGet("/logout", async ctx =>
 });
 
 // BFF endpoints (server proxies to explore.api with the user token)
-var bff = app.MapGroup("/bff").RequireAuthorization();
+var bff = app.MapGroup("/bff");
 
-// Program/Event endpoints
-bff.MapGet("/api/Program", async (IHttpClientFactory f) =>
+// Public endpoints (no authentication required)
+var publicBff = bff.MapGroup("/api");
+
+publicBff.MapGet("/Program", async (IHttpClientFactory f) =>
 {
-    var http = f.CreateClient("ExploreApi");
+    var http = f.CreateClient("ExploreApiPublic");
     var r = await http.GetAsync("api/Program");
     
     // Log the response for debugging
@@ -408,9 +442,9 @@ bff.MapGet("/api/Program", async (IHttpClientFactory f) =>
     return Results.Content(content, "application/json");
 });
 
-bff.MapGet("/api/Program/{id}", async (Guid id, IHttpClientFactory f) =>
+publicBff.MapGet("/Program/{id}", async (Guid id, IHttpClientFactory f) =>
 {
-    var http = f.CreateClient("ExploreApi");
+    var http = f.CreateClient("ExploreApiPublic");
     var r = await http.GetAsync($"api/Program/{id}");
     
     // Log the response for debugging
@@ -422,9 +456,9 @@ bff.MapGet("/api/Program/{id}", async (Guid id, IHttpClientFactory f) =>
     return Results.Content(content, "application/json");
 });
 
-bff.MapGet("/api/EventType", async (IHttpClientFactory f) =>
+publicBff.MapGet("/EventType", async (IHttpClientFactory f) =>
 {
-    var http = f.CreateClient("ExploreApi");
+    var http = f.CreateClient("ExploreApiPublic");
     var r = await http.GetAsync("api/EventType");
     
     // Log the response for debugging
@@ -435,9 +469,9 @@ bff.MapGet("/api/EventType", async (IHttpClientFactory f) =>
     return Results.Content(content, "application/json");
 });
 
-bff.MapGet("/api/ProgramType", async (IHttpClientFactory f) =>
+publicBff.MapGet("/ProgramType", async (IHttpClientFactory f) =>
 {
-    var http = f.CreateClient("ExploreApi");
+    var http = f.CreateClient("ExploreApiPublic");
     var r = await http.GetAsync("api/ProgramType");
     r.EnsureSuccessStatusCode();
     return Results.Stream(
@@ -446,8 +480,11 @@ bff.MapGet("/api/ProgramType", async (IHttpClientFactory f) =>
     );
 });
 
+// Protected endpoints (require authentication)
+var protectedBff = bff.MapGroup("/api").RequireAuthorization();
+
 // Example GET pass-through
-bff.MapGet("/events", async (IHttpClientFactory f) =>
+protectedBff.MapGet("/events", async (IHttpClientFactory f) =>
 {
     var http = f.CreateClient("ExploreApi");
     var r = await http.GetAsync("events");
@@ -458,7 +495,7 @@ bff.MapGet("/events", async (IHttpClientFactory f) =>
     );
 });
 
-bff.MapGet("/weatherforecast", async (IHttpClientFactory f) =>
+protectedBff.MapGet("/weatherforecast", async (IHttpClientFactory f) =>
 {
     var http = f.CreateClient("ExploreApi");
     var r = await http.GetAsync("weatherforecast");
@@ -470,7 +507,7 @@ bff.MapGet("/weatherforecast", async (IHttpClientFactory f) =>
 });
 
 // Example POST with CSRF validation
-bff.MapPost("/events", async (HttpContext ctx, IHttpClientFactory f) =>
+protectedBff.MapPost("/events", async (HttpContext ctx, IHttpClientFactory f) =>
 {
     await antiforgery.ValidateRequestAsync(ctx);
 
