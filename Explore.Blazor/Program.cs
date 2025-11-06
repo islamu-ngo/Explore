@@ -26,6 +26,16 @@ builder.AddServiceDefaults();
 builder.Services.AddMudServices();
 builder.Services.AddScoped<IEventService, EventService>();
 
+// Add HttpClient for API calls
+builder.Services.AddScoped(sp =>
+{
+    var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+    return httpClientFactory.CreateClient("ExploreApi");
+});
+
+// Register ProgramService
+builder.Services.AddScoped<IProgramService, ProgramService>();
+
 // Blazor
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
@@ -383,6 +393,58 @@ app.MapGet("/logout", async ctx =>
 
 // BFF endpoints (server proxies to explore.api with the user token)
 var bff = app.MapGroup("/bff").RequireAuthorization();
+
+// Program/Event endpoints
+bff.MapGet("/api/Program", async (IHttpClientFactory f) =>
+{
+    var http = f.CreateClient("ExploreApi");
+    var r = await http.GetAsync("api/Program");
+    
+    // Log the response for debugging
+    var content = await r.Content.ReadAsStringAsync();
+    Console.WriteLine($"Program API Response: {content}");
+    
+    r.EnsureSuccessStatusCode();
+    return Results.Content(content, "application/json");
+});
+
+bff.MapGet("/api/Program/{id}", async (Guid id, IHttpClientFactory f) =>
+{
+    var http = f.CreateClient("ExploreApi");
+    var r = await http.GetAsync($"api/Program/{id}");
+    
+    // Log the response for debugging
+    var content = await r.Content.ReadAsStringAsync();
+    Console.WriteLine($"Program/{id} API Response Status: {r.StatusCode}");
+    Console.WriteLine($"Program/{id} API Response: {content}");
+    
+    r.EnsureSuccessStatusCode();
+    return Results.Content(content, "application/json");
+});
+
+bff.MapGet("/api/EventType", async (IHttpClientFactory f) =>
+{
+    var http = f.CreateClient("ExploreApi");
+    var r = await http.GetAsync("api/EventType");
+    
+    // Log the response for debugging
+    var content = await r.Content.ReadAsStringAsync();
+    Console.WriteLine($"EventType API Response: {content}");
+    
+    r.EnsureSuccessStatusCode();
+    return Results.Content(content, "application/json");
+});
+
+bff.MapGet("/api/ProgramType", async (IHttpClientFactory f) =>
+{
+    var http = f.CreateClient("ExploreApi");
+    var r = await http.GetAsync("api/ProgramType");
+    r.EnsureSuccessStatusCode();
+    return Results.Stream(
+        await r.Content.ReadAsStreamAsync(),
+        r.Content.Headers.ContentType?.ToString()
+    );
+});
 
 // Example GET pass-through
 bff.MapGet("/events", async (IHttpClientFactory f) =>
