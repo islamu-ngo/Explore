@@ -486,7 +486,7 @@ var protectedBff = bff.MapGroup("/api").RequireAuthorization();
 // Example GET pass-through
 protectedBff.MapGet("/events", async (IHttpClientFactory f) =>
 {
-    var http = f.CreateClient("ExploreApi");
+    var http = f.CreateClient("ExploreApi"); // Automatically includes user access token
     var r = await http.GetAsync("events");
     r.EnsureSuccessStatusCode();
     return Results.Stream(
@@ -497,8 +497,20 @@ protectedBff.MapGet("/events", async (IHttpClientFactory f) =>
 
 protectedBff.MapGet("/weatherforecast", async (IHttpClientFactory f) =>
 {
-    var http = f.CreateClient("ExploreApi");
+    var http = f.CreateClient("ExploreApi"); // Automatically includes user access token
     var r = await http.GetAsync("weatherforecast");
+    r.EnsureSuccessStatusCode();
+    return Results.Stream(
+        await r.Content.ReadAsStreamAsync(),
+        r.Content.Headers.ContentType?.ToString()
+    );
+});
+
+// User profile endpoint - uses authenticated client with automatic token management
+protectedBff.MapGet("/userprofile/me", async (IHttpClientFactory f) =>
+{
+    var http = f.CreateClient("ExploreApi"); // Automatically includes user access token via AddUserAccessTokenHandler
+    var r = await http.GetAsync("api/userprofile/me");
     r.EnsureSuccessStatusCode();
     return Results.Stream(
         await r.Content.ReadAsStreamAsync(),
@@ -511,7 +523,7 @@ protectedBff.MapPost("/events", async (HttpContext ctx, IHttpClientFactory f) =>
 {
     await antiforgery.ValidateRequestAsync(ctx);
 
-    var http = f.CreateClient("ExploreApi");
+    var http = f.CreateClient("ExploreApi"); // Automatically includes user access token
     var req = new HttpRequestMessage(HttpMethod.Post, "events")
     {
         Content = new StreamContent(ctx.Request.Body)
