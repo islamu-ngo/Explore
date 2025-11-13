@@ -27,9 +27,8 @@ public class ProgramService : IProgramService
             var response = await _httpClient.GetFromJsonAsync<List<ProgramListDto>>("/bff/api/Program");
             return response ?? new List<ProgramListDto>();
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Error fetching programs: {ex.Message}");
             return new List<ProgramListDto>();
         }
     }
@@ -41,9 +40,8 @@ public class ProgramService : IProgramService
             var response = await _httpClient.GetFromJsonAsync<ProgramDto>($"/bff/api/Program/{id}");
             return response;
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Error fetching program {id}: {ex.Message}");
             return null;
         }
     }
@@ -55,9 +53,8 @@ public class ProgramService : IProgramService
             var response = await _httpClient.GetFromJsonAsync<List<EventTypeListDto>>("/bff/api/EventType");
             return response ?? new List<EventTypeListDto>();
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Error fetching event types: {ex.Message}");
             return new List<EventTypeListDto>();
         }
     }
@@ -69,9 +66,8 @@ public class ProgramService : IProgramService
             var response = await _httpClient.GetFromJsonAsync<List<ProgramTypeListDto>>("/bff/api/ProgramType");
             return response ?? new List<ProgramTypeListDto>();
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Error fetching program types: {ex.Message}");
             return new List<ProgramTypeListDto>();
         }
     }
