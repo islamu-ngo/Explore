@@ -41,7 +41,7 @@ namespace Explore.API.Controllers
         [AllowAnonymous]
         public async Task<ActionResult<ProgramDto>> GetById(Guid id)
         {
-            var program = await _mediator.Send(new GetProgramDetailsRequest());
+            var program = await _mediator.Send(new GetProgramDetailsRequest { Id = id });
             return Ok(program);
         }
 

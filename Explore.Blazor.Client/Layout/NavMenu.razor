@@ -188,6 +188,16 @@ a.mud-nav-link.mud-nav-link-active::after {
 .user-dropdown-menu svg {
     width: 20px;
     height: 20px;
+    fill: var(--mud-palette-text-primary); /* Adapts to theme automatically */
+}
+
+.user-dropdown-button svg {
+    fill: var(--mud-palette-text-primary); /* Adapts to theme automatically */
+}
+
+/* Logout icon keeps error color */
+.user-dropdown-menu a:last-child svg {
+    fill: var(--mud-palette-error) !important;
 }
 
 /* ===== RESPONSIVE ===== */
