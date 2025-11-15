@@ -229,12 +229,13 @@
                             </MudItem>
 
                             <MudItem xs="12" md="4">
-                                <MudTextField @bind-Value="organization.Postcode"
-                                              Label="Postal Code"
-                                              Variant="Variant.Outlined"
-                                              HelperText="Postal/ZIP code"
-                                              Adornment="Adornment.Start"
-                                              AdornmentIcon="@Icons.Material.Filled.Pin" />
+                                <MudNumericField @bind-Value="organization.Postcode"
+                                                 Label="Postal Code"
+                                                 Variant="Variant.Outlined"
+                                                 HelperText="Postal/ZIP code"
+                                                 Min="0" Max="99999"
+                                                 Adornment="Adornment.Start"
+                                                 AdornmentIcon="@Icons.Material.Filled.Pin" />
                             </MudItem>
 
                             <MudItem xs="12" md="4">
@@ -302,7 +303,7 @@
                                 <MudText><b>Name:</b> @organization.FullName</MudText>
                                 <MudText><b>Website:</b> @(string.IsNullOrWhiteSpace(organization.WebsiteUrl) ? "-" : organization.WebsiteUrl)</MudText>
                                 <MudText><b>Email:</b> @organization.Email</MudText>
-                                <MudText><b>Address:</b> @organization.Address, @(string.IsNullOrWhiteSpace(organization.Postcode) ? "" : organization.Postcode + " ")@organization.City, @organization.Country</MudText>
+                                <MudText><b>Address:</b> @organization.Address, @(organization.Postcode?.ToString() ?? "")@(organization.Postcode.HasValue ? " " : "")@organization.City, @organization.Country</MudText>
                             </MudStack>
                         </MudPaper>
 
