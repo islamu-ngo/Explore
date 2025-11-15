@@ -8,6 +8,7 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
 builder.Services.AddMudServices();
 builder.Services.AddScoped<IEventService, EventService>();
+builder.Services.AddScoped<IProgramService, ProgramService>();
 
 builder.Services.AddScoped(sp => new HttpClient
 {

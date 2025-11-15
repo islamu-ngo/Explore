@@ -26,6 +26,22 @@ builder.AddServiceDefaults();
 builder.Services.AddMudServices();
 builder.Services.AddScoped<IEventService, EventService>();
 
+// Add HttpClient for server-side prerendering (without token)
+builder.Services.AddScoped(sp =>
+{
+    var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
+    var request = httpContextAccessor.HttpContext?.Request;
+    
+    var baseAddress = request != null
+        ? $"{request.Scheme}://{request.Host}"
+        : builder.Configuration["SelfUrl"] ?? "https://localhost:7071";
+    
+    return new HttpClient { BaseAddress = new Uri(baseAddress) };
+});
+
+// Register ProgramService for server-side prerendering
+builder.Services.AddScoped<IProgramService, ProgramService>();
+
 // Blazor
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
@@ -34,6 +50,7 @@ builder.Services.AddRazorComponents()
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddTransient<AuthorizationHandler>();
 
+// HttpClient for authenticated requests
 builder.Services.AddHttpClient("ExploreApi", client =>
     {
         client.BaseAddress = new Uri(
@@ -43,6 +60,31 @@ builder.Services.AddHttpClient("ExploreApi", client =>
     })
     //.AddHttpMessageHandler<AuthorizationHandler>()
     .AddUserAccessTokenHandler()
+    .ConfigurePrimaryHttpMessageHandler(() =>
+    {
+        var handler = new HttpClientHandler();
+
+        if (builder.Environment.IsDevelopment())
+        {
+            handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
+            {
+                // Accepter uniquement pour localhost
+                var isLocalhost = message.RequestUri?.Host.Contains("localhost") ?? false;
+                return isLocalhost || errors == System.Net.Security.SslPolicyErrors.None;
+            };
+        }
+
+        return handler;
+    });
+
+// HttpClient for public/anonymous requests (no token)
+builder.Services.AddHttpClient("ExploreApiPublic", client =>
+    {
+        client.BaseAddress = new Uri(
+            builder.Configuration["ExploreApi:BaseUrl"]
+            ?? "https://localhost:7039/"
+        );
+    })
     .ConfigurePrimaryHttpMessageHandler(() =>
     {
         var handler = new HttpClientHandler();
@@ -382,12 +424,69 @@ app.MapGet("/logout", async ctx =>
 });
 
 // BFF endpoints (server proxies to explore.api with the user token)
-var bff = app.MapGroup("/bff").RequireAuthorization();
+var bff = app.MapGroup("/bff");
+
+// Public endpoints (no authentication required)
+var publicBff = bff.MapGroup("/api");
+
+publicBff.MapGet("/Program", async (IHttpClientFactory f) =>
+{
+    var http = f.CreateClient("ExploreApiPublic");
+    var r = await http.GetAsync("api/Program");
+    
+    // Log the response for debugging
+    var content = await r.Content.ReadAsStringAsync();
+    Console.WriteLine($"Program API Response: {content}");
+    
+    r.EnsureSuccessStatusCode();
+    return Results.Content(content, "application/json");
+});
+
+publicBff.MapGet("/Program/{id}", async (Guid id, IHttpClientFactory f) =>
+{
+    var http = f.CreateClient("ExploreApiPublic");
+    var r = await http.GetAsync($"api/Program/{id}");
+    
+    // Log the response for debugging
+    var content = await r.Content.ReadAsStringAsync();
+    Console.WriteLine($"Program/{id} API Response Status: {r.StatusCode}");
+    Console.WriteLine($"Program/{id} API Response: {content}");
+    
+    r.EnsureSuccessStatusCode();
+    return Results.Content(content, "application/json");
+});
+
+publicBff.MapGet("/EventType", async (IHttpClientFactory f) =>
+{
+    var http = f.CreateClient("ExploreApiPublic");
+    var r = await http.GetAsync("api/EventType");
+    
+    // Log the response for debugging
+    var content = await r.Content.ReadAsStringAsync();
+    Console.WriteLine($"EventType API Response: {content}");
+    
+    r.EnsureSuccessStatusCode();
+    return Results.Content(content, "application/json");
+});
+
+publicBff.MapGet("/ProgramType", async (IHttpClientFactory f) =>
+{
+    var http = f.CreateClient("ExploreApiPublic");
+    var r = await http.GetAsync("api/ProgramType");
+    r.EnsureSuccessStatusCode();
+    return Results.Stream(
+        await r.Content.ReadAsStreamAsync(),
+        r.Content.Headers.ContentType?.ToString()
+    );
+});
+
+// Protected endpoints (require authentication)
+var protectedBff = bff.MapGroup("/api").RequireAuthorization();
 
 // Example GET pass-through
-bff.MapGet("/events", async (IHttpClientFactory f) =>
+protectedBff.MapGet("/events", async (IHttpClientFactory f) =>
 {
-    var http = f.CreateClient("ExploreApi");
+    var http = f.CreateClient("ExploreApi"); // Automatically includes user access token
     var r = await http.GetAsync("events");
     r.EnsureSuccessStatusCode();
     return Results.Stream(
@@ -396,9 +495,9 @@ bff.MapGet("/events", async (IHttpClientFactory f) =>
     );
 });
 
-bff.MapGet("/weatherforecast", async (IHttpClientFactory f) =>
+protectedBff.MapGet("/weatherforecast", async (IHttpClientFactory f) =>
 {
-    var http = f.CreateClient("ExploreApi");
+    var http = f.CreateClient("ExploreApi"); // Automatically includes user access token
     var r = await http.GetAsync("weatherforecast");
     r.EnsureSuccessStatusCode();
     return Results.Stream(
@@ -407,12 +506,24 @@ bff.MapGet("/weatherforecast", async (IHttpClientFactory f) =>
     );
 });
 
+// User profile endpoint - uses authenticated client with automatic token management
+protectedBff.MapGet("/userprofile/me", async (IHttpClientFactory f) =>
+{
+    var http = f.CreateClient("ExploreApi"); // Automatically includes user access token via AddUserAccessTokenHandler
+    var r = await http.GetAsync("api/userprofile/me");
+    r.EnsureSuccessStatusCode();
+    return Results.Stream(
+        await r.Content.ReadAsStreamAsync(),
+        r.Content.Headers.ContentType?.ToString()
+    );
+});
+
 // Example POST with CSRF validation
-bff.MapPost("/events", async (HttpContext ctx, IHttpClientFactory f) =>
+protectedBff.MapPost("/events", async (HttpContext ctx, IHttpClientFactory f) =>
 {
     await antiforgery.ValidateRequestAsync(ctx);
 
-    var http = f.CreateClient("ExploreApi");
+    var http = f.CreateClient("ExploreApi"); // Automatically includes user access token
     var req = new HttpRequestMessage(HttpMethod.Post, "events")
     {
         Content = new StreamContent(ctx.Request.Body)
