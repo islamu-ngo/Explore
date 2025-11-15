@@ -27,7 +27,7 @@ by donating to the [Palestinian Red Crescent Society](https://www.palestinercs.o
 Banner from: https://github.com/Safouene1/support-palestine-banner/
 
 ## Why Use ISLAMU Explore ?
-ISLAMU Explore is an ambitious Islamic Event Explorer that both Allows Muslims to explore the local and digital Events that are coming and Allows Event Organizators to Increase their visibility.
+ISLAMU Explore is an ambitious Islamic Program (Event, Education...) Explorer that both Allows Muslims to explore the local and digital Programs that are coming and Allows Program Organizators to Increase their visibility.
 
 **🌐 [Documentation]() (TODO)**
 
@@ -45,7 +45,7 @@ ISLAMU Explore is an ambitious Islamic Event Explorer that both Allows Muslims t
 
 ## Roadmap
 
-[Plane Publish Kanban View](https://sites.plane.so/issues/bfc2e9e8e4504d1baa4bfb8dfdab90b5/?board=kanban): All the Work Items, go vote, comment and more!
+[Plane Publish Kanban View](https://sites.plane.so/issues/ca6f27c39ac14f5ca1aa26bc5a17c799/?board=kanban): All the Work Items, go vote, comment and more!
 
 ## 📊 Repo Stats
 
@@ -60,6 +60,8 @@ I am deeply grateful to all our amazing contributors!
 </a>
 
 ## Contributing
+
+**[Contribution Guidlines](https://sites.plane.so/pages/b957e6c5278845feac5557d22bd54756)**
 
 - Submit a bug report, send feedback and trough GitHub's Issues
 - Open a Pull Request

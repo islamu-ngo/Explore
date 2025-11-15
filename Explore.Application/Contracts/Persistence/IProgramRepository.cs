@@ -9,5 +9,6 @@ namespace Explore.Application.Contracts.Persistence
     {
         Task<Program> GetProgramWithDetails(Guid id);
         Task<List<Program>> GetProgramsWithDetails();
+        Task<List<Program>> GetByOrganization(Guid organizationId);
     }
 }
