@@ -480,6 +480,31 @@ publicBff.MapGet("/ProgramType", async (IHttpClientFactory f) =>
     );
 });
 
+publicBff.MapPost("/Organization", async (HttpContext ctx, IHttpClientFactory f) =>
+{
+    var http = f.CreateClient("ExploreApiPublic");
+    var r = await http.PostAsync("api/Organization", new StreamContent(ctx.Request.Body)
+    {
+        Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json") }
+    });
+    r.EnsureSuccessStatusCode();
+    return Results.Stream(
+        await r.Content.ReadAsStreamAsync(),
+        r.Content.Headers.ContentType?.ToString()
+    );
+});
+
+publicBff.MapGet("/StatusType", async (IHttpClientFactory f) =>
+{
+    var http = f.CreateClient("ExploreApiPublic");
+    var r = await http.GetAsync("api/StatusType");
+    r.EnsureSuccessStatusCode();
+    return Results.Stream(
+        await r.Content.ReadAsStreamAsync(),
+        r.Content.Headers.ContentType?.ToString()
+    );
+});
+
 // Protected endpoints (require authentication)
 var protectedBff = bff.MapGroup("/api").RequireAuthorization();
 
