@@ -22,7 +22,8 @@ namespace Explore.Application.Features.Organizations.Handlers.Queries
 
         public async Task<List<OrganizationListDto>> Handle(GetOrganizationListRequest request, CancellationToken cancellationToken)
         {
-            var organizations = await _organizationRepository.GetAll();
+            // Get organizations with StatusType for admin purposes
+            var organizations = await _organizationRepository.GetAllWithStatusAsync();
             return _mapper.Map<List<OrganizationListDto>>(organizations);
         }
     }

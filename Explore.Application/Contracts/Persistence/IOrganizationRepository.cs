@@ -9,5 +9,6 @@ namespace Explore.Application.Contracts.Persistence
     {
         Task<Organization> GetOrganizationWithDetails(Guid id);
         Task<List<Organization>> GetOrganizationsWithDetails();
+        Task<List<Organization>> GetAllWithStatusAsync(); // Voor admin lijst met status info
     }
 }

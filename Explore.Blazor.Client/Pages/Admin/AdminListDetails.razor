@@ -1,163 +1,95 @@
-@page "/admin/organization/{Id}"
+@page "/admin/organization/{OrganizationId:guid}"
 @using MudBlazor
+@using Explore.Blazor.Client.Models.DTOs
+@using Explore.Blazor.Client.Services
+@inject IAdminService AdminService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
 
 <style>
     .details-page {
         padding: 24px;
-        max-width: 1200px;
+        max-width: 800px;
         margin: 0 auto;
-    }
-
-    .organization-card {
-        padding: 24px;
-    }
-
-    .logo-container {
-        width: 200px;
-        height: 200px;
-        margin: 0 auto 24px;
-        background-color: var(--mud-palette-background-grey);
-        border-radius: 8px;
-        overflow: hidden;
-        border: 2px dashed var(--mud-palette-lines-default);
-    }
-
-    .logo-image {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-
-    .section-title {
-        display: flex;
-        align-items: center;
-        margin-bottom: 16px;
-        padding-bottom: 8px;
-        border-bottom: 1px solid var(--mud-palette-lines-default);
-    }
-
-    .section-icon {
-        margin-right: 8px;
     }
 </style>
 
 <MudContainer Class="details-page">
-    <MudPaper Class="organization-card" Elevation="3">
-        @if (organization != null)
+    <MudPaper Class="pa-6" Elevation="3">
+        @if (_isLoading)
         {
-            <MudGrid>
-                <!-- Header Section with Logo -->
-                <MudItem xs="12" Class="d-flex justify-center mb-6">
-                    <div class="logo-container">
-                        @if (!string.IsNullOrEmpty(organization.LogoUrl))
-                        {
-                            <img src="@organization.LogoUrl" alt="@organization.Name logo" class="logo-image" />
-                        }
-                        else
-                        {
-                            <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Style="height: 100%;">
-                                <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Large" Color="Color.Default" Style="opacity: 0.5;" />
-                                <MudText Typo="Typo.caption" Color="Color.Default">No logo</MudText>
-                            </MudStack>
-                        }
-                    </div>
-                </MudItem>
+            <MudStack AlignItems="AlignItems.Center" Spacing="3">
+                <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+                <MudText Typo="Typo.body1">Loading organization details...</MudText>
+            </MudStack>
+        }
+        else if (organization != null)
+        {
+            <!-- Header -->
+            <MudStack Spacing="4">
+                <MudText Typo="Typo.h4" Color="Color.Primary">
+                    <MudIcon Icon="@Icons.Material.Filled.Business" Class="mr-2" />
+                    Organization Details
+                </MudText>
 
-                <!-- Basic Information Section -->
-                <MudItem xs="12">
-                    <div class="section-title">
-                        <MudIcon Icon="@Icons.Material.Filled.Info" Class="section-icon" />
-                        <MudText Typo="Typo.h6">Basic Information</MudText>
-                    </div>
+                <!-- Basic Information -->
+                <MudPaper Class="pa-4" Elevation="1">
+                    <MudText Typo="Typo.h6" Class="mb-3">Basic Information</MudText>
                     <MudGrid>
                         <MudItem xs="12" md="6">
-                            <MudTextField Label="Organization Name" Value="@organization.Name" ReadOnly="true" Variant="Variant.Outlined" />
+                            <MudTextField Label="Organization Name" Value="@organization.FullName" ReadOnly="true" Variant="Variant.Outlined" />
                         </MudItem>
                         <MudItem xs="12" md="6">
-                            <MudTextField Label="Organization Type" Value="@organization.OrganizationType" ReadOnly="true" Variant="Variant.Outlined" />
+                            <MudTextField Label="Status" Value="@GetStatusName(organization.StatusTypeId)" ReadOnly="true" Variant="Variant.Outlined" />
                         </MudItem>
                         <MudItem xs="12">
-                            <MudTextField Label="Description" Value="@organization.Description" ReadOnly="true" Lines="4" Variant="Variant.Outlined" />
-                        </MudItem>
-                        <MudItem xs="12" md="6">
-                            <MudTextField Label="Company Registration Number" Value="@organization.CompanyRegistrationNumber" ReadOnly="true" Variant="Variant.Outlined" />
-                        </MudItem>
-                        <MudItem xs="12" md="6">
-                            <MudTextField Label="Established Year" Value="@(organization.EstablishedYear?.ToString() ?? "Not specified")" ReadOnly="true" Variant="Variant.Outlined" />
+                            <MudTextField Label="Organization ID" Value="@organization.Id.ToString()" ReadOnly="true" Variant="Variant.Outlined" />
                         </MudItem>
                     </MudGrid>
-                </MudItem>
+                </MudPaper>
 
-                <!-- Contact Information Section -->
-                <MudItem xs="12">
-                    <div class="section-title">
-                        <MudIcon Icon="@Icons.Material.Filled.ContactMail" Class="section-icon" />
-                        <MudText Typo="Typo.h6">Contact Information</MudText>
-                    </div>
+                <!-- Contact Information -->
+                <MudPaper Class="pa-4" Elevation="1">
+                    <MudText Typo="Typo.h6" Class="mb-3">Contact Information</MudText>
                     <MudGrid>
                         <MudItem xs="12" md="6">
-                            <MudTextField Label="Email" Value="@organization.ContactEmail" ReadOnly="true" Variant="Variant.Outlined" />
+                            <MudTextField Label="Email" Value="@organization.Email" ReadOnly="true" Variant="Variant.Outlined" />
                         </MudItem>
                         <MudItem xs="12" md="6">
-                            <MudTextField Label="Phone" Value="@organization.ContactPhone" ReadOnly="true" Variant="Variant.Outlined" />
-                        </MudItem>
-                        <MudItem xs="12" md="6">
-                            <MudTextField Label="Website" Value="@organization.Website" ReadOnly="true" Variant="Variant.Outlined" />
-                        </MudItem>
-                        <MudItem xs="12" md="6">
-                            <MudTextField Label="Social Media" Value="@organization.SocialMedia" ReadOnly="true" Variant="Variant.Outlined" />
+                            <MudTextField Label="Website" Value="@(organization.WebsiteUrl ?? "Not provided")" ReadOnly="true" Variant="Variant.Outlined" />
                         </MudItem>
                     </MudGrid>
-                </MudItem>
+                </MudPaper>
 
-                <!-- Address Information Section -->
-                <MudItem xs="12">
-                    <div class="section-title">
-                        <MudIcon Icon="@Icons.Material.Filled.LocationOn" Class="section-icon" />
-                        <MudText Typo="Typo.h6">Address Information</MudText>
-                    </div>
+                <!-- Address Information -->
+                <MudPaper Class="pa-4" Elevation="1">
+                    <MudText Typo="Typo.h6" Class="mb-3">Address Information</MudText>
                     <MudGrid>
                         <MudItem xs="12">
-                            <MudTextField Label="Street Address" Value="@organization.Address" ReadOnly="true" Variant="Variant.Outlined" />
+                            <MudTextField Label="Street Address" Value="@(organization.Address ?? "Not provided")" ReadOnly="true" Variant="Variant.Outlined" />
                         </MudItem>
                         <MudItem xs="12" md="4">
-                            <MudTextField Label="Postal Code" Value="@organization.PostalCode" ReadOnly="true" Variant="Variant.Outlined" />
+                            <MudTextField Label="Postal Code" Value="@(organization.Postcode?.ToString() ?? "Not provided")" ReadOnly="true" Variant="Variant.Outlined" />
                         </MudItem>
                         <MudItem xs="12" md="4">
-                            <MudTextField Label="City" Value="@organization.City" ReadOnly="true" Variant="Variant.Outlined" />
+                            <MudTextField Label="City" Value="@(organization.City ?? "Not provided")" ReadOnly="true" Variant="Variant.Outlined" />
                         </MudItem>
                         <MudItem xs="12" md="4">
-                            <MudTextField Label="Country" Value="@organization.Country" ReadOnly="true" Variant="Variant.Outlined" />
+                            <MudTextField Label="Country" Value="@(organization.Country ?? "Not provided")" ReadOnly="true" Variant="Variant.Outlined" />
                         </MudItem>
                     </MudGrid>
-                </MudItem>
+                </MudPaper>
 
-                <!-- Additional Information Section -->
-                <MudItem xs="12">
-                    <div class="section-title">
-                        <MudIcon Icon="@Icons.Material.Filled.Assignment" Class="section-icon" />
-                        <MudText Typo="Typo.h6">Additional Information</MudText>
-                    </div>
-                    <MudGrid>
-                        <MudItem xs="12" md="6">
-                            <MudTextField Label="Member Count" Value="@(organization.MemberCount?.ToString() ?? "Not specified")" ReadOnly="true" Variant="Variant.Outlined" />
-                        </MudItem>
-                        <MudItem xs="12">
-                            <MudTextField Label="Additional Notes" Value="@organization.AdditionalNotes" ReadOnly="true" Lines="3" Variant="Variant.Outlined" />
-                        </MudItem>
-                    </MudGrid>
-                </MudItem>
-
-                <!-- Action Buttons -->
-                <MudItem xs="12" Class="d-flex justify-space-between mt-4">
+                <!-- Back Button -->
+                <MudStack Direction="FlexDirection.Row" Justify="Justify.SpaceBetween">
                     <MudButton Variant="Variant.Outlined" 
                               Color="Color.Default" 
                               StartIcon="@Icons.Material.Filled.ArrowBack"
                               OnClick="NavigateBack">
                         Back to List
                     </MudButton>
-                </MudItem>
-            </MudGrid>
+                </MudStack>
+            </MudStack>
         }
         else
         {
@@ -168,35 +100,36 @@
 
 @code {
     [Parameter]
-    public string Id { get; set; } = string.Empty;
+    public Guid OrganizationId { get; set; }
 
-    [Inject]
-    private NavigationManager NavigationManager { get; set; } = default!;
+    private AdminOrganizationListDto? organization;
+    private bool _isLoading = true;
 
-    private Organization? organization;
-
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        organization = new Organization
+        await LoadOrganizationDetails();
+    }
+
+    private async Task LoadOrganizationDetails()
+    {
+        _isLoading = true;
+        try
         {
-            Id = Id,
-            Name = $"Organisation {Id}",
-            Description = "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s.",
-            CompanyRegistrationNumber = "REG123456",
-            OrganizationType = "Non-Profit",
-            ContactEmail = "contact@organization.com",
-            ContactPhone = "+31 123 456 789",
-            Website = "www.organization.com",
-            SocialMedia = "@organization",
-            Address = "Example Street 123",
-            PostalCode = "1234 AB",
-            City = "Amsterdam",
-            Country = "Netherlands",
-            EstablishedYear = 2020,
-            MemberCount = 50,
-            AdditionalNotes = "Additional information about the organization.",
-            LogoUrl = "" 
-        };
+            organization = await AdminService.GetOrganizationDetailsAsync(OrganizationId);
+
+            if (organization == null)
+            {
+                Snackbar.Add("Organization not found", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading organization: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
     }
 
     private void NavigateBack()
@@ -204,24 +137,14 @@
         NavigationManager.NavigateTo("/admin");
     }
 
-    private class Organization
+    private static string GetStatusName(int statusTypeId)
     {
-        public string Id { get; set; } = string.Empty;
-        public string Name { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
-        public string CompanyRegistrationNumber { get; set; } = string.Empty;
-        public string OrganizationType { get; set; } = string.Empty;
-        public string ContactEmail { get; set; } = string.Empty;
-        public string ContactPhone { get; set; } = string.Empty;
-        public string Website { get; set; } = string.Empty;
-        public string SocialMedia { get; set; } = string.Empty;
-        public string Address { get; set; } = string.Empty;
-        public string PostalCode { get; set; } = string.Empty;
-        public string City { get; set; } = string.Empty;
-        public string Country { get; set; } = string.Empty;
-        public int? EstablishedYear { get; set; }
-        public int? MemberCount { get; set; }
-        public string AdditionalNotes { get; set; } = string.Empty;
-        public string LogoUrl { get; set; } = string.Empty;
+        return statusTypeId switch
+        {
+            1 => "Pending",
+            2 => "Approved",
+            3 => "Rejected",
+            _ => "Unknown"
+        };
     }
 }

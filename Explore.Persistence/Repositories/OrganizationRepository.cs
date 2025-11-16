@@ -31,5 +31,15 @@ namespace Explore.Persistence.Repositories
                 .FirstOrDefaultAsync(o => o.Id == id);
             return organization;
         }
+
+        public async Task<List<Organization>> GetAllWithStatusAsync()
+        {
+            // Haal alle organisaties op met status info voor admin dashboard
+            var organizations = await _dbContext.Organizations
+                .Include(o => o.StatusType)
+                .OrderBy(o => o.Id) // orderd by id later with created at
+                .ToListAsync();
+            return organizations;
+        }
     }
 }
