@@ -1,27 +1,35 @@
 @page "/my-registrations"
 @using MudBlazor
 @using Explore.Blazor.Client.Models.DTOs
+@using Explore.Blazor.Client.Components
 @inject NavigationManager Navigation
-@inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@inject ISnackbar Snackbar
 
 <PageTitle>My Registrations</PageTitle>
 
 <style>
 /* ===== PAGE WRAPPER ===== */
-.page-wrap {
+.registrations-page {
     padding: 24px 0 40px;
+    min-height: 100vh;
 }
 
 /* ===== HEADER ===== */
 .page-header {
-    margin-bottom: 28px;
+    margin-bottom: 32px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid var(--mud-palette-divider);
 }
 
 .page-title {
     font-size: 2rem;
     font-weight: 700;
     margin-bottom: 8px;
+    background: linear-gradient(135deg, var(--mud-palette-primary), var(--mud-palette-primary-darken));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .page-subtitle {
@@ -42,32 +50,72 @@
     border-radius: 12px;
     border: 1px solid var(--mud-palette-lines-default);
     background: var(--mud-palette-surface);
+    transition: all 0.3s ease;
 }
 
-.stat-card-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+}
+
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
     margin-bottom: 12px;
 }
 
-.stat-card-value {
-    font-size: 1.75rem;
+.stat-icon.primary {
+    background: linear-gradient(135deg, var(--mud-palette-primary), var(--mud-palette-primary-darken));
+    color: white;
+}
+
+.stat-icon.success {
+    background: linear-gradient(135deg, var(--mud-palette-success), var(--mud-palette-success-darken));
+    color: white;
+}
+
+.stat-icon.warning {
+    background: linear-gradient(135deg, var(--mud-palette-warning), var(--mud-palette-warning-darken));
+    color: white;
+}
+
+.stat-value {
+    font-size: 2rem;
     font-weight: 700;
+    color: var(--mud-palette-text-primary);
+    line-height: 1;
     margin-bottom: 4px;
 }
 
-.stat-card-label {
+.stat-label {
     font-size: 0.875rem;
     color: var(--mud-palette-text-secondary);
 }
 
-/* ===== TABS ===== */
-.tabs-wrapper {
+/* ===== FILTERS ===== */
+.filters-section {
     margin-bottom: 24px;
+    padding: 16px;
+    border-radius: 12px;
+    background: var(--mud-palette-surface);
+    border: 1px solid var(--mud-palette-lines-default);
+}
+
+.filters-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 16px;
+    align-items: end;
+}
+
+@@media (max-width: 960px) {
+    .filters-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* ===== REGISTRATION CARDS ===== */
@@ -77,18 +125,19 @@
 }
 
 .registration-card {
-    border: 1px solid var(--mud-palette-lines-default);
     border-radius: 16px;
+    border: 1px solid var(--mud-palette-lines-default);
     overflow: hidden;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
+    background: var(--mud-palette-surface);
 }
 
 .registration-card:hover {
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.12);
     transform: translateY(-2px);
 }
 
-.registration-card-header {
+.card-content {
     display: grid;
     grid-template-columns: 140px 1fr auto;
     gap: 20px;
@@ -96,88 +145,112 @@
 }
 
 @@media (max-width: 768px) {
-    .registration-card-header {
+    .card-content {
         grid-template-columns: 1fr;
-        gap: 16px;
     }
 }
 
-.registration-image {
+.event-image {
     width: 140px;
     height: 140px;
     border-radius: 12px;
-    object-fit: cover;
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--mud-palette-primary), var(--mud-palette-primary-darken));
+    position: relative;
 }
 
 @@media (max-width: 768px) {
-    .registration-image {
+    .event-image {
         width: 100%;
         height: 200px;
     }
 }
 
-.registration-info {
+.event-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.event-details {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 12px;
 }
 
-.registration-title {
+.event-title {
     font-size: 1.25rem;
     font-weight: 600;
-    margin-bottom: 4px;
+    color: var(--mud-palette-text-primary);
+    margin: 0;
 }
 
-.registration-meta {
+.event-meta {
     display: flex;
     flex-wrap: wrap;
     gap: 16px;
-    margin-top: 8px;
+    align-items: center;
 }
 
 .meta-item {
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 0.875rem;
     color: var(--mud-palette-text-secondary);
+    font-size: 0.875rem;
 }
 
-.registration-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    align-items: flex-end;
-}
-
-@@media (max-width: 768px) {
-    .registration-actions {
-        flex-direction: row;
-        align-items: center;
-    }
+.meta-item .mud-icon-root {
+    font-size: 1.125rem;
 }
 
 .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     padding: 6px 12px;
     border-radius: 20px;
     font-size: 0.75rem;
     font-weight: 600;
     text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
-.status-upcoming {
-    background: rgba(59, 130, 246, 0.15);
+.status-badge.upcoming {
+    background: rgba(33, 150, 243, 0.1);
     color: var(--mud-palette-primary);
 }
 
-.status-completed {
-    background: rgba(34, 197, 94, 0.15);
+.status-badge.completed {
+    background: rgba(76, 175, 80, 0.1);
     color: var(--mud-palette-success);
 }
 
-.status-cancelled {
-    background: rgba(239, 68, 68, 0.15);
+.status-badge.cancelled {
+    background: rgba(244, 67, 54, 0.1);
     color: var(--mud-palette-error);
+}
+
+.event-description {
+    color: var(--mud-palette-text-secondary);
+    line-height: 1.6;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.card-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    justify-content: center;
+}
+
+@@media (max-width: 768px) {
+    .card-actions {
+        flex-direction: row;
+    }
 }
 
 /* ===== EMPTY STATE ===== */
@@ -186,216 +259,211 @@
     padding: 60px 20px;
 }
 
-.empty-state-icon {
+.empty-icon {
     width: 80px;
     height: 80px;
     margin: 0 auto 20px;
     border-radius: 50%;
-    background: var(--mud-palette-background-grey);
+    background: linear-gradient(135deg, var(--mud-palette-primary), var(--mud-palette-primary-darken));
     display: flex;
     align-items: center;
     justify-content: center;
+    color: white;
 }
 
-.empty-state-icon .mud-icon-root {
+.empty-icon .mud-icon-root {
     font-size: 2.5rem;
-    color: var(--mud-palette-text-secondary);
 }
 
-.empty-state-title {
+.empty-title {
     font-size: 1.5rem;
     font-weight: 600;
     margin-bottom: 8px;
 }
 
-.empty-state-text {
+.empty-description {
     color: var(--mud-palette-text-secondary);
     margin-bottom: 24px;
 }
 </style>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="page-wrap">
+<MudContainer MaxWidth="MaxWidth.Large" Class="registrations-page">
     <!-- Header -->
     <div class="page-header">
-        <MudText Typo="Typo.h4" Class="page-title">My Registrations</MudText>
-        <MudText Typo="Typo.body1" Class="page-subtitle">
-            Manage your event registrations and track your participation
-        </MudText>
+        <h1 class="page-title">My Registrations</h1>
+        <p class="page-subtitle">Manage all your event registrations in one place</p>
     </div>
 
     <!-- Stats -->
     <div class="stats-grid">
-        <MudPaper Elevation="0" Class="stat-card">
-            <div class="stat-card-icon" style="background: rgba(59, 130, 246, 0.15);">
-                <MudIcon Icon="@Icons.Material.Filled.Event" Color="Color.Primary" />
+        <div class="stat-card">
+            <div class="stat-icon primary">
+                <MudIcon Icon="@Icons.Material.Filled.EventAvailable" Size="Size.Large" />
             </div>
-            <div class="stat-card-value">@GetUpcomingCount()</div>
-            <div class="stat-card-label">Upcoming Events</div>
-        </MudPaper>
-
-        <MudPaper Elevation="0" Class="stat-card">
-            <div class="stat-card-icon" style="background: rgba(34, 197, 94, 0.15);">
-                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" />
+            <div class="stat-value">@GetTotalRegistrations()</div>
+            <div class="stat-label">Total Registrations</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon success">
+                <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Large" />
             </div>
-            <div class="stat-card-value">@GetCompletedCount()</div>
-            <div class="stat-card-label">Completed Events</div>
-        </MudPaper>
-
-        <MudPaper Elevation="0" Class="stat-card">
-            <div class="stat-card-icon" style="background: rgba(239, 68, 68, 0.15);">
-                <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Error" />
+            <div class="stat-value">@GetUpcomingCount()</div>
+            <div class="stat-label">Upcoming Events</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon warning">
+                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" />
             </div>
-            <div class="stat-card-value">@GetCancelledCount()</div>
-            <div class="stat-card-label">Cancelled</div>
-        </MudPaper>
+            <div class="stat-value">@GetCompletedCount()</div>
+            <div class="stat-label">Completed</div>
+        </div>
     </div>
 
-    <!-- Tabs -->
-    <div class="tabs-wrapper">
-        <MudTabs Elevation="0" Rounded="true" Color="Color.Primary" @bind-ActivePanelIndex="activeTab">
-            <MudTabPanel Text="All Registrations" Icon="@Icons.Material.Filled.List" />
-            <MudTabPanel Text="Upcoming" Icon="@Icons.Material.Filled.Event" />
-            <MudTabPanel Text="Past Events" Icon="@Icons.Material.Filled.History" />
-        </MudTabs>
+    <!-- Filters -->
+    <div class="filters-section">
+        <div class="filters-grid">
+            <MudTextField @bind-Value="searchQuery"
+                          Placeholder="Search registrations..."
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Variant="Variant.Outlined"
+                          Immediate="true"
+                          OnDebounceIntervalElapsed="FilterRegistrations"
+                          DebounceInterval="300" />
+            
+            <MudSelect @bind-Value="statusFilter"
+                       Label="Status"
+                       Variant="Variant.Outlined"
+                       T="string"
+                       AnchorOrigin="Origin.BottomCenter">
+                <MudSelectItem Value="@("all")">All Status</MudSelectItem>
+                <MudSelectItem Value="@("upcoming")">Upcoming</MudSelectItem>
+                <MudSelectItem Value="@("completed")">Completed</MudSelectItem>
+                <MudSelectItem Value="@("cancelled")">Cancelled</MudSelectItem>
+            </MudSelect>
+
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Refresh"
+                       OnClick="ResetFilters">
+                Reset
+            </MudButton>
+        </div>
     </div>
 
     <!-- Registrations List -->
-    @if (GetFilteredRegistrations().Any())
+    @if (filteredRegistrations.Any())
     {
         <div class="registrations-grid">
-            @foreach (var registration in GetFilteredRegistrations())
+            @foreach (var registration in filteredRegistrations)
             {
-                <MudPaper Elevation="0" Class="registration-card">
-                    <div class="registration-card-header">
-                        <img src="@registration.EventImage" alt="@registration.EventTitle" class="registration-image" />
-                        
-                        <div class="registration-info">
-                            <MudText Typo="Typo.h6" Class="registration-title">@registration.EventTitle</MudText>
-                            
-                            <MudStack Row="true" Spacing="1">
-                                <MudChip T="string" Size="Size.Small" Color="Color.Primary">@registration.EventType</MudChip>
-                                @if (registration.Price > 0)
-                                {
-                                    <MudChip T="string" Size="Size.Small" Color="Color.Secondary">€@registration.Price.ToString("F2")</MudChip>
-                                }
-                                else
-                                {
-                                    <MudChip T="string" Size="Size.Small" Color="Color.Success">Free</MudChip>
-                                }
-                            </MudStack>
+                <div class="registration-card">
+                    <div class="card-content">
+                        <div class="event-image">
+                            <img src="@GetEventImage(registration)" alt="@registration.EventTitle" />
+                        </div>
 
-                            <div class="registration-meta">
+                        <div class="event-details">
+                            <h3 class="event-title">@registration.EventTitle</h3>
+                            
+                            <div class="event-meta">
                                 <div class="meta-item">
-                                    <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" />
+                                    <MudIcon Icon="@Icons.Material.Filled.CalendarToday" />
                                     <span>@registration.EventDate.ToString("MMM dd, yyyy")</span>
                                 </div>
                                 <div class="meta-item">
-                                    <MudIcon Icon="@Icons.Material.Filled.AccessTime" Size="Size.Small" />
-                                    <span>@registration.EventTime</span>
+                                    <MudIcon Icon="@Icons.Material.Filled.AccessTime" />
+                                    <span>@registration.EventDate.ToString("HH:mm")</span>
                                 </div>
                                 <div class="meta-item">
-                                    <MudIcon Icon="@Icons.Material.Filled.Place" Size="Size.Small" />
+                                    <MudIcon Icon="@Icons.Material.Filled.LocationOn" />
                                     <span>@registration.Location</span>
                                 </div>
                             </div>
 
-                            <div class="meta-item" style="margin-top: 8px;">
-                                <MudIcon Icon="@Icons.Material.Filled.ConfirmationNumber" Size="Size.Small" />
+                            <div>
+                                <span class="status-badge @GetStatusClass(registration.Status)">
+                                    @registration.Status
+                                </span>
+                            </div>
+
+                            <p class="event-description">@registration.Description</p>
+
+                            <div class="meta-item">
+                                <MudIcon Icon="@Icons.Material.Filled.PersonAdd" />
                                 <span>Registered on @registration.RegistrationDate.ToString("MMM dd, yyyy")</span>
                             </div>
                         </div>
 
-                        <div class="registration-actions">
-                            <span class="status-badge status-@registration.Status.ToLower()">
-                                @registration.Status
-                            </span>
+                        <div class="card-actions">
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.Visibility"
+                                       OnClick="@(() => ViewDetails(registration.EventId))">
+                                View Event
+                            </MudButton>
                             
-                            @if (registration.Status == "Upcoming")
+                            @if (registration.Status == "upcoming")
                             {
-                                <MudButton Variant="Variant.Outlined" 
-                                           Color="Color.Primary" 
-                                           Size="Size.Small"
-                                           OnClick="@(() => ViewEventDetails(registration.EventId))">
-                                    View Details
-                                </MudButton>
-                                <MudButton Variant="Variant.Text" 
-                                           Color="Color.Error" 
-                                           Size="Size.Small"
-                                           OnClick="@(() => CancelRegistration(registration.Id))">
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Error"
+                                           StartIcon="@Icons.Material.Filled.Cancel"
+                                           OnClick="@(() => CancelRegistration(registration))">
                                     Unregister
                                 </MudButton>
                             }
-                            else if (registration.Status == "Completed")
+                            else if (registration.Status == "completed")
                             {
-                                <MudButton Variant="Variant.Outlined" 
-                                           Color="Color.Primary" 
-                                           Size="Size.Small"
-                                           OnClick="@(() => ViewEventDetails(registration.EventId))">
-                                    View Details
-                                </MudButton>
-                                <MudButton Variant="Variant.Text" 
-                                           Color="Color.Secondary" 
-                                           Size="Size.Small">
-                                    Leave Review
-                                </MudButton>
-                            }
-                            else
-                            {
-                                <MudButton Variant="Variant.Outlined" 
-                                           Color="Color.Default" 
-                                           Size="Size.Small"
-                                           OnClick="@(() => ViewEventDetails(registration.EventId))">
-                                    View Details
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Success"
+                                           StartIcon="@Icons.Material.Filled.RateReview"
+                                           OnClick="@(() => OpenReviewDialog(registration))">
+                                    Write Review
                                 </MudButton>
                             }
                         </div>
                     </div>
-                </MudPaper>
+                </div>
             }
         </div>
     }
     else
     {
-        <MudPaper Elevation="0" Class="empty-state">
-            <div class="empty-state-icon">
+        <div class="empty-state">
+            <div class="empty-icon">
                 <MudIcon Icon="@Icons.Material.Filled.EventBusy" />
             </div>
-            <MudText Typo="Typo.h5" Class="empty-state-title">No Registrations Found</MudText>
-            <MudText Typo="Typo.body1" Class="empty-state-text">
-                @GetEmptyStateMessage()
-            </MudText>
-            <MudButton Variant="Variant.Filled" 
-                       Color="Color.Primary" 
+            <h2 class="empty-title">No Registrations Found</h2>
+            <p class="empty-description">
+                @if (!string.IsNullOrWhiteSpace(searchQuery) || statusFilter != "all")
+                {
+                    <span>Try adjusting your filters or search query.</span>
+                }
+                else
+                {
+                    <span>You haven't registered for any events yet. Discover amazing events and register now!</span>
+                }
+            </p>
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
                        StartIcon="@Icons.Material.Filled.Explore"
-                       OnClick="@(() => Navigation.NavigateTo("/events"))">
-                Explore Events
+                       Href="/events">
+                Browse Events
             </MudButton>
-        </MudPaper>
+        </div>
     }
 </MudContainer>
 
 @code {
-    private int activeTab = 0;
     private List<RegistrationModel> registrations = new();
-
-    public class RegistrationModel
-    {
-        public Guid Id { get; set; }
-        public Guid EventId { get; set; }
-        public string EventTitle { get; set; } = string.Empty;
-        public string EventType { get; set; } = string.Empty;
-        public string EventImage { get; set; } = string.Empty;
-        public DateTime EventDate { get; set; }
-        public string EventTime { get; set; } = string.Empty;
-        public string Location { get; set; } = string.Empty;
-        public double Price { get; set; }
-        public DateTime RegistrationDate { get; set; }
-        public string Status { get; set; } = string.Empty; // Upcoming, Completed, Cancelled
-    }
+    private List<RegistrationModel> filteredRegistrations = new();
+    private string searchQuery = "";
+    private string statusFilter = "all";
 
     protected override void OnInitialized()
     {
         LoadMockData();
+        FilterRegistrations();
     }
 
     private void LoadMockData()
@@ -406,136 +474,187 @@
             {
                 Id = Guid.NewGuid(),
                 EventId = Guid.NewGuid(),
-                EventTitle = "Tech Summit 2025",
-                EventType = "Conference",
-                EventImage = "https://dummyimage.com/600x400/2196F3/ffffff&text=Tech+Summit",
+                EventTitle = "Ramadan Iftaar Gathering",
+                Description = "Join us for a community iftaar gathering with Islamic lectures, Quran recitation, and networking with fellow Muslims.",
                 EventDate = DateTime.Now.AddDays(15),
-                EventTime = "9:00 AM - 5:00 PM",
-                Location = "Brussels, Belgium",
-                Price = 150.00,
-                RegistrationDate = DateTime.Now.AddDays(-10),
-                Status = "Upcoming"
+                Location = "Islamic Center Brussels",
+                Status = "upcoming",
+                RegistrationDate = DateTime.Now.AddDays(-5)
             },
             new RegistrationModel
             {
                 Id = Guid.NewGuid(),
                 EventId = Guid.NewGuid(),
-                EventTitle = "Community Gathering",
-                EventType = "Meetup",
-                EventImage = "https://dummyimage.com/600x400/4CAF50/ffffff&text=Community",
+                EventTitle = "Islamic Finance Workshop",
+                Description = "Learn about halal investment strategies, Islamic banking principles, and Sharia-compliant financial planning.",
                 EventDate = DateTime.Now.AddDays(7),
-                EventTime = "6:00 PM - 9:00 PM",
-                Location = "Antwerp, Belgium",
-                Price = 0,
-                RegistrationDate = DateTime.Now.AddDays(-5),
-                Status = "Upcoming"
+                Location = "Community Center, Antwerp",
+                Status = "upcoming",
+                RegistrationDate = DateTime.Now.AddDays(-10)
             },
             new RegistrationModel
             {
                 Id = Guid.NewGuid(),
                 EventId = Guid.NewGuid(),
-                EventTitle = "AI Workshop Series",
-                EventType = "Workshop",
-                EventImage = "https://dummyimage.com/600x400/9C27B0/ffffff&text=AI+Workshop",
-                EventDate = DateTime.Now.AddDays(-10),
-                EventTime = "2:00 PM - 5:00 PM",
-                Location = "Ghent, Belgium",
-                Price = 75.00,
-                RegistrationDate = DateTime.Now.AddDays(-25),
-                Status = "Completed"
-            },
-            new RegistrationModel
-            {
-                Id = Guid.NewGuid(),
-                EventId = Guid.NewGuid(),
-                EventTitle = "Networking Night",
-                EventType = "Networking",
-                EventImage = "https://dummyimage.com/600x400/FF9800/ffffff&text=Networking",
-                EventDate = DateTime.Now.AddDays(-5),
-                EventTime = "7:00 PM - 10:00 PM",
-                Location = "Leuven, Belgium",
-                Price = 25.00,
-                RegistrationDate = DateTime.Now.AddDays(-20),
-                Status = "Completed"
-            },
-            new RegistrationModel
-            {
-                Id = Guid.NewGuid(),
-                EventId = Guid.NewGuid(),
-                EventTitle = "Sports Day",
-                EventType = "Sports",
-                EventImage = "https://dummyimage.com/600x400/F44336/ffffff&text=Sports+Day",
+                EventTitle = "Youth Islamic Leadership Summit",
+                Description = "Empowering Muslim youth with leadership skills, Islamic values, and community service opportunities.",
                 EventDate = DateTime.Now.AddDays(30),
-                EventTime = "10:00 AM - 4:00 PM",
-                Location = "Brussels, Belgium",
-                Price = 0,
-                RegistrationDate = DateTime.Now.AddDays(-3),
-                Status = "Cancelled"
+                Location = "Al-Nour Mosque, Ghent",
+                Status = "upcoming",
+                RegistrationDate = DateTime.Now.AddDays(-2)
             },
             new RegistrationModel
             {
                 Id = Guid.NewGuid(),
                 EventId = Guid.NewGuid(),
-                EventTitle = "Cultural Festival",
-                EventType = "Festival",
-                EventImage = "https://dummyimage.com/600x400/00BCD4/ffffff&text=Cultural+Festival",
-                EventDate = DateTime.Now.AddDays(45),
-                EventTime = "12:00 PM - 8:00 PM",
-                Location = "Bruges, Belgium",
-                Price = 50.00,
-                RegistrationDate = DateTime.Now.AddDays(-15),
-                Status = "Upcoming"
+                EventTitle = "Quran Memorization Competition",
+                Description = "Annual Quran memorization competition for all ages with prizes and certificates for participants.",
+                EventDate = DateTime.Now.AddDays(-5),
+                Location = "Islamic School, Leuven",
+                Status = "completed",
+                RegistrationDate = DateTime.Now.AddDays(-30)
+            },
+            new RegistrationModel
+            {
+                Id = Guid.NewGuid(),
+                EventId = Guid.NewGuid(),
+                EventTitle = "Sisters' Islamic Conference",
+                Description = "Islamic conference for women featuring lectures on faith, family, and personal development from Islamic perspective.",
+                EventDate = DateTime.Now.AddDays(-20),
+                Location = "Women's Center, Brussels",
+                Status = "completed",
+                RegistrationDate = DateTime.Now.AddDays(-45)
+            },
+            new RegistrationModel
+            {
+                Id = Guid.NewGuid(),
+                EventId = Guid.NewGuid(),
+                EventTitle = "Eid al-Fitr Celebration",
+                Description = "Celebrate Eid with the Muslim community featuring prayers, food, activities for children, and community bonding.",
+                EventDate = DateTime.Now.AddDays(5),
+                Location = "Brussels Grand Mosque",
+                Status = "cancelled",
+                RegistrationDate = DateTime.Now.AddDays(-15)
             }
         };
     }
 
-    private IEnumerable<RegistrationModel> GetFilteredRegistrations()
+    private void FilterRegistrations()
     {
-        return activeTab switch
+        var query = registrations.AsQueryable();
+
+        // Filter by search query
+        if (!string.IsNullOrWhiteSpace(searchQuery))
         {
-            1 => registrations.Where(r => r.Status == "Upcoming"),
-            2 => registrations.Where(r => r.Status == "Completed"),
-            _ => registrations
+            query = query
+                .Where(r => r.EventTitle.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                           r.Description.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                           r.Location.Contains(searchQuery, StringComparison.OrdinalIgnoreCase));
+        }
+
+        // Filter by status
+        if (statusFilter != "all")
+        {
+            query = query
+                .Where(r => r.Status.Equals(statusFilter, StringComparison.OrdinalIgnoreCase));
+        }
+
+        // Sort by event date and convert to list
+        filteredRegistrations = query
+            .OrderBy(r => r.EventDate)
+            .ToList();
+    }
+
+    private void ResetFilters()
+    {
+        searchQuery = "";
+        statusFilter = "all";
+        FilterRegistrations();
+    }
+
+    private int GetTotalRegistrations() => registrations.Count;
+    private int GetUpcomingCount() => registrations.Count(r => r.Status == "upcoming");
+    private int GetCompletedCount() => registrations.Count(r => r.Status == "completed");
+
+    private string GetStatusClass(string status)
+    {
+        return status.ToLower() switch
+        {
+            "upcoming" => "upcoming",
+            "completed" => "completed",
+            "cancelled" => "cancelled",
+            _ => ""
         };
     }
 
-    private int GetUpcomingCount() => registrations.Count(r => r.Status == "Upcoming");
-    private int GetCompletedCount() => registrations.Count(r => r.Status == "Completed");
-    private int GetCancelledCount() => registrations.Count(r => r.Status == "Cancelled");
-
-    private string GetEmptyStateMessage()
+    private string GetEventImage(RegistrationModel registration)
     {
-        return activeTab switch
+        var color = registration.Status switch
         {
-            1 => "You don't have any upcoming events. Browse available events to register.",
-            2 => "You haven't attended any events yet. Register for events to build your history.",
-            _ => "You haven't registered for any events yet. Start exploring events and register to join."
+            "upcoming" => "2196F3",
+            "completed" => "4CAF50",
+            "cancelled" => "F44336",
+            _ => "607D8B"
         };
+        return $"https://dummyimage.com/400x400/{color}/ffffff&text={Uri.EscapeDataString(registration.EventTitle.Split(' ').FirstOrDefault() ?? "Event")}";
     }
 
-    private void ViewEventDetails(Guid eventId)
+    private void ViewDetails(Guid eventId)
     {
         Navigation.NavigateTo($"/event/detail/{eventId}");
     }
 
-    private async Task CancelRegistration(Guid registrationId)
+    private async Task OpenReviewDialog(RegistrationModel registration)
+    {
+        var parameters = new DialogParameters
+        {
+            { "EventTitle", registration.EventTitle },
+            { "EventId", registration.EventId }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+            CloseButton = true,
+            CloseOnEscapeKey = true
+        };
+
+        var dialog = await DialogService.ShowAsync<EventReviewDialog>("Write a Review", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            Snackbar.Add("Review submitted successfully!", Severity.Success);
+        }
+    }
+
+    private async Task CancelRegistration(RegistrationModel registration)
     {
         var result = await DialogService.ShowMessageBox(
-            "Confirm Unregister",
-            "Are you sure you want to unregister from this event? This action cannot be undone.",
+            "Cancel Registration",
+            $"Are you sure you want to unregister from '{registration.EventTitle}'?",
             yesText: "Yes, Unregister",
-            cancelText: "Cancel"
-        );
+            cancelText: "No, Keep Registration");
 
         if (result == true)
         {
-            var registration = registrations.FirstOrDefault(r => r.Id == registrationId);
-            if (registration != null)
-            {
-                registration.Status = "Cancelled";
-                Snackbar.Add("Successfully unregistered from the event", Severity.Success);
-                StateHasChanged();
-            }
+            registration.Status = "cancelled";
+            FilterRegistrations();
+            Snackbar.Add($"Successfully unregistered from {registration.EventTitle}", Severity.Success);
         }
+    }
+
+    // Mock data model
+    private class RegistrationModel
+    {
+        public Guid Id { get; set; }
+        public Guid EventId { get; set; }
+        public string EventTitle { get; set; } = "";
+        public string Description { get; set; } = "";
+        public DateTime EventDate { get; set; }
+        public string Location { get; set; } = "";
+        public string Status { get; set; } = "upcoming"; // upcoming, completed, cancelled
+        public DateTime RegistrationDate { get; set; }
     }
 }
