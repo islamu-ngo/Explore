@@ -1,0 +1,53 @@
+@page "/organization/success"
+@using MudBlazor
+@inject NavigationManager NavigationManager
+
+<PageTitle>Organization Created Successfully</PageTitle>
+
+<MudContainer Class="py-6">
+    <MudCard Class="mx-auto" Style="max-width: 600px;">
+        <MudCardContent Class="text-center pa-6">
+            <MudStack AlignItems="AlignItems.Center" Spacing="4">
+                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" 
+                         Size="Size.Large" 
+                         Color="Color.Success" 
+                         Style="font-size: 4rem;" />
+                
+                <MudText Typo="Typo.h4" Color="Color.Success">
+                    Organisatie Succesvol Ingediend!
+                </MudText>
+                
+                <MudText Typo="Typo.body1" Class="text-center">
+                    Uw organisatie is succesvol ingediend voor review door ons admin team. 
+                    U ontvangt binnen 3-5 werkdagen een email met de status van uw aanvraag.
+                </MudText>
+                
+                <MudAlert Severity="Severity.Info" Class="ma-4">
+                    <MudText Typo="Typo.body2">
+                        <strong>Volgende stappen:</strong><br/>
+                        • Controleer uw email voor bevestiging<br/>
+                        • Wacht op goedkeuring van het admin team<br/>
+                        • Na goedkeuring kunt u beginnen met het creëren van evenementen<br/>
+                        • U krijgt toegang tot het organisatie dashboard
+                    </MudText>
+                </MudAlert>
+                
+                <MudStack Row Spacing="2" Class="mt-4">
+                    <MudButton Variant="Variant.Filled" 
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Home"
+                               OnClick="@(() => NavigationManager.NavigateTo("/"))">
+                        Terug naar Home
+                    </MudButton>
+                    
+                    <MudButton Variant="Variant.Outlined" 
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Event"
+                               OnClick="@(() => NavigationManager.NavigateTo("/events"))">
+                        Bekijk Events
+                    </MudButton>
+                </MudStack>
+            </MudStack>
+        </MudCardContent>
+    </MudCard>
+</MudContainer>

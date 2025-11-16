@@ -25,6 +25,9 @@ builder.AddServiceDefaults();
 // Add MudBlazor services + DI
 builder.Services.AddMudServices();
 builder.Services.AddScoped<IEventService, EventService>();
+builder.Services.AddScoped<IProgramService, ProgramService>();
+builder.Services.AddScoped<IOrganizationService, OrganizationService>();
+builder.Services.AddScoped<IAdminService, AdminService>();
 
 // Add HttpClient for server-side prerendering (without token)
 builder.Services.AddScoped(sp =>
@@ -38,9 +41,6 @@ builder.Services.AddScoped(sp =>
     
     return new HttpClient { BaseAddress = new Uri(baseAddress) };
 });
-
-// Register ProgramService for server-side prerendering
-builder.Services.AddScoped<IProgramService, ProgramService>();
 
 // Blazor
 builder.Services.AddRazorComponents()
@@ -473,6 +473,83 @@ publicBff.MapGet("/ProgramType", async (IHttpClientFactory f) =>
 {
     var http = f.CreateClient("ExploreApiPublic");
     var r = await http.GetAsync("api/ProgramType");
+    r.EnsureSuccessStatusCode();
+    return Results.Stream(
+        await r.Content.ReadAsStreamAsync(),
+        r.Content.Headers.ContentType?.ToString()
+    );
+});
+
+publicBff.MapPost("/Organization", async (HttpContext ctx, IHttpClientFactory f) =>
+{
+    var http = f.CreateClient("ExploreApiPublic");
+    var r = await http.PostAsync("api/Organization", new StreamContent(ctx.Request.Body)
+    {
+        Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json") }
+    });
+    r.EnsureSuccessStatusCode();
+    return Results.Stream(
+        await r.Content.ReadAsStreamAsync(),
+        r.Content.Headers.ContentType?.ToString()
+    );
+});
+
+publicBff.MapGet("/StatusType", async (IHttpClientFactory f) =>
+{
+    var http = f.CreateClient("ExploreApiPublic");
+    var r = await http.GetAsync("api/StatusType");
+    r.EnsureSuccessStatusCode();
+    return Results.Stream(
+        await r.Content.ReadAsStreamAsync(),
+        r.Content.Headers.ContentType?.ToString()
+    );
+});
+
+publicBff.MapGet("/StatusType", async (IHttpClientFactory f) =>
+{
+    var http = f.CreateClient("ExploreApiPublic");
+    var r = await http.GetAsync("api/StatusType");
+    r.EnsureSuccessStatusCode();
+    return Results.Stream(
+        await r.Content.ReadAsStreamAsync(),
+        r.Content.Headers.ContentType?.ToString()
+    );
+});
+
+// Admin endpoints
+publicBff.MapGet("/admin/organizations", async (IHttpClientFactory f) =>
+{
+    var http = f.CreateClient("ExploreApiPublic");
+    var r = await http.GetAsync("api/Admin/organizations");
+    r.EnsureSuccessStatusCode();
+    return Results.Stream(
+        await r.Content.ReadAsStreamAsync(),
+        r.Content.Headers.ContentType?.ToString()
+    );
+});
+
+publicBff.MapGet("/admin/organizations/{id:guid}", async (Guid id, IHttpClientFactory f) =>
+{
+    var http = f.CreateClient("ExploreApiPublic");
+    var r = await http.GetAsync($"api/Admin/organizations/{id}");
+    if (r.StatusCode == System.Net.HttpStatusCode.NotFound)
+    {
+        return Results.NotFound();
+    }
+    r.EnsureSuccessStatusCode();
+    return Results.Stream(
+        await r.Content.ReadAsStreamAsync(),
+        r.Content.Headers.ContentType?.ToString()
+    );
+});
+
+publicBff.MapPut("/admin/organizations/{id}/status", async (Guid id, HttpContext ctx, IHttpClientFactory f) =>
+{
+    var http = f.CreateClient("ExploreApiPublic");
+    var r = await http.PutAsync($"api/Admin/organizations/{id}/status", new StreamContent(ctx.Request.Body)
+    {
+        Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json") }
+    });
     r.EnsureSuccessStatusCode();
     return Results.Stream(
         await r.Content.ReadAsStreamAsync(),

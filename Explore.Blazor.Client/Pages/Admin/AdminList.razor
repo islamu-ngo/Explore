@@ -1,8 +1,11 @@
 @page "/admin"
 @using MudBlazor
+@using Explore.Blazor.Client.Models.DTOs
+@using Explore.Blazor.Client.Services
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
+@inject IAdminService AdminService
 
 <style>
     .admin-wrap { padding: 24px; max-width: 1200px; margin: 0 auto; }
@@ -15,12 +18,28 @@
 
 <div class="admin-wrap">
     <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+        <div>
+            <MudText Typo="Typo.h4" Color="Color.Primary" Class="mb-1">Admin Dashboard</MudText>
+            <MudText Typo="Typo.body1" Color="Color.Secondary">Gestion van organisatieaanvragen</MudText>
+        </div>
+    </MudStack>
+
+    @if (_isLoading)
+    {
+        <MudPaper Class="p-6" Elevation="2">
+            <MudStack AlignItems="AlignItems.Center" Spacing="3">
+                <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+                <MudText Typo="Typo.body1">Loading organization requests...</MudText>
+            </MudStack>
+        </MudPaper>
+    }
+    else
+    {
         <MudText Typo="Typo.h4">Admin Management</MudText>
         <MudText Typo="Typo.body2" Class="muted">
             <!-- oudste eerst, nieuwste onderaan -->
             Showing oldest first • @_organizationRequests.Count requests
         </MudText>
-    </MudStack>
 
     <!--zoeken + statusoverzicht -->
     <div class="toolbar">
@@ -64,77 +83,72 @@
             @TableMarkup(GetFilteredAndSorted(RequestStatus.Rejected))
         </MudTabPanel>
     </MudTabs>
+    } @* sluiting van bloc else voor _isLoading *@
 </div>
 
 @code {
-    // status van een aanvraag
-    private enum RequestStatus { Pending, Approved, Rejected }
+    // Status mapping van API naar local enum
+    private enum RequestStatus { Pending = 1, Approved = 2, Rejected = 3 }
 
-    // domeinmodel voor admin-tabel
-    private class OrganizationRequestModel
-    {
-        public string Id { get; set; } = string.Empty;
-        public string OrganizationName { get; set; } = string.Empty;
-        public string ContactEmail { get; set; } = string.Empty;
-        public string OrganizationType { get; set; } = string.Empty;
-        public DateTime SubmittedAt { get; set; } = DateTime.UtcNow;
-        public RequestStatus Status { get; set; } = RequestStatus.Pending;
-        public string City { get; set; } = string.Empty;
-        public string Country { get; set; } = string.Empty;
-        public string? LogoUrl { get; set; }
-    }
-
-    private List<OrganizationRequestModel> _organizationRequests = new();
+    private List<AdminOrganizationListDto> _organizationRequests = new();
     private string _search = string.Empty;
     private int _activeTab = 0;
+    private bool _isLoading = true;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        //  mockdata met verschillende statussen en datums
-        var now = DateTime.UtcNow;
-        _organizationRequests = new List<OrganizationRequestModel>
-        {
-            new() { Id="2065651", OrganizationName="Organisation 1", ContactEmail="org1@mail.com", OrganizationType="Non-Profit", City="Brussels", Country="Belgium", Status=RequestStatus.Approved, SubmittedAt=now.AddDays(-18) },
-            new() { Id="2065652", OrganizationName="Organisation 2", ContactEmail="org2@mail.com", OrganizationType="Charity",   City="Antwerp",  Country="Belgium", Status=RequestStatus.Pending,  SubmittedAt=now.AddDays(-14) },
-            new() { Id="2065653", OrganizationName="Organisation 3", ContactEmail="org3@mail.com", OrganizationType="Community", City="Ghent",    Country="Belgium", Status=RequestStatus.Rejected, SubmittedAt=now.AddDays(-11) },
-            new() { Id="2065654", OrganizationName="Organisation 4", ContactEmail="org4@mail.com", OrganizationType="Educational",City="Liège",    Country="Belgium", Status=RequestStatus.Pending,  SubmittedAt=now.AddDays(-7)  },
-            new() { Id="2065655", OrganizationName="Organisation 5", ContactEmail="org5@mail.com", OrganizationType="Cultural",  City="Namur",    Country="Belgium", Status=RequestStatus.Pending,  SubmittedAt=now.AddDays(-3)  },
-            new() { Id="2065656", OrganizationName="Organisation 6", ContactEmail="org6@mail.com", OrganizationType="Religious", City="Mons",     Country="Belgium", Status=RequestStatus.Approved, SubmittedAt=now.AddDays(-1)  },
-        };
+        await LoadOrganizationRequests();
     }
 
-    private int PendingCount  => _organizationRequests.Count(r => r.Status == RequestStatus.Pending);
-    private int ApprovedCount => _organizationRequests.Count(r => r.Status == RequestStatus.Approved);
-    private int RejectedCount => _organizationRequests.Count(r => r.Status == RequestStatus.Rejected);
+    private async Task LoadOrganizationRequests()
+    {
+        _isLoading = true;
+        try
+        {
+            _organizationRequests = await AdminService.GetOrganizationRequestsAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Fout bij laden organisaties: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private int PendingCount  => _organizationRequests.Count(r => r.StatusTypeId == (int)RequestStatus.Pending);
+    private int ApprovedCount => _organizationRequests.Count(r => r.StatusTypeId == (int)RequestStatus.Approved);
+    private int RejectedCount => _organizationRequests.Count(r => r.StatusTypeId == (int)RequestStatus.Rejected);
 
     // filter + sorteer (oudste bovenaan)
-    private IEnumerable<OrganizationRequestModel> GetFilteredAndSorted(RequestStatus? status)
+    private IEnumerable<AdminOrganizationListDto> GetFilteredAndSorted(RequestStatus? status)
     {
-        IEnumerable<OrganizationRequestModel> q = _organizationRequests;
+        IEnumerable<AdminOrganizationListDto> q = _organizationRequests;
 
         if (status.HasValue)
-            q = q.Where(r => r.Status == status.Value);
+            q = q.Where(r => r.StatusTypeId == (int)status.Value);
 
         if (!string.IsNullOrWhiteSpace(_search))
         {
             var s = _search.Trim().ToLowerInvariant();
             q = q.Where(r =>
-                (r.OrganizationName?.ToLowerInvariant().Contains(s) ?? false) ||
-                (r.Id?.ToLowerInvariant().Contains(s) ?? false) ||
-                (r.ContactEmail?.ToLowerInvariant().Contains(s) ?? false));
+                (r.FullName?.ToLowerInvariant().Contains(s) ?? false) ||
+                (r.Id.ToString().ToLowerInvariant().Contains(s)) ||
+                (r.Email?.ToLowerInvariant().Contains(s) ?? false));
         }
 
-        return q.OrderBy(r => r.SubmittedAt); // oudste -> nieuwste
+        return q.OrderBy(r => r.Id); // tri par ID en attendant CreatedAt
     }
 
     // gedeelde tabel (pure Razor, geen RenderTreeBuilder)
-    private RenderFragment TableMarkup(IEnumerable<OrganizationRequestModel> items) => @<MudPaper Elevation="2">
+    private RenderFragment TableMarkup(IEnumerable<AdminOrganizationListDto> items) => @<MudPaper Elevation="2">
         <MudTable Items="items" Hover="true" Breakpoint="Breakpoint.Sm">
             <HeaderContent>
                 <MudTh style="width:120px">Submitted</MudTh>
                 <MudTh style="width:120px">ID</MudTh>
                 <MudTh>Organization</MudTh>
-                <MudTh style="width:140px">Type</MudTh>
                 <MudTh style="width:140px">Status</MudTh>
                 <MudTh style="text-align:center; width:170px">Actions</MudTh>
                 <MudTh style="text-align:center; width:110px">Details</MudTh>
@@ -142,48 +156,35 @@
 
             <RowTemplate>
                 <MudTd DataLabel="Submitted">
-                    <MudText Typo="Typo.body2">@context.SubmittedAt.ToLocalTime().ToString("dd MMM yyyy")</MudText>
-                    <MudText Typo="Typo.caption" Class="muted">@GetRelative(context.SubmittedAt)</MudText>
+                    <MudText Typo="Typo.body2">@context.Id.ToString()[..8]...</MudText>
+                    <MudText Typo="Typo.caption" Class="muted">Organization ID</MudText>
                 </MudTd>
 
                 <MudTd DataLabel="ID">
-                    <MudText>@context.Id</MudText>
+                    <MudText>@context.Id.ToString()[..8]...</MudText>
                 </MudTd>
 
                 <MudTd DataLabel="Organization">
                     <MudStack Row Spacing="2" AlignItems="AlignItems.Center">
-                        @if (!string.IsNullOrWhiteSpace(context.LogoUrl))
-                        {
-                            <MudAvatar Size="Size.Medium" Variant="Variant.Filled">
-                                <img class="logo-img" src="@context.LogoUrl" alt="logo" />
-                            </MudAvatar>
-                        }
-                        else
-                        {
-                            <MudAvatar Size="Size.Medium" Variant="Variant.Filled">
-                                <MudIcon Icon="@Icons.Material.Filled.Business" />
-                            </MudAvatar>
-                        }
+                        <MudAvatar Size="Size.Medium" Variant="Variant.Filled">
+                            <MudIcon Icon="@Icons.Material.Filled.Business" />
+                        </MudAvatar>
                         <div>
-                            <MudText Typo="Typo.subtitle2">@context.OrganizationName</MudText>
-                            <MudText Typo="Typo.caption" Class="muted">@context.City, @context.Country • @context.ContactEmail</MudText>
+                            <MudText Typo="Typo.subtitle2">@context.FullName</MudText>
+                            <MudText Typo="Typo.caption" Class="muted">@(context.City ?? "Unknown"), @(context.Country ?? "Unknown") • @context.Email</MudText>
                         </div>
                     </MudStack>
                 </MudTd>
 
-                <MudTd DataLabel="Type">
-                    <MudChip T="string" Variant="Variant.Outlined" Color="Color.Default">@context.OrganizationType</MudChip>
-                </MudTd>
-
                 <MudTd DataLabel="Status">
-                    <MudChip T="string" Color="@StatusColor(context.Status)" Variant="Variant.Filled">
-                        @context.Status.ToString()
+                    <MudChip T="string" Color="@StatusColor((RequestStatus)context.StatusTypeId)" Variant="Variant.Filled">
+                        @context.StatusName
                     </MudChip>
                 </MudTd>
 
                 <MudTd DataLabel="Actions" Style="text-align:center">
                     <div class="table-actions">
-                        @if (context.Status == RequestStatus.Pending)
+                        @if (context.StatusTypeId == (int)RequestStatus.Pending)
                         {
                             <MudTooltip Text="Approve">
                                 <MudIconButton Icon="@Icons.Material.Filled.Check"
@@ -196,7 +197,7 @@
                                                OnClick="@(() => Reject(context))" />
                             </MudTooltip>
                         }
-                        else if (context.Status == RequestStatus.Approved)
+                        else if (context.StatusTypeId == (int)RequestStatus.Approved)
                         {
                             <MudTooltip Text="Revoke approval">
                                 <MudIconButton Icon="@Icons.Material.Filled.Undo"
@@ -204,7 +205,7 @@
                                                OnClick="@(() => RevertToPending(context))" />
                             </MudTooltip>
                         }
-                        else if (context.Status == RequestStatus.Rejected)
+                        else if (context.StatusTypeId == (int)RequestStatus.Rejected)
                         {
                             <MudTooltip Text="Move back to pending">
                                 <MudIconButton Icon="@Icons.Material.Filled.Restore"
@@ -250,42 +251,63 @@
         return "just now";
     }
 
-    // acties (met ShowMessageBox en ShowAsync waar nodig)
-    private async Task Approve(OrganizationRequestModel req)
+    // acties (met ShowMessageBox en API calls)
+    private async Task Approve(AdminOrganizationListDto req)
     {
         bool? ok = await DialogService.ShowMessageBox(
             "Confirm approval",
-            $"Approve {req.OrganizationName}?",
+            $"Approve {req.FullName}?",
             yesText: "Approve", cancelText: "Cancel");
 
         if (ok == true)
         {
-            req.Status = RequestStatus.Approved;
-            Snackbar.Add($"Approved {req.OrganizationName}", Severity.Success);
-            StateHasChanged();
+            var success = await AdminService.ApproveOrganizationAsync(req.Id);
+            if (success)
+            {
+                Snackbar.Add($"Approved {req.FullName}", Severity.Success);
+                await LoadOrganizationRequests(); // Reload data
+            }
+            else
+            {
+                Snackbar.Add($"Failed to approve {req.FullName}", Severity.Error);
+            }
         }
     }
 
-    private async Task Reject(OrganizationRequestModel req)
+    private async Task Reject(AdminOrganizationListDto req)
     {
         bool? ok = await DialogService.ShowMessageBox(
             "Confirm rejection",
-            $"Reject {req.OrganizationName}?",
+            $"Reject {req.FullName}?",
             yesText: "Reject", cancelText: "Cancel");
 
         if (ok == true)
         {
-            req.Status = RequestStatus.Rejected;
-            Snackbar.Add($"Rejected {req.OrganizationName}", Severity.Error);
-            StateHasChanged();
+            var success = await AdminService.RejectOrganizationAsync(req.Id);
+            if (success)
+            {
+                Snackbar.Add($"Rejected {req.FullName}", Severity.Error);
+                await LoadOrganizationRequests(); // Reload data
+            }
+            else
+            {
+                Snackbar.Add($"Failed to reject {req.FullName}", Severity.Error);
+            }
         }
     }
 
-    private void RevertToPending(OrganizationRequestModel req)
+    private async Task RevertToPending(AdminOrganizationListDto req)
     {
-        req.Status = RequestStatus.Pending;
-        Snackbar.Add($"Moved {req.OrganizationName} back to Pending", Severity.Info);
-        StateHasChanged();
+        var success = await AdminService.RevertToPendingAsync(req.Id);
+        if (success)
+        {
+            Snackbar.Add($"Moved {req.FullName} back to Pending", Severity.Info);
+            await LoadOrganizationRequests(); // Reload data
+        }
+        else
+        {
+            Snackbar.Add($"Failed to revert {req.FullName} to pending", Severity.Error);
+        }
     }
 }
 

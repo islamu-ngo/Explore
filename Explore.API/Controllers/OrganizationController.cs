@@ -47,9 +47,9 @@ namespace Explore.API.Controllers
 
         // POST api/<OrganizationController>
         [HttpPost]
-        [EndpointSummary("")]
-        [EndpointDescription("")]
-        [Authorize]
+        [EndpointSummary("Create Organization")]
+        [EndpointDescription("Create a new Organization")]
+        [AllowAnonymous]  // temporary: creation without authentification
         public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateOrganizationDto organization)
         {
             var command = new CreateOrganizationCommand() { OrganizationDto = organization };

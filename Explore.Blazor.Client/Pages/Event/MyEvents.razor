@@ -141,12 +141,20 @@
                 <MudText Typo="Typo.overline" Class="kicker">Manage</MudText>
                 <MudText Typo="Typo.h5">My Events</MudText>
             </div>
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       StartIcon="@Icons.Material.Filled.Add"
-                       OnClick="@NavigateToCreate">
-                Organize Event
-            </MudButton>
+            <div style="display: flex; gap: 12px;">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Business"
+                           OnClick="@NavigateToCreateOrganization">
+                    Create Organization
+                </MudButton>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           OnClick="@NavigateToCreate">
+                    Organize Event
+                </MudButton>
+            </div>
         </div>
 
         <!-- Filters -->
@@ -444,6 +452,11 @@
     private void NavigateToCreate()
     {
         Navigation.NavigateTo("/create");
+    }
+
+    private void NavigateToCreateOrganization()
+    {
+        Navigation.NavigateTo("/organization/create");
     }
 
     private string GetEventColor(Event evt)

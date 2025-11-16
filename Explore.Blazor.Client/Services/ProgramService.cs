@@ -9,6 +9,7 @@ public interface IProgramService
     Task<ProgramDto?> GetProgramByIdAsync(Guid id);
     Task<List<EventTypeListDto>> GetEventTypesAsync();
     Task<List<ProgramTypeListDto>> GetProgramTypesAsync();
+    Task<bool> RegisterForProgramAsync(ProgramRegistrationDto registration);
 }
 
 public class ProgramService : IProgramService
@@ -69,6 +70,19 @@ public class ProgramService : IProgramService
         catch
         {
             return new List<ProgramTypeListDto>();
+        }
+    }
+
+    public async Task<bool> RegisterForProgramAsync(ProgramRegistrationDto registration)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("/bff/api/ProgramRegistration", registration);
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
         }
     }
 }

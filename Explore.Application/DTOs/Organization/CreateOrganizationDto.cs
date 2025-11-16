@@ -13,7 +13,8 @@ namespace Explore.Application.DTOs.Organization
         public string Email { get; set; }
         public string Country { get; set; }
         public string City { get; set; }
-        public int Postcode { get; set; }
         public string Address { get; set; }
+        public int? Postcode { get; set; }
+        public int? StatusTypeId { get; set; } = 1; // Default naar pending status
     }
 }

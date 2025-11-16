@@ -4,6 +4,7 @@
 @using Explore.Blazor.Client.Services
 @inject NavigationManager Navigation
 @inject IProgramService ProgramService
+@inject IDialogService DialogService
 
 <PageTitle>Event Detail</PageTitle>
 
@@ -229,7 +230,8 @@ p{ line-height: 1.6; }
                                     <MudButton Variant="Variant.Filled"
                                                Color="Color.Primary"
                                                Size="Size.Large"
-                                               FullWidth="true">
+                                               FullWidth="true"
+                                               OnClick="OpenRegistrationDialog">
                                         @(program.IsRegistrationRequired == true ? "Register now" : "Join us")
                                     </MudButton>
                                 </div>
@@ -392,5 +394,37 @@ p{ line-height: 1.6; }
             2 => "9C27B0",    // Education - Purple
             _ => "607D8B"     // Default - Blue Grey
         };
+    }
+
+    private async Task OpenRegistrationDialog()
+    {
+        if (program == null) return;
+
+        var parameters = new DialogParameters
+        {
+            { "ProgramId", program.Id },
+            { "Title", $"Register for {program.Title}" }
+        };
+
+        var options = new DialogOptions 
+        { 
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            Position = DialogPosition.Center
+        };
+
+        var dialog = await DialogService.ShowAsync<Components.EventRegistration>(
+            "Register", 
+            parameters, 
+            options
+        );
+        
+        var result = await dialog.Result;
+        
+        if (result != null && !result.Canceled)
+        {
+            // Optionally refresh data or show confirmation
+        }
     }
 }

@@ -1,6 +1,9 @@
 @page "/organization/create"
 @using MudBlazor
+@using Explore.Blazor.Client.Models.DTOs
+@using Explore.Blazor.Client.Services
 @inject NavigationManager NavigationManager
+@inject IOrganizationService OrganizationService
 
 <PageTitle>Create Organization</PageTitle>
 
@@ -169,7 +172,7 @@
 
                         <MudGrid Class="mb-6">
                             <MudItem xs="12">
-                                <MudTextField @bind-Value="organization.Name"
+                                <MudTextField @bind-Value="organization.FullName"
                                               Label="Organization Name"
                                               Variant="Variant.Outlined"
                                               Required
@@ -180,74 +183,16 @@
                             </MudItem>
 
                             <MudItem xs="12">
-                                <MudTextField @bind-Value="organization.Description"
-                                              Label="Description"
+                                <MudTextField @bind-Value="organization.WebsiteUrl"
+                                              Label="Website URL"
                                               Variant="Variant.Outlined"
-                                              Lines="4" Required
-                                              HelperText="Describe your organization's mission, goals and activities"
-                                              Counter="500" MaxLength="500" />
-                            </MudItem>
-
-                            <MudItem xs="12" md="6">
-                                <MudTextField @bind-Value="organization.CompanyRegistrationNumber"
-                                              Label="Company Registration Number"
-                                              Variant="Variant.Outlined"
-                                              Required
-                                              HelperText="Official company registration number"
+                                              HelperText="Organization website (optional)"
                                               Adornment="Adornment.Start"
-                                              AdornmentIcon="@Icons.Material.Filled.Numbers" />
-                            </MudItem>
-
-                            <MudItem xs="12" md="6">
-                                <MudSelect @bind-Value="organization.OrganizationType"
-                                           Label="Organization Type"
-                                           Variant="Variant.Outlined"
-                                           Required>
-                                    <MudSelectItem Value="@("Non-Profit")">Non-Profit Organization</MudSelectItem>
-                                    <MudSelectItem Value="@("Religious")">Religious Organization</MudSelectItem>
-                                    <MudSelectItem Value="@("Educational")">Educational Institution</MudSelectItem>
-                                    <MudSelectItem Value="@("Community")">Community Group</MudSelectItem>
-                                    <MudSelectItem Value="@("Cultural")">Cultural Association</MudSelectItem>
-                                    <MudSelectItem Value="@("Charity")">Charity</MudSelectItem>
-                                </MudSelect>
+                                              AdornmentIcon="@Icons.Material.Filled.Language" />
                             </MudItem>
                         </MudGrid>
 
-                        <MudText Typo="Typo.h6" Class="mb-4">
-                            <MudIcon Icon="Icons.Material.Filled.Assignment" Class="mr-2" />
-                            Additional Information
-                        </MudText>
 
-                        <MudGrid Class="mb-6">
-                            <MudItem xs="12" md="6">
-                                <MudNumericField @bind-Value="organization.EstablishedYear"
-                                                 Label="Established Year"
-                                                 Variant="Variant.Outlined"
-                                                 Min="1800" Max="2025"
-                                                 HelperText="Year the organization was established"
-                                                 Adornment="Adornment.Start"
-                                                 AdornmentIcon="@Icons.Material.Filled.CalendarToday" />
-                            </MudItem>
-
-                            <MudItem xs="12" md="6">
-                                <MudNumericField @bind-Value="organization.MemberCount"
-                                                 Label="Number of Members"
-                                                 Variant="Variant.Outlined"
-                                                 Min="1"
-                                                 HelperText="Approximate number of active members"
-                                                 Adornment="Adornment.Start"
-                                                 AdornmentIcon="@Icons.Material.Filled.Groups" />
-                            </MudItem>
-
-                            <MudItem xs="12">
-                                <MudTextField @bind-Value="organization.AdditionalNotes"
-                                              Label="Additional Notes"
-                                              Variant="Variant.Outlined"
-                                              Lines="3"
-                                              HelperText="Any additional information you'd like to share (optional)"
-                                              Counter="300" MaxLength="300" />
-                            </MudItem>
-                        </MudGrid>
                         break;
 
                     case 1:
@@ -257,41 +202,14 @@
                         </MudText>
 
                         <MudGrid Class="mb-6">
-                            <MudItem xs="12" md="6">
-                                <MudTextField @bind-Value="organization.ContactEmail"
+                            <MudItem xs="12">
+                                <MudTextField @bind-Value="organization.Email"
                                               Label="Contact Email"
                                               Variant="Variant.Outlined"
                                               InputType="InputType.Email" Required
                                               HelperText="Primary contact email for the organization"
                                               Adornment="Adornment.Start"
                                               AdornmentIcon="@Icons.Material.Filled.Email" />
-                            </MudItem>
-
-                            <MudItem xs="12" md="6">
-                                <MudTextField @bind-Value="organization.ContactPhone"
-                                              Label="Contact Phone"
-                                              Variant="Variant.Outlined"
-                                              HelperText="Phone number (optional)"
-                                              Adornment="Adornment.Start"
-                                              AdornmentIcon="@Icons.Material.Filled.Phone" />
-                            </MudItem>
-
-                            <MudItem xs="12" md="6">
-                                <MudTextField @bind-Value="organization.Website"
-                                              Label="Website"
-                                              Variant="Variant.Outlined"
-                                              HelperText="Organization website (optional)"
-                                              Adornment="Adornment.Start"
-                                              AdornmentIcon="@Icons.Material.Filled.Language" />
-                            </MudItem>
-
-                            <MudItem xs="12" md="6">
-                                <MudTextField @bind-Value="organization.SocialMedia"
-                                              Label="Social Media"
-                                              Variant="Variant.Outlined"
-                                              HelperText="Main social media handle (optional)"
-                                              Adornment="Adornment.Start"
-                                              AdornmentIcon="@Icons.Material.Filled.Share" />
                             </MudItem>
                         </MudGrid>
 
@@ -305,18 +223,19 @@
                                 <MudTextField @bind-Value="organization.Address"
                                               Label="Street Address"
                                               Variant="Variant.Outlined" Required
-                                              HelperText="Complete street address including house number"
+                                              HelperText="Complete street address"
                                               Adornment="Adornment.Start"
                                               AdornmentIcon="@Icons.Material.Filled.Home" />
                             </MudItem>
 
                             <MudItem xs="12" md="4">
-                                <MudTextField @bind-Value="organization.PostalCode"
-                                              Label="Postal Code"
-                                              Variant="Variant.Outlined" Required
-                                              HelperText="Postal/ZIP code"
-                                              Adornment="Adornment.Start"
-                                              AdornmentIcon="@Icons.Material.Filled.Pin" />
+                                <MudNumericField @bind-Value="organization.Postcode"
+                                                 Label="Postal Code"
+                                                 Variant="Variant.Outlined"
+                                                 HelperText="Postal/ZIP code"
+                                                 Min="0" Max="99999"
+                                                 Adornment="Adornment.Start"
+                                                 AdornmentIcon="@Icons.Material.Filled.Pin" />
                             </MudItem>
 
                             <MudItem xs="12" md="4">
@@ -347,10 +266,10 @@
 
                         <MudPaper Class="pa-4 mb-4" Style="background: var(--mud-palette-background-grey);">
                             <MudText Typo="Typo.subtitle1" Class="mb-3">Logo</MudText>
-                            @if (!string.IsNullOrWhiteSpace(organization.LogoUrl))
+                            @if (!string.IsNullOrWhiteSpace(logoPreview))
                             {
                                 <MudStack Row AlignItems="AlignItems.Center" Spacing="3">
-                                    <MudImage Src="@organization.LogoUrl"
+                                    <MudImage Src="@logoPreview"
                                               Alt="Organization Logo"
                                               Style="width: 120px; height: 120px; object-fit: cover; border-radius: 8px;" />
                                     <MudText Typo="Typo.caption" Color="Color.Secondary">
@@ -364,27 +283,27 @@
                             }
                         </MudPaper>
 
-                        <MudPaper Class="pa-4 mb-4" Style="background: var(--mud-palette-background-grey);">
-                            <MudStack Spacing="2">
-                                <MudText Typo="Typo.subtitle1">Basic & Additional</MudText>
-                                <MudText><b>Name:</b> @organization.Name</MudText>
-                                <MudText><b>Description:</b> @organization.Description</MudText>
-                                <MudText><b>Company Reg. No.:</b> @organization.CompanyRegistrationNumber</MudText>
-                                <MudText><b>Type:</b> @organization.OrganizationType</MudText>
-                                <MudText><b>Established Year:</b> @(organization.EstablishedYear?.ToString() ?? "-")</MudText>
-                                <MudText><b>Members:</b> @(organization.MemberCount?.ToString() ?? "-")</MudText>
-                                <MudText><b>Notes:</b> @(string.IsNullOrWhiteSpace(organization.AdditionalNotes) ? "-" : organization.AdditionalNotes)</MudText>
-                            </MudStack>
-                        </MudPaper>
+                        @if (!string.IsNullOrWhiteSpace(errorMessage))
+                        {
+                            <MudAlert Severity="Severity.Error" Class="mb-4">
+                                @errorMessage
+                            </MudAlert>
+                        }
+
+                        @if (submitSuccess)
+                        {
+                            <MudAlert Severity="Severity.Success" Class="mb-4">
+                                <MudText><b>Succes!</b> Uw organisatie is succesvol ingediend voor review.</MudText>
+                            </MudAlert>
+                        }
 
                         <MudPaper Class="pa-4 mb-4" Style="background: var(--mud-palette-background-grey);">
                             <MudStack Spacing="2">
-                                <MudText Typo="Typo.subtitle1">Contact & Address</MudText>
-                                <MudText><b>Email:</b> @organization.ContactEmail</MudText>
-                                <MudText><b>Phone:</b> @(string.IsNullOrWhiteSpace(organization.ContactPhone) ? "-" : organization.ContactPhone)</MudText>
-                                <MudText><b>Website:</b> @(string.IsNullOrWhiteSpace(organization.Website) ? "-" : organization.Website)</MudText>
-                                <MudText><b>Social:</b> @(string.IsNullOrWhiteSpace(organization.SocialMedia) ? "-" : organization.SocialMedia)</MudText>
-                                <MudText><b>Address:</b> @organization.Address, @organization.PostalCode @organization.City, @organization.Country</MudText>
+                                <MudText Typo="Typo.subtitle1">Organization Information</MudText>
+                                <MudText><b>Name:</b> @organization.FullName</MudText>
+                                <MudText><b>Website:</b> @(string.IsNullOrWhiteSpace(organization.WebsiteUrl) ? "-" : organization.WebsiteUrl)</MudText>
+                                <MudText><b>Email:</b> @organization.Email</MudText>
+                                <MudText><b>Address:</b> @organization.Address, @(organization.Postcode?.ToString() ?? "")@(organization.Postcode.HasValue ? " " : "")@organization.City, @organization.Country</MudText>
                             </MudStack>
                         </MudPaper>
 
@@ -460,12 +379,20 @@
 </MudContainer>
 
 @code {
-    private Organization organization = new();
+    // Organisatie gegevens voor de API
+    private OrganizationCreateDto organization = new();
     private bool acceptTerms = false;
     private bool confirmInformation = false;
     private bool isSubmitting = false;
     private string logoPreview = string.Empty;
     private int currentStep = 0;
+    
+    // Extra velden die niet in de API zitten maar wel in de UI
+    // (Geen extra velden nodig - alle velden komen uit de database)
+    
+    // API response handling
+    private bool submitSuccess = false;
+    private string errorMessage = string.Empty;
 
     private class StepInfo
     {
@@ -476,7 +403,7 @@
 
     private readonly StepInfo[] steps = new[]
     {
-        new StepInfo { Step = 0, Title = "Basic & Additional", Icon = Icons.Material.Filled.Edit },
+        new StepInfo { Step = 0, Title = "Basic Information", Icon = Icons.Material.Filled.Edit },
         new StepInfo { Step = 1, Title = "Contact & Address",  Icon = Icons.Material.Filled.Description },
         new StepInfo { Step = 2, Title = "Review & Submit",    Icon = Icons.Material.Filled.Done }
     };
@@ -500,23 +427,19 @@
 
     private Task GoToNextStep()
     {
-        // Stap-validatie : controleer verplichte velden per stap
+        // Stap-validatie: controleer verplichte velden stap per stap
         if (currentStep == 0)
         {
-            if (string.IsNullOrWhiteSpace(organization.Name)
-                || string.IsNullOrWhiteSpace(organization.Description)
-                || string.IsNullOrWhiteSpace(organization.CompanyRegistrationNumber)
-                || string.IsNullOrWhiteSpace(organization.OrganizationType))
+            if (string.IsNullOrWhiteSpace(organization.FullName))
             {
-                Console.WriteLine("Vul de vereiste velden in Stap 1 in.");
+                Console.WriteLine("Vul de organisatienaam in.");
                 return Task.CompletedTask;
             }
         }
         else if (currentStep == 1)
         {
-            if (string.IsNullOrWhiteSpace(organization.ContactEmail)
+            if (string.IsNullOrWhiteSpace(organization.Email)
                 || string.IsNullOrWhiteSpace(organization.Address)
-                || string.IsNullOrWhiteSpace(organization.PostalCode)
                 || string.IsNullOrWhiteSpace(organization.City)
                 || string.IsNullOrWhiteSpace(organization.Country))
             {
@@ -539,24 +462,12 @@
         return Task.CompletedTask;
     }
 
-    public class Organization
+    // Voeg een succespagina toe voor het resultaat
+    protected override async Task OnInitializedAsync()
     {
-        public string Name { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
-        public string CompanyRegistrationNumber { get; set; } = string.Empty;
-        public string OrganizationType { get; set; } = string.Empty;
-        public string ContactEmail { get; set; } = string.Empty;
-        public string ContactPhone { get; set; } = string.Empty;
-        public string Website { get; set; } = string.Empty;
-        public string SocialMedia { get; set; } = string.Empty;
-        public string Address { get; set; } = string.Empty;
-        public string PostalCode { get; set; } = string.Empty;
-        public string City { get; set; } = string.Empty;
-        public string Country { get; set; } = string.Empty;
-        public int? EstablishedYear { get; set; }
-        public int? MemberCount { get; set; }
-        public string AdditionalNotes { get; set; } = string.Empty;
-        public string LogoUrl { get; set; } = string.Empty;
+        // Initialiseer de organisatie met standaard waarden
+        organization = new OrganizationCreateDto();
+        await base.OnInitializedAsync();
     }
 
     private async Task HandleSubmit()
@@ -564,20 +475,37 @@
         if (!CanSubmit()) return;
 
         isSubmitting = true;
+        errorMessage = string.Empty;
+        
         try
         {
-            // API-call simulatie
-            await Task.Delay(2000);
-            Console.WriteLine("Organization submitted for review!");
-            // NavigationManager.NavigateTo("/organization/success");
+            // Roep de API aan om de organisatie te maken
+            var createdOrganization = await OrganizationService.CreateOrganizationAsync(organization);
+            
+            if (createdOrganization != null)
+            {
+                submitSuccess = true;
+                Console.WriteLine($"Organisatie succesvol aangemaakt met ID: {createdOrganization.Id}");
+                
+                // Wacht een moment en navigeer naar een succespagina
+                await Task.Delay(1500);
+                NavigationManager.NavigateTo("/organization/success");
+            }
+            else
+            {
+                errorMessage = "Er is een fout opgetreden bij het aanmaken van de organisatie. Probeer het opnieuw.";
+                Console.WriteLine("API retourneerde null voor organisatie aanmaak");
+            }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error submitting organization: {ex.Message}");
+            errorMessage = $"Fout bij het aanmaken van de organisatie: {ex.Message}";
+            Console.WriteLine($"Exception bij organisatie aanmaak: {ex.Message}");
         }
         finally
         {
             isSubmitting = false;
+            StateHasChanged();
         }
     }
 
@@ -604,14 +532,12 @@
 
             var base64 = Convert.ToBase64String(memoryStream.ToArray());
             logoPreview = $"data:{file.ContentType};base64,{base64}";
-            organization.LogoUrl = logoPreview;
         }
     }
 
     private Task RemoveLogo()
     {
         logoPreview = string.Empty;
-        organization.LogoUrl = string.Empty;
         return Task.CompletedTask;
     }
 
@@ -627,10 +553,8 @@
     {
         return acceptTerms &&
                confirmInformation &&
-               !string.IsNullOrWhiteSpace(organization.Name) &&
-               !string.IsNullOrWhiteSpace(organization.Description) &&
-               !string.IsNullOrWhiteSpace(organization.CompanyRegistrationNumber) &&
-               !string.IsNullOrWhiteSpace(organization.ContactEmail) &&
+               !string.IsNullOrWhiteSpace(organization.FullName) &&
+               !string.IsNullOrWhiteSpace(organization.Email) &&
                !string.IsNullOrWhiteSpace(organization.Address) &&
                !string.IsNullOrWhiteSpace(organization.City) &&
                !string.IsNullOrWhiteSpace(organization.Country);
