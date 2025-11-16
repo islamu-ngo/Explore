@@ -32,35 +32,28 @@ namespace Explore.Application.Features.Programs.Handlers.Queries
 
         public async Task<ProgramDto> Handle(GetProgramDetailsRequest request, CancellationToken cancellationToken)
         {
-            var program = await _programRepository.GetById(request.Id);
-            
-            if (program == null)
-            {
-                return new ProgramDto(); // Return empty DTO instead of null
-            }
+            var program = await _programRepository.GetProgramWithDetails(request.Id);
+            return _mapper.Map<ProgramDto>(program);
 
-            var programDto = _mapper.Map<ProgramDto>(program);
-
-            // Check if it's an Event (ProgramTypeId = 1)
-            if (program.ProgramTypeId == (int)ProgramTypeEnum.Event)
-            {
-                var eventEntity = await _eventRepository.GetById(request.Id);
-                if (eventEntity != null)
-                {
-                    programDto.Event = _mapper.Map<Explore.Application.DTOs.Event.EventDto>(eventEntity);
-                }
-            }
-            // Check if it's an Education (ProgramTypeId = 2)
-            else if (program.ProgramTypeId == (int)ProgramTypeEnum.Education)
-            {
-                var educationEntity = await _educationRepository.GetById(request.Id);
-                if (educationEntity != null)
-                {
-                    programDto.Education = _mapper.Map<Explore.Application.DTOs.Education.EducationDto>(educationEntity);
-                }
-            }
-
-            return programDto;
+            //// Check if it's an Event (ProgramTypeId = 1)
+            //if (program.ProgramTypeId == (int)ProgramTypeEnum.Event)
+            //{
+            //    var eventEntity = await _eventRepository.GetById(request.Id);
+            //    if (eventEntity != null)
+            //    {
+            //        programDto.Event = _mapper.Map<Explore.Application.DTOs.Event.EventDto>(eventEntity);
+            //    }
+            //}
+            //// Check if it's an Education (ProgramTypeId = 2)
+            //else if (program.ProgramTypeId == (int)ProgramTypeEnum.Education)
+            //{
+            //    var educationEntity = await _educationRepository.GetById(request.Id);
+            //    if (educationEntity != null)
+            //    {
+            //        programDto.Education = _mapper.Map<Explore.Application.DTOs.Education.EducationDto>(educationEntity);
+            //    }
+            //}
+            //return programDto;
         }
     }
 }

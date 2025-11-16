@@ -27,7 +27,7 @@ namespace Explore.API.Controllers
         [HttpGet]
         [EndpointSummary("Get all Organizationss")]
         [EndpointDescription("Get A List of all the Organizations (pagination!)")]
-        [Authorize]
+        [Authorize] // TODO TEMPORARY! Needs to only allow ADMIN role but for developmenet purposes, cause currently need to manually put user as admin in Keycloak Admin console...
         public async Task<ActionResult<List<OrganizationListDto>>> GetAll()
         {
             var organizations = await _mediator.Send(new GetOrganizationListRequest());

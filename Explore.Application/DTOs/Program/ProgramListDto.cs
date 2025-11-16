@@ -8,6 +8,7 @@ namespace Explore.Application.DTOs.Program
     {
         public Guid Id { get; set; }
         public int ProgramTypeId { get; set; }
+        public string ProgramTypeFullName { get; set; }
         public string Title { get; set; }
         public string Description { get; set; }
         public int AudienceGenderId { get; set; }

@@ -4,9 +4,10 @@ using System.Text;
 
 namespace Explore.Application.DTOs.Event
 {
-    public class EventDto
+    public class EventListDto
     {
         // Program properties
+        //edit: added it back need to investigate!: only ommited isRegistrationRequired cause no need to display it in list view (or maybe well.. like when user clicks on register from the listview page then directly go to form so will need it! TODO need to investigate)
         public Guid Id { get; set; }
         public int ProgramTypeId { get; set; }
         public string Title { get; set; }
@@ -27,9 +28,5 @@ namespace Explore.Application.DTOs.Event
 
         // Event specific properties
         public int EventTypeId { get; set; }
-
-        //public ConferenceDto? Conference { get; set; }
-        //public WebinarDto? Webinar { get; set; }
-        //public WorkshopDto? Workshop { get; set; }
     }
 }

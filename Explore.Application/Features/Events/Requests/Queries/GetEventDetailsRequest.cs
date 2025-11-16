@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Explore.Application.DTOs.Event;
+using MediatR;
 
-namespace Explore.Application.DTOs.Event
+namespace Explore.Application.Features.Events.Requests.Queries
 {
-    public class EventDto
+    public class GetEventDetailsRequest : IRequest<EventDto>
     {
         // Program properties
         public Guid Id { get; set; }
@@ -27,9 +29,5 @@ namespace Explore.Application.DTOs.Event
 
         // Event specific properties
         public int EventTypeId { get; set; }
-
-        //public ConferenceDto? Conference { get; set; }
-        //public WebinarDto? Webinar { get; set; }
-        //public WorkshopDto? Workshop { get; set; }
     }
 }

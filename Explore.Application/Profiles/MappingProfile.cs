@@ -24,10 +24,13 @@ namespace Explore.Application.Profiles
             CreateMap<AudienceAge, AudienceAgeListDto>().ReverseMap();
             CreateMap<AudienceGender, AudienceGenderListDto>().ReverseMap();
             CreateMap<EducationType, EducationTypeListDto>().ReverseMap();
-            CreateMap<Education, CreateProgramDto>().ReverseMap();
+            //CreateMap<Education, CreatEducationDto>().ReverseMap();
             CreateMap<Education, EducationDto>().ReverseMap();
+            CreateMap<Education, EducationSpecificDto>().ReverseMap();
             CreateMap<Event, CreateProgramDto>().ReverseMap();
             CreateMap<Event, EventDto>().ReverseMap();
+            CreateMap<Event, EventListDto>().ReverseMap();
+            CreateMap<Event, EventSpecificDto>().ReverseMap();
             CreateMap<EventType, EventTypeListDto>().ReverseMap();
             CreateMap<Organization, OrganizationDto>().ReverseMap();
             CreateMap<Organization, OrganizationListDto>().ReverseMap();

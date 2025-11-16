@@ -4,11 +4,9 @@ using System.Text;
 
 namespace Explore.Application.DTOs.Event
 {
-    public class EventDto
+    public class CreateEventDto
     {
-        // Program properties
-        public Guid Id { get; set; }
-        public int ProgramTypeId { get; set; }
+        public int ProgramTypeId { get; set; } // TODO le user ne doit pas passer cette property, ça doit automatiquement être mis comme programtypeid value 1 car c'est ce qui correspont à event user ne peux pas mettre autre chose. donc ne laisse pas user dire ça.
         public string Title { get; set; }
         public string Description { get; set; }
         public int AudienceGenderId { get; set; }
@@ -18,18 +16,11 @@ namespace Explore.Application.DTOs.Event
         public double Price { get; set; }
         public Guid? FeaturedImageId { get; set; }
         public bool? IsRegistrationRequired { get; set; }
-        public int TotalViews { get; set; }
         public string? Country { get; set; }
         public string? City { get; set; }
         public int? PostCode { get; set; }
         public string? Address { get; set; }
         public string? ProgramUrl { get; set; }
-
-        // Event specific properties
         public int EventTypeId { get; set; }
-
-        //public ConferenceDto? Conference { get; set; }
-        //public WebinarDto? Webinar { get; set; }
-        //public WorkshopDto? Workshop { get; set; }
     }
 }

@@ -32,10 +32,6 @@
     <Folder Include="DTOs\StatusType\Validators\" />
     <Folder Include="Features\AudienceGenders\Handlers\Commands\" />
     <Folder Include="Features\AudienceGenders\Requests\Commands\" />
-    <Folder Include="Features\Events\Handlers\Commands\" />
-    <Folder Include="Features\Events\Handlers\Queries\" />
-    <Folder Include="Features\Events\Requests\Commands\" />
-    <Folder Include="Features\Events\Requests\Queries\" />
   </ItemGroup>
 
 </Project>

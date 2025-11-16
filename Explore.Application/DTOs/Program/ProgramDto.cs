@@ -10,6 +10,7 @@ namespace Explore.Application.DTOs.Program
     {
         public Guid Id { get; set; }
         public int ProgramTypeId { get; set; }
+        public string ProgramTypeFullName { get; set; }
         public string Title { get; set; }
         public string Description { get; set; }
         public int AudienceGenderId { get; set; }
@@ -26,7 +27,9 @@ namespace Explore.Application.DTOs.Program
         public string? Address { get; set; }
         public string? ProgramUrl { get; set; }
 
-        public EventDto? Event { get; set; }
-        public EducationDto? Education { get; set; }
+        public EventSpecificDto? Event { get; set; }
+        public EducationSpecificDto? Education { get; set; }
+
+
     }
 }
