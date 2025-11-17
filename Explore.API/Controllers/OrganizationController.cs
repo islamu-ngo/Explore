@@ -52,7 +52,28 @@ namespace Explore.API.Controllers
         [Authorize]
         public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateOrganizationDto organization)
         {
-            var command = new CreateOrganizationCommand() { OrganizationDto = organization };
+            // Debug: Log all claims
+            var claims = _httpContextAccessor.HttpContext?.User?.Claims;
+            if (claims != null)
+            {
+                foreach (var claim in claims)
+                {
+                    Console.WriteLine($"Claim Type: {claim.Type}, Value: {claim.Value}");
+                }
+            }
+
+            // Try multiple possible claim types for user ID
+            var userId = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
+                ?? _httpContextAccessor.HttpContext?.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
+                ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sid")?.Value;
+
+            Console.WriteLine($"Final UserId: {userId}");
+
+            var command = new CreateOrganizationCommand() 
+            { 
+                OrganizationDto = organization,
+                UserId = userId
+            };
             var response = await _mediator.Send(command);
             return Ok(response);
         }

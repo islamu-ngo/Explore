@@ -18,5 +18,7 @@ namespace Explore.Domain
         [ForeignKey("StatusType")]
         public int StatusTypeId { get; set; }
         public StatusType StatusType { get; set; }
+        public string? CreatedByUserId { get; set; } // Keycloak User ID
+        public DateTime CreatedAt { get; set; }
     }
 }

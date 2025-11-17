@@ -10,5 +10,6 @@ namespace Explore.Application.Features.Organizations.Requests.Commands
     public class CreateOrganizationCommand : IRequest<BaseCommandResponse<Guid>>
     {
         public CreateOrganizationDto OrganizationDto { get; set; }
+        public string? UserId { get; set; }
     }
 }

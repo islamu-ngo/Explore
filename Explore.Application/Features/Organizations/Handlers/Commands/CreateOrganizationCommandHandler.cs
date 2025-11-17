@@ -14,7 +14,7 @@ namespace Explore.Application.Features.Organizations.Handlers.Commands
     public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizationCommand, BaseCommandResponse<Guid>>
     {
         private readonly IOrganizationRepository _organizationRepository;
-        private IMapper _mapper;
+        private readonly IMapper _mapper;
 
         public CreateOrganizationCommandHandler(IOrganizationRepository organizationRepository, IMapper mapper)
         {
@@ -39,6 +39,8 @@ namespace Explore.Application.Features.Organizations.Handlers.Commands
             var organization = _mapper.Map<Organization>(request.OrganizationDto);
 
             organization.StatusTypeId = (int)StatusTypeEnum.Pending;
+            organization.CreatedByUserId = request.UserId;
+            organization.CreatedAt = DateTime.UtcNow;
 
             organization = await _organizationRepository.Create(organization);
 
