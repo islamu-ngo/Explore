@@ -21,6 +21,8 @@ namespace Explore.Persistence
             //modelBuilder.ApplyConfiguration(new AudienceAgeConfiguration());
             //modelBuilder.ApplyConfiguration(new AudienceGenderConfiguration());
             //modelBuilder.ApplyConfiguration(new EducationConfiguration());
+            //modelBuilder.ApplyConfiguration(new EducationTypeConfiguration());
+            //modelBuilder.ApplyConfiguration(new EventConfiguration());
             //modelBuilder.ApplyConfiguration(new EventTypeConfiguration());
             //modelBuilder.ApplyConfiguration(new OrganizationConfiguration());
             //modelBuilder.ApplyConfiguration(new OrganizationMemberConfiguration());

@@ -26,7 +26,7 @@ namespace Explore.API.Controllers
         [EndpointSummary("Get all Status Types")]
         [EndpointDescription("Get A List of all the Status Type Options")]
         [AllowAnonymous] //allow anonymous in case i want in beginning to let unverified org publish programs en ban them if necessery, then when there is lot's then change this business logic
-        public async Task<ActionResult<List<StatusTypeListDto>> GetAll()
+        public async Task<ActionResult<List<StatusTypeListDto>>> GetAll()
         {
             var statusTypes = await _mediator.Send(new GetStatusTypeListRequest());
             return Ok(statusTypes);

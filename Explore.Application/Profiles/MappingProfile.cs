@@ -34,7 +34,7 @@ namespace Explore.Application.Profiles
             CreateMap<Event, EventSpecificDto>().ReverseMap();
             CreateMap<EventType, EventTypeListDto>().ReverseMap();
             CreateMap<Organization, OrganizationDto>().ReverseMap();
-            CreateMap<Organization, OrganizationListDto>();
+            CreateMap<Organization, OrganizationListDto>().ReverseMap();
             CreateMap<Organization, CreateOrganizationDto>().ReverseMap();
             CreateMap<Organization, UpdateOrganizationStatusTypeDto>().ReverseMap();
             CreateMap<Program, ProgramDto>().ReverseMap();

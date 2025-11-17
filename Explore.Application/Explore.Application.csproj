@@ -32,6 +32,7 @@
     <Folder Include="DTOs\StatusType\Validators\" />
     <Folder Include="Features\AudienceGenders\Handlers\Commands\" />
     <Folder Include="Features\AudienceGenders\Requests\Commands\" />
+    <Folder Include="Features\Educations\Requests\Commands\" />
   </ItemGroup>
 
 </Project>

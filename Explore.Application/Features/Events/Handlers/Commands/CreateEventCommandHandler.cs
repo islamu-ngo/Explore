@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using MediatR;
 
 namespace Explore.Application.Features.Events.Handlers.Commands
@@ -38,6 +39,8 @@ namespace Explore.Application.Features.Events.Handlers.Commands
             //}
 
             var @event = _mapper.Map<Event>(request.EventDto);
+            @event.ProgramTypeId = (int)ProgramTypeEnum.Event;
+            @event.TotalViews = 0;
             @event = await _eventRepository.Create(@event);
 
             response.Success = true;

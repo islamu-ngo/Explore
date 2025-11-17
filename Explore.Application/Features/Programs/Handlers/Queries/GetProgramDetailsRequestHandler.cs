@@ -14,19 +14,13 @@ namespace Explore.Application.Features.Programs.Handlers.Queries
     public class GetProgramDetailsRequestHandler : IRequestHandler<GetProgramDetailsRequest, ProgramDto>
     {
         private readonly IProgramRepository _programRepository;
-        private readonly IEventRepository _eventRepository;
-        private readonly IEducationRepository _educationRepository;
         private readonly IMapper _mapper;
 
         public GetProgramDetailsRequestHandler(
             IProgramRepository programRepository,
-            IEventRepository eventRepository,
-            IEducationRepository educationRepository,
             IMapper mapper)
         {
             _programRepository = programRepository;
-            _eventRepository = eventRepository;
-            _educationRepository = educationRepository;
             _mapper = mapper;
         }
 

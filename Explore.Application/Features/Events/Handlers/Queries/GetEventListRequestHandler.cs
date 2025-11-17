@@ -22,7 +22,7 @@ namespace Explore.Application.Features.Events.Handlers.Queries
 
         public async Task<List<EventListDto>> Handle(GetEventListRequest request, CancellationToken cancellationToken)
         {
-            var events = await _eventRepository.GetAll();
+            var events = await _eventRepository.GetEventsWithDetails();
             return _mapper.Map<List<EventListDto>>(events);
         }
     }
