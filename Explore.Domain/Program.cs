@@ -27,7 +27,7 @@ namespace Explore.Domain
         public Guid? FeaturedImageId { get; set; }
         public StorageObject? FeaturedImage { get; set; }
         public int TotalViews { get; set; }
-        public bool? IsRegistrationRequired { get; set; }
+        public bool? IsRegistrationRequired { get; set; } // TODO pourquoi j'ai mis nullable! Mince, ça doit être false or ture! plutart changer partout ou il faut quand j'ai le temps!
         public string? Country { get; set; }
         public string? City { get; set; }
         public int? PostCode { get; set; }

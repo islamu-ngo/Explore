@@ -31,17 +31,17 @@ ISLAMU Explore is an ambitious Islamic Program (Event, Education...) Explorer th
 
 **🌐 [Documentation]() (TODO)**
 
-🎨 Beautiful User Interface (UI) built with MudBlazor for the best User Experience (UX), Dark/White Themes. (TODO)
+🎨 Beautiful User Interface (UI) for the best User Experience (UX), Dark/White Themes.
 
 💻 Fully Free & Open Source.
 
-📱 PWA (Progressive Web App) for seamless user experience. (TODO)
+📱 PWA (Progressive Web App) for seamless user experience.
 
 🌎 Multiple Language Support (TODO English, French and Arabic).
 
 📖 Rich documentation. (TODO).
 
-🚀 Build in Public! (Roadmap, Discord, Notes & more coming soon).
+🚀 Build in Public! (Notes & more coming soon).
 
 ## Roadmap
 
@@ -55,15 +55,15 @@ Join the ISLAMU Explore community on [Discord server](https://discord.gg/wrkY824
 
 Feel free to ask questions, report bugs, participate in discussions, share ideas, request features, or showcase. We’d love to hear from you!
 
-## Security
+## 🛡️ Security
 
 If you discover a security vulnerability in ISLAMU Explore, please report it responsibly instead of opening a public issue. We take all legitimate reports seriously and will investigate them promptly. See [Security policy](SECURITY-POLICY.md) for more info.
 
 To disclose any security issues, please email us at contact@openislamu.org.
 
-## Contributing
+## 🤝 Contributing
 
-There are many ways you can contribute to Plane:
+There are many ways you can contribute to ISLAMU Explore:
 
 - Submit a bug report, send feedback and trough GitHub's Issues
 - Open a Pull Request
