@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.Event.Validators;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
@@ -15,11 +16,29 @@ namespace Explore.Application.Features.Events.Handlers.Commands
     public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<Guid>>
     {
         private readonly IEventRepository _eventRepository;
+        private readonly IAudienceAgeRepository _audienceAgeRepository;
+        private readonly IAudienceGenderRepository _audienceGenderRepository;
+        private readonly IEventTypeRepository _eventTypeRepository;
+        private readonly IOrganizationRepository _organizationRepository;
+        private readonly IStorageObjectRepository _storageObjectRepository;
+
         private readonly IMapper _mapper;
 
-        public CreateEventCommandHandler(IEventRepository eventRepository, IMapper mapper)
+        public CreateEventCommandHandler(
+            IEventRepository eventRepository, 
+            IAudienceAgeRepository audienceAgeRepository,
+            IAudienceGenderRepository audienceGenderRepository,
+            IEventTypeRepository eventTypeRepository,
+            IOrganizationRepository organizationRepository,
+            IStorageObjectRepository storageObjectRepository, 
+            IMapper mapper)
         {
             _eventRepository = eventRepository;
+            _audienceAgeRepository = audienceAgeRepository;
+            _audienceGenderRepository = audienceGenderRepository;
+            _eventTypeRepository = eventTypeRepository;
+            _organizationRepository = organizationRepository;
+            _storageObjectRepository = storageObjectRepository;
             _mapper = mapper;
         }
 
@@ -27,16 +46,15 @@ namespace Explore.Application.Features.Events.Handlers.Commands
         {
             var response = new BaseCommandResponse<Guid>();
 
-            // TODO: Add validation
-            //var validator = new CreateEventDtoValidator();
-            //var validationResult = await validator.ValidateAsync(request.EventDto);
-            //if (!validationResult.IsValid)
-            //{
-            //    response.Success = false;
-            //    response.Message = "Event creation failed.";
-            //    response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            //    return response;
-            //}
+            var validator = new CreateEventDtoValidator(_audienceAgeRepository, _audienceGenderRepository, _eventTypeRepository, _organizationRepository, _storageObjectRepository);
+            var validationResult = await validator.ValidateAsync(request.EventDto);
+            if (!validationResult.IsValid)
+            {
+                response.Success = false;
+                response.Message = "Event creation failed.";
+                response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+                return response;
+            }
 
             var @event = _mapper.Map<Event>(request.EventDto);
             @event.ProgramTypeId = (int)ProgramTypeEnum.Event;
