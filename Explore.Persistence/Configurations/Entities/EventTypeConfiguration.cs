@@ -12,7 +12,7 @@ namespace Explore.Persistence.Configurations.Entities
     {
         public void Configure(EntityTypeBuilder<EventType> builder)
         {
-            builder.Property(e => e.Id).ValueGeneratedNever();
+            //builder.Property(e => e.Id).ValueGeneratedNever(); i don't know why i put this? doesn't make any sense. so comment and later delete but let commented for now until clear TODO
 
             builder.HasData(
                 new EventType

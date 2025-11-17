@@ -8,12 +8,12 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Explore.Persistence.Configurations.Entities
 {
-    public class EducationConfiguration : IEntityTypeConfiguration<Education>
+    public class EventConfiguration : IEntityTypeConfiguration<Event>
     {
-        public void Configure(EntityTypeBuilder<Education> builder)
+        public void Configure(EntityTypeBuilder<Event> builder)
         {
             builder.Property(e => e.ProgramTypeId)
-                .HasDefaultValue((int)ProgramTypeEnum.Education);
+                .HasDefaultValue((int)ProgramTypeEnum.Event);
         }
     }
 }

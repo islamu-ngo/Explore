@@ -27,7 +27,7 @@ by donating to the [Palestinian Red Crescent Society](https://www.palestinercs.o
 Banner from: https://github.com/Safouene1/support-palestine-banner/
 
 ## Why Use ISLAMU Explore ?
-ISLAMU Explore is an ambitious Islamic Event Explorer that both Allows Muslims to explore the local and digital Events that are coming and Allows Event Organizators to Increase their visibility.
+ISLAMU Explore is an ambitious Islamic Program (Event, Education...) Explorer that both Allows Muslims to explore the local and digital Programs that are coming and Allows Program Organizators to Increase their visibility.
 
 **🌐 [Documentation]() (TODO)**
 
@@ -45,8 +45,31 @@ ISLAMU Explore is an ambitious Islamic Event Explorer that both Allows Muslims t
 
 ## Roadmap
 
-[Plane Publish Kanban View](https://sites.plane.so/issues/bfc2e9e8e4504d1baa4bfb8dfdab90b5/?board=kanban): All the Work Items, go vote, comment and more!
+[Roadmap Kanban View](https://sites.plane.so/views/b8b7d9fced694f5a9d9a546e9d40d988): All the Work Items, go vote, comment and more!
+  
+![Roadmap Kanban View](<images/Roadmap Kanban View.png>)
 
+## Community
+
+Join the ISLAMU Explore community on [Discord server](https://discord.gg/wrkY824Yv5) and our [GitHub Discussions](https://github.com/islamu-ngo/Explore/discussions). We follow a [Code of Conduct](CODE_OF_CONDUCT.md) in all our community channels.
+
+Feel free to ask questions, report bugs, participate in discussions, share ideas, request features, or showcase. We’d love to hear from you!
+
+## Security
+
+If you discover a security vulnerability in ISLAMU Explore, please report it responsibly instead of opening a public issue. We take all legitimate reports seriously and will investigate them promptly. See [Security policy](SECURITY-POLICY.md) for more info.
+
+To disclose any security issues, please email us at contact@openislamu.org.
+
+## Contributing
+
+There are many ways you can contribute to Plane:
+
+- Submit a bug report, send feedback and trough GitHub's Issues
+- Open a Pull Request
+
+please read **[Contribution Guidlines](https://sites.plane.so/pages/b957e6c5278845feac5557d22bd54756)** for details on the process for submitting pull requests to us.
+  
 ## 📊 Repo Stats
 
 ![Alt](https://repobeats.axiom.co/api/embed/a0f11a3d9b80342b5f5965127c2c45871c9d3397.svg "Repobeats analytics image")
@@ -59,15 +82,19 @@ I am deeply grateful to all our amazing contributors!
  <img src="https://contrib.rocks/image?repo=islamu-ngo/explore" />
 </a>
 
-## Contributing
-
-- Submit a bug report, send feedback and trough GitHub's Issues
-- Open a Pull Request
-
 ## Acknowledgement
-
-- [MudBlazor](https://www.mudblazor.com/): A Blazor UI library that simplifies the creation of Beautifull Websites/webapps.
-- [MudBlocks](https://mudblocks.cc/): A collection of MudBlazor Components.
+  
+- [Keycloak](https://www.keycloak.org/): An Open Source Identity and Access Management Provider.
+- [Cerbos](https://www.cerbos.dev/): An Open Source Policy Decision Point.
+- [Infisical](https://infisical.com/): An Open Source Secret Management Platform.
+- [MudBlazor](https://www.mudblazor.com/): An Open Source Blazor UI library that simplifies the creation of Beautifull Websites/webapps.
+- [MudBlocks](https://mudblocks.cc/): An Open Source collection of MudBlazor Components.
+- [Penpot](https://penpot.app/): An Open Source Design Tool.
+- [ASP.NET Core](https://dotnet.microsoft.com/en-us/apps/aspnet): An Open Source Framework for building Web Apps and Services with .NET and C#.
+- [PostgreSQL](https://www.postgresql.org/): An Open Source Relational Database.
+- [Plane](https://plane.so/): An Open Source Project Management Platform that unifies projects, knowledge and agents with All-in-one Workspace: Projects, Wiki & AI.
+- [Coolify](https://coolify.io/): An Open Source Platform as a Service, alternative to Vercel, Heroku, Netlify and Railway for easy deploying to your own servers.
+- [Kener](https://kener.ing/): An Open Source Status Page.
 
 ## ISLAMU Solutions
 
@@ -76,7 +103,7 @@ I am deeply grateful to all our amazing contributors!
 
 ## Contact
 
-For any question or problem reporting, please consider opening a [new issue](https://github.com/islamu-ngo/explore/issues/new) or send an email to contact@openislamu.org
+For any question or problem reporting, please consider opening a [new issue](https://github.com/islamu-ngo/explore/issues/new) or send an email to contact@openislamu.org or Create a new post in our Discord Server.
 
 ## Privacy Policy
 

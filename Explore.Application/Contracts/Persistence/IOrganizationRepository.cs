@@ -1,14 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Explore.Application.DTOs.Organization;
 using Explore.Domain;
 
 namespace Explore.Application.Contracts.Persistence
 {
     public interface IOrganizationRepository : IGenericRepository<Organization, Guid>
     {
-        Task<Organization> GetOrganizationWithDetails(Guid id);
-        Task<List<Organization>> GetOrganizationsWithDetails();
-        Task<List<Organization>> GetAllWithStatusAsync(); // Voor admin lijst met status info
+        Task<OrganizationDto> GetOrganizationWithDetails(Guid id);
+        Task<List<OrganizationListDto>> GetOrganizationsWithDetails();
     }
 }

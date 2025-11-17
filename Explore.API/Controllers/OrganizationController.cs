@@ -27,7 +27,7 @@ namespace Explore.API.Controllers
         [HttpGet]
         [EndpointSummary("Get all Organizationss")]
         [EndpointDescription("Get A List of all the Organizations (pagination!)")]
-        [Authorize]
+        [Authorize] // TODO TEMPORARY! Needs to only allow ADMIN role but for developmenet purposes, cause currently need to manually put user as admin in Keycloak Admin console...
         public async Task<ActionResult<List<OrganizationListDto>>> GetAll()
         {
             var organizations = await _mediator.Send(new GetOrganizationListRequest());
@@ -41,7 +41,7 @@ namespace Explore.API.Controllers
         [AllowAnonymous]
         public async Task<ActionResult<OrganizationDto>> GetById(Guid id)
         {
-            var organization = await _mediator.Send(new GetOrganizationDetailsRequest());
+            var organization = await _mediator.Send(new GetOrganizationDetailsRequest { Id = id });
             return Ok(organization);
         }
 
@@ -49,7 +49,7 @@ namespace Explore.API.Controllers
         [HttpPost]
         [EndpointSummary("Create Organization")]
         [EndpointDescription("Create a new Organization")]
-        [AllowAnonymous]  // temporary: creation without authentification
+        [Authorize]
         public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateOrganizationDto organization)
         {
             var command = new CreateOrganizationCommand() { OrganizationDto = organization };
@@ -66,7 +66,7 @@ namespace Explore.API.Controllers
         // PUT api/<OrganizationController>/updatestatustype/5
         [HttpPut("updatestatustype/{id}")]
         [Authorize]
-        //[Authorize(Roles = "Admin")]
+        //[Authorize(Roles = "Admin")] TODO
         public async Task<ActionResult> UpdateStatusType(Guid id, [FromBody] UpdateOrganizationStatusTypeDto organizationStatusType)
         {
             var command = new UpdateOrganizationCommand() { Id = id, OrganizationStatusTypeDto = organizationStatusType };

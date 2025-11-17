@@ -21,7 +21,7 @@ namespace Explore.Application.Features.Organizations.Handlers.Queries
         }
         public async Task<OrganizationDto> Handle(GetOrganizationDetailsRequest request, CancellationToken cancellationToken)
         {
-            var organization = await _organizationRepository.GetById(request.Id);
+            var organization = await _organizationRepository.GetOrganizationWithDetails(request.Id);
             return _mapper.Map<OrganizationDto>(organization);
         }
     }

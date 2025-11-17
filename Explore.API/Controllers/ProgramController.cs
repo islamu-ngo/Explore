@@ -45,18 +45,20 @@ namespace Explore.API.Controllers
             return Ok(program);
         }
 
-        // POST api/<ProgramController>
-        [HttpPost]
-        [EndpointSummary("")]
-        [EndpointDescription("")]
-        [Authorize]
-        //[Authorize(Roles = "OrgAdmin")] // not yet implemented when creating org to give admin role in keycloak with keycloak api! for later TODO
-        public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateProgramDto program)
-        {
-            var command = new CreateProgramCommand { ProgramDto = program };
-            var response = await _mediator.Send(command);
-            return Ok(response);
-        }
+        
+        //no longer need this endpoint to create a program request goes to appropriate program type's controller like eventcontroller create endpoint!
+        //// POST api/<ProgramController>
+        //[HttpPost]
+        //[EndpointSummary("")]
+        //[EndpointDescription("")]
+        //[Authorize]
+        ////[Authorize(Roles = "OrgAdmin")] // not yet implemented when creating org to give admin role in keycloak with keycloak api! for later TODO
+        //public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateProgramDto program)
+        //{
+        //    var command = new CreateProgramCommand { ProgramDto = program };
+        //    var response = await _mediator.Send(command);
+        //    return Ok(response);
+        //}
 
         //// PUT api/<ProgramController>/5
         //[HttpPut("{id}")]

@@ -14,7 +14,6 @@ using Explore.Application.DTOs.EventType;
 using Explore.Application.DTOs.Organization;
 using Explore.Application.DTOs.ProgramType;
 using Explore.Application.DTOs.StatusType;
-using Explore.Application.DTOs.Admin;
 
 namespace Explore.Application.Profiles
 {
@@ -25,13 +24,16 @@ namespace Explore.Application.Profiles
             CreateMap<AudienceAge, AudienceAgeListDto>().ReverseMap();
             CreateMap<AudienceGender, AudienceGenderListDto>().ReverseMap();
             CreateMap<EducationType, EducationTypeListDto>().ReverseMap();
-            CreateMap<Education, CreateProgramDto>().ReverseMap();
+            //CreateMap<Education, CreatEducationDto>().ReverseMap();
             CreateMap<Education, EducationDto>().ReverseMap();
+            CreateMap<Education, EducationSpecificDto>().ReverseMap();
             CreateMap<Event, CreateProgramDto>().ReverseMap();
             CreateMap<Event, EventDto>().ReverseMap();
+            CreateMap<Event, EventListDto>().ReverseMap();
+            CreateMap<Event, EventSpecificDto>().ReverseMap();
             CreateMap<EventType, EventTypeListDto>().ReverseMap();
             CreateMap<Organization, OrganizationDto>().ReverseMap();
-            CreateMap<Organization, OrganizationListDto>();
+            CreateMap<Organization, OrganizationListDto>().ReverseMap();
             CreateMap<Organization, CreateOrganizationDto>().ReverseMap();
             CreateMap<Organization, UpdateOrganizationStatusTypeDto>().ReverseMap();
             CreateMap<Program, ProgramDto>().ReverseMap();
@@ -39,10 +41,6 @@ namespace Explore.Application.Profiles
             CreateMap<Program, CreateProgramDto>().ReverseMap();
             CreateMap<ProgramType, ProgramTypeListDto>().ReverseMap();
             CreateMap<StatusType, StatusTypeListDto>().ReverseMap();
-            
-            // Admin mapping
-            CreateMap<Organization, AdminOrganizationListDto>()
-                .ForMember(dest => dest.StatusName, opt => opt.MapFrom(src => src.StatusType.FullName));
         }
     }
 }

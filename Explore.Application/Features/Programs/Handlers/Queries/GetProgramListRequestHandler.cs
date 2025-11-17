@@ -22,7 +22,7 @@ namespace Explore.Application.Features.Programs.Handlers.Queries
 
         public async Task<List<ProgramListDto>> Handle(GetProgramListRequest request, CancellationToken cancellationToken)
         {
-            var programs = await _programRepository.GetAll();
+            var programs = await _programRepository.GetProgramsWithDetails();
             return _mapper.Map<List<ProgramListDto>>(programs);
         }
     }

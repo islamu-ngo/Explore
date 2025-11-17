@@ -42,28 +42,6 @@ namespace Explore.Application.Features.Programs.Handlers.Commands
 
             if (request.ProgramDto.ProgramTypeId == (int)ProgramTypeEnum.Event)
             {
-                //var eventEntity = new Event
-                //{
-                //    ProgramTypeId = request.ProgramDto.ProgramTypeId,
-                //    Title = request.ProgramDto.Title,
-                //    Description = request.ProgramDto.Description,
-                //    AudienceGenderId = request.ProgramDto.AudienceGenderId,
-                //    AudienceAgeId = request.ProgramDto.AudienceAgeId,
-                //    OrganizationId = request.ProgramDto.OrganizationId,
-                //    AudienceAttendees = request.ProgramDto.AudienceAttendees,
-                //    Price = request.ProgramDto.Price,
-                //    FeaturedImageId = request.ProgramDto.FeaturedImageId,
-                //    IsRegistrationRequired = request.ProgramDto.IsRegistrationRequired,
-                //    Country = request.ProgramDto.Country,
-                //    City = request.ProgramDto.City,
-                //    PostCode = request.ProgramDto.PostCode,
-                //    Address = request.ProgramDto.Address,
-                //    ProgramUrl = request.ProgramDto.ProgramUrl,
-                //    TotalViews = 0,
-
-                //    EventTypeId = request.ProgramDto.EventTypeId.Value
-                //};
-
                 // "event" is a reserved keyword in c# so added @. I could use another name like eventEntity but for consistency i keep name as classname in lowercase
                 var @event = _mapper.Map<Event>(request.ProgramDto);
                 @event = await _eventRepository.Create(@event);
@@ -74,28 +52,6 @@ namespace Explore.Application.Features.Programs.Handlers.Commands
             }
             else if (request.ProgramDto.ProgramTypeId == (int)ProgramTypeEnum.Education)
             {
-                //var educationEntity = new Education
-                //{
-                //    ProgramTypeId = request.ProgramDto.ProgramTypeId,
-                //    Title = request.ProgramDto.Title,
-                //    Description = request.ProgramDto.Description,
-                //    AudienceGenderId = request.ProgramDto.AudienceGenderId,
-                //    AudienceAgeId = request.ProgramDto.AudienceAgeId,
-                //    OrganizationId = request.ProgramDto.OrganizationId,
-                //    AudienceAttendees = request.ProgramDto.AudienceAttendees,
-                //    Price = request.ProgramDto.Price,
-                //    FeaturedImageId = request.ProgramDto.FeaturedImageId,
-                //    IsRegistrationRequired = request.ProgramDto.IsRegistrationRequired,
-                //    Country = request.ProgramDto.Country,
-                //    City = request.ProgramDto.City,
-                //    PostCode = request.ProgramDto.PostCode,
-                //    Address = request.ProgramDto.Address,
-                //    ProgramUrl = request.ProgramDto.ProgramUrl,
-                //    TotalViews = 0,
-
-                //    EducationTypeId = request.ProgramDto.EducationTypeId.Value
-                //};
-
                 var education = _mapper.Map<Education>(request.ProgramDto);
                 education = await _educationRepository.Create(education);
 

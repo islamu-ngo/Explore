@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Organizations.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using MediatR;
 
 namespace Explore.Application.Features.Organizations.Handlers.Commands
@@ -36,6 +37,9 @@ namespace Explore.Application.Features.Organizations.Handlers.Commands
             //}
 
             var organization = _mapper.Map<Organization>(request.OrganizationDto);
+
+            organization.StatusTypeId = (int)StatusTypeEnum.Pending;
+
             organization = await _organizationRepository.Create(organization);
 
             response.Success = true;

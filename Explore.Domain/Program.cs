@@ -20,6 +20,7 @@ namespace Explore.Domain
         public int AudienceAgeId { get; set; }
         public AudienceAge AudienceAge { get; set; }
         public Guid OrganizationId { get; set; }
+        public Organization Organization { get; set; }
         public int? AudienceAttendees { get; set; }
         public double Price { get; set; }
         [ForeignKey("FeaturedImage")]
