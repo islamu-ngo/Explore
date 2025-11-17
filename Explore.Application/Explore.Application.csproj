@@ -23,7 +23,6 @@
     <Folder Include="DTOs\EducationType\Validators\" />
     <Folder Include="DTOs\Education\Validators\" />
     <Folder Include="DTOs\EventType\Validators\" />
-    <Folder Include="DTOs\Event\Validators\" />
     <Folder Include="DTOs\ProgramRegistration\" />
     <Folder Include="DTOs\OrganizationMember\Validators\" />
     <Folder Include="DTOs\Organization\Validators\" />
