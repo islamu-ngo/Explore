@@ -233,6 +233,7 @@
                                                  Label="Postal Code"
                                                  Variant="Variant.Outlined"
                                                  HelperText="Postal/ZIP code"
+                                                 Required
                                                  Min="0" Max="99999"
                                                  Adornment="Adornment.Start"
                                                  AdornmentIcon="@Icons.Material.Filled.Pin" />
@@ -303,7 +304,7 @@
                                 <MudText><b>Name:</b> @organization.FullName</MudText>
                                 <MudText><b>Website:</b> @(string.IsNullOrWhiteSpace(organization.WebsiteUrl) ? "-" : organization.WebsiteUrl)</MudText>
                                 <MudText><b>Email:</b> @organization.Email</MudText>
-                                <MudText><b>Address:</b> @organization.Address, @(organization.Postcode?.ToString() ?? "")@(organization.Postcode.HasValue ? " " : "")@organization.City, @organization.Country</MudText>
+                                <MudText><b>Address:</b> @organization.Address, @organization.Postcode @organization.City, @organization.Country</MudText>
                             </MudStack>
                         </MudPaper>
 
@@ -432,7 +433,7 @@
         {
             if (string.IsNullOrWhiteSpace(organization.FullName))
             {
-                Console.WriteLine("Vul de organisatienaam in.");
+                errorMessage = "Vul de organisatienaam in.";
                 return Task.CompletedTask;
             }
         }
@@ -441,13 +442,15 @@
             if (string.IsNullOrWhiteSpace(organization.Email)
                 || string.IsNullOrWhiteSpace(organization.Address)
                 || string.IsNullOrWhiteSpace(organization.City)
-                || string.IsNullOrWhiteSpace(organization.Country))
+                || string.IsNullOrWhiteSpace(organization.Country)
+                || organization.Postcode <= 0)
             {
-                Console.WriteLine("Vul de vereiste velden in Stap 2 in.");
+                errorMessage = "Vul alle vereiste velden in.";
                 return Task.CompletedTask;
             }
         }
 
+        errorMessage = string.Empty;
         if (currentStep < steps.Length - 1) currentStep++;
         return Task.CompletedTask;
     }
@@ -557,6 +560,7 @@
                !string.IsNullOrWhiteSpace(organization.Email) &&
                !string.IsNullOrWhiteSpace(organization.Address) &&
                !string.IsNullOrWhiteSpace(organization.City) &&
-               !string.IsNullOrWhiteSpace(organization.Country);
+               !string.IsNullOrWhiteSpace(organization.Country) &&
+               organization.Postcode > 0;
     }
 }

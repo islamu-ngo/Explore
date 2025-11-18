@@ -229,10 +229,12 @@ builder.Services.AddAuthentication(options =>
         //3.Legacy / documentation: Many examples show this pattern for clarity 
         //You don't actually need it
 
-        //options.Scope.Clear();
-        //options.Scope.Add("openid");
-        //options.Scope.Add("profile");
-        //options.Scope.Add("email");
+        // CRITICAL: Add offline_access to get refresh token and save access token
+        options.Scope.Clear();
+        options.Scope.Add("openid");
+        options.Scope.Add("profile");
+        options.Scope.Add("email");
+        options.Scope.Add("offline_access"); // NEEDED to get refresh_token and save tokens
         // If you created a custom audience scope for the API, request it here too
         // options.Scope.Add("aud-identity-api");
     });
@@ -480,18 +482,71 @@ publicBff.MapGet("/ProgramType", async (IHttpClientFactory f) =>
     );
 });
 
-publicBff.MapPost("/Organization", async (HttpContext ctx, IHttpClientFactory f) =>
+publicBff.MapPost("/Organization", async (
+    HttpContext ctx, 
+    IHttpClientFactory f) =>
 {
-    var http = f.CreateClient("ExploreApiPublic");
-    var r = await http.PostAsync("api/Organization", new StreamContent(ctx.Request.Body)
+    Console.WriteLine("=== BFF Organization POST Request ===");
+    Console.WriteLine($"User authenticated: {ctx.User?.Identity?.IsAuthenticated}");
+    Console.WriteLine($"User name: {ctx.User?.Identity?.Name}");
+    
+    if (ctx.User?.Identity?.IsAuthenticated != true)
     {
-        Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json") }
-    });
-    r.EnsureSuccessStatusCode();
-    return Results.Stream(
-        await r.Content.ReadAsStreamAsync(),
-        r.Content.Headers.ContentType?.ToString()
-    );
+        Console.WriteLine("ERROR: User not authenticated!");
+        return Results.Unauthorized();
+    }
+    
+    // Get access token from authentication properties
+    var accessToken = await ctx.GetTokenAsync("access_token");
+    
+    if (string.IsNullOrEmpty(accessToken))
+    {
+        Console.WriteLine("ERROR: No access token found. User may need to re-login with offline_access scope.");
+        return Results.Problem("No access token available. Please logout and login again.", statusCode: 401);
+    }
+    
+    Console.WriteLine($"Access token retrieved: {accessToken.Substring(0, Math.Min(20, accessToken.Length))}...");
+    
+    // Use public client and manually add token
+    var http = f.CreateClient("ExploreApiPublic");
+    
+    // Read organization data
+    var org = await ctx.Request.ReadFromJsonAsync<object>();
+    
+    Console.WriteLine($"Organization data received: {System.Text.Json.JsonSerializer.Serialize(org)}");
+    
+    try
+    {
+        // Create request with Authorization header
+        var request = new HttpRequestMessage(HttpMethod.Post, "api/Organization");
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+        request.Content = JsonContent.Create(org);
+        
+        Console.WriteLine("Sending request to API with Bearer token...");
+        
+        var response = await http.SendAsync(request);
+        
+        Console.WriteLine($"API Response Status: {response.StatusCode}");
+        
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"API Error: {errorContent}");
+        }
+        
+        response.EnsureSuccessStatusCode();
+        
+        return Results.Stream(
+            await response.Content.ReadAsStreamAsync(),
+            response.Content.Headers.ContentType?.ToString()
+        );
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"BFF Exception: {ex.Message}");
+        Console.WriteLine($"Stack trace: {ex.StackTrace}");
+        throw;
+    }
 });
 
 publicBff.MapGet("/StatusType", async (IHttpClientFactory f) =>
