@@ -82,5 +82,29 @@ namespace Explore.Persistence.Repositories
                 .ToListAsync();
             return organizations;
         }
+
+        public async Task<List<OrganizationListDto>> GetMyOrganizations(string userId)
+        {
+            // Haal alleen organisaties op die door deze gebruiker zijn aangemaakt
+            var organizations = await _dbContext.Organizations
+                .Include(o => o.StatusType)
+                .Where(o => o.CreatedByUserId == userId)
+                .OrderByDescending(o => o.CreatedAt)
+                .Select(o => new OrganizationListDto
+                {
+                    Id = o.Id,
+                    FullName = o.FullName,
+                    WebsiteUrl = o.WebsiteUrl,
+                    Email = o.Email,
+                    Country = o.Country,
+                    City = o.City,
+                    Postcode = o.Postcode,
+                    Address = o.Address,
+                    StatusTypeId = o.StatusTypeId,
+                    StatusTypeFullName = o.StatusType.FullName
+                })
+                .ToListAsync();
+            return organizations;
+        }
     }
 }

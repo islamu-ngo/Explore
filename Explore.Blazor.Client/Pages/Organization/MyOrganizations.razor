@@ -1,0 +1,149 @@
+@page "/organization/my"
+@using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Models.DTOs
+@using Microsoft.AspNetCore.Authorization
+@inject IOrganizationService OrganizationService
+@inject NavigationManager Navigation
+@attribute [Authorize]
+
+<PageTitle>My Organizations</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudPaper Class="pa-6">
+        <MudText Typo="Typo.h4" GutterBottom="true">
+            <MudIcon Icon="@Icons.Material.Filled.Business" Class="mr-2" />
+            My Organizations
+        </MudText>
+        <MudText Typo="Typo.body1" Class="mb-4">
+            Here you can see all organizations you have created.
+        </MudText>
+
+        @if (_loading)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+            <MudText Align="Align.Center">Loading organizations...</MudText>
+        }
+        else if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="my-4">
+                @_errorMessage
+            </MudAlert>
+        }
+        else if (_organizations == null || !_organizations.Any())
+        {
+            <MudAlert Severity="Severity.Info" Class="my-4">
+                <MudText>You haven't created any organizations yet.</MudText>
+                <MudButton Variant="Variant.Filled" 
+                           Color="Color.Primary" 
+                           StartIcon="@Icons.Material.Filled.Add"
+                           Class="mt-2"
+                           Href="/organization/create">
+                    Create your first organization
+                </MudButton>
+            </MudAlert>
+        }
+        else
+        {
+            <MudTable Items="_organizations" 
+                      Hover="true" 
+                      Breakpoint="Breakpoint.Sm" 
+                      Dense="true"
+                      Class="mt-4">
+                <HeaderContent>
+                    <MudTh>Name</MudTh>
+                    <MudTh>Location</MudTh>
+                    <MudTh>Email</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh>Website</MudTh>
+                    <MudTh>Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Name">
+                        <MudText Typo="Typo.body2"><strong>@context.FullName</strong></MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Location">
+                        <MudText Typo="Typo.body2">@context.City, @context.Country</MudText>
+                        <MudText Typo="Typo.caption">@context.Address, @context.Postcode</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Email">
+                        <MudText Typo="Typo.body2">@context.Email</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Status">
+                        @{
+                            var statusColor = context.StatusTypeId switch
+                            {
+                                1 => Color.Warning,  // Pending
+                                2 => Color.Success,  // Approved
+                                3 => Color.Error,    // Rejected
+                                _ => Color.Default
+                            };
+                        }
+                        <MudChip T="string" Color="statusColor" Size="Size.Small">@context.StatusTypeFullName</MudChip>
+                    </MudTd>
+                    <MudTd DataLabel="Website">
+                        @if (!string.IsNullOrEmpty(context.WebsiteUrl))
+                        {
+                            <MudLink Href="@context.WebsiteUrl" Target="_blank">
+                                <MudIcon Icon="@Icons.Material.Filled.Link" Size="Size.Small" />
+                            </MudLink>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">-</MudText>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="Actions">
+                        <MudIconButton Icon="@Icons.Material.Filled.Visibility" 
+                                       Color="Color.Info" 
+                                       Size="Size.Small"
+                                       Href="@($"/organization/{context.Id}")"
+                                       Title="View" />
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+
+            <MudText Typo="Typo.caption" Class="mt-4" Color="Color.Secondary">
+                Total: @_organizations.Count organization(s)
+            </MudText>
+        }
+
+        <MudDivider Class="my-4" />
+        
+        <MudButton Variant="Variant.Filled" 
+                   Color="Color.Primary" 
+                   StartIcon="@Icons.Material.Filled.Add"
+                   Href="/organization/create">
+            Create new organization
+        </MudButton>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private List<OrganizationListDto>? _organizations;
+    private bool _loading = true;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOrganizations();
+    }
+
+    private async Task LoadOrganizations()
+    {
+        try
+        {
+            _loading = true;
+            _errorMessage = null;
+            _organizations = await OrganizationService.GetMyOrganizationsAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"An error occurred while loading your organizations: {ex.Message}";
+            Console.WriteLine($"Error loading organizations: {ex}");
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

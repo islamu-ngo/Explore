@@ -34,6 +34,26 @@ namespace Explore.API.Controllers
             return Ok(organizations);
         }
 
+        // GET: api/<OrganizationController>/my
+        [HttpGet("my")]
+        [EndpointSummary("Get my Organizations")]
+        [EndpointDescription("Get a list of organizations created by the current user")]
+        [Authorize]
+        public async Task<ActionResult<List<OrganizationListDto>>> GetMyOrganizations()
+        {
+            var userId = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
+                ?? _httpContextAccessor.HttpContext?.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
+                ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sid")?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized("User ID not found in token");
+            }
+
+            var organizations = await _mediator.Send(new GetMyOrganizationsRequest { UserId = userId });
+            return Ok(organizations);
+        }
+
         // GET api/<OrganizationController>/5
         [HttpGet("{id}")]
         [EndpointSummary("Get Organization Details")]

@@ -549,6 +549,34 @@ publicBff.MapPost("/Organization", async (
     }
 });
 
+publicBff.MapGet("/Organization/my", async (HttpContext ctx, IHttpClientFactory f) =>
+{
+    if (ctx.User?.Identity?.IsAuthenticated != true)
+    {
+        return Results.Unauthorized();
+    }
+
+    // Get access token
+    var accessToken = await ctx.GetTokenAsync("access_token");
+    
+    if (string.IsNullOrEmpty(accessToken))
+    {
+        return Results.Problem("No access token available. Please logout and login again.", statusCode: 401);
+    }
+
+    var http = f.CreateClient("ExploreApiPublic");
+    var request = new HttpRequestMessage(HttpMethod.Get, "api/Organization/my");
+    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+    
+    var response = await http.SendAsync(request);
+    response.EnsureSuccessStatusCode();
+    
+    return Results.Stream(
+        await response.Content.ReadAsStreamAsync(),
+        response.Content.Headers.ContentType?.ToString()
+    );
+});
+
 publicBff.MapGet("/StatusType", async (IHttpClientFactory f) =>
 {
     var http = f.CreateClient("ExploreApiPublic");

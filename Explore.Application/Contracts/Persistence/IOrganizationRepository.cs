@@ -10,5 +10,6 @@ namespace Explore.Application.Contracts.Persistence
     {
         Task<OrganizationDto> GetOrganizationWithDetails(Guid id);
         Task<List<OrganizationListDto>> GetOrganizationsWithDetails();
+        Task<List<OrganizationListDto>> GetMyOrganizations(string userId);
     }
 }

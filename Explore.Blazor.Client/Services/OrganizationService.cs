@@ -7,6 +7,7 @@ public interface IOrganizationService
 {
     Task<OrganizationDto?> CreateOrganizationAsync(OrganizationCreateDto organization);
     Task<List<StatusTypeDto>> GetStatusTypesAsync();
+    Task<List<OrganizationListDto>> GetMyOrganizationsAsync();
 }
 
 public class OrganizationService : IOrganizationService
@@ -95,6 +96,20 @@ public class OrganizationService : IOrganizationService
         {
             Console.WriteLine($"Fout bij ophalen status types: {ex.Message}");
             return new List<StatusTypeDto>();
+        }
+    }
+
+    public async Task<List<OrganizationListDto>> GetMyOrganizationsAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetFromJsonAsync<List<OrganizationListDto>>("/bff/api/Organization/my");
+            return response ?? new List<OrganizationListDto>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Fout bij ophalen mijn organisaties: {ex.Message}");
+            return new List<OrganizationListDto>();
         }
     }
 }
