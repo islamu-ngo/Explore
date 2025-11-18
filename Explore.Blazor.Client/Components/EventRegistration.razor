@@ -2,288 +2,98 @@
 @inject ISnackbar Snackbar
 
 <style>
-/* ===== GLOBAL DIALOG LOOK & FEEL ===== */
-.registration-dialog .mud-dialog {
-    border-radius: 18px;
-    overflow: hidden;
-    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.35);
-    background: radial-gradient(circle at top left,
-        rgba(59, 130, 246, 0.10),
-        rgba(15, 23, 42, 0.95));
-}
-
-.registration-dialog .mud-dialog-container {
-    max-width: 640px;
-}
-
-/* Content wrapper */
+/* ===== DIALOG STYLING ===== */
 .registration-shell {
     padding: 24px;
-    background: linear-gradient(160deg,
-        rgba(15, 23, 42, 0.96),
-        rgba(15, 23, 42, 0.99));
-    position: relative;
-}
-
-/* Subtle decorative shapes */
-.registration-shell::before,
-.registration-shell::after {
-    content: "";
-    position: absolute;
-    border-radius: 999px;
-    filter: blur(32px);
-    opacity: 0.25;
-    pointer-events: none;
-}
-
-.registration-shell::before {
-    width: 220px;
-    height: 220px;
-    background: radial-gradient(circle, rgba(59,130,246,0.6), transparent 60%);
-    top: -40px;
-    right: -60px;
-}
-
-.registration-shell::after {
-    width: 180px;
-    height: 180px;
-    background: radial-gradient(circle, rgba(16,185,129,0.6), transparent 60%);
-    bottom: -60px;
-    left: -40px;
-}
-
-/* ===== HEADER ===== */
-.registration-header {
-    position: relative;
-    background: radial-gradient(circle at top left,
-        var(--mud-palette-primary-lighten),
-        var(--mud-palette-primary-darken));
-    color: white;
-    padding: 22px 24px 20px 24px;
-    margin: -24px -24px 20px -24px;
-    border-radius: 16px 16px 0 0;
-    overflow: hidden;
-}
-
-/* soft glow */
-.registration-header::before {
-    content: "";
-    position: absolute;
-    inset: -40%;
-    background: radial-gradient(circle at top right,
-        rgba(255, 255, 255, 0.22),
-        transparent 55%);
-    opacity: 0.6;
-}
-
-.registration-header-content {
-    position: relative;
-    display: flex;
-    align-items: flex-start;
-    gap: 14px;
-}
-
-.registration-header-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 999px;
-    background: rgba(15, 23, 42, 0.25);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.45);
-}
-
-.registration-header-title {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.registration-header h5 {
-    margin: 0;
-    font-weight: 650;
-    font-size: 1.5rem;
-    letter-spacing: 0.02em;
-}
-
-.registration-header-subtitle {
-    margin: 0;
-    font-size: 0.9rem;
-    opacity: 0.92;
 }
 
 /* ===== FORM SECTIONS ===== */
-.registration-body {
-    position: relative;
-    z-index: 1;
-    padding: 4px 0 4px 0;
-}
-
 .form-section {
-    margin-bottom: 22px;
-    padding: 16px 16px 18px;
-    border-radius: 14px;
-    border: 1px solid rgba(148, 163, 184, 0.35);
-    background: radial-gradient(circle at top left,
-        rgba(15, 23, 42, 0.98),
-        rgba(15, 23, 42, 0.96));
-    backdrop-filter: blur(10px);
-}
-
-.form-section:last-of-type {
-    margin-bottom: 18px;
+    margin-bottom: 24px;
 }
 
 .form-section-title {
     font-weight: 600;
-    font-size: 1.02rem;
-    margin-bottom: 12px;
+    font-size: 1rem;
+    margin-bottom: 16px;
     color: var(--mud-palette-text-primary);
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
-.form-section-title-icon {
-    width: 28px;
-    height: 28px;
-    border-radius: 999px;
-    background: rgba(59, 130, 246, 0.1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-/* subtle section label */
-.form-section-label {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: rgba(148, 163, 184, 0.9);
-    margin-bottom: 4px;
-}
-
 /* Grid */
 .form-grid {
     display: grid;
-    gap: 14px;
+    gap: 16px;
 }
 
 .form-grid-2col {
     display: grid;
-    gap: 14px;
+    gap: 16px;
     grid-template-columns: 1fr 1fr;
 }
 
 @@media (max-width: 600px) {
     .registration-shell {
-        padding: 18px 16px;
-    }
-
-    .registration-header {
-        margin: -18px -16px 16px -16px;
-        padding: 18px 16px 14px 16px;
-        border-radius: 14px 14px 0 0;
+        padding: 16px;
     }
 
     .form-grid-2col {
         grid-template-columns: 1fr;
     }
-
-    .form-section {
-        padding: 14px 12px 14px;
-    }
-}
-
-/* Required */
-.required-field::after {
-    content: "*";
-    color: var(--mud-palette-error);
-    margin-left: 4px;
 }
 
 /* ===== TERMS ===== */
 .terms-box {
-    background: rgba(15, 23, 42, 0.9);
-    padding: 14px 16px;
-    border-radius: 12px;
-    border: 1px dashed rgba(148, 163, 184, 0.65);
-    margin-bottom: 8px;
+    padding: 16px;
+    border-radius: 8px;
+    border: 1px solid var(--mud-palette-lines-default);
+    margin-bottom: 16px;
     display: flex;
     align-items: flex-start;
-    gap: 10px;
+    gap: 12px;
 }
 
 .terms-box-text {
-    font-size: 0.88rem;
+    font-size: 0.875rem;
     color: var(--mud-palette-text-secondary);
-}
-
-.terms-box-text a {
-    text-decoration: underline;
 }
 
 /* ===== BUTTONS ===== */
 .action-buttons {
     display: flex;
-    gap: 10px;
+    gap: 12px;
     justify-content: flex-end;
-    margin-top: 18px;
+    margin-top: 24px;
 }
 
 .submit-button {
     min-width: 150px;
 }
 
-/* button tweaks */
-.action-buttons .mud-button-root {
-    border-radius: 999px;
-    text-transform: none;
-    font-weight: 500;
-}
-
-.action-buttons .mud-button-text {
-    color: rgba(226, 232, 240, 0.9);
-}
-
-.action-buttons .mud-button-text:hover {
-    background-color: rgba(148, 163, 184, 0.12);
-}
-
-.action-buttons .mud-button-filled-primary {
-    box-shadow: 0 10px 22px rgba(37, 99, 235, 0.45);
-}
-
-.action-buttons .mud-button-filled-primary:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 14px 30px rgba(37, 99, 235, 0.6);
-}
-
 /* ===== SUCCESS STATE ===== */
 .success-content {
     text-align: center;
-    padding: 36px 16px 32px;
-    position: relative;
+    padding: 48px 24px;
 }
 
 .success-icon {
-    width: 86px;
-    height: 86px;
-    margin: 0 auto 22px;
-    background: radial-gradient(circle, #4caf50, #16a34a);
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 24px;
+    background: var(--mud-palette-success);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    animation: scaleIn 0.45s ease-out;
-    box-shadow: 0 18px 35px rgba(22, 163, 74, 0.55);
+    animation: scaleIn 0.4s ease-out;
 }
 
 @@keyframes scaleIn {
     from {
-        transform: scale(0.4);
-        opacity: 0.0;
+        transform: scale(0.5);
+        opacity: 0;
     }
     to {
         transform: scale(1);
@@ -297,43 +107,16 @@
 }
 
 .success-title {
-    font-size: 1.6rem;
-    font-weight: 650;
-    margin-bottom: 10px;
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 12px;
     color: var(--mud-palette-success);
 }
 
 .success-message {
     color: var(--mud-palette-text-secondary);
-    line-height: 1.65;
+    line-height: 1.6;
     margin-bottom: 24px;
-}
-
-.success-content .mud-button-root {
-    border-radius: 999px;
-    padding-inline: 26px;
-}
-
-/* ===== SMALL FORM TWEAKS (inputs) ===== */
-.registration-body .mud-input-root {
-    border-radius: 10px;
-}
-
-.registration-body .mud-input-root.mud-input-root-outlined {
-    background: rgba(15, 23, 42, 0.9);
-}
-
-.registration-body .mud-input-root.mud-input-root-outlined:hover {
-    box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.6);
-}
-
-.registration-body .mud-input-root.mud-input-root-outlined.mud-input-root-focused {
-    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.9);
-}
-
-/* validation summary */
-.registration-body .validation-errors {
-    margin-top: 8px;
 }
 </style>
 
@@ -342,158 +125,137 @@
         @if (!isRegistered)
         {
             <div class="registration-shell">
-                <div class="registration-header">
-                    <div class="registration-header-content">
-                        <div class="registration-header-icon">
-                            <MudIcon Icon="@Icons.Material.Filled.EventAvailable" />
-                        </div>
-                        <div class="registration-header-title">
-                            <MudText Typo="Typo.h5">@Title</MudText>
-                            <MudText Typo="Typo.caption" Class="registration-header-subtitle">
-                                Fill out the form to secure your spot
-                            </MudText>
+                <MudText Typo="Typo.h5" Class="mb-2">@Title</MudText>
+                <MudText Typo="Typo.body2" Class="mb-6 mud-text-secondary">
+                    Fill out the form to secure your spot
+                </MudText>
+
+                <EditForm Model="@registrationModel" OnValidSubmit="HandleSubmit">
+                    <DataAnnotationsValidator />
+
+                    <!-- Personal Information -->
+                    <div class="form-section">
+                        <MudText Typo="Typo.subtitle1" Class="form-section-title">
+                            <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Class="mr-2" />
+                            Personal Information
+                        </MudText>
+
+                        <div class="form-grid-2col">
+                            <MudTextField T="string"
+                                          Label="First Name"
+                                          @bind-Value="registrationModel.FirstName"
+                                          For="@(() => registrationModel.FirstName)"
+                                          Variant="Variant.Outlined"
+                                          Required="true"
+                                          RequiredError="First name is required"
+                                          Immediate="true" />
+
+                            <MudTextField T="string"
+                                          Label="Last Name"
+                                          @bind-Value="registrationModel.LastName"
+                                          For="@(() => registrationModel.LastName)"
+                                          Variant="Variant.Outlined"
+                                          Required="true"
+                                          RequiredError="Last name is required"
+                                          Immediate="true" />
                         </div>
                     </div>
-                </div>
 
-                <div class="registration-body">
-                    <EditForm Model="@registrationModel" OnValidSubmit="HandleSubmit">
-                        <DataAnnotationsValidator />
+                    <!-- Contact Information -->
+                    <div class="form-section">
+                        <MudText Typo="Typo.subtitle1" Class="form-section-title">
+                            <MudIcon Icon="@Icons.Material.Filled.ContactMail" Size="Size.Small" Class="mr-2" />
+                            Contact Information
+                        </MudText>
 
-                        <!-- Personal Information -->
-                        <div class="form-section">
-                            <div class="form-section-label">Step 1</div>
-                            <div class="form-section-title">
-                                <div class="form-section-title-icon">
-                                    <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
-                                </div>
-                                <span>Personal Information</span>
-                            </div>
+                        <div class="form-grid">
+                            <MudTextField T="string"
+                                          Label="Email Address"
+                                          @bind-Value="registrationModel.Email"
+                                          For="@(() => registrationModel.Email)"
+                                          Variant="Variant.Outlined"
+                                          InputType="InputType.Email"
+                                          Required="true"
+                                          RequiredError="Email address is required"
+                                          Validation="@(new Func<string, string?>(ValidateEmail))"
+                                          Immediate="true"
+                                          HelperText="We'll send the confirmation to this address" />
 
-                            <div class="form-grid-2col">
-                                <MudTextField T="string"
-                                              Label="First Name"
-                                              @bind-Value="registrationModel.FirstName"
-                                              For="@(() => registrationModel.FirstName)"
-                                              Variant="Variant.Outlined"
-                                              Required="true"
-                                              RequiredError="First name is required"
-                                              Immediate="true" />
-
-                                <MudTextField T="string"
-                                              Label="Last Name"
-                                              @bind-Value="registrationModel.LastName"
-                                              For="@(() => registrationModel.LastName)"
-                                              Variant="Variant.Outlined"
-                                              Required="true"
-                                              RequiredError="Last name is required"
-                                              Immediate="true" />
-                            </div>
+                            <MudTextField T="string"
+                                          Label="Phone Number (optional)"
+                                          @bind-Value="registrationModel.PhoneNumber"
+                                          Variant="Variant.Outlined"
+                                          InputType="InputType.Telephone"
+                                          HelperText="For any updates" />
                         </div>
+                    </div>
 
-                        <!-- Contact Information -->
-                        <div class="form-section">
-                            <div class="form-section-label">Step 2</div>
-                            <div class="form-section-title">
-                                <div class="form-section-title-icon">
-                                    <MudIcon Icon="@Icons.Material.Filled.ContactMail" Size="Size.Small" />
-                                </div>
-                                <span>Contact Information</span>
-                            </div>
+                    <!-- Additional Information -->
+                    <div class="form-section">
+                        <MudText Typo="Typo.subtitle1" Class="form-section-title">
+                            <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="mr-2" />
+                            Additional Information
+                        </MudText>
 
-                            <div class="form-grid">
-                                <MudTextField T="string"
-                                              Label="Email Address"
-                                              @bind-Value="registrationModel.Email"
-                                              For="@(() => registrationModel.Email)"
-                                              Variant="Variant.Outlined"
-                                              InputType="InputType.Email"
-                                              Required="true"
-                                              RequiredError="Email address is required"
-                                              Validation="@(new Func<string, string?>(ValidateEmail))"
-                                              Immediate="true"
-                                              HelperText="We'll send the confirmation to this address" />
+                        <div class="form-grid">
+                            <MudTextField T="string"
+                                          Label="Organization (optional)"
+                                          @bind-Value="registrationModel.Organization"
+                                          Variant="Variant.Outlined"
+                                          HelperText="Name of your school, company or organization" />
 
-                                <MudTextField T="string"
-                                              Label="Phone Number (optional)"
-                                              @bind-Value="registrationModel.PhoneNumber"
-                                              Variant="Variant.Outlined"
-                                              InputType="InputType.Telephone"
-                                              HelperText="For any updates" />
-                            </div>
+                            <MudTextField T="string"
+                                          Label="Message (optional)"
+                                          @bind-Value="registrationModel.Message"
+                                          Variant="Variant.Outlined"
+                                          Lines="4"
+                                          HelperText="Any questions or comments" />
                         </div>
+                    </div>
 
-                        <!-- Additional Information -->
-                        <div class="form-section">
-                            <div class="form-section-label">Step 3</div>
-                            <div class="form-section-title">
-                                <div class="form-section-title-icon">
-                                    <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" />
-                                </div>
-                                <span>Additional Information</span>
-                            </div>
+                    <!-- Terms and Conditions -->
+                    <div class="terms-box">
+                        <MudCheckBox T="bool"
+                                     @bind-Value="registrationModel.AcceptTerms"
+                                     For="@(() => registrationModel.AcceptTerms)"
+                                     Color="Color.Primary"
+                                     Required="true"
+                                     RequiredError="You must agree to the terms" />
+                        <MudText Typo="Typo.body2" Class="terms-box-text">
+                            I agree to the
+                            <MudLink Href="/terms" Target="_blank">terms and conditions</MudLink>
+                            and
+                            <MudLink Href="/privacy" Target="_blank">privacy policy</MudLink>.
+                        </MudText>
+                    </div>
 
-                            <div class="form-grid">
-                                <MudTextField T="string"
-                                              Label="Organization (optional)"
-                                              @bind-Value="registrationModel.Organization"
-                                              Variant="Variant.Outlined"
-                                              HelperText="Name of your school, company or organization" />
+                    <ValidationSummary />
 
-                                <MudTextField T="string"
-                                              Label="Message (optional)"
-                                              @bind-Value="registrationModel.Message"
-                                              Variant="Variant.Outlined"
-                                              Lines="4"
-                                              HelperText="Any questions or comments" />
-                            </div>
-                        </div>
-
-                        <!-- Terms and Conditions -->
-                        <div class="terms-box">
-                            <MudCheckBox T="bool"
-                                         @bind-Value="registrationModel.AcceptTerms"
-                                         For="@(() => registrationModel.AcceptTerms)"
-                                         Color="Color.Primary"
-                                         Required="true"
-                                         RequiredError="You must agree to the terms">
-                                <MudText Typo="Typo.body2" Class="terms-box-text">
-                                    I agree to the
-                                    <MudLink Href="/terms" Target="_blank">terms and conditions</MudLink>
-                                    and
-                                    <MudLink Href="/privacy" Target="_blank">privacy policy</MudLink>.
-                                </MudText>
-                            </MudCheckBox>
-                        </div>
-
-                        <ValidationSummary class="validation-errors" />
-
-                        <div class="action-buttons">
-                            <MudButton Variant="Variant.Text"
-                                       Color="Color.Default"
-                                       OnClick="Cancel"
-                                       Disabled="isSubmitting">
-                                Cancel
-                            </MudButton>
-                            <MudButton ButtonType="ButtonType.Submit"
-                                       Variant="Variant.Filled"
-                                       Color="Color.Primary"
-                                       Class="submit-button"
-                                       Disabled="isSubmitting || !registrationModel.AcceptTerms"
-                                       StartIcon="@(isSubmitting ? null : Icons.Material.Filled.CheckCircle)">
-                                @if (isSubmitting)
-                                {
-                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                                    <span>Registering...</span>
-                                }
-                                else
-                                {
-                                    <span>Register</span>
-                                }
-                            </MudButton>
-                        </div>
-                    </EditForm>
-                </div>
+                    <div class="action-buttons">
+                        <MudButton Variant="Variant.Text"
+                                   Color="Color.Default"
+                                   OnClick="Cancel"
+                                   Disabled="isSubmitting">
+                            Cancel
+                        </MudButton>
+                        <MudButton ButtonType="ButtonType.Submit"
+                                   Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Class="submit-button"
+                                   Disabled="isSubmitting || !registrationModel.AcceptTerms"
+                                   StartIcon="@(isSubmitting ? null : Icons.Material.Filled.CheckCircle)">
+                            @if (isSubmitting)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                <span>Registering...</span>
+                            }
+                            else
+                            {
+                                <span>Register</span>
+                            }
+                        </MudButton>
+                    </div>
+                </EditForm>
             </div>
         }
         else
