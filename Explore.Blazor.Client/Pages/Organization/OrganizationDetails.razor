@@ -1,0 +1,359 @@
+@page "/organization/{id:guid}"
+@using Explore.Blazor.Client.Models.DTOs
+@using Explore.Blazor.Client.Services
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using MudBlazor
+@using Microsoft.AspNetCore.Components
+@inject IOrganizationService OrganizationService
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@attribute [Authorize]
+
+<PageTitle>Organization Details</PageTitle>
+
+@if (isLoading)
+{
+    <MudContainer MaxWidth="MaxWidth.Large" Class="mt-8">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+        <MudText Typo="Typo.h6" Class="mt-4">Loading organization...</MudText>
+    </MudContainer>
+}
+else if (organization == null)
+{
+    <MudContainer MaxWidth="MaxWidth.Large" Class="mt-8">
+        <MudAlert Severity="Severity.Error">Organization not found.</MudAlert>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => NavigationManager.NavigateTo("/organization/my"))" Class="mt-4">
+            Back to My Organizations
+        </MudButton>
+    </MudContainer>
+}
+else
+{
+    <MudContainer MaxWidth="MaxWidth.Large" Class="mt-8">
+        <MudPaper Elevation="3" Class="pa-6">
+            <!-- Header with Edit Toggle -->
+            <div class="d-flex justify-space-between align-center mb-6">
+                <MudText Typo="Typo.h4">@organization.FullName</MudText>
+                @if (canEdit)
+                {
+                    <MudButton Variant="Variant.Filled" 
+                               Color="@(isEditMode ? Color.Secondary : Color.Primary)" 
+                               OnClick="ToggleEditMode"
+                               StartIcon="@(isEditMode ? Icons.Material.Filled.Cancel : Icons.Material.Filled.Edit)">
+                        @(isEditMode ? "Cancel" : "Edit")
+                    </MudButton>
+                }
+            </div>
+
+            @if (!isEditMode)
+            {
+                <!-- View Mode -->
+                <MudGrid>
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.subtitle2" Class="mud-text-secondary">Email</MudText>
+                        <MudText Typo="Typo.body1" Class="mb-4">@organization.Email</MudText>
+                    </MudItem>
+                    
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.subtitle2" Class="mud-text-secondary">Website</MudText>
+                        <MudText Typo="Typo.body1" Class="mb-4">
+                            @if (!string.IsNullOrEmpty(organization.WebsiteUrl))
+                            {
+                                <MudLink Href="@organization.WebsiteUrl" Target="_blank">@organization.WebsiteUrl</MudLink>
+                            }
+                            else
+                            {
+                                <text>Not provided</text>
+                            }
+                        </MudText>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.subtitle2" Class="mud-text-secondary">Country</MudText>
+                        <MudText Typo="Typo.body1" Class="mb-4">@organization.Country</MudText>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.subtitle2" Class="mud-text-secondary">City</MudText>
+                        <MudText Typo="Typo.body1" Class="mb-4">@organization.City</MudText>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.subtitle2" Class="mud-text-secondary">Postcode</MudText>
+                        <MudText Typo="Typo.body1" Class="mb-4">@organization.Postcode</MudText>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.subtitle2" Class="mud-text-secondary">Address</MudText>
+                        <MudText Typo="Typo.body1" Class="mb-4">@organization.Address</MudText>
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.subtitle2" Class="mud-text-secondary">Status</MudText>
+                        <MudChip T="string" Color="@GetStatusColor(organization.StatusTypeId)" Size="Size.Small">
+                            @organization.StatusTypeName
+                        </MudChip>
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.subtitle2" Class="mud-text-secondary">Created</MudText>
+                        <MudText Typo="Typo.body2">@organization.CreatedAt.ToString("MMMM dd, yyyy")</MudText>
+                    </MudItem>
+                </MudGrid>
+            }
+            else
+            {
+                <!-- Edit Mode -->
+                <MudForm @ref="form" @bind-IsValid="@formValid">
+                    <MudGrid>
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="editModel.FullName" 
+                                          Label="Organization Name" 
+                                          Variant="Variant.Outlined"
+                                          Required="true"
+                                          RequiredError="Organization name is required" />
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="editModel.Email" 
+                                          Label="Email" 
+                                          Variant="Variant.Outlined"
+                                          Required="true"
+                                          RequiredError="Email is required"
+                                          Validation="@(new Func<string, string>(ValidateEmail))" />
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="editModel.WebsiteUrl" 
+                                          Label="Website (Optional)" 
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="editModel.Country" 
+                                          Label="Country" 
+                                          Variant="Variant.Outlined"
+                                          Required="true"
+                                          RequiredError="Country is required" />
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="editModel.City" 
+                                          Label="City" 
+                                          Variant="Variant.Outlined"
+                                          Required="true"
+                                          RequiredError="City is required" />
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <MudNumericField @bind-Value="editModel.Postcode" 
+                                             Label="Postcode" 
+                                             Variant="Variant.Outlined"
+                                             Required="true"
+                                             RequiredError="Postcode is required"
+                                             Min="1000"
+                                             Max="99999" />
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="editModel.Address" 
+                                          Label="Address" 
+                                          Variant="Variant.Outlined"
+                                          Required="true"
+                                          RequiredError="Address is required" />
+                        </MudItem>
+
+                        <MudItem xs="12" Class="d-flex justify-end gap-2">
+                            <MudButton Variant="Variant.Outlined" 
+                                       Color="Color.Secondary" 
+                                       OnClick="CancelEdit"
+                                       Disabled="isSaving">
+                                Cancel
+                            </MudButton>
+                            <MudButton Variant="Variant.Filled" 
+                                       Color="Color.Primary" 
+                                       OnClick="SaveChanges"
+                                       Disabled="!formValid || isSaving">
+                                @if (isSaving)
+                                {
+                                    <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+                                    <span>Saving...</span>
+                                }
+                                else
+                                {
+                                    <span>Save Changes</span>
+                                }
+                            </MudButton>
+                        </MudItem>
+                    </MudGrid>
+                </MudForm>
+            }
+
+            <!-- Back Button -->
+            <MudDivider Class="my-6" />
+            <MudButton Variant="Variant.Text" 
+                       Color="Color.Primary" 
+                       OnClick="@(() => NavigationManager.NavigateTo("/organization/my"))"
+                       StartIcon="@Icons.Material.Filled.ArrowBack">
+                Back to My Organizations
+            </MudButton>
+        </MudPaper>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-4" CloseIconClicked="@(() => errorMessage = string.Empty)" ShowCloseIcon="true">
+                @errorMessage
+            </MudAlert>
+        }
+
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <MudAlert Severity="Severity.Success" Class="mt-4" CloseIconClicked="@(() => successMessage = string.Empty)" ShowCloseIcon="true">
+                @successMessage
+            </MudAlert>
+        }
+    </MudContainer>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private OrganizationDto? organization;
+    private OrganizationCreateDto editModel = new();
+    private MudForm? form;
+    private bool formValid;
+    private bool isLoading = true;
+    private bool isEditMode = false;
+    private bool isSaving = false;
+    private bool canEdit = false;
+    private string? errorMessage;
+    private string? successMessage;
+    private string? currentUserId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Get current user ID
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            currentUserId = user.FindFirst("sub")?.Value;
+
+            // Load organization
+            await LoadOrganization();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading organization: {ex.Message}");
+            errorMessage = "Failed to load organization details.";
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadOrganization()
+    {
+        isLoading = true;
+        organization = await OrganizationService.GetOrganizationByIdAsync(Id);
+        
+        if (organization != null)
+        {
+            // Check if current user is the creator
+            canEdit = !string.IsNullOrEmpty(currentUserId) && organization.CreatedByUserId == currentUserId;
+            
+            // Initialize edit model
+            editModel = new OrganizationCreateDto
+            {
+                FullName = organization.FullName,
+                Email = organization.Email,
+                WebsiteUrl = organization.WebsiteUrl,
+                Country = organization.Country,
+                City = organization.City,
+                Postcode = organization.Postcode,
+                Address = organization.Address
+            };
+        }
+        
+        isLoading = false;
+    }
+
+    private void ToggleEditMode()
+    {
+        if (isEditMode)
+        {
+            // Revert changes
+            editModel = new OrganizationCreateDto
+            {
+                FullName = organization!.FullName,
+                Email = organization.Email,
+                WebsiteUrl = organization.WebsiteUrl,
+                Country = organization.Country,
+                City = organization.City,
+                Postcode = organization.Postcode,
+                Address = organization.Address
+            };
+        }
+        
+        isEditMode = !isEditMode;
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+    }
+
+    private void CancelEdit()
+    {
+        ToggleEditMode();
+    }
+
+    private async Task SaveChanges()
+    {
+        if (!formValid) return;
+
+        try
+        {
+            isSaving = true;
+            errorMessage = string.Empty;
+            successMessage = string.Empty;
+
+            var success = await OrganizationService.UpdateOrganizationAsync(Id, editModel);
+
+            if (success)
+            {
+                successMessage = "Organization updated successfully!";
+                isEditMode = false;
+                await LoadOrganization(); // Reload to show updated data
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error updating organization: {ex.Message}");
+            errorMessage = $"Failed to update organization: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private string? ValidateEmail(string email)
+    {
+        if (string.IsNullOrEmpty(email))
+            return "Email is required";
+
+        if (!email.Contains("@"))
+            return "Invalid email format";
+
+        return null;
+    }
+
+    private Color GetStatusColor(int statusTypeId)
+    {
+        return statusTypeId switch
+        {
+            1 => Color.Warning,  // Pending
+            2 => Color.Success,  // Approved
+            3 => Color.Error,    // Rejected
+            _ => Color.Default
+        };
+    }
+}

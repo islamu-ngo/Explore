@@ -100,8 +100,32 @@ namespace Explore.API.Controllers
 
         // PUT api/<OrganizationController>/5
         [HttpPut("{id}")]
-        public void Put(int id, [FromBody] string value)
+        [Authorize]
+        public async Task<ActionResult<BaseCommandResponse<Guid>>> Put(Guid id, [FromBody] UpdateOrganizationDto updateDto)
         {
+            // Get the user ID from the token
+            var userId = User.FindFirst("sub")?.Value;
+            
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized("User ID not found in token");
+            }
+
+            var command = new UpdateOrganizationDetailsCommand
+            {
+                Id = id,
+                UserId = userId,
+                OrganizationDto = updateDto
+            };
+
+            var result = await _mediator.Send(command);
+
+            if (!result.Success)
+            {
+                return BadRequest(result);
+            }
+
+            return Ok(result);
         }
 
         // PUT api/<OrganizationController>/updatestatustype/5

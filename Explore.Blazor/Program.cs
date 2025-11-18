@@ -577,6 +577,70 @@ publicBff.MapGet("/Organization/my", async (HttpContext ctx, IHttpClientFactory 
     );
 });
 
+publicBff.MapGet("/Organization/{id:guid}", async (Guid id, HttpContext ctx, IHttpClientFactory f) =>
+{
+    if (ctx.User?.Identity?.IsAuthenticated != true)
+    {
+        return Results.Unauthorized();
+    }
+
+    var accessToken = await ctx.GetTokenAsync("access_token");
+    
+    if (string.IsNullOrEmpty(accessToken))
+    {
+        return Results.Problem("No access token available. Please logout and login again.", statusCode: 401);
+    }
+
+    var http = f.CreateClient("ExploreApiPublic");
+    var request = new HttpRequestMessage(HttpMethod.Get, $"api/Organization/{id}");
+    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+    
+    var response = await http.SendAsync(request);
+    
+    if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+    {
+        return Results.NotFound();
+    }
+    
+    response.EnsureSuccessStatusCode();
+    
+    return Results.Stream(
+        await response.Content.ReadAsStreamAsync(),
+        response.Content.Headers.ContentType?.ToString()
+    );
+});
+
+publicBff.MapPut("/Organization/{id:guid}", async (Guid id, HttpContext ctx, IHttpClientFactory f) =>
+{
+    if (ctx.User?.Identity?.IsAuthenticated != true)
+    {
+        return Results.Unauthorized();
+    }
+
+    var accessToken = await ctx.GetTokenAsync("access_token");
+    
+    if (string.IsNullOrEmpty(accessToken))
+    {
+        return Results.Problem("No access token available. Please logout and login again.", statusCode: 401);
+    }
+
+    var http = f.CreateClient("ExploreApiPublic");
+    var request = new HttpRequestMessage(HttpMethod.Put, $"api/Organization/{id}");
+    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+    request.Content = new StreamContent(ctx.Request.Body)
+    {
+        Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json") }
+    };
+    
+    var response = await http.SendAsync(request);
+    response.EnsureSuccessStatusCode();
+    
+    return Results.Stream(
+        await response.Content.ReadAsStreamAsync(),
+        response.Content.Headers.ContentType?.ToString()
+    );
+});
+
 publicBff.MapGet("/StatusType", async (IHttpClientFactory f) =>
 {
     var http = f.CreateClient("ExploreApiPublic");

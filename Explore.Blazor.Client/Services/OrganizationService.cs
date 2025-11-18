@@ -8,6 +8,8 @@ public interface IOrganizationService
     Task<OrganizationDto?> CreateOrganizationAsync(OrganizationCreateDto organization);
     Task<List<StatusTypeDto>> GetStatusTypesAsync();
     Task<List<OrganizationListDto>> GetMyOrganizationsAsync();
+    Task<OrganizationDto?> GetOrganizationByIdAsync(Guid id);
+    Task<bool> UpdateOrganizationAsync(Guid id, OrganizationCreateDto organization);
 }
 
 public class OrganizationService : IOrganizationService
@@ -110,6 +112,62 @@ public class OrganizationService : IOrganizationService
         {
             Console.WriteLine($"Fout bij ophalen mijn organisaties: {ex.Message}");
             return new List<OrganizationListDto>();
+        }
+    }
+
+    public async Task<OrganizationDto?> GetOrganizationByIdAsync(Guid id)
+    {
+        try
+        {
+            Console.WriteLine($"Fetching organization: /bff/api/Organization/{id}");
+            var response = await _httpClient.GetFromJsonAsync<OrganizationDto>($"/bff/api/Organization/{id}");
+            return response;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching organization: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<bool> UpdateOrganizationAsync(Guid id, OrganizationCreateDto organization)
+    {
+        try
+        {
+            Console.WriteLine($"Updating organization: /bff/api/Organization/{id}");
+            Console.WriteLine($"Data: {System.Text.Json.JsonSerializer.Serialize(organization)}");
+            
+            var response = await _httpClient.PutAsJsonAsync($"/bff/api/Organization/{id}", organization);
+            
+            Console.WriteLine($"API Response Status: {response.StatusCode}");
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var commandResponse = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
+                
+                if (commandResponse != null && commandResponse.Success)
+                {
+                    Console.WriteLine($"Organization updated successfully");
+                    return true;
+                }
+                else if (commandResponse != null && !commandResponse.Success)
+                {
+                    var errors = commandResponse.Errors != null 
+                        ? string.Join(", ", commandResponse.Errors) 
+                        : commandResponse.Message ?? "Unknown error";
+                    Console.WriteLine($"API error: {errors}");
+                    throw new Exception(errors);
+                }
+            }
+            
+            var errorContent = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"API error updating organization: {response.StatusCode} - {errorContent}");
+            throw new Exception($"HTTP {response.StatusCode}: {errorContent}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception updating organization: {ex.Message}");
+            throw;
         }
     }
 }
