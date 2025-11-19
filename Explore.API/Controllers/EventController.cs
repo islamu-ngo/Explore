@@ -16,11 +16,13 @@ namespace Explore.API.Controllers
     {
         private readonly IMediator _mediator;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly ILogger<EventController> _logger;
 
-        public EventController(IMediator mediator, IHttpContextAccessor httpContextAccessor)
+        public EventController(IMediator mediator, IHttpContextAccessor httpContextAccessor, ILogger<EventController> logger)
         {
             _mediator = mediator;
             _httpContextAccessor = httpContextAccessor;
+            _logger = logger;
         }
 
         // GET: api/<EventController>
@@ -32,6 +34,55 @@ namespace Explore.API.Controllers
         {
             var events = await _mediator.Send(new GetEventListRequest());
             return Ok(events);
+        }
+
+        // GET: api/<EventController>/my
+        [HttpGet("my")]
+        [EndpointSummary("Get My Events")]
+        [EndpointDescription("Get a list of events created by the current user's organizations")]
+        [Authorize]
+        public async Task<ActionResult<List<EventListDto>>> GetMyEvents()
+        {
+            try
+            {
+                _logger.LogInformation("=== GetMyEvents API Request ===");
+                _logger.LogInformation($"User authenticated: {User?.Identity?.IsAuthenticated}");
+                _logger.LogInformation($"User name: {User?.Identity?.Name}");
+                
+                // Log all claims for debugging
+                var claims = _httpContextAccessor.HttpContext?.User?.Claims;
+                if (claims != null)
+                {
+                    _logger.LogInformation("User Claims:");
+                    foreach (var claim in claims)
+                    {
+                        _logger.LogInformation($"  {claim.Type}: {claim.Value}");
+                    }
+                }
+                
+                var userId = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
+                    ?? _httpContextAccessor.HttpContext?.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
+                    ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sid")?.Value;
+
+                _logger.LogInformation($"Extracted userId: {userId}");
+
+                if (string.IsNullOrEmpty(userId))
+                {
+                    _logger.LogWarning("User ID not found in token");
+                    return Unauthorized(new { error = "User ID not found in token" });
+                }
+
+                _logger.LogInformation($"Sending GetMyEventsRequest for userId: {userId}");
+                var events = await _mediator.Send(new GetMyEventsRequest { UserId = userId });
+                
+                _logger.LogInformation($"Retrieved {events?.Count ?? 0} events");
+                return Ok(events);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in GetMyEvents");
+                return StatusCode(500, new { error = ex.Message, stackTrace = ex.StackTrace });
+            }
         }
 
         // GET api/<EventController>/5

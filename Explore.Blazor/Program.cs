@@ -577,6 +577,71 @@ publicBff.MapGet("/Organization/my", async (HttpContext ctx, IHttpClientFactory 
     );
 });
 
+publicBff.MapGet("/Event/my", async (HttpContext ctx, IHttpClientFactory f, ILogger<Program> logger) =>
+{
+    try
+    {
+        logger.LogInformation("=== BFF Event/my Request ===");
+        logger.LogInformation($"User authenticated: {ctx.User?.Identity?.IsAuthenticated}");
+        logger.LogInformation($"User name: {ctx.User?.Identity?.Name}");
+        
+        if (ctx.User?.Identity?.IsAuthenticated != true)
+        {
+            logger.LogWarning("User not authenticated");
+            return Results.Unauthorized();
+        }
+
+        // Get access token
+        var accessToken = await ctx.GetTokenAsync("access_token");
+        
+        if (string.IsNullOrEmpty(accessToken))
+        {
+            logger.LogError("No access token found");
+            return Results.Problem("No access token available. Please logout and login again.", statusCode: 401);
+        }
+        
+        logger.LogInformation($"Access token retrieved: {accessToken.Substring(0, Math.Min(20, accessToken.Length))}...");
+
+        var http = f.CreateClient("ExploreApiPublic");
+        var request = new HttpRequestMessage(HttpMethod.Get, "api/Event/my");
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+        
+        logger.LogInformation("Sending request to API...");
+        var response = await http.SendAsync(request);
+        
+        logger.LogInformation($"API Response Status: {response.StatusCode}");
+        
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            logger.LogError($"API Error Response: {errorContent}");
+            
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                return Results.Unauthorized();
+            }
+            
+            return Results.Problem(
+                detail: errorContent,
+                statusCode: (int)response.StatusCode
+            );
+        }
+        
+        return Results.Stream(
+            await response.Content.ReadAsStreamAsync(),
+            response.Content.Headers.ContentType?.ToString()
+        );
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Exception in BFF Event/my endpoint");
+        return Results.Problem(
+            detail: ex.Message,
+            statusCode: 500
+        );
+    }
+});
+
 publicBff.MapGet("/Organization/{id:guid}", async (Guid id, HttpContext ctx, IHttpClientFactory f) =>
 {
     if (ctx.User?.Identity?.IsAuthenticated != true)

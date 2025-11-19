@@ -99,5 +99,48 @@ namespace Explore.Persistence.Repositories
                 .FirstOrDefaultAsync(e => e.Id == id);
             return eventEntity;
         }
+
+        public async Task<List<EventListDto>> GetMyEventsWithDetails(string userId)
+        {
+            var events = await _dbContext.Events
+                .Include(e => e.EventType)
+                .Include(e => e.ProgramType)
+                .Include(e => e.AudienceGender)
+                .Include(e => e.AudienceAge)
+                .Include(e => e.Organization)
+                .Include(e => e.FeaturedImage)
+                .Where(e => e.Organization.CreatedByUserId == userId)
+                .Select(p => new EventListDto()
+                {
+                    Id = p.Id,
+                    ProgramTypeId = p.ProgramTypeId,
+                    ProgramTypeFullName = p.ProgramType.FullName,
+                    Title = p.Title,
+                    Description = p.Description,
+                    AudienceGenderId = p.AudienceGenderId,
+                    AudienceGenderFullName = p.AudienceGender.FullName,
+                    AudienceAgeId = p.AudienceAgeId,
+                    AudienceAgeFullName = p.AudienceAge.FullName,
+                    AudienceAgeMinAge = p.AudienceAge.MinAge,
+                    AudienceAgeMaxAge = p.AudienceAge.MaxAge,
+                    OrganizationId = p.OrganizationId,
+                    OrganizationFullName = p.Organization.FullName,
+                    AudienceAttendees = p.AudienceAttendees,
+                    Price = p.Price,
+                    FeaturedImageId = p.FeaturedImageId,
+                    FeaturedImageUri = p.FeaturedImage.Uri,
+                    IsRegistrationRequired = p.IsRegistrationRequired,
+                    TotalViews = p.TotalViews,
+                    Country = p.Country,
+                    City = p.City,
+                    PostCode = p.PostCode,
+                    Address = p.Address,
+                    ProgramUrl = p.ProgramUrl,
+                    EventTypeId = p.EventTypeId,
+                    EventTypeFullName = p.EventType.FullName
+                })
+                .ToListAsync();
+            return events;
+        }
     }
 }

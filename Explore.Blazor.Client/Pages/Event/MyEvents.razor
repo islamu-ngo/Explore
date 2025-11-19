@@ -1,9 +1,11 @@
 @page "/myevents"
 @using MudBlazor
 @using Explore.Blazor.Client.Models
+@using Explore.Blazor.Client.Models.DTOs
 @using Explore.Blazor.Client.Services
 @inject IEventService EventService
 @inject NavigationManager Navigation
+@inject ISnackbar Snackbar
 
 <style>
 /* ===== TOKENS ===== */
@@ -157,7 +159,14 @@
             </div>
         </div>
 
-        <!-- Filters -->
+        @if (isLoading)
+        {
+            <div style="display: flex; justify-content: center; align-items: center; min-height: 400px;">
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+            </div>
+        }
+        else
+        {
         <div class="filters-bar mb-4">
             <!-- Country -->
             <div class="filter-cell">
@@ -257,7 +266,7 @@
                 <MudItem xs="12" sm="6" md="4">
                     <MudCard Elevation="0" Class="card" Style="position: relative;">
                         <MudCardMedia Class="card-media"
-                                      Image="@($"https://dummyimage.com/1200x800/{GetEventColor(evt)}/ffffff&text={Uri.EscapeDataString(evt.Title)}")" />
+                                      Image="@(evt.FeaturedImageUri ?? $"https://dummyimage.com/1200x800/{GetEventColor(evt)}/ffffff&text={Uri.EscapeDataString(evt.Title)}")" />
                         
                         <!-- Actions Menu positioned on card -->
                         <div class="actions-menu">
@@ -282,10 +291,10 @@
                         <MudCardContent>
                             <div class="badges">
                                 <MudChip T="string" Size="Size.Small" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Category">
-                                    @evt.Category
+                                    @evt.EventTypeFullName
                                 </MudChip>
-                                <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Event">
-                                    @evt.Date.ToShortDateString()
+                                <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Business">
+                                    @evt.OrganizationFullName
                                 </MudChip>
                             </div>
                             <MudText Typo="Typo.h6" Class="mb-1">@evt.Title</MudText>
@@ -302,7 +311,7 @@
                             </MudButton>
                             <div class="loc">
                                 <MudIcon Icon="@Icons.Material.Filled.LocationOn" />
-                                <MudText>@evt.Country</MudText>
+                                <MudText>@(evt.City ?? evt.Country ?? "Online")</MudText>
                             </div>
                         </MudCardActions>
                     </MudCard>
@@ -335,7 +344,7 @@
                 </MudText>
             </div>
         }
-
+        }
     </div>
 </MudContainer>
 
@@ -343,36 +352,48 @@
     private string searchString = "";
     private string selectedCountry = "";
     private string selectedCategory = "";
-    private List<Event> Events = new();
+    private List<EventListDto> Events = new();
     private bool isCountryOpen;
     private bool isCategoryOpen;
+    private bool isLoading = true;
 
     // Pagination variables
     private int currentPage = 1;
     private int itemsPerPage = 6;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        LoadEvents();
+        await LoadEventsAsync();
     }
 
-    private void LoadEvents()
+    private async Task LoadEventsAsync()
     {
-        Events = EventService.GetUserEvents(searchString, selectedCountry, selectedCategory);
+        try
+        {
+            isLoading = true;
+            Events = await EventService.GetMyEventsAsync();
+            isLoading = false;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            isLoading = false;
+            Snackbar.Add($"Error loading events: {ex.Message}", Severity.Error);
+        }
     }
 
     // Filtered events logic for pagination
-    private List<Event> AllFilteredEvents => Events
+    private List<EventListDto> AllFilteredEvents => Events
         .Where(e => string.IsNullOrEmpty(searchString) ||
                     e.Title.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
                     (e.Description != null && e.Description.Contains(searchString, StringComparison.OrdinalIgnoreCase)))
         .Where(e => string.IsNullOrEmpty(selectedCountry) ||
-                    e.Country.Contains(selectedCountry, StringComparison.OrdinalIgnoreCase))
+                    (e.Country != null && e.Country.Contains(selectedCountry, StringComparison.OrdinalIgnoreCase)))
         .Where(e => string.IsNullOrEmpty(selectedCategory) ||
-                    e.Category.Equals(selectedCategory, StringComparison.OrdinalIgnoreCase))
+                    e.EventTypeFullName.Contains(selectedCategory, StringComparison.OrdinalIgnoreCase))
         .ToList();
 
-    private List<Event> FilteredEvents
+    private List<EventListDto> FilteredEvents
     {
         get
         {
@@ -393,35 +414,26 @@
         }
     }
 
-    private void EditEvent(Event evt)
+    private void EditEvent(EventListDto evt)
     {
         Navigation.NavigateTo($"/eventedit/{evt.Id}");
     }
 
-    private void ViewEventDetails(Event evt)
+    private void ViewEventDetails(EventListDto evt)
     {
-        // Navigate to event details - assuming you have a details page
         Navigation.NavigateTo($"/event/detail/{evt.Id}");
     }
 
-    private void DeleteEvent(Event evt)
+    private async Task DeleteEvent(EventListDto evt)
     {
-        EventService.DeleteEvent(evt.Id);
-        LoadEvents();
-        // Reset to first page if current page becomes invalid
-        var maxPages = TotalPages;
-        if (currentPage > maxPages)
-        {
-            currentPage = Math.Max(1, maxPages);
-        }
-        StateHasChanged();
+        // TODO: Implement actual delete via API
+        Snackbar.Add("Delete functionality coming soon", Severity.Info);
     }
 
     private void OnSearch(string value)
     {
         searchString = value;
-        currentPage = 1; // Reset to first page when searching
-        LoadEvents();
+        currentPage = 1;
         StateHasChanged();
     }
 
@@ -429,8 +441,7 @@
     {
         selectedCountry = value;
         isCountryOpen = false;
-        currentPage = 1; // Reset to first page when filtering
-        LoadEvents();
+        currentPage = 1;
         StateHasChanged();
     }
 
@@ -438,8 +449,7 @@
     {
         selectedCategory = value;
         isCategoryOpen = false;
-        currentPage = 1; // Reset to first page when filtering
-        LoadEvents();
+        currentPage = 1;
         StateHasChanged();
     }
 
@@ -459,17 +469,17 @@
         Navigation.NavigateTo("/organization/create");
     }
 
-    private string GetEventColor(Event evt)
+    private string GetEventColor(EventListDto evt)
     {
-        // Generate color based on category or use a default color scheme
-        return evt.Category switch
+        // Generate color based on event type
+        return evt.EventTypeFullName?.ToLower() switch
         {
-            "lecture" => "2196F3",    // Blue
-            "workshop" => "FF9800",   // Orange
-            "social" => "4CAF50",     // Green
-            "charity" => "E91E63",    // Pink
-            "education" => "9C27B0",  // Purple
-            _ => "607D8B"             // Blue Grey
+            var s when s.Contains("conference") => "2196F3",    // Blue
+            var s when s.Contains("workshop") => "FF9800",      // Orange
+            var s when s.Contains("webinar") => "4CAF50",       // Green
+            var s when s.Contains("seminar") => "E91E63",       // Pink
+            var s when s.Contains("training") => "9C27B0",      // Purple
+            _ => "607D8B"                                        // Blue Grey
         };
     }
 }

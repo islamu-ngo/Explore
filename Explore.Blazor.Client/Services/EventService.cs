@@ -1,10 +1,13 @@
 using Explore.Blazor.Client.Models;
+using Explore.Blazor.Client.Models.DTOs;
+using System.Net.Http.Json;
 
 namespace Explore.Blazor.Client.Services;
 
 public interface IEventService
 {
     List<Event> GetUserEvents(string? searchText = null, string? country = null, string? category = null, DateTime? date = null);
+    Task<List<EventListDto>> GetMyEventsAsync();
     Event? GetEventById(int eventId);
     void DeleteEvent(int eventId);
     void UpdateEvent(Event evt);
@@ -13,10 +16,12 @@ public interface IEventService
 public class EventService : IEventService
 {
     private List<Event> _events;
+    private readonly HttpClient _httpClient;
 
-    public EventService()
+    public EventService(HttpClient httpClient)
     {
-        // Initialize with mock data
+        _httpClient = httpClient;
+        // Initialize with mock data for backward compatibility
         _events = new List<Event>
         {
             new Event
@@ -146,6 +151,20 @@ public class EventService : IEventService
                 IsOnline = false
             }
         };
+    }
+
+    public async Task<List<EventListDto>> GetMyEventsAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetFromJsonAsync<List<EventListDto>>("/bff/api/Event/my");
+            return response ?? new List<EventListDto>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching my events: {ex.Message}");
+            return new List<EventListDto>();
+        }
     }
 
     public List<Event> GetUserEvents(string? searchText = null, string? country = null, string? category = null, DateTime? date = null)

@@ -10,5 +10,6 @@ namespace Explore.Application.Contracts.Persistence
     {
         Task<EventDto> GetEventWithDetails(Guid id);
         Task<List<EventListDto>> GetEventsWithDetails();
+        Task<List<EventListDto>> GetMyEventsWithDetails(string userId);
     }
 }
