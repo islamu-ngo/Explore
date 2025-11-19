@@ -1,0 +1,40 @@
+@using MudBlazor
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body1">
+            Are you sure you want to delete the event <strong>@EventTitle</strong>?
+        </MudText>
+        <MudText Typo="Typo.body2" Class="mt-3" Color="Color.Error">
+            This action cannot be undone.
+        </MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Color="Color.Default">Cancel</MudButton>
+        <MudButton OnClick="Submit" Color="Color.Error" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Delete">
+            Delete
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IDialogReference? DialogReference { get; set; }
+
+    [Parameter] 
+    public string EventTitle { get; set; } = string.Empty;
+
+    void Submit() 
+    {
+        Console.WriteLine("Delete button clicked - Submit called");
+        Console.WriteLine($"DialogReference is null: {DialogReference == null}");
+        DialogReference?.Close(DialogResult.Ok(true));
+        Console.WriteLine("Dialog closed with OK result");
+    }
+    
+    void Cancel() 
+    {
+        Console.WriteLine("Cancel button clicked");
+        DialogReference?.Close(DialogResult.Cancel());
+    }
+}

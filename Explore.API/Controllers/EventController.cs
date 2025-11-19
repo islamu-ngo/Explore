@@ -110,14 +110,60 @@ namespace Explore.API.Controllers
 
         // PUT api/<EventController>/5
         [HttpPut("{id}")]
-        public void Put(int id, [FromBody] string value)
+        [EndpointSummary("Update an Event")]
+        [EndpointDescription("Update an existing event")]
+        [Authorize]
+        public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventDto @event)
         {
+            if (id != @event.Id)
+            {
+                return BadRequest(new { error = "Event ID mismatch" });
+            }
+
+            var command = new UpdateEventCommand { EventDto = @event };
+            var response = await _mediator.Send(command);
+            
+            if (!response.Success)
+            {
+                return BadRequest(response);
+            }
+            
+            return Ok(response);
         }
 
         // DELETE api/<EventController>/5
         [HttpDelete("{id}")]
-        public void Delete(int id)
+        [EndpointSummary("Delete an Event")]
+        [EndpointDescription("Delete an event (only if user owns the organization)")]
+        [Authorize]
+        public async Task<ActionResult> Delete(Guid id)
         {
+            try
+            {
+                var userId = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
+                    ?? _httpContextAccessor.HttpContext?.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
+                    ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sid")?.Value;
+
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Unauthorized(new { error = "User ID not found in token" });
+                }
+
+                var command = new DeleteEventCommand { Id = id, UserId = userId };
+                var result = await _mediator.Send(command);
+
+                if (!result)
+                {
+                    return NotFound(new { error = "Event not found or you don't have permission to delete it" });
+                }
+
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting event {EventId}", id);
+                return StatusCode(500, new { error = ex.Message });
+            }
         }
     }
 }

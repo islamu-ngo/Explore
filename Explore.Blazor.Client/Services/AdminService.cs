@@ -10,6 +10,7 @@ public interface IAdminService
     Task<bool> ApproveOrganizationAsync(Guid id);
     Task<bool> RejectOrganizationAsync(Guid id);
     Task<bool> RevertToPendingAsync(Guid id);
+    Task<List<EventTypeListDto>> GetEventTypesAsync();
 }
 
 public class AdminService : IAdminService
@@ -98,6 +99,20 @@ public class AdminService : IAdminService
         {
             Console.WriteLine($"Fout bij terugzetten naar pending: {ex.Message}");
             return false;
+        }
+    }
+
+    public async Task<List<EventTypeListDto>> GetEventTypesAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetFromJsonAsync<List<EventTypeListDto>>("/bff/api/EventType");
+            return response ?? new List<EventTypeListDto>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching event types: {ex.Message}");
+            return new List<EventTypeListDto>();
         }
     }
 }

@@ -8,6 +8,9 @@ public interface IEventService
 {
     List<Event> GetUserEvents(string? searchText = null, string? country = null, string? category = null, DateTime? date = null);
     Task<List<EventListDto>> GetMyEventsAsync();
+    Task<EventDetailsDto> GetEventByIdAsync(Guid eventId);
+    Task<bool> DeleteEventAsync(Guid eventId);
+    Task<bool> UpdateEventAsync(Guid eventId, UpdateEventDto eventDto);
     Event? GetEventById(int eventId);
     void DeleteEvent(int eventId);
     void UpdateEvent(Event evt);
@@ -164,6 +167,48 @@ public class EventService : IEventService
         {
             Console.WriteLine($"Error fetching my events: {ex.Message}");
             return new List<EventListDto>();
+        }
+    }
+
+    public async Task<EventDetailsDto> GetEventByIdAsync(Guid eventId)
+    {
+        try
+        {
+            var response = await _httpClient.GetFromJsonAsync<EventDetailsDto>($"/bff/api/Event/{eventId}");
+            return response;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching event {eventId}: {ex.Message}");
+            throw;
+        }
+    }
+
+    public async Task<bool> UpdateEventAsync(Guid eventId, UpdateEventDto eventDto)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsJsonAsync($"/bff/api/Event/{eventId}", eventDto);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error updating event {eventId}: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<bool> DeleteEventAsync(Guid eventId)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"/bff/api/Event/{eventId}");
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting event {eventId}: {ex.Message}");
+            return false;
         }
     }
 
