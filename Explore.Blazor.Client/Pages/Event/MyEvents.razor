@@ -4,6 +4,7 @@
 @using Explore.Blazor.Client.Models.DTOs
 @using Explore.Blazor.Client.Services
 @inject IEventService EventService
+@inject IOrganizationService OrganizationService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 
@@ -202,46 +203,62 @@
                 </MudPaper>
             </div>
 
+            <!-- Organization -->
+            <div class="filter-cell">
+                <MudPopover Open="@isOrganizationOpen" Fixed="true" Class="filter-popover px-4 py-3">
+                    <div class="d-flex flex-column gap-3" style="min-width:250px; max-height:300px; overflow-y:auto;">
+                        <MudText Typo="Typo.subtitle2">Organization</MudText>
+                        <div class="d-flex flex-column gap-1">
+                            <MudText Typo="Typo.body2"
+                                     Color="@(selectedOrganizationId == Guid.Empty ? Color.Primary : Color.Default)"
+                                     Class="filter-option"
+                                     @onclick="@(() => OnOrganizationChanged(Guid.Empty))">All Organizations</MudText>
+                            @foreach (var org in MyOrganizations)
+                            {
+                                <MudText Typo="Typo.body2"
+                                         Color="@(selectedOrganizationId == org.Id ? Color.Primary : Color.Default)"
+                                         Class="filter-option"
+                                         @onclick="@(() => OnOrganizationChanged(org.Id))">@org.FullName</MudText>
+                            }
+                        </div>
+                    </div>
+                </MudPopover>
+                <MudPaper @onclick="@(() => isOrganizationOpen = !isOrganizationOpen)"
+                          Class="filter-paper d-flex justify-space-between align-center">
+                    <MudText Class="ml-2">
+                        @(selectedOrganizationId == Guid.Empty ? "All Organizations" : MyOrganizations.FirstOrDefault(o => o.Id == selectedOrganizationId)?.FullName ?? "All Organizations")
+                    </MudText>
+                    <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" />
+                </MudPaper>
+            </div>
+
             <!-- Category -->
             <div class="filter-cell">
                 <MudPopover Open="@isCategoryOpen" Fixed="true" Class="filter-popover px-4 py-3">
                     <div class="d-flex flex-column gap-3" style="min-width:220px">
-                        <MudText Typo="Typo.subtitle2">Category</MudText>
+                        <MudText Typo="Typo.subtitle2">Event Type</MudText>
                         <div class="d-flex flex-column gap-1">
                             <MudText Typo="Typo.body2"
                                      Color="@(selectedCategory == "" ? Color.Primary : Color.Default)"
                                      Class="filter-option"
-                                     @onclick="@(() => OnCategoryChanged(""))">All Categories</MudText>
-                            <MudText Typo="Typo.body2"
-                                     Color="@(selectedCategory == "lecture" ? Color.Primary : Color.Default)"
-                                     Class="filter-option"
-                                     @onclick="@(() => OnCategoryChanged("lecture"))">Lecture</MudText>
-                            <MudText Typo="Typo.body2"
-                                     Color="@(selectedCategory == "workshop" ? Color.Primary : Color.Default)"
-                                     Class="filter-option"
-                                     @onclick="@(() => OnCategoryChanged("workshop"))">Workshop</MudText>
-                            <MudText Typo="Typo.body2"
-                                     Color="@(selectedCategory == "social" ? Color.Primary : Color.Default)"
-                                     Class="filter-option"
-                                     @onclick="@(() => OnCategoryChanged("social"))">Social</MudText>
-                            <MudText Typo="Typo.body2"
-                                     Color="@(selectedCategory == "charity" ? Color.Primary : Color.Default)"
-                                     Class="filter-option"
-                                     @onclick="@(() => OnCategoryChanged("charity"))">Charity</MudText>
+                                     @onclick="@(() => OnCategoryChanged(""))">All Types</MudText>
+                            @foreach (var eventType in UniqueEventTypes)
+                            {
+                                <MudText Typo="Typo.body2"
+                                         Color="@(selectedCategory == eventType ? Color.Primary : Color.Default)"
+                                         Class="filter-option"
+                                         @onclick="@(() => OnCategoryChanged(eventType))">@eventType</MudText>
+                            }
                         </div>
                     </div>
                 </MudPopover>
                 <MudPaper @onclick="@(() => isCategoryOpen = !isCategoryOpen)"
                           Class="filter-paper d-flex justify-space-between align-center">
                     <MudText Class="ml-2">
-                        @(string.IsNullOrEmpty(selectedCategory) ? "All Categories" : selectedCategory)
+                        @(string.IsNullOrEmpty(selectedCategory) ? "All Types" : selectedCategory)
                     </MudText>
                     <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" />
                 </MudPaper>
-            </div>
-
-            <!-- Empty cell for spacing -->
-            <div class="filter-cell">
             </div>
 
             <!-- Search -->
@@ -352,9 +369,12 @@
     private string searchString = "";
     private string selectedCountry = "";
     private string selectedCategory = "";
+    private Guid selectedOrganizationId = Guid.Empty;
     private List<EventListDto> Events = new();
+    private List<OrganizationListDto> MyOrganizations = new();
     private bool isCountryOpen;
     private bool isCategoryOpen;
+    private bool isOrganizationOpen;
     private bool isLoading = true;
 
     // Pagination variables
@@ -363,24 +383,39 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadEventsAsync();
+        await LoadDataAsync();
     }
 
-    private async Task LoadEventsAsync()
+    private async Task LoadDataAsync()
     {
         try
         {
             isLoading = true;
-            Events = await EventService.GetMyEventsAsync();
+            
+            // Load both events and organizations in parallel
+            var eventsTask = EventService.GetMyEventsAsync();
+            var organizationsTask = OrganizationService.GetMyOrganizationsAsync();
+            
+            await Task.WhenAll(eventsTask, organizationsTask);
+            
+            Events = eventsTask.Result;
+            MyOrganizations = organizationsTask.Result;
+            
             isLoading = false;
             StateHasChanged();
         }
         catch (Exception ex)
         {
             isLoading = false;
-            Snackbar.Add($"Error loading events: {ex.Message}", Severity.Error);
+            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
         }
     }
+    
+    private List<string> UniqueEventTypes => Events
+        .Select(e => e.EventTypeFullName)
+        .Distinct()
+        .OrderBy(t => t)
+        .ToList();
 
     // Filtered events logic for pagination
     private List<EventListDto> AllFilteredEvents => Events
@@ -391,6 +426,8 @@
                     (e.Country != null && e.Country.Contains(selectedCountry, StringComparison.OrdinalIgnoreCase)))
         .Where(e => string.IsNullOrEmpty(selectedCategory) ||
                     e.EventTypeFullName.Contains(selectedCategory, StringComparison.OrdinalIgnoreCase))
+        .Where(e => selectedOrganizationId == Guid.Empty ||
+                    e.OrganizationId == selectedOrganizationId)
         .ToList();
 
     private List<EventListDto> FilteredEvents
@@ -449,6 +486,14 @@
     {
         selectedCategory = value;
         isCategoryOpen = false;
+        currentPage = 1;
+        StateHasChanged();
+    }
+
+    private void OnOrganizationChanged(Guid organizationId)
+    {
+        selectedOrganizationId = organizationId;
+        isOrganizationOpen = false;
         currentPage = 1;
         StateHasChanged();
     }
