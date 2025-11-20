@@ -41,16 +41,8 @@ public class OrganizationListDto
     public string StatusTypeFullName { get; set; } = string.Empty;
 }
 
-public class StatusTypeDto
+public class OrganizationStatusTypeListDto
 {
     public int Id { get; set; }
     public string FullName { get; set; } = string.Empty;
-}
-
-public class BaseCommandResponse<TKey>
-{
-    public TKey? Id { get; set; }
-    public bool Success { get; set; }
-    public string? Message { get; set; }
-    public List<string>? Errors { get; set; }
 }

@@ -1,0 +1,148 @@
+@page "/event-created/{EventId:guid}"
+@using Explore.Blazor.Client.Services
+@inject IEventService EventService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Event Created - Explore</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-8">
+    @if (isLoading)
+    {
+        <MudPaper Class="pa-8 text-center">
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+            <MudText Typo="Typo.h6" Class="mt-4">Loading event details...</MudText>
+        </MudPaper>
+    }
+    else if (eventDetails != null)
+    {
+        <MudPaper Class="pa-8">
+            <div class="text-center mb-6">
+                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" 
+                        Color="Color.Success" 
+                        Size="Size.Large" 
+                        Style="font-size: 5rem;" />
+                <MudText Typo="Typo.h4" Color="Color.Success" Class="mt-4">
+                    Event Created Successfully!
+                </MudText>
+                <MudText Typo="Typo.body1" Class="mt-2 text-muted">
+                    Your event has been created and is now visible in your events.
+                </MudText>
+            </div>
+
+            <MudDivider Class="my-4" />
+
+            <MudText Typo="Typo.h5" Class="mb-4">Event Details</MudText>
+
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudText Typo="Typo.subtitle2" Color="Color.Primary">Title</MudText>
+                    <MudText Typo="Typo.body1" Class="mb-3">@eventDetails.Title</MudText>
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudText Typo="Typo.subtitle2" Color="Color.Primary">Description</MudText>
+                    <MudText Typo="Typo.body1" Class="mb-3">@eventDetails.Description</MudText>
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.subtitle2" Color="Color.Primary">Location</MudText>
+                    <MudText Typo="Typo.body1" Class="mb-3">
+                        @eventDetails.Address<br />
+                        @eventDetails.City, @eventDetails.PostCode<br />
+                        @eventDetails.Country
+                    </MudText>
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.subtitle2" Color="Color.Primary">Event Type</MudText>
+                    <MudText Typo="Typo.body1" Class="mb-3">@eventDetails.EventTypeFullName</MudText>
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.subtitle2" Color="Color.Primary">Expected Attendees</MudText>
+                    <MudText Typo="Typo.body1" Class="mb-3">@(eventDetails.AudienceAttendees?.ToString() ?? "Not specified")</MudText>
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.subtitle2" Color="Color.Primary">Price</MudText>
+                    <MudText Typo="Typo.body1" Class="mb-3">
+                        @(eventDetails.Price > 0 ? $"€{eventDetails.Price:N2}" : "Free")
+                    </MudText>
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.subtitle2" Color="Color.Primary">Registration Required</MudText>
+                    <MudText Typo="Typo.body1" Class="mb-3">
+                        @(eventDetails.IsRegistrationRequired == true ? "Yes" : "No")
+                    </MudText>
+                </MudItem>
+
+                @if (!string.IsNullOrEmpty(eventDetails.ProgramUrl))
+                {
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.subtitle2" Color="Color.Primary">Program URL</MudText>
+                        <MudLink Href="@eventDetails.ProgramUrl" Target="_blank" Typo="Typo.body1">
+                            View Program
+                        </MudLink>
+                    </MudItem>
+                }
+            </MudGrid>
+
+            <MudDivider Class="my-4" />
+
+            <div class="d-flex justify-content-between mt-6">
+                <MudButton Variant="Variant.Outlined" 
+                          Color="Color.Primary"
+                          OnClick="@(() => Navigation.NavigateTo("/createevent"))">
+                    Create Another Event
+                </MudButton>
+                <MudButton Variant="Variant.Filled" 
+                          Color="Color.Primary"
+                          OnClick="@(() => Navigation.NavigateTo("/myevents"))">
+                    View My Events
+                </MudButton>
+            </div>
+        </MudPaper>
+    }
+    else
+    {
+        <MudPaper Class="pa-8 text-center">
+            <MudIcon Icon="@Icons.Material.Filled.Error" 
+                    Color="Color.Error" 
+                    Size="Size.Large" />
+            <MudText Typo="Typo.h6" Class="mt-4">Event not found</MudText>
+            <MudButton Variant="Variant.Filled" 
+                      Color="Color.Primary"
+                      Class="mt-4"
+                      OnClick="@(() => Navigation.NavigateTo("/myevents"))">
+                Go to My Events
+            </MudButton>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    [Parameter]
+    public Guid EventId { get; set; }
+
+    private EventDetailsDto? eventDetails;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            isLoading = true;
+            eventDetails = await EventService.GetEventByIdAsync(EventId);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading event details: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}
