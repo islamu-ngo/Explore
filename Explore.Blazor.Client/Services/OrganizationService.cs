@@ -1,12 +1,13 @@
 using System.Net.Http.Json;
 using Explore.Blazor.Client.Models.DTOs;
+using Explore.Blazor.Client.Models.Responses;
 
 namespace Explore.Blazor.Client.Services;
 
 public interface IOrganizationService
 {
     Task<OrganizationDto?> CreateOrganizationAsync(OrganizationCreateDto organization);
-    Task<List<StatusTypeDto>> GetStatusTypesAsync();
+    Task<List<OrganizationStatusTypeListDto>> GetStatusTypesAsync();
     Task<List<OrganizationListDto>> GetMyOrganizationsAsync();
     Task<OrganizationDto?> GetOrganizationByIdAsync(Guid id);
     Task<bool> UpdateOrganizationAsync(Guid id, OrganizationCreateDto organization);
@@ -87,17 +88,17 @@ public class OrganizationService : IOrganizationService
         }
     }
 
-    public async Task<List<StatusTypeDto>> GetStatusTypesAsync()
+    public async Task<List<OrganizationStatusTypeListDto>> GetStatusTypesAsync()
     {
         try
         {
-            var response = await _httpClient.GetFromJsonAsync<List<StatusTypeDto>>("/bff/api/StatusType");
-            return response ?? new List<StatusTypeDto>();
+            var response = await _httpClient.GetFromJsonAsync<List<OrganizationStatusTypeListDto>>("/bff/api/StatusType");
+            return response ?? new List<OrganizationStatusTypeListDto>();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Fout bij ophalen status types: {ex.Message}");
-            return new List<StatusTypeDto>();
+            Console.WriteLine($"Error fetching status types: {ex.Message}");
+            return new List<OrganizationStatusTypeListDto>();
         }
     }
 

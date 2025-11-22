@@ -1,5 +1,6 @@
 using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Models.DTOs;
+using Explore.Blazor.Client.Models.Responses;
 using System.Net.Http.Json;
 
 namespace Explore.Blazor.Client.Services;
@@ -11,6 +12,7 @@ public interface IEventService
     Task<EventDetailsDto> GetEventByIdAsync(Guid eventId);
     Task<bool> DeleteEventAsync(Guid eventId);
     Task<bool> UpdateEventAsync(Guid eventId, UpdateEventDto eventDto);
+    Task<Guid?> CreateEventAsync(CreateEventDto createDto);
     Event? GetEventById(int eventId);
     void DeleteEvent(int eventId);
     void UpdateEvent(Event evt);
@@ -209,6 +211,41 @@ public class EventService : IEventService
         {
             Console.WriteLine($"Error deleting event {eventId}: {ex.Message}");
             return false;
+        }
+    }
+
+    public async Task<Guid?> CreateEventAsync(CreateEventDto createDto)
+    {
+        try
+        {
+            Console.WriteLine($"Creating event with title: {createDto.Title}");
+            var response = await _httpClient.PostAsJsonAsync("/bff/api/Event", createDto);
+            
+            Console.WriteLine($"Response status: {response.StatusCode}");
+            var content = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"Response content: {content}");
+            
+            if (response.IsSuccessStatusCode)
+            {
+                // API returns BaseCommandResponse<Guid>
+                var result = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
+                
+                if (result?.Success == true && result.Id != Guid.Empty)
+                {
+                    Console.WriteLine($"Event created successfully with ID: {result.Id}");
+                    return result.Id;
+                }
+                
+                Console.WriteLine($"Event creation failed: {result?.Message}");
+            }
+            
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error creating event: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            throw;
         }
     }
 

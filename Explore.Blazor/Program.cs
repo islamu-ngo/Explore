@@ -471,6 +471,28 @@ publicBff.MapGet("/EventType", async (IHttpClientFactory f) =>
     return Results.Content(content, "application/json");
 });
 
+publicBff.MapGet("/AudienceGender", async (IHttpClientFactory f) =>
+{
+    var http = f.CreateClient("ExploreApiPublic");
+    var r = await http.GetAsync("api/AudienceGender");
+    r.EnsureSuccessStatusCode();
+    return Results.Stream(
+        await r.Content.ReadAsStreamAsync(),
+        r.Content.Headers.ContentType?.ToString()
+    );
+});
+
+publicBff.MapGet("/AudienceAge", async (IHttpClientFactory f) =>
+{
+    var http = f.CreateClient("ExploreApiPublic");
+    var r = await http.GetAsync("api/AudienceAge");
+    r.EnsureSuccessStatusCode();
+    return Results.Stream(
+        await r.Content.ReadAsStreamAsync(),
+        r.Content.Headers.ContentType?.ToString()
+    );
+});
+
 publicBff.MapGet("/ProgramType", async (IHttpClientFactory f) =>
 {
     var http = f.CreateClient("ExploreApiPublic");
@@ -640,6 +662,45 @@ publicBff.MapGet("/Event/my", async (HttpContext ctx, IHttpClientFactory f, ILog
             statusCode: 500
         );
     }
+});
+
+publicBff.MapPost("/Event", async (HttpContext ctx, IHttpClientFactory f) =>
+{
+    if (ctx.User?.Identity?.IsAuthenticated != true)
+    {
+        return Results.Unauthorized();
+    }
+
+    var accessToken = await ctx.GetTokenAsync("access_token");
+    
+    if (string.IsNullOrEmpty(accessToken))
+    {
+        return Results.Problem("No access token available. Please logout and login again.", statusCode: 401);
+    }
+
+    var http = f.CreateClient("ExploreApiPublic");
+    var request = new HttpRequestMessage(HttpMethod.Post, "api/Event");
+    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+    request.Content = new StreamContent(ctx.Request.Body)
+    {
+        Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json") }
+    };
+    
+    var response = await http.SendAsync(request);
+    
+    if (!response.IsSuccessStatusCode)
+    {
+        var errorContent = await response.Content.ReadAsStringAsync();
+        return Results.Problem(
+            detail: errorContent,
+            statusCode: (int)response.StatusCode
+        );
+    }
+    
+    return Results.Stream(
+        await response.Content.ReadAsStreamAsync(),
+        response.Content.Headers.ContentType?.ToString()
+    );
 });
 
 publicBff.MapGet("/Event/{id:guid}", async (Guid id, HttpContext ctx, IHttpClientFactory f) =>

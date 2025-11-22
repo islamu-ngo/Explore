@@ -11,6 +11,8 @@ public interface IAdminService
     Task<bool> RejectOrganizationAsync(Guid id);
     Task<bool> RevertToPendingAsync(Guid id);
     Task<List<EventTypeListDto>> GetEventTypesAsync();
+    Task<List<AudienceGenderListDto>> GetAudienceGendersAsync();
+    Task<List<AudienceAgeListDto>> GetAudienceAgesAsync();
 }
 
 public class AdminService : IAdminService
@@ -113,6 +115,34 @@ public class AdminService : IAdminService
         {
             Console.WriteLine($"Error fetching event types: {ex.Message}");
             return new List<EventTypeListDto>();
+        }
+    }
+
+    public async Task<List<AudienceGenderListDto>> GetAudienceGendersAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetFromJsonAsync<List<AudienceGenderListDto>>("/bff/api/AudienceGender");
+            return response ?? new List<AudienceGenderListDto>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching audience genders: {ex.Message}");
+            return new List<AudienceGenderListDto>();
+        }
+    }
+
+    public async Task<List<AudienceAgeListDto>> GetAudienceAgesAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetFromJsonAsync<List<AudienceAgeListDto>>("/bff/api/AudienceAge");
+            return response ?? new List<AudienceAgeListDto>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching audience ages: {ex.Message}");
+            return new List<AudienceAgeListDto>();
         }
     }
 }
