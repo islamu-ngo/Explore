@@ -25,7 +25,6 @@
     <Folder Include="DTOs\EventType\Validators\" />
     <Folder Include="DTOs\ProgramRegistration\" />
     <Folder Include="DTOs\OrganizationMember\Validators\" />
-    <Folder Include="DTOs\Organization\Validators\" />
     <Folder Include="DTOs\ProgramType\Validators\" />
     <Folder Include="DTOs\Program\Validators\" />
     <Folder Include="DTOs\StatusType\Validators\" />
