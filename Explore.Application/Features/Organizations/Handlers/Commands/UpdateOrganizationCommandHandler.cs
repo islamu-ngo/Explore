@@ -6,6 +6,7 @@ using MediatR;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Explore.Application.DTOs.Organization.Validators;
 using Explore.Domain;
 
 namespace Explore.Application.Features.Organizations.Handlers.Commands
@@ -13,11 +14,13 @@ namespace Explore.Application.Features.Organizations.Handlers.Commands
     public class UpdateOrganizationCommandHandler : IRequestHandler<UpdateOrganizationCommand, Unit>
     {
         private readonly IOrganizationRepository _organizationRepository;
+        private readonly IStatusTypeRepository _statusTypeRepository;
         private readonly IMapper _mapper;
 
-        public UpdateOrganizationCommandHandler(IOrganizationRepository organizationRepository, IMapper mapper)
+        public UpdateOrganizationCommandHandler(IOrganizationRepository organizationRepository, IStatusTypeRepository statusTypeRepository, IMapper mapper)
         {
             _organizationRepository = organizationRepository;
+            _statusTypeRepository = statusTypeRepository;
             _mapper = mapper;
         }
 
@@ -31,6 +34,12 @@ namespace Explore.Application.Features.Organizations.Handlers.Commands
 
             if (request.OrganizationStatusTypeDto != null)
             {
+                var validator = new UpdateOrganizationStatusTypeDtoValidator(_statusTypeRepository);
+                var validationResult = await validator.ValidateAsync(request.OrganizationStatusTypeDto);
+                if (!validationResult.IsValid)
+                {
+                    throw new ValidationException(validationResult);
+                }
                 organization.StatusTypeId = request.OrganizationStatusTypeDto.StatusTypeId;
                 await _organizationRepository.Update(organization);
             }

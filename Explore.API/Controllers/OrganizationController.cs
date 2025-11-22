@@ -41,6 +41,11 @@ namespace Explore.API.Controllers
         [Authorize]
         public async Task<ActionResult<List<OrganizationListDto>>> GetMyOrganizations()
         {
+            //var userIdClaim = _httpContextAccessor.HttpContext?.User?.FindFirst(CustomClaimTypes.Id.ToString())?.Value;
+            //if (userIdClaim == null)
+            //{
+            //    return Unauthorized("User ID claim not found.");
+            //}
             var userId = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
                 ?? _httpContextAccessor.HttpContext?.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
                 ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sid")?.Value;
