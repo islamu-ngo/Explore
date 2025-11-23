@@ -11,6 +11,7 @@ builder.Services.AddScoped<IEventService, EventService>();
 builder.Services.AddScoped<IProgramService, ProgramService>();
 builder.Services.AddScoped<IOrganizationService, OrganizationService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
+builder.Services.AddScoped<ILandingPageService, LandingPageService>();
 
 builder.Services.AddScoped(sp => new HttpClient
 {

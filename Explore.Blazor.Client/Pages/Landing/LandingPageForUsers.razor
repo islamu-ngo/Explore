@@ -1,5 +1,8 @@
 ﻿@using MudBlazor
+@using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Models.DTOs
 @inject IJSRuntime JS
+@inject ILandingPageService LandingPageService
 
 <style>
 :root{
@@ -70,6 +73,62 @@
 
 /* Clickable tile link */
 .tile-link{ display:block; text-decoration:none; color:inherit; }
+
+/* ---------- EVENT CARDS ---------- */
+.card {
+    border-radius: 16px;
+    overflow:hidden;
+    border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+    height: 100%; display: flex; flex-direction: column; cursor: pointer;
+}
+.card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 16px 36px rgba(0,0,0,.16);
+    border-color: color-mix(in srgb, var(--mud-palette-primary) 40%, var(--mud-palette-lines-default));
+}
+.card-media {
+    position: relative; 
+    height: 200px; 
+    overflow: hidden;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.2rem;
+    font-weight: 600;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+.card-media::after {
+    content:""; 
+    position:absolute; 
+    inset:0;
+    background: linear-gradient(180deg, rgba(0,0,0,0) 50%, rgba(0,0,0,.25) 100%);
+}
+.event-body { padding: 20px; flex: 1; display: flex; flex-direction: column; color: #e2e8f0; }
+.event-chips { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+
+/* Badges row */
+.badges{ 
+    display:flex; 
+    gap:8px; 
+    align-items:center; 
+    margin: 10px 0 6px 0; 
+}
+
+/* Location row */
+.loc{
+    display:flex; 
+    align-items:center; 
+    gap:6px; 
+    opacity:.85;
+}
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: #fff; font-weight: 600;
+    font-size: 1.1rem; text-align: center; padding: 20px;
+}
+.event-body { padding: 20px; flex: 1; display: flex; flex-direction: column; color: #e2e8f0; }
+.event-chips { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
 
 /* ---------- CAROUSEL ---------- */
 .carousel-wrap{
@@ -185,64 +244,113 @@
     <section class="section">
         <MudGrid AlignItems="AlignItems.Center">
             <MudItem xs="12" md="8">
-                <MudText Typo="Typo.h5">This Week</MudText>
-                <MudText Typo="Typo.subtitle2" Class="muted">Fresh picks to keep you inspired and engaged.</MudText>
+                <MudText Typo="Typo.h5">Featured Events</MudText>
+                <MudText Typo="Typo.subtitle2" Class="muted">Discover upcoming programs and events from our community.</MudText>
             </MudItem>
             <MudItem xs="12" md="4" Class="text-right">
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/events" StartIcon="@Icons.Material.Filled.PlaylistAddCheck">
-                    Best Immersion Experience
+                    View All Events
                 </MudButton>
             </MudItem>
         </MudGrid>
 
         <div class="carousel-wrap">
-            <MudCarousel TData="object" AutoCycle="true" CycleInterval="6000" ShowArrows="true" FullHeight="false" Style="height: auto; min-height: 400px;">
-                @foreach (var chunk in Chunk(Dates, 3))
-                {
-                    <MudCarouselItem Style="height: auto; padding: 20px 0;">
-                        <MudStack Row="true" Gap="16px" Justify="Justify.Center" AlignItems="AlignItems.Stretch" Style="flex-wrap:wrap; height: 100%;">
-                            @foreach (var d in chunk)
-                            {
-                                <MudCard Class="eventCard" Style="width: 340px; max-width: 92vw;">
-                                    <MudCardMedia Class="eventThumb">
-                                        <span>@d.ToString("ddd").ToUpper()</span>
-                                    </MudCardMedia>
-                                    <MudCardContent>
-                                        <MudText Typo="Typo.caption" Align="Align.Center">@d.ToString("dd/MM/yyyy")</MudText>
-                                        <div class="eventMeta">
-                                            <MudChip T="string" Color="Color.Info" Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Filled.Event">
-                                                @d.ToString("dddd")
-                                            </MudChip>
-                                            <MudChip T="string" Color="Color.Secondary" Variant="Variant.Filled" Size="Size.Small">
-                                                Featured
-                                            </MudChip>
-                                        </div>
-                                    </MudCardContent>
-                                    <MudCardActions Style="justify-content:center;">
-                                        <MudButton Color="Color.Primary" Variant="Variant.Text" Href="/events" EndIcon="@Icons.Material.Filled.ArrowForward">
-                                            View details
-                                        </MudButton>
-                                    </MudCardActions>
-                                </MudCard>
-                            }
-                        </MudStack>
-                    </MudCarouselItem>
-                }
-            </MudCarousel>
+            @if (_isLoading)
+            {
+                <MudPaper Class="pa-6" Style="text-align: center;">
+                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                    <MudText Class="mt-2">Loading events...</MudText>
+                </MudPaper>
+            }
+            else if (_events.Any())
+            {
+                <MudCarousel TData="object" AutoCycle="true" CycleInterval="6000" ShowArrows="true" FullHeight="false" Style="height: auto; min-height: 400px;">
+                    @foreach (var chunk in Chunk(_events, 3))
+                    {
+                        <MudCarouselItem Style="height: auto; padding: 20px 0;">
+                            <MudStack Row="true" Gap="16px" Justify="Justify.Center" AlignItems="AlignItems.Stretch" Style="flex-wrap:wrap; height: 100%;">
+                                @foreach (var evt in chunk)
+                                {
+                                    <MudCard Elevation="0" Class="card" Style="width: 340px; max-width: 92vw;">
+                                        <MudCardMedia Class="card-media">
+                                            <div style="position: relative; z-index: 2;">@evt.Title</div>
+                                        </MudCardMedia>
+                                        <MudCardContent Class="event-body">
+                                            <div class="event-chips">
+                                                <MudChip T="string" Color="Color.Secondary" Variant="Variant.Filled" Size="Size.Small" Style="background: #8b5cf6; color: white;">
+                                                    Event
+                                                </MudChip>
+                                                <MudChip T="string" Color="Color.Info" Variant="Variant.Outlined" Size="Size.Small" Style="border-color: #3b82f6; color: #60a5fa;">
+                                                    @(evt.Country ?? "Online")
+                                                </MudChip>
+                                                <MudChip T="string" Color="Color.Success" Variant="Variant.Outlined" Size="Size.Small" Style="border-color: #10b981; color: #34d399;">
+                                                    @(evt.Price > 0 ? $"€{evt.Price:F2}" : "Free")
+                                                </MudChip>
+                                            </div>
+                                            <MudText Typo="Typo.h6" Class="mb-2" Style="color: #f8fafc; font-weight: 600;">@evt.Title</MudText>
+                                            <MudText Typo="Typo.body2" Class="mb-3" Style="color: #cbd5e1; line-height: 1.5; flex: 1;">@(TruncateText(evt.Description, 150))</MudText>
+                                            
+                                            <div class="d-flex align-center mb-2" style="color: #f472b6; font-size: 0.875rem;">
+                                                <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Small" Class="mr-1" />
+                                                <span>@(evt.AudienceAttendees.HasValue && evt.AudienceAttendees > 0 ? $"{evt.AudienceAttendees} attendees" : "Join community event")</span>
+                                            </div>
+                                        </MudCardContent>
+                                        <MudCardActions Style="padding: 16px 20px; margin-top: auto; border-top: 1px solid #2a2a3a;">
+                                            <MudButton Color="Color.Primary" Variant="Variant.Text" Href="@($"/event/detail/{evt.Id}")" EndIcon="@Icons.Material.Filled.ArrowForward" Style="color: #60a5fa; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">
+                                                VIEW DETAILS
+                                            </MudButton>
+                                            <MudSpacer />
+                                            <div class="d-flex align-center" style="color: #94a3b8; font-size: 0.875rem;">
+                                                <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Class="mr-1" />
+                                                <span>@(evt.Country ?? "Online")</span>
+                                            </div>
+                                        </MudCardActions>
+                                    </MudCard>
+                                }
+                            </MudStack>
+                                </MudCarouselItem>
+                    }
+                </MudCarousel>
+            }
+            else
+            {
+                <MudPaper Class="pa-6" Style="text-align: center;">
+                    <MudIcon Icon="@Icons.Material.Filled.EventNote" Size="Size.Large" Color="Color.Default" Style="opacity: 0.5;" />
+                    <MudText Class="mt-2">No events available at the moment</MudText>
+                    <MudButton Href="/events" Variant="Variant.Outlined" Class="mt-2">
+                        Browse All Events
+                    </MudButton>
+                </MudPaper>
+            }
         </div>
     </section>
 </MudContainer>
 
 @code {
-    private readonly DateTime[] Dates =
+    private List<ProgramListDto> _events = new();
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
     {
-        DateTime.Today.AddDays(1),
-        DateTime.Today.AddDays(2),
-        DateTime.Today.AddDays(3),
-        DateTime.Today.AddDays(4),
-        DateTime.Today.AddDays(5),
-        DateTime.Today.AddDays(6)
-    };
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _events = await LandingPageService.GetFeaturedEventsAsync(9); // Load 9 events for 3x3 grid
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading landing page events: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
 
     private IEnumerable<List<T>> Chunk<T>(IEnumerable<T> source, int size)
     {
@@ -257,5 +365,13 @@
             }
         }
         if (bucket.Count > 0) yield return bucket;
+    }
+
+    private string TruncateText(string? text, int maxLength)
+    {
+        if (string.IsNullOrEmpty(text) || text.Length <= maxLength)
+            return text ?? "";
+        
+        return text.Substring(0, maxLength) + "...";
     }
 }

@@ -28,6 +28,7 @@ builder.Services.AddScoped<IEventService, EventService>();
 builder.Services.AddScoped<IProgramService, ProgramService>();
 builder.Services.AddScoped<IOrganizationService, OrganizationService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
+builder.Services.AddScoped<ILandingPageService, LandingPageService>();
 
 // Add HttpClient for server-side prerendering (without token)
 builder.Services.AddScoped(sp =>
