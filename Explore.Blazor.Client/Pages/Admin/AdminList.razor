@@ -90,7 +90,7 @@
     // Status mapping van API naar local enum
     private enum RequestStatus { Pending = 1, Approved = 2, Rejected = 3 }
 
-    private List<AdminOrganizationListDto> _organizationRequests = new();
+    private List<OrganizationListDto> _organizationRequests = new();
     private string _search = string.Empty;
     private int _activeTab = 0;
     private bool _isLoading = true;
@@ -106,9 +106,15 @@
         try
         {
             _organizationRequests = await AdminService.GetOrganizationRequestsAsync();
+            Console.WriteLine($"Loaded {_organizationRequests.Count} organizations");
+            foreach (var org in _organizationRequests)
+            {
+                Console.WriteLine($"Org: {org.FullName}, Status: {org.StatusTypeId} - {org.StatusTypeFullName}");
+            }
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"Error loading organizations: {ex.Message}");
             Snackbar.Add($"Fout bij laden organisaties: {ex.Message}", Severity.Error);
         }
         finally
@@ -123,9 +129,9 @@
     private int RejectedCount => _organizationRequests.Count(r => r.StatusTypeId == (int)RequestStatus.Rejected);
 
     // filter + sorteer (oudste bovenaan)
-    private IEnumerable<AdminOrganizationListDto> GetFilteredAndSorted(RequestStatus? status)
+    private IEnumerable<OrganizationListDto> GetFilteredAndSorted(RequestStatus? status)
     {
-        IEnumerable<AdminOrganizationListDto> q = _organizationRequests;
+        IEnumerable<OrganizationListDto> q = _organizationRequests;
 
         if (status.HasValue)
             q = q.Where(r => r.StatusTypeId == (int)status.Value);
@@ -143,7 +149,7 @@
     }
 
     // gedeelde tabel (pure Razor, geen RenderTreeBuilder)
-    private RenderFragment TableMarkup(IEnumerable<AdminOrganizationListDto> items) => @<MudPaper Elevation="2">
+    private RenderFragment TableMarkup(IEnumerable<OrganizationListDto> items) => @<MudPaper Elevation="2">
         <MudTable Items="items" Hover="true" Breakpoint="Breakpoint.Sm">
             <HeaderContent>
                 <MudTh style="width:120px">Submitted</MudTh>
@@ -178,7 +184,7 @@
 
                 <MudTd DataLabel="Status">
                     <MudChip T="string" Color="@StatusColor((RequestStatus)context.StatusTypeId)" Variant="Variant.Filled">
-                        @context.StatusName
+                        @context.StatusTypeFullName
                     </MudChip>
                 </MudTd>
 
@@ -252,7 +258,7 @@
     }
 
     // acties (met ShowMessageBox en API calls)
-    private async Task Approve(AdminOrganizationListDto req)
+    private async Task Approve(OrganizationListDto req)
     {
         bool? ok = await DialogService.ShowMessageBox(
             "Confirm approval",
@@ -274,7 +280,7 @@
         }
     }
 
-    private async Task Reject(AdminOrganizationListDto req)
+    private async Task Reject(OrganizationListDto req)
     {
         bool? ok = await DialogService.ShowMessageBox(
             "Confirm rejection",
@@ -296,7 +302,7 @@
         }
     }
 
-    private async Task RevertToPending(AdminOrganizationListDto req)
+    private async Task RevertToPending(OrganizationListDto req)
     {
         var success = await AdminService.RevertToPendingAsync(req.Id);
         if (success)

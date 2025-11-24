@@ -505,6 +505,45 @@ publicBff.MapGet("/ProgramType", async (IHttpClientFactory f) =>
     );
 });
 
+// Organization GET all endpoint
+publicBff.MapGet("/Organization", async (HttpContext ctx, IHttpClientFactory f) =>
+{
+    try
+    {
+        var http = f.CreateClient("ExploreApiPublic");
+        
+        // Forward authorization header
+        var authHeader = ctx.Request.Headers.Authorization.ToString();
+        if (!string.IsNullOrEmpty(authHeader))
+        {
+            http.DefaultRequestHeaders.Add("Authorization", authHeader);
+        }
+        
+        var r = await http.GetAsync("api/Organization");
+        
+        if (r.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            return Results.Unauthorized();
+        }
+        
+        if (r.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            return Results.Forbid();
+        }
+        
+        r.EnsureSuccessStatusCode();
+        return Results.Stream(
+            await r.Content.ReadAsStreamAsync(),
+            r.Content.Headers.ContentType?.ToString()
+        );
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error in Organization GET endpoint: {ex.Message}");
+        return Results.Problem($"Error fetching organizations: {ex.Message}");
+    }
+});
+
 publicBff.MapPost("/Organization", async (
     HttpContext ctx, 
     IHttpClientFactory f) =>
@@ -873,22 +912,11 @@ publicBff.MapGet("/StatusType", async (IHttpClientFactory f) =>
     );
 });
 
-publicBff.MapGet("/StatusType", async (IHttpClientFactory f) =>
-{
-    var http = f.CreateClient("ExploreApiPublic");
-    var r = await http.GetAsync("api/StatusType");
-    r.EnsureSuccessStatusCode();
-    return Results.Stream(
-        await r.Content.ReadAsStreamAsync(),
-        r.Content.Headers.ContentType?.ToString()
-    );
-});
-
 // Admin endpoints
 publicBff.MapGet("/admin/organizations", async (IHttpClientFactory f) =>
 {
     var http = f.CreateClient("ExploreApiPublic");
-    var r = await http.GetAsync("api/Admin/organizations");
+    var r = await http.GetAsync("api/Organization");
     r.EnsureSuccessStatusCode();
     return Results.Stream(
         await r.Content.ReadAsStreamAsync(),
@@ -899,7 +927,7 @@ publicBff.MapGet("/admin/organizations", async (IHttpClientFactory f) =>
 publicBff.MapGet("/admin/organizations/{id:guid}", async (Guid id, IHttpClientFactory f) =>
 {
     var http = f.CreateClient("ExploreApiPublic");
-    var r = await http.GetAsync($"api/Admin/organizations/{id}");
+    var r = await http.GetAsync($"api/Organization/{id}");
     if (r.StatusCode == System.Net.HttpStatusCode.NotFound)
     {
         return Results.NotFound();
@@ -913,16 +941,48 @@ publicBff.MapGet("/admin/organizations/{id:guid}", async (Guid id, IHttpClientFa
 
 publicBff.MapPut("/admin/organizations/{id}/status", async (Guid id, HttpContext ctx, IHttpClientFactory f) =>
 {
-    var http = f.CreateClient("ExploreApiPublic");
-    var r = await http.PutAsync($"api/Admin/organizations/{id}/status", new StreamContent(ctx.Request.Body)
+    try
     {
-        Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json") }
-    });
-    r.EnsureSuccessStatusCode();
-    return Results.Stream(
-        await r.Content.ReadAsStreamAsync(),
-        r.Content.Headers.ContentType?.ToString()
-    );
+        var http = f.CreateClient("ExploreApiPublic");
+        
+        // Forward authorization header
+        var authHeader = ctx.Request.Headers.Authorization.ToString();
+        if (!string.IsNullOrEmpty(authHeader))
+        {
+            http.DefaultRequestHeaders.Add("Authorization", authHeader);
+        }
+        
+        var r = await http.PutAsync($"api/Organization/updatestatustype/{id}", new StreamContent(ctx.Request.Body)
+        {
+            Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json") }
+        });
+        
+        if (r.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            return Results.Unauthorized();
+        }
+        
+        if (r.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            return Results.Forbid();
+        }
+        
+        if (r.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return Results.NotFound();
+        }
+        
+        r.EnsureSuccessStatusCode();
+        return Results.Stream(
+            await r.Content.ReadAsStreamAsync(),
+            r.Content.Headers.ContentType?.ToString()
+        );
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error in updatestatustype endpoint: {ex.Message}");
+        return Results.Problem($"Error updating organization status: {ex.Message}");
+    }
 });
 
 // Protected endpoints (require authentication)

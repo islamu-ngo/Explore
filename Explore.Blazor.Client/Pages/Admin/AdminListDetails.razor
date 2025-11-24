@@ -69,7 +69,7 @@
                             <MudTextField Label="Street Address" Value="@(organization.Address ?? "Not provided")" ReadOnly="true" Variant="Variant.Outlined" />
                         </MudItem>
                         <MudItem xs="12" md="4">
-                            <MudTextField Label="Postal Code" Value="@(organization.Postcode?.ToString() ?? "Not provided")" ReadOnly="true" Variant="Variant.Outlined" />
+                            <MudTextField Label="Postal Code" Value="@(organization.Postcode == 0 ? "Not provided" : organization.Postcode.ToString())" ReadOnly="true" Variant="Variant.Outlined" />
                         </MudItem>
                         <MudItem xs="12" md="4">
                             <MudTextField Label="City" Value="@(organization.City ?? "Not provided")" ReadOnly="true" Variant="Variant.Outlined" />
@@ -102,7 +102,7 @@
     [Parameter]
     public Guid OrganizationId { get; set; }
 
-    private AdminOrganizationListDto? organization;
+    private OrganizationListDto? organization;
     private bool _isLoading = true;
 
     protected override async Task OnInitializedAsync()
