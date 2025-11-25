@@ -59,10 +59,13 @@
             @if (currentUserRole.HasValue && currentUserRole.Value != OrganizationRole.Member)
             {
                 <MudTd DataLabel="Actions">
-                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
-                        <MudMenuItem OnClick="@(() => OpenEditRoleDialog(context))">Change Role</MudMenuItem>
-                        <MudMenuItem OnClick="@(() => RemoveMember(context))" Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error">Remove</MudMenuItem>
-                    </MudMenu>
+                    @if (context.Role != OrganizationRole.Creator)
+                    {
+                        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
+                            <MudMenuItem OnClick="@(() => OpenEditRoleDialog(context))" Icon="@Icons.Material.Filled.Edit">Change Role</MudMenuItem>
+                            <MudMenuItem OnClick="@(() => RemoveMember(context))" Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error">Remove</MudMenuItem>
+                        </MudMenu>
+                    }
                 </MudTd>
             }
         </RowTemplate>
@@ -138,7 +141,10 @@
                     {
                         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
                         var user = authState.User;
-                        creatorEmail = user.FindFirst("email")?.Value ?? user.FindFirst("preferred_username")?.Value ?? org.Email;
+                        creatorEmail = user.FindFirst("email")?.Value 
+                            ?? user.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
+                            ?? user.FindFirst("preferred_username")?.Value 
+                            ?? org.Email;
                         creatorName = user.Identity?.Name ?? "Me";
                     }
 
