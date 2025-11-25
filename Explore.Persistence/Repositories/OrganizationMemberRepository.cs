@@ -32,6 +32,7 @@ namespace Explore.Persistence.Repositories
         public async Task<List<OrganizationMember>> GetMembersByOrganizationId(Guid organizationId)
         {
             return await _dbContext.OrganizationMembers
+                .Include(m => m.User)
                 .Where(m => m.OrganizationId == organizationId)
                 .ToListAsync();
         }

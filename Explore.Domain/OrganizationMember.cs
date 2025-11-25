@@ -13,5 +13,6 @@ namespace Explore.Domain
         public OrganizationRole Role { get; set; } = OrganizationRole.Member;
         public string Email { get; set; } = string.Empty; // Useful for invites before user registers or just for display
         public Organization? Organization { get; set; }
+        public User? User { get; set; }
     }
 }

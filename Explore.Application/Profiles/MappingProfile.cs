@@ -39,7 +39,10 @@ namespace Explore.Application.Profiles
             CreateMap<Organization, OrganizationListDto>().ReverseMap();
             CreateMap<Organization, CreateOrganizationDto>().ReverseMap();
             CreateMap<Organization, UpdateOrganizationStatusTypeDto>().ReverseMap();
-            CreateMap<OrganizationMember, OrganizationMemberDto>().ReverseMap();
+            CreateMap<OrganizationMember, OrganizationMemberDto>()
+                .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.User != null ? src.User.Username : null))
+                .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.User != null && !string.IsNullOrEmpty(src.User.Email) ? src.User.Email : src.Email))
+                .ReverseMap();
             CreateMap<Program, ProgramDto>().ReverseMap();
             CreateMap<Program, ProgramListDto>().ReverseMap();
             CreateMap<Program, CreateProgramDto>().ReverseMap();

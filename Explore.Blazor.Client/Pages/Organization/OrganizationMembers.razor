@@ -133,8 +133,8 @@
                 else if (!string.IsNullOrEmpty(org.CreatedByUserId))
                 {
                     // Creator not in list, add them manually
-                    string creatorEmail = org.Email; // Fallback to org email
-                    string creatorName = "Organization Creator";
+                    string creatorEmail = !string.IsNullOrEmpty(org.CreatorEmail) ? org.CreatorEmail : org.Email;
+                    string creatorName = !string.IsNullOrEmpty(org.CreatorUserName) ? org.CreatorUserName : "Organization Creator";
 
                     // If I am the creator, use my details
                     if (isCreator)
@@ -144,8 +144,8 @@
                         creatorEmail = user.FindFirst("email")?.Value 
                             ?? user.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
                             ?? user.FindFirst("preferred_username")?.Value 
-                            ?? org.Email;
-                        creatorName = user.Identity?.Name ?? "Me";
+                            ?? creatorEmail;
+                        creatorName = user.Identity?.Name ?? creatorName;
                     }
 
                     if (Guid.TryParse(org.CreatedByUserId, out Guid creatorGuid))

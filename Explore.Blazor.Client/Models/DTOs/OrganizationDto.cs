@@ -26,6 +26,8 @@ public class OrganizationDto
     public int StatusTypeId { get; set; }
     public string? StatusTypeName { get; set; }
     public string? CreatedByUserId { get; set; }
+    public string? CreatorUserName { get; set; }
+    public string? CreatorEmail { get; set; }
     public DateTime CreatedAt { get; set; }
 }
 

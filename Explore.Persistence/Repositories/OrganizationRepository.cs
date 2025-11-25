@@ -60,6 +60,17 @@ namespace Explore.Persistence.Repositories
                     CreatedAt = o.CreatedAt
                 })
                 .FirstOrDefaultAsync();
+
+            if (organization != null && !string.IsNullOrEmpty(organization.CreatedByUserId) && Guid.TryParse(organization.CreatedByUserId, out Guid userId))
+            {
+                var user = await _dbContext.Users.FindAsync(userId);
+                if (user != null)
+                {
+                    organization.CreatorUserName = user.Username;
+                    organization.CreatorEmail = user.Email;
+                }
+            }
+
             return organization;
         }
 

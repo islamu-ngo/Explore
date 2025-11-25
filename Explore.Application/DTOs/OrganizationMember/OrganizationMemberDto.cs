@@ -10,5 +10,6 @@ namespace Explore.Application.DTOs.OrganizationMember
         public Guid OrganizationId { get; set; }
         public OrganizationRole Role { get; set; }
         public string Email { get; set; }
+        public string? UserName { get; set; }
     }
 }
