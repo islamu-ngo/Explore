@@ -11,7 +11,10 @@
         <MudSelect T="OrganizationRole" Label="Role" @bind-Value="newRole" AnchorOrigin="Origin.BottomCenter">
             @foreach (OrganizationRole role in Enum.GetValues(typeof(OrganizationRole)))
             {
-                <MudSelectItem Value="@role">@role</MudSelectItem>
+                if (role != OrganizationRole.Creator)
+                {
+                    <MudSelectItem Value="@role">@role</MudSelectItem>
+                }
             }
         </MudSelect>
     </DialogContent>

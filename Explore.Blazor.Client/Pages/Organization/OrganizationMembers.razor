@@ -3,24 +3,33 @@
 @using Explore.Blazor.Client.Models.DTOs.OrganizationMember
 @using Explore.Blazor.Client.Models.Enums
 @using Explore.Blazor.Client.Services
+@using Microsoft.AspNetCore.Components.Authorization
 @inject IOrganizationMemberService MemberService
+@inject IOrganizationService OrganizationService
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
     <MudText Typo="Typo.h4" GutterBottom="true">Organization Members</MudText>
     
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenInviteDialog" Class="mb-4" StartIcon="@Icons.Material.Filled.PersonAdd">
-        Invite Member
-    </MudButton>
+    @if (currentUserRole.HasValue && currentUserRole.Value != OrganizationRole.Member)
+    {
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenInviteDialog" Class="mb-4" StartIcon="@Icons.Material.Filled.PersonAdd">
+            Invite Member
+        </MudButton>
+    }
 
     <MudTable Items="@Members" Hover="true" Loading="@_loading" Striped="true">
         <HeaderContent>
             <MudTh>User</MudTh>
             <MudTh>Email</MudTh>
             <MudTh>Role</MudTh>
-            <MudTh>Actions</MudTh>
+            @if (currentUserRole.HasValue && currentUserRole.Value != OrganizationRole.Member)
+            {
+                <MudTh>Actions</MudTh>
+            }
         </HeaderContent>
         <RowTemplate>
             <MudTd DataLabel="User">
@@ -33,19 +42,29 @@
                     {
                         <MudAvatar Color="Color.Secondary" Size="Size.Small" Class="mr-2">@context.Email.Substring(0, 1).ToUpper()</MudAvatar>
                     }
-                    <MudText>@(context.UserName ?? "Pending Invite")</MudText>
+                    @if (context.UserId == null)
+                    {
+                        <MudText FontStyle="FontStyle.Italic">Pending Invite</MudText>
+                    }
+                    else
+                    {
+                        <MudText>@(context.UserName ?? context.Email)</MudText>
+                    }
                 </div>
             </MudTd>
             <MudTd DataLabel="Email">@context.Email</MudTd>
             <MudTd DataLabel="Role">
                 <MudChip T="string" Color="@GetRoleColor(context.Role)" Size="Size.Small">@context.Role</MudChip>
             </MudTd>
-            <MudTd DataLabel="Actions">
-                <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
-                    <MudMenuItem OnClick="@(() => OpenEditRoleDialog(context))">Change Role</MudMenuItem>
-                    <MudMenuItem OnClick="@(() => RemoveMember(context))" Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error">Remove</MudMenuItem>
-                </MudMenu>
-            </MudTd>
+            @if (currentUserRole.HasValue && currentUserRole.Value != OrganizationRole.Member)
+            {
+                <MudTd DataLabel="Actions">
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
+                        <MudMenuItem OnClick="@(() => OpenEditRoleDialog(context))">Change Role</MudMenuItem>
+                        <MudMenuItem OnClick="@(() => RemoveMember(context))" Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error">Remove</MudMenuItem>
+                    </MudMenu>
+                </MudTd>
+            }
         </RowTemplate>
         <NoRecordsContent>
             <MudText>No members found.</MudText>
@@ -57,9 +76,16 @@
     [Parameter] public Guid Id { get; set; }
     private List<OrganizationMemberDto> Members = new();
     private bool _loading = true;
+    private string? currentUserId;
+    private OrganizationRole? currentUserRole;
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        currentUserId = user.FindFirst("sub")?.Value 
+            ?? user.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
+            ?? user.FindFirst("oid")?.Value;
         await LoadMembers();
     }
 
@@ -68,7 +94,68 @@
         _loading = true;
         try
         {
-            Members = await MemberService.GetMembersAsync(Id);
+            var membersTask = MemberService.GetMembersAsync(Id);
+            var orgTask = OrganizationService.GetOrganizationByIdAsync(Id);
+
+            await Task.WhenAll(membersTask, orgTask);
+
+            Members = membersTask.Result;
+            var org = orgTask.Result;
+
+            if (org != null)
+            {
+                // Determine current user's role
+                bool isCreator = currentUserId != null && org.CreatedByUserId == currentUserId;
+
+                if (isCreator)
+                {
+                    currentUserRole = OrganizationRole.Creator;
+                }
+                else if (currentUserId != null)
+                {
+                    var me = Members.FirstOrDefault(m => m.UserId?.ToString().Equals(currentUserId, StringComparison.OrdinalIgnoreCase) == true);
+                    if (me != null)
+                    {
+                        currentUserRole = me.Role;
+                    }
+                }
+
+                // Ensure Creator is shown in the list
+                var creatorMember = Members.FirstOrDefault(m => m.UserId?.ToString() == org.CreatedByUserId);
+                if (creatorMember != null)
+                {
+                    // Visual fix: Ensure they show as Creator
+                    creatorMember.Role = OrganizationRole.Creator;
+                }
+                else if (!string.IsNullOrEmpty(org.CreatedByUserId))
+                {
+                    // Creator not in list, add them manually
+                    string creatorEmail = org.Email; // Fallback to org email
+                    string creatorName = "Organization Creator";
+
+                    // If I am the creator, use my details
+                    if (isCreator)
+                    {
+                        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+                        var user = authState.User;
+                        creatorEmail = user.FindFirst("email")?.Value ?? user.FindFirst("preferred_username")?.Value ?? org.Email;
+                        creatorName = user.Identity?.Name ?? "Me";
+                    }
+
+                    if (Guid.TryParse(org.CreatedByUserId, out Guid creatorGuid))
+                    {
+                        Members.Insert(0, new OrganizationMemberDto
+                        {
+                            Id = Guid.NewGuid(), // Dummy ID
+                            OrganizationId = org.Id,
+                            UserId = creatorGuid,
+                            Role = OrganizationRole.Creator,
+                            Email = creatorEmail,
+                            UserName = creatorName
+                        });
+                    }
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -84,7 +171,8 @@
     {
         return role switch
         {
-            OrganizationRole.Owner => Color.Warning,
+            OrganizationRole.Creator => Color.Warning,
+            OrganizationRole.CoOwner => Color.Success,
             OrganizationRole.Admin => Color.Info,
             _ => Color.Default
         };

@@ -1,11 +1,13 @@
 @page "/organization/{id:guid}"
 @using Explore.Blazor.Client.Models.DTOs
 @using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Models.Enums
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using MudBlazor
 @using Microsoft.AspNetCore.Components
 @inject IOrganizationService OrganizationService
+@inject IOrganizationMemberService MemberService
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @attribute [Authorize]
@@ -239,6 +241,7 @@ else
     private string? errorMessage;
     private string? successMessage;
     private string? currentUserId;
+    private OrganizationRole? currentUserRole;
 
     protected override async Task OnInitializedAsync()
     {
@@ -267,8 +270,29 @@ else
         
         if (organization != null)
         {
-            // Check if current user is the creator
-            canEdit = !string.IsNullOrEmpty(currentUserId) && organization.CreatedByUserId == currentUserId;
+            // Check role
+            if (!string.IsNullOrEmpty(currentUserId))
+            {
+                try 
+                {
+                    var members = await MemberService.GetMembersAsync(Id);
+                    var me = members.FirstOrDefault(m => m.UserId.ToString() == currentUserId);
+                    if (me != null)
+                    {
+                        currentUserRole = me.Role;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error loading members: {ex.Message}");
+                }
+            }
+
+            // Check if current user is the creator OR has Creator/CoOwner/Admin role
+            canEdit = (!string.IsNullOrEmpty(currentUserId) && organization.CreatedByUserId == currentUserId) || 
+                      currentUserRole == OrganizationRole.Creator || 
+                      currentUserRole == OrganizationRole.CoOwner || 
+                      currentUserRole == OrganizationRole.Admin;
             
             // Initialize edit model
             editModel = new OrganizationCreateDto

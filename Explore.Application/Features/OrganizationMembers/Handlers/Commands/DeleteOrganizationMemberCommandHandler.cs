@@ -52,7 +52,7 @@ namespace Explore.Application.Features.OrganizationMembers.Handlers.Commands
                 if (Guid.TryParse(request.RequesterUserId, out Guid requesterGuid))
                 {
                     var requesterMember = members.FirstOrDefault(m => m.UserId == requesterGuid);
-                    if (requesterMember == null || (requesterMember.Role != OrganizationRole.Admin && requesterMember.Role != OrganizationRole.Owner))
+                    if (requesterMember == null || (requesterMember.Role != OrganizationRole.Admin && requesterMember.Role != OrganizationRole.CoOwner && requesterMember.Role != OrganizationRole.Creator))
                     {
                         response.Success = false;
                         response.Message = "You do not have permission to remove members.";

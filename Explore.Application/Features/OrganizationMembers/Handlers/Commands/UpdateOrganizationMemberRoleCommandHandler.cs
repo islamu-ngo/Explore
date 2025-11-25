@@ -57,19 +57,19 @@ namespace Explore.Application.Features.OrganizationMembers.Handlers.Commands
                 if (Guid.TryParse(request.RequesterUserId, out Guid requesterGuid))
                 {
                     var requesterMember = members.FirstOrDefault(m => m.UserId == requesterGuid);
-                    // Only Admins and Owners can update roles
-                    if (requesterMember == null || (requesterMember.Role != OrganizationRole.Admin && requesterMember.Role != OrganizationRole.Owner))
+                    // Only Admins, CoOwners and Creators can update roles
+                    if (requesterMember == null || (requesterMember.Role != OrganizationRole.Admin && requesterMember.Role != OrganizationRole.CoOwner && requesterMember.Role != OrganizationRole.Creator))
                     {
                         response.Success = false;
                         response.Message = "You do not have permission to update roles.";
                         return response;
                     }
                     
-                    // Admins cannot change role of Owner or other Admins (optional rule, but good practice)
-                    if (memberToUpdate.Role == OrganizationRole.Owner)
+                    // Admins cannot change role of Creator or other Admins (optional rule, but good practice)
+                    if (memberToUpdate.Role == OrganizationRole.Creator)
                     {
                          response.Success = false;
-                         response.Message = "Cannot change role of the Owner.";
+                         response.Message = "Cannot change role of the Creator.";
                          return response;
                     }
                 }

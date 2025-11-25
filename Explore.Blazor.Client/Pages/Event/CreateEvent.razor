@@ -39,12 +39,25 @@
 }
 </style>
 
+@using Explore.Blazor.Client.Models.Enums
+
 <MudContainer Class="create-page" DisableGutters="true">
     @if (isLoading)
     {
         <div style="display: flex; justify-content: center; align-items: center; min-height: 400px;">
             <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
         </div>
+    }
+    else if (myOrganizations == null || !myOrganizations.Any())
+    {
+        <MudPaper Class="event-form" Elevation="1">
+            <MudAlert Severity="Severity.Warning" Class="mb-4">
+                You do not have permission to create events. You must be a <strong>Creator</strong>, <strong>Co-Owner</strong> or <strong>Admin</strong> of an organization to create events.
+            </MudAlert>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/organization/create"))">
+                Create New Organization
+            </MudButton>
+        </MudPaper>
     }
     else
     {
@@ -145,7 +158,7 @@
                         </MudItem>
                         <MudItem xs="12" sm="6">
                             <MudNumericField @bind-Value="createDto.PostCode" 
-                                           Label="Postal Code (optional)" 
+                                           Label="Postal Code" 
                                            Variant="Variant.Outlined" 
                                            FullWidth />
                         </MudItem>
@@ -257,7 +270,10 @@
             isLoading = true;
             
             // Load all required dropdowns
-            myOrganizations = await OrganizationService.GetMyOrganizationsAsync();
+            var allOrgs = await OrganizationService.GetMyOrganizationsAsync();
+            // Filter for Creator/CoOwner/Admin
+            myOrganizations = allOrgs.Where(o => o.CurrentUserRole == OrganizationRole.Creator || o.CurrentUserRole == OrganizationRole.CoOwner || o.CurrentUserRole == OrganizationRole.Admin).ToList();
+
             eventTypes = await AdminService.GetEventTypesAsync();
             audienceGenders = await AdminService.GetAudienceGendersAsync();
             audienceAges = await AdminService.GetAudienceAgesAsync();

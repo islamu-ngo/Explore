@@ -1,4 +1,5 @@
 ﻿using Explore.Domain;
+using Explore.Domain.Enums;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -18,5 +19,6 @@ namespace Explore.Application.DTOs.Organization
         public string Address { get; set; }
         public int StatusTypeId { get; set; }
         public string StatusTypeFullName { get; set; }
+        public OrganizationRole? CurrentUserRole { get; set; }
     }
 }

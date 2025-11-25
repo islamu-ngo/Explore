@@ -18,5 +18,7 @@ namespace Explore.Application.DTOs.Organization
         public string Address { get; set; }
         public int StatusTypeId { get; set; } // maybe not necessery cause org detail page won't exist if not approved? and admin will decide to approve or not in list view? I need to think about this TODO
         public string StatusTypeFullName { get; set; }
+        public string? CreatedByUserId { get; set; }
+        public DateTime CreatedAt { get; set; }
     }
 }

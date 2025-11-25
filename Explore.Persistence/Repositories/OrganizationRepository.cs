@@ -4,6 +4,7 @@ using System.Text;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Organization;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories
@@ -54,7 +55,9 @@ namespace Explore.Persistence.Repositories
                     Postcode = o.Postcode,
                     Address = o.Address,
                     StatusTypeId = o.StatusTypeId,
-                    StatusTypeFullName = o.StatusType.FullName
+                    StatusTypeFullName = o.StatusType.FullName,
+                    CreatedByUserId = o.CreatedByUserId,
+                    CreatedAt = o.CreatedAt
                 })
                 .FirstOrDefaultAsync();
             return organization;
@@ -85,10 +88,25 @@ namespace Explore.Persistence.Repositories
 
         public async Task<List<OrganizationListDto>> GetMyOrganizations(string userId)
         {
-            // Haal alleen organisaties op die door deze gebruiker zijn aangemaakt
-            var organizations = await _dbContext.Organizations
+            Guid userGuid;
+            bool isGuid = Guid.TryParse(userId, out userGuid);
+
+            // Haal organisaties op die door deze gebruiker zijn aangemaakt OF waar de gebruiker lid van is
+            var query = _dbContext.Organizations
                 .Include(o => o.StatusType)
-                .Where(o => o.CreatedByUserId == userId)
+                .Include(o => o.Members)
+                .AsQueryable();
+
+            if (isGuid)
+            {
+                query = query.Where(o => o.CreatedByUserId == userId || o.Members.Any(m => m.UserId == userGuid));
+            }
+            else
+            {
+                query = query.Where(o => o.CreatedByUserId == userId);
+            }
+
+            var organizations = await query
                 .OrderByDescending(o => o.CreatedAt)
                 .Select(o => new OrganizationListDto
                 {
@@ -101,7 +119,9 @@ namespace Explore.Persistence.Repositories
                     Postcode = o.Postcode,
                     Address = o.Address,
                     StatusTypeId = o.StatusTypeId,
-                    StatusTypeFullName = o.StatusType.FullName
+                    StatusTypeFullName = o.StatusType.FullName,
+                    CurrentUserRole = o.CreatedByUserId == userId ? OrganizationRole.Creator : 
+                                      (isGuid ? o.Members.Where(m => m.UserId == userGuid).Select(m => (OrganizationRole?)m.Role).FirstOrDefault() : null)
                 })
                 .ToListAsync();
             return organizations;

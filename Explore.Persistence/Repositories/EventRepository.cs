@@ -102,14 +102,29 @@ namespace Explore.Persistence.Repositories
 
         public async Task<List<EventListDto>> GetMyEventsWithDetails(string userId)
         {
-            var events = await _dbContext.Events
+            Guid userGuid;
+            bool isGuid = Guid.TryParse(userId, out userGuid);
+
+            var query = _dbContext.Events
                 .Include(e => e.EventType)
                 .Include(e => e.ProgramType)
                 .Include(e => e.AudienceGender)
                 .Include(e => e.AudienceAge)
                 .Include(e => e.Organization)
+                .ThenInclude(o => o.Members)
                 .Include(e => e.FeaturedImage)
-                .Where(e => e.Organization.CreatedByUserId == userId)
+                .AsQueryable();
+
+            if (isGuid)
+            {
+                query = query.Where(e => e.Organization.CreatedByUserId == userId || e.Organization.Members.Any(m => m.UserId == userGuid));
+            }
+            else
+            {
+                query = query.Where(e => e.Organization.CreatedByUserId == userId);
+            }
+
+            var events = await query
                 .Select(p => new EventListDto()
                 {
                     Id = p.Id,

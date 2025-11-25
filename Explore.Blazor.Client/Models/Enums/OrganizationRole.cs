@@ -4,6 +4,7 @@ namespace Explore.Blazor.Client.Models.Enums
     {
         Member = 0,
         Admin = 1,
-        Owner = 2
+        CoOwner = 2,
+        Creator = 3
     }
 }

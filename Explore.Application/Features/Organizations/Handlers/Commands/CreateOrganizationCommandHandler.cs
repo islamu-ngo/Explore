@@ -42,6 +42,17 @@ namespace Explore.Application.Features.Organizations.Handlers.Commands
             organization.CreatedByUserId = request.UserId;
             organization.CreatedAt = DateTime.UtcNow;
 
+            // Add creator as Owner
+            if (Guid.TryParse(request.UserId, out Guid userGuid))
+            {
+                organization.Members.Add(new OrganizationMember
+                {
+                    UserId = userGuid,
+                    Role = OrganizationRole.Creator,
+                    Email = request.OrganizationDto.Email // Fallback to org email as we don't have user email here
+                });
+            }
+
             organization = await _organizationRepository.Create(organization);
 
             response.Success = true;
