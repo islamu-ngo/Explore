@@ -1344,15 +1344,39 @@ bff.MapGet("/me", (HttpContext ctx) =>
 });
 
 // Public endpoint to check authentication status without triggering redirect
-app.MapGet("/auth/status", (HttpContext ctx) =>
+app.MapGet("/auth/status", async (HttpContext ctx, IHttpClientFactory f) =>
 {
     if (ctx.User.Identity?.IsAuthenticated == true)
     {
+        int pendingInvitesCount = 0;
+        try
+        {
+            var accessToken = await ctx.GetTokenAsync("access_token");
+            if (!string.IsNullOrEmpty(accessToken))
+            {
+                var http = f.CreateClient("ExploreApiPublic");
+                var request = new HttpRequestMessage(HttpMethod.Get, "api/OrganizationMember/invitations");
+                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+                
+                var response = await http.SendAsync(request);
+                if (response.IsSuccessStatusCode)
+                {
+                    var invitations = await response.Content.ReadFromJsonAsync<List<object>>(); // We just need the count
+                    pendingInvitesCount = invitations?.Count ?? 0;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching invitations count: {ex.Message}");
+        }
+
         return Results.Ok(new
         {
             isAuthenticated = true,
             name = ctx.User.Identity.Name,
-            claims = ctx.User.Claims.Select(c => new { c.Type, c.Value })
+            claims = ctx.User.Claims.Select(c => new { c.Type, c.Value }),
+            pendingInvitesCount = pendingInvitesCount
         });
     }
     else
