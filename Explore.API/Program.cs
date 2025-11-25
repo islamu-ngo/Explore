@@ -161,7 +161,7 @@ builder.Services.AddHsts(options =>
     //options.ExcludedHosts.Add("www.example.com");
 });
 
-// En dev, votre HTTPS local est sur 7039; en prod, laissez null (443 par défaut)
+// En dev, votre HTTPS local est sur 7039; en prod, laissez null (443 par dï¿½faut)
 builder.Services.AddHttpsRedirection(options =>
 {
     options.RedirectStatusCode = StatusCodes.Status308PermanentRedirect;
@@ -202,7 +202,7 @@ if (app.Environment.IsDevelopment())
                 return Results.Problem("Migration failed: " + ex.Message);
             }
         })
-        .RequireAuthorization(); // Sécurisez cet endpoint !
+        .RequireAuthorization(); // Sï¿½curisez cet endpoint !
 }
 else
 {

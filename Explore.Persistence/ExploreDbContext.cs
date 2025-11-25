@@ -65,5 +65,6 @@ namespace Explore.Persistence
         public DbSet<ProgramRegistartion> ProgramRegistartions { get; set; }
         public DbSet<ProgramType> ProgramTypes { get; set; }
         public DbSet<StatusType> StatusTypes { get; set; }
+        public DbSet<User> Users { get; set; }
     }
 }

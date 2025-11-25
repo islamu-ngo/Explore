@@ -1,0 +1,138 @@
+@page "/organization/{Id:guid}/members"
+@using MudBlazor
+@using Explore.Blazor.Client.Models.DTOs.OrganizationMember
+@using Explore.Blazor.Client.Models.Enums
+@using Explore.Blazor.Client.Services
+@inject IOrganizationMemberService MemberService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" GutterBottom="true">Organization Members</MudText>
+    
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenInviteDialog" Class="mb-4" StartIcon="@Icons.Material.Filled.PersonAdd">
+        Invite Member
+    </MudButton>
+
+    <MudTable Items="@Members" Hover="true" Loading="@_loading" Striped="true">
+        <HeaderContent>
+            <MudTh>User</MudTh>
+            <MudTh>Email</MudTh>
+            <MudTh>Role</MudTh>
+            <MudTh>Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="User">
+                <div class="d-flex align-center">
+                    @if (!string.IsNullOrEmpty(context.ProfilePictureUrl))
+                    {
+                        <MudAvatar Image="@context.ProfilePictureUrl" Size="Size.Small" Class="mr-2" />
+                    }
+                    else
+                    {
+                        <MudAvatar Color="Color.Secondary" Size="Size.Small" Class="mr-2">@context.Email.Substring(0, 1).ToUpper()</MudAvatar>
+                    }
+                    <MudText>@(context.UserName ?? "Pending Invite")</MudText>
+                </div>
+            </MudTd>
+            <MudTd DataLabel="Email">@context.Email</MudTd>
+            <MudTd DataLabel="Role">
+                <MudChip T="string" Color="@GetRoleColor(context.Role)" Size="Size.Small">@context.Role</MudChip>
+            </MudTd>
+            <MudTd DataLabel="Actions">
+                <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
+                    <MudMenuItem OnClick="@(() => OpenEditRoleDialog(context))">Change Role</MudMenuItem>
+                    <MudMenuItem OnClick="@(() => RemoveMember(context))" Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error">Remove</MudMenuItem>
+                </MudMenu>
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText>No members found.</MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudContainer>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    private List<OrganizationMemberDto> Members = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadMembers();
+    }
+
+    private async Task LoadMembers()
+    {
+        _loading = true;
+        try
+        {
+            Members = await MemberService.GetMembersAsync(Id);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading members: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private Color GetRoleColor(OrganizationRole role)
+    {
+        return role switch
+        {
+            OrganizationRole.Owner => Color.Warning,
+            OrganizationRole.Admin => Color.Info,
+            _ => Color.Default
+        };
+    }
+
+    private async Task OpenInviteDialog()
+    {
+        var parameters = new DialogParameters { ["OrganizationId"] = Id };
+        var dialog = DialogService.Show<InviteMemberDialog>("Invite Member", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadMembers();
+        }
+    }
+
+    private async Task OpenEditRoleDialog(OrganizationMemberDto member)
+    {
+        var parameters = new DialogParameters { ["Member"] = member, ["OrganizationId"] = Id };
+        var dialog = DialogService.Show<EditMemberRoleDialog>("Edit Role", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadMembers();
+        }
+    }
+
+    private async Task RemoveMember(OrganizationMemberDto member)
+    {
+        bool? result = await DialogService.ShowMessageBox(
+            "Remove Member", 
+            $"Are you sure you want to remove {member.Email} from the organization?", 
+            yesText: "Remove", cancelText: "Cancel");
+
+        if (result == true)
+        {
+            try
+            {
+                await MemberService.DeleteMemberAsync(member.Id);
+                Snackbar.Add("Member removed.", Severity.Success);
+                await LoadMembers();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error removing member: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}

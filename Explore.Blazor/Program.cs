@@ -27,8 +27,10 @@ builder.Services.AddMudServices();
 builder.Services.AddScoped<IEventService, EventService>();
 builder.Services.AddScoped<IProgramService, ProgramService>();
 builder.Services.AddScoped<IOrganizationService, OrganizationService>();
+builder.Services.AddScoped<IOrganizationMemberService, OrganizationMemberService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<ILandingPageService, LandingPageService>();
+builder.Services.AddScoped<IUserService, UserService>();
 
 // Add HttpClient for server-side prerendering (without token)
 builder.Services.AddScoped(sp =>
@@ -894,6 +896,295 @@ publicBff.MapPut("/Organization/{id:guid}", async (Guid id, HttpContext ctx, IHt
     
     var response = await http.SendAsync(request);
     response.EnsureSuccessStatusCode();
+    
+    return Results.Stream(
+        await response.Content.ReadAsStreamAsync(),
+        response.Content.Headers.ContentType?.ToString()
+    );
+});
+
+// Organization Member endpoints
+publicBff.MapGet("/OrganizationMember/{organizationId:guid}", async (Guid organizationId, HttpContext ctx, IHttpClientFactory f) =>
+{
+    if (ctx.User?.Identity?.IsAuthenticated != true)
+    {
+        return Results.Unauthorized();
+    }
+
+    var accessToken = await ctx.GetTokenAsync("access_token");
+    
+    if (string.IsNullOrEmpty(accessToken))
+    {
+        return Results.Problem("No access token available. Please logout and login again.", statusCode: 401);
+    }
+
+    var http = f.CreateClient("ExploreApiPublic");
+    var request = new HttpRequestMessage(HttpMethod.Get, $"api/OrganizationMember/{organizationId}");
+    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+    
+    var response = await http.SendAsync(request);
+    
+    if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+    {
+        return Results.NotFound();
+    }
+    
+    response.EnsureSuccessStatusCode();
+    
+    return Results.Stream(
+        await response.Content.ReadAsStreamAsync(),
+        response.Content.Headers.ContentType?.ToString()
+    );
+});
+
+publicBff.MapPost("/OrganizationMember", async (HttpContext ctx, IHttpClientFactory f) =>
+{
+    if (ctx.User?.Identity?.IsAuthenticated != true)
+    {
+        return Results.Unauthorized();
+    }
+
+    var accessToken = await ctx.GetTokenAsync("access_token");
+    
+    if (string.IsNullOrEmpty(accessToken))
+    {
+        return Results.Problem("No access token available. Please logout and login again.", statusCode: 401);
+    }
+
+    var http = f.CreateClient("ExploreApiPublic");
+    var request = new HttpRequestMessage(HttpMethod.Post, "api/OrganizationMember");
+    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+    request.Content = new StreamContent(ctx.Request.Body)
+    {
+        Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json") }
+    };
+    
+    var response = await http.SendAsync(request);
+    
+    if (!response.IsSuccessStatusCode)
+    {
+        var errorContent = await response.Content.ReadAsStringAsync();
+        return Results.Problem(
+            detail: errorContent,
+            statusCode: (int)response.StatusCode
+        );
+    }
+    
+    return Results.Stream(
+        await response.Content.ReadAsStreamAsync(),
+        response.Content.Headers.ContentType?.ToString()
+    );
+});
+
+publicBff.MapPut("/OrganizationMember/role", async (HttpContext ctx, IHttpClientFactory f) =>
+{
+    if (ctx.User?.Identity?.IsAuthenticated != true)
+    {
+        return Results.Unauthorized();
+    }
+
+    var accessToken = await ctx.GetTokenAsync("access_token");
+    
+    if (string.IsNullOrEmpty(accessToken))
+    {
+        return Results.Problem("No access token available. Please logout and login again.", statusCode: 401);
+    }
+
+    var http = f.CreateClient("ExploreApiPublic");
+    var request = new HttpRequestMessage(HttpMethod.Put, "api/OrganizationMember/role");
+    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+    request.Content = new StreamContent(ctx.Request.Body)
+    {
+        Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json") }
+    };
+    
+    var response = await http.SendAsync(request);
+    
+    if (!response.IsSuccessStatusCode)
+    {
+        var errorContent = await response.Content.ReadAsStringAsync();
+        return Results.Problem(
+            detail: errorContent,
+            statusCode: (int)response.StatusCode
+        );
+    }
+    
+    return Results.Stream(
+        await response.Content.ReadAsStreamAsync(),
+        response.Content.Headers.ContentType?.ToString()
+    );
+});
+
+publicBff.MapGet("/OrganizationMember/invitations", async (HttpContext ctx, IHttpClientFactory f) =>
+{
+    if (ctx.User?.Identity?.IsAuthenticated != true)
+    {
+        return Results.Unauthorized();
+    }
+
+    var accessToken = await ctx.GetTokenAsync("access_token");
+    
+    if (string.IsNullOrEmpty(accessToken))
+    {
+        return Results.Problem("No access token available. Please logout and login again.", statusCode: 401);
+    }
+
+    var http = f.CreateClient("ExploreApiPublic");
+    var request = new HttpRequestMessage(HttpMethod.Get, "api/OrganizationMember/invitations");
+    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+    
+    var response = await http.SendAsync(request);
+    
+    if (!response.IsSuccessStatusCode)
+    {
+        var errorContent = await response.Content.ReadAsStringAsync();
+        return Results.Problem(
+            detail: errorContent,
+            statusCode: (int)response.StatusCode
+        );
+    }
+    
+    return Results.Stream(
+        await response.Content.ReadAsStreamAsync(),
+        response.Content.Headers.ContentType?.ToString()
+    );
+});
+
+publicBff.MapPost("/OrganizationMember/invitations/{id:guid}/accept", async (Guid id, HttpContext ctx, IHttpClientFactory f) =>
+{
+    if (ctx.User?.Identity?.IsAuthenticated != true)
+    {
+        return Results.Unauthorized();
+    }
+
+    var accessToken = await ctx.GetTokenAsync("access_token");
+    
+    if (string.IsNullOrEmpty(accessToken))
+    {
+        return Results.Problem("No access token available. Please logout and login again.", statusCode: 401);
+    }
+
+    var http = f.CreateClient("ExploreApiPublic");
+    var request = new HttpRequestMessage(HttpMethod.Post, $"api/OrganizationMember/invitations/{id}/accept");
+    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+    
+    var response = await http.SendAsync(request);
+    
+    if (!response.IsSuccessStatusCode)
+    {
+        var errorContent = await response.Content.ReadAsStringAsync();
+        return Results.Problem(
+            detail: errorContent,
+            statusCode: (int)response.StatusCode
+        );
+    }
+    
+    return Results.Stream(
+        await response.Content.ReadAsStreamAsync(),
+        response.Content.Headers.ContentType?.ToString()
+    );
+});
+
+publicBff.MapPost("/OrganizationMember/invitations/{id:guid}/decline", async (Guid id, HttpContext ctx, IHttpClientFactory f) =>
+{
+    if (ctx.User?.Identity?.IsAuthenticated != true)
+    {
+        return Results.Unauthorized();
+    }
+
+    var accessToken = await ctx.GetTokenAsync("access_token");
+    
+    if (string.IsNullOrEmpty(accessToken))
+    {
+        return Results.Problem("No access token available. Please logout and login again.", statusCode: 401);
+    }
+
+    var http = f.CreateClient("ExploreApiPublic");
+    var request = new HttpRequestMessage(HttpMethod.Post, $"api/OrganizationMember/invitations/{id}/decline");
+    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+    
+    var response = await http.SendAsync(request);
+    
+    if (!response.IsSuccessStatusCode)
+    {
+        var errorContent = await response.Content.ReadAsStringAsync();
+        return Results.Problem(
+            detail: errorContent,
+            statusCode: (int)response.StatusCode
+        );
+    }
+    
+    return Results.Stream(
+        await response.Content.ReadAsStreamAsync(),
+        response.Content.Headers.ContentType?.ToString()
+    );
+});
+
+publicBff.MapDelete("/OrganizationMember/{id:guid}", async (Guid id, HttpContext ctx, IHttpClientFactory f) =>
+{
+    if (ctx.User?.Identity?.IsAuthenticated != true)
+    {
+        return Results.Unauthorized();
+    }
+
+    var accessToken = await ctx.GetTokenAsync("access_token");
+    
+    if (string.IsNullOrEmpty(accessToken))
+    {
+        return Results.Problem("No access token available. Please logout and login again.", statusCode: 401);
+    }
+
+    var http = f.CreateClient("ExploreApiPublic");
+    var request = new HttpRequestMessage(HttpMethod.Delete, $"api/OrganizationMember/{id}");
+    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+    
+    var response = await http.SendAsync(request);
+    
+    if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+    {
+        return Results.NotFound();
+    }
+    
+    if (!response.IsSuccessStatusCode)
+    {
+        var errorContent = await response.Content.ReadAsStringAsync();
+        return Results.Problem(
+            detail: errorContent,
+            statusCode: (int)response.StatusCode
+        );
+    }
+    
+    return Results.NoContent();
+});
+
+publicBff.MapPost("/User/sync", async (HttpContext ctx, IHttpClientFactory f) =>
+{
+    if (ctx.User?.Identity?.IsAuthenticated != true)
+    {
+        return Results.Unauthorized();
+    }
+
+    var accessToken = await ctx.GetTokenAsync("access_token");
+    
+    if (string.IsNullOrEmpty(accessToken))
+    {
+        return Results.Problem("No access token available. Please logout and login again.", statusCode: 401);
+    }
+
+    var http = f.CreateClient("ExploreApiPublic");
+    var request = new HttpRequestMessage(HttpMethod.Post, "api/User/sync");
+    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+    
+    var response = await http.SendAsync(request);
+    
+    if (!response.IsSuccessStatusCode)
+    {
+        var errorContent = await response.Content.ReadAsStringAsync();
+        return Results.Problem(
+            detail: errorContent,
+            statusCode: (int)response.StatusCode
+        );
+    }
     
     return Results.Stream(
         await response.Content.ReadAsStreamAsync(),

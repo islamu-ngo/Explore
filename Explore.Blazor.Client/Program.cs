@@ -10,8 +10,10 @@ builder.Services.AddMudServices();
 builder.Services.AddScoped<IEventService, EventService>();
 builder.Services.AddScoped<IProgramService, ProgramService>();
 builder.Services.AddScoped<IOrganizationService, OrganizationService>();
+builder.Services.AddScoped<IOrganizationMemberService, OrganizationMemberService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<ILandingPageService, LandingPageService>();
+builder.Services.AddScoped<IUserService, UserService>();
 
 builder.Services.AddScoped(sp => new HttpClient
 {

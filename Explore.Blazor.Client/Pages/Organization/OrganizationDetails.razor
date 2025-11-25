@@ -40,8 +40,16 @@ else
                     <MudButton Variant="Variant.Filled" 
                                Color="@(isEditMode ? Color.Secondary : Color.Primary)" 
                                OnClick="ToggleEditMode"
-                               StartIcon="@(isEditMode ? Icons.Material.Filled.Cancel : Icons.Material.Filled.Edit)">
+                               StartIcon="@(isEditMode ? Icons.Material.Filled.Cancel : Icons.Material.Filled.Edit)"
+                               Class="mr-2">
                         @(isEditMode ? "Cancel" : "Edit")
+                    </MudButton>
+                    
+                    <MudButton Variant="Variant.Filled" 
+                               Color="Color.Secondary" 
+                               OnClick="@(() => NavigationManager.NavigateTo($"/organization/{Id}/members"))"
+                               StartIcon="@Icons.Material.Filled.People">
+                        Members
                     </MudButton>
                 }
             </div>

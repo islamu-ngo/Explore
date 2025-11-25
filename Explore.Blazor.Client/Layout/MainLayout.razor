@@ -5,6 +5,11 @@
 <MudDialogProvider />
 <MudSnackbarProvider />
 
+@using Explore.Blazor.Client.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IUserService UserService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
 @* <MudLayout>
     <MudAppBar Elevation="1">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
@@ -54,9 +59,9 @@
     private bool _isDarkMode = true;
     private MudTheme? _theme;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        base.OnInitialized();
+        await base.OnInitializedAsync();
 
         _theme = new()
         {
@@ -64,6 +69,19 @@
             PaletteDark = _darkPalette,
             LayoutProperties = new LayoutProperties()
         };
+
+        try
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            if (authState.User.Identity?.IsAuthenticated == true)
+            {
+                await UserService.SyncUserAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error syncing user: {ex.Message}");
+        }
     }
 
     private void DarkModeToggle()

@@ -50,6 +50,7 @@ namespace Explore.Persistence
             services.AddScoped<IProgramTypeRepository, ProgramTypeRepository>();
             services.AddScoped<IStatusTypeRepository, StatusTypeRepository>();
             services.AddScoped<IStorageObjectRepository, StorageObjectRepository>();
+            services.AddScoped<IUserRepository, UserRepository>();
 
             return services;
         }

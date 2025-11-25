@@ -28,5 +28,20 @@ namespace Explore.Persistence.Repositories
                 .FirstOrDefaultAsync(o => o.Id == id);
             return organizationMember;
         }
+
+        public async Task<List<OrganizationMember>> GetMembersByOrganizationId(Guid organizationId)
+        {
+            return await _dbContext.OrganizationMembers
+                .Where(m => m.OrganizationId == organizationId)
+                .ToListAsync();
+        }
+
+        public async Task<List<OrganizationMember>> GetInvitesByEmail(string email)
+        {
+            return await _dbContext.OrganizationMembers
+                .Include(m => m.Organization)
+                .Where(m => m.Email == email && m.UserId == null)
+                .ToListAsync();
+        }
     }
 }
