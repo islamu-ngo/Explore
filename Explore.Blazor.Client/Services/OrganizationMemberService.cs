@@ -160,5 +160,23 @@ namespace Explore.Blazor.Client.Services
                 throw;
             }
         }
+
+        public async Task<bool> CheckUserExistsAsync(string email)
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync($"/bff/api/User/exists/{Uri.EscapeDataString(email)}");
+                if (response.IsSuccessStatusCode)
+                {
+                    return await response.Content.ReadFromJsonAsync<bool>();
+                }
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error checking user existence: {ex.Message}");
+                return false;
+            }
+        }
     }
 }

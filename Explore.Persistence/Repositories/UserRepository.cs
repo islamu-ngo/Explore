@@ -17,5 +17,10 @@ namespace Explore.Persistence.Repositories
         {
             return await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == id);
         }
+
+        public async Task<bool> ExistsByEmailAsync(string email)
+        {
+            return await _dbContext.Users.AnyAsync(u => u.Email == email);
+        }
     }
 }

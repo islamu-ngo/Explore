@@ -512,14 +512,9 @@ publicBff.MapGet("/Organization", async (HttpContext ctx, IHttpClientFactory f) 
 {
     try
     {
-        var http = f.CreateClient("ExploreApiPublic");
-        
-        // Forward authorization header
-        var authHeader = ctx.Request.Headers.Authorization.ToString();
-        if (!string.IsNullOrEmpty(authHeader))
-        {
-            http.DefaultRequestHeaders.Add("Authorization", authHeader);
-        }
+        var http = ctx.User?.Identity?.IsAuthenticated == true
+            ? f.CreateClient("ExploreApi")
+            : f.CreateClient("ExploreApiPublic");
         
         var r = await http.GetAsync("api/Organization");
         
@@ -550,47 +545,20 @@ publicBff.MapPost("/Organization", async (
     HttpContext ctx, 
     IHttpClientFactory f) =>
 {
-    Console.WriteLine("=== BFF Organization POST Request ===");
-    Console.WriteLine($"User authenticated: {ctx.User?.Identity?.IsAuthenticated}");
-    Console.WriteLine($"User name: {ctx.User?.Identity?.Name}");
-    
     if (ctx.User?.Identity?.IsAuthenticated != true)
     {
-        Console.WriteLine("ERROR: User not authenticated!");
         return Results.Unauthorized();
     }
     
-    // Get access token from authentication properties
-    var accessToken = await ctx.GetTokenAsync("access_token");
-    
-    if (string.IsNullOrEmpty(accessToken))
-    {
-        Console.WriteLine("ERROR: No access token found. User may need to re-login with offline_access scope.");
-        return Results.Problem("No access token available. Please logout and login again.", statusCode: 401);
-    }
-    
-    Console.WriteLine($"Access token retrieved: {accessToken.Substring(0, Math.Min(20, accessToken.Length))}...");
-    
-    // Use public client and manually add token
-    var http = f.CreateClient("ExploreApiPublic");
-    
-    // Read organization data
+    var http = f.CreateClient("ExploreApi");
     var org = await ctx.Request.ReadFromJsonAsync<object>();
-    
-    Console.WriteLine($"Organization data received: {System.Text.Json.JsonSerializer.Serialize(org)}");
     
     try
     {
-        // Create request with Authorization header
         var request = new HttpRequestMessage(HttpMethod.Post, "api/Organization");
-        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
         request.Content = JsonContent.Create(org);
         
-        Console.WriteLine("Sending request to API with Bearer token...");
-        
         var response = await http.SendAsync(request);
-        
-        Console.WriteLine($"API Response Status: {response.StatusCode}");
         
         if (!response.IsSuccessStatusCode)
         {
@@ -608,7 +576,6 @@ publicBff.MapPost("/Organization", async (
     catch (Exception ex)
     {
         Console.WriteLine($"BFF Exception: {ex.Message}");
-        Console.WriteLine($"Stack trace: {ex.StackTrace}");
         throw;
     }
 });
@@ -620,17 +587,8 @@ publicBff.MapGet("/Organization/my", async (HttpContext ctx, IHttpClientFactory 
         return Results.Unauthorized();
     }
 
-    // Get access token
-    var accessToken = await ctx.GetTokenAsync("access_token");
-    
-    if (string.IsNullOrEmpty(accessToken))
-    {
-        return Results.Problem("No access token available. Please logout and login again.", statusCode: 401);
-    }
-
-    var http = f.CreateClient("ExploreApiPublic");
+    var http = f.CreateClient("ExploreApi");
     var request = new HttpRequestMessage(HttpMethod.Get, "api/Organization/my");
-    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
     
     var response = await http.SendAsync(request);
     response.EnsureSuccessStatusCode();
@@ -645,40 +603,19 @@ publicBff.MapGet("/Event/my", async (HttpContext ctx, IHttpClientFactory f, ILog
 {
     try
     {
-        logger.LogInformation("=== BFF Event/my Request ===");
-        logger.LogInformation($"User authenticated: {ctx.User?.Identity?.IsAuthenticated}");
-        logger.LogInformation($"User name: {ctx.User?.Identity?.Name}");
-        
         if (ctx.User?.Identity?.IsAuthenticated != true)
         {
-            logger.LogWarning("User not authenticated");
             return Results.Unauthorized();
         }
 
-        // Get access token
-        var accessToken = await ctx.GetTokenAsync("access_token");
-        
-        if (string.IsNullOrEmpty(accessToken))
-        {
-            logger.LogError("No access token found");
-            return Results.Problem("No access token available. Please logout and login again.", statusCode: 401);
-        }
-        
-        logger.LogInformation($"Access token retrieved: {accessToken.Substring(0, Math.Min(20, accessToken.Length))}...");
-
-        var http = f.CreateClient("ExploreApiPublic");
+        var http = f.CreateClient("ExploreApi");
         var request = new HttpRequestMessage(HttpMethod.Get, "api/Event/my");
-        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
         
-        logger.LogInformation("Sending request to API...");
         var response = await http.SendAsync(request);
-        
-        logger.LogInformation($"API Response Status: {response.StatusCode}");
         
         if (!response.IsSuccessStatusCode)
         {
             var errorContent = await response.Content.ReadAsStringAsync();
-            logger.LogError($"API Error Response: {errorContent}");
             
             if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
@@ -713,16 +650,8 @@ publicBff.MapPost("/Event", async (HttpContext ctx, IHttpClientFactory f) =>
         return Results.Unauthorized();
     }
 
-    var accessToken = await ctx.GetTokenAsync("access_token");
-    
-    if (string.IsNullOrEmpty(accessToken))
-    {
-        return Results.Problem("No access token available. Please logout and login again.", statusCode: 401);
-    }
-
-    var http = f.CreateClient("ExploreApiPublic");
+    var http = f.CreateClient("ExploreApi");
     var request = new HttpRequestMessage(HttpMethod.Post, "api/Event");
-    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
     request.Content = new StreamContent(ctx.Request.Body)
     {
         Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json") }
@@ -770,16 +699,8 @@ publicBff.MapPut("/Event/{id:guid}", async (Guid id, HttpContext ctx, IHttpClien
         return Results.Unauthorized();
     }
 
-    var accessToken = await ctx.GetTokenAsync("access_token");
-    
-    if (string.IsNullOrEmpty(accessToken))
-    {
-        return Results.Problem("No access token available. Please logout and login again.", statusCode: 401);
-    }
-
-    var http = f.CreateClient("ExploreApiPublic");
+    var http = f.CreateClient("ExploreApi");
     var request = new HttpRequestMessage(HttpMethod.Put, $"api/Event/{id}");
-    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
     request.Content = new StreamContent(ctx.Request.Body)
     {
         Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json") }
@@ -809,16 +730,8 @@ publicBff.MapDelete("/Event/{id:guid}", async (Guid id, HttpContext ctx, IHttpCl
         return Results.Unauthorized();
     }
 
-    var accessToken = await ctx.GetTokenAsync("access_token");
-    
-    if (string.IsNullOrEmpty(accessToken))
-    {
-        return Results.Problem("No access token available. Please logout and login again.", statusCode: 401);
-    }
-
-    var http = f.CreateClient("ExploreApiPublic");
+    var http = f.CreateClient("ExploreApi");
     var request = new HttpRequestMessage(HttpMethod.Delete, $"api/Event/{id}");
-    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
     
     var response = await http.SendAsync(request);
     
@@ -846,16 +759,8 @@ publicBff.MapGet("/Organization/{id:guid}", async (Guid id, HttpContext ctx, IHt
         return Results.Unauthorized();
     }
 
-    var accessToken = await ctx.GetTokenAsync("access_token");
-    
-    if (string.IsNullOrEmpty(accessToken))
-    {
-        return Results.Problem("No access token available. Please logout and login again.", statusCode: 401);
-    }
-
-    var http = f.CreateClient("ExploreApiPublic");
+    var http = f.CreateClient("ExploreApi");
     var request = new HttpRequestMessage(HttpMethod.Get, $"api/Organization/{id}");
-    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
     
     var response = await http.SendAsync(request);
     
@@ -879,16 +784,8 @@ publicBff.MapPut("/Organization/{id:guid}", async (Guid id, HttpContext ctx, IHt
         return Results.Unauthorized();
     }
 
-    var accessToken = await ctx.GetTokenAsync("access_token");
-    
-    if (string.IsNullOrEmpty(accessToken))
-    {
-        return Results.Problem("No access token available. Please logout and login again.", statusCode: 401);
-    }
-
-    var http = f.CreateClient("ExploreApiPublic");
+    var http = f.CreateClient("ExploreApi");
     var request = new HttpRequestMessage(HttpMethod.Put, $"api/Organization/{id}");
-    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
     request.Content = new StreamContent(ctx.Request.Body)
     {
         Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json") }
@@ -911,16 +808,8 @@ publicBff.MapGet("/OrganizationMember/{organizationId:guid}", async (Guid organi
         return Results.Unauthorized();
     }
 
-    var accessToken = await ctx.GetTokenAsync("access_token");
-    
-    if (string.IsNullOrEmpty(accessToken))
-    {
-        return Results.Problem("No access token available. Please logout and login again.", statusCode: 401);
-    }
-
-    var http = f.CreateClient("ExploreApiPublic");
+    var http = f.CreateClient("ExploreApi");
     var request = new HttpRequestMessage(HttpMethod.Get, $"api/OrganizationMember/{organizationId}");
-    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
     
     var response = await http.SendAsync(request);
     
@@ -944,16 +833,8 @@ publicBff.MapPost("/OrganizationMember", async (HttpContext ctx, IHttpClientFact
         return Results.Unauthorized();
     }
 
-    var accessToken = await ctx.GetTokenAsync("access_token");
-    
-    if (string.IsNullOrEmpty(accessToken))
-    {
-        return Results.Problem("No access token available. Please logout and login again.", statusCode: 401);
-    }
-
-    var http = f.CreateClient("ExploreApiPublic");
+    var http = f.CreateClient("ExploreApi");
     var request = new HttpRequestMessage(HttpMethod.Post, "api/OrganizationMember");
-    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
     request.Content = new StreamContent(ctx.Request.Body)
     {
         Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json") }
@@ -983,16 +864,8 @@ publicBff.MapPut("/OrganizationMember/role", async (HttpContext ctx, IHttpClient
         return Results.Unauthorized();
     }
 
-    var accessToken = await ctx.GetTokenAsync("access_token");
-    
-    if (string.IsNullOrEmpty(accessToken))
-    {
-        return Results.Problem("No access token available. Please logout and login again.", statusCode: 401);
-    }
-
-    var http = f.CreateClient("ExploreApiPublic");
+    var http = f.CreateClient("ExploreApi");
     var request = new HttpRequestMessage(HttpMethod.Put, "api/OrganizationMember/role");
-    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
     request.Content = new StreamContent(ctx.Request.Body)
     {
         Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json") }
@@ -1022,16 +895,8 @@ publicBff.MapGet("/OrganizationMember/invitations", async (HttpContext ctx, IHtt
         return Results.Unauthorized();
     }
 
-    var accessToken = await ctx.GetTokenAsync("access_token");
-    
-    if (string.IsNullOrEmpty(accessToken))
-    {
-        return Results.Problem("No access token available. Please logout and login again.", statusCode: 401);
-    }
-
-    var http = f.CreateClient("ExploreApiPublic");
+    var http = f.CreateClient("ExploreApi");
     var request = new HttpRequestMessage(HttpMethod.Get, "api/OrganizationMember/invitations");
-    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
     
     var response = await http.SendAsync(request);
     
@@ -1057,16 +922,8 @@ publicBff.MapPost("/OrganizationMember/invitations/{id:guid}/accept", async (Gui
         return Results.Unauthorized();
     }
 
-    var accessToken = await ctx.GetTokenAsync("access_token");
-    
-    if (string.IsNullOrEmpty(accessToken))
-    {
-        return Results.Problem("No access token available. Please logout and login again.", statusCode: 401);
-    }
-
-    var http = f.CreateClient("ExploreApiPublic");
+    var http = f.CreateClient("ExploreApi");
     var request = new HttpRequestMessage(HttpMethod.Post, $"api/OrganizationMember/invitations/{id}/accept");
-    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
     
     var response = await http.SendAsync(request);
     
@@ -1092,16 +949,8 @@ publicBff.MapPost("/OrganizationMember/invitations/{id:guid}/decline", async (Gu
         return Results.Unauthorized();
     }
 
-    var accessToken = await ctx.GetTokenAsync("access_token");
-    
-    if (string.IsNullOrEmpty(accessToken))
-    {
-        return Results.Problem("No access token available. Please logout and login again.", statusCode: 401);
-    }
-
-    var http = f.CreateClient("ExploreApiPublic");
+    var http = f.CreateClient("ExploreApi");
     var request = new HttpRequestMessage(HttpMethod.Post, $"api/OrganizationMember/invitations/{id}/decline");
-    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
     
     var response = await http.SendAsync(request);
     
@@ -1127,16 +976,8 @@ publicBff.MapDelete("/OrganizationMember/{id:guid}", async (Guid id, HttpContext
         return Results.Unauthorized();
     }
 
-    var accessToken = await ctx.GetTokenAsync("access_token");
-    
-    if (string.IsNullOrEmpty(accessToken))
-    {
-        return Results.Problem("No access token available. Please logout and login again.", statusCode: 401);
-    }
-
-    var http = f.CreateClient("ExploreApiPublic");
+    var http = f.CreateClient("ExploreApi");
     var request = new HttpRequestMessage(HttpMethod.Delete, $"api/OrganizationMember/{id}");
-    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
     
     var response = await http.SendAsync(request);
     
@@ -1164,16 +1005,8 @@ publicBff.MapPost("/User/sync", async (HttpContext ctx, IHttpClientFactory f) =>
         return Results.Unauthorized();
     }
 
-    var accessToken = await ctx.GetTokenAsync("access_token");
-    
-    if (string.IsNullOrEmpty(accessToken))
-    {
-        return Results.Problem("No access token available. Please logout and login again.", statusCode: 401);
-    }
-
-    var http = f.CreateClient("ExploreApiPublic");
+    var http = f.CreateClient("ExploreApi");
     var request = new HttpRequestMessage(HttpMethod.Post, "api/User/sync");
-    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
     
     var response = await http.SendAsync(request);
     
@@ -1184,6 +1017,27 @@ publicBff.MapPost("/User/sync", async (HttpContext ctx, IHttpClientFactory f) =>
             detail: errorContent,
             statusCode: (int)response.StatusCode
         );
+    }
+    
+    return Results.Stream(
+        await response.Content.ReadAsStreamAsync(),
+        response.Content.Headers.ContentType?.ToString()
+    );
+});
+
+publicBff.MapGet("/User/exists/{email}", async (string email, HttpContext ctx, IHttpClientFactory f) =>
+{
+    if (ctx.User?.Identity?.IsAuthenticated != true)
+    {
+        return Results.Unauthorized();
+    }
+
+    var http = f.CreateClient("ExploreApi");
+    var response = await http.GetAsync($"api/User/exists/{email}");
+    
+    if (!response.IsSuccessStatusCode)
+    {
+        return Results.Problem(statusCode: (int)response.StatusCode);
     }
     
     return Results.Stream(
@@ -1234,14 +1088,7 @@ publicBff.MapPut("/admin/organizations/{id}/status", async (Guid id, HttpContext
 {
     try
     {
-        var http = f.CreateClient("ExploreApiPublic");
-        
-        // Forward authorization header
-        var authHeader = ctx.Request.Headers.Authorization.ToString();
-        if (!string.IsNullOrEmpty(authHeader))
-        {
-            http.DefaultRequestHeaders.Add("Authorization", authHeader);
-        }
+        var http = f.CreateClient("ExploreApi");
         
         var r = await http.PutAsync($"api/Organization/updatestatustype/{id}", new StreamContent(ctx.Request.Body)
         {
@@ -1351,19 +1198,13 @@ app.MapGet("/auth/status", async (HttpContext ctx, IHttpClientFactory f) =>
         int pendingInvitesCount = 0;
         try
         {
-            var accessToken = await ctx.GetTokenAsync("access_token");
-            if (!string.IsNullOrEmpty(accessToken))
+            var http = f.CreateClient("ExploreApi");
+            var response = await http.GetAsync("api/OrganizationMember/invitations");
+            
+            if (response.IsSuccessStatusCode)
             {
-                var http = f.CreateClient("ExploreApiPublic");
-                var request = new HttpRequestMessage(HttpMethod.Get, "api/OrganizationMember/invitations");
-                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
-                
-                var response = await http.SendAsync(request);
-                if (response.IsSuccessStatusCode)
-                {
-                    var invitations = await response.Content.ReadFromJsonAsync<List<object>>(); // We just need the count
-                    pendingInvitesCount = invitations?.Count ?? 0;
-                }
+                var invitations = await response.Content.ReadFromJsonAsync<List<object>>(); // We just need the count
+                pendingInvitesCount = invitations?.Count ?? 0;
             }
         }
         catch (Exception ex)

@@ -48,6 +48,14 @@
 
         try
         {
+            // Check if user exists
+            var userExists = await MemberService.CheckUserExistsAsync(model.Email);
+            if (!userExists)
+            {
+                Snackbar.Add($"User with email '{model.Email}' does not exist.", Severity.Warning);
+                return;
+            }
+
             await MemberService.InviteMemberAsync(model);
             Snackbar.Add("Member invited successfully", Severity.Success);
             MudDialog.Close(DialogResult.Ok(true));

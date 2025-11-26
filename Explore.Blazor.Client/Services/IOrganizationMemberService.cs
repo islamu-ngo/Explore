@@ -11,5 +11,6 @@ namespace Explore.Blazor.Client.Services
         Task AcceptInvitationAsync(Guid invitationId);
         Task DeclineInvitationAsync(Guid invitationId);
         Task DeleteMemberAsync(Guid memberId);
+        Task<bool> CheckUserExistsAsync(string email);
     }
 }

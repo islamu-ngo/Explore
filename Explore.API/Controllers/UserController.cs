@@ -1,5 +1,6 @@
 using Explore.Application.DTOs.User;
 using Explore.Application.Features.Users.Requests.Commands;
+using Explore.Application.Features.Users.Requests.Queries;
 using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -17,6 +18,15 @@ namespace Explore.API.Controllers
         public UserController(IMediator mediator)
         {
             _mediator = mediator;
+        }
+
+        [HttpGet("exists/{email}")]
+        [Authorize]
+        public async Task<ActionResult<bool>> CheckUserExists(string email)
+        {
+            var query = new CheckUserExistsQuery { Email = email };
+            var exists = await _mediator.Send(query);
+            return Ok(exists);
         }
 
         [HttpPost("sync")]
