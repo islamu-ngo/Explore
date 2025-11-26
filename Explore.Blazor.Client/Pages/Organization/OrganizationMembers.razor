@@ -14,14 +14,38 @@
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
     <MudText Typo="Typo.h4" GutterBottom="true">Organization Members</MudText>
     
-    @if (currentUserRole.HasValue && currentUserRole.Value != OrganizationRole.Member)
-    {
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenInviteDialog" Class="mb-4" StartIcon="@Icons.Material.Filled.PersonAdd">
-            Invite Member
-        </MudButton>
-    }
+    <div class="d-flex justify-space-between align-center mb-4 gap-4">
+        @if (currentUserRole.HasValue && currentUserRole.Value != OrganizationRole.Member)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenInviteDialog" StartIcon="@Icons.Material.Filled.PersonAdd">
+                Invite Member
+            </MudButton>
+        }
+        else 
+        {
+            <MudSpacer />
+        }
+    </div>
 
-    <MudTable Items="@Members" Hover="true" Loading="@_loading" Striped="true">
+    <div class="d-flex gap-4 mb-4">
+        <MudTextField @bind-Value="_searchString" 
+                      Placeholder="Search members..." 
+                      Adornment="Adornment.Start" 
+                      AdornmentIcon="@Icons.Material.Filled.Search" 
+                      Immediate="true" 
+                      Variant="Variant.Outlined" 
+                      Margin="Margin.Dense"
+                      Class="flex-grow-1"/>
+        
+        <MudSelect T="OrganizationRole?" Label="Role" @bind-Value="_roleFilter" Variant="Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter" Class="flex-none" Style="min-width: 150px;" Clearable="true">
+            @foreach (OrganizationRole role in Enum.GetValues(typeof(OrganizationRole)))
+            {
+                <MudSelectItem Value="(OrganizationRole?)role">@role</MudSelectItem>
+            }
+        </MudSelect>
+    </div>
+
+    <MudTable Items="@FilteredMembers" Hover="true" Loading="@_loading" Striped="true">
         <HeaderContent>
             <MudTh>User</MudTh>
             <MudTh>Email</MudTh>
@@ -81,6 +105,17 @@
     private bool _loading = true;
     private string? currentUserId;
     private OrganizationRole? currentUserRole;
+    
+    // New fields
+    private string _searchString = "";
+    private OrganizationRole? _roleFilter;
+
+    private IEnumerable<OrganizationMemberDto> FilteredMembers =>
+        Members
+            .Where(x => string.IsNullOrWhiteSpace(_searchString) || 
+                        (x.UserName?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false) || 
+                        x.Email.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+            .Where(x => _roleFilter == null || x.Role == _roleFilter);
 
     protected override async Task OnInitializedAsync()
     {

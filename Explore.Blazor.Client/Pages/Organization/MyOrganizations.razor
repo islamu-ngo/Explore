@@ -84,59 +84,84 @@
         }
         else
         {
-            <MudGrid>
-                @foreach (var org in _organizations)
-                {
-                    <MudItem xs="12" sm="6" md="4">
-                        <MudCard Elevation="3" Class="h-100 d-flex flex-column">
-                            <MudCardHeader>
-                                <CardHeaderAvatar>
-                                    <MudAvatar Color="@GetRandomColor(org.FullName)" Variant="Variant.Filled">
-                                        @org.FullName.Substring(0, 1).ToUpper()
-                                    </MudAvatar>
-                                </CardHeaderAvatar>
-                                <CardHeaderContent>
-                                    <MudText Typo="Typo.h6" Class="text-truncate">@org.FullName</MudText>
-                                    <MudText Typo="Typo.caption">@org.City, @org.Country</MudText>
-                                </CardHeaderContent>
-                                <CardHeaderActions>
-                                     @{
-                                        var statusInfo = GetStatusInfo(org.StatusTypeId);
-                                    }
-                                    <MudTooltip Text="@org.StatusTypeFullName">
-                                        <MudIcon Icon="@statusInfo.Icon" Color="@statusInfo.Color" />
-                                    </MudTooltip>
-                                </CardHeaderActions>
-                            </MudCardHeader>
-                            <MudCardContent Class="grow">
-                                <div class="d-flex align-center mb-2">
-                                    <MudIcon Icon="@Icons.Material.Filled.Email" Size="Size.Small" Class="mr-2 text-secondary" />
-                                    <MudText Typo="Typo.body2" Class="text-truncate">@org.Email</MudText>
-                                </div>
-                                @if (!string.IsNullOrEmpty(org.WebsiteUrl))
-                                {
-                                    <div class="d-flex align-center">
-                                        <MudIcon Icon="@Icons.Material.Filled.Language" Size="Size.Small" Class="mr-2 text-secondary" />
-                                        <MudLink Href="@org.WebsiteUrl" Target="_blank" Typo="Typo.body2" Class="text-truncate">Website</MudLink>
+            <div class="d-flex gap-4 mb-6">
+                <MudTextField @bind-Value="_searchString" 
+                              Placeholder="Search by name or email..." 
+                              Adornment="Adornment.Start" 
+                              AdornmentIcon="@Icons.Material.Filled.Search" 
+                              Immediate="true" 
+                              Variant="Variant.Outlined" 
+                              Margin="Margin.Dense"
+                              Class="flex-grow-1"/>
+                
+                <MudSelect T="int" Label="Status" @bind-Value="_statusFilter" Variant="Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter" Class="flex-none" Style="min-width: 150px;">
+                    <MudSelectItem Value="0">All Statuses</MudSelectItem>
+                    <MudSelectItem Value="1">Pending</MudSelectItem>
+                    <MudSelectItem Value="2">Approved</MudSelectItem>
+                    <MudSelectItem Value="3">Rejected</MudSelectItem>
+                </MudSelect>
+            </div>
+
+            @if (!FilteredOrganizations.Any())
+            {
+                 <MudText Typo="Typo.body1" Align="Align.Center" Class="mt-8 text-secondary">No organizations match your search.</MudText>
+            }
+            else
+            {
+                <MudGrid>
+                    @foreach (var org in FilteredOrganizations)
+                    {
+                        <MudItem xs="12" sm="6" md="4">
+                            <MudCard Elevation="3" Class="h-100 d-flex flex-column">
+                                <MudCardHeader>
+                                    <CardHeaderAvatar>
+                                        <MudAvatar Color="@GetRandomColor(org.FullName)" Variant="Variant.Filled">
+                                            @org.FullName.Substring(0, 1).ToUpper()
+                                        </MudAvatar>
+                                    </CardHeaderAvatar>
+                                    <CardHeaderContent>
+                                        <MudText Typo="Typo.h6" Class="text-truncate">@org.FullName</MudText>
+                                        <MudText Typo="Typo.caption">@org.City, @org.Country</MudText>
+                                    </CardHeaderContent>
+                                    <CardHeaderActions>
+                                         @{
+                                            var statusInfo = GetStatusInfo(org.StatusTypeId);
+                                        }
+                                        <MudTooltip Text="@org.StatusTypeFullName">
+                                            <MudIcon Icon="@statusInfo.Icon" Color="@statusInfo.Color" />
+                                        </MudTooltip>
+                                    </CardHeaderActions>
+                                </MudCardHeader>
+                                <MudCardContent Class="grow">
+                                    <div class="d-flex align-center mb-2">
+                                        <MudIcon Icon="@Icons.Material.Filled.Email" Size="Size.Small" Class="mr-2 text-secondary" />
+                                        <MudText Typo="Typo.body2" Class="text-truncate">@org.Email</MudText>
                                     </div>
-                                }
-                            </MudCardContent>
-                            <MudDivider />
-                            <MudCardActions>
-                                <MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Visibility" Href="@($"/organization/{org.Id}")">View</MudButton>
-                                <MudSpacer />
-                                <MudTooltip Text="Members">
-                                    <MudIconButton Icon="@Icons.Material.Filled.People" Color="Color.Secondary" Href="@($"/organization/{org.Id}/members")" />
-                                </MudTooltip>
-                            </MudCardActions>
-                        </MudCard>
-                    </MudItem>
-                }
-            </MudGrid>
-            
-            <MudText Typo="Typo.caption" Class="d-block mt-4 text-center mud-text-secondary">
-                Showing @_organizations.Count organization(s)
-            </MudText>
+                                    @if (!string.IsNullOrEmpty(org.WebsiteUrl))
+                                    {
+                                        <div class="d-flex align-center">
+                                            <MudIcon Icon="@Icons.Material.Filled.Language" Size="Size.Small" Class="mr-2 text-secondary" />
+                                            <MudLink Href="@org.WebsiteUrl" Target="_blank" Typo="Typo.body2" Class="text-truncate">Website</MudLink>
+                                        </div>
+                                    }
+                                </MudCardContent>
+                                <MudDivider />
+                                <MudCardActions>
+                                    <MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Visibility" Href="@($"/organization/{org.Id}")">View</MudButton>
+                                    <MudSpacer />
+                                    <MudTooltip Text="Members">
+                                        <MudIconButton Icon="@Icons.Material.Filled.People" Color="Color.Secondary" Href="@($"/organization/{org.Id}/members")" />
+                                    </MudTooltip>
+                                </MudCardActions>
+                            </MudCard>
+                        </MudItem>
+                    }
+                </MudGrid>
+                
+                <MudText Typo="Typo.caption" Class="d-block mt-4 text-center mud-text-secondary">
+                    Showing @FilteredOrganizations.Count() organization(s)
+                </MudText>
+            }
         }
     }
 </MudContainer>
@@ -146,6 +171,18 @@
     private List<OrganizationInvitationDto>? _invitations;
     private bool _loading = true;
     private string? _errorMessage;
+    
+    // New fields
+    private string _searchString = "";
+    private int _statusFilter = 0;
+
+    private IEnumerable<OrganizationListDto> FilteredOrganizations =>
+        _organizations?
+            .Where(x => string.IsNullOrWhiteSpace(_searchString) || 
+                        x.FullName.Contains(_searchString, StringComparison.OrdinalIgnoreCase) || 
+                        x.Email.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+            .Where(x => _statusFilter == 0 || x.StatusTypeId == _statusFilter) 
+        ?? Enumerable.Empty<OrganizationListDto>();
 
     protected override async Task OnInitializedAsync()
     {
