@@ -1,169 +1,147 @@
 ﻿<!-- FOOTER -->
 <style>
-/* ====== THEME TOKENS ====== */
-:root{
-    --ft-bg: linear-gradient(180deg, #0e1024 0%, #0b0f1e 100%);
-    --ft-topline: linear-gradient(90deg, #6b5cff, #a855f7, #22d3ee);
-    --ft-text: rgba(255,255,255,.86);
-    --ft-muted: rgba(255,255,255,.64);
-    --ft-line: rgba(255,255,255,.12);
-}
+    .site-footer {
+        background-color: var(--mud-palette-surface);
+        border-top: 1px solid var(--mud-palette-lines-default);
+        padding: 64px 0 32px;
+        margin-top: auto;
+        position: relative;
+        overflow: hidden;
+    }
 
-/* ====== WRAPPER ====== */
-.site-footer{
-    position:relative; width:100%;
-    margin-top:auto; padding:56px 0 24px 0;
-    background: var(--ft-bg);
-    color: var(--ft-text);
-    border-top: 1px solid var(--ft-line);
-    overflow:hidden;
-}
-.site-footer::before{
-    /* fine top glow line */
-    content:""; position:absolute; top:0; left:0; right:0; height:2px;
-    background: var(--ft-topline); opacity:.7;
-}
+    /* Decorative top gradient line */
+    .site-footer::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--mud-palette-primary), transparent);
+        opacity: 0.5;
+    }
 
-/* ====== TYPO ====== */
-.site-footer .mud-typography{ color: var(--ft-text); }
-.site-footer .mud-typography-body2{ color: var(--ft-muted); }
+    .footer-brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
 
-/* Headings (columns) */
-.ft-head{
-    text-transform: uppercase;
-    letter-spacing: .12em;
-    font-weight: 700;
-    font-size: .85rem;
-    color: var(--ft-text);
-    opacity: .9;
-}
+    .footer-brand-text {
+        font-size: 1.5rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        color: var(--mud-palette-text-primary);
+    }
 
-/* ====== LINKS ====== */
-.ft-links a{
-    color: var(--ft-muted);
-    text-decoration: none;
-    position: relative;
-    display: inline-block;
-    width: fit-content;
-}
-.ft-links a::after{
-    content:""; position:absolute; left:0; right:0; bottom:-2px; height:2px;
-    background: currentColor; transform: scaleX(0); transform-origin:left;
-    transition: transform .18s ease;
-    opacity:.85;
-}
-.ft-links a:hover{
-    color: var(--ft-text);
-}
-.ft-links a:hover::after{
-    transform: scaleX(1);
-}
+    .footer-brand-highlight {
+        color: var(--mud-palette-primary);
+    }
 
-/* ====== BRAND ROW ====== */
-.brandstack{ gap:10px; }
+    .footer-desc {
+        color: var(--mud-palette-text-secondary);
+        line-height: 1.6;
+        max-width: 300px;
+    }
 
-/* ====== DIVIDER ====== */
-.site-footer .mud-divider{
-    border-color: var(--ft-line);
-}
+    .footer-heading {
+        font-size: 0.875rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--mud-palette-text-primary);
+        margin-bottom: 20px;
+    }
 
-/* ====== SOCIAL ====== */
-.social-row{
-    display:flex; gap:10px; align-items:center;
-}
-.social-pill{
-    width:36px; height:36px; border-radius:999px;
-    display:grid; place-items:center;
-    background: rgba(255,255,255,.06);
-    border: 1px solid var(--ft-line);
-    transition: transform .12s ease, background .12s ease, border-color .12s ease;
-}
-.social-pill:hover{
-    transform: translateY(-2px);
-    background: rgba(255,255,255,.12);
-    border-color: rgba(255,255,255,.22);
-}
+    .footer-link {
+        color: var(--mud-palette-text-secondary);
+        text-decoration: none;
+        font-size: 0.95rem;
+        transition: all 0.2s ease;
+        display: block;
+        margin-bottom: 12px;
+        width: fit-content;
+    }
 
-/* ====== RESPONSIVE ====== */
-@@media (max-width: 960px){
-    .site-footer{ padding-top:44px; }
-}
+    .footer-link:hover {
+        color: var(--mud-palette-primary);
+        transform: translateX(4px);
+    }
+
+    .social-btn {
+        color: var(--mud-palette-text-secondary);
+        transition: all 0.2s ease;
+        border: 1px solid var(--mud-palette-lines-default);
+    }
+
+    .social-btn:hover {
+        color: var(--mud-palette-primary);
+        border-color: var(--mud-palette-primary);
+        background-color: color-mix(in srgb, var(--mud-palette-primary) 10%, transparent);
+        transform: translateY(-2px);
+    }
+
+    .copyright-text {
+        color: var(--mud-palette-text-disabled);
+        font-size: 0.875rem;
+    }
 </style>
 
 <footer class="site-footer">
     <MudContainer MaxWidth="MaxWidth.Large">
-        <MudGrid>
-            <!-- Brand / intro -->
+        <MudGrid Spacing="4">
+            <!-- Brand Column -->
             <MudItem xs="12" md="4">
-                <MudStack>
-                    <MudStack Row AlignItems="AlignItems.Center" Class="brandstack">
-                        <MudIcon Icon="@Icons.Material.Filled.Favorite" Color="Color.Error" />
-                        <MudText Typo="Typo.h6">ISLAMU Explore</MudText>
-                    </MudStack>
-                    <MudText Typo="Typo.body2">
-                        Connecting Muslims through meaningful events and gatherings.
-                    </MudText>
-                </MudStack>
+                <div class="footer-brand">
+                    <MudIcon Icon="@Icons.Material.Filled.Explore" Color="Color.Primary" Size="Size.Large" />
+                    <div class="footer-brand-text">ISLAMU<span class="footer-brand-highlight">Explore</span></div>
+                </div>
+                <MudText Class="footer-desc">
+                    Connecting Muslims through meaningful events, gatherings, and community building initiatives across the globe.
+                </MudText>
             </MudItem>
 
-            <!-- Link columns -->
+            <!-- Links -->
             <MudItem xs="12" md="8">
                 <MudGrid>
-                    <MudItem xs="6" sm="3">
-                        <MudText Typo="Typo.subtitle2" Class="ft-head mb-3">Explore</MudText>
-                        <MudStack Spacing="2" Class="ft-links">
-                            <MudLink Href="/event">Events</MudLink>
-                            <MudLink Href="/event/categories">Categories</MudLink>
-                            <MudLink Href="/event/create">Create Event</MudLink>
-                        </MudStack>
+                    <MudItem xs="6" sm="4">
+                        <div class="footer-heading">Platform</div>
+                        <a href="/events" class="footer-link">Browse Events</a>
+                        <a href="/event/categories" class="footer-link">Categories</a>
+                        <a href="/organizations" class="footer-link">Organizations</a>
+                    </MudItem>
+                    
+                    <MudItem xs="6" sm="4">
+                        <div class="footer-heading">Company</div>
+                        <a href="/about" class="footer-link">About Us</a>
+                        <a href="/contact" class="footer-link">Contact</a>
+                        <a href="/careers" class="footer-link">Careers</a>
                     </MudItem>
 
-                    <MudItem xs="6" sm="3">
-                        <MudText Typo="Typo.subtitle2" Class="ft-head mb-3">Company</MudText>
-                        <MudStack Spacing="2" Class="ft-links">
-                            <MudLink Href="/about">About</MudLink>
-                            <MudLink Href="/contact">Contact</MudLink>
-                            <MudLink Href="/careers">Careers</MudLink>
-                        </MudStack>
-                    </MudItem>
-
-                    <MudItem xs="6" sm="3">
-                        <MudText Typo="Typo.subtitle2" Class="ft-head mb-3">Resources</MudText>
-                        <MudStack Spacing="2" Class="ft-links">
-                            <MudLink Href="/blog">Blog</MudLink>
-                            <MudLink Href="/help">Help Center</MudLink>
-                            <MudLink Href="/guidelines">Guidelines</MudLink>
-                        </MudStack>
-                    </MudItem>
-
-                    <MudItem xs="6" sm="3">
-                        <MudText Typo="Typo.subtitle2" Class="ft-head mb-3">Legal</MudText>
-                        <MudStack Spacing="2" Class="ft-links">
-                            <MudLink Href="/privacy">Privacy</MudLink>
-                            <MudLink Href="/terms">Terms</MudLink>
-                            <MudLink Href="/cookies">Cookie Policy</MudLink>
-                        </MudStack>
+                    <MudItem xs="6" sm="4">
+                        <div class="footer-heading">Legal</div>
+                        <a href="/privacy" class="footer-link">Privacy Policy</a>
+                        <a href="/terms" class="footer-link">Terms of Service</a>
+                        <a href="/cookies" class="footer-link">Cookie Settings</a>
                     </MudItem>
                 </MudGrid>
             </MudItem>
         </MudGrid>
 
-        <MudDivider Class="my-6" />
+        <MudDivider Class="my-8" />
 
-        <MudGrid AlignItems="AlignItems.Center">
-            <MudItem xs="12" sm="6">
-                <MudText Typo="Typo.body2">
-                    &copy; @DateTime.Now.Year ISLAMU. All rights reserved.
-                </MudText>
-            </MudItem>
-            <MudItem xs="12" sm="6" Class="d-flex justify-end">
-                <div class="social-row">
-                    <MudIconButton Class="social-pill" Icon="@Icons.Custom.Brands.Facebook" Color="Color.Default" Size="Size.Small" aria-label="Facebook" />
-                    <MudIconButton Class="social-pill" Icon="@Icons.Custom.Brands.Twitter" Color="Color.Default" Size="Size.Small" aria-label="Twitter/X" />
-                    <MudIconButton Class="social-pill" Icon="@Icons.Custom.Brands.Instagram" Color="Color.Default" Size="Size.Small" aria-label="Instagram" />
-                    <MudIconButton Class="social-pill" Icon="@Icons.Custom.Brands.YouTube" Color="Color.Default" Size="Size.Small" aria-label="YouTube" />
-                </div>
-            </MudItem>
-        </MudGrid>
+        <div class="d-flex flex-column flex-sm-row justify-space-between align-center gap-4">
+            <div class="copyright-text">
+                &copy; @DateTime.Now.Year ISLAMU Explore. All rights reserved.
+            </div>
+            
+            <div class="d-flex gap-2">
+                <MudIconButton Icon="@Icons.Custom.Brands.Facebook" Class="social-btn" Size="Size.Small" />
+                <MudIconButton Icon="@Icons.Custom.Brands.Twitter" Class="social-btn" Size="Size.Small" />
+                <MudIconButton Icon="@Icons.Custom.Brands.Instagram" Class="social-btn" Size="Size.Small" />
+                <MudIconButton Icon="@Icons.Custom.Brands.LinkedIn" Class="social-btn" Size="Size.Small" />
+            </div>
+        </div>
     </MudContainer>
 </footer>
