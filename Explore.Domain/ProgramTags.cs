@@ -5,15 +5,14 @@ using System.Text;
 
 namespace Explore.Domain
 {
-    public class ProgramRegistartion
+    public class ProgramTags
     {
         public Guid Id { get; set; }
-        public Guid UserId { get; set; }
         [ForeignKey("Program")]
         public Guid ProgramId { get; set; }
         public Program Program { get; set; }
-        [ForeignKey("StatusType")]
-        public int StatusTypeId { get; set; }
-        public StatusType StatusType { get; set; }
+        [ForeignKey("Tag")]
+        public Guid TagId { get; set; }
+        public Tag Tag { get; set; }
     }
 }

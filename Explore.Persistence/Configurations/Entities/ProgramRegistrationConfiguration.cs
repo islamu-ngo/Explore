@@ -7,9 +7,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Explore.Persistence.Configurations.Entities
 {
-    public class ProgramRegistrationConfiguration : IEntityTypeConfiguration<ProgramRegistartion>
+    public class ProgramRegistrationConfiguration : IEntityTypeConfiguration<ProgramRegistration>
     {
-        public void Configure(EntityTypeBuilder<ProgramRegistartion> builder)
+        public void Configure(EntityTypeBuilder<ProgramRegistration> builder)
         {
             builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
         }

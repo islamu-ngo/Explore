@@ -5,9 +5,9 @@ using Explore.Domain;
 
 namespace Explore.Application.Contracts.Persistence
 {
-    public interface IProgramRegistrationRepository : IGenericRepository<ProgramRegistartion, Guid>
+    public interface IProgramRegistrationRepository : IGenericRepository<ProgramRegistration, Guid>
     {
-        Task<ProgramRegistartion> GetProgramRegistrationWithDetails(Guid id);
-        Task<List<ProgramRegistartion>> GetProgramRegistrationsWithDetails();
+        Task<ProgramRegistration> GetProgramRegistrationWithDetails(Guid id);
+        Task<List<ProgramRegistration>> GetProgramRegistrationsWithDetails();
     }
 }

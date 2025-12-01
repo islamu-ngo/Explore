@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories
 {
-    public class ProgramRegistrationRepository : GenericRepository<ProgramRegistartion, Guid>, IProgramRegistrationRepository
+    public class ProgramRegistrationRepository : GenericRepository<ProgramRegistration, Guid>, IProgramRegistrationRepository
     {
         private readonly ExploreDbContext _dbContext;
         public ProgramRegistrationRepository(ExploreDbContext dbContext) : base(dbContext)
@@ -15,7 +15,7 @@ namespace Explore.Persistence.Repositories
             _dbContext = dbContext;
         }
 
-        public async Task<List<ProgramRegistartion>> GetProgramRegistrationsWithDetails()
+        public async Task<List<ProgramRegistration>> GetProgramRegistrationsWithDetails()
         {
             var programRegistrations = await _dbContext.ProgramRegistartions
                 .Include(pr => pr.Program)
@@ -24,7 +24,7 @@ namespace Explore.Persistence.Repositories
             return programRegistrations;
         }
 
-        public async Task<ProgramRegistartion> GetProgramRegistrationWithDetails(Guid id)
+        public async Task<ProgramRegistration> GetProgramRegistrationWithDetails(Guid id)
         {
             var programRegistration = await _dbContext.ProgramRegistartions
                 .Include(pr => pr.Program)
