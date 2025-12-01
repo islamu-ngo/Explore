@@ -3,10 +3,16 @@ using Explore.Blazor.Client.Models.DTOs;
 
 namespace Explore.Blazor.Client.Services;
 
+// DTO class needed for status updates
+public class UpdateOrganizationStatusTypeDto
+{
+    public int StatusTypeId { get; set; }
+}
+
 public interface IAdminService
 {
-    Task<List<AdminOrganizationListDto>> GetOrganizationRequestsAsync();
-    Task<AdminOrganizationListDto?> GetOrganizationDetailsAsync(Guid id);
+    Task<List<OrganizationListDto>> GetOrganizationRequestsAsync();
+    Task<OrganizationListDto?> GetOrganizationDetailsAsync(Guid id);
     Task<bool> ApproveOrganizationAsync(Guid id);
     Task<bool> RejectOrganizationAsync(Guid id);
     Task<bool> RevertToPendingAsync(Guid id);
@@ -24,30 +30,32 @@ public class AdminService : IAdminService
         _httpClient = httpClient;
     }
 
-    public async Task<List<AdminOrganizationListDto>> GetOrganizationRequestsAsync()
+    public async Task<List<OrganizationListDto>> GetOrganizationRequestsAsync()
     {
         try
         {
-            var response = await _httpClient.GetFromJsonAsync<List<AdminOrganizationListDto>>("/bff/api/admin/organizations");
-            return response ?? new List<AdminOrganizationListDto>();
+            Console.WriteLine("Calling /bff/api/Organization");
+            var response = await _httpClient.GetFromJsonAsync<List<OrganizationListDto>>("/bff/api/Organization");
+            var organizations = response ?? new List<OrganizationListDto>();
+            Console.WriteLine($"AdminService: Received {organizations.Count} organizations from API");
+            return organizations;
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"AdminService Error: {ex.Message}");
             Console.WriteLine($"Fout bij ophalen organisatie aanvragen: {ex.Message}");
-            return new List<AdminOrganizationListDto>();
+            return new List<OrganizationListDto>();
         }
     }
 
-    public async Task<AdminOrganizationListDto?> GetOrganizationDetailsAsync(Guid id)
+    public async Task<OrganizationListDto?> GetOrganizationDetailsAsync(Guid id)
     {
         try
         {
-            var response = await _httpClient.GetFromJsonAsync<AdminOrganizationListDto>($"/bff/api/admin/organizations/{id}");
-            return response;
-        }
-        catch (HttpRequestException ex) when (ex.Message.Contains("404"))
-        {
-            return null;
+            // We kunnen de organization details ophalen via de GetAll en dan filteren op ID
+            // Of als er een GetById is, kunnen we die gebruiken en de data mappen
+            var organizations = await GetOrganizationRequestsAsync();
+            return organizations.FirstOrDefault(o => o.Id == id);
         }
         catch (Exception ex)
         {
@@ -61,8 +69,15 @@ public class AdminService : IAdminService
         try
         {
             // Status 2 = Approved (volgens ERD status_type tabel)
-            var updateDto = new UpdateOrganizationStatusDto { StatusTypeId = 2 };
+            var updateDto = new UpdateOrganizationStatusTypeDto { StatusTypeId = 2 };
+            Console.WriteLine($"Approving organization {id} with status 2");
             var response = await _httpClient.PutAsJsonAsync($"/bff/api/admin/organizations/{id}/status", updateDto);
+            Console.WriteLine($"Approve response status: {response.StatusCode}");
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Approve error: {errorContent}");
+            }
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
@@ -77,8 +92,15 @@ public class AdminService : IAdminService
         try
         {
             // Status 3 = Rejected (volgens ERD status_type tabel)
-            var updateDto = new UpdateOrganizationStatusDto { StatusTypeId = 3 };
+            var updateDto = new UpdateOrganizationStatusTypeDto { StatusTypeId = 3 };
+            Console.WriteLine($"Rejecting organization {id} with status 3");
             var response = await _httpClient.PutAsJsonAsync($"/bff/api/admin/organizations/{id}/status", updateDto);
+            Console.WriteLine($"Reject response status: {response.StatusCode}");
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Reject error: {errorContent}");
+            }
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
@@ -93,8 +115,15 @@ public class AdminService : IAdminService
         try
         {
             // Status 1 = Pending (volgens ERD status_type tabel)
-            var updateDto = new UpdateOrganizationStatusDto { StatusTypeId = 1 };
+            var updateDto = new UpdateOrganizationStatusTypeDto { StatusTypeId = 1 };
+            Console.WriteLine($"Reverting organization {id} to pending with status 1");
             var response = await _httpClient.PutAsJsonAsync($"/bff/api/admin/organizations/{id}/status", updateDto);
+            Console.WriteLine($"Revert response status: {response.StatusCode}");
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Revert error: {errorContent}");
+            }
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)

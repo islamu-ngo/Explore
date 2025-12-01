@@ -14,7 +14,7 @@ namespace Explore.Persistence
 
             // Chaîne factice uniquement pour la génération de migrations
             optionsBuilder.UseNpgsql(
-                    "",
+                    "Host=79.72.94.126;Port=5431;Database=explore_db;Username=postgres;Password=7B9kJfVvkgzQIQ48qWsiVqSIvbONpEFSzCu5nLg27CncrYkjVWLnsISAMjMLSiJv;SSL Mode=Prefer;Trust Server Certificate=true",
                     b => b.MigrationsAssembly("Explore.Persistence"))
                 .UseSnakeCaseNamingConvention();
 

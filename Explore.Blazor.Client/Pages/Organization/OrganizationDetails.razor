@@ -1,11 +1,13 @@
 @page "/organization/{id:guid}"
 @using Explore.Blazor.Client.Models.DTOs
 @using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Models.Enums
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using MudBlazor
 @using Microsoft.AspNetCore.Components
 @inject IOrganizationService OrganizationService
+@inject IOrganizationMemberService MemberService
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @attribute [Authorize]
@@ -30,175 +32,207 @@ else if (organization == null)
 }
 else
 {
-    <MudContainer MaxWidth="MaxWidth.Large" Class="mt-8">
-        <MudPaper Elevation="3" Class="pa-6">
-            <!-- Header with Edit Toggle -->
-            <div class="d-flex justify-space-between align-center mb-6">
-                <MudText Typo="Typo.h4">@organization.FullName</MudText>
-                @if (canEdit)
-                {
-                    <MudButton Variant="Variant.Filled" 
-                               Color="@(isEditMode ? Color.Secondary : Color.Primary)" 
-                               OnClick="ToggleEditMode"
-                               StartIcon="@(isEditMode ? Icons.Material.Filled.Cancel : Icons.Material.Filled.Edit)">
-                        @(isEditMode ? "Cancel" : "Edit")
-                    </MudButton>
-                }
-            </div>
+    <MudContainer MaxWidth="MaxWidth.Large" Class="mt-8 mb-8">
+        <MudButton StartIcon="@Icons.Material.Filled.ArrowBack" 
+                   Color="Color.Primary" 
+                   Variant="Variant.Text" 
+                   OnClick="@(() => NavigationManager.NavigateTo("/organization/my"))"
+                   Class="mb-4">
+            Back to List
+        </MudButton>
 
-            @if (!isEditMode)
-            {
-                <!-- View Mode -->
-                <MudGrid>
-                    <MudItem xs="12" sm="6">
-                        <MudText Typo="Typo.subtitle2" Class="mud-text-secondary">Email</MudText>
-                        <MudText Typo="Typo.body1" Class="mb-4">@organization.Email</MudText>
-                    </MudItem>
-                    
-                    <MudItem xs="12" sm="6">
-                        <MudText Typo="Typo.subtitle2" Class="mud-text-secondary">Website</MudText>
-                        <MudText Typo="Typo.body1" Class="mb-4">
-                            @if (!string.IsNullOrEmpty(organization.WebsiteUrl))
-                            {
-                                <MudLink Href="@organization.WebsiteUrl" Target="_blank">@organization.WebsiteUrl</MudLink>
-                            }
-                            else
-                            {
-                                <text>Not provided</text>
-                            }
-                        </MudText>
-                    </MudItem>
-
-                    <MudItem xs="12" sm="6">
-                        <MudText Typo="Typo.subtitle2" Class="mud-text-secondary">Country</MudText>
-                        <MudText Typo="Typo.body1" Class="mb-4">@organization.Country</MudText>
-                    </MudItem>
-
-                    <MudItem xs="12" sm="6">
-                        <MudText Typo="Typo.subtitle2" Class="mud-text-secondary">City</MudText>
-                        <MudText Typo="Typo.body1" Class="mb-4">@organization.City</MudText>
-                    </MudItem>
-
-                    <MudItem xs="12" sm="6">
-                        <MudText Typo="Typo.subtitle2" Class="mud-text-secondary">Postcode</MudText>
-                        <MudText Typo="Typo.body1" Class="mb-4">@organization.Postcode</MudText>
-                    </MudItem>
-
-                    <MudItem xs="12" sm="6">
-                        <MudText Typo="Typo.subtitle2" Class="mud-text-secondary">Address</MudText>
-                        <MudText Typo="Typo.body1" Class="mb-4">@organization.Address</MudText>
-                    </MudItem>
-
-                    <MudItem xs="12">
-                        <MudText Typo="Typo.subtitle2" Class="mud-text-secondary">Status</MudText>
-                        <MudChip T="string" Color="@GetStatusColor(organization.StatusTypeId)" Size="Size.Small">
+        <MudCard Elevation="3" Class="pa-2">
+            <MudCardHeader>
+                <CardHeaderAvatar>
+                    <MudAvatar Color="Color.Primary" Size="Size.Large" Variant="Variant.Filled">
+                        @organization.FullName.Substring(0, 1).ToUpper()
+                    </MudAvatar>
+                </CardHeaderAvatar>
+                <CardHeaderContent>
+                    <div class="d-flex align-center gap-2 flex-wrap">
+                        <MudText Typo="Typo.h4" Class="mr-2">@organization.FullName</MudText>
+                        <MudChip T="string" Color="@GetStatusColor(organization.StatusTypeId)" Size="Size.Small" Variant="Variant.Outlined">
                             @organization.StatusTypeName
                         </MudChip>
-                    </MudItem>
+                    </div>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary mt-1">
+                        <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" Class="mr-1" Style="vertical-align: text-bottom;" />
+                        Created on @organization.CreatedAt.ToString("MMMM dd, yyyy")
+                    </MudText>
+                </CardHeaderContent>
+                <CardHeaderActions>
+                    @if (canEdit && !isEditMode)
+                    {
+                        <MudTooltip Text="Manage Members">
+                            <MudIconButton Icon="@Icons.Material.Filled.People" 
+                                           Color="Color.Secondary" 
+                                           OnClick="@(() => NavigationManager.NavigateTo($"/organization/{Id}/members"))" />
+                        </MudTooltip>
+                        <MudTooltip Text="Edit Organization">
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                           Color="Color.Primary" 
+                                           OnClick="ToggleEditMode" />
+                        </MudTooltip>
+                    }
+                    else if (canEdit && isEditMode)
+                    {
+                         <MudButton Variant="Variant.Outlined" 
+                                   Color="Color.Secondary" 
+                                   OnClick="ToggleEditMode"
+                                   StartIcon="@Icons.Material.Filled.Cancel"
+                                   Size="Size.Small">
+                            Cancel
+                        </MudButton>
+                    }
+                </CardHeaderActions>
+            </MudCardHeader>
+            
+            <MudDivider Class="my-2" />
 
-                    <MudItem xs="12">
-                        <MudText Typo="Typo.subtitle2" Class="mud-text-secondary">Created</MudText>
-                        <MudText Typo="Typo.body2">@organization.CreatedAt.ToString("MMMM dd, yyyy")</MudText>
-                    </MudItem>
-                </MudGrid>
-            }
-            else
-            {
-                <!-- Edit Mode -->
-                <MudForm @ref="form" @bind-IsValid="@formValid">
+            <MudCardContent>
+                @if (!isEditMode)
+                {
                     <MudGrid>
-                        <MudItem xs="12">
-                            <MudTextField @bind-Value="editModel.FullName" 
-                                          Label="Organization Name" 
-                                          Variant="Variant.Outlined"
-                                          Required="true"
-                                          RequiredError="Organization name is required" />
+                        <MudItem xs="12" md="6">
+                            <MudList T="string" Dense="true" DisablePadding="true">
+                                <MudListItem Icon="@Icons.Material.Filled.Email" IconColor="Color.Primary">
+                                    <div class="d-flex flex-column">
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">Email</MudText>
+                                        <MudText Typo="Typo.body1">@organization.Email</MudText>
+                                    </div>
+                                </MudListItem>
+                                <MudListItem Icon="@Icons.Material.Filled.Language" IconColor="Color.Primary">
+                                    <div class="d-flex flex-column">
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">Website</MudText>
+                                        @if (!string.IsNullOrEmpty(organization.WebsiteUrl))
+                                        {
+                                            <MudLink Href="@organization.WebsiteUrl" Target="_blank" Typo="Typo.body1">@organization.WebsiteUrl</MudLink>
+                                        }
+                                        else
+                                        {
+                                            <MudText Typo="Typo.body1" Class="mud-text-secondary">Not provided</MudText>
+                                        }
+                                    </div>
+                                </MudListItem>
+                            </MudList>
                         </MudItem>
-
-                        <MudItem xs="12" sm="6">
-                            <MudTextField @bind-Value="editModel.Email" 
-                                          Label="Email" 
-                                          Variant="Variant.Outlined"
-                                          Required="true"
-                                          RequiredError="Email is required"
-                                          Validation="@(new Func<string, string>(ValidateEmail))" />
-                        </MudItem>
-
-                        <MudItem xs="12" sm="6">
-                            <MudTextField @bind-Value="editModel.WebsiteUrl" 
-                                          Label="Website (Optional)" 
-                                          Variant="Variant.Outlined" />
-                        </MudItem>
-
-                        <MudItem xs="12" sm="6">
-                            <MudTextField @bind-Value="editModel.Country" 
-                                          Label="Country" 
-                                          Variant="Variant.Outlined"
-                                          Required="true"
-                                          RequiredError="Country is required" />
-                        </MudItem>
-
-                        <MudItem xs="12" sm="6">
-                            <MudTextField @bind-Value="editModel.City" 
-                                          Label="City" 
-                                          Variant="Variant.Outlined"
-                                          Required="true"
-                                          RequiredError="City is required" />
-                        </MudItem>
-
-                        <MudItem xs="12" sm="6">
-                            <MudNumericField @bind-Value="editModel.Postcode" 
-                                             Label="Postcode" 
-                                             Variant="Variant.Outlined"
-                                             Required="true"
-                                             RequiredError="Postcode is required"
-                                             Min="1000"
-                                             Max="99999" />
-                        </MudItem>
-
-                        <MudItem xs="12" sm="6">
-                            <MudTextField @bind-Value="editModel.Address" 
-                                          Label="Address" 
-                                          Variant="Variant.Outlined"
-                                          Required="true"
-                                          RequiredError="Address is required" />
-                        </MudItem>
-
-                        <MudItem xs="12" Class="d-flex justify-end gap-2">
-                            <MudButton Variant="Variant.Outlined" 
-                                       Color="Color.Secondary" 
-                                       OnClick="CancelEdit"
-                                       Disabled="isSaving">
-                                Cancel
-                            </MudButton>
-                            <MudButton Variant="Variant.Filled" 
-                                       Color="Color.Primary" 
-                                       OnClick="SaveChanges"
-                                       Disabled="!formValid || isSaving">
-                                @if (isSaving)
-                                {
-                                    <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
-                                    <span>Saving...</span>
-                                }
-                                else
-                                {
-                                    <span>Save Changes</span>
-                                }
-                            </MudButton>
+                        <MudItem xs="12" md="6">
+                            <MudList T="string" Dense="true" DisablePadding="true">
+                                <MudListItem Icon="@Icons.Material.Filled.LocationOn" IconColor="Color.Primary">
+                                    <div class="d-flex flex-column">
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">Address</MudText>
+                                        <MudText Typo="Typo.body1">@organization.Address</MudText>
+                                        <MudText Typo="Typo.body1">@organization.Postcode @organization.City</MudText>
+                                        <MudText Typo="Typo.body1">@organization.Country</MudText>
+                                    </div>
+                                </MudListItem>
+                            </MudList>
                         </MudItem>
                     </MudGrid>
-                </MudForm>
-            }
+                }
+                else
+                {
+                    <!-- Edit Form -->
+                    <MudForm @ref="form" @bind-IsValid="@formValid">
+                        <MudGrid>
+                            <MudItem xs="12">
+                                <MudTextField @bind-Value="editModel.FullName" 
+                                              Label="Organization Name" 
+                                              Variant="Variant.Outlined"
+                                              Adornment="Adornment.Start"
+                                              AdornmentIcon="@Icons.Material.Filled.Business"
+                                              Required="true"
+                                              RequiredError="Organization name is required" />
+                            </MudItem>
 
-            <!-- Back Button -->
-            <MudDivider Class="my-6" />
-            <MudButton Variant="Variant.Text" 
-                       Color="Color.Primary" 
-                       OnClick="@(() => NavigationManager.NavigateTo("/organization/my"))"
-                       StartIcon="@Icons.Material.Filled.ArrowBack">
-                Back to My Organizations
-            </MudButton>
-        </MudPaper>
+                            <MudItem xs="12" sm="6">
+                                <MudTextField @bind-Value="editModel.Email" 
+                                              Label="Email" 
+                                              Variant="Variant.Outlined"
+                                              Adornment="Adornment.Start"
+                                              AdornmentIcon="@Icons.Material.Filled.Email"
+                                              Required="true"
+                                              RequiredError="Email is required"
+                                              Validation="@(new Func<string, string>(ValidateEmail))" />
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudTextField @bind-Value="editModel.WebsiteUrl" 
+                                              Label="Website (Optional)" 
+                                              Variant="Variant.Outlined"
+                                              Adornment="Adornment.Start"
+                                              AdornmentIcon="@Icons.Material.Filled.Language" />
+                            </MudItem>
+
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.subtitle1" Class="mt-4 mb-2" Color="Color.Primary">Location Details</MudText>
+                                <MudDivider Class="mb-4"/>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudTextField @bind-Value="editModel.Address" 
+                                              Label="Address" 
+                                              Variant="Variant.Outlined"
+                                              Adornment="Adornment.Start"
+                                              AdornmentIcon="@Icons.Material.Filled.Home"
+                                              Required="true"
+                                              RequiredError="Address is required" />
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudNumericField @bind-Value="editModel.Postcode" 
+                                                 Label="Postcode" 
+                                                 Variant="Variant.Outlined"
+                                                 Adornment="Adornment.Start"
+                                                 AdornmentIcon="@Icons.Material.Filled.MarkunreadMailbox"
+                                                 Required="true"
+                                                 RequiredError="Postcode is required"
+                                                 Min="1000"
+                                                 Max="99999" />
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudTextField @bind-Value="editModel.City" 
+                                              Label="City" 
+                                              Variant="Variant.Outlined"
+                                              Adornment="Adornment.Start"
+                                              AdornmentIcon="@Icons.Material.Filled.LocationCity"
+                                              Required="true"
+                                              RequiredError="City is required" />
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudTextField @bind-Value="editModel.Country" 
+                                              Label="Country" 
+                                              Variant="Variant.Outlined"
+                                              Adornment="Adornment.Start"
+                                              AdornmentIcon="@Icons.Material.Filled.Public"
+                                              Required="true"
+                                              RequiredError="Country is required" />
+                            </MudItem>
+
+                            <MudItem xs="12" Class="d-flex justify-end gap-2 mt-4">
+                                <MudButton Variant="Variant.Filled" 
+                                           Color="Color.Primary" 
+                                           OnClick="SaveChanges"
+                                           StartIcon="@Icons.Material.Filled.Save"
+                                           Disabled="!formValid || isSaving">
+                                    @if (isSaving)
+                                    {
+                                        <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+                                        <span>Saving...</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Save Changes</span>
+                                    }
+                                </MudButton>
+                            </MudItem>
+                        </MudGrid>
+                    </MudForm>
+                }
+            </MudCardContent>
+        </MudCard>
 
         @if (!string.IsNullOrEmpty(errorMessage))
         {
@@ -231,6 +265,7 @@ else
     private string? errorMessage;
     private string? successMessage;
     private string? currentUserId;
+    private OrganizationRole? currentUserRole;
 
     protected override async Task OnInitializedAsync()
     {
@@ -259,8 +294,29 @@ else
         
         if (organization != null)
         {
-            // Check if current user is the creator
-            canEdit = !string.IsNullOrEmpty(currentUserId) && organization.CreatedByUserId == currentUserId;
+            // Check role
+            if (!string.IsNullOrEmpty(currentUserId))
+            {
+                try 
+                {
+                    var members = await MemberService.GetMembersAsync(Id);
+                    var me = members.FirstOrDefault(m => m.UserId.ToString() == currentUserId);
+                    if (me != null)
+                    {
+                        currentUserRole = me.Role;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error loading members: {ex.Message}");
+                }
+            }
+
+            // Check if current user is the creator OR has Creator/CoOwner/Admin role
+            canEdit = (!string.IsNullOrEmpty(currentUserId) && organization.CreatedByUserId == currentUserId) || 
+                      currentUserRole == OrganizationRole.Creator || 
+                      currentUserRole == OrganizationRole.CoOwner || 
+                      currentUserRole == OrganizationRole.Admin;
             
             // Initialize edit model
             editModel = new OrganizationCreateDto

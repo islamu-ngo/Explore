@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Explore.Domain.Enums;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text;
@@ -14,6 +15,6 @@ namespace Explore.Domain
         [ForeignKey("Organization")]
         public Guid OrganizationId { get; set; }
         public Organization Organization { get; set; }
-        
+        public OrganizationRole Role { get; set; } = OrganizationRole.Member;
     }
 }

@@ -319,16 +319,28 @@ namespace Explore.Persistence.Migrations
                         .HasColumnName("id")
                         .HasDefaultValueSql("uuidv7()");
 
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("email");
+
                     b.Property<Guid>("OrganizationId")
                         .HasColumnType("uuid")
                         .HasColumnName("organization_id");
 
-                    b.Property<Guid>("UserId")
+                    b.Property<int>("Role")
+                        .HasColumnType("integer")
+                        .HasColumnName("role");
+
+                    b.Property<Guid?>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
                         .HasName("pk_organization_members");
+
+                    b.HasIndex("OrganizationId")
+                        .HasDatabaseName("ix_organization_members_organization_id");
 
                     b.ToTable("organization_members", (string)null);
                 });
@@ -585,6 +597,39 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("files", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.User", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("email");
+
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("first_name");
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("last_name");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("username");
+
+                    b.HasKey("Id")
+                        .HasName("pk_users");
+
+                    b.ToTable("users", (string)null);
+                });
+
             modelBuilder.Entity("Explore.Domain.Education", b =>
                 {
                     b.HasBaseType("Explore.Domain.Program");
@@ -623,6 +668,18 @@ namespace Explore.Persistence.Migrations
                         .HasConstraintName("fk_organizations_status_types_status_type_id");
 
                     b.Navigation("StatusType");
+                });
+
+            modelBuilder.Entity("Explore.Domain.OrganizationMember", b =>
+                {
+                    b.HasOne("Explore.Domain.Organization", "Organization")
+                        .WithMany("Members")
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_organization_members_organizations_organization_id");
+
+                    b.Navigation("Organization");
                 });
 
             modelBuilder.Entity("Explore.Domain.Program", b =>
@@ -740,6 +797,11 @@ namespace Explore.Persistence.Migrations
                         .HasConstraintName("fk_events_programs_id");
 
                     b.Navigation("EventType");
+                });
+
+            modelBuilder.Entity("Explore.Domain.Organization", b =>
+                {
+                    b.Navigation("Members");
                 });
 #pragma warning restore 612, 618
         }

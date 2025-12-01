@@ -12,8 +12,10 @@ using Explore.Application.DTOs.EducationType;
 using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.EventType;
 using Explore.Application.DTOs.Organization;
+using Explore.Application.DTOs.OrganizationMember;
 using Explore.Application.DTOs.ProgramType;
 using Explore.Application.DTOs.StatusType;
+using Explore.Application.DTOs.User;
 
 namespace Explore.Application.Profiles
 {
@@ -37,11 +39,18 @@ namespace Explore.Application.Profiles
             CreateMap<Organization, OrganizationListDto>().ReverseMap();
             CreateMap<Organization, CreateOrganizationDto>().ReverseMap();
             CreateMap<Organization, UpdateOrganizationStatusTypeDto>().ReverseMap();
+            CreateMap<OrganizationMember, OrganizationMemberDto>()
+                .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.User != null ? src.User.Username : null))
+                .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.User != null && !string.IsNullOrEmpty(src.User.Email) ? src.User.Email : src.Email))
+                .ReverseMap();
             CreateMap<Program, ProgramDto>().ReverseMap();
             CreateMap<Program, ProgramListDto>().ReverseMap();
             CreateMap<Program, CreateProgramDto>().ReverseMap();
             CreateMap<ProgramType, ProgramTypeListDto>().ReverseMap();
             CreateMap<StatusType, StatusTypeListDto>().ReverseMap();
+            CreateMap<User, UserDto>().ReverseMap();
+            CreateMap<OrganizationMember, OrganizationInvitationDto>()
+                .ForMember(dest => dest.OrganizationName, opt => opt.MapFrom(src => src.Organization.FullName));
         }
     }
 }

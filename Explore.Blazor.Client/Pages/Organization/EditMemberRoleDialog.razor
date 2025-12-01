@@ -1,0 +1,60 @@
+@using Explore.Blazor.Client.Models.DTOs.OrganizationMember
+@using Explore.Blazor.Client.Models.Enums
+@using Explore.Blazor.Client.Services
+@using MudBlazor
+@inject IOrganizationMemberService MemberService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudText>Change role for @Member.Email</MudText>
+        <MudSelect T="OrganizationRole" Label="Role" @bind-Value="newRole" AnchorOrigin="Origin.BottomCenter">
+            @foreach (OrganizationRole role in Enum.GetValues(typeof(OrganizationRole)))
+            {
+                if (role != OrganizationRole.Creator)
+                {
+                    <MudSelectItem Value="@role">@role</MudSelectItem>
+                }
+            }
+        </MudSelect>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudBlazor.IMudDialogInstance MudDialog { get; set; }
+    [Parameter] public OrganizationMemberDto Member { get; set; }
+    [Parameter] public Guid OrganizationId { get; set; }
+
+    private OrganizationRole newRole;
+
+    protected override void OnInitialized()
+    {
+        newRole = Member.Role;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        try
+        {
+            var updateDto = new UpdateOrganizationMemberRoleDto
+            {
+                Id = Member.Id,
+                Role = newRole
+            };
+
+            await MemberService.UpdateMemberRoleAsync(updateDto);
+            Snackbar.Add("Role updated successfully", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error updating role: {ex.Message}", Severity.Error);
+        }
+    }
+}

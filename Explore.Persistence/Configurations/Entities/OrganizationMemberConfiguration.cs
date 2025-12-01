@@ -12,6 +12,11 @@ namespace Explore.Persistence.Configurations.Entities
         public void Configure(EntityTypeBuilder<OrganizationMember> builder)
         {
             builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
+
+            builder.HasOne(m => m.User)
+                .WithMany()
+                .HasForeignKey(m => m.UserId)
+                .IsRequired(false);
         }
     }
 }

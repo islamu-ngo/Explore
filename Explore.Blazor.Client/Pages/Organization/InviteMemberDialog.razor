@@ -1,0 +1,68 @@
+@using Explore.Blazor.Client.Models.DTOs.OrganizationMember
+@using Explore.Blazor.Client.Models.Enums
+@using Explore.Blazor.Client.Services
+@using MudBlazor
+@inject IOrganizationMemberService MemberService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="model.Email" Label="Email" Required="true" RequiredError="Email is required" InputType="InputType.Email" />
+        <MudSelect T="OrganizationRole" Label="Role" @bind-Value="model.Role" AnchorOrigin="Origin.BottomCenter">
+            @foreach (OrganizationRole role in Enum.GetValues(typeof(OrganizationRole)))
+            {
+                if (role != OrganizationRole.Creator)
+                {
+                    <MudSelectItem Value="@role">@role</MudSelectItem>
+                }
+            }
+        </MudSelect>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit">Invite</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudBlazor.IMudDialogInstance MudDialog { get; set; }
+    [Parameter] public Guid OrganizationId { get; set; }
+
+    private AddOrganizationMemberDto model = new();
+
+    protected override void OnInitialized()
+    {
+        model.OrganizationId = OrganizationId;
+        model.Role = OrganizationRole.Member;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        if (string.IsNullOrWhiteSpace(model.Email))
+        {
+            Snackbar.Add("Email is required", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            // Check if user exists
+            var userExists = await MemberService.CheckUserExistsAsync(model.Email);
+            if (!userExists)
+            {
+                Snackbar.Add($"User with email '{model.Email}' does not exist.", Severity.Warning);
+                return;
+            }
+
+            await MemberService.InviteMemberAsync(model);
+            Snackbar.Add("Member invited successfully", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error inviting member: {ex.Message}", Severity.Error);
+        }
+    }
+}

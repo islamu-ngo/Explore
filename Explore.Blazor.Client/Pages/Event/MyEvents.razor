@@ -3,6 +3,7 @@
 @using Explore.Blazor.Client.Models
 @using Explore.Blazor.Client.Models.DTOs
 @using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Models.Enums
 @inject IEventService EventService
 @inject IOrganizationService OrganizationService
 @inject NavigationManager Navigation
@@ -10,6 +11,7 @@
 @inject IDialogService DialogService
 
 <style>
+/* ... existing styles ... */
 /* ===== TOKENS ===== */
 :root{
     --fx-ring: color-mix(in srgb, var(--mud-palette-primary) 30%, transparent);
@@ -294,15 +296,21 @@
                                      Variant="Variant.Filled"
                                      Size="Size.Small"
                                      Style="background: rgba(255,255,255,0.9); backdrop-filter: blur(8px);">
-                                <MudMenuItem OnClick="@(() => EditEvent(evt))">
-                                    <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-2" Size="Size.Small" /> Edit
-                                </MudMenuItem>
+                                @if (CanEditEvent(evt))
+                                {
+                                    <MudMenuItem OnClick="@(() => EditEvent(evt))">
+                                        <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-2" Size="Size.Small" /> Edit
+                                    </MudMenuItem>
+                                }
                                 <MudMenuItem OnClick="@(() => ViewEventDetails(evt))">
                                     <MudIcon Icon="@Icons.Material.Filled.Visibility" Class="mr-2" Size="Size.Small" /> View Details
                                 </MudMenuItem>
-                                <MudMenuItem OnClick="@(() => DeleteEvent(evt))" Class="text-error">
-                                    <MudIcon Icon="@Icons.Material.Filled.Delete" Class="mr-2" Size="Size.Small" /> Delete
-                                </MudMenuItem>
+                                @if (CanEditEvent(evt))
+                                {
+                                    <MudMenuItem OnClick="@(() => DeleteEvent(evt))" Class="text-error">
+                                        <MudIcon Icon="@Icons.Material.Filled.Delete" Class="mr-2" Size="Size.Small" /> Delete
+                                    </MudMenuItem>
+                                }
                             </MudMenu>
                         </div>
 
@@ -321,12 +329,24 @@
                             </MudText>
                         </MudCardContent>
                         <MudCardActions Class="justify-space-between pa-4 pt-0">
-                            <MudButton Variant="Variant.Text"
-                                       EndIcon="@Icons.Material.Filled.Edit"
-                                       Color="Color.Primary"
-                                       OnClick="@(() => EditEvent(evt))">
-                                Edit Event
-                            </MudButton>
+                            @if (CanEditEvent(evt))
+                            {
+                                <MudButton Variant="Variant.Text"
+                                           EndIcon="@Icons.Material.Filled.Edit"
+                                           Color="Color.Primary"
+                                           OnClick="@(() => EditEvent(evt))">
+                                    Edit Event
+                                </MudButton>
+                            }
+                            else
+                            {
+                                <MudButton Variant="Variant.Text"
+                                           EndIcon="@Icons.Material.Filled.Visibility"
+                                           Color="Color.Primary"
+                                           OnClick="@(() => ViewEventDetails(evt))">
+                                    View Details
+                                </MudButton>
+                            }
                             <div class="loc">
                                 <MudIcon Icon="@Icons.Material.Filled.LocationOn" />
                                 <MudText>@(evt.City ?? evt.Country ?? "Online")</MudText>
@@ -412,6 +432,15 @@
         }
     }
     
+    private bool CanEditEvent(EventListDto evt)
+    {
+        var org = MyOrganizations.FirstOrDefault(o => o.Id == evt.OrganizationId);
+        if (org == null) return false;
+        
+        // Creator, CoOwner or Admin can edit
+        return org.CurrentUserRole == OrganizationRole.Creator || org.CurrentUserRole == OrganizationRole.CoOwner || org.CurrentUserRole == OrganizationRole.Admin;
+    }
+
     private List<string> UniqueEventTypes => Events
         .Select(e => e.EventTypeFullName)
         .Distinct()
@@ -454,7 +483,14 @@
 
     private void EditEvent(EventListDto evt)
     {
-        Navigation.NavigateTo($"/eventedit/{evt.Id}");
+        if (CanEditEvent(evt))
+        {
+            Navigation.NavigateTo($"/eventedit/{evt.Id}");
+        }
+        else
+        {
+            Snackbar.Add("You do not have permission to edit this event.", Severity.Error);
+        }
     }
 
     private void ViewEventDetails(EventListDto evt)
@@ -464,6 +500,12 @@
 
     private async Task DeleteEvent(EventListDto evt)
     {
+        if (!CanEditEvent(evt))
+        {
+            Snackbar.Add("You do not have permission to delete this event.", Severity.Error);
+            return;
+        }
+
         try
         {
             bool? result = await DialogService.ShowMessageBox(

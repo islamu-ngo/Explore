@@ -20,5 +20,6 @@ namespace Explore.Domain
         public StatusType StatusType { get; set; }
         public string? CreatedByUserId { get; set; } // Keycloak User ID
         public DateTime CreatedAt { get; set; }
+        public ICollection<OrganizationMember> Members { get; set; } = new List<OrganizationMember>();
     }
 }

@@ -9,5 +9,7 @@ namespace Explore.Application.Contracts.Persistence
     {
         Task<OrganizationMember> GetOrganizationMemberWithDetails(Guid id);
         Task<List<OrganizationMember>> GetOrganizationMembersWithDetails();
+        Task<List<OrganizationMember>> GetMembersByOrganizationId(Guid organizationId);
+        Task<List<OrganizationMember>> GetInvitesByEmail(string email);
     }
 }

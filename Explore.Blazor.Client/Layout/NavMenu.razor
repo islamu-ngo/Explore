@@ -2,282 +2,228 @@
 @inject IJSRuntime JSRuntime
 
 <style>
-/* ===== NAV WRAP ===== */
-.topnav {
-    position: sticky; top: 0; z-index: 50;
-    width: 100%;
-    padding: 10px 24px;
-    background: color-mix(in srgb, var(--mud-palette-background-paper) 95%, transparent);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid color-mix(in srgb, var(--mud-palette-text-primary) 8%, transparent);
-    box-shadow: 0 2px 20px rgba(0,0,0,.08);
-}
+    /* Modern Navbar Styles */
+    .navbar-glass {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        width: 100%;
+        height: 70px;
+        padding: 0 24px;
+        background: color-mix(in srgb, var(--mud-palette-surface) 85%, transparent);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-bottom: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 40%, transparent);
+        transition: all 0.3s ease;
+    }
 
-/* Layout rows */
-.nav-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    width: 100%;
-}
+    .nav-content {
+        max-width: 1280px;
+        margin: 0 auto;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
 
-.nav-row {
-    display: flex; 
-    align-items: center; 
-    justify-content: space-between;
-    gap: 24px;
-    min-height: 60px;
-}
+    /* Brand */
+    .brand-logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        text-decoration: none;
+        transition: transform 0.2s ease;
+    }
+    
+    .brand-logo:hover {
+        transform: scale(1.02);
+    }
 
-/* ===== LEFT BRAND / HOME ===== */
-.brand a.mud-nav-link {
-    border-radius: 999px;
-    padding: 8px 12px;
-    font-weight: 700;
-    letter-spacing: .2px;
-    background: color-mix(in srgb, var(--mud-palette-primary) 10%, transparent);
-    color: var(--mud-palette-primary-contrast-text) !important;
-    box-shadow: 0 6px 16px color-mix(in srgb, var(--mud-palette-primary) 25%, transparent);
-}
-.brand a.mud-nav-link:hover {
-    transform: translateY(-1px);
-}
+    .brand-text {
+        font-size: 1.25rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        color: var(--mud-palette-text-primary);
+    }
 
-/* ===== CENTER LINKS ===== */
-.center-links {
-    flex: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    max-width: 500px;
-    margin: 0 auto;
-    gap: 16px;
-}
+    .brand-highlight {
+        color: var(--mud-palette-primary);
+    }
 
-.pill a.mud-nav-link {
-    border-radius: 999px;
-    padding: 8px 16px;
-    transition: background .15s ease, color .15s ease, transform .15s ease;
-    white-space: nowrap;
-    max-width: 100px;
-    text-align: center;
-    font-size: 0.875rem;
-}
-.pill a.mud-nav-link:hover {
-    background: color-mix(in srgb, var(--mud-palette-primary) 10%, transparent);
-    transform: translateY(-1px);
-}
+    /* Navigation Links */
+    .nav-links {
+        display: flex;
+        gap: 8px;
+        background: color-mix(in srgb, var(--mud-palette-text-primary) 4%, transparent);
+        padding: 4px;
+        border-radius: 999px;
+        border: 1px solid color-mix(in srgb, var(--mud-palette-text-primary) 5%, transparent);
+    }
 
-/* Active underline (subtle) */
-a.mud-nav-link.mud-nav-link-active {
-    position: relative;
-}
-a.mud-nav-link.mud-nav-link-active::after {
-    content: ""; position: absolute; left: 12px; right: 12px; bottom: 4px; height: 2px;
-    border-radius: 2px;
-    background: var(--mud-palette-primary);
-    opacity: .9;
-}
+    .nav-item {
+        padding: 6px 16px;
+        border-radius: 999px;
+        color: var(--mud-palette-text-secondary);
+        font-weight: 600;
+        font-size: 0.9rem;
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
 
-/* ===== SEARCH ===== */
-.nav-search {
-    flex: 1;
-    max-width: 320px;
-    min-width: 240px;
-}
+    .nav-item:hover {
+        color: var(--mud-palette-text-primary);
+        background: color-mix(in srgb, var(--mud-palette-surface) 50%, transparent);
+    }
 
-.nav-search .mud-input-root {
-    border-radius: 999px !important;
-}
-.nav-search input.mud-input-slot {
-    padding-left: 16px; 
-    padding-right: 40px;
-}
-.nav-search .mud-input-adornment {
-    opacity: .85;
-}
-.nav-search .mud-input:not(.mud-input-disabled):focus-within {
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--mud-palette-primary) 30%, transparent);
-    border-color: var(--mud-palette-primary);
-}
+    .nav-item.active {
+        background: var(--mud-palette-surface);
+        color: var(--mud-palette-primary);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
 
-/* ===== RIGHT SIDE ===== */
-.nav-actions .mud-button-root {
-    border-radius: 999px;
-}
-.nav-actions .mud-icon-button-root {
-    border-radius: 10px;
-}
-.nav-actions .mud-icon-button-root:hover {
-    background: color-mix(in srgb, var(--mud-palette-text-primary) 8%, transparent);
-}
+    /* User Menu & Actions */
+    .nav-actions {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
 
-/* ===== USER DROPDOWN ===== */
-.user-dropdown {
-    position: relative;
-    display: inline-block;
-}
+    /* User Dropdown Styles (Used by JS) */
+    .user-dropdown-container {
+        position: relative;
+    }
 
-.user-dropdown-button {
-    cursor: pointer;
-    border-radius: 999px;
-    padding: 8px 16px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: color-mix(in srgb, var(--mud-palette-primary) 10%, transparent);
-    border: 1px solid color-mix(in srgb, var(--mud-palette-primary) 20%, transparent);
-    transition: all 0.2s ease;
-}
+    .user-profile-btn {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 8px 6px 12px;
+        background: color-mix(in srgb, var(--mud-palette-surface) 50%, transparent);
+        border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 50%, transparent);
+        border-radius: 999px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
 
-.user-dropdown-button:hover {
-    background: color-mix(in srgb, var(--mud-palette-primary) 15%, transparent);
-    transform: translateY(-1px);
-}
+    .user-profile-btn:hover {
+        background: color-mix(in srgb, var(--mud-palette-primary) 8%, transparent);
+        border-color: color-mix(in srgb, var(--mud-palette-primary) 20%, transparent);
+    }
 
-.user-dropdown-menu {
-    position: absolute;
-    top: calc(100% + 8px);
-    right: 0;
-    min-width: 200px;
-    background: var(--mud-palette-surface);
-    border: 1px solid color-mix(in srgb, var(--mud-palette-text-primary) 12%, transparent);
-    border-radius: 12px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(-10px);
-    transition: all 0.2s ease;
-    z-index: 1000;
-}
+    .nav-user-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: var(--mud-palette-primary);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 14px;
+    }
 
-.user-dropdown-menu.show {
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0);
-}
+    .user-dropdown-menu {
+        position: absolute;
+        top: calc(100% + 12px);
+        right: 0;
+        width: 240px;
+        background: var(--mud-palette-surface);
+        border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 50%, transparent);
+        border-radius: 16px;
+        box-shadow: 0 10px 40px -10px rgba(0,0,0,0.15);
+        padding: 8px;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-10px);
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        z-index: 1000;
+    }
 
-.user-dropdown-menu a {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    color: var(--mud-palette-text-primary);
-    text-decoration: none;
-    transition: background 0.15s ease;
-    border-radius: 8px;
-    margin: 4px;
-}
+    .user-dropdown-menu.show {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
 
-.user-dropdown-menu a:hover {
-    background: color-mix(in srgb, var(--mud-palette-primary) 10%, transparent);
-}
-
-.user-dropdown-menu a:first-child {
-    margin-top: 8px;
-}
-
-.user-dropdown-menu a:last-child {
-    margin-bottom: 8px;
-    color: var(--mud-palette-error);
-}
-
-.user-dropdown-menu a:last-child:hover {
-    background: color-mix(in srgb, var(--mud-palette-error) 10%, transparent);
-}
-
-.user-dropdown-menu svg {
-    width: 20px;
-    height: 20px;
-    fill: var(--mud-palette-text-primary); /* Adapts to theme automatically */
-}
-
-.user-dropdown-button svg {
-    fill: var(--mud-palette-text-primary); /* Adapts to theme automatically */
-}
-
-/* Logout icon keeps error color */
-.user-dropdown-menu a:last-child svg {
-    fill: var(--mud-palette-error) !important;
-}
-
-/* ===== RESPONSIVE ===== */
-@@media (max-width: 900px){
-    .nav-row { 
-        flex-wrap: wrap; 
+    .menu-item {
+        display: flex;
+        align-items: center;
         gap: 12px;
-        justify-content: center;
+        padding: 10px 12px;
+        color: var(--mud-palette-text-primary);
+        text-decoration: none;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        font-weight: 500;
+        transition: all 0.15s ease;
+    }
+
+    .menu-item:hover {
+        background: color-mix(in srgb, var(--mud-palette-text-primary) 4%, transparent);
+    }
+
+    .menu-item.danger {
+        color: var(--mud-palette-error);
     }
     
-    .brand { 
-        order: 1; 
-        width: 100%; 
-        justify-content: center; 
+    .menu-item.danger:hover {
+        background: color-mix(in srgb, var(--mud-palette-error) 8%, transparent);
     }
-    
-    .center-links { 
-        order: 2; 
-        width: 100%; 
-        justify-content: center;
-        max-width: none;
-        margin: 0;
+
+    .menu-divider {
+        height: 1px;
+        background: color-mix(in srgb, var(--mud-palette-lines-default) 50%, transparent);
+        margin: 6px 0;
     }
-    
-    .nav-search { 
-        flex: 1 1 100%; 
-        max-width: none;
-        margin: 0 20px;
+
+    .badge {
+        background: var(--mud-palette-error);
+        color: white;
+        font-size: 0.7rem;
+        font-weight: 700;
+        padding: 2px 6px;
+        border-radius: 99px;
+        margin-left: auto;
     }
-    
-    .nav-actions { 
-        order: 3; 
-        width: 100%; 
-        justify-content: center; 
+
+    @@media (max-width: 768px) {
+        .brand-text span { display: none; }
+        .nav-links { display: none; } /* Or move to mobile menu */
     }
-}
 </style>
 
-<div class="topnav">
-    <div class="nav-container">
-        <div class="nav-row">
+<div class="navbar-glass">
+    <div class="nav-content">
+        <!-- Brand -->
+        <a href="/" class="brand-logo">
+            <MudIcon Icon="@Icons.Material.Filled.Explore" Color="Color.Primary" Size="Size.Large" />
+            <div class="brand-text">ISLAMU<span class="brand-highlight">Explore</span></div>
+        </a>
 
-            <!-- Left: brand / home -->
-            <MudStack Row="true" Spacing="1" Class="brand">
-                <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Favorite" Color="Color.Error">
-                    ISLAMU Explore
-                </MudNavLink>
-            </MudStack>
+        <!-- Center Navigation -->
+        <div class="nav-links">
+            <NavLink href="/events" class="nav-item" Match="NavLinkMatch.Prefix">
+                Events
+            </NavLink>
+        </div>
 
-            <!-- Center: main links + search -->
-            <div class="center-links">
-                <div class="pill">
-                    <MudNavLink Href="/events" Match="NavLinkMatch.Prefix">Events</MudNavLink>
-                </div>
-                <MudTextField @bind-Value="searchText"
-                              Class="nav-search"
-                              Placeholder="Search events..."
-                              Adornment="Adornment.End"
-                              AdornmentIcon="@Icons.Material.Filled.Search"
-                              IconSize="Size.Medium"
-                              Variant="Variant.Outlined"
-                              Margin="Margin.Dense" />
-            </div>
-
-            <!-- Right: actions (theme + create + auth) -->
-            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="nav-actions">
-                <MudIconButton Icon="@Icons.Material.Rounded.AutoMode"
-                               Color="Color.Inherit"
-                               OnClick="@OnToggleTheme"
-                               aria-label="Toggle theme" />
-                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="/myevents" StartIcon="@Icons.Material.Filled.Add">
-                    Create
+        <!-- Right Actions -->
+        <div class="nav-actions">
+            <MudIconButton Icon="@Icons.Material.Rounded.LightMode" 
+                           Color="Color.Inherit" 
+                           OnClick="@OnToggleTheme" 
+                           Title="Toggle Theme" />
+            
+            <div id="auth-buttons">
+                <MudButton Variant="Variant.Filled" 
+                           Color="Color.Primary" 
+                           Href="/login" 
+                           Class="rounded-pill px-6"
+                           StartIcon="@Icons.Material.Filled.Login">
+                    Login
                 </MudButton>
-
-                <!-- Auth buttons -->
-                <div id="auth-buttons">
-                    <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/login" StartIcon="@Icons.Material.Filled.Login">Login</MudButton>
-                </div>
-            </MudStack>
-
+            </div>
         </div>
     </div>
 </div>
@@ -285,13 +231,10 @@ a.mud-nav-link.mud-nav-link-active::after {
 @code {
     [Parameter] public EventCallback OnToggleTheme { get; set; }
 
-    private string searchText = "";
-
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            // Update navigation based on authentication status (unchanged)
             await UpdateAuthenticationUI();
         }
     }
@@ -313,46 +256,48 @@ a.mud-nav-link.mud-nav-link-active::after {
                             const authInfo = await response.json();
                             if (authInfo.isAuthenticated && authInfo.name) {
                                 if (authButtons) {
+                                    // Generate initials
+                                    const initials = authInfo.name.substring(0, 2).toUpperCase();
+                                    
                                     authButtons.innerHTML = `
-                                        <div class='user-dropdown'>
-                                            <div class='user-dropdown-button' onclick='toggleUserDropdown(event)'>
-                                                <svg class='mud-icon-root mud-svg-icon' style='width:20px;height:20px;' focusable='false' viewBox='0 0 24 24' aria-hidden='true'>
-                                                    <path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'></path>
-                                                </svg>
-                                                <span>${authInfo.name}</span>
-                                                <svg class='mud-icon-root mud-svg-icon' style='width:16px;height:16px;' focusable='false' viewBox='0 0 24 24' aria-hidden='true'>
-                                                    <path d='M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z'></path>
+                                        <div class='user-dropdown-container'>
+                                            <div class='user-profile-btn' onclick='toggleUserDropdown(event)'>
+                                                <div class='nav-user-avatar'>${initials}</div>
+                                                <span style='font-weight: 600; font-size: 0.9rem;'>${authInfo.name}</span>
+                                                <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+                                                    <path d='M6 9l6 6 6-6'/>
                                                 </svg>
                                             </div>
+                                            
                                             <div class='user-dropdown-menu' id='userDropdownMenu'>
-                                                <a href='/user/profile'>
-                                                    <svg focusable='false' viewBox='0 0 24 24' aria-hidden='true'>
-                                                        <path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'></path>
-                                                    </svg>
+                                                <div style='padding: 8px 12px; margin-bottom: 4px;'>
+                                                    <div style='font-size: 0.8rem; color: var(--mud-palette-text-secondary);'>Signed in as</div>
+                                                    <div style='font-weight: 600; text-overflow: ellipsis; overflow: hidden;'>${authInfo.name}</div>
+                                                </div>
+                                                <div class='menu-divider'></div>
+                                                
+                                                <a href='/user/profile' class='menu-item'>
+                                                    <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'></path><circle cx='12' cy='7' r='4'></circle></svg>
                                                     My Profile
                                                 </a>
-                                                <a href='/myevents'>
-                                                    <svg focusable='false' viewBox='0 0 24 24' aria-hidden='true'>
-                                                        <path d='M19,4H18V2H16V4H8V2H6V4H5A2,2 0 0,0 3,6V20A2,2 0 0,0 5,22H19A2,2 0 0,0 21,20V6A2,2 0 0,0 19,4M19,20H5V10H19V20Z'></path>
-                                                    </svg>
+                                                <a href='/myevents' class='menu-item'>
+                                                    <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='4' width='18' height='18' rx='2' ry='2'></rect><line x1='16' y1='2' x2='16' y2='6'></line><line x1='8' y1='2' x2='8' y2='6'></line><line x1='3' y1='10' x2='21' y2='10'></line></svg>
                                                     My Events
                                                 </a>
-                                                <a href='/organization/my'>
-                                                    <svg focusable='false' viewBox='0 0 24 24' aria-hidden='true'>
-                                                        <path d='M12,7V3H2V21H22V7H12M6,19H4V17H6V19M6,15H4V13H6V15M6,11H4V9H6V11M6,7H4V5H6V7M10,19H8V17H10V19M10,15H8V13H10V15M10,11H8V9H10V11M10,7H8V5H10V7M20,19H12V17H14V15H12V13H14V11H12V9H20V19M18,11H16V13H18V11M18,15H16V17H18V15Z'></path>
-                                                    </svg>
+                                                <a href='/organization/my' class='menu-item'>
+                                                    <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M3 21h18'/><path d='M5 21V7l8-4 8 4v14'/><path d='M17 21v-8.5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0-.5.5V21'/></svg>
                                                     My Organizations
+                                                    ${authInfo.pendingInvitesCount > 0 ? `<span class='badge'>${authInfo.pendingInvitesCount}</span>` : ''}
                                                 </a>
-                                                <a href='/my-registrations'>
-                                                    <svg focusable='false' viewBox='0 0 24 24' aria-hidden='true'>
-                                                        <path d='M9,10H7V12H9V10M13,10H11V12H13V10M17,10H15V12H17V10M19,3H18V1H16V3H8V1H6V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5A2,2 0 0,0 19,3M19,19H5V8H19V19Z'></path>
-                                                    </svg>
+                                                <a href='/my-registrations' class='menu-item'>
+                                                    <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'></path><polyline points='14 2 14 8 20 8'></polyline><line x1='16' y1='13' x2='8' y2='13'></line><line x1='16' y1='17' x2='8' y2='17'></line><polyline points='10 9 9 9 8 9'></polyline></svg>
                                                     My Registrations
                                                 </a>
-                                                <a href='/logout'>
-                                                    <svg focusable='false' viewBox='0 0 24 24' aria-hidden='true'>
-                                                        <path d='M17,7L15.59,8.41L18.17,11H8V13H18.17L15.59,15.59L17,17L22,12L17,7M4,5H12V3H4C2.89,3 2,3.9 2,5V19A2,2 0 0,0 4,21H12V19H4V5Z'></path>
-                                                    </svg>
+                                                
+                                                <div class='menu-divider'></div>
+                                                
+                                                <a href='/logout' class='menu-item danger'>
+                                                    <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4'></path><polyline points='16 17 21 12 16 7'></polyline><line x1='21' y1='12' x2='9' y2='12'></line></svg>
                                                     Logout
                                                 </a>
                                             </div>
@@ -372,8 +317,8 @@ a.mud-nav-link.mud-nav-link-active::after {
                                         // Close dropdown when clicking outside
                                         document.addEventListener('click', function(event) {
                                             const menu = document.getElementById('userDropdownMenu');
-                                            const dropdown = document.querySelector('.user-dropdown');
-                                            if (menu && dropdown && !dropdown.contains(event.target)) {
+                                            const btn = document.querySelector('.user-profile-btn');
+                                            if (menu && btn && !btn.contains(event.target) && !menu.contains(event.target)) {
                                                 menu.classList.remove('show');
                                             }
                                         });
@@ -382,7 +327,7 @@ a.mud-nav-link.mud-nav-link-active::after {
                             } else {
                                 if (authButtons) {
                                     authButtons.innerHTML = `
-                                        <a href='/login' class='mud-button-root mud-button mud-button-text mud-button-text-primary mud-button-text-size-medium mud-ripple'>
+                                        <a href='/login' class='mud-button-root mud-button mud-button-filled mud-button-filled-primary mud-button-filled-size-medium mud-ripple rounded-pill px-6'>
                                             <span class='mud-button-start-icon-container'>
                                                 <svg class='mud-icon-root mud-svg-icon mud-icon-size-medium' focusable='false' viewBox='0 0 24 24' aria-hidden='true'>
                                                     <path d='M10,17V14H3V10H10V7L15,12L10,17M10,2H19A2,2 0 0,1 21,4V20A2,2 0 0,1 19,22H10A2,2 0 0,1 8,20V18H10V20H19V4H10V6H8V4A2,2 0 0,1 10,2Z'></path>

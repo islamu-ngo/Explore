@@ -1,3 +1,5 @@
+using Explore.Blazor.Client.Models.Enums;
+
 namespace Explore.Blazor.Client.Models.DTOs;
 
 public class OrganizationCreateDto
@@ -24,6 +26,8 @@ public class OrganizationDto
     public int StatusTypeId { get; set; }
     public string? StatusTypeName { get; set; }
     public string? CreatedByUserId { get; set; }
+    public string? CreatorUserName { get; set; }
+    public string? CreatorEmail { get; set; }
     public DateTime CreatedAt { get; set; }
 }
 
@@ -39,6 +43,7 @@ public class OrganizationListDto
     public string Address { get; set; } = string.Empty;
     public int StatusTypeId { get; set; }
     public string StatusTypeFullName { get; set; } = string.Empty;
+    public OrganizationRole? CurrentUserRole { get; set; }
 }
 
 public class OrganizationStatusTypeListDto
