@@ -228,12 +228,20 @@ p{ line-height: 1.6; }
 
                                 <div class="cta">
                                     <MudButton Variant="Variant.Filled"
-                                               Color="Color.Primary"
+                                               Color="GetButtonColor()"
                                                Size="Size.Large"
                                                FullWidth="true"
+                                               Disabled="IsButtonDisabled()"
+                                               StartIcon="@(isUserRegistered ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Event)"
                                                OnClick="OpenRegistrationDialog">
-                                        @(program.IsRegistrationRequired == true ? "Register now" : "Join us")
+                                        @GetButtonText()
                                     </MudButton>
+                                    @if (isUserRegistered)
+                                    {
+                                        <MudText Typo="Typo.caption" Align="Align.Center" Style="margin-top: 8px; color: var(--mud-palette-success);">
+                                            You're all set for this event! 🎉
+                                        </MudText>
+                                    }
                                 </div>
 
                                 <MudDivider Class="aside-divider" />
@@ -282,6 +290,8 @@ p{ line-height: 1.6; }
 
     private ProgramDto? program;
     private bool isLoading = true;
+    private bool isUserRegistered = false;
+    private bool isCheckingRegistration = true;
     private Dictionary<int, string> programTypeMap = new();
     private Dictionary<int, string> eventTypeMap = new();
     private Dictionary<int, string> educationTypeMap = new();
@@ -294,6 +304,7 @@ p{ line-height: 1.6; }
     private async Task LoadDataAsync()
     {
         isLoading = true;
+        isCheckingRegistration = true;
 
         try
         {
@@ -305,6 +316,22 @@ p{ line-height: 1.6; }
             await Task.WhenAll(programTask, programTypesTask, eventTypesTask);
 
             program = await programTask;
+            
+            // Check registration status if program loaded successfully
+            if (program != null)
+            {
+                try
+                {
+                    Console.WriteLine($"Checking registration for program: {program.Id}");
+                    isUserRegistered = await ProgramService.IsUserRegisteredAsync(program.Id);
+                    Console.WriteLine($"Is user registered: {isUserRegistered}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error checking registration status: {ex.Message}");
+                    isUserRegistered = false;
+                }
+            }
             
             // Build lookup maps
             var programTypes = await programTypesTask;
@@ -329,6 +356,7 @@ p{ line-height: 1.6; }
         finally
         {
             isLoading = false;
+            isCheckingRegistration = false;
         }
     }
 
@@ -424,7 +452,35 @@ p{ line-height: 1.6; }
         
         if (result != null && !result.Canceled)
         {
-            // Optionally refresh data or show confirmation
+            // Refresh registration status
+            try
+            {
+                Console.WriteLine("Registration dialog closed successfully, refreshing status...");
+                isUserRegistered = await ProgramService.IsUserRegisteredAsync(program.Id);
+                Console.WriteLine($"Updated registration status: {isUserRegistered}");
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error refreshing registration status: {ex.Message}");
+            }
         }
+    }
+
+    private string GetButtonText()
+    {
+        if (isCheckingRegistration) return "Checking...";
+        if (isUserRegistered) return "Already Registered";
+        return program?.IsRegistrationRequired == true ? "Register now" : "Join us";
+    }
+
+    private bool IsButtonDisabled()
+    {
+        return isCheckingRegistration || isUserRegistered;
+    }
+
+    private Color GetButtonColor()
+    {
+        return isUserRegistered ? Color.Success : Color.Primary;
     }
 }
