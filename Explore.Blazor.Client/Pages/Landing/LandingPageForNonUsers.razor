@@ -2,6 +2,7 @@
 @using MudBlazor
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Models.DTOs
+@attribute [StreamRendering]
 @inject IJSRuntime JS
 @inject ILandingPageService LandingPageService
 
@@ -205,7 +206,7 @@
             </div>
 
             <MudPaper Elevation="0" Class="glass" Style="display:flex;align-items:center;justify-content:center;padding:0;">
-                <img src="image/landing_image_nonuser.png" alt="Community and events illustration" style="max-width:100%; border-radius:18px;" />
+                <img src="image/landing_image_nonuser.png" alt="Community and events illustration" style="max-width:100%; border-radius:18px;" fetchpriority="high" width="600" height="400" />
             </MudPaper>
         </div>
     </MudContainer>

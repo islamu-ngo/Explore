@@ -95,19 +95,7 @@
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-
-        try
-        {
-            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-            if (authState.User.Identity?.IsAuthenticated == true)
-            {
-                await UserService.SyncUserAsync();
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error syncing user: {ex.Message}");
-        }
+        // Moved SyncUserAsync to OnAfterRenderAsync to prevent blocking initial render
     }
 
     private Task PersistTheme()
@@ -125,6 +113,21 @@
     {
         if (firstRender)
         {
+            // Sync user in background after first render to improve perceived performance
+            try
+            {
+                var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+                if (authState.User.Identity?.IsAuthenticated == true)
+                {
+                    // Fire and forget or await? Awaiting here is fine as UI is already rendered.
+                    await UserService.SyncUserAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error syncing user: {ex.Message}");
+            }
+
             // Fallback to local storage if not persisted (e.g. first visit)
             // But if we already have a value from PersistentState, we might not want to overwrite it immediately
             // unless we are sure.
