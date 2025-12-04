@@ -16,9 +16,9 @@
 /* ---------- HERO ---------- */
 .hero {
     position: relative; isolation:isolate;
-    padding: 86px 0 60px 0; text-align:center; color:#fff;
-    background: radial-gradient(1200px 600px at 50% -10%, rgba(127,86,217,.35), transparent 60%),
-                linear-gradient(180deg, #0e1026 0%, #0b0f24 100%);
+    padding: 86px 0 60px 0; text-align:center; color:var(--mud-palette-text-primary);
+    background: radial-gradient(1200px 600px at 50% -10%, color-mix(in srgb, var(--mud-palette-primary) 20%, transparent), transparent 60%),
+                linear-gradient(180deg, var(--mud-palette-background) 0%, var(--mud-palette-surface) 100%);
     overflow:hidden;
 }
 .hero::before{
@@ -26,6 +26,7 @@
     background: conic-gradient(from 180deg at 50% 50%, var(--hero-grad-1), var(--hero-grad-2), var(--hero-grad-1));
     filter: blur(120px) saturate(140%) opacity(.35);
     animation: swirl 14s linear infinite; z-index:-1;
+    opacity: 0.5;
 }
 @@keyframes swirl { to { transform: rotate(360deg);} }
 .kicker { letter-spacing:.18em; text-transform:uppercase; font-size:.82rem; opacity:.85; }
@@ -42,10 +43,11 @@
 
 /* ---------- GLASS UTIL ---------- */
 .glass{
-    background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
-    border: 1px solid rgba(255,255,255,.12);
+    background: color-mix(in srgb, var(--mud-palette-surface) 70%, transparent);
+    border: 1px solid var(--mud-palette-lines-default);
     border-radius: 18px; backdrop-filter: blur(10px);
-    box-shadow: 0 10px 40px rgba(0,0,0,.25);
+    box-shadow: 0 10px 40px rgba(0,0,0,.15);
+    color: var(--mud-palette-text-primary);
 }
 
 /* ---------- SECTION UTILS ---------- */
@@ -58,11 +60,12 @@
 /* ---------- EXPLORE TILES ---------- */
 .tile {
     position: relative; height: 180px; padding: 14px 16px;
-    border-radius: 16px; border: 1px solid rgba(255,255,255,.08);
-    background: #1b1d2a; box-shadow: 0 1px 0 rgba(0,0,0,.25) inset;
+    border-radius: 16px; border: 1px solid var(--mud-palette-lines-default);
+    background: var(--mud-palette-surface); box-shadow: 0 1px 0 rgba(0,0,0,.1) inset;
     overflow:hidden; transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+    color: var(--mud-palette-text-primary);
 }
-.tile:hover { transform: translateY(-3px); box-shadow: 0 12px 26px rgba(0,0,0,.35); border-color: rgba(255,255,255,.18); }
+.tile:hover { transform: translateY(-3px); box-shadow: 0 12px 26px rgba(0,0,0,.15); border-color: var(--mud-palette-primary); }
 .tile-content {
     position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
     display:flex; flex-direction:column; align-items:center; text-align:center; gap:6px; max-width: calc(100% - 32px);
@@ -76,6 +79,7 @@
 
 /* ---------- EVENT CARDS ---------- */
 .card {
+    background-color: var(--mud-palette-surface);
     border-radius: 16px;
     overflow:hidden;
     border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
