@@ -32,5 +32,11 @@ namespace Explore.Persistence.Repositories
                 .FirstOrDefaultAsync(pr => pr.Id == id);
             return programRegistration;
         }
+
+        public async Task<bool> IsUserAlreadyRegisteredAsync(Guid userId, Guid programId)
+        {
+            return await _dbContext.ProgramRegistartions
+                .AnyAsync(pr => pr.UserId == userId && pr.ProgramId == programId);
+        }
     }
 }

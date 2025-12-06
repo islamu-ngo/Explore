@@ -1,7 +1,13 @@
 using System.Net.Http.Json;
+using System.Text.Json;
 using Explore.Blazor.Client.Models.DTOs;
 
 namespace Explore.Blazor.Client.Services;
+
+public class RegistrationStatusDto
+{
+    public bool IsRegistered { get; set; }
+}
 
 public interface IProgramService
 {
@@ -10,6 +16,7 @@ public interface IProgramService
     Task<List<EventTypeListDto>> GetEventTypesAsync();
     Task<List<ProgramTypeListDto>> GetProgramTypesAsync();
     Task<bool> RegisterForProgramAsync(ProgramRegistrationDto registration);
+    Task<bool> IsUserRegisteredAsync(Guid programId);
 }
 
 public class ProgramService : IProgramService
@@ -82,6 +89,35 @@ public class ProgramService : IProgramService
         }
         catch
         {
+            return false;
+        }
+    }
+
+    public async Task<bool> IsUserRegisteredAsync(Guid programId)
+    {
+        try
+        {
+            Console.WriteLine($"[ProgramService] Checking registration for program: {programId}");
+            var response = await _httpClient.GetAsync($"/bff/api/ProgramRegistration/check/{programId}");
+            Console.WriteLine($"[ProgramService] Response status: {response.StatusCode}");
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"[ProgramService] Response content: {content}");
+                
+                var result = await response.Content.ReadFromJsonAsync<RegistrationStatusDto>();
+                Console.WriteLine($"[ProgramService] Parsed result: IsRegistered = {result?.IsRegistered}");
+                
+                return result?.IsRegistered ?? false;
+            }
+            
+            Console.WriteLine($"[ProgramService] HTTP error: {response.StatusCode}");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ProgramService] Error checking registration: {ex.Message}");
             return false;
         }
     }
