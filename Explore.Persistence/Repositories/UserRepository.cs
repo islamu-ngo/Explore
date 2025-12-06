@@ -18,6 +18,11 @@ namespace Explore.Persistence.Repositories
             return await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == id);
         }
 
+        public async Task<List<User>> GetUsersByIdsAsync(List<Guid> ids)
+        {
+            return await _dbContext.Users.Where(u => ids.Contains(u.Id)).ToListAsync();
+        }
+
         public async Task<bool> ExistsByEmailAsync(string email)
         {
             return await _dbContext.Users.AnyAsync(u => u.Email == email);

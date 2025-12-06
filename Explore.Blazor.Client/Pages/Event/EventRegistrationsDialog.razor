@@ -1,0 +1,69 @@
+@using MudBlazor
+@using Explore.Blazor.Client.Models.DTOs
+@using Explore.Blazor.Client.Services
+@inject IProgramService ProgramService
+
+<MudDialog>
+    <DialogContent>
+        @if (isLoading)
+        {
+            <div class="d-flex justify-center my-4">
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+            </div>
+        }
+        else if (registrations.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">No registrations found for this event.</MudAlert>
+        }
+        else
+        {
+            <MudTable Items="@registrations" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@isLoading" LoadingProgressColor="Color.Info">
+                <HeaderContent>
+                    <MudTh>User</MudTh>
+                    <MudTh>Email</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="User">@context.UserName</MudTd>
+                    <MudTd DataLabel="Email">@context.UserEmail</MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; }
+    [Parameter] public Guid EventId { get; set; }
+
+    private List<ProgramRegistrationListDto> registrations = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRegistrations();
+    }
+
+    private async Task LoadRegistrations()
+    {
+        isLoading = true;
+        try
+        {
+            registrations = await ProgramService.GetRegistrationsForProgramAsync(EventId);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading registrations: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+
+
+    private void Cancel() => MudDialog.Cancel();
+}

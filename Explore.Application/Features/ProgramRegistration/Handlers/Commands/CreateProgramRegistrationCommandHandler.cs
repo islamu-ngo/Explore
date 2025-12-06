@@ -42,13 +42,16 @@ namespace Explore.Application.Features.ProgramRegistration.Handlers.Commands
                     return response;
                 }
 
-                // Map DTO to domain entity - only store database-supported fields
+                // Map DTO to domain entity
                 var registration = new ProgramRegistartion
                 {
                     Id = Guid.NewGuid(),
                     UserId = userId,
                     ProgramId = programId,
-                    StatusTypeId = 1 // Assuming 1 = Active/Registered
+                    StatusTypeId = 1, // Assuming 1 = Active/Registered
+                    FirstName = request.ProgramRegistrationDto.FirstName,
+                    LastName = request.ProgramRegistrationDto.LastName,
+                    Email = request.ProgramRegistrationDto.Email
                 };
 
                 // Save to database

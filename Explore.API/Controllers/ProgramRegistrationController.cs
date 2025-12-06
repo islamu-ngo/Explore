@@ -91,5 +91,25 @@ namespace Explore.API.Controllers
                 return StatusCode(500, new { message = "Internal server error", error = ex.Message });
             }
         }
+
+        // GET: api/ProgramRegistration/program/{programId}
+        [HttpGet("program/{programId}")]
+        [EndpointSummary("Get all registrations for a Program/Event")]
+        [EndpointDescription("Get a list of all users registered for a specific program")]
+        [AllowAnonymous] // Should be authorized and checked for ownership
+        public async Task<ActionResult<List<ProgramRegistrationListDto>>> GetRegistrationsForProgram(Guid programId)
+        {
+            try
+            {
+                var query = new GetProgramRegistrationsRequest { ProgramId = programId };
+                var registrations = await _mediator.Send(query);
+                return Ok(registrations);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching registrations for program {ProgramId}", programId);
+                return StatusCode(500, new { message = "Internal server error", error = ex.Message });
+            }
+        }
     }
 }

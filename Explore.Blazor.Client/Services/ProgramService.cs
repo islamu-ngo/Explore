@@ -17,6 +17,7 @@ public interface IProgramService
     Task<List<ProgramTypeListDto>> GetProgramTypesAsync();
     Task<bool> RegisterForProgramAsync(ProgramRegistrationDto registration);
     Task<bool> IsUserRegisteredAsync(Guid programId);
+    Task<List<ProgramRegistrationListDto>> GetRegistrationsForProgramAsync(Guid programId);
 }
 
 public class ProgramService : IProgramService
@@ -26,6 +27,20 @@ public class ProgramService : IProgramService
     public ProgramService(HttpClient httpClient)
     {
         _httpClient = httpClient;
+    }
+
+    public async Task<List<ProgramRegistrationListDto>> GetRegistrationsForProgramAsync(Guid programId)
+    {
+        try
+        {
+            var response = await _httpClient.GetFromJsonAsync<List<ProgramRegistrationListDto>>($"/bff/api/ProgramRegistration/program/{programId}");
+            return response ?? new List<ProgramRegistrationListDto>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching registrations: {ex.Message}");
+            return new List<ProgramRegistrationListDto>();
+        }
     }
 
     public async Task<List<ProgramListDto>> GetAllProgramsAsync()

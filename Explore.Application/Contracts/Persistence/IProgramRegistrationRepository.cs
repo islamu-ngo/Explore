@@ -9,6 +9,7 @@ namespace Explore.Application.Contracts.Persistence
     {
         Task<ProgramRegistartion> GetProgramRegistrationWithDetails(Guid id);
         Task<List<ProgramRegistartion>> GetProgramRegistrationsWithDetails();
+        Task<List<ProgramRegistartion>> GetRegistrationsForProgramAsync(Guid programId);
         Task<bool> IsUserAlreadyRegisteredAsync(Guid userId, Guid programId);
     }
 }

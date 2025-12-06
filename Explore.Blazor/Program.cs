@@ -1023,6 +1023,36 @@ publicBff.MapPost("/ProgramRegistration", async (HttpContext ctx, IHttpClientFac
     }
 });
 
+// Get Registrations for Program endpoint
+publicBff.MapGet("/ProgramRegistration/program/{programId}", async (Guid programId, IHttpClientFactory f) =>
+{
+    try
+    {
+        var http = f.CreateClient("ExploreApiPublic");
+        var response = await http.GetAsync($"api/ProgramRegistration/program/{programId}");
+        
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"GetRegistrationsForProgram API Error: {errorContent}");
+            return Results.Problem(
+                detail: errorContent,
+                statusCode: (int)response.StatusCode
+            );
+        }
+        
+        return Results.Stream(
+            await response.Content.ReadAsStreamAsync(),
+            response.Content.Headers.ContentType?.ToString()
+        );
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error in GetRegistrationsForProgram endpoint: {ex.Message}");
+        return Results.Problem($"Error fetching registrations: {ex.Message}");
+    }
+});
+
 // Check Registration Status endpoint
 publicBff.MapGet("/ProgramRegistration/check/{programId}", async (Guid programId, IHttpClientFactory f) =>
 {

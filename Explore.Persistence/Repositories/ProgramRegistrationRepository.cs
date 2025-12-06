@@ -38,5 +38,13 @@ namespace Explore.Persistence.Repositories
             return await _dbContext.ProgramRegistartions
                 .AnyAsync(pr => pr.UserId == userId && pr.ProgramId == programId);
         }
+
+        public async Task<List<ProgramRegistartion>> GetRegistrationsForProgramAsync(Guid programId)
+        {
+            return await _dbContext.ProgramRegistartions
+                .Include(pr => pr.StatusType)
+                .Where(pr => pr.ProgramId == programId)
+                .ToListAsync();
+        }
     }
 }

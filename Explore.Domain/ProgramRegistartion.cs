@@ -15,5 +15,10 @@ namespace Explore.Domain
         [ForeignKey("StatusType")]
         public int StatusTypeId { get; set; }
         public StatusType StatusType { get; set; }
+
+        // Guest/User details snapshot
+        public string? FirstName { get; set; }
+        public string? LastName { get; set; }
+        public string? Email { get; set; }
     }
 }
