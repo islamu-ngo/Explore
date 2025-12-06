@@ -613,6 +613,34 @@ publicBff.MapPost("/Organization", async (
     }
 });
 
+publicBff.MapPost("/User/sync", async (HttpContext ctx, IHttpClientFactory f) =>
+{
+    if (ctx.User?.Identity?.IsAuthenticated != true)
+    {
+        return Results.Unauthorized();
+    }
+
+    var accessToken = await ctx.GetTokenAsync("access_token");
+    if (string.IsNullOrEmpty(accessToken))
+    {
+        return Results.Problem("No access token available.", statusCode: 401);
+    }
+
+    var http = f.CreateClient("ExploreApiPublic");
+    var request = new HttpRequestMessage(HttpMethod.Post, "api/User/sync");
+    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+    
+    var response = await http.SendAsync(request);
+    
+    if (!response.IsSuccessStatusCode)
+    {
+        return Results.StatusCode((int)response.StatusCode);
+    }
+    
+    var content = await response.Content.ReadAsStringAsync();
+    return Results.Content(content, "application/json");
+});
+
 publicBff.MapGet("/Organization/my", async (HttpContext ctx, IHttpClientFactory f) =>
 {
     if (ctx.User?.Identity?.IsAuthenticated != true)

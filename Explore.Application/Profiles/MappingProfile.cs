@@ -14,6 +14,7 @@ using Explore.Application.DTOs.EventType;
 using Explore.Application.DTOs.Organization;
 using Explore.Application.DTOs.ProgramType;
 using Explore.Application.DTOs.StatusType;
+using Explore.Application.DTOs.User;
 
 namespace Explore.Application.Profiles
 {
@@ -38,6 +39,7 @@ namespace Explore.Application.Profiles
             CreateMap<Program, CreateProgramDto>().ReverseMap();
             CreateMap<ProgramType, ProgramTypeListDto>().ReverseMap();
             CreateMap<StatusType, StatusTypeListDto>().ReverseMap();
+            CreateMap<User, UserDto>().ReverseMap();
         }
     }
 }
