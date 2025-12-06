@@ -5,6 +5,7 @@
 @inject NavigationManager Navigation
 @inject IProgramService ProgramService
 @inject IDialogService DialogService
+@inject IOrganizationService OrganizationService
 
 <PageTitle>Event Detail</PageTitle>
 
@@ -226,6 +227,21 @@ p{ line-height: 1.6; }
 
                                 <MudDivider Class="aside-divider" />
 
+                                @if (organization != null)
+                                {
+                                    <div class="d-flex align-center gap-2 cursor-pointer" style="cursor: pointer;" @onclick="@(() => Navigation.NavigateTo($"/organization/profile/{organization.Id}"))">
+                                        <MudAvatar Size="Size.Medium">
+                                             <MudImage Src="https://via.placeholder.com/150" />
+                                        </MudAvatar>
+                                        <div>
+                                            <MudText Typo="Typo.caption">Organized by</MudText>
+                                            <MudText Typo="Typo.subtitle2">@organization.FullName</MudText>
+                                        </div>
+                                    </div>
+                                    
+                                    <MudDivider Class="aside-divider" />
+                                }
+
                                 <div class="cta">
                                     <MudButton Variant="Variant.Filled"
                                                Color="Color.Primary"
@@ -281,6 +297,7 @@ p{ line-height: 1.6; }
     [Parameter] public Guid EventId { get; set; }
 
     private ProgramDto? program;
+    private OrganizationDto? organization;
     private bool isLoading = true;
     private Dictionary<int, string> programTypeMap = new();
     private Dictionary<int, string> eventTypeMap = new();
@@ -305,6 +322,18 @@ p{ line-height: 1.6; }
             await Task.WhenAll(programTask, programTypesTask, eventTypesTask);
 
             program = await programTask;
+            
+            if (program != null)
+            {
+                try 
+                {
+                    organization = await OrganizationService.GetOrganizationByIdAsync(program.OrganizationId);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error loading organization: {ex.Message}");
+                }
+            }
             
             // Build lookup maps
             var programTypes = await programTypesTask;
