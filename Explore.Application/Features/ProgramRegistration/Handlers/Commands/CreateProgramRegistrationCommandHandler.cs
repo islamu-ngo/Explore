@@ -48,7 +48,7 @@ namespace Explore.Application.Features.ProgramRegistration.Handlers.Commands
                     Id = Guid.NewGuid(),
                     UserId = userId,
                     ProgramId = programId,
-                    StatusTypeId = 1, // Assuming 1 = Active/Registered
+                    StatusTypeId = 2, // 2 = Active (auto-approved)
                     FirstName = request.ProgramRegistrationDto.FirstName,
                     LastName = request.ProgramRegistrationDto.LastName,
                     Email = request.ProgramRegistrationDto.Email

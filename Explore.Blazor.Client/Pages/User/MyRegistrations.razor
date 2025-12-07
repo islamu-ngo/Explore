@@ -383,6 +383,13 @@
                                     <MudIcon Icon="@Icons.Material.Filled.CalendarToday" />
                                     <span>Registered on @registration.RegistrationDate.ToString("MMM dd, yyyy")</span>
                                 </div>
+                                @if (registration.EventStartDate.HasValue)
+                                {
+                                    <div class="meta-item">
+                                        <MudIcon Icon="@Icons.Material.Filled.Event" />
+                                        <span>Event: @registration.EventStartDate.Value.ToString("MMM dd, yyyy")</span>
+                                    </div>
+                                }
                                 <div class="meta-item">
                                     <MudIcon Icon="@Icons.Material.Filled.LocationOn" />
                                     <span>@(registration.ProgramCity ?? "")</span>
@@ -520,13 +527,21 @@
     }
 
     private int GetTotalRegistrations() => registrations.Count;
-    private int GetUpcomingCount() => registrations.Count(r => r.Status.Equals("upcoming", StringComparison.OrdinalIgnoreCase));
+    
+    private int GetUpcomingCount()
+    {
+        // Count Active registrations with future event dates (within 14 days)
+        // For now, count all Active registrations since we don't have event dates yet
+        return registrations.Count(r => r.Status.Equals("Active", StringComparison.OrdinalIgnoreCase));
+    }
+    
     private int GetCompletedCount() => registrations.Count(r => r.Status.Equals("completed", StringComparison.OrdinalIgnoreCase));
 
     private string GetStatusClass(string status)
     {
         return status.ToLower() switch
         {
+            "active" => "upcoming",
             "upcoming" => "upcoming",
             "completed" => "completed",
             "cancelled" => "cancelled",

@@ -17,5 +17,7 @@ namespace Explore.Application.DTOs.ProgramRegistration
         public string ProgramDescription { get; set; } = string.Empty;
         public string? ProgramCity { get; set; }
         public string? ProgramAddress { get; set; }
+        public DateTime? EventStartDate { get; set; }
+        public DateTime? EventEndDate { get; set; }
     }
 }
