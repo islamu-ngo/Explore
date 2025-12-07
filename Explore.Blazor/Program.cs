@@ -1015,12 +1015,14 @@ publicBff.MapPut("/admin/organizations/{id}/status", async (Guid id, HttpContext
     }
 });
 
-// Program Registration endpoint
-publicBff.MapPost("/ProgramRegistration", async (HttpContext ctx, IHttpClientFactory f) =>
+// Program Registration endpoint (protected)
+var protectedBffReg = bff.MapGroup("/api").RequireAuthorization();
+
+protectedBffReg.MapPost("/ProgramRegistration", async (HttpContext ctx, IHttpClientFactory f) =>
 {
     try
     {
-        var http = f.CreateClient("ExploreApiPublic"); // Use public client for now
+        var http = f.CreateClient("ExploreApi"); // Use authenticated client - includes user access token
         var request = new HttpRequestMessage(HttpMethod.Post, "api/ProgramRegistration");
         request.Content = new StreamContent(ctx.Request.Body)
         {
@@ -1081,12 +1083,12 @@ publicBff.MapGet("/ProgramRegistration/program/{programId}", async (Guid program
     }
 });
 
-// Check Registration Status endpoint
-publicBff.MapGet("/ProgramRegistration/check/{programId}", async (Guid programId, IHttpClientFactory f) =>
+// Check Registration Status endpoint (protected)
+protectedBffReg.MapGet("/ProgramRegistration/check/{programId}", async (Guid programId, IHttpClientFactory f) =>
 {
     try
     {
-        var http = f.CreateClient("ExploreApiPublic");
+        var http = f.CreateClient("ExploreApi");
         var response = await http.GetAsync($"api/ProgramRegistration/check/{programId}");
         
         if (!response.IsSuccessStatusCode)
@@ -1124,6 +1126,66 @@ protectedBff.MapGet("/events", async (IHttpClientFactory f) =>
         await r.Content.ReadAsStreamAsync(),
         r.Content.Headers.ContentType?.ToString()
     );
+});
+
+// Get current user's registrations
+protectedBff.MapGet("/ProgramRegistration/my", async (IHttpClientFactory f) =>
+{
+    try
+    {
+        var http = f.CreateClient("ExploreApi"); // includes user access token
+        var response = await http.GetAsync("api/ProgramRegistration/my");
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"GetMyRegistrations API Error: {errorContent}");
+            return Results.Problem(
+                detail: errorContent,
+                statusCode: (int)response.StatusCode
+            );
+        }
+
+        return Results.Stream(
+            await response.Content.ReadAsStreamAsync(),
+            response.Content.Headers.ContentType?.ToString()
+        );
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error in GetMyRegistrations endpoint: {ex.Message}");
+        return Results.Problem($"Error fetching registrations: {ex.Message}");
+    }
+});
+
+// Delete registration
+protectedBff.MapDelete("/ProgramRegistration/{registrationId}", async (Guid registrationId, IHttpClientFactory f) =>
+{
+    try
+    {
+        var http = f.CreateClient("ExploreApi"); // includes user access token
+        var response = await http.DeleteAsync($"api/ProgramRegistration/{registrationId}");
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"DeleteRegistration API Error: {errorContent}");
+            return Results.Problem(
+                detail: errorContent,
+                statusCode: (int)response.StatusCode
+            );
+        }
+
+        return Results.Stream(
+            await response.Content.ReadAsStreamAsync(),
+            response.Content.Headers.ContentType?.ToString()
+        );
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error in DeleteRegistration endpoint: {ex.Message}");
+        return Results.Problem($"Error deleting registration: {ex.Message}");
+    }
 });
 
 protectedBff.MapGet("/weatherforecast", async (IHttpClientFactory f) =>

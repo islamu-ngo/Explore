@@ -2,6 +2,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.ProgramRegistration;
 using Explore.Application.Features.ProgramRegistration.Requests.Queries;
 using MediatR;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -47,7 +48,11 @@ namespace Explore.Application.Features.ProgramRegistration.Handlers.Queries
                     ? r.Email 
                     : (userMap.ContainsKey(r.UserId) ? userMap[r.UserId].Email : "Unknown"),
                 RegistrationDate = DateTime.UtcNow, // Assuming we don't have CreatedAt in ProgramRegistration yet, or I missed it.
-                Status = r.StatusType?.FullName ?? "Unknown"
+                Status = r.StatusType?.FullName ?? "Unknown",
+                ProgramTitle = r.Program?.Title ?? string.Empty,
+                ProgramDescription = r.Program?.Description ?? string.Empty,
+                ProgramCity = r.Program?.City,
+                ProgramAddress = r.Program?.Address
             }).ToList();
 
             return result;

@@ -9,4 +9,10 @@ public class ProgramRegistrationListDto
     public string UserEmail { get; set; } = string.Empty;
     public DateTime RegistrationDate { get; set; }
     public string Status { get; set; } = string.Empty;
+
+    // Program snapshot
+    public string ProgramTitle { get; set; } = string.Empty;
+    public string ProgramDescription { get; set; } = string.Empty;
+    public string? ProgramCity { get; set; }
+    public string? ProgramAddress { get; set; }
 }

@@ -25,7 +25,6 @@ namespace Explore.API.Controllers
         [HttpPost]
         [EndpointSummary("Register for a Program/Event")]
         [EndpointDescription("Register a user for a specific program (event or education)")]
-        [AllowAnonymous] // Temporary for testing - should be [Authorize] in production
         public async Task<ActionResult<Guid>> CreateRegistration([FromBody] CreateProgramRegistrationDto registrationDto)
         {
             try
@@ -61,7 +60,6 @@ namespace Explore.API.Controllers
         [HttpGet("check/{programId}")]
         [EndpointSummary("Check if user is registered for a Program/Event")]
         [EndpointDescription("Check if the current user is already registered for a specific program")]
-        [AllowAnonymous] // Temporary for testing - should be [Authorize] in production
         public async Task<ActionResult<bool>> CheckRegistrationStatus(Guid programId)
         {
             try
@@ -96,7 +94,6 @@ namespace Explore.API.Controllers
         [HttpGet("program/{programId}")]
         [EndpointSummary("Get all registrations for a Program/Event")]
         [EndpointDescription("Get a list of all users registered for a specific program")]
-        [AllowAnonymous] // Should be authorized and checked for ownership
         public async Task<ActionResult<List<ProgramRegistrationListDto>>> GetRegistrationsForProgram(Guid programId)
         {
             try
@@ -108,6 +105,73 @@ namespace Explore.API.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error fetching registrations for program {ProgramId}", programId);
+                return StatusCode(500, new { message = "Internal server error", error = ex.Message });
+            }
+        }
+
+        // GET: api/ProgramRegistration/my
+        [HttpGet("my")]
+        [EndpointSummary("Get current user's registrations")]
+        [EndpointDescription("Return all program registrations for the authenticated user")]
+        public async Task<ActionResult<List<ProgramRegistrationListDto>>> GetMyRegistrations()
+        {
+            try
+            {
+                var userId = User?.FindFirstValue(ClaimTypes.NameIdentifier)
+                    ?? User?.FindFirstValue("sub")
+                    ?? string.Empty;
+
+                if (!Guid.TryParse(userId, out var userGuid))
+                {
+                    return Unauthorized(new { message = "User not authenticated" });
+                }
+
+                var query = new GetMyProgramRegistrationsRequest { UserId = userGuid };
+                var registrations = await _mediator.Send(query);
+                return Ok(registrations);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching registrations for current user");
+                return StatusCode(500, new { message = "Internal server error", error = ex.Message });
+            }
+        }
+
+        // DELETE: api/ProgramRegistration/{registrationId}
+        [HttpDelete("{registrationId}")]
+        [EndpointSummary("Unregister from a Program/Event")]
+        [EndpointDescription("Remove the current user's registration for a program")]
+        public async Task<ActionResult> DeleteRegistration(Guid registrationId)
+        {
+            try
+            {
+                var userId = User?.FindFirstValue(ClaimTypes.NameIdentifier)
+                    ?? User?.FindFirstValue("sub")
+                    ?? string.Empty;
+
+                if (!Guid.TryParse(userId, out var userGuid))
+                {
+                    return Unauthorized(new { message = "User not authenticated" });
+                }
+
+                var command = new DeleteProgramRegistrationCommand
+                {
+                    RegistrationId = registrationId,
+                    UserId = userGuid
+                };
+
+                var result = await _mediator.Send(command);
+
+                if (result.Success)
+                {
+                    return Ok(new { message = result.Message });
+                }
+
+                return BadRequest(new { message = result.Message, errors = result.Errors });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting registration {RegistrationId}", registrationId);
                 return StatusCode(500, new { message = "Internal server error", error = ex.Message });
             }
         }

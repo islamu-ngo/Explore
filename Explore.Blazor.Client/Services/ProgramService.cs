@@ -18,6 +18,8 @@ public interface IProgramService
     Task<bool> RegisterForProgramAsync(ProgramRegistrationDto registration);
     Task<bool> IsUserRegisteredAsync(Guid programId);
     Task<List<ProgramRegistrationListDto>> GetRegistrationsForProgramAsync(Guid programId);
+    Task<List<ProgramRegistrationListDto>> GetMyRegistrationsAsync();
+    Task<bool> UnregisterFromProgramAsync(Guid registrationId);
 }
 
 public class ProgramService : IProgramService
@@ -40,6 +42,34 @@ public class ProgramService : IProgramService
         {
             Console.WriteLine($"Error fetching registrations: {ex.Message}");
             return new List<ProgramRegistrationListDto>();
+        }
+    }
+
+    public async Task<List<ProgramRegistrationListDto>> GetMyRegistrationsAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetFromJsonAsync<List<ProgramRegistrationListDto>>("/bff/api/ProgramRegistration/my");
+            return response ?? new List<ProgramRegistrationListDto>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching my registrations: {ex.Message}");
+            return new List<ProgramRegistrationListDto>();
+        }
+    }
+
+    public async Task<bool> UnregisterFromProgramAsync(Guid registrationId)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"/bff/api/ProgramRegistration/{registrationId}");
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error unregistering from program: {ex.Message}");
+            return false;
         }
     }
 
