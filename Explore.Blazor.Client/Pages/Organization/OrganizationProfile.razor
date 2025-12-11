@@ -5,6 +5,8 @@
 @inject IOrganizationService OrganizationService
 @inject IOrganizationReviewService OrganizationReviewService
 
+@inject NavigationManager Navigation
+
 <PageTitle>Organization Profile</PageTitle>
 
 <style>
@@ -156,16 +158,12 @@
 
                         <div class="stat-grid">
                             <div class="stat">
-                                <MudText Typo="Typo.h5" Class="num">127</MudText>
+                                <MudText Typo="Typo.h5" Class="num">@_reviews.Count</MudText>
                                 <MudText Typo="Typo.caption" Color="Color.Secondary">reviews</MudText>
                             </div>
                             <div class="stat">
-                                <MudText Typo="Typo.h5" Class="num">4.87★</MudText>
+                                <MudText Typo="Typo.h5" Class="num">@(_reviews.Any() ? _reviews.Average(r => r.Rating).ToString("0.0") : "0.0")★</MudText>
                                 <MudText Typo="Typo.caption" Color="Color.Secondary">overall rating</MudText>
-                            </div>
-                            <div class="stat">
-                                <MudText Typo="Typo.h5" Class="num">8</MudText>
-                                <MudText Typo="Typo.caption" Color="Color.Secondary">years hosting</MudText>
                             </div>
                         </div>
                     </div>
@@ -269,7 +267,7 @@
                 </MudGrid>
 
                 <div class="btn-outline" style="display:flex; justify-content:center;">
-                    <MudButton Variant="Variant.Outlined" Class="mt-6" StartIcon="@Icons.Material.Filled.RateReview">
+                    <MudButton Variant="Variant.Outlined" Class="mt-6" StartIcon="@Icons.Material.Filled.RateReview" OnClick="ShowAllReviews">
                         Show more reviews
                     </MudButton>
                 </div>
@@ -300,5 +298,10 @@
         {
             _isLoading = false;
         }
+    }
+
+    private void ShowAllReviews()
+    {
+        Navigation.NavigateTo($"/organization/reviews/{Id}");
     }
 }
