@@ -16,7 +16,7 @@ public class CreateEventDto
     public int? PostCode { get; set; }
     public string? Address { get; set; }
     public string? ProgramUrl { get; set; }
-    public DateTime? StartDate { get; set; }
-    public DateTime? EndDate { get; set; }
+    public DateTime StartDate { get; set; } = DateTime.Today;
+    public DateTime EndDate { get; set; } = DateTime.Today;
     public int EventTypeId { get; set; }
 }
