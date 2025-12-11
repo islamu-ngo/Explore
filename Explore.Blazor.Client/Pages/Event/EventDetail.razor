@@ -163,6 +163,10 @@ p{ line-height: 1.6; }
                                         <MudText>@GetProgramTypeName() @(program.Event != null ? $"- {GetEventTypeName()}" : program.Education != null ? $"- {GetEducationTypeName()}" : "")</MudText>
                                     </div>
                                     <div class="detail-row">
+                                        <MudIcon Icon="@Icons.Material.Filled.CalendarToday" />
+                                        <MudText>@GetDateDisplay()</MudText>
+                                    </div>
+                                    <div class="detail-row">
                                         <MudIcon Icon="@Icons.Material.Filled.LocationOn" />
                                         <MudText>@GetFullLocation()</MudText>
                                     </div>
@@ -395,6 +399,21 @@ p{ line-height: 1.6; }
     {
         if (program?.Education == null) return "";
         return educationTypeMap.TryGetValue(program.Education.EducationTypeId, out var name) ? name : "Education";
+    }
+
+    private string GetDateDisplay()
+    {
+        if (program == null) return "";
+        
+        var start = program.StartDate.ToLocalTime();
+        var end = program.EndDate.ToLocalTime();
+        
+        if (start.Date == end.Date)
+        {
+            return $"{start:dddd d MMMM yyyy} • {start:HH:mm} - {end:HH:mm}";
+        }
+        
+        return $"{start:dd/MM/yyyy HH:mm} - {end:dd/MM/yyyy HH:mm}";
     }
 
     private string GetLocationDisplay()

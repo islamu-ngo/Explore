@@ -123,16 +123,16 @@
                 <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
                     <MudGrid Spacing="3">
                         <MudItem xs="12" sm="6">
-                            <MudDatePicker Label="Start Date" @bind-Date="_startDate" Variant="Variant.Outlined" />
+                            <MudDatePicker Label="Start Date" @bind-Date="_startDate" Variant="Variant.Outlined" Required="true" />
                         </MudItem>
                         <MudItem xs="12" sm="6">
-                            <MudTimePicker Label="Start Time" @bind-Time="_startTime" Variant="Variant.Outlined" />
+                            <MudTimePicker Label="Start Time" @bind-Time="_startTime" Variant="Variant.Outlined" Required="true" />
                         </MudItem>
                         <MudItem xs="12" sm="6">
-                            <MudDatePicker Label="End Date" @bind-Date="_endDate" Variant="Variant.Outlined" />
+                            <MudDatePicker Label="End Date" @bind-Date="_endDate" Variant="Variant.Outlined" Required="true" />
                         </MudItem>
                         <MudItem xs="12" sm="6">
-                            <MudTimePicker Label="End Time" @bind-Time="_endTime" Variant="Variant.Outlined" />
+                            <MudTimePicker Label="End Time" @bind-Time="_endTime" Variant="Variant.Outlined" Required="true" />
                         </MudItem>
                     </MudGrid>
                 </MudPaper>

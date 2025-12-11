@@ -42,7 +42,10 @@ namespace Explore.Application.Features.ProgramRegistration.Handlers.Queries
                 ProgramTitle = r.Program?.Title ?? string.Empty,
                 ProgramDescription = r.Program?.Description ?? string.Empty,
                 ProgramCity = r.Program?.City,
-                ProgramAddress = r.Program?.Address
+                ProgramAddress = r.Program?.Address,
+                ProgramUrl = r.Program?.ProgramUrl,
+                EventStartDate = r.Program?.StartDate,
+                EventEndDate = r.Program?.EndDate
             }).ToList();
         }
     }

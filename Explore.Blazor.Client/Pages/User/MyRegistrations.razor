@@ -414,6 +414,21 @@
                         </div>
 
                         <div class="card-actions">
+                            @if (!string.IsNullOrEmpty(registration.ProgramUrl) && 
+                                 registration.EventStartDate.HasValue && 
+                                 registration.EventEndDate.HasValue &&
+                                 DateTime.UtcNow >= registration.EventStartDate.Value && 
+                                 DateTime.UtcNow <= registration.EventEndDate.Value &&
+                                 !registration.Status.Equals("cancelled", StringComparison.OrdinalIgnoreCase))
+                            {
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Success"
+                                           StartIcon="@Icons.Material.Filled.VideoCall"
+                                           OnClick="@(() => OpenOnlineEventDialog(registration))">
+                                    Join Online Event
+                                </MudButton>
+                            }
+
                             <MudButton Variant="Variant.Outlined"
                                        Color="Color.Primary"
                                        StartIcon="@Icons.Material.Filled.Visibility"
@@ -599,5 +614,17 @@
                 Snackbar.Add($"Error: {ex.Message}", Severity.Error);
             }
         }
+    }
+
+    private void OpenOnlineEventDialog(ProgramRegistrationListDto registration)
+    {
+        var parameters = new DialogParameters
+        {
+            { "Title", registration.ProgramTitle },
+            { "Url", registration.ProgramUrl }
+        };
+
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        DialogService.Show<OnlineEventDialog>("Join Online Event", parameters, options);
     }
 }
