@@ -1189,6 +1189,99 @@ protectedBff.MapDelete("/ProgramRegistration/{registrationId}", async (Guid regi
     }
 });
 
+// Get Current User
+protectedBff.MapGet("/User", async (IHttpClientFactory f) =>
+{
+    try
+    {
+        var http = f.CreateClient("ExploreApi");
+        var response = await http.GetAsync("api/User");
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"GetCurrentUser API Error: {errorContent}");
+            return Results.Problem(
+                detail: errorContent,
+                statusCode: (int)response.StatusCode
+            );
+        }
+
+        return Results.Stream(
+            await response.Content.ReadAsStreamAsync(),
+            response.Content.Headers.ContentType?.ToString()
+        );
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error in GetCurrentUser endpoint: {ex.Message}");
+        return Results.Problem($"Error fetching user: {ex.Message}");
+    }
+});
+
+// Update User
+protectedBff.MapPut("/User", async (HttpContext ctx, IHttpClientFactory f) =>
+{
+    try
+    {
+        var http = f.CreateClient("ExploreApi");
+        var request = new HttpRequestMessage(HttpMethod.Put, "api/User");
+        request.Content = new StreamContent(ctx.Request.Body)
+        {
+            Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json") }
+        };
+
+        var response = await http.SendAsync(request);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"UpdateUser API Error: {errorContent}");
+            return Results.Problem(
+                detail: errorContent,
+                statusCode: (int)response.StatusCode
+            );
+        }
+
+        return Results.Stream(
+            await response.Content.ReadAsStreamAsync(),
+            response.Content.Headers.ContentType?.ToString()
+        );
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error in UpdateUser endpoint: {ex.Message}");
+        return Results.Problem($"Error updating user: {ex.Message}");
+    }
+});
+
+// Delete User
+protectedBff.MapDelete("/User", async (IHttpClientFactory f) =>
+{
+    try
+    {
+        var http = f.CreateClient("ExploreApi");
+        var response = await http.DeleteAsync("api/User");
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"DeleteUser API Error: {errorContent}");
+            return Results.Problem(
+                detail: errorContent,
+                statusCode: (int)response.StatusCode
+            );
+        }
+
+        return Results.NoContent();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error in DeleteUser endpoint: {ex.Message}");
+        return Results.Problem($"Error deleting user: {ex.Message}");
+    }
+});
+
 protectedBff.MapGet("/weatherforecast", async (IHttpClientFactory f) =>
 {
     var http = f.CreateClient("ExploreApi"); // Automatically includes user access token

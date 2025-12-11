@@ -43,6 +43,7 @@ namespace Explore.Application.Profiles
             CreateMap<ProgramType, ProgramTypeListDto>().ReverseMap();
             CreateMap<StatusType, StatusTypeListDto>().ReverseMap();
             CreateMap<User, UserDto>().ReverseMap();
+            CreateMap<User, UpdateUserDto>().ReverseMap();
             CreateMap<OrganizationReview, OrganizationReviewDto>().ReverseMap();
             CreateMap<OrganizationReview, CreateOrganizationReviewDto>().ReverseMap();
         }

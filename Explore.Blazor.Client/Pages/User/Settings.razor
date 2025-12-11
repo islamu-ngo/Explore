@@ -1,0 +1,126 @@
+@page "/settings"
+@using Explore.Blazor.Client.Models.DTOs
+@using Explore.Blazor.Client.Services
+@inject IUserService UserService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+
+<PageTitle>Settings</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-6">
+    <MudText Typo="Typo.h4" Class="mb-6">Account Settings</MudText>
+
+    @if (_isLoading)
+    {
+        <div class="d-flex justify-center my-4">
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+        </div>
+    }
+    else if (_user == null)
+    {
+        <MudAlert Severity="Severity.Error">Failed to load user profile.</MudAlert>
+    }
+    else
+    {
+        <MudCard>
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Personal Information</MudText>
+                    <MudText Typo="Typo.body2">Update your personal details here.</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudForm @ref="_form" @bind-IsValid="_success">
+                    <MudGrid>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_user.FirstName" Label="First Name" Required="true" Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_user.LastName" Label="Last Name" Required="true" Variant="Variant.Outlined" />
+                        </MudItem>
+                    </MudGrid>
+                    <div class="d-flex justify-end mt-4">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveSettings" Disabled="@(!_success || _isSaving)" StartIcon="@Icons.Material.Filled.Save">
+                            @if (_isSaving)
+                            {
+                                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                                <MudText Class="ms-2">Saving</MudText>
+                            }
+                            else
+                            {
+                                <MudText>Save Changes</MudText>
+                            }
+                        </MudButton>
+                    </div>
+                </MudForm>
+            </MudCardContent>
+        </MudCard>
+    }
+</MudContainer>
+
+@code {
+    private UserDto? _user;
+    private bool _isLoading = true;
+    private bool _isSaving = false;
+    private bool _success;
+    private MudForm _form = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUser();
+    }
+
+    private async Task LoadUser()
+    {
+        _isLoading = true;
+        try
+        {
+            _user = await UserService.GetCurrentUserAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading user: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SaveSettings()
+    {
+        if (_user == null) return;
+
+        _isSaving = true;
+        try
+        {
+            var updateDto = new UpdateUserDto
+            {
+                Id = _user.Id,
+                FirstName = _user.FirstName,
+                LastName = _user.LastName,
+                Email = _user.Email,
+                Username = _user.Username
+            };
+
+            var result = await UserService.UpdateUserAsync(updateDto);
+            if (result)
+            {
+                Snackbar.Add("Settings saved successfully", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("Failed to save settings", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving settings: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+}
