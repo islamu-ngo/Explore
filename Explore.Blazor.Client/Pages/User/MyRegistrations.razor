@@ -439,12 +439,24 @@
 
                             @if (registration.EventEndDate.HasValue && registration.EventEndDate.Value < DateTime.Now)
                             {
-                                <MudButton Variant="Variant.Outlined"
-                                           Color="Color.Secondary"
-                                           StartIcon="@Icons.Material.Filled.RateReview"
-                                           OnClick="@(() => OpenReviewDialog(registration))">
-                                    Leave Review
-                                </MudButton>
+                                @if (registration.HasReviewed)
+                                {
+                                    <MudButton Variant="Variant.Outlined"
+                                               Color="Color.Secondary"
+                                               StartIcon="@Icons.Material.Filled.Check"
+                                               Disabled="true">
+                                        Reviewed
+                                    </MudButton>
+                                }
+                                else
+                                {
+                                    <MudButton Variant="Variant.Outlined"
+                                               Color="Color.Secondary"
+                                               StartIcon="@Icons.Material.Filled.RateReview"
+                                               OnClick="@(() => OpenReviewDialog(registration))">
+                                        Leave Review
+                                    </MudButton>
+                                }
                             }
                             
                             @if (!registration.Status.Equals("completed", StringComparison.OrdinalIgnoreCase) && 

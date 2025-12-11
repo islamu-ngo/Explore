@@ -20,4 +20,5 @@ namespace Explore.Blazor.Client.Models.DTOs;
         public string? ProgramUrl { get; set; }
         public DateTime? EventStartDate { get; set; }
         public DateTime? EventEndDate { get; set; }
+        public bool HasReviewed { get; set; }
     }

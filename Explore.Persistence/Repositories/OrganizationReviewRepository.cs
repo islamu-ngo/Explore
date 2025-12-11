@@ -20,5 +20,11 @@ namespace Explore.Persistence.Repositories
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
         }
+
+        public async Task<bool> HasUserReviewedProgram(Guid userId, Guid programId)
+        {
+            return await _dbContext.Set<OrganizationReview>()
+                .AnyAsync(r => r.UserId == userId && r.ProgramId == programId);
+        }
     }
 }

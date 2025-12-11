@@ -13,10 +13,14 @@ namespace Explore.Application.Features.ProgramRegistration.Handlers.Queries
     public class GetMyProgramRegistrationsRequestHandler : IRequestHandler<GetMyProgramRegistrationsRequest, List<ProgramRegistrationListDto>>
     {
         private readonly IProgramRegistrationRepository _programRegistrationRepository;
+        private readonly IOrganizationReviewRepository _organizationReviewRepository;
 
-        public GetMyProgramRegistrationsRequestHandler(IProgramRegistrationRepository programRegistrationRepository)
+        public GetMyProgramRegistrationsRequestHandler(
+            IProgramRegistrationRepository programRegistrationRepository,
+            IOrganizationReviewRepository organizationReviewRepository)
         {
             _programRegistrationRepository = programRegistrationRepository;
+            _organizationReviewRepository = organizationReviewRepository;
         }
 
         public async Task<List<ProgramRegistrationListDto>> Handle(GetMyProgramRegistrationsRequest request, CancellationToken cancellationToken)
@@ -28,27 +32,37 @@ namespace Explore.Application.Features.ProgramRegistration.Handlers.Queries
                 return new List<ProgramRegistrationListDto>();
             }
 
-            return registrations.Select(r => new ProgramRegistrationListDto
+            var result = new List<ProgramRegistrationListDto>();
+
+            foreach (var r in registrations)
             {
-                Id = r.Id,
-                ProgramId = r.ProgramId,
-                UserId = r.UserId,
-                UserName = !string.IsNullOrEmpty(r.FirstName)
-                    ? $"{r.FirstName} {r.LastName}".Trim()
-                    : "",
-                UserEmail = r.Email ?? string.Empty,
-                RegistrationDate = DateTime.UtcNow, // TODO: add CreatedAt to ProgramRegistartion
-                Status = r.StatusType?.FullName ?? "Unknown",
-                ProgramTitle = r.Program?.Title ?? string.Empty,
-                ProgramDescription = r.Program?.Description ?? string.Empty,
-                ProgramCity = r.Program?.City,
-                ProgramAddress = r.Program?.Address,
-                ProgramUrl = r.Program?.ProgramUrl,
-                EventStartDate = r.Program?.StartDate,
-                EventEndDate = r.Program?.EndDate,
-                OrganizationId = r.Program?.OrganizationId ?? Guid.Empty,
-                OrganizationName = r.Program?.Organization?.FullName ?? string.Empty
-            }).ToList();
+                var hasReviewed = await _organizationReviewRepository.HasUserReviewedProgram(request.UserId, r.ProgramId);
+
+                result.Add(new ProgramRegistrationListDto
+                {
+                    Id = r.Id,
+                    ProgramId = r.ProgramId,
+                    UserId = r.UserId,
+                    UserName = !string.IsNullOrEmpty(r.FirstName)
+                        ? $"{r.FirstName} {r.LastName}".Trim()
+                        : "",
+                    UserEmail = r.Email ?? string.Empty,
+                    RegistrationDate = DateTime.UtcNow, // TODO: add CreatedAt to ProgramRegistartion
+                    Status = r.StatusType?.FullName ?? "Unknown",
+                    ProgramTitle = r.Program?.Title ?? string.Empty,
+                    ProgramDescription = r.Program?.Description ?? string.Empty,
+                    ProgramCity = r.Program?.City,
+                    ProgramAddress = r.Program?.Address,
+                    ProgramUrl = r.Program?.ProgramUrl,
+                    EventStartDate = r.Program?.StartDate,
+                    EventEndDate = r.Program?.EndDate,
+                    OrganizationId = r.Program?.OrganizationId ?? Guid.Empty,
+                    OrganizationName = r.Program?.Organization?.FullName ?? string.Empty,
+                    HasReviewed = hasReviewed
+                });
+            }
+
+            return result;
         }
     }
 }
