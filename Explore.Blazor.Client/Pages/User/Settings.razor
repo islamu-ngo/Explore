@@ -32,6 +32,27 @@
             </MudCardHeader>
             <MudCardContent>
                 <MudForm @ref="_form" @bind-IsValid="_success">
+                    <div class="d-flex align-center gap-4 mb-6">
+                        <MudAvatar Style="height: 80px; width: 80px; font-size: 2rem;" Color="Color.Primary">
+                            @if (!string.IsNullOrEmpty(_user.FirstName) && !string.IsNullOrEmpty(_user.LastName))
+                            {
+                                @(_user.FirstName[0])@(_user.LastName[0])
+                            }
+                            else
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.Person" />
+                            }
+                        </MudAvatar>
+                        <div>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.CloudUpload">
+                                Change Picture
+                            </MudButton>
+                            <MudText Typo="Typo.caption" Class="d-block mt-1">
+                                JPG, GIF or PNG. Max size of 800K
+                            </MudText>
+                        </div>
+                    </div>
+
                     <MudGrid>
                         <MudItem xs="12" sm="6">
                             <MudTextField @bind-Value="_user.FirstName" Label="First Name" Required="true" Variant="Variant.Outlined" />
