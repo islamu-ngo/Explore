@@ -6,6 +6,7 @@
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject IProgramService ProgramService
+@inject IOrganizationReviewService OrganizationReviewService
 
 <PageTitle>My Registrations</PageTitle>
 
@@ -435,6 +436,16 @@
                                        OnClick="@(() => ViewDetails(registration.ProgramId))">
                                 View Program
                             </MudButton>
+
+                            @if (registration.EventEndDate.HasValue && registration.EventEndDate.Value < DateTime.Now)
+                            {
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Secondary"
+                                           StartIcon="@Icons.Material.Filled.RateReview"
+                                           OnClick="@(() => OpenReviewDialog(registration))">
+                                    Leave Review
+                                </MudButton>
+                            }
                             
                             @if (!registration.Status.Equals("completed", StringComparison.OrdinalIgnoreCase))
                             {
@@ -545,12 +556,10 @@
     
     private int GetUpcomingCount()
     {
-        // Count Active registrations with future event dates (within 14 days)
-        // For now, count all Active registrations since we don't have event dates yet
-        return registrations.Count(r => r.Status.Equals("Active", StringComparison.OrdinalIgnoreCase));
+        return registrations.Count(r => r.EventStartDate.HasValue && r.EventStartDate.Value > DateTime.Now);
     }
     
-    private int GetCompletedCount() => registrations.Count(r => r.Status.Equals("completed", StringComparison.OrdinalIgnoreCase));
+    private int GetCompletedCount() => registrations.Count(r => r.EventEndDate.HasValue && r.EventEndDate.Value < DateTime.Now);
 
     private string GetStatusClass(string status)
     {
@@ -626,5 +635,41 @@
 
         var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
         DialogService.Show<OnlineEventDialog>("Join Online Event", parameters, options);
+    }
+
+    private async Task OpenReviewDialog(ProgramRegistrationListDto registration)
+    {
+        var parameters = new DialogParameters
+        {
+            { "OrganizationName", registration.OrganizationName }
+        };
+
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = DialogService.Show<ReviewDialog>("Leave a Review", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            var data = (dynamic)result.Data;
+            var review = new CreateOrganizationReviewDto
+            {
+                OrganizationId = registration.OrganizationId,
+                ProgramId = registration.ProgramId,
+                UserId = registration.UserId,
+                ReviewerName = registration.UserName,
+                Rating = data.Rating,
+                Comment = data.Comment
+            };
+
+            var response = await OrganizationReviewService.CreateReview(review);
+            if (response.Success)
+            {
+                Snackbar.Add("Review submitted successfully!", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add($"Failed to submit review: {response.Message}", Severity.Error);
+            }
+        }
     }
 }

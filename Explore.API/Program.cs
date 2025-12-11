@@ -86,13 +86,13 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("InternalAppPolicy", // ISLAMU!
         builder => builder.AllowAnyOrigin()
-            .WithMethods()
-            .WithHeaders());
+            .AllowAnyMethod()
+            .AllowAnyHeader());
 
     options.AddPolicy("ExternalAppPolicy", // for external apps or scripts that need to access the API for community
         builder => builder.AllowAnyOrigin()
-            .WithMethods()
-            .WithHeaders());
+            .AllowAnyMethod()
+            .AllowAnyHeader());
 
     options.AddPolicy("InternalWebsitePolicy", // only my website can access some API enpoints, so even if they have the token they cannot access it
         builder => builder.WithOrigins("https://iloveibadah.app") // specify the allowed origin(s) here

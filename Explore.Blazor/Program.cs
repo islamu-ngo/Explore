@@ -31,6 +31,7 @@ builder.Services.AddScoped<IOrganizationMemberService, OrganizationMemberService
 builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<ILandingPageService, LandingPageService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IOrganizationReviewService, OrganizationReviewService>();
 
 // Add HttpClient for server-side prerendering (without token)
 builder.Services.AddScoped(sp =>
@@ -1208,6 +1209,35 @@ protectedBff.MapGet("/userprofile/me", async (IHttpClientFactory f) =>
     return Results.Stream(
         await r.Content.ReadAsStreamAsync(),
         r.Content.Headers.ContentType?.ToString()
+    );
+});
+
+// Organization Review endpoints
+protectedBff.MapGet("/OrganizationReview/{organizationId}", async (Guid organizationId, IHttpClientFactory f) =>
+{
+    var http = f.CreateClient("ExploreApi");
+    var r = await http.GetAsync($"api/OrganizationReview/{organizationId}");
+    r.EnsureSuccessStatusCode();
+    return Results.Stream(
+        await r.Content.ReadAsStreamAsync(),
+        r.Content.Headers.ContentType?.ToString()
+    );
+});
+
+protectedBff.MapPost("/OrganizationReview", async (HttpContext ctx, IHttpClientFactory f) =>
+{
+    var http = f.CreateClient("ExploreApi");
+    var request = new HttpRequestMessage(HttpMethod.Post, "api/OrganizationReview");
+    request.Content = new StreamContent(ctx.Request.Body)
+    {
+        Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json") }
+    };
+    
+    var response = await http.SendAsync(request);
+    response.EnsureSuccessStatusCode();
+    return Results.Stream(
+        await response.Content.ReadAsStreamAsync(),
+        response.Content.Headers.ContentType?.ToString()
     );
 });
 

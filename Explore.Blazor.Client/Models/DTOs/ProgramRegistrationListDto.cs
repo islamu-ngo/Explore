@@ -4,6 +4,8 @@ namespace Explore.Blazor.Client.Models.DTOs;
     {
         public Guid Id { get; set; }
         public Guid ProgramId { get; set; }
+        public Guid OrganizationId { get; set; }
+        public string OrganizationName { get; set; } = string.Empty;
         public Guid UserId { get; set; }
         public string UserName { get; set; } = string.Empty;
         public string UserEmail { get; set; } = string.Empty;

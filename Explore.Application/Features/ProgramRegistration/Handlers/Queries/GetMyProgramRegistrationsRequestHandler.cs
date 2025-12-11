@@ -45,7 +45,9 @@ namespace Explore.Application.Features.ProgramRegistration.Handlers.Queries
                 ProgramAddress = r.Program?.Address,
                 ProgramUrl = r.Program?.ProgramUrl,
                 EventStartDate = r.Program?.StartDate,
-                EventEndDate = r.Program?.EndDate
+                EventEndDate = r.Program?.EndDate,
+                OrganizationId = r.Program?.OrganizationId ?? Guid.Empty,
+                OrganizationName = r.Program?.Organization?.FullName ?? string.Empty
             }).ToList();
         }
     }

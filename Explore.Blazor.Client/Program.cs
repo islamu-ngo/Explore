@@ -14,6 +14,7 @@ builder.Services.AddScoped<IOrganizationMemberService, OrganizationMemberService
 builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<ILandingPageService, LandingPageService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IOrganizationReviewService, OrganizationReviewService>();
 
 builder.Services.AddScoped(sp => new HttpClient
 {
