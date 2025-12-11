@@ -549,6 +549,7 @@
                             (e.Country?.Contains(selectedCountry, StringComparison.OrdinalIgnoreCase) ?? false))
                 .Where(e => string.IsNullOrEmpty(selectedCategory) ||
                             GetEventTypeName(e).Equals(selectedCategory, StringComparison.OrdinalIgnoreCase))
+                .Where(e => e.EndDate >= DateTime.Now)
                 .ToList();
         }
     }

@@ -447,7 +447,8 @@
                                 </MudButton>
                             }
                             
-                            @if (!registration.Status.Equals("completed", StringComparison.OrdinalIgnoreCase))
+                            @if (!registration.Status.Equals("completed", StringComparison.OrdinalIgnoreCase) && 
+                                 (!registration.EventEndDate.HasValue || registration.EventEndDate.Value > DateTime.Now))
                             {
                                 <MudButton Variant="Variant.Outlined"
                                            Color="Color.Error"
