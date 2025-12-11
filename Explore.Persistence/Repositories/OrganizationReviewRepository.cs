@@ -21,6 +21,15 @@ namespace Explore.Persistence.Repositories
                 .ToListAsync();
         }
 
+        public async Task<List<OrganizationReview>> GetByUserId(Guid userId)
+        {
+            return await _dbContext.Set<OrganizationReview>()
+                .Include(r => r.Program)
+                .Where(r => r.UserId == userId)
+                .OrderByDescending(r => r.CreatedAt)
+                .ToListAsync();
+        }
+
         public async Task<bool> HasUserReviewedProgram(Guid userId, Guid programId)
         {
             return await _dbContext.Set<OrganizationReview>()

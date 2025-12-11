@@ -1317,6 +1317,17 @@ protectedBff.MapGet("/OrganizationReview/{organizationId}", async (Guid organiza
     );
 });
 
+protectedBff.MapGet("/OrganizationReview/user/{userId}", async (Guid userId, IHttpClientFactory f) =>
+{
+    var http = f.CreateClient("ExploreApi");
+    var r = await http.GetAsync($"api/OrganizationReview/user/{userId}");
+    r.EnsureSuccessStatusCode();
+    return Results.Stream(
+        await r.Content.ReadAsStreamAsync(),
+        r.Content.Headers.ContentType?.ToString()
+    );
+});
+
 protectedBff.MapPost("/OrganizationReview", async (HttpContext ctx, IHttpClientFactory f) =>
 {
     var http = f.CreateClient("ExploreApi");

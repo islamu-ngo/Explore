@@ -1,6 +1,7 @@
 using Explore.Application.DTOs.OrganizationReview;
 using Explore.Application.Features.OrganizationReviews.Commands.CreateOrganizationReview;
 using Explore.Application.Features.OrganizationReviews.Queries.GetOrganizationReviews;
+using Explore.Application.Features.OrganizationReviews.Queries.GetMyReviews;
 using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -22,6 +23,13 @@ namespace Explore.API.Controllers
         public async Task<ActionResult<List<OrganizationReviewDto>>> Get(Guid organizationId)
         {
             var reviews = await _mediator.Send(new GetOrganizationReviewsQuery { OrganizationId = organizationId });
+            return Ok(reviews);
+        }
+
+        [HttpGet("user/{userId}")]
+        public async Task<ActionResult<List<OrganizationReviewDto>>> GetByUserId(Guid userId)
+        {
+            var reviews = await _mediator.Send(new GetMyReviewsQuery { UserId = userId });
             return Ok(reviews);
         }
 

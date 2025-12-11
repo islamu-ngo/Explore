@@ -19,6 +19,12 @@ namespace Explore.Blazor.Client.Services
             return response ?? new List<OrganizationReviewDto>();
         }
 
+        public async Task<List<OrganizationReviewDto>> GetReviewsByUserId(Guid userId)
+        {
+            var response = await _httpClient.GetFromJsonAsync<List<OrganizationReviewDto>>($"/bff/api/OrganizationReview/user/{userId}");
+            return response ?? new List<OrganizationReviewDto>();
+        }
+
         public async Task<BaseCommandResponse<Guid>> CreateReview(CreateOrganizationReviewDto review)
         {
             var response = await _httpClient.PostAsJsonAsync("/bff/api/OrganizationReview", review);

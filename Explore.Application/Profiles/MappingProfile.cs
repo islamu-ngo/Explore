@@ -44,7 +44,9 @@ namespace Explore.Application.Profiles
             CreateMap<StatusType, StatusTypeListDto>().ReverseMap();
             CreateMap<User, UserDto>().ReverseMap();
             CreateMap<User, UpdateUserDto>().ReverseMap();
-            CreateMap<OrganizationReview, OrganizationReviewDto>().ReverseMap();
+            CreateMap<OrganizationReview, OrganizationReviewDto>()
+                .ForMember(dest => dest.ProgramTitle, opt => opt.MapFrom(src => src.Program != null ? src.Program.Title : string.Empty))
+                .ReverseMap();
             CreateMap<OrganizationReview, CreateOrganizationReviewDto>().ReverseMap();
         }
     }

@@ -39,6 +39,15 @@
                         <MudItem xs="12" sm="6">
                             <MudTextField @bind-Value="_user.LastName" Label="Last Name" Required="true" Variant="Variant.Outlined" />
                         </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="_user.Bio" Label="Bio" Variant="Variant.Outlined" Lines="3" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_user.City" Label="City" Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_user.Country" Label="Country" Variant="Variant.Outlined" />
+                        </MudItem>
                     </MudGrid>
                     <div class="d-flex justify-end mt-4">
                         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveSettings" Disabled="@(!_success || _isSaving)" StartIcon="@Icons.Material.Filled.Save">
@@ -101,7 +110,10 @@
                 FirstName = _user.FirstName,
                 LastName = _user.LastName,
                 Email = _user.Email,
-                Username = _user.Username
+                Username = _user.Username,
+                Bio = _user.Bio,
+                City = _user.City,
+                Country = _user.Country
             };
 
             var result = await UserService.UpdateUserAsync(updateDto);
