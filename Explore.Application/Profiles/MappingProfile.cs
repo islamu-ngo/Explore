@@ -28,6 +28,7 @@ namespace Explore.Application.Profiles
             CreateMap<Education, CreateProgramDto>().ReverseMap();
             CreateMap<Education, EducationDto>().ReverseMap();
             CreateMap<Event, CreateProgramDto>().ReverseMap();
+            CreateMap<Event, CreateEventDto>().ReverseMap();
             CreateMap<Event, EventDto>().ReverseMap();
             CreateMap<EventType, EventTypeListDto>().ReverseMap();
             CreateMap<Organization, OrganizationDto>().ReverseMap();

@@ -118,51 +118,85 @@
                     }
                 </MudSelect>
 
+                <!-- Date and Time -->
+                <MudText Typo="Typo.h6" Class="mb-3">Date and Time</MudText>
+                <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
+                    <MudGrid Spacing="3">
+                        <MudItem xs="12" sm="6">
+                            <MudDatePicker Label="Start Date" @bind-Date="_startDate" Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTimePicker Label="Start Time" @bind-Time="_startTime" Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudDatePicker Label="End Date" @bind-Date="_endDate" Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTimePicker Label="End Time" @bind-Time="_endTime" Variant="Variant.Outlined" />
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+
                 <!-- Location Info -->
                 <MudText Typo="Typo.h6" Class="mb-3">Location</MudText>
                 <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
-                    <MudGrid Spacing="3">
-                        <MudItem xs="12">
-                            <MudTextField @bind-Value="createDto.Address" 
-                                        Label="Address" 
-                                        Variant="Variant.Outlined" 
-                                        FullWidth
-                                        Placeholder="Street name and number"
-                                        Adornment="Adornment.Start"
-                                        AdornmentIcon="@Icons.Material.Filled.Home" />
-                        </MudItem>
-                        <MudItem xs="12" sm="6">
-                            <MudTextField @bind-Value="createDto.City" 
-                                        Label="City" 
-                                        Variant="Variant.Outlined" 
-                                        FullWidth
-                                        Placeholder="City name"
-                                        Adornment="Adornment.Start"
-                                        AdornmentIcon="@Icons.Material.Filled.LocationCity" />
-                        </MudItem>
-                        <MudItem xs="12" sm="6">
-                            <MudSelect @bind-Value="createDto.Country" 
-                                      Label="Country" 
-                                      Variant="Variant.Outlined" 
-                                      FullWidth
-                                      Placeholder="Select Country"
-                                      Adornment="Adornment.Start"
-                                      AdornmentIcon="@Icons.Material.Filled.Public">
-                                <MudSelectItem Value="@("Belgium")">Belgium</MudSelectItem>
-                                <MudSelectItem Value="@("Netherlands")">Netherlands</MudSelectItem>
-                                <MudSelectItem Value="@("France")">France</MudSelectItem>
-                                <MudSelectItem Value="@("Germany")">Germany</MudSelectItem>
-                                <MudSelectItem Value="@("Spain")">Spain</MudSelectItem>
-                                <MudSelectItem Value="@("Italy")">Italy</MudSelectItem>
-                            </MudSelect>
-                        </MudItem>
-                        <MudItem xs="12" sm="6">
-                            <MudNumericField @bind-Value="createDto.PostCode" 
-                                           Label="Postal Code" 
-                                           Variant="Variant.Outlined" 
-                                           FullWidth />
-                        </MudItem>
-                    </MudGrid>
+                    <MudSwitch @bind-Value="_isOnline" Label="Online Event (No physical location)" Color="Color.Primary" Class="mb-3" />
+                    
+                    @if (_isOnline)
+                    {
+                        <MudTextField @bind-Value="createDto.ProgramUrl" 
+                                    Label="Online Meeting Link (e.g. Teams)" 
+                                    Variant="Variant.Outlined" 
+                                    FullWidth 
+                                    Class="mb-3"
+                                    Adornment="Adornment.Start"
+                                    AdornmentIcon="@Icons.Material.Filled.Link" />
+                    }
+                    else
+                    {
+                        <MudGrid Spacing="3">
+                            <MudItem xs="12">
+                                <MudTextField @bind-Value="createDto.Address" 
+                                            Label="Address" 
+                                            Variant="Variant.Outlined" 
+                                            FullWidth
+                                            Placeholder="Street name and number"
+                                            Adornment="Adornment.Start"
+                                            AdornmentIcon="@Icons.Material.Filled.Home" />
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudTextField @bind-Value="createDto.City" 
+                                            Label="City" 
+                                            Variant="Variant.Outlined" 
+                                            FullWidth
+                                            Placeholder="City name"
+                                            Adornment="Adornment.Start"
+                                            AdornmentIcon="@Icons.Material.Filled.LocationCity" />
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudSelect @bind-Value="createDto.Country" 
+                                          Label="Country" 
+                                          Variant="Variant.Outlined" 
+                                          FullWidth
+                                          Placeholder="Select Country"
+                                          Adornment="Adornment.Start"
+                                          AdornmentIcon="@Icons.Material.Filled.Public">
+                                    <MudSelectItem Value="@("Belgium")">Belgium</MudSelectItem>
+                                    <MudSelectItem Value="@("Netherlands")">Netherlands</MudSelectItem>
+                                    <MudSelectItem Value="@("France")">France</MudSelectItem>
+                                    <MudSelectItem Value="@("Germany")">Germany</MudSelectItem>
+                                    <MudSelectItem Value="@("Spain")">Spain</MudSelectItem>
+                                    <MudSelectItem Value="@("Italy")">Italy</MudSelectItem>
+                                </MudSelect>
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudNumericField @bind-Value="createDto.PostCode" 
+                                               Label="Postal Code" 
+                                               Variant="Variant.Outlined" 
+                                               FullWidth />
+                            </MudItem>
+                        </MudGrid>
+                    }
                 </MudPaper>
 
                 <!-- Audience Info -->
@@ -219,15 +253,6 @@
                                Adornment="Adornment.Start"
                                AdornmentIcon="@Icons.Material.Filled.Euro" />
 
-                <MudTextField @bind-Value="createDto.ProgramUrl" 
-                            Label="Event URL (optional)" 
-                            Variant="Variant.Outlined" 
-                            FullWidth
-                            Class="mb-3"
-                            Placeholder="https://..."
-                            Adornment="Adornment.Start"
-                            AdornmentIcon="@Icons.Material.Filled.Link" />
-
                 <MudCheckBox @bind-Value="createDto.IsRegistrationRequired" 
                             Label="Registration Required" 
                             Color="Color.Primary"
@@ -262,6 +287,12 @@
     private List<AudienceGenderListDto>? audienceGenders;
     private List<AudienceAgeListDto>? audienceAges;
     private bool isLoading = true;
+
+    private DateTime? _startDate = DateTime.Today;
+    private TimeSpan? _startTime = new TimeSpan(9, 0, 0);
+    private DateTime? _endDate = DateTime.Today;
+    private TimeSpan? _endTime = new TimeSpan(17, 0, 0);
+    private bool _isOnline = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -320,6 +351,24 @@
         
         try
         {
+            if (_startDate.HasValue && _startTime.HasValue)
+            {
+                createDto.StartDate = (_startDate.Value.Date + _startTime.Value).ToUniversalTime();
+            }
+            
+            if (_endDate.HasValue && _endTime.HasValue)
+            {
+                createDto.EndDate = (_endDate.Value.Date + _endTime.Value).ToUniversalTime();
+            }
+
+            if (_isOnline)
+            {
+                createDto.Address = null;
+                createDto.City = null;
+                createDto.Country = null;
+                createDto.PostCode = null;
+            }
+
             isCreating = true;
             StateHasChanged();
             
