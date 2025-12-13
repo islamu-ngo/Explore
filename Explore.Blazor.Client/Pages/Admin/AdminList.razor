@@ -8,82 +8,381 @@
 @inject IAdminService AdminService
 
 <style>
-    .admin-wrap { padding: 24px; max-width: 1200px; margin: 0 auto; }
-    .toolbar { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom: 12px; }
-    .status-chip { min-width: 110px; justify-content: center; }
-    .table-actions { display:flex; justify-content:center; gap:8px; }
+    :root{
+        --adm-radius-xl: 22px;
+        --adm-radius-lg: 16px;
+        --adm-radius-md: 12px;
+    }
+
+    .admin-page{
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 22px;
+    }
+
+    /* HERO */
+    .hero{
+        border-radius: var(--adm-radius-xl);
+        padding: 20px;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(255,255,255,.06);
+        background:
+          radial-gradient(900px 300px at 20% 10%, rgba(124,58,237,.22), transparent 55%),
+          radial-gradient(800px 280px at 80% 0%, rgba(34,197,94,.14), transparent 55%),
+          linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+        box-shadow: 0 18px 45px rgba(0,0,0,.22);
+    }
+
+    .hero-top{
+        display:flex;
+        gap:16px;
+        align-items:flex-start;
+        justify-content:space-between;
+        flex-wrap:wrap;
+    }
+
+    .hero-title{
+        display:flex;
+        gap:12px;
+        align-items:center;
+    }
+
+    .hero-badge{
+        width:44px;
+        height:44px;
+        border-radius: 14px;
+        display:grid;
+        place-items:center;
+        background: rgba(124,58,237,.18);
+        border: 1px solid rgba(124,58,237,.35);
+    }
+
+    .hero-sub{
+        opacity:.85;
+    }
+
+    /* STATS */
+    .stats{
+        margin-top: 16px;
+        display:grid;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 12px;
+    }
+
+    .stat-card{
+        grid-column: span 12;
+        border-radius: var(--adm-radius-lg);
+        padding: 14px 14px;
+        border: 1px solid rgba(255,255,255,.06);
+        background: rgba(255,255,255,.03);
+        box-shadow: 0 10px 24px rgba(0,0,0,.12);
+        transition: transform .15s ease, box-shadow .15s ease;
+    }
+    .stat-card:hover{
+        transform: translateY(-2px);
+        box-shadow: 0 16px 32px rgba(0,0,0,.18);
+    }
+
+    .stat-row{
+        display:flex;
+        align-items:center;
+        gap: 12px;
+    }
+
+    .stat-icon{
+        width:42px; height:42px;
+        border-radius: 14px;
+        display:grid;
+        place-items:center;
+        border: 1px solid rgba(255,255,255,.08);
+    }
+    .i-pending{ background: rgba(56,189,248,.16); border-color: rgba(56,189,248,.35); }
+    .i-approved{ background: rgba(34,197,94,.14); border-color: rgba(34,197,94,.30); }
+    .i-rejected{ background: rgba(239,68,68,.14); border-color: rgba(239,68,68,.30); }
+
+    .stat-label { opacity: 0.8; font-size: 0.82rem; }
+    .stat-value { font-size: 1.55rem; font-weight: 700; letter-spacing: 0.3px; }
+
+    /* SECTION TITLE */
+    .section{
+        margin-top: 18px;
+    }
+
+    .section-head{
+        display:flex;
+        align-items:flex-end;
+        justify-content:space-between;
+        flex-wrap:wrap;
+        gap: 12px;
+        margin: 16px 4px 10px;
+    }
+
     .muted { color: var(--mud-palette-text-secondary); }
-    .logo-img { width:100%; height:100%; object-fit:cover; border-radius:inherit; }
+
+    /* TOOLBAR */
+    .panel {
+        border-radius: var(--adm-radius-xl);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        background: rgba(255, 255, 255, 0.03);
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+        padding: 14px;
+    }
+
+    .toolbar {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .chip-row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    /* TABS */
+    .tabs-wrap {
+        border-radius: var(--adm-radius-xl);
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    /* TABLE */
+    .table-wrap {
+        border-radius: var(--adm-radius-xl);
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        background: rgba(255, 255, 255, 0.02);
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+    }
+
+    .status-pill {
+        min-width: 120px;
+        justify-content: center;
+        border-radius: 999px;
+        font-weight: 600;
+        letter-spacing: 0.2px;
+    }
+
+    .row-org {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 220px;
+    }
+
+    .org-meta {
+        line-height: 1.15;
+    }
+
+    .id-mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        opacity: 0.9;
+    }
+
+    .table-actions {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .details-btn {
+        border-radius: 999px !important;
+        padding-left: 14px !important;
+        padding-right: 14px !important;
+    }
+
+    .empty-state {
+        padding: 26px;
+        text-align: center;
+        opacity: 0.9;
+    }
 </style>
 
-<div class="admin-wrap">
-    <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
-        <div>
-            <MudText Typo="Typo.h4" Color="Color.Primary" Class="mb-1">Admin Dashboard</MudText>
-            <MudText Typo="Typo.body1" Color="Color.Secondary">Gestion van organisatieaanvragen</MudText>
+<div class="admin-page">
+
+    <!-- HERO -->
+    <MudPaper Class="hero" Elevation="0">
+        <div class="hero-top">
+            <div>
+                <div class="hero-title">
+                    <div class="hero-badge">
+                        <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Color="Color.Primary" />
+                    </div>
+                    <div>
+                        <MudText Typo="Typo.h4" Style="font-weight:800; letter-spacing:.2px;">
+                            Admin Dashboard
+                        </MudText>
+                        <MudText Typo="Typo.body2" Class="hero-sub">
+                            Review and action incoming organization requests
+                        </MudText>
+                    </div>
+                </div>
+            </div>
+
+            <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Refresh"
+                           OnClick="LoadOrganizationRequests"
+                           Style="border-radius:999px; padding:10px 16px;">
+                    Refresh
+                </MudButton>
+            </MudStack>
         </div>
-    </MudStack>
+
+        <!-- STATS -->
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-row">
+                    <div class="stat-icon i-pending">
+                        <MudIcon Icon="@Icons.Material.Filled.HourglassBottom" Color="Color.Info" />
+                    </div>
+                    <div>
+                        <div class="stat-label">Pending</div>
+                        <div class="stat-value">@PendingCount</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-row">
+                    <div class="stat-icon i-approved">
+                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" />
+                    </div>
+                    <div>
+                        <div class="stat-label">Approved</div>
+                        <div class="stat-value">@ApprovedCount</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-row">
+                    <div class="stat-icon i-rejected">
+                        <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Error" />
+                    </div>
+                    <div>
+                        <div class="stat-label">Rejected</div>
+                        <div class="stat-value">@RejectedCount</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </MudPaper>
 
     @if (_isLoading)
     {
-        <MudPaper Class="p-6" Elevation="2">
-            <MudStack AlignItems="AlignItems.Center" Spacing="3">
+        <MudPaper Class="panel" Elevation="0" Style="margin-top:14px;">
+            <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="py-4">
                 <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
-                <MudText Typo="Typo.body1">Loading organization requests...</MudText>
+                <MudText Typo="Typo.body1">Loading organization requests…</MudText>
+                <MudText Typo="Typo.caption" Class="muted">Please wait a moment.</MudText>
             </MudStack>
         </MudPaper>
     }
     else
     {
-        <MudText Typo="Typo.h4">Admin Management</MudText>
-        <MudText Typo="Typo.body2" Class="muted">
-            <!-- oudste eerst, nieuwste onderaan -->
-            Showing oldest first • @_organizationRequests.Count requests
-        </MudText>
+        <div class="section">
+            <div class="section-head">
+                <div>
+                    <MudText Typo="Typo.h5" Style="font-weight:800;">Admin Management</MudText>
+                    <MudText Typo="Typo.body2" Class="muted">
+                        Showing oldest first • @_organizationRequests.Count requests
+                    </MudText>
+                </div>
+            </div>
 
-    <!--zoeken + statusoverzicht -->
-    <div class="toolbar">
-        <MudTextField @bind-Value="_search"
-                      Placeholder="Search by name, ID or email"
-                      Adornment="Adornment.Start"
-                      AdornmentIcon="@Icons.Material.Filled.Search"
-                      Variant="Variant.Outlined"
-                      Immediate="true"
-                      Clearable="true"
-                      Style="min-width: 280px;" />
+            <!-- TOOLBAR -->
+            <MudPaper Class="panel" Elevation="0">
+                <div class="toolbar">
+                    <MudTextField @bind-Value="_search"
+                                  Placeholder="Search by name, email, city, country…"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  Variant="Variant.Outlined"
+                                  Immediate="true"
+                                  Clearable="true"
+                                  Margin="Margin.Dense"
+                                  Style="min-width:320px; border-radius:999px;" />
 
-        <MudChip T="string" Color="Color.Info" Variant="Variant.Outlined" Class="status-chip">
-            Pending: @PendingCount
-        </MudChip>
-        <MudChip T="string" Color="Color.Success" Variant="Variant.Outlined" Class="status-chip">
-            Approved: @ApprovedCount
-        </MudChip>
-        <MudChip T="string" Color="Color.Error" Variant="Variant.Outlined" Class="status-chip">
-            Rejected: @RejectedCount
-        </MudChip>
+                    <MudDivider Vertical="true" Class="mx-2" />
 
-        <MudTooltip Text="Oldest on top • Newest on bottom">
-            <MudIcon Icon="@Icons.Material.Filled.South" Class="ml-2 muted" />
-        </MudTooltip>
-    </div>
+                    <div class="chip-row">
+                        <MudChip T="bool"
+                                 Selected="@IsStatusSelected(RequestStatus.Pending)"
+                                 OnClick="@(() => ToggleStatus(RequestStatus.Pending))"
+                                 Color="Color.Info"
+                                 Variant="Variant.Outlined">
+                            Pending
+                        </MudChip>
 
-    <!-- tabs per status -->
-    <MudTabs @bind-ActivePanelIndex="_activeTab" Class="mb-3">
-        <MudTabPanel Text="@($"All ({_organizationRequests.Count})")">
-            @* gedeelde tabelweergave *@
-            @TableMarkup(GetFilteredAndSorted(null))
-        </MudTabPanel>
-        <MudTabPanel Text="@($"Pending ({PendingCount})")">
-            @TableMarkup(GetFilteredAndSorted(RequestStatus.Pending))
-        </MudTabPanel>
-        <MudTabPanel Text="@($"Approved ({ApprovedCount})")">
-            @TableMarkup(GetFilteredAndSorted(RequestStatus.Approved))
-        </MudTabPanel>
-        <MudTabPanel Text="@($"Rejected ({RejectedCount})")">
-            @TableMarkup(GetFilteredAndSorted(RequestStatus.Rejected))
-        </MudTabPanel>
-    </MudTabs>
-    } @* sluiting van bloc else voor _isLoading *@
+                        <MudChip T="bool"
+                                 Selected="@IsStatusSelected(RequestStatus.Approved)"
+                                 OnClick="@(() => ToggleStatus(RequestStatus.Approved))"
+                                 Color="Color.Success"
+                                 Variant="Variant.Outlined">
+                            Approved
+                        </MudChip>
+
+                        <MudChip T="bool"
+                                 Selected="@IsStatusSelected(RequestStatus.Rejected)"
+                                 OnClick="@(() => ToggleStatus(RequestStatus.Rejected))"
+                                 Color="Color.Error"
+                                 Variant="Variant.Outlined">
+                            Rejected
+                        </MudChip>
+
+                        <MudButton Variant="Variant.Text"
+                                   StartIcon="@Icons.Material.Filled.FilterAltOff"
+                                   OnClick="ClearFilters"
+                                   Style="border-radius:999px;">
+                            Clear
+                        </MudButton>
+                    </div>
+
+                    <MudSpacer />
+
+                    <MudSelect @bind-Value="_sort"
+                               Label="Sort"
+                               Variant="Variant.Outlined"
+                               Margin="Margin.Dense"
+                               Style="min-width:190px; border-radius:14px;">
+                        <MudSelectItem Value="SortOption.OldestFirst">Oldest first</MudSelectItem>
+                        <MudSelectItem Value="SortOption.NewestFirst">Newest first</MudSelectItem>
+                        <MudSelectItem Value="SortOption.Name">Name</MudSelectItem>
+                        <MudSelectItem Value="SortOption.Status">Status</MudSelectItem>
+                    </MudSelect>
+                </div>
+            </MudPaper>
+
+            <!-- TABS -->
+            <MudPaper Class="tabs-wrap" Elevation="0" Style="margin-top:12px;">
+                <MudTabs @bind-ActivePanelIndex="_activeTab"
+                         Rounded="true"
+                         Border="true"
+                         ApplyEffectsToContainer="true">
+                    <MudTabPanel Text="@($"All ({_organizationRequests.Count})")">
+                        @TableMarkup(GetFilteredAndSorted(null))
+                    </MudTabPanel>
+                    <MudTabPanel Text="@($"Pending ({PendingCount})")">
+                        @TableMarkup(GetFilteredAndSorted(RequestStatus.Pending))
+                    </MudTabPanel>
+                    <MudTabPanel Text="@($"Approved ({ApprovedCount})")">
+                        @TableMarkup(GetFilteredAndSorted(RequestStatus.Approved))
+                    </MudTabPanel>
+                    <MudTabPanel Text="@($"Rejected ({RejectedCount})")">
+                        @TableMarkup(GetFilteredAndSorted(RequestStatus.Rejected))
+                    </MudTabPanel>
+                </MudTabs>
+            </MudPaper>
+        </div>
+    }
+
 </div>
 
 @code {
@@ -94,6 +393,9 @@
     private string _search = string.Empty;
     private int _activeTab = 0;
     private bool _isLoading = true;
+    private HashSet<RequestStatus> _selectedStatuses = new();
+    private enum SortOption { OldestFirst, NewestFirst, Name, Status }
+    private SortOption _sort = SortOption.OldestFirst;
 
     protected override async Task OnInitializedAsync()
     {
@@ -136,54 +438,82 @@
         if (status.HasValue)
             q = q.Where(r => r.StatusTypeId == (int)status.Value);
 
+        // apply chip filters if any selected
+        if (_selectedStatuses.Count > 0)
+        {
+            var allowed = _selectedStatuses.Select(s => (int)s).ToHashSet();
+            q = q.Where(r => allowed.Contains(r.StatusTypeId));
+        }
+
         if (!string.IsNullOrWhiteSpace(_search))
         {
             var s = _search.Trim().ToLowerInvariant();
             q = q.Where(r =>
                 (r.FullName?.ToLowerInvariant().Contains(s) ?? false) ||
                 (r.Id.ToString().ToLowerInvariant().Contains(s)) ||
-                (r.Email?.ToLowerInvariant().Contains(s) ?? false));
+                (r.Email?.ToLowerInvariant().Contains(s) ?? false) ||
+                (r.City?.ToLowerInvariant().Contains(s) ?? false) ||
+                (r.Country?.ToLowerInvariant().Contains(s) ?? false));
         }
 
-        return q.OrderBy(r => r.Id); // tri par ID en attendant CreatedAt
+        // sorting
+        q = _sort switch
+        {
+            SortOption.NewestFirst => q.OrderByDescending(r => r.CreatedAt),
+            SortOption.Name        => q.OrderBy(r => r.FullName),
+            SortOption.Status      => q.OrderBy(r => r.StatusTypeId),
+            _ => q.OrderBy(r => r.CreatedAt)
+        };
+
+        return q;
     }
 
-    // gedeelde tabel (pure Razor, geen RenderTreeBuilder)
-    private RenderFragment TableMarkup(IEnumerable<OrganizationListDto> items) => @<MudPaper Elevation="2">
-        <MudTable Items="items" Hover="true" Breakpoint="Breakpoint.Sm">
+    // ====== TABLE (UI modernisée, logique identique) ======
+    private RenderFragment TableMarkup(IEnumerable<OrganizationListDto> items) => @<MudPaper Class="table-wrap" Elevation="0" Style="margin-top:12px;">
+        <MudTable Items="items" Hover="true" Breakpoint="Breakpoint.Sm" Dense="true">
             <HeaderContent>
-                <MudTh style="width:120px">Submitted</MudTh>
-                <MudTh style="width:120px">ID</MudTh>
+                <MudTh style="width:190px">Submitted</MudTh>
+                <MudTh style="width:150px">ID</MudTh>
                 <MudTh>Organization</MudTh>
-                <MudTh style="width:140px">Status</MudTh>
+                <MudTh style="width:170px">Status</MudTh>
                 <MudTh style="text-align:center; width:170px">Actions</MudTh>
-                <MudTh style="text-align:center; width:110px">Details</MudTh>
+                <MudTh style="text-align:center; width:140px">Details</MudTh>
             </HeaderContent>
 
             <RowTemplate>
                 <MudTd DataLabel="Submitted">
-                    <MudText Typo="Typo.body2">@context.Id.ToString()[..8]...</MudText>
-                    <MudText Typo="Typo.caption" Class="muted">Organization ID</MudText>
+                    <MudText Typo="Typo.body2" Style="font-weight:650;">
+                        @context.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+                    </MudText>
+                    <MudText Typo="Typo.caption" Class="muted">@GetRelative(context.CreatedAt)</MudText>
                 </MudTd>
 
                 <MudTd DataLabel="ID">
-                    <MudText>@context.Id.ToString()[..8]...</MudText>
+                    <MudText Class="id-mono">@context.Id.ToString()[..8]…</MudText>
                 </MudTd>
 
                 <MudTd DataLabel="Organization">
-                    <MudStack Row Spacing="2" AlignItems="AlignItems.Center">
-                        <MudAvatar Size="Size.Medium" Variant="Variant.Filled">
+                    <div class="row-org">
+                        <MudAvatar Size="Size.Medium" Variant="Variant.Filled" Style="border-radius:14px;">
                             <MudIcon Icon="@Icons.Material.Filled.Business" />
                         </MudAvatar>
-                        <div>
-                            <MudText Typo="Typo.subtitle2">@context.FullName</MudText>
-                            <MudText Typo="Typo.caption" Class="muted">@(context.City ?? "Unknown"), @(context.Country ?? "Unknown") • @context.Email</MudText>
+
+                        <div class="org-meta">
+                            <MudText Typo="Typo.subtitle2" Style="font-weight:750;">
+                                @context.FullName
+                            </MudText>
+                            <MudText Typo="Typo.caption" Class="muted">
+                                @(context.City ?? "Unknown"), @(context.Country ?? "Unknown") • @context.Email
+                            </MudText>
                         </div>
-                    </MudStack>
+                    </div>
                 </MudTd>
 
                 <MudTd DataLabel="Status">
-                    <MudChip T="string" Color="@StatusColor((RequestStatus)context.StatusTypeId)" Variant="Variant.Filled">
+                    <MudChip T="string"
+                             Color="@StatusColor((RequestStatus)context.StatusTypeId)"
+                             Variant="Variant.Filled"
+                             Class="status-pill">
                         @context.StatusTypeFullName
                     </MudChip>
                 </MudTd>
@@ -193,22 +523,28 @@
                         @if (context.StatusTypeId == (int)RequestStatus.Pending)
                         {
                             <MudTooltip Text="Approve">
-                                <MudIconButton Icon="@Icons.Material.Filled.Check"
+                                <MudIconButton Icon="@Icons.Material.Filled.CheckCircle"
                                                Color="Color.Success"
-                                               OnClick="@(() => Approve(context))" />
+                                               Variant="Variant.Filled"
+                                               OnClick="@(() => Approve(context))"
+                                               Style="border-radius:14px;" />
                             </MudTooltip>
                             <MudTooltip Text="Reject">
-                                <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                <MudIconButton Icon="@Icons.Material.Filled.Cancel"
                                                Color="Color.Error"
-                                               OnClick="@(() => Reject(context))" />
+                                               Variant="Variant.Filled"
+                                               OnClick="@(() => Reject(context))"
+                                               Style="border-radius:14px;" />
                             </MudTooltip>
                         }
                         else if (context.StatusTypeId == (int)RequestStatus.Approved)
                         {
                             <MudTooltip Text="Revoke approval">
-                                <MudIconButton Icon="@Icons.Material.Filled.Undo"
+                                <MudIconButton Icon="@Icons.Material.Filled.Restore"
                                                Color="Color.Warning"
-                                               OnClick="@(() => RevertToPending(context))" />
+                                               Variant="Variant.Filled"
+                                               OnClick="@(() => RevertToPending(context))"
+                                               Style="border-radius:14px;" />
                             </MudTooltip>
                         }
                         else if (context.StatusTypeId == (int)RequestStatus.Rejected)
@@ -216,7 +552,9 @@
                             <MudTooltip Text="Move back to pending">
                                 <MudIconButton Icon="@Icons.Material.Filled.Restore"
                                                Color="Color.Info"
-                                               OnClick="@(() => RevertToPending(context))" />
+                                               Variant="Variant.Filled"
+                                               OnClick="@(() => RevertToPending(context))"
+                                               Style="border-radius:14px;" />
                             </MudTooltip>
                         }
                     </div>
@@ -226,6 +564,8 @@
                     <MudButton Variant="Variant.Filled"
                                Color="Color.Primary"
                                Size="Size.Small"
+                               Class="details-btn"
+                               StartIcon="@Icons.Material.Filled.Visibility"
                                OnClick="@(() => Nav.NavigateTo($"/admin/organization/{context.Id}"))">
                         Details
                     </MudButton>
@@ -233,10 +573,37 @@
             </RowTemplate>
 
             <NoRecordsContent>
-                <MudText Class="p-4">No requests match your filters.</MudText>
+                <div class="empty-state">
+                    <MudIcon Icon="@Icons.Material.Filled.Inbox" Size="Size.Large" />
+                    <MudText Typo="Typo.h6" Style="margin-top:10px; font-weight:800;">No matching requests</MudText>
+                    <MudText Typo="Typo.body2" Class="muted">Try clearing filters or changing your search.</MudText>
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               OnClick="ClearFilters"
+                               Style="margin-top:12px; border-radius:999px;">
+                        Clear filters
+                    </MudButton>
+                </div>
             </NoRecordsContent>
         </MudTable>
     </MudPaper>;
+
+    // filter helpers
+    private bool IsStatusSelected(RequestStatus s) => _selectedStatuses.Contains(s);
+
+    private void ToggleStatus(RequestStatus s)
+    {
+        if (_selectedStatuses.Contains(s)) _selectedStatuses.Remove(s); else _selectedStatuses.Add(s);
+        StateHasChanged();
+    }
+
+    private void ClearFilters()
+    {
+        _selectedStatuses.Clear();
+        _search = string.Empty;
+        _sort = SortOption.OldestFirst;
+        StateHasChanged();
+    }
 
     // status-kleur
     private Color StatusColor(RequestStatus s) => s switch
@@ -251,9 +618,9 @@
     private string GetRelative(DateTime utc)
     {
         var ts = DateTime.UtcNow - utc;
-        if (ts.TotalDays   >= 1) return $"{(int)ts.TotalDays}d ago";
-        if (ts.TotalHours  >= 1) return $"{(int)ts.TotalHours}h ago";
-        if (ts.TotalMinutes>= 1) return $"{(int)ts.TotalMinutes}m ago";
+        if (ts.TotalDays    >= 1) return $"{(int)ts.TotalDays}d ago";
+        if (ts.TotalHours   >= 1) return $"{(int)ts.TotalHours}h ago";
+        if (ts.TotalMinutes >= 1) return $"{(int)ts.TotalMinutes}m ago";
         return "just now";
     }
 
@@ -316,4 +683,3 @@
         }
     }
 }
-

@@ -7,96 +7,309 @@
 @inject ISnackbar Snackbar
 
 <style>
+    :root {
+        --details-radius-xl: 22px;
+        --details-radius-lg: 16px;
+        --details-radius-md: 12px;
+    }
+
     .details-page {
-        padding: 24px;
-        max-width: 800px;
+        max-width: 900px;
         margin: 0 auto;
+        padding: 22px;
+    }
+
+    /* HERO HEADER */
+    .hero-header {
+        border-radius: var(--details-radius-xl);
+        padding: 24px;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        background:
+            radial-gradient(900px 300px at 20% 10%, rgba(124, 58, 237, 0.22), transparent 55%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+        box-shadow: 0 18px 45px rgba(0, 0, 0, 0.22);
+        margin-bottom: 20px;
+    }
+
+    .hero-badge {
+        width: 52px;
+        height: 52px;
+        border-radius: 16px;
+        display: grid;
+        place-items: center;
+        background: rgba(124, 58, 237, 0.18);
+        border: 1px solid rgba(124, 58, 237, 0.35);
+    }
+
+    .hero-title {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+    }
+
+    .hero-meta {
+        opacity: 0.85;
+    }
+
+    /* SECTION PANEL */
+    .section-panel {
+        border-radius: var(--details-radius-lg);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        background: rgba(255, 255, 255, 0.02);
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+        padding: 20px;
+        margin-bottom: 16px;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .section-panel:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.16);
+    }
+
+    .section-header {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .section-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        display: grid;
+        place-items: center;
+        background: rgba(124, 58, 237, 0.14);
+        border: 1px solid rgba(124, 58, 237, 0.25);
+    }
+
+    .section-title {
+        font-weight: 800;
+        letter-spacing: 0.2px;
+    }
+
+    .field-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 16px;
+        margin-bottom: 12px;
+    }
+
+    .field-row:last-child {
+        margin-bottom: 0;
+    }
+
+    .field-value {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .field-label {
+        opacity: 0.75;
+        font-size: 0.85rem;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+        text-transform: uppercase;
+    }
+
+    .field-text {
+        font-weight: 500;
+        word-break: break-word;
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        border-radius: 999px;
+        font-weight: 600;
+        letter-spacing: 0.2px;
+        width: fit-content;
+    }
+
+    .not-provided {
+        opacity: 0.6;
+        font-style: italic;
+    }
+
+    .footer-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-start;
+        margin-top: 24px;
+    }
+
+    .loading-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 60px 24px;
+        gap: 16px;
+    }
+
+    .error-state {
+        padding: 40px 24px;
+        text-align: center;
+        opacity: 0.8;
     }
 </style>
 
-<MudContainer Class="details-page">
-    <MudPaper Class="pa-6" Elevation="3">
-        @if (_isLoading)
-        {
-            <MudStack AlignItems="AlignItems.Center" Spacing="3">
+<div class="details-page">
+    @if (_isLoading)
+    {
+        <MudPaper Class="hero-header" Elevation="0">
+            <div class="loading-state">
                 <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
-                <MudText Typo="Typo.body1">Loading organization details...</MudText>
+                <MudText Typo="Typo.body1">Loading organization details…</MudText>
+                <MudText Typo="Typo.caption" style="opacity:0.7;">Please wait a moment.</MudText>
+            </div>
+        </MudPaper>
+    }
+    else if (organization != null)
+    {
+        <!-- HERO HEADER -->
+        <MudPaper Class="hero-header" Elevation="0">
+            <div class="hero-title">
+                <div class="hero-badge">
+                    <MudIcon Icon="@Icons.Material.Filled.Business" Color="Color.Primary" Size="Size.Large" />
+                </div>
+                <div>
+                    <MudText Typo="Typo.h4" Style="font-weight:800; letter-spacing:.2px;">
+                        @organization.FullName
+                    </MudText>
+                    <MudText Typo="Typo.body2" Class="hero-meta">
+                        Organization ID: @organization.Id.ToString()[..8]…
+                    </MudText>
+                </div>
+            </div>
+
+            <!-- STATUS BADGE IN HERO -->
+            <MudStack Row AlignItems="AlignItems.Center" Spacing="1" Style="margin-top:16px;">
+                <MudChip T="string"
+                         Color="@StatusColor(organization.StatusTypeId)"
+                         Variant="Variant.Filled"
+                         Style="border-radius:999px; padding:8px 16px; font-weight:600;">
+                    @GetStatusName(organization.StatusTypeId)
+                </MudChip>
             </MudStack>
-        }
-        else if (organization != null)
-        {
-            <!-- Header -->
-            <MudStack Spacing="4">
-                <MudText Typo="Typo.h4" Color="Color.Primary">
-                    <MudIcon Icon="@Icons.Material.Filled.Business" Class="mr-2" />
-                    Organization Details
-                </MudText>
+        </MudPaper>
 
-                <!-- Basic Information -->
-                <MudPaper Class="pa-4" Elevation="1">
-                    <MudText Typo="Typo.h6" Class="mb-3">Basic Information</MudText>
-                    <MudGrid>
-                        <MudItem xs="12" md="6">
-                            <MudTextField Label="Organization Name" Value="@organization.FullName" ReadOnly="true" Variant="Variant.Outlined" />
-                        </MudItem>
-                        <MudItem xs="12" md="6">
-                            <MudTextField Label="Status" Value="@GetStatusName(organization.StatusTypeId)" ReadOnly="true" Variant="Variant.Outlined" />
-                        </MudItem>
-                        <MudItem xs="12">
-                            <MudTextField Label="Organization ID" Value="@organization.Id.ToString()" ReadOnly="true" Variant="Variant.Outlined" />
-                        </MudItem>
-                    </MudGrid>
-                </MudPaper>
+        <!-- BASIC INFORMATION -->
+        <MudPaper Class="section-panel" Elevation="0">
+            <div class="section-header">
+                <div class="section-icon">
+                    <MudIcon Icon="@Icons.Material.Filled.Info" Color="Color.Primary" />
+                </div>
+                <MudText Typo="Typo.h6" Class="section-title">Basic Information</MudText>
+            </div>
 
-                <!-- Contact Information -->
-                <MudPaper Class="pa-4" Elevation="1">
-                    <MudText Typo="Typo.h6" Class="mb-3">Contact Information</MudText>
-                    <MudGrid>
-                        <MudItem xs="12" md="6">
-                            <MudTextField Label="Email" Value="@organization.Email" ReadOnly="true" Variant="Variant.Outlined" />
-                        </MudItem>
-                        <MudItem xs="12" md="6">
-                            <MudTextField Label="Website" Value="@(organization.WebsiteUrl ?? "Not provided")" ReadOnly="true" Variant="Variant.Outlined" />
-                        </MudItem>
-                    </MudGrid>
-                </MudPaper>
+            <div class="field-row">
+                <div class="field-value">
+                    <div class="field-label">Organization Name</div>
+                    <MudText Class="field-text">@organization.FullName</MudText>
+                </div>
+            </div>
+        </MudPaper>
 
-                <!-- Address Information -->
-                <MudPaper Class="pa-4" Elevation="1">
-                    <MudText Typo="Typo.h6" Class="mb-3">Address Information</MudText>
-                    <MudGrid>
-                        <MudItem xs="12">
-                            <MudTextField Label="Street Address" Value="@(organization.Address ?? "Not provided")" ReadOnly="true" Variant="Variant.Outlined" />
-                        </MudItem>
-                        <MudItem xs="12" md="4">
-                            <MudTextField Label="Postal Code" Value="@(organization.Postcode == 0 ? "Not provided" : organization.Postcode.ToString())" ReadOnly="true" Variant="Variant.Outlined" />
-                        </MudItem>
-                        <MudItem xs="12" md="4">
-                            <MudTextField Label="City" Value="@(organization.City ?? "Not provided")" ReadOnly="true" Variant="Variant.Outlined" />
-                        </MudItem>
-                        <MudItem xs="12" md="4">
-                            <MudTextField Label="Country" Value="@(organization.Country ?? "Not provided")" ReadOnly="true" Variant="Variant.Outlined" />
-                        </MudItem>
-                    </MudGrid>
-                </MudPaper>
+        <!-- CONTACT INFORMATION -->
+        <MudPaper Class="section-panel" Elevation="0">
+            <div class="section-header">
+                <div class="section-icon">
+                    <MudIcon Icon="@Icons.Material.Filled.ContactMail" Color="Color.Primary" />
+                </div>
+                <MudText Typo="Typo.h6" Class="section-title">Contact Information</MudText>
+            </div>
 
-                <!-- Back Button -->
-                <MudStack Direction="FlexDirection.Row" Justify="Justify.SpaceBetween">
-                    <MudButton Variant="Variant.Outlined" 
-                              Color="Color.Default" 
-                              StartIcon="@Icons.Material.Filled.ArrowBack"
-                              OnClick="NavigateBack">
-                        Back to List
-                    </MudButton>
-                </MudStack>
-            </MudStack>
-        }
-        else
-        {
-            <MudText Typo="Typo.h6" Align="Align.Center">Organization not found</MudText>
-        }
-    </MudPaper>
-</MudContainer>
+            <div class="field-row">
+                <div class="field-value">
+                    <div class="field-label">Email</div>
+                    <MudLink Href="@($"mailto:{organization.Email}")" Target="_blank">
+                        @organization.Email
+                    </MudLink>
+                </div>
+                <div class="field-value">
+                    <div class="field-label">Website</div>
+                    @if (!string.IsNullOrWhiteSpace(organization.WebsiteUrl))
+                    {
+                        <MudLink Href="@organization.WebsiteUrl" Target="_blank">
+                            @organization.WebsiteUrl
+                        </MudLink>
+                    }
+                    else
+                    {
+                        <MudText Class="not-provided">Not provided</MudText>
+                    }
+                </div>
+            </div>
+        </MudPaper>
+
+        <!-- ADDRESS INFORMATION -->
+        <MudPaper Class="section-panel" Elevation="0">
+            <div class="section-header">
+                <div class="section-icon">
+                    <MudIcon Icon="@Icons.Material.Filled.LocationOn" Color="Color.Primary" />
+                </div>
+                <MudText Typo="Typo.h6" Class="section-title">Address Information</MudText>
+            </div>
+
+            <div class="field-row">
+                <div class="field-value" style="grid-column: 1 / -1;">
+                    <div class="field-label">Street Address</div>
+                    <MudText Class="field-text">@(organization.Address ?? "Not provided")</MudText>
+                </div>
+            </div>
+
+            <div class="field-row">
+                <div class="field-value">
+                    <div class="field-label">City</div>
+                    <MudText Class="field-text">@(organization.City ?? "Not provided")</MudText>
+                </div>
+                <div class="field-value">
+                    <div class="field-label">Country</div>
+                    <MudText Class="field-text">@(organization.Country ?? "Not provided")</MudText>
+                </div>
+                <div class="field-value">
+                    <div class="field-label">Postal Code</div>
+                    <MudText Class="field-text">@(organization.Postcode == 0 ? "Not provided" : organization.Postcode.ToString())</MudText>
+                </div>
+            </div>
+        </MudPaper>
+
+        <!-- FOOTER ACTIONS -->
+        <div class="footer-actions">
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Default"
+                       StartIcon="@Icons.Material.Filled.ArrowBack"
+                       OnClick="NavigateBack"
+                       Style="border-radius:999px;">
+                Back to List
+            </MudButton>
+        </div>
+    }
+    else
+    {
+        <MudPaper Class="error-state" Elevation="0">
+            <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Large" Color="Color.Warning" />
+            <MudText Typo="Typo.h6" Style="font-weight:800;">Organization not found</MudText>
+            <MudText Typo="Typo.body2">The organization you're looking for doesn't exist or has been deleted.</MudText>
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Default"
+                       StartIcon="@Icons.Material.Filled.ArrowBack"
+                       OnClick="NavigateBack"
+                       Style="border-radius:999px; margin-top:16px;">
+                Back to List
+            </MudButton>
+        </MudPaper>
+    }
+</div>
 
 @code {
     [Parameter]
@@ -147,4 +360,12 @@
             _ => "Unknown"
         };
     }
+
+    private Color StatusColor(int statusTypeId) => statusTypeId switch
+    {
+        1 => Color.Info,
+        2 => Color.Success,
+        3 => Color.Error,
+        _ => Color.Default
+    };
 }

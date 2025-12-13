@@ -266,6 +266,29 @@ p{ line-height: 1.6; }
 
                                 <MudDivider Class="aside-divider" />
 
+                                <div>
+                                    <MudMenu Icon="@Icons.Material.Filled.CalendarMonth" 
+                                             Label="Add to Calendar"
+                                             Variant="Variant.Outlined" 
+                                             Color="Color.Default"
+                                             FullWidth="true"
+                                             Style="border-radius: 10px;"
+                                             AnchorOrigin="Origin.BottomLeft"
+                                             TransformOrigin="Origin.TopLeft">
+                                        <MudMenuItem Icon="@Icons.Custom.Brands.Google" OnClick="@(() => AddToGoogleCalendar())">
+                                            Google Calendar
+                                        </MudMenuItem>
+                                        <MudMenuItem Icon="@Icons.Material.Filled.CalendarToday" OnClick="@(() => AddToAppleCalendar())">
+                                            Apple .ics
+                                        </MudMenuItem>
+                                        <MudMenuItem Icon="@Icons.Custom.Brands.Microsoft" OnClick="@(() => AddToOutlookCalendar())">
+                                            Outlook .ics
+                                        </MudMenuItem>
+                                    </MudMenu>
+                                </div>
+
+                                <MudDivider Class="aside-divider" />
+
                                 @if (!string.IsNullOrWhiteSpace(program.Country))
                                 {
                                     <div class="mapbox">
@@ -520,5 +543,23 @@ p{ line-height: 1.6; }
     private Color GetButtonColor()
     {
         return isUserRegistered ? Color.Success : Color.Primary;
+    }
+
+    private void AddToGoogleCalendar()
+    {
+        // To be implemented
+        Console.WriteLine("Add to Google Calendar clicked");
+    }
+
+    private void AddToAppleCalendar()
+    {
+        // To be implemented
+        Console.WriteLine("Add to Apple Calendar (.ics) clicked");
+    }
+
+    private void AddToOutlookCalendar()
+    {
+        // To be implemented
+        Console.WriteLine("Add to Outlook Calendar (.ics) clicked");
     }
 }

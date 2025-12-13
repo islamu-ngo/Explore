@@ -33,7 +33,8 @@ namespace Explore.Persistence.Repositories
                     Postcode = o.Postcode,
                     Address = o.Address,
                     StatusTypeId = o.StatusTypeId,
-                    StatusTypeFullName = o.StatusType.FullName
+                    StatusTypeFullName = o.StatusType.FullName,
+                    CreatedAt = o.CreatedAt
                 })
                 .ToListAsync();
             return organizations;
@@ -91,7 +92,8 @@ namespace Explore.Persistence.Repositories
                     Postcode = o.Postcode,
                     Address = o.Address,
                     StatusTypeId = o.StatusTypeId,
-                    StatusTypeFullName = o.StatusType.FullName
+                    StatusTypeFullName = o.StatusType.FullName,
+                    CreatedAt = o.CreatedAt
                 })
                 .ToListAsync();
             return organizations;
@@ -131,6 +133,7 @@ namespace Explore.Persistence.Repositories
                     Address = o.Address,
                     StatusTypeId = o.StatusTypeId,
                     StatusTypeFullName = o.StatusType.FullName,
+                    CreatedAt = o.CreatedAt,
                     CurrentUserRole = o.CreatedByUserId == userId ? OrganizationRole.Creator : 
                                       (isGuid ? o.Members.Where(m => m.UserId == userGuid).Select(m => (OrganizationRole?)m.Role).FirstOrDefault() : null)
                 })

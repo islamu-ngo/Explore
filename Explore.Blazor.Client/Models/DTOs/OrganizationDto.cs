@@ -43,6 +43,7 @@ public class OrganizationListDto
     public string Address { get; set; } = string.Empty;
     public int StatusTypeId { get; set; }
     public string StatusTypeFullName { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
     public OrganizationRole? CurrentUserRole { get; set; }
 }
 

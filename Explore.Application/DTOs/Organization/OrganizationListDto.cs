@@ -19,6 +19,7 @@ namespace Explore.Application.DTOs.Organization
         public string Address { get; set; }
         public int StatusTypeId { get; set; }
         public string StatusTypeFullName { get; set; }
+        public DateTime CreatedAt { get; set; }
         public OrganizationRole? CurrentUserRole { get; set; }
     }
 }
