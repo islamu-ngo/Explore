@@ -8,6 +8,12 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
 
 builder.Services.AddMudServices();
+
+builder.Services.AddScoped(sp => new HttpClient
+{
+    BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)
+});
+
 builder.Services.AddScoped<IEventService, EventService>();
 builder.Services.AddScoped<IProgramService, ProgramService>();
 builder.Services.AddScoped<IOrganizationService, OrganizationService>();
@@ -16,15 +22,13 @@ builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<ILandingPageService, LandingPageService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IOrganizationReviewService, OrganizationReviewService>();
-
-builder.Services.AddScoped(sp => new HttpClient
-{
-    BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)
-});
+builder.Services.AddScoped<IMapsService, MapsService>();
 
 builder.Services.AddScoped<BffClient>();
 
 builder.Services.AddAuthorizationCore();
+
+
 
 // Add a basic AuthenticationStateProvider that always returns not authenticated for WebAssembly
 builder.Services.AddScoped<AuthenticationStateProvider, AnonymousAuthenticationStateProvider>();

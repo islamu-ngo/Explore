@@ -508,6 +508,26 @@ publicBff.MapGet("/ProgramType", async (IHttpClientFactory f) =>
     );
 });
 
+publicBff.MapGet("/Maps/embed-url", async (string query, IConfiguration config) =>
+{
+    try
+    {
+        var apiKey = config["GoogleMaps:ApiKey"];
+        if (string.IsNullOrEmpty(apiKey))
+        {
+            return Results.Problem("Maps API key not configured", statusCode: 500);
+        }
+        
+        var embedUrl = $"https://www.google.com/maps/embed/v1/place?key={apiKey}&q={Uri.EscapeDataString(query)}";
+        return Results.Content($"\"{embedUrl}\"", "application/json");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error in Maps/embed-url endpoint: {ex.Message}");
+        return Results.Problem($"Error getting map URL: {ex.Message}");
+    }
+});
+
 // Organization GET all endpoint
 publicBff.MapGet("/Organization", async (HttpContext ctx, IHttpClientFactory f) =>
 {

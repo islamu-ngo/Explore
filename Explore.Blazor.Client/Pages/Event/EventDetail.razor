@@ -6,7 +6,7 @@
 @inject IProgramService ProgramService
 @inject IDialogService DialogService
 @inject IOrganizationService OrganizationService
-@inject IConfiguration Configuration
+@inject IMapsService MapsService
 
 <PageTitle>Event Detail</PageTitle>
 
@@ -336,12 +336,11 @@ p{ line-height: 1.6; }
 
                                 @if (!string.IsNullOrWhiteSpace(program.Country))
                                 {
-                                    var mapUrl = GetMapEmbedUrl();
-                                    if (!string.IsNullOrWhiteSpace(mapUrl))
+                                    if (!string.IsNullOrWhiteSpace(mapEmbedUrl))
                                     {
                                         <div class="mapbox">
                                             <iframe title="Location map"
-                                                    src="@mapUrl"
+                                                    src="@mapEmbedUrl"
                                                     loading="lazy"
                                                     allowfullscreen></iframe>
                                         </div>
@@ -397,6 +396,7 @@ p{ line-height: 1.6; }
     private Dictionary<int, string> programTypeMap = new();
     private Dictionary<int, string> eventTypeMap = new();
     private Dictionary<int, string> educationTypeMap = new();
+    private string mapEmbedUrl = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -429,6 +429,12 @@ p{ line-height: 1.6; }
                     Console.WriteLine($"Checking registration for program: {program.Id}");
                     isUserRegistered = await ProgramService.IsUserRegisteredAsync(program.Id);
                     Console.WriteLine($"Is user registered: {isUserRegistered}");
+
+                    // Load map URL if location is available
+                    if (!string.IsNullOrWhiteSpace(program.Country))
+                    {
+                        mapEmbedUrl = await GetMapEmbedUrl();
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -530,17 +536,14 @@ p{ line-height: 1.6; }
         return parts.Count > 0 ? string.Join(", ", parts) : "Location to be announced";
     }
 
-    private string GetMapEmbedUrl()
+    private async Task<string> GetMapEmbedUrl()
     {
         if (program == null) return string.Empty;
-        var key = Configuration["GoogleMaps:ApiKey"];
-        if (string.IsNullOrWhiteSpace(key)) return string.Empty;
 
         var location = GetFullLocation();
         if (string.IsNullOrWhiteSpace(location)) return string.Empty;
 
-        var query = Uri.EscapeDataString(location);
-        return $"https://www.google.com/maps/embed/v1/place?key={key}&q={query}";
+        return await MapsService.GetEmbedUrlAsync(location);
     }
 
     private string GetEventColor()

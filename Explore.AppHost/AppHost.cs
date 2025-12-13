@@ -66,6 +66,13 @@ var apiSecrets = await LoadInfisicalEnvAsync(
     "/api"
 );
 
+// Load blazor secrets once
+var blazorSecrets = await LoadInfisicalEnvAsync(
+    infisicalProjectId!,
+    infisicalEnv,
+    "/blazor"
+);
+
 // Load postgresql secrets once
 var postgresqlSecrets = await LoadInfisicalEnvAsync(
     infisicalProjectId!,
@@ -115,6 +122,10 @@ var exploreBlazor = builder.AddProject<Projects.Explore_Blazor>("explore-blazor"
 //    .WaitFor(exploreBlazor)
 //    .WithReference(exploreBlazor);
 
+foreach (var kv in blazorSecrets)
+{
+    exploreBlazor.WithEnvironment(kv.Key, kv.Value);
+}
 string postgresPublicUrl = postgresqlSecrets.TryGetValue("POSTGRESQL_PUBLIC_URL", out var pgPublicUrl) && pgPublicUrl != null
     ? pgPublicUrl
     : "defaultconnectionstring";
