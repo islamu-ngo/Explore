@@ -6,6 +6,7 @@
 @inject IProgramService ProgramService
 @inject IDialogService DialogService
 @inject IOrganizationService OrganizationService
+@inject IConfiguration Configuration
 
 <PageTitle>Event Detail</PageTitle>
 
@@ -96,16 +97,16 @@
   .aside-divider{ margin: 8px 0; }
 }
 
-/* Map placeholder */
+/* Map container */
 .mapbox{
-  height: 160px; border-radius: 12px; overflow:hidden;
+  height: 200px; border-radius: 12px; overflow:hidden;
   background: linear-gradient(135deg, var(--mud-palette-background-gray), var(--mud-palette-surface));
-  display:grid; place-items:center; color: var(--mud-palette-text-secondary);
 }
+.mapbox iframe{ width:100%; height:100%; border:0; display:block; }
 
 /* Mobile map */
 @@media (max-width: 480px) {
-  .mapbox{ height: 120px; border-radius: 10px; }
+  .mapbox{ height: 160px; border-radius: 10px; }
 }
 
 /* Back link */
@@ -335,9 +336,22 @@ p{ line-height: 1.6; }
 
                                 @if (!string.IsNullOrWhiteSpace(program.Country))
                                 {
-                                    <div class="mapbox">
-                                        <MudText Typo="Typo.caption">Map preview</MudText>
-                                    </div>
+                                    var mapUrl = GetMapEmbedUrl();
+                                    if (!string.IsNullOrWhiteSpace(mapUrl))
+                                    {
+                                        <div class="mapbox">
+                                            <iframe title="Location map"
+                                                    src="@mapUrl"
+                                                    loading="lazy"
+                                                    allowfullscreen></iframe>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true">
+                                            Map preview unavailable. Please contact the organizer for details.
+                                        </MudAlert>
+                                    }
                                 }
                                 else
                                 {
@@ -514,6 +528,19 @@ p{ line-height: 1.6; }
             parts.Add(program.Country);
 
         return parts.Count > 0 ? string.Join(", ", parts) : "Location to be announced";
+    }
+
+    private string GetMapEmbedUrl()
+    {
+        if (program == null) return string.Empty;
+        var key = Configuration["GoogleMaps:ApiKey"];
+        if (string.IsNullOrWhiteSpace(key)) return string.Empty;
+
+        var location = GetFullLocation();
+        if (string.IsNullOrWhiteSpace(location)) return string.Empty;
+
+        var query = Uri.EscapeDataString(location);
+        return $"https://www.google.com/maps/embed/v1/place?key={key}&q={query}";
     }
 
     private string GetEventColor()

@@ -5,6 +5,7 @@ using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components.Authorization;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
+builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
 
 builder.Services.AddMudServices();
 builder.Services.AddScoped<IEventService, EventService>();
