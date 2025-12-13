@@ -99,6 +99,15 @@
     min-height: 450px;
 }
 
+.featured-events-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
 .card{
     width: 340px; max-width: 92vw;
     background-color: var(--mud-palette-surface);
@@ -169,6 +178,87 @@
 
 @@media (prefers-reduced-motion: reduce){
     .hero::before{ animation:none; }
+}
+
+/* Mobile responsiveness (phones) */
+@@media (max-width: 480px) {
+  .hero {
+    padding: 56px 0 40px 0;
+  }
+  .hero h1 {
+    font-size: 1.8rem !important;
+    line-height: 1.2;
+  }
+  .hero-sub {
+    font-size: 0.95rem;
+    margin: 10px auto 0 auto;
+    max-width: 100%;
+  }
+  .register-strip {
+    margin-top: 24px;
+    gap: 12px;
+  }
+  .glass {
+    border-radius: 14px;
+    padding: 16px;
+  }
+  .stat {
+    min-width: 140px;
+    padding: 12px 14px;
+    border-radius: 12px;
+  }
+  .stat b {
+    font-size: 1.1rem;
+  }
+  .stat span {
+    font-size: 0.85rem;
+  }
+  .benefit-grid {
+    gap: 12px;
+  }
+  .carousel-wrap {
+    margin: 24px 0 16px 0;
+  }
+  .carousel-wrap .mud-carousel,
+  .carousel-wrap .mud-carousel-item,
+  .carousel-wrap .mud-carousel-content {
+    min-height: 280px;
+  }
+  .card {
+    width: 100%;
+    max-width: 100%;
+  }
+  .card-media {
+    height: 140px;
+    font-size: 1rem;
+  }
+  .event-body {
+    padding: 12px 14px 14px 14px;
+  }
+  .event-chips {
+    gap: 6px;
+    margin: 8px 0 6px 0;
+  }
+  .featured-events-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .featured-events-header > div:first-child {
+    order: 1;
+  }
+  .featured-events-header .mud-button-root {
+    order: 2;
+    width: 100%;
+  }
+  .kicker {
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+  }
+  .section {
+    margin: 40px 0;
+  }
 }
 </style>
 

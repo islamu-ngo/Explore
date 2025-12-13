@@ -34,10 +34,26 @@
 .hero-chips{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
 .hero-title{ margin: 2px 0 4px 0; }
 
+/* Mobile hero */
+@@media (max-width: 480px) {
+  .hero{
+    height: 240px; margin-bottom: 12px;
+    border-radius: 12px;
+  }
+  .hero-content{ padding: 12px; }
+  .hero-title{ font-size: 1.5rem !important; }
+}
+
 /* ===== LAYOUT ===== */
 .page-wrap{ padding-block: 18px 32px; }
 .info-grid{ display:grid; gap:16px; grid-template-columns: 2fr 1fr; }
 @@media (max-width: 1024px){ .info-grid{ grid-template-columns: 1fr; } }
+
+/* Mobile layout */
+@@media (max-width: 480px) {
+  .page-wrap{ padding-block: 8px 16px; padding-left: 8px; padding-right: 8px; }
+  .info-grid{ gap: 8px; }
+}
 
 /* ===== BODY CARD ===== */
 .body-card{
@@ -46,6 +62,12 @@
 }
 .body-section{ padding: 18px; }
 .body-section + .body-section{ border-top: 1px solid var(--mud-palette-lines-default); }
+
+/* Mobile body */
+@@media (max-width: 480px) {
+  .body-card{ border-radius: 12px; }
+  .body-section{ padding: 10px; }
+}
 
 /* Info list */
 .detail-list{ display:grid; gap:10px; }
@@ -63,6 +85,17 @@
 .cta .mud-button-root{ width:100%; border-radius: 10px; }
 .cta .mud-button-root:focus-visible{ box-shadow: 0 0 0 3px var(--ring); }
 
+/* Mobile sticky */
+@@media (max-width: 480px) {
+  .sticky{
+    position: relative; top: auto;
+    border-radius: 12px; padding: 10px;
+    margin-top: 12px;
+  }
+  .aside-row{ gap: 6px; }
+  .aside-divider{ margin: 8px 0; }
+}
+
 /* Map placeholder */
 .mapbox{
   height: 160px; border-radius: 12px; overflow:hidden;
@@ -70,9 +103,20 @@
   display:grid; place-items:center; color: var(--mud-palette-text-secondary);
 }
 
+/* Mobile map */
+@@media (max-width: 480px) {
+  .mapbox{ height: 120px; border-radius: 10px; }
+}
+
 /* Back link */
 .back-link .mud-button-root{ padding-left: 0; }
 .back-link .mud-button-label{ font-weight:600; }
+
+/* Mobile back link */
+@@media (max-width: 480px) {
+  .back-link .mud-button-root{ padding: 4px 8px; }
+  .back-link .mud-button-label{ font-size: 0.9rem; }
+}
 
 /* Text rhythm */
 p{ line-height: 1.6; }

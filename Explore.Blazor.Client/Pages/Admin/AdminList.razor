@@ -201,6 +201,193 @@
         text-align: center;
         opacity: 0.9;
     }
+
+    /* Mobile cards layout */
+    .mobile-cards {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 12px;
+    }
+
+    .org-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: var(--adm-radius-lg);
+        padding: 14px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .org-card:active {
+        transform: translateY(-1px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 12px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .card-title {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        flex: 1;
+    }
+
+    .card-title > div {
+        flex: 1;
+    }
+
+    .card-meta {
+        font-size: 0.8rem;
+        opacity: 0.6;
+        margin-top: 2px;
+    }
+
+    .card-status {
+        flex-shrink: 0;
+    }
+
+    .card-body {
+        margin-bottom: 12px;
+    }
+
+    .card-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 10px;
+        justify-content: flex-start;
+        align-items: flex-start;
+        font-size: 0.9rem;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+    }
+
+    .card-row:last-child {
+        border-bottom: none;
+    }
+
+    .card-label {
+        opacity: 0.6;
+        font-size: 0.85rem;
+        min-width: 80px;
+    }
+
+    .card-value {
+        text-align: left;
+        font-weight: 600;
+        word-break: break-word;
+    }
+
+    .card-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        padding-top: 12px;
+        border-top: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .card-actions button {
+        font-size: 0.85rem !important;
+        padding: 8px 8px !important;
+    }
+
+    /* Mobile responsiveness (phones) */
+    @@media (max-width: 480px) {
+        .admin-page {
+            padding: 12px;
+        }
+
+        .hero {
+            padding: 16px;
+            border-radius: var(--adm-radius-lg);
+            margin-bottom: 16px;
+        }
+
+        .hero-top {
+            gap: 12px;
+        }
+
+        .hero-badge {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+        }
+
+        .hero-title {
+            gap: 10px;
+        }
+
+        .hero-title h1 {
+            font-size: 1.5rem !important;
+        }
+
+        .stats {
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .stat-card {
+            grid-column: span 12;
+            padding: 12px;
+            border-radius: var(--adm-radius-md);
+        }
+
+        .stat-row {
+            gap: 10px;
+        }
+
+        .stat-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+        }
+
+        .stat-value {
+            font-size: 1.3rem !important;
+        }
+
+        .table-wrap {
+            display: none !important;
+        }
+
+        .mobile-cards {
+            display: flex !important;
+        }
+
+        .section {
+            margin-top: 16px;
+        }
+
+        .toolbar {
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .empty-state {
+            padding: 16px;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+    }
+
+    /* Desktop - hide mobile cards */
+    @@media (min-width: 481px) {
+        .mobile-cards {
+            display: none !important;
+        }
+
+        .table-wrap {
+            display: block !important;
+        }
+    }
 </style>
 
 <div class="admin-page">
@@ -469,110 +656,218 @@
     }
 
     // ====== TABLE (UI modernisée, logique identique) ======
-    private RenderFragment TableMarkup(IEnumerable<OrganizationListDto> items) => @<MudPaper Class="table-wrap" Elevation="0" Style="margin-top:12px;">
-        <MudTable Items="items" Hover="true" Breakpoint="Breakpoint.Sm" Dense="true">
-            <HeaderContent>
-                <MudTh style="width:190px">Submitted</MudTh>
-                <MudTh style="width:150px">ID</MudTh>
-                <MudTh>Organization</MudTh>
-                <MudTh style="width:170px">Status</MudTh>
-                <MudTh style="text-align:center; width:170px">Actions</MudTh>
-                <MudTh style="text-align:center; width:140px">Details</MudTh>
-            </HeaderContent>
+    private RenderFragment TableMarkup(IEnumerable<OrganizationListDto> items) => @<div>
+        <MudPaper Class="table-wrap" Elevation="0" Style="margin-top:12px;">
+            <MudTable Items="items" Hover="true" Breakpoint="Breakpoint.Sm" Dense="true">
+                <HeaderContent>
+                    <MudTh style="width:190px">Submitted</MudTh>
+                    <MudTh style="width:150px">ID</MudTh>
+                    <MudTh>Organization</MudTh>
+                    <MudTh style="width:170px">Status</MudTh>
+                    <MudTh style="text-align:center; width:170px">Actions</MudTh>
+                    <MudTh style="text-align:center; width:140px">Details</MudTh>
+                </HeaderContent>
 
-            <RowTemplate>
-                <MudTd DataLabel="Submitted">
-                    <MudText Typo="Typo.body2" Style="font-weight:650;">
-                        @context.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
-                    </MudText>
-                    <MudText Typo="Typo.caption" Class="muted">@GetRelative(context.CreatedAt)</MudText>
-                </MudTd>
+                <RowTemplate>
+                    <MudTd DataLabel="Submitted">
+                        <MudText Typo="Typo.body2" Style="font-weight:650;">
+                            @context.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+                        </MudText>
+                        <MudText Typo="Typo.caption" Class="muted">@GetRelative(context.CreatedAt)</MudText>
+                    </MudTd>
 
-                <MudTd DataLabel="ID">
-                    <MudText Class="id-mono">@context.Id.ToString()[..8]…</MudText>
-                </MudTd>
+                    <MudTd DataLabel="ID">
+                        <MudText Class="id-mono">@context.Id.ToString()[..8]…</MudText>
+                    </MudTd>
 
-                <MudTd DataLabel="Organization">
-                    <div class="row-org">
-                        <MudAvatar Size="Size.Medium" Variant="Variant.Filled" Style="border-radius:14px;">
-                            <MudIcon Icon="@Icons.Material.Filled.Business" />
-                        </MudAvatar>
+                    <MudTd DataLabel="Organization">
+                        <div class="row-org">
+                            <MudAvatar Size="Size.Medium" Variant="Variant.Filled" Style="border-radius:14px;">
+                                <MudIcon Icon="@Icons.Material.Filled.Business" />
+                            </MudAvatar>
 
-                        <div class="org-meta">
-                            <MudText Typo="Typo.subtitle2" Style="font-weight:750;">
-                                @context.FullName
-                            </MudText>
-                            <MudText Typo="Typo.caption" Class="muted">
-                                @(context.City ?? "Unknown"), @(context.Country ?? "Unknown") • @context.Email
-                            </MudText>
+                            <div class="org-meta">
+                                <MudText Typo="Typo.subtitle2" Style="font-weight:750;">
+                                    @context.FullName
+                                </MudText>
+                                <MudText Typo="Typo.caption" Class="muted">
+                                    @(context.City ?? "Unknown"), @(context.Country ?? "Unknown") • @context.Email
+                                </MudText>
+                            </div>
+                        </div>
+                    </MudTd>
+
+                    <MudTd DataLabel="Status">
+                        <MudChip T="string"
+                                 Color="@StatusColor((RequestStatus)context.StatusTypeId)"
+                                 Variant="Variant.Filled"
+                                 Class="status-pill">
+                            @context.StatusTypeFullName
+                        </MudChip>
+                    </MudTd>
+
+                    <MudTd DataLabel="Actions" Style="text-align:center">
+                        <div class="table-actions">
+                            @if (context.StatusTypeId == (int)RequestStatus.Pending)
+                            {
+                                <MudTooltip Text="Approve">
+                                    <MudIconButton Icon="@Icons.Material.Filled.CheckCircle"
+                                                   Color="Color.Success"
+                                                   Variant="Variant.Filled"
+                                                   OnClick="@(() => Approve(context))"
+                                                   Style="border-radius:14px;" />
+                                </MudTooltip>
+                                <MudTooltip Text="Reject">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Cancel"
+                                                   Color="Color.Error"
+                                                   Variant="Variant.Filled"
+                                                   OnClick="@(() => Reject(context))"
+                                                   Style="border-radius:14px;" />
+                                </MudTooltip>
+                            }
+                            else if (context.StatusTypeId == (int)RequestStatus.Approved)
+                            {
+                                <MudTooltip Text="Revoke approval">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Restore"
+                                                   Color="Color.Warning"
+                                                   Variant="Variant.Filled"
+                                                   OnClick="@(() => RevertToPending(context))"
+                                                   Style="border-radius:14px;" />
+                                </MudTooltip>
+                            }
+                            else if (context.StatusTypeId == (int)RequestStatus.Rejected)
+                            {
+                                <MudTooltip Text="Move back to pending">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Restore"
+                                                   Color="Color.Info"
+                                                   Variant="Variant.Filled"
+                                                   OnClick="@(() => RevertToPending(context))"
+                                                   Style="border-radius:14px;" />
+                                </MudTooltip>
+                            }
+                        </div>
+                    </MudTd>
+
+                    <MudTd DataLabel="Details" Style="text-align:center">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Size="Size.Small"
+                                   Class="details-btn"
+                                   StartIcon="@Icons.Material.Filled.Visibility"
+                                   OnClick="@(() => Nav.NavigateTo($"/admin/organization/{context.Id}"))">
+                            Details
+                        </MudButton>
+                    </MudTd>
+                </RowTemplate>
+
+                <NoRecordsContent>
+                    <div class="empty-state">
+                        <MudIcon Icon="@Icons.Material.Filled.Inbox" Size="Size.Large" />
+                        <MudText Typo="Typo.h6" Style="margin-top:10px; font-weight:800;">No matching requests</MudText>
+                        <MudText Typo="Typo.body2" Class="muted">Try clearing filters or changing your search.</MudText>
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Primary"
+                                   OnClick="ClearFilters"
+                                   Style="margin-top:12px; border-radius:999px;">
+                            Clear filters
+                        </MudButton>
+                    </div>
+                </NoRecordsContent>
+            </MudTable>
+        </MudPaper>
+
+        <!-- Mobile cards view -->
+        <div class="mobile-cards" style="margin-top:12px;">
+            @foreach (var org in items)
+            {
+                <div class="org-card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <MudAvatar Size="Size.Small" Variant="Variant.Filled" Style="border-radius:10px;">
+                                <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" />
+                            </MudAvatar>
+                            <div>
+                                <MudText Typo="Typo.body2" Style="font-weight:700;">@org.FullName</MudText>
+                                <div class="card-meta">
+                                    @(org.City ?? "Unknown"), @(org.Country ?? "Unknown")
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-status">
+                            <MudChip T="string"
+                                     Color="@StatusColor((RequestStatus)org.StatusTypeId)"
+                                     Variant="Variant.Filled"
+                                     Style="font-size:0.75rem; padding:2px 8px !important; border-radius:6px !important;">
+                                @org.StatusTypeFullName
+                            </MudChip>
                         </div>
                     </div>
-                </MudTd>
 
-                <MudTd DataLabel="Status">
-                    <MudChip T="string"
-                             Color="@StatusColor((RequestStatus)context.StatusTypeId)"
-                             Variant="Variant.Filled"
-                             Class="status-pill">
-                        @context.StatusTypeFullName
-                    </MudChip>
-                </MudTd>
-
-                <MudTd DataLabel="Actions" Style="text-align:center">
-                    <div class="table-actions">
-                        @if (context.StatusTypeId == (int)RequestStatus.Pending)
-                        {
-                            <MudTooltip Text="Approve">
-                                <MudIconButton Icon="@Icons.Material.Filled.CheckCircle"
-                                               Color="Color.Success"
-                                               Variant="Variant.Filled"
-                                               OnClick="@(() => Approve(context))"
-                                               Style="border-radius:14px;" />
-                            </MudTooltip>
-                            <MudTooltip Text="Reject">
-                                <MudIconButton Icon="@Icons.Material.Filled.Cancel"
-                                               Color="Color.Error"
-                                               Variant="Variant.Filled"
-                                               OnClick="@(() => Reject(context))"
-                                               Style="border-radius:14px;" />
-                            </MudTooltip>
-                        }
-                        else if (context.StatusTypeId == (int)RequestStatus.Approved)
-                        {
-                            <MudTooltip Text="Revoke approval">
-                                <MudIconButton Icon="@Icons.Material.Filled.Restore"
-                                               Color="Color.Warning"
-                                               Variant="Variant.Filled"
-                                               OnClick="@(() => RevertToPending(context))"
-                                               Style="border-radius:14px;" />
-                            </MudTooltip>
-                        }
-                        else if (context.StatusTypeId == (int)RequestStatus.Rejected)
-                        {
-                            <MudTooltip Text="Move back to pending">
-                                <MudIconButton Icon="@Icons.Material.Filled.Restore"
-                                               Color="Color.Info"
-                                               Variant="Variant.Filled"
-                                               OnClick="@(() => RevertToPending(context))"
-                                               Style="border-radius:14px;" />
-                            </MudTooltip>
-                        }
+                    <div class="card-body">
+                        <div class="card-row">
+                            <span class="card-label">Email:</span>
+                            <span class="card-value">@org.Email</span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-label">ID:</span>
+                            <span class="card-value">@org.Id.ToString()[..8]…</span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-label">Submitted:</span>
+                            <span class="card-value">@GetRelative(org.CreatedAt)</span>
+                        </div>
                     </div>
-                </MudTd>
 
-                <MudTd DataLabel="Details" Style="text-align:center">
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               Size="Size.Small"
-                               Class="details-btn"
-                               StartIcon="@Icons.Material.Filled.Visibility"
-                               OnClick="@(() => Nav.NavigateTo($"/admin/organization/{context.Id}"))">
-                        Details
-                    </MudButton>
-                </MudTd>
-            </RowTemplate>
-
-            <NoRecordsContent>
+                    <div class="card-actions">
+                        @if (org.StatusTypeId == (int)RequestStatus.Pending)
+                        {
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Success"
+                                       Size="Size.Small"
+                                       StartIcon="@Icons.Material.Filled.CheckCircle"
+                                       OnClick="@(() => Approve(org))">
+                                Approve
+                            </MudButton>
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Error"
+                                       Size="Size.Small"
+                                       StartIcon="@Icons.Material.Filled.Cancel"
+                                       OnClick="@(() => Reject(org))">
+                                Reject
+                            </MudButton>
+                        }
+                        else if (org.StatusTypeId == (int)RequestStatus.Approved)
+                        {
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Warning"
+                                       Size="Size.Small"
+                                       StartIcon="@Icons.Material.Filled.Restore"
+                                       OnClick="@(() => RevertToPending(org))">
+                                Revoke
+                            </MudButton>
+                        }
+                        else if (org.StatusTypeId == (int)RequestStatus.Rejected)
+                        {
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Info"
+                                       Size="Size.Small"
+                                       StartIcon="@Icons.Material.Filled.Restore"
+                                       OnClick="@(() => RevertToPending(org))">
+                                Revert
+                            </MudButton>
+                        }
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Primary"
+                                   Size="Size.Small"
+                                   StartIcon="@Icons.Material.Filled.Visibility"
+                                   OnClick="@(() => Nav.NavigateTo($"/admin/organization/{org.Id}"))">
+                            Details
+                        </MudButton>
+                    </div>
+                </div>
+            }
+            @if (!items.Any())
+            {
                 <div class="empty-state">
                     <MudIcon Icon="@Icons.Material.Filled.Inbox" Size="Size.Large" />
                     <MudText Typo="Typo.h6" Style="margin-top:10px; font-weight:800;">No matching requests</MudText>
@@ -584,9 +879,9 @@
                         Clear filters
                     </MudButton>
                 </div>
-            </NoRecordsContent>
-        </MudTable>
-    </MudPaper>;
+            }
+        </div>
+    </div>;
 
     // filter helpers
     private bool IsStatusSelected(RequestStatus s) => _selectedStatuses.Contains(s);
