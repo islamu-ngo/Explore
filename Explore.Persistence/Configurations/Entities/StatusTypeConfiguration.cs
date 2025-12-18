@@ -8,26 +8,26 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Explore.Persistence.Configurations.Entities
 {
-    public class StatusTypeConfiguration : IEntityTypeConfiguration<StatusType>
+    public class StatusTypeConfiguration : IEntityTypeConfiguration<ApprovalStatus>
     {
-        public void Configure(EntityTypeBuilder<StatusType> builder)
+        public void Configure(EntityTypeBuilder<ApprovalStatus> builder)
         {
             builder.Property(e => e.Id).ValueGeneratedNever();
 
             builder.HasData(
-                new StatusType
+                new ApprovalStatus
                 {
                     Id = (int)StatusTypeEnum.Pending,
                     FullName = "Pending",
                     Description = "Status is pending approval of Admin verifying the Existence of Legal Entity"
                 },
-                new StatusType
+                new ApprovalStatus
                 {
                     Id = (int)StatusTypeEnum.Approved,
                     FullName = "Approved",
                     Description = "Status has been approved by Admin after verifying the Existence of Legal Entity"
                 },
-                new StatusType
+                new ApprovalStatus
                 {
                     Id = (int)StatusTypeEnum.Rejected,
                     FullName = "Rejected",

@@ -38,20 +38,19 @@ namespace Explore.Application.Features.Organizations.Handlers.Commands
 
             var organization = _mapper.Map<Organization>(request.OrganizationDto);
 
-            organization.StatusTypeId = (int)StatusTypeEnum.Pending;
-            organization.CreatedByUserId = request.UserId;
-            organization.CreatedAt = DateTime.UtcNow;
+            organization.ApprovalStatusId = (int)StatusTypeEnum.Pending;
 
+            // why is the below code adding to the members list inside organization domain class? that list should be readonly, add directly inside organizationmember. also no owner role, just admin.
             // Add creator as Owner
-            if (Guid.TryParse(request.UserId, out Guid userGuid))
-            {
-                organization.Members.Add(new OrganizationMember
-                {
-                    UserId = userGuid,
-                    Role = OrganizationRole.Creator,
-                    Email = request.OrganizationDto.Email // Fallback to org email as we don't have user email here
-                });
-            }
+            //if (Guid.TryParse(request.UserId, out Guid userGuid))
+            //{
+            //    organization.Members.Add(new OrganizationMember
+            //    {
+            //        UserId = userGuid,
+            //        Role = OrganizationRole.Creator,
+            //        Email = request.OrganizationDto.Email // Fallback to org email as we don't have user email here
+            //    });
+            //}
 
             organization = await _organizationRepository.Create(organization);
 

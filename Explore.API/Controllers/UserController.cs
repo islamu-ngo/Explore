@@ -20,15 +20,6 @@ namespace Explore.API.Controllers
             _mediator = mediator;
         }
 
-        [HttpGet("exists/{email}")]
-        [Authorize]
-        public async Task<ActionResult<bool>> CheckUserExists(string email)
-        {
-            var query = new CheckUserExistsQuery { Email = email };
-            var exists = await _mediator.Send(query);
-            return Ok(exists);
-        }
-
         [HttpPost("sync")]
         [Authorize]
         public async Task<ActionResult<BaseCommandResponse<Guid>>> SyncUser()

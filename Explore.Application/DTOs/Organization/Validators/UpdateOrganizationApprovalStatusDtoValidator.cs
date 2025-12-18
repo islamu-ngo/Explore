@@ -6,21 +6,21 @@ using FluentValidation;
 
 namespace Explore.Application.DTOs.Organization.Validators
 {
-    public class UpdateOrganizationStatusTypeDtoValidator : AbstractValidator<UpdateOrganizationStatusTypeDto>
+    public class UpdateOrganizationApprovalStatusDtoValidator : AbstractValidator<UpdateOrganizationApprovalStatusDto>
     {
         private readonly IStatusTypeRepository _statusTypeRepository;
 
-        public UpdateOrganizationStatusTypeDtoValidator(IStatusTypeRepository statusTypeRepository)
+        public UpdateOrganizationApprovalStatusDtoValidator(IStatusTypeRepository statusTypeRepository)
         {
             _statusTypeRepository = statusTypeRepository;
 
-            RuleFor(p => p.StatusTypeId)
+            RuleFor(p => p.ApprovalStatusId)
                 .NotEmpty().WithMessage("{PropertyName} is required.")
                 .NotNull()
                 .MustAsync(async (id, cancellation) =>
                 {
-                    var statusTypeExists = await _statusTypeRepository.Exists(id);
-                    return statusTypeExists;
+                    var approvalStatusExists = await _statusTypeRepository.Exists(id);
+                    return approvalStatusExists;
                 }).WithMessage("{PropertyName} does not exist.");
         }
     }

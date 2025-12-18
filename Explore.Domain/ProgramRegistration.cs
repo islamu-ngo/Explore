@@ -15,8 +15,8 @@ namespace Explore.Domain
         public Guid ProgramId { get; set; }
         public Program Program { get; set; }
         // for later, form link for external registration form, status, registrationtype and so on TODO
-        //[ForeignKey("StatusType")]
-        //public int StatusTypeId { get; set; }
-        //public StatusType StatusType { get; set; }
+        //[ForeignKey("ApprovalStatus")]
+        //public int ApprovalStatusId { get; set; }
+        //public ApprovalStatus ApprovalStatus { get; set; }
     }
 }

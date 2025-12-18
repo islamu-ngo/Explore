@@ -6,7 +6,7 @@ namespace Explore.Blazor.Client.Services;
 // DTO class needed for status updates
 public class UpdateOrganizationStatusTypeDto
 {
-    public int StatusTypeId { get; set; }
+    public int ApprovalStatusId { get; set; }
 }
 
 public interface IAdminService

@@ -512,7 +512,7 @@ namespace Explore.Persistence.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Explore.Domain.StatusType", b =>
+            modelBuilder.Entity("Explore.Domain.ApprovalStatus", b =>
                 {
                     b.Property<int>("Id")
                         .HasColumnType("integer")
@@ -660,14 +660,14 @@ namespace Explore.Persistence.Migrations
 
             modelBuilder.Entity("Explore.Domain.Organization", b =>
                 {
-                    b.HasOne("Explore.Domain.StatusType", "StatusType")
+                    b.HasOne("Explore.Domain.ApprovalStatus", "ApprovalStatus")
                         .WithMany()
                         .HasForeignKey("StatusTypeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_organizations_status_types_status_type_id");
 
-                    b.Navigation("StatusType");
+                    b.Navigation("ApprovalStatus");
                 });
 
             modelBuilder.Entity("Explore.Domain.OrganizationMember", b =>
@@ -737,7 +737,7 @@ namespace Explore.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_program_registartions_programs_program_id");
 
-                    b.HasOne("Explore.Domain.StatusType", "StatusType")
+                    b.HasOne("Explore.Domain.ApprovalStatus", "ApprovalStatus")
                         .WithMany()
                         .HasForeignKey("StatusTypeId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -746,7 +746,7 @@ namespace Explore.Persistence.Migrations
 
                     b.Navigation("Program");
 
-                    b.Navigation("StatusType");
+                    b.Navigation("ApprovalStatus");
                 });
 
             modelBuilder.Entity("Explore.Domain.StorageObject", b =>

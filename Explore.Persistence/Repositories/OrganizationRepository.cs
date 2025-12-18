@@ -21,7 +21,7 @@ namespace Explore.Persistence.Repositories
         public async Task<List<OrganizationListDto>> GetOrganizationsWithDetails()
         {
             var organizations = await _dbContext.Organizations
-                .Include(o => o.StatusType)
+                .Include(o => o.ApprovalStatus)
                 .Select(o => new OrganizationListDto
                 {
                     Id = o.Id,
@@ -32,8 +32,8 @@ namespace Explore.Persistence.Repositories
                     City = o.City,
                     Postcode = o.Postcode,
                     Address = o.Address,
-                    StatusTypeId = o.StatusTypeId,
-                    StatusTypeFullName = o.StatusType.FullName
+                    ApprovalStatusId = o.ApprovalStatusId,
+                    ApprovalStatusFullName = o.ApprovalStatus.FullName
                 })
                 .ToListAsync();
             return organizations;
@@ -42,7 +42,7 @@ namespace Explore.Persistence.Repositories
         public async Task<OrganizationDto> GetOrganizationWithDetails(Guid id)
         {
             var organization = await _dbContext.Organizations
-                .Include(o => o.StatusType)
+                .Include(o => o.ApprovalStatus)
                 .Where(o => o.Id == id)
                 .Select(o => new OrganizationDto
                 {
@@ -54,10 +54,8 @@ namespace Explore.Persistence.Repositories
                     City = o.City,
                     Postcode = o.Postcode,
                     Address = o.Address,
-                    StatusTypeId = o.StatusTypeId,
-                    StatusTypeFullName = o.StatusType.FullName,
-                    CreatedByUserId = o.CreatedByUserId,
-                    CreatedAt = o.CreatedAt
+                    ApprovalStatusId = o.ApprovalStatusId,
+                    ApprovalStatusFullName = o.ApprovalStatus.FullName
                 })
                 .FirstOrDefaultAsync();
 
@@ -78,7 +76,7 @@ namespace Explore.Persistence.Repositories
         {
             // Haal alle organisaties op met status info voor admin dashboard
             var organizations = await _dbContext.Organizations
-                .Include(o => o.StatusType)
+                .Include(o => o.ApprovalStatus)
                 .OrderBy(o => o.Id) // orderd by id later with created at
                 .Select(o => new OrganizationListDto
                 {
@@ -90,8 +88,8 @@ namespace Explore.Persistence.Repositories
                     City = o.City,
                     Postcode = o.Postcode,
                     Address = o.Address,
-                    StatusTypeId = o.StatusTypeId,
-                    StatusTypeFullName = o.StatusType.FullName
+                    ApprovalStatusId = o.ApprovalStatusId,
+                    ApprovalStatusFullName = o.ApprovalStatus.FullName
                 })
                 .ToListAsync();
             return organizations;
@@ -104,7 +102,7 @@ namespace Explore.Persistence.Repositories
 
             // Haal organisaties op die door deze gebruiker zijn aangemaakt OF waar de gebruiker lid van is
             var query = _dbContext.Organizations
-                .Include(o => o.StatusType)
+                .Include(o => o.ApprovalStatus)
                 .Include(o => o.Members)
                 .AsQueryable();
 
@@ -129,10 +127,10 @@ namespace Explore.Persistence.Repositories
                     City = o.City,
                     Postcode = o.Postcode,
                     Address = o.Address,
-                    StatusTypeId = o.StatusTypeId,
-                    StatusTypeFullName = o.StatusType.FullName,
-                    CurrentUserRole = o.CreatedByUserId == userId ? OrganizationRole.Creator : 
-                                      (isGuid ? o.Members.Where(m => m.UserId == userGuid).Select(m => (OrganizationRole?)m.Role).FirstOrDefault() : null)
+                    ApprovalStatusId = o.ApprovalStatusId,
+                    ApprovalStatusFullName = o.ApprovalStatus.FullName,
+                    CurrentUserRole = o.CreatedByUserId == userId ? OrganizationRoleEnum.Creator : 
+                                      (isGuid ? o.Members.Where(m => m.UserId == userGuid).Select(m => (OrganizationRoleEnum?)m.Role).FirstOrDefault() : null)
                 })
                 .ToListAsync();
             return organizations;

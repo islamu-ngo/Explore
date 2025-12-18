@@ -7,20 +7,20 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories
 {
-    public class StatusTypeRepository : GenericRepository<StatusType, int>, IStatusTypeRepository
+    public class StatusTypeRepository : GenericRepository<ApprovalStatus, int>, IStatusTypeRepository
     {
         private readonly ExploreDbContext _dbContext;
         public StatusTypeRepository(ExploreDbContext dbContext) : base(dbContext)
         {
             _dbContext = dbContext;
         }
-        public async Task<List<StatusType>> GetStatusTypesWithDetails()
+        public async Task<List<ApprovalStatus>> GetStatusTypesWithDetails()
         {
             var statusTypes = await _dbContext.StatusTypes
                 .ToListAsync();
             return statusTypes;
         }
-        public async Task<StatusType> GetStatusTypeWithDetails(int id)
+        public async Task<ApprovalStatus> GetStatusTypeWithDetails(int id)
         {
             var statusType = await _dbContext.StatusTypes
                 .FirstOrDefaultAsync(s => s.Id == id);

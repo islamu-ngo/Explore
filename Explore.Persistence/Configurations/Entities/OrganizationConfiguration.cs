@@ -14,7 +14,7 @@ namespace Explore.Persistence.Configurations.Entities
         {
             builder.Property(e => e.Id)
                 .HasDefaultValueSql("uuidv7()");
-            builder.Property(e => e.StatusTypeId)
+            builder.Property(e => e.ApprovalStatusId)
                 .HasDefaultValue((int)StatusTypeEnum.Pending);
 
             builder.HasData(
@@ -28,7 +28,7 @@ namespace Explore.Persistence.Configurations.Entities
                     City = "Brussels",
                     Postcode = 1070,
                     Address = "Parc Du Peterbos ...",
-                    StatusTypeId = (int)StatusTypeEnum.Approved
+                    ApprovalStatusId = (int)StatusTypeEnum.Approved
                 });
         }
     }

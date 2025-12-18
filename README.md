@@ -16,16 +16,6 @@ Give it a star ⭐️
 [![Discussions](https://img.shields.io/github/discussions/islamu-ngo/Explore?color=594ae2&logo=github&style=flat-square)](https://github.com/islamu-ngo/Explore/discussions)
 [![Discord](https://img.shields.io/discord/1357505436479131668?color=%237289da&label=Discord&logo=discord&logoColor=%237289da&style=flat-square)](https://discord.gg/wrkY824Yv5)
 
-## Quick Note
-
-The tyranny of Israel on the Palestinian people is horrifying and heartbreaking. As such, we all
-should try our best to support the Palestinians from our position. Consider supporting the Palestinians
-by donating to the [Palestinian Red Crescent Society](https://www.palestinercs.org/en/Donation).
-
-[![ReadMeSupportPalestine](https://github.com/Safouene1/support-palestine-banner/blob/master/banner-support.svg)](https://www.palestinercs.org/en/Donation)
-
-Banner from: https://github.com/Safouene1/support-palestine-banner/
-
 ## Why Use ISLAMU Explore ?
 ISLAMU Explore is an ambitious Islamic Program (Event, Education...) Explorer that both Allows Muslims to explore the local and digital Programs that are coming and Allows Program Organizators to Increase their visibility.
 
@@ -112,3 +102,13 @@ You can find details [here](PRIVACY-POLICY.md). (TODO)
 ## License
 
 This project is licensed under the terms of [GNU AGPL v3](LICENSE).
+
+## Quick Note
+
+The tyranny of Israel on the Palestinian people is horrifying and heartbreaking. As such, we all
+should try our best to support the Palestinians from our position. Consider supporting the Palestinians
+by donating to the [Palestinian Red Crescent Society](https://www.palestinercs.org/en/Donation).
+
+[![ReadMeSupportPalestine](https://github.com/Safouene1/support-palestine-banner/blob/master/banner-support.svg)](https://www.palestinercs.org/en/Donation)
+
+Banner from: https://github.com/Safouene1/support-palestine-banner/

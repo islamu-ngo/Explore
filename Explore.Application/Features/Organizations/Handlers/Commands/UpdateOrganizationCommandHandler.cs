@@ -32,15 +32,15 @@ namespace Explore.Application.Features.Organizations.Handlers.Commands
                 throw new NotFoundException(nameof(Organization), request.Id);
             }
 
-            if (request.OrganizationStatusTypeDto != null)
+            if (request.OrganizationApprovalStatusDto != null)
             {
-                var validator = new UpdateOrganizationStatusTypeDtoValidator(_statusTypeRepository);
-                var validationResult = await validator.ValidateAsync(request.OrganizationStatusTypeDto);
+                var validator = new UpdateOrganizationApprovalStatusDtoValidator(_statusTypeRepository);
+                var validationResult = await validator.ValidateAsync(request.OrganizationApprovalStatusDto);
                 if (!validationResult.IsValid)
                 {
                     throw new ValidationException(validationResult);
                 }
-                organization.StatusTypeId = request.OrganizationStatusTypeDto.StatusTypeId;
+                organization.ApprovalStatusId = request.OrganizationApprovalStatusDto.ApprovalStatusId;
                 await _organizationRepository.Update(organization);
             }
 

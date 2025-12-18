@@ -58,7 +58,7 @@ namespace Explore.Application.Features.OrganizationMembers.Handlers.Commands
                 {
                     var requesterMember = members.FirstOrDefault(m => m.UserId == requesterGuid);
                     // Only Admins, CoOwners and Creators can update roles
-                    if (requesterMember == null || (requesterMember.Role != OrganizationRole.Admin && requesterMember.Role != OrganizationRole.CoOwner && requesterMember.Role != OrganizationRole.Creator))
+                    if (requesterMember == null || (requesterMember.Role != OrganizationRoleEnum.Admin && requesterMember.Role != OrganizationRoleEnum.CoOwner && requesterMember.Role != OrganizationRoleEnum.Creator))
                     {
                         response.Success = false;
                         response.Message = "You do not have permission to update roles.";
@@ -66,7 +66,7 @@ namespace Explore.Application.Features.OrganizationMembers.Handlers.Commands
                     }
                     
                     // Admins cannot change role of Creator or other Admins (optional rule, but good practice)
-                    if (memberToUpdate.Role == OrganizationRole.Creator)
+                    if (memberToUpdate.Role == OrganizationRoleEnum.Creator)
                     {
                          response.Success = false;
                          response.Message = "Cannot change role of the Creator.";

@@ -5,9 +5,9 @@ using Explore.Domain;
 
 namespace Explore.Application.Contracts.Persistence
 {
-    public interface IStatusTypeRepository : IGenericRepository<StatusType, int>
+    public interface IStatusTypeRepository : IGenericRepository<ApprovalStatus, int>
     {
-        Task<StatusType> GetStatusTypeWithDetails(int id);
-        Task<List<StatusType>> GetStatusTypesWithDetails();
+        Task<ApprovalStatus> GetStatusTypeWithDetails(int id);
+        Task<List<ApprovalStatus>> GetStatusTypesWithDetails();
     }
 }

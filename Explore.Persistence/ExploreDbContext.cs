@@ -66,7 +66,7 @@ namespace Explore.Persistence
         public DbSet<ProgramRegistration> ProgramRegistrations { get; set; }
         public DbSet<ProgramTags> ProgramTags { get; set; }
         public DbSet<ProgramType> ProgramTypes { get; set; }
-        public DbSet<StatusType> StatusTypes { get; set; }
+        public DbSet<ApprovalStatus> ApprovalStatuses { get; set; }
         public DbSet<StorageObject> Files { get; set; }
         public DbSet<Tag> Tags { get; set; }
         public DbSet<TagType> TagTypes { get; set; }

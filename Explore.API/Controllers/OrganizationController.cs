@@ -27,7 +27,7 @@ namespace Explore.API.Controllers
         [HttpGet]
         [EndpointSummary("Get all Organizationss")]
         [EndpointDescription("Get A List of all the Organizations (pagination!)")]
-        [AllowAnonymous] // Temporarily allow anonymous access for testing
+        [AllowAnonymous] // Temporarily allow anonymous access for testing TODO
         public async Task<ActionResult<List<OrganizationListDto>>> GetAll()
         {
             var organizations = await _mediator.Send(new GetOrganizationListRequest());
@@ -136,9 +136,9 @@ namespace Explore.API.Controllers
         // PUT api/<OrganizationController>/updatestatustype/5
         [HttpPut("updatestatustype/{id}")]
         [AllowAnonymous] // Temporarily allow anonymous access for testing
-        public async Task<ActionResult> UpdateStatusType(Guid id, [FromBody] UpdateOrganizationStatusTypeDto organizationStatusType)
+        public async Task<ActionResult> UpdateStatusType(Guid id, [FromBody] UpdateOrganizationApprovalStatusDto organizationApprovalStatus)
         {
-            var command = new UpdateOrganizationCommand() { Id = id, OrganizationStatusTypeDto = organizationStatusType };
+            var command = new UpdateOrganizationCommand() { Id = id, OrganizationApprovalStatusDto = organizationApprovalStatus };
             await _mediator.Send(command);
             return NoContent();
         }

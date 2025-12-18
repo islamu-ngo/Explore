@@ -9,6 +9,6 @@ namespace Explore.Application.Features.Organizations.Requests.Commands
     public class UpdateOrganizationCommand : IRequest<Unit>
     {
         public Guid Id { get; set; }
-        public UpdateOrganizationStatusTypeDto OrganizationStatusTypeDto { get; set; }
+        public UpdateOrganizationApprovalStatusDto OrganizationApprovalStatusDto { get; set; }
     }
 }

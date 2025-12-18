@@ -15,6 +15,6 @@ namespace Explore.Domain
         [ForeignKey("Organization")]
         public Guid OrganizationId { get; set; }
         public Organization Organization { get; set; }
-        public OrganizationRole Role { get; set; } = OrganizationRole.Member;
+        public OrganizationRoleEnum Role { get; set; } = OrganizationRoleEnum.Member;
     }
 }

@@ -9,17 +9,16 @@ namespace Explore.Domain
     {
         public Guid Id { get; set; }
         public string FullName { get; set; }
-        public string? WebsiteUrl { get; set; }
-        public string Email { get; set; }
-        public string Country { get; set; }
-        public string City { get; set; }
-        public int Postcode { get; set; }
-        public string Address { get; set; }
-        [ForeignKey("StatusType")]
-        public int StatusTypeId { get; set; }
-        public StatusType StatusType { get; set; }
-        public string? CreatedByUserId { get; set; } // Keycloak User ID
-        public DateTime CreatedAt { get; set; }
-        public ICollection<OrganizationMember> Members { get; set; } = new List<OrganizationMember>();
+        public Guid? ProfilePictureId { get; set; }
+        public string? ProfilePictureUrl { get; set; } // because in list page needs to see image, could remove the id of profile picture i thing but not sure, TODO research more
+        public int ApprovalStatusId { get; set; }
+        public string ApprovalStatusName { get; set; }
+        //public ICollection<OrganizationMember> Members { get; set; } = new List<OrganizationMember>(); 
+
+        // 1. Private list for EF Core to use internally
+        //private readonly List<OrganizationMember> _members = new();
+
+        // 2. Public ReadOnly wrapper for your code to Read
+        //public IReadOnlyCollection<OrganizationMember> Members => _members.AsReadOnly();
     }
 }

@@ -4,8 +4,8 @@ using System.Text;
 
 namespace Explore.Application.DTOs.Organization
 {
-    public class UpdateOrganizationStatusTypeDto
+    public class UpdateOrganizationApprovalStatusDto
     {
-        public int StatusTypeId { get; set; }
+        public int ApprovalStatusId { get; set; }
     }
 }
