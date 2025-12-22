@@ -106,6 +106,14 @@ namespace Explore.Application.DTOs.Event.Validators
                 .MaximumLength(4000).When(p => !string.IsNullOrEmpty(p.ProgramUrl))
                 .WithMessage("{PropertyName} must not exceed 4000 characters.");
 
+            RuleFor(p => p.StartDate)
+                .NotEmpty().WithMessage("{PropertyName} is required.")
+                .GreaterThan(DateTime.MinValue).WithMessage("{PropertyName} must be a valid date.");
+
+            RuleFor(p => p.EndDate)
+                .NotEmpty().WithMessage("{PropertyName} is required.")
+                .GreaterThan(p => p.StartDate).WithMessage("{PropertyName} must be after Start Date.");
+
             RuleFor(p => p.EventTypeId)
                 .NotEmpty().WithMessage("{PropertyName} is required.")
                 .NotNull()

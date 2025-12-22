@@ -1,5 +1,11 @@
-@page "/organization/profile"
+@page "/organization/profile/{Id:guid}"
 @using MudBlazor
+@using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Models.DTOs
+@inject IOrganizationService OrganizationService
+@inject IOrganizationReviewService OrganizationReviewService
+
+@inject NavigationManager Navigation
 
 <PageTitle>Organization Profile</PageTitle>
 
@@ -37,7 +43,7 @@
 }
 .org-avatar{
   width:120px; height:120px; border-radius: 16px; overflow:hidden;
-  border: 2px solid rgba(255,255,255,.75);
+  border: 2px solid var(--mud-palette-surface);
   box-shadow: 0 10px 26px rgba(0,0,0,.18);
   background: var(--mud-palette-surface);
 }
@@ -47,7 +53,15 @@
   display:inline-flex; align-items:center; gap:6px;
   padding:4px 10px; border-radius:999px;
   background: color-mix(in srgb, var(--mud-palette-success) 14%, transparent);
-  color: var(--mud-palette-success-text);
+  color: var(--mud-palette-success);
+  font-weight:600; font-size:.9rem;
+}
+
+.not-verified{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:4px 10px; border-radius:999px;
+  background: color-mix(in srgb, var(--mud-palette-text-secondary) 14%, transparent);
+  color: var(--mud-palette-text-secondary);
   font-weight:600; font-size:.9rem;
 }
 
@@ -102,200 +116,192 @@
 </style>
 
 <MudContainer Class="py-6">
+    @if (_isLoading)
+    {
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+    }
+    else if (_organization == null)
+    {
+        <MudAlert Severity="Severity.Error">Organization not found.</MudAlert>
+    }
+    else
+    {
+        <!-- Organization Info (Hero + Header + Stats) -->
+        <MudCard Class="mb-6 section-card" Elevation="0">
+            <div class="org-hero"></div>
 
-    <!-- Organization Info (Hero + Header + Stats) -->
-    <MudCard Class="mb-6 section-card" Elevation="0">
-        <div class="org-hero"></div>
-
-        <MudCardContent Class="section-body" Style="padding-top:0;">
-            <div class="org-header">
-                <!-- Avatar -->
-                <div class="org-avatar">
-                    <MudImage Src="https://via.placeholder.com/240x240/2196F3/FFFFFF?text=ORG" Alt="Organization Logo" Style="width:100%; height:100%; object-fit:cover;" />
-                </div>
-
-                <!-- Name + Verified + Stats -->
-                <div style="flex:1;">
-                    <MudText Typo="Typo.h4" Class="mb-1">Muslim Community Center Amsterdam</MudText>
-                    <div class="verified">
-                        <MudIcon Icon="@Icons.Material.Filled.Verified" />
-                        <span>Verified Organization</span>
+            <MudCardContent Class="section-body" Style="padding-top:0;">
+                <div class="org-header">
+                    <!-- Avatar -->
+                    <div class="org-avatar">
+                        <MudImage Src="https://via.placeholder.com/240x240/2196F3/FFFFFF?text=ORG" Alt="Organization Logo" Style="width:100%; height:100%; object-fit:cover;" />
                     </div>
 
-                    <div class="stat-grid">
-                        <div class="stat">
-                            <MudText Typo="Typo.h5" Class="num">127</MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">reviews</MudText>
-                        </div>
-                        <div class="stat">
-                            <MudText Typo="Typo.h5" Class="num">4.87★</MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">overall rating</MudText>
-                        </div>
-                        <div class="stat">
-                            <MudText Typo="Typo.h5" Class="num">8</MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">years hosting</MudText>
+                    <!-- Name + Verified + Stats -->
+                    <div style="flex:1;">
+                        <MudText Typo="Typo.h4" Class="mb-1">@_organization.FullName</MudText>
+                        
+                        @if (_organization.StatusTypeId == 2) // Approved
+                        {
+                            <div class="verified">
+                                <MudIcon Icon="@Icons.Material.Filled.Verified" />
+                                <span>Verified Organization</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="not-verified">
+                                <MudIcon Icon="@Icons.Material.Filled.NewReleases" />
+                                <span>Unverified Organization</span>
+                            </div>
+                        }
+
+                        <div class="stat-grid">
+                            <div class="stat">
+                                <MudText Typo="Typo.h5" Class="num">@_reviews.Count</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">reviews</MudText>
+                            </div>
+                            <div class="stat">
+                                <MudText Typo="Typo.h5" Class="num">@(_reviews.Any() ? _reviews.Average(r => r.Rating).ToString("0.0") : "0.0")★</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">overall rating</MudText>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </MudCardContent>
-    </MudCard>
+            </MudCardContent>
+        </MudCard>
 
-    <!-- About Section -->
-    <MudCard Class="mb-6 section-card" Elevation="0">
-        <MudCardHeader>
-            <CardHeaderContent>
-                <MudText Typo="Typo.h6">About the Organization</MudText>
-            </CardHeaderContent>
-        </MudCardHeader>
+        <!-- About Section -->
+        <MudCard Class="mb-6 section-card" Elevation="0">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">About the Organization</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
 
-        <MudCardContent Class="section-body">
-            <div class="info-list">
-                <div class="info-row">
-                    <MudIcon Icon="@Icons.Material.Filled.Work" Color="Color.Primary" />
-                    <MudText Typo="Typo.body1">Organization type: Religious organization</MudText>
+            <MudCardContent Class="section-body">
+                <div class="info-list">
+                    <div class="info-row">
+                        <MudIcon Icon="@Icons.Material.Filled.Work" Color="Color.Primary" />
+                        <MudText Typo="Typo.body1">Organization type: Religious organization</MudText>
+                    </div>
+                    <div class="info-row">
+                        <MudIcon Icon="@Icons.Material.Filled.LocationOn" Color="Color.Primary" />
+                        <MudText Typo="Typo.body1">Location: @_organization.City, @_organization.Country</MudText>
+                    </div>
+                    @if (!string.IsNullOrEmpty(_organization.WebsiteUrl))
+                    {
+                        <div class="info-row">
+                            <MudIcon Icon="@Icons.Material.Filled.Language" Color="Color.Primary" />
+                            <MudLink Href="@_organization.WebsiteUrl" Target="_blank" Typo="Typo.body1">@_organization.WebsiteUrl</MudLink>
+                        </div>
+                    }
+                    <div class="info-row">
+                        <MudIcon Icon="@Icons.Material.Filled.Email" Color="Color.Primary" />
+                        <MudLink Href="@($"mailto:{_organization.Email}")" Typo="Typo.body1">@_organization.Email</MudLink>
+                    </div>
                 </div>
-                <div class="info-row">
-                    <MudIcon Icon="@Icons.Material.Filled.LocationOn" Color="Color.Primary" />
-                    <MudText Typo="Typo.body1">Location: Amsterdam, Netherlands</MudText>
+            </MudCardContent>
+        </MudCard>
+
+        <!-- Reviews Section -->
+        <MudCard Class="section-card" Elevation="0">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Style="width:100%;">
+                        <MudText Typo="Typo.h6">Reviews for this Organization</MudText>
+                        <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Color="Color.Primary" aria-label="More reviews" />
+                    </MudStack>
+                </CardHeaderContent>
+            </MudCardHeader>
+
+            <MudCardContent Class="section-body">
+                <MudGrid>
+                    @if (_reviews.Any())
+                    {
+                        @foreach (var review in _reviews.Take(3))
+                        {
+                            <MudItem xs="12" md="4">
+                                <MudPaper Class="pa-4 review" Elevation="0">
+                                    <MudStack Spacing="2">
+                                        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                                            <MudAvatar Size="Size.Medium">
+                                                <MudText>@(string.IsNullOrEmpty(review.ReviewerName) ? "?" : review.ReviewerName.Substring(0, 1).ToUpper())</MudText>
+                                            </MudAvatar>
+                                            <MudStack Spacing="0">
+                                                <MudText Typo="Typo.subtitle2">@review.ReviewerName</MudText>
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">@review.CreatedAt.ToShortDateString()</MudText>
+                                            </MudStack>
+                                        </MudStack>
+
+                                        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                                            <div class="star-rating">
+                                                @for (int i = 1; i <= 5; i++)
+                                                {
+                                                    if (i <= review.Rating)
+                                                    {
+                                                        <MudIcon Icon="@Icons.Material.Filled.Star" />
+                                                    }
+                                                    else
+                                                    {
+                                                        <MudIcon Icon="@Icons.Material.Outlined.StarBorder" />
+                                                    }
+                                                }
+                                            </div>
+                                        </MudStack>
+
+                                        <MudText Typo="Typo.body2">
+                                            @review.Comment
+                                        </MudText>
+                                    </MudStack>
+                                </MudPaper>
+                            </MudItem>
+                        }
+                    }
+                    else
+                    {
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.body1" Align="Align.Center" Color="Color.Secondary">No reviews yet.</MudText>
+                        </MudItem>
+                    }
+                </MudGrid>
+
+                <div class="btn-outline" style="display:flex; justify-content:center;">
+                    <MudButton Variant="Variant.Outlined" Class="mt-6" StartIcon="@Icons.Material.Filled.RateReview" OnClick="ShowAllReviews">
+                        Show more reviews
+                    </MudButton>
                 </div>
-                <div class="info-row">
-                    <MudIcon Icon="@Icons.Material.Filled.FavoriteBorder" Color="Color.Primary" />
-                    <MudText Typo="Typo.body1">Specialties: Community and educational events</MudText>
-                </div>
-                <div class="info-row">
-                    <MudIcon Icon="@Icons.Material.Filled.Favorite" Color="Color.Primary" />
-                    <MudText Typo="Typo.body1">What defines us: Building connections in the Muslim community</MudText>
-                </div>
-            </div>
-
-            <div class="btn-outline">
-                <MudButton Variant="Variant.Outlined" Class="mt-4">Show all</MudButton>
-            </div>
-        </MudCardContent>
-    </MudCard>
-
-    <!-- Reviews Section -->
-    <MudCard Class="section-card" Elevation="0">
-        <MudCardHeader>
-            <CardHeaderContent>
-                <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Style="width:100%;">
-                    <MudText Typo="Typo.h6">Reviews for this Organization</MudText>
-                    <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Color="Color.Primary" aria-label="More reviews" />
-                </MudStack>
-            </CardHeaderContent>
-        </MudCardHeader>
-
-        <MudCardContent Class="section-body">
-            <MudGrid>
-                <!-- Review 1 -->
-                <MudItem xs="12" md="4">
-                    <MudPaper Class="pa-4 review" Elevation="0">
-                        <MudStack Spacing="2">
-                            <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
-                                <MudAvatar Size="Size.Medium">
-                                    <MudImage Src="https://via.placeholder.com/40x40/FF5722/FFFFFF?text=A" Alt="Ahmed"/>
-                                </MudAvatar>
-                                <MudStack Spacing="0">
-                                    <MudText Typo="Typo.subtitle2">Ahmed</MudText>
-                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Amsterdam</MudText>
-                                </MudStack>
-                            </MudStack>
-
-                            <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
-                                <div class="star-rating">
-                                    <MudIcon Icon="@Icons.Material.Filled.Star" />
-                                    <MudIcon Icon="@Icons.Material.Filled.Star" />
-                                    <MudIcon Icon="@Icons.Material.Filled.Star" />
-                                    <MudIcon Icon="@Icons.Material.Filled.Star" />
-                                    <MudIcon Icon="@Icons.Material.Filled.Star" />
-                                </div>
-                                <MudText Typo="Typo.caption" Color="Color.Secondary">3 days ago</MudText>
-                            </MudStack>
-
-                            <MudText Typo="Typo.body2">
-                                I attended an excellent event organized by this organization. The welcome was warm and the organization was perfect. The event was very enriching and I was able to meet many wonderful people.
-                            </MudText>
-                        </MudStack>
-                    </MudPaper>
-                </MudItem>
-
-                <!-- Review 2 -->
-                <MudItem xs="12" md="4">
-                    <MudPaper Class="pa-4 review" Elevation="0">
-                        <MudStack Spacing="2">
-                            <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
-                                <MudAvatar Size="Size.Medium">
-                                    <MudImage Src="https://via.placeholder.com/40x40/4CAF50/FFFFFF?text=F" Alt="Fatima"/>
-                                </MudAvatar>
-                                <MudStack Spacing="0">
-                                    <MudText Typo="Typo.subtitle2">Fatima</MudText>
-                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Rotterdam</MudText>
-                                </MudStack>
-                            </MudStack>
-
-                            <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
-                                <div class="star-rating">
-                                    <MudIcon Icon="@Icons.Material.Filled.Star" />
-                                    <MudIcon Icon="@Icons.Material.Filled.Star" />
-                                    <MudIcon Icon="@Icons.Material.Filled.Star" />
-                                    <MudIcon Icon="@Icons.Material.Filled.Star" />
-                                    <MudIcon Icon="@Icons.Material.Filled.Star" />
-                                </div>
-                                <MudText Typo="Typo.caption" Color="Color.Secondary">1 week ago</MudText>
-                            </MudStack>
-
-                            <MudText Typo="Typo.body2">
-                                Very professional and welcoming organization. The events are always well prepared and the activities are varied. I highly recommend this organization to the entire community.
-                            </MudText>
-                        </MudStack>
-                    </MudPaper>
-                </MudItem>
-
-                <!-- Review 3 -->
-                <MudItem xs="12" md="4">
-                    <MudPaper Class="pa-4 review" Elevation="0">
-                        <MudStack Spacing="2">
-                            <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
-                                <MudAvatar Size="Size.Medium">
-                                    <MudImage Src="https://via.placeholder.com/40x40/9C27B0/FFFFFF?text=Y" Alt="Yusuf"/>
-                                </MudAvatar>
-                                <MudStack Spacing="0">
-                                    <MudText Typo="Typo.subtitle2">Yusuf</MudText>
-                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Den Haag</MudText>
-                                </MudStack>
-                            </MudStack>
-
-                            <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
-                                <div class="star-rating">
-                                    <MudIcon Icon="@Icons.Material.Filled.Star" />
-                                    <MudIcon Icon="@Icons.Material.Filled.Star" />
-                                    <MudIcon Icon="@Icons.Material.Filled.Star" />
-                                    <MudIcon Icon="@Icons.Material.Filled.Star" />
-                                    <MudIcon Icon="@Icons.Material.Outlined.StarBorder" />
-                                </div>
-                                <MudText Typo="Typo.caption" Color="Color.Secondary">2 weeks ago</MudText>
-                            </MudStack>
-
-                            <MudText Typo="Typo.body2">
-                                Excellent organization that does remarkable work to bring together the community. The events are high quality and the atmosphere is always friendly. Thank you for everything you do!
-                            </MudText>
-                        </MudStack>
-                    </MudPaper>
-                </MudItem>
-            </MudGrid>
-
-            <div class="btn-outline" style="display:flex; justify-content:center;">
-                <MudButton Variant="Variant.Outlined" Class="mt-6" StartIcon="@Icons.Material.Filled.RateReview">
-                    Show more reviews
-                </MudButton>
-            </div>
-        </MudCardContent>
-    </MudCard>
+            </MudCardContent>
+        </MudCard>
+    }
 </MudContainer>
 
 @code {
-    private int review1Rating = 5;
-    private int review2Rating = 5;
-    private int review3Rating = 4;
+    [Parameter] public Guid Id { get; set; }
+    
+    private OrganizationDto? _organization;
+    private bool _isLoading = true;
+    private List<OrganizationReviewDto> _reviews = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _organization = await OrganizationService.GetOrganizationByIdAsync(Id);
+            _reviews = await OrganizationReviewService.GetReviewsByOrganizationId(Id);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading organization: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ShowAllReviews()
+    {
+        Navigation.NavigateTo($"/organization/reviews/{Id}");
+    }
 }

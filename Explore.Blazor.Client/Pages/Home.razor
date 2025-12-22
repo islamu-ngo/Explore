@@ -1,6 +1,7 @@
 ﻿@page "/"
-@inject IJSRuntime JSRuntime
+@using Microsoft.AspNetCore.Components.Authorization
 @using Explore.Blazor.Client.Pages.Landing
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>ISLAMU Explore</PageTitle>
 
@@ -26,35 +27,21 @@ else
     private bool isLoading = true;
     private bool isAuthenticated = false;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            await CheckAuthenticationStatus();
-        }
-    }
-
-    private async Task CheckAuthenticationStatus()
+    protected override async Task OnInitializedAsync()
     {
         try
         {
-            var result = await JSRuntime.InvokeAsync<AuthStatusResult>("checkAuthStatus");
-            isAuthenticated = result.IsAuthenticated;
-            isLoading = false;
-            StateHasChanged();
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            isAuthenticated = authState.User.Identity?.IsAuthenticated ?? false;
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Auth check failed: {ex.Message}");
             isAuthenticated = false;
-            isLoading = false;
-            StateHasChanged();
         }
-    }
-
-    public class AuthStatusResult
-    {
-        public bool IsAuthenticated { get; set; }
-        public string? Name { get; set; }
+        finally
+        {
+            isLoading = false;
+        }
     }
 }

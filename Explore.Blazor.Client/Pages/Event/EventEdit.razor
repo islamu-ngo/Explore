@@ -89,10 +89,42 @@ else if (currentEvent != null && updateDto != null)
                                         FullWidth />
                         </div>
 
+                        <!-- Date and Time -->
+                        <MudText Typo="Typo.h6" Class="mb-3">Date and Time</MudText>
+                        <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
+                            <MudGrid Spacing="3">
+                                <MudItem xs="12" sm="6">
+                                    <MudDatePicker Label="Start Date" @bind-Date="_startDate" Variant="Variant.Outlined" />
+                                </MudItem>
+                                <MudItem xs="12" sm="6">
+                                    <MudTimePicker Label="Start Time" @bind-Time="_startTime" Variant="Variant.Outlined" />
+                                </MudItem>
+                                <MudItem xs="12" sm="6">
+                                    <MudDatePicker Label="End Date" @bind-Date="_endDate" Variant="Variant.Outlined" />
+                                </MudItem>
+                                <MudItem xs="12" sm="6">
+                                    <MudTimePicker Label="End Time" @bind-Time="_endTime" Variant="Variant.Outlined" />
+                                </MudItem>
+                            </MudGrid>
+                        </MudPaper>
+
                         <!-- Location Info -->
-                        <div class="mb-4">
-                            <MudText Typo="Typo.h6" Class="mb-3">Location</MudText>
-                            <MudPaper Class="pa-3" Style="background-color: var(--mud-palette-background-grey);">
+                        <MudText Typo="Typo.h6" Class="mb-3">Location</MudText>
+                        <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
+                            <MudSwitch @bind-Value="_isOnline" Label="Online Event (No physical location)" Color="Color.Primary" Class="mb-3" />
+                            
+                            @if (_isOnline)
+                            {
+                                <MudTextField @bind-Value="updateDto.ProgramUrl" 
+                                            Label="Online Meeting Link (e.g. Teams)" 
+                                            Variant="Variant.Outlined" 
+                                            FullWidth 
+                                            Class="mb-3"
+                                            Adornment="Adornment.Start"
+                                            AdornmentIcon="@Icons.Material.Filled.Link" />
+                            }
+                            else
+                            {
                                 <MudGrid Spacing="3">
                                     <MudItem xs="12">
                                         <MudTextField @bind-Value="updateDto.Address" 
@@ -137,9 +169,15 @@ else if (currentEvent != null && updateDto != null)
                                             <MudSelectItem Value="@("Finland")">Finland</MudSelectItem>
                                         </MudSelect>
                                     </MudItem>
+                                    <MudItem xs="12" sm="6">
+                                        <MudNumericField @bind-Value="updateDto.PostCode" 
+                                                       Label="Postal Code" 
+                                                       Variant="Variant.Outlined" 
+                                                       FullWidth />
+                                    </MudItem>
                                 </MudGrid>
-                            </MudPaper>
-                        </div>
+                            }
+                        </MudPaper>
 
                         <!-- Price -->
                         <div class="mb-3">
@@ -153,15 +191,18 @@ else if (currentEvent != null && updateDto != null)
                         </div>
 
                         <!-- URL -->
-                        <div class="mb-3">
-                            <MudTextField @bind-Value="updateDto.ProgramUrl" 
-                                        Label="Event URL (optional)" 
-                                        Variant="Variant.Outlined" 
-                                        FullWidth
-                                        Placeholder="https://..."
-                                        Adornment="Adornment.Start"
-                                        AdornmentIcon="@Icons.Material.Filled.Link" />
-                        </div>
+                        @if (!_isOnline)
+                        {
+                            <div class="mb-3">
+                                <MudTextField @bind-Value="updateDto.ProgramUrl" 
+                                            Label="Event URL (optional)" 
+                                            Variant="Variant.Outlined" 
+                                            FullWidth
+                                            Placeholder="https://..."
+                                            Adornment="Adornment.Start"
+                                            AdornmentIcon="@Icons.Material.Filled.Link" />
+                            </div>
+                        }
 
                         <!-- Event Type -->
                         <div class="mb-3">
@@ -221,8 +262,11 @@ else
     
     private EventDetailsDto? currentEvent;
     private UpdateEventDto? updateDto;
-    private DateTime? eventDate;
-    private TimeSpan? eventTime;
+    private DateTime? _startDate;
+    private TimeSpan? _startTime;
+    private DateTime? _endDate;
+    private TimeSpan? _endTime;
+    private bool _isOnline = false;
     private string selectedImageUrl = string.Empty;
     private bool isLoading = true;
     private List<EventTypeListDto>? eventTypes;
@@ -258,8 +302,24 @@ else
                     PostCode = currentEvent.PostCode,
                     Address = currentEvent.Address,
                     ProgramUrl = currentEvent.ProgramUrl,
-                    EventTypeId = currentEvent.EventTypeId
+                    EventTypeId = currentEvent.EventTypeId,
+                    StartDate = currentEvent.StartDate,
+                    EndDate = currentEvent.EndDate
                 };
+                
+                // Initialize date/time pickers
+                var localStart = currentEvent.StartDate.ToLocalTime();
+                var localEnd = currentEvent.EndDate.ToLocalTime();
+                
+                _startDate = localStart.Date;
+                _startTime = localStart.TimeOfDay;
+                _endDate = localEnd.Date;
+                _endTime = localEnd.TimeOfDay;
+                
+                // Determine if online based on address fields being empty and URL present
+                _isOnline = string.IsNullOrEmpty(currentEvent.Address) && 
+                           string.IsNullOrEmpty(currentEvent.City) && 
+                           !string.IsNullOrEmpty(currentEvent.ProgramUrl);
                 
                 selectedImageUrl = currentEvent.FeaturedImageUri ?? GeneratePlaceholderImage();
             }
@@ -366,6 +426,31 @@ else
         {
             try
             {
+                // Update dates
+                if (_startDate.HasValue && _startTime.HasValue)
+                {
+                    updateDto.StartDate = (_startDate.Value.Date + _startTime.Value).ToUniversalTime();
+                }
+                
+                if (_endDate.HasValue && _endTime.HasValue)
+                {
+                    updateDto.EndDate = (_endDate.Value.Date + _endTime.Value).ToUniversalTime();
+                }
+
+                // Handle online/offline logic
+                if (_isOnline)
+                {
+                    updateDto.Address = null;
+                    updateDto.City = null;
+                    updateDto.Country = null;
+                    updateDto.PostCode = null;
+                }
+                else
+                {
+                    // If switching to offline, clear URL if desired, or keep it as optional
+                    // updateDto.ProgramUrl = null; 
+                }
+
                 var success = await EventService.UpdateEventAsync(EventId, updateDto);
                 
                 if (success)

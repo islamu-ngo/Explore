@@ -27,7 +27,8 @@ namespace Explore.Persistence
             //modelBuilder.ApplyConfiguration(new OrganizationConfiguration());
             //modelBuilder.ApplyConfiguration(new OrganizationMemberConfiguration());
             //modelBuilder.ApplyConfiguration(new ProgramConfiguration());
-            //modelBuilder.ApplyConfiguration(new ProgramRegistrationConfiguration());
+            modelBuilder.ApplyConfiguration(new ProgramRegistrationConfiguration());
+            modelBuilder.ApplyConfiguration(new OrganizationReviewConfiguration());
             //modelBuilder.ApplyConfiguration(new ProgramTypeConfiguration());
             //modelBuilder.ApplyConfiguration(new StatusTypeConfiguration());
             //modelBuilder.ApplyConfiguration(new StorageObjectConfiguration());

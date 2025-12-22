@@ -1,7 +1,13 @@
 using System.Net.Http.Json;
+using System.Text.Json;
 using Explore.Blazor.Client.Models.DTOs;
 
 namespace Explore.Blazor.Client.Services;
+
+public class RegistrationStatusDto
+{
+    public bool IsRegistered { get; set; }
+}
 
 public interface IProgramService
 {
@@ -10,6 +16,10 @@ public interface IProgramService
     Task<List<EventTypeListDto>> GetEventTypesAsync();
     Task<List<ProgramTypeListDto>> GetProgramTypesAsync();
     Task<bool> RegisterForProgramAsync(ProgramRegistrationDto registration);
+    Task<bool> IsUserRegisteredAsync(Guid programId);
+    Task<List<ProgramRegistrationListDto>> GetRegistrationsForProgramAsync(Guid programId);
+    Task<List<ProgramRegistrationListDto>> GetMyRegistrationsAsync();
+    Task<bool> UnregisterFromProgramAsync(Guid registrationId);
 }
 
 public class ProgramService : IProgramService
@@ -19,6 +29,48 @@ public class ProgramService : IProgramService
     public ProgramService(HttpClient httpClient)
     {
         _httpClient = httpClient;
+    }
+
+    public async Task<List<ProgramRegistrationListDto>> GetRegistrationsForProgramAsync(Guid programId)
+    {
+        try
+        {
+            var response = await _httpClient.GetFromJsonAsync<List<ProgramRegistrationListDto>>($"/bff/api/ProgramRegistration/program/{programId}");
+            return response ?? new List<ProgramRegistrationListDto>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching registrations: {ex.Message}");
+            return new List<ProgramRegistrationListDto>();
+        }
+    }
+
+    public async Task<List<ProgramRegistrationListDto>> GetMyRegistrationsAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetFromJsonAsync<List<ProgramRegistrationListDto>>("/bff/api/ProgramRegistration/my");
+            return response ?? new List<ProgramRegistrationListDto>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching my registrations: {ex.Message}");
+            return new List<ProgramRegistrationListDto>();
+        }
+    }
+
+    public async Task<bool> UnregisterFromProgramAsync(Guid registrationId)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"/bff/api/ProgramRegistration/{registrationId}");
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error unregistering from program: {ex.Message}");
+            return false;
+        }
     }
 
     public async Task<List<ProgramListDto>> GetAllProgramsAsync()
@@ -82,6 +134,35 @@ public class ProgramService : IProgramService
         }
         catch
         {
+            return false;
+        }
+    }
+
+    public async Task<bool> IsUserRegisteredAsync(Guid programId)
+    {
+        try
+        {
+            Console.WriteLine($"[ProgramService] Checking registration for program: {programId}");
+            var response = await _httpClient.GetAsync($"/bff/api/ProgramRegistration/check/{programId}");
+            Console.WriteLine($"[ProgramService] Response status: {response.StatusCode}");
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"[ProgramService] Response content: {content}");
+                
+                var result = await response.Content.ReadFromJsonAsync<RegistrationStatusDto>();
+                Console.WriteLine($"[ProgramService] Parsed result: IsRegistered = {result?.IsRegistered}");
+                
+                return result?.IsRegistered ?? false;
+            }
+            
+            Console.WriteLine($"[ProgramService] HTTP error: {response.StatusCode}");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ProgramService] Error checking registration: {ex.Message}");
             return false;
         }
     }

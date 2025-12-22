@@ -9,6 +9,9 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @inject IUserService UserService
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IJSRuntime JSRuntime
+@inject PersistentComponentState ApplicationState
+@implements IDisposable
 
 @* <MudLayout>
     <MudAppBar Elevation="1">
@@ -56,12 +59,30 @@
 </div> *@
 
 @code {
-    private bool _isDarkMode = true;
+    private bool _isDarkMode = false;
     private MudTheme? _theme;
+    private PersistingComponentStateSubscription _subscription;
 
-    protected override async Task OnInitializedAsync()
+    [CascadingParameter(Name = "InitialTheme")]
+    public bool? InitialTheme { get; set; }
+
+    protected override void OnInitialized()
     {
-        await base.OnInitializedAsync();
+        base.OnInitialized();
+
+        _subscription = ApplicationState.RegisterOnPersisting(PersistTheme);
+
+        // 1. Try to restore from PersistentComponentState (Client hydration)
+        if (ApplicationState.TryTakeFromJson<bool>("IsDarkMode", out var restored))
+        {
+            _isDarkMode = restored;
+        }
+        // 2. If not restored, check if we have a CascadingValue from Server (Server Prerendering)
+        else if (InitialTheme.HasValue)
+        {
+            _isDarkMode = InitialTheme.Value;
+        }
+        // 3. Default fallback is false (Light)
 
         _theme = new()
         {
@@ -69,24 +90,69 @@
             PaletteDark = _darkPalette,
             LayoutProperties = new LayoutProperties()
         };
+    }
 
-        try
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        // Moved SyncUserAsync to OnAfterRenderAsync to prevent blocking initial render
+    }
+
+    private Task PersistTheme()
+    {
+        ApplicationState.PersistAsJson("IsDarkMode", _isDarkMode);
+        return Task.CompletedTask;
+    }
+
+    public void Dispose()
+    {
+        _subscription.Dispose();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
         {
-            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-            if (authState.User.Identity?.IsAuthenticated == true)
+            // Sync user in background after first render to improve perceived performance
+            try
             {
-                await UserService.SyncUserAsync();
+                var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+                if (authState.User.Identity?.IsAuthenticated == true)
+                {
+                    // Fire and forget or await? Awaiting here is fine as UI is already rendered.
+                    await UserService.SyncUserAsync();
+                }
             }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error syncing user: {ex.Message}");
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error syncing user: {ex.Message}");
+            }
+
+            // Fallback to local storage if not persisted (e.g. first visit)
+            // But if we already have a value from PersistentState, we might not want to overwrite it immediately
+            // unless we are sure.
+            // However, PersistentState comes from Server. LocalStorage comes from Client.
+            // LocalStorage is the source of truth for the Client.
+            
+            var storedTheme = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "theme");
+            if (!string.IsNullOrEmpty(storedTheme))
+            {
+                var isDarkStorage = storedTheme == "dark";
+                if (_isDarkMode != isDarkStorage)
+                {
+                    _isDarkMode = isDarkStorage;
+                    StateHasChanged();
+                }
+            }
         }
     }
 
-    private void DarkModeToggle()
+    private async Task DarkModeToggle()
     {
         _isDarkMode = !_isDarkMode;
+        var themeValue = _isDarkMode ? "dark" : "light";
+        await JSRuntime.InvokeVoidAsync("localStorage.setItem", "theme", themeValue);
+        await JSRuntime.InvokeVoidAsync("eval", $"document.cookie = 'theme={themeValue}; path=/; max-age=31536000'");
     }
 
     private readonly PaletteLight _lightPalette = new()

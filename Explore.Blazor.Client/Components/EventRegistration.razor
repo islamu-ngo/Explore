@@ -122,7 +122,40 @@
 
 <MudDialog Class="registration-dialog">
     <DialogContent>
-        @if (!isRegistered)
+        @if (isLoading)
+        {
+            <div class="registration-shell" style="text-align: center; padding: 48px;">
+                <MudProgressCircular Indeterminate="true" Size="Size.Large" />
+                <MudText Typo="Typo.body1" style="margin-top: 16px;">
+                    Checking registration status...
+                </MudText>
+            </div>
+        }
+        else if (isAlreadyRegistered)
+        {
+            <div class="registration-shell">
+                <div class="success-content">
+                    <div class="success-icon">
+                        <MudIcon Icon="@Icons.Material.Filled.EventAvailable" Style="color: var(--mud-palette-success);" />
+                    </div>
+                    <MudText Typo="Typo.h4" Class="success-title">
+                        You're Already Registered! ✅
+                    </MudText>
+                    <MudText Typo="Typo.body1" Class="success-message">
+                        You have already registered for this event.<br />
+                        We look forward to seeing you there!
+                    </MudText>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Size="Size.Large"
+                               OnClick="Close"
+                               StartIcon="@Icons.Material.Filled.Close">
+                        Close
+                    </MudButton>
+                </div>
+            </div>
+        }
+        else if (!isRegistered)
         {
             <div class="registration-shell">
                 <MudText Typo="Typo.h5" Class="mb-2">@Title</MudText>
@@ -299,10 +332,25 @@
     private ProgramRegistrationDto registrationModel = new();
     private bool isSubmitting = false;
     private bool isRegistered = false;
+    private bool isAlreadyRegistered = false;
+    private bool isLoading = true;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         registrationModel.ProgramId = ProgramId;
+        
+        try
+        {
+            isAlreadyRegistered = await ProgramService.IsUserRegisteredAsync(ProgramId);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error checking registration status: {ex.Message}", Severity.Warning);
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 
     private string? ValidateEmail(string email)

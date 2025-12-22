@@ -1,0 +1,38 @@
+using AutoMapper;
+using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.OrganizationReview;
+using Explore.Application.Responses;
+using Explore.Domain;
+using MediatR;
+
+namespace Explore.Application.Features.OrganizationReviews.Commands.CreateOrganizationReview
+{
+    public class CreateOrganizationReviewCommandHandler : IRequestHandler<CreateOrganizationReviewCommand, BaseCommandResponse<Guid>>
+    {
+        private readonly IOrganizationReviewRepository _organizationReviewRepository;
+        private readonly IMapper _mapper;
+
+        public CreateOrganizationReviewCommandHandler(IOrganizationReviewRepository organizationReviewRepository, IMapper mapper)
+        {
+            _organizationReviewRepository = organizationReviewRepository;
+            _mapper = mapper;
+        }
+
+        public async Task<BaseCommandResponse<Guid>> Handle(CreateOrganizationReviewCommand request, CancellationToken cancellationToken)
+        {
+            var response = new BaseCommandResponse<Guid>();
+            var organizationReview = _mapper.Map<OrganizationReview>(request.CreateOrganizationReviewDto);
+            
+            organizationReview.CreatedAt = DateTime.UtcNow;
+            organizationReview.UpdatedAt = DateTime.UtcNow;
+
+            organizationReview = await _organizationReviewRepository.Create(organizationReview);
+            
+            response.Success = true;
+            response.Message = "Review Created Successfully";
+            response.Id = organizationReview.Id;
+
+            return response;
+        }
+    }
+}

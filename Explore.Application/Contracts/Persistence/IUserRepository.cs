@@ -10,5 +10,8 @@ namespace Explore.Application.Contracts.Persistence
     {
         Task<UserDto> GetByIdDto(Guid id);
         Task<bool> ExistsByEmail(string email);
+        Task<User?> GetByIdAsync(Guid id);
+        Task<List<User>> GetUsersByIdsAsync(List<Guid> ids);
+        Task<bool> ExistsByEmailAsync(string email);
     }
 }

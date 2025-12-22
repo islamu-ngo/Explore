@@ -1,0 +1,36 @@
+@using MudBlazor
+@using Explore.Blazor.Client.Models.DTOs
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudText>How was your experience with @OrganizationName?</MudText>
+            <MudRating @bind-SelectedValue="Rating" MaxValue="5" Size="Size.Large" />
+            <MudTextField @bind-Value="Comment" Label="Comment" Lines="4" Variant="Variant.Outlined" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit">Submit Review</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; }
+    [Parameter] public string OrganizationName { get; set; } = string.Empty;
+
+    public int Rating { get; set; } = 5;
+    public string Comment { get; set; } = string.Empty;
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit()
+    {
+        if (Rating == 0)
+        {
+            // Show error or require rating
+            return;
+        }
+        MudDialog.Close(DialogResult.Ok(new { Rating, Comment }));
+    }
+}

@@ -1,0 +1,132 @@
+@page "/organization/reviews/{Id:guid}"
+@using MudBlazor
+@using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Models.DTOs
+@inject IOrganizationService OrganizationService
+@inject IOrganizationReviewService OrganizationReviewService
+@inject NavigationManager Navigation
+
+<PageTitle>Organization Reviews</PageTitle>
+
+<style>
+    .star-rating {
+        display: inline-flex;
+        gap: 2px;
+        color: #FFC107;
+    }
+    .star-rating .mud-icon-root {
+        font-size: 1.25rem;
+    }
+    .review-card {
+        height: 100%;
+        border-radius: 14px;
+        border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
+        background: color-mix(in srgb, var(--mud-palette-background) 85%, var(--mud-palette-surface));
+        transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+    }
+    .review-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 28px rgba(0,0,0,.12);
+        border-color: color-mix(in srgb, var(--mud-palette-primary) 35%, var(--mud-palette-lines-default));
+    }
+</style>
+
+<MudContainer Class="py-6">
+    <MudButton StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="GoBack" Class="mb-4">Back to Profile</MudButton>
+
+    @if (_isLoading)
+    {
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+    }
+    else if (_organization == null)
+    {
+        <MudAlert Severity="Severity.Error">Organization not found.</MudAlert>
+    }
+    else
+    {
+        <MudText Typo="Typo.h4" Class="mb-2">Reviews for @_organization.FullName</MudText>
+        <MudText Typo="Typo.subtitle1" Class="mb-6" Color="Color.Secondary">
+            @_reviews.Count reviews • @(_reviews.Any() ? _reviews.Average(r => r.Rating).ToString("0.0") : "0.0")★ average rating
+        </MudText>
+
+        <MudGrid>
+            @if (_reviews.Any())
+            {
+                @foreach (var review in _reviews)
+                {
+                    <MudItem xs="12" md="6">
+                        <MudPaper Class="pa-4 review-card" Elevation="0">
+                            <MudStack Spacing="2">
+                                <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudAvatar Size="Size.Medium" Color="Color.Primary">
+                                        <MudText>@(string.IsNullOrEmpty(review.ReviewerName) ? "?" : review.ReviewerName.Substring(0, 1).ToUpper())</MudText>
+                                    </MudAvatar>
+                                    <MudStack Spacing="0">
+                                        <MudText Typo="Typo.subtitle2">@review.ReviewerName</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@review.CreatedAt.ToShortDateString()</MudText>
+                                    </MudStack>
+                                </MudStack>
+
+                                <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                                    <div class="star-rating">
+                                        @for (int i = 1; i <= 5; i++)
+                                        {
+                                            if (i <= review.Rating)
+                                            {
+                                                <MudIcon Icon="@Icons.Material.Filled.Star" />
+                                            }
+                                            else
+                                            {
+                                                <MudIcon Icon="@Icons.Material.Outlined.StarBorder" />
+                                            }
+                                        }
+                                    </div>
+                                </MudStack>
+
+                                <MudText Typo="Typo.body2">
+                                    @review.Comment
+                                </MudText>
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+                }
+            }
+            else
+            {
+                <MudItem xs="12">
+                    <MudText Typo="Typo.body1" Align="Align.Center" Color="Color.Secondary">No reviews yet.</MudText>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private OrganizationDto? _organization;
+    private List<OrganizationReviewDto> _reviews = new();
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _organization = await OrganizationService.GetOrganizationByIdAsync(Id);
+            _reviews = await OrganizationReviewService.GetReviewsByOrganizationId(Id);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading reviews: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo($"/organization/profile/{Id}");
+    }
+}

@@ -63,6 +63,11 @@ namespace Explore.Application.Features.Events.Handlers.Commands
             }
 
             _mapper.Map(request.EventDto, @event);
+            
+            // Ensure dates are UTC for PostgreSQL
+            @event.StartDate = @event.StartDate.ToUniversalTime();
+            @event.EndDate = @event.EndDate.ToUniversalTime();
+
             await _eventRepository.Update(@event);
 
             response.Success = true;

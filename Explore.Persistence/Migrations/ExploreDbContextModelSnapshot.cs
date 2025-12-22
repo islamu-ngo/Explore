@@ -342,7 +342,60 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("OrganizationId")
                         .HasDatabaseName("ix_organization_members_organization_id");
 
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_organization_members_user_id");
+
                     b.ToTable("organization_members", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.OrganizationReview", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<string>("Comment")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("comment");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid>("ProgramId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("program_id");
+
+                    b.Property<int>("Rating")
+                        .HasColumnType("integer")
+                        .HasColumnName("rating");
+
+                    b.Property<string>("ReviewerName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("reviewer_name");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_organization_reviews");
+
+                    b.ToTable("organization_reviews", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Program", b =>
@@ -382,6 +435,10 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("description");
 
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("end_date");
+
                     b.Property<Guid?>("FeaturedImageId")
                         .HasColumnType("uuid")
                         .HasColumnName("featured_image_id");
@@ -411,6 +468,10 @@ namespace Explore.Persistence.Migrations
                     b.Property<string>("ProgramUrl")
                         .HasColumnType("text")
                         .HasColumnName("program_url");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("start_date");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -452,6 +513,18 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id")
                         .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("text")
+                        .HasColumnName("email");
+
+                    b.Property<string>("FirstName")
+                        .HasColumnType("text")
+                        .HasColumnName("first_name");
+
+                    b.Property<string>("LastName")
+                        .HasColumnType("text")
+                        .HasColumnName("last_name");
 
                     b.Property<Guid>("ProgramId")
                         .HasColumnType("uuid")
@@ -604,6 +677,18 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("Bio")
+                        .HasColumnType("text")
+                        .HasColumnName("bio");
+
+                    b.Property<string>("City")
+                        .HasColumnType("text")
+                        .HasColumnName("city");
+
+                    b.Property<string>("Country")
+                        .HasColumnType("text")
+                        .HasColumnName("country");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("text")
@@ -679,7 +764,14 @@ namespace Explore.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_organization_members_organizations_organization_id");
 
+                    b.HasOne("Explore.Domain.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .HasConstraintName("fk_organization_members_users_user_id");
+
                     b.Navigation("Organization");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Explore.Domain.Program", b =>

@@ -37,8 +37,14 @@ namespace Explore.Application.Features.Users.Handlers.Commands
             }
             else
             {
-                // Update existing user
-                _mapper.Map(userDto, existingUser);
+                // Update existing user - Only update fields from IDP (Keycloak)
+                // We do NOT map the whole object because UserDto has nulls for Bio/City/Country
+                // which would overwrite the user's custom data.
+                existingUser.Email = userDto.Email;
+                existingUser.FirstName = userDto.FirstName;
+                existingUser.LastName = userDto.LastName;
+                existingUser.Username = userDto.Username;
+                
                 await _userRepository.Update(existingUser);
                 response.Success = true;
                 response.Message = "User updated successfully";

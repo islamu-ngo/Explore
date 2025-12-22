@@ -24,6 +24,8 @@ namespace Explore.Application.DTOs.Program
         public Guid? FeaturedImageId { get; set; }
         public string? FeaturedImageUri { get; set; }
         public int TotalViews { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
         public string? Country { get; set; }
         public string? City { get; set; }
         public int? PostCode { get; set; }

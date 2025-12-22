@@ -27,6 +27,8 @@ namespace Explore.Application.DTOs.Event
         public string? FeaturedImageUri { get; set; }
         public bool? IsRegistrationRequired { get; set; }
         public int TotalViews { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
         public string? Country { get; set; }
         public string? City { get; set; }
         public int? PostCode { get; set; }

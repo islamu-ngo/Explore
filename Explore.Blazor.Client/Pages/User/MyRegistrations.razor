@@ -5,6 +5,8 @@
 @inject NavigationManager Navigation
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
+@inject IProgramService ProgramService
+@inject IOrganizationReviewService OrganizationReviewService
 
 <PageTitle>My Registrations</PageTitle>
 
@@ -352,7 +354,18 @@
     </div>
 
     <!-- Registrations List -->
-    @if (filteredRegistrations.Any())
+    @if (isLoading)
+    {
+        <div class="empty-state">
+            <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+            <div class="empty-description">Loading your registrations...</div>
+        </div>
+    }
+    else if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <MudAlert Severity="Severity.Error">@errorMessage</MudAlert>
+    }
+    else if (filteredRegistrations.Any())
     {
         <div class="registrations-grid">
             @foreach (var registration in filteredRegistrations)
@@ -360,24 +373,27 @@
                 <div class="registration-card">
                     <div class="card-content">
                         <div class="event-image">
-                            <img src="@GetEventImage(registration)" alt="@registration.EventTitle" />
+                            <img src="@GetEventImage(registration)" alt="@registration.ProgramTitle" />
                         </div>
 
                         <div class="event-details">
-                            <h3 class="event-title">@registration.EventTitle</h3>
+                            <h3 class="event-title">@registration.ProgramTitle</h3>
                             
                             <div class="event-meta">
                                 <div class="meta-item">
                                     <MudIcon Icon="@Icons.Material.Filled.CalendarToday" />
-                                    <span>@registration.EventDate.ToString("MMM dd, yyyy")</span>
+                                    <span>Registered on @registration.RegistrationDate.ToString("MMM dd, yyyy")</span>
                                 </div>
-                                <div class="meta-item">
-                                    <MudIcon Icon="@Icons.Material.Filled.AccessTime" />
-                                    <span>@registration.EventDate.ToString("HH:mm")</span>
-                                </div>
+                                @if (registration.EventStartDate.HasValue)
+                                {
+                                    <div class="meta-item">
+                                        <MudIcon Icon="@Icons.Material.Filled.Event" />
+                                        <span>Event: @registration.EventStartDate.Value.ToString("MMM dd, yyyy")</span>
+                                    </div>
+                                }
                                 <div class="meta-item">
                                     <MudIcon Icon="@Icons.Material.Filled.LocationOn" />
-                                    <span>@registration.Location</span>
+                                    <span>@(registration.ProgramCity ?? "")</span>
                                 </div>
                             </div>
 
@@ -387,38 +403,70 @@
                                 </span>
                             </div>
 
-                            <p class="event-description">@registration.Description</p>
+                            <p class="event-description">@registration.ProgramDescription</p>
 
-                            <div class="meta-item">
-                                <MudIcon Icon="@Icons.Material.Filled.PersonAdd" />
-                                <span>Registered on @registration.RegistrationDate.ToString("MMM dd, yyyy")</span>
-                            </div>
+                            @if (!string.IsNullOrWhiteSpace(registration.ProgramAddress))
+                            {
+                                <div class="meta-item">
+                                    <MudIcon Icon="@Icons.Material.Filled.Place" />
+                                    <span>@registration.ProgramAddress</span>
+                                </div>
+                            }
                         </div>
 
                         <div class="card-actions">
+                            @if (!string.IsNullOrEmpty(registration.ProgramUrl) && 
+                                 registration.EventStartDate.HasValue && 
+                                 registration.EventEndDate.HasValue &&
+                                 DateTime.UtcNow >= registration.EventStartDate.Value && 
+                                 DateTime.UtcNow <= registration.EventEndDate.Value &&
+                                 !registration.Status.Equals("cancelled", StringComparison.OrdinalIgnoreCase))
+                            {
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Success"
+                                           StartIcon="@Icons.Material.Filled.VideoCall"
+                                           OnClick="@(() => OpenOnlineEventDialog(registration))">
+                                    Join Online Event
+                                </MudButton>
+                            }
+
                             <MudButton Variant="Variant.Outlined"
                                        Color="Color.Primary"
                                        StartIcon="@Icons.Material.Filled.Visibility"
-                                       OnClick="@(() => ViewDetails(registration.EventId))">
-                                View Event
+                                       OnClick="@(() => ViewDetails(registration.ProgramId))">
+                                View Program
                             </MudButton>
+
+                            @if (registration.EventEndDate.HasValue && registration.EventEndDate.Value < DateTime.Now)
+                            {
+                                @if (registration.HasReviewed)
+                                {
+                                    <MudButton Variant="Variant.Outlined"
+                                               Color="Color.Secondary"
+                                               StartIcon="@Icons.Material.Filled.Check"
+                                               Disabled="true">
+                                        Reviewed
+                                    </MudButton>
+                                }
+                                else
+                                {
+                                    <MudButton Variant="Variant.Outlined"
+                                               Color="Color.Secondary"
+                                               StartIcon="@Icons.Material.Filled.RateReview"
+                                               OnClick="@(() => OpenReviewDialog(registration))">
+                                        Leave Review
+                                    </MudButton>
+                                }
+                            }
                             
-                            @if (registration.Status == "upcoming")
+                            @if (!registration.Status.Equals("completed", StringComparison.OrdinalIgnoreCase) && 
+                                 (!registration.EventEndDate.HasValue || registration.EventEndDate.Value > DateTime.Now))
                             {
                                 <MudButton Variant="Variant.Outlined"
                                            Color="Color.Error"
                                            StartIcon="@Icons.Material.Filled.Cancel"
                                            OnClick="@(() => CancelRegistration(registration))">
                                     Unregister
-                                </MudButton>
-                            }
-                            else if (registration.Status == "completed")
-                            {
-                                <MudButton Variant="Variant.Filled"
-                                           Color="Color.Success"
-                                           StartIcon="@Icons.Material.Filled.RateReview"
-                                           OnClick="@(() => OpenReviewDialog(registration))">
-                                    Write Review
                                 </MudButton>
                             }
                         </div>
@@ -441,7 +489,7 @@
                 }
                 else
                 {
-                    <span>You haven't registered for any events yet. Discover amazing events and register now!</span>
+                    <span>You haven't registered for any events yet. Discover amazing programs and register now!</span>
                 }
             </p>
             <MudButton Variant="Variant.Filled"
@@ -455,113 +503,58 @@
 </MudContainer>
 
 @code {
-    private List<RegistrationModel> registrations = new();
-    private List<RegistrationModel> filteredRegistrations = new();
+    private List<ProgramRegistrationListDto> registrations = new();
+    private List<ProgramRegistrationListDto> filteredRegistrations = new();
     private string searchQuery = "";
     private string statusFilter = "all";
+    private bool isLoading = true;
+    private string? errorMessage;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        LoadMockData();
+        await LoadRegistrationsAsync();
         FilterRegistrations();
     }
 
-    private void LoadMockData()
+    private async Task LoadRegistrationsAsync()
     {
-        registrations = new List<RegistrationModel>
+        isLoading = true;
+        errorMessage = null;
+
+        try
         {
-            new RegistrationModel
-            {
-                Id = Guid.NewGuid(),
-                EventId = Guid.NewGuid(),
-                EventTitle = "Ramadan Iftaar Gathering",
-                Description = "Join us for a community iftaar gathering with Islamic lectures, Quran recitation, and networking with fellow Muslims.",
-                EventDate = DateTime.Now.AddDays(15),
-                Location = "Islamic Center Brussels",
-                Status = "upcoming",
-                RegistrationDate = DateTime.Now.AddDays(-5)
-            },
-            new RegistrationModel
-            {
-                Id = Guid.NewGuid(),
-                EventId = Guid.NewGuid(),
-                EventTitle = "Islamic Finance Workshop",
-                Description = "Learn about halal investment strategies, Islamic banking principles, and Sharia-compliant financial planning.",
-                EventDate = DateTime.Now.AddDays(7),
-                Location = "Community Center, Antwerp",
-                Status = "upcoming",
-                RegistrationDate = DateTime.Now.AddDays(-10)
-            },
-            new RegistrationModel
-            {
-                Id = Guid.NewGuid(),
-                EventId = Guid.NewGuid(),
-                EventTitle = "Youth Islamic Leadership Summit",
-                Description = "Empowering Muslim youth with leadership skills, Islamic values, and community service opportunities.",
-                EventDate = DateTime.Now.AddDays(30),
-                Location = "Al-Nour Mosque, Ghent",
-                Status = "upcoming",
-                RegistrationDate = DateTime.Now.AddDays(-2)
-            },
-            new RegistrationModel
-            {
-                Id = Guid.NewGuid(),
-                EventId = Guid.NewGuid(),
-                EventTitle = "Quran Memorization Competition",
-                Description = "Annual Quran memorization competition for all ages with prizes and certificates for participants.",
-                EventDate = DateTime.Now.AddDays(-5),
-                Location = "Islamic School, Leuven",
-                Status = "completed",
-                RegistrationDate = DateTime.Now.AddDays(-30)
-            },
-            new RegistrationModel
-            {
-                Id = Guid.NewGuid(),
-                EventId = Guid.NewGuid(),
-                EventTitle = "Sisters' Islamic Conference",
-                Description = "Islamic conference for women featuring lectures on faith, family, and personal development from Islamic perspective.",
-                EventDate = DateTime.Now.AddDays(-20),
-                Location = "Women's Center, Brussels",
-                Status = "completed",
-                RegistrationDate = DateTime.Now.AddDays(-45)
-            },
-            new RegistrationModel
-            {
-                Id = Guid.NewGuid(),
-                EventId = Guid.NewGuid(),
-                EventTitle = "Eid al-Fitr Celebration",
-                Description = "Celebrate Eid with the Muslim community featuring prayers, food, activities for children, and community bonding.",
-                EventDate = DateTime.Now.AddDays(5),
-                Location = "Brussels Grand Mosque",
-                Status = "cancelled",
-                RegistrationDate = DateTime.Now.AddDays(-15)
-            }
-        };
+            registrations = await ProgramService.GetMyRegistrationsAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Unable to load your registrations: {ex.Message}";
+            registrations = new List<ProgramRegistrationListDto>();
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 
     private void FilterRegistrations()
     {
         var query = registrations.AsQueryable();
 
-        // Filter by search query
         if (!string.IsNullOrWhiteSpace(searchQuery))
         {
-            query = query
-                .Where(r => r.EventTitle.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
-                           r.Description.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
-                           r.Location.Contains(searchQuery, StringComparison.OrdinalIgnoreCase));
+            query = query.Where(r =>
+                r.ProgramTitle.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                r.ProgramDescription.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                (r.ProgramCity ?? "").Contains(searchQuery, StringComparison.OrdinalIgnoreCase));
         }
 
-        // Filter by status
         if (statusFilter != "all")
         {
-            query = query
-                .Where(r => r.Status.Equals(statusFilter, StringComparison.OrdinalIgnoreCase));
+            query = query.Where(r => r.Status.Equals(statusFilter, StringComparison.OrdinalIgnoreCase));
         }
 
-        // Sort by event date and convert to list
         filteredRegistrations = query
-            .OrderBy(r => r.EventDate)
+            .OrderBy(r => r.ProgramTitle)
             .ToList();
     }
 
@@ -573,13 +566,19 @@
     }
 
     private int GetTotalRegistrations() => registrations.Count;
-    private int GetUpcomingCount() => registrations.Count(r => r.Status == "upcoming");
-    private int GetCompletedCount() => registrations.Count(r => r.Status == "completed");
+    
+    private int GetUpcomingCount()
+    {
+        return registrations.Count(r => r.EventStartDate.HasValue && r.EventStartDate.Value > DateTime.Now);
+    }
+    
+    private int GetCompletedCount() => registrations.Count(r => r.EventEndDate.HasValue && r.EventEndDate.Value < DateTime.Now);
 
     private string GetStatusClass(string status)
     {
         return status.ToLower() switch
         {
+            "active" => "upcoming",
             "upcoming" => "upcoming",
             "completed" => "completed",
             "cancelled" => "cancelled",
@@ -587,7 +586,7 @@
         };
     }
 
-    private string GetEventImage(RegistrationModel registration)
+    private string GetEventImage(ProgramRegistrationListDto registration)
     {
         var color = registration.Status switch
         {
@@ -596,65 +595,94 @@
             "cancelled" => "F44336",
             _ => "607D8B"
         };
-        return $"https://dummyimage.com/400x400/{color}/ffffff&text={Uri.EscapeDataString(registration.EventTitle.Split(' ').FirstOrDefault() ?? "Event")}";
+        var text = !string.IsNullOrWhiteSpace(registration.ProgramTitle)
+            ? registration.ProgramTitle.Split(' ').FirstOrDefault() ?? "Program"
+            : "Program";
+        return $"https://dummyimage.com/400x400/{color}/ffffff&text={Uri.EscapeDataString(text)}";
     }
 
-    private void ViewDetails(Guid eventId)
+    private void ViewDetails(Guid programId)
     {
-        Navigation.NavigateTo($"/event/detail/{eventId}");
+        Navigation.NavigateTo($"/event/detail/{programId}");
     }
 
-    private async Task OpenReviewDialog(RegistrationModel registration)
-    {
-        var parameters = new DialogParameters
-        {
-            { "EventTitle", registration.EventTitle },
-            { "EventId", registration.EventId }
-        };
-
-        var options = new DialogOptions
-        {
-            MaxWidth = MaxWidth.Small,
-            FullWidth = true,
-            CloseButton = true,
-            CloseOnEscapeKey = true
-        };
-
-        var dialog = await DialogService.ShowAsync<EventReviewDialog>("Write a Review", parameters, options);
-        var result = await dialog.Result;
-
-        if (!result.Canceled)
-        {
-            Snackbar.Add("Review submitted successfully!", Severity.Success);
-        }
-    }
-
-    private async Task CancelRegistration(RegistrationModel registration)
+    private async Task CancelRegistration(ProgramRegistrationListDto registration)
     {
         var result = await DialogService.ShowMessageBox(
             "Cancel Registration",
-            $"Are you sure you want to unregister from '{registration.EventTitle}'?",
+            $"Are you sure you want to unregister from '{registration.ProgramTitle}'?",
             yesText: "Yes, Unregister",
             cancelText: "No, Keep Registration");
 
         if (result == true)
         {
-            registration.Status = "cancelled";
-            FilterRegistrations();
-            Snackbar.Add($"Successfully unregistered from {registration.EventTitle}", Severity.Success);
+            try
+            {
+                var success = await ProgramService.UnregisterFromProgramAsync(registration.Id);
+                if (success)
+                {
+                    // Remove from list
+                    registrations.Remove(registration);
+                    FilterRegistrations();
+                    Snackbar.Add($"Successfully unregistered from {registration.ProgramTitle}", Severity.Success);
+                }
+                else
+                {
+                    Snackbar.Add($"Failed to unregister from {registration.ProgramTitle}", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            }
         }
     }
 
-    // Mock data model
-    private class RegistrationModel
+    private void OpenOnlineEventDialog(ProgramRegistrationListDto registration)
     {
-        public Guid Id { get; set; }
-        public Guid EventId { get; set; }
-        public string EventTitle { get; set; } = "";
-        public string Description { get; set; } = "";
-        public DateTime EventDate { get; set; }
-        public string Location { get; set; } = "";
-        public string Status { get; set; } = "upcoming"; // upcoming, completed, cancelled
-        public DateTime RegistrationDate { get; set; }
+        var parameters = new DialogParameters
+        {
+            { "Title", registration.ProgramTitle },
+            { "Url", registration.ProgramUrl }
+        };
+
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        DialogService.Show<OnlineEventDialog>("Join Online Event", parameters, options);
+    }
+
+    private async Task OpenReviewDialog(ProgramRegistrationListDto registration)
+    {
+        var parameters = new DialogParameters
+        {
+            { "OrganizationName", registration.OrganizationName }
+        };
+
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = DialogService.Show<ReviewDialog>("Leave a Review", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            var data = (dynamic)result.Data;
+            var review = new CreateOrganizationReviewDto
+            {
+                OrganizationId = registration.OrganizationId,
+                ProgramId = registration.ProgramId,
+                UserId = registration.UserId,
+                ReviewerName = registration.UserName,
+                Rating = data.Rating,
+                Comment = data.Comment
+            };
+
+            var response = await OrganizationReviewService.CreateReview(review);
+            if (response.Success)
+            {
+                Snackbar.Add("Review submitted successfully!", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add($"Failed to submit review: {response.Message}", Severity.Error);
+            }
+        }
     }
 }

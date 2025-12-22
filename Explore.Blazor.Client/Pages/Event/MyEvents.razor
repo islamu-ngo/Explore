@@ -5,6 +5,7 @@
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Models.Enums
 @inject IEventService EventService
+@inject IProgramService ProgramService
 @inject IOrganizationService OrganizationService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
@@ -307,6 +308,9 @@
                                 </MudMenuItem>
                                 @if (CanEditEvent(evt))
                                 {
+                                    <MudMenuItem OnClick="@(() => ViewRegistrations(evt))">
+                                        <MudIcon Icon="@Icons.Material.Filled.People" Class="mr-2" Size="Size.Small" /> View Registrations
+                                    </MudMenuItem>
                                     <MudMenuItem OnClick="@(() => DeleteEvent(evt))" Class="text-error">
                                         <MudIcon Icon="@Icons.Material.Filled.Delete" Class="mr-2" Size="Size.Small" /> Delete
                                     </MudMenuItem>
@@ -496,6 +500,18 @@
     private void ViewEventDetails(EventListDto evt)
     {
         Navigation.NavigateTo($"/event/detail/{evt.Id}");
+    }
+
+    private async Task ViewRegistrations(EventListDto evt)
+    {
+        var parameters = new DialogParameters
+        {
+            { "EventId", evt.Id }
+        };
+
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true };
+        var dialog = DialogService.Show<EventRegistrationsDialog>($"Registrations for {evt.Title}", parameters, options);
+        await dialog.Result;
     }
 
     private async Task DeleteEvent(EventListDto evt)

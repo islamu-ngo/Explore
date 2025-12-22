@@ -1,4 +1,5 @@
-﻿@using MudBlazor
+﻿@page "/home"
+@using MudBlazor
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Models.DTOs
 @inject IJSRuntime JS
@@ -16,9 +17,9 @@
 /* ---------- HERO ---------- */
 .hero {
     position: relative; isolation:isolate;
-    padding: 86px 0 60px 0; text-align:center; color:#fff;
-    background: radial-gradient(1200px 600px at 50% -10%, rgba(127,86,217,.35), transparent 60%),
-                linear-gradient(180deg, #0e1026 0%, #0b0f24 100%);
+    padding: 86px 0 60px 0; text-align:center; color:var(--mud-palette-text-primary);
+    background: radial-gradient(1200px 600px at 50% -10%, color-mix(in srgb, var(--mud-palette-primary) 20%, transparent), transparent 60%),
+                linear-gradient(180deg, var(--mud-palette-background) 0%, var(--mud-palette-surface) 100%);
     overflow:hidden;
 }
 .hero::before{
@@ -26,6 +27,7 @@
     background: conic-gradient(from 180deg at 50% 50%, var(--hero-grad-1), var(--hero-grad-2), var(--hero-grad-1));
     filter: blur(120px) saturate(140%) opacity(.35);
     animation: swirl 14s linear infinite; z-index:-1;
+    opacity: 0.5;
 }
 @@keyframes swirl { to { transform: rotate(360deg);} }
 .kicker { letter-spacing:.18em; text-transform:uppercase; font-size:.82rem; opacity:.85; }
@@ -42,10 +44,11 @@
 
 /* ---------- GLASS UTIL ---------- */
 .glass{
-    background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
-    border: 1px solid rgba(255,255,255,.12);
+    background: color-mix(in srgb, var(--mud-palette-surface) 70%, transparent);
+    border: 1px solid var(--mud-palette-lines-default);
     border-radius: 18px; backdrop-filter: blur(10px);
-    box-shadow: 0 10px 40px rgba(0,0,0,.25);
+    box-shadow: 0 10px 40px rgba(0,0,0,.15);
+    color: var(--mud-palette-text-primary);
 }
 
 /* ---------- SECTION UTILS ---------- */
@@ -58,11 +61,12 @@
 /* ---------- EXPLORE TILES ---------- */
 .tile {
     position: relative; height: 180px; padding: 14px 16px;
-    border-radius: 16px; border: 1px solid rgba(255,255,255,.08);
-    background: #1b1d2a; box-shadow: 0 1px 0 rgba(0,0,0,.25) inset;
+    border-radius: 16px; border: 1px solid var(--mud-palette-lines-default);
+    background: var(--mud-palette-surface); box-shadow: 0 1px 0 rgba(0,0,0,.1) inset;
     overflow:hidden; transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+    color: var(--mud-palette-text-primary);
 }
-.tile:hover { transform: translateY(-3px); box-shadow: 0 12px 26px rgba(0,0,0,.35); border-color: rgba(255,255,255,.18); }
+.tile:hover { transform: translateY(-3px); box-shadow: 0 12px 26px rgba(0,0,0,.15); border-color: var(--mud-palette-primary); }
 .tile-content {
     position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
     display:flex; flex-direction:column; align-items:center; text-align:center; gap:6px; max-width: calc(100% - 32px);
@@ -76,6 +80,7 @@
 
 /* ---------- EVENT CARDS ---------- */
 .card {
+    background-color: var(--mud-palette-surface);
     border-radius: 16px;
     overflow:hidden;
     border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
@@ -143,6 +148,15 @@
     min-height: 400px;
 }
 
+.featured-events-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
 /* ---------- THIS WEEK CARDS ---------- */
 .eventCard { 
     border-radius: 14px; overflow:hidden; transition: transform .18s ease, box-shadow .18s ease; 
@@ -161,6 +175,88 @@
 }
 @@media (prefers-reduced-motion: reduce){
     .hero::before{ animation:none; }
+}
+
+/* Mobile responsiveness (phones) */
+@@media (max-width: 480px) {
+  .hero {
+    padding: 56px 0 40px 0;
+  }
+  .kicker {
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+  }
+  .hero h1 {
+    font-size: 1.8rem !important;
+    line-height: 1.2;
+  }
+  .hero-sub {
+    font-size: 0.95rem;
+    margin: 8px auto 0;
+  }
+  .cta-row {
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .landing-image {
+    max-width: 120px;
+  }
+  .tile {
+    height: 140px;
+    padding: 12px 10px;
+    border-radius: 12px;
+  }
+  .tile .mud-icon-root {
+    font-size: 32px !important;
+    margin: 0 0 4px 0;
+  }
+  .tile .mud-typography-h6 {
+    font-size: 0.9rem;
+  }
+  .section {
+    margin: 40px 0;
+  }
+  .card-media {
+    height: 140px;
+  }
+  .event-body {
+    padding: 14px;
+  }
+  .carousel-wrap {
+    margin: 24px 0 16px 0;
+  }
+  .carousel-wrap .mud-carousel,
+  .carousel-wrap .mud-carousel-item,
+  .carousel-wrap .mud-carousel-content {
+    min-height: 280px;
+  }
+  .cta-row .mud-button-root {
+    padding: 10px 16px;
+  }
+  .cta-primary .mud-button-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+  .featured-events-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .featured-events-header > div:first-child {
+    order: 1;
+  }
+  .featured-events-header .mud-button-root {
+    order: 2;
+    width: 100%;
+  }
+  .eventCard {
+    border-radius: 12px;
+  }
+  .eventThumb {
+    height: 120px;
+    font-size: 0.9rem;
+  }
 }
 </style>
 
@@ -187,7 +283,7 @@
 
             <MudItem xs="12" md="5">
                 <MudPaper Elevation="0" Class="logoBox glass" Style="padding:18px;">
-                    <img src="image/Icon_landingpage.png" alt="Landing page illustration" class="landing-image" />
+                    <img src="image/Icon_landingpage.png" alt="Landing page illustration" class="landing-image" fetchpriority="high" width="170" height="170" />
                 </MudPaper>
             </MudItem>
         </MudGrid>
@@ -242,17 +338,15 @@
 
     <!-- THIS WEEK - Carousel -->
     <section class="section">
-        <MudGrid AlignItems="AlignItems.Center">
-            <MudItem xs="12" md="8">
+        <div class="featured-events-header">
+            <div>
                 <MudText Typo="Typo.h5">Featured Events</MudText>
                 <MudText Typo="Typo.subtitle2" Class="muted">Discover upcoming programs and events from our community.</MudText>
-            </MudItem>
-            <MudItem xs="12" md="4" Class="text-right">
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/events" StartIcon="@Icons.Material.Filled.PlaylistAddCheck">
-                    View All Events
-                </MudButton>
-            </MudItem>
-        </MudGrid>
+            </div>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/events" StartIcon="@Icons.Material.Filled.PlaylistAddCheck">
+                View All Events
+            </MudButton>
+        </div>
 
         <div class="carousel-wrap">
             @if (_isLoading)

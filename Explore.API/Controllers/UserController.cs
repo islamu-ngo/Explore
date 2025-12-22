@@ -58,5 +58,62 @@ namespace Explore.API.Controllers
 
             return Ok(response);
         }
+
+        [HttpGet]
+        [Authorize]
+        public async Task<ActionResult<UserDto>> GetCurrentUser()
+        {
+            var userId = User.FindFirst("sub")?.Value 
+                         ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var guidUserId))
+            {
+                return BadRequest("Invalid User ID in token");
+            }
+
+            var query = new GetUserRequest { UserId = guidUserId };
+            var user = await _mediator.Send(query);
+            return Ok(user);
+        }
+
+        [HttpPut]
+        [Authorize]
+        public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateUser([FromBody] UpdateUserDto userDto)
+        {
+            var userId = User.FindFirst("sub")?.Value 
+                         ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var guidUserId))
+            {
+                return BadRequest("Invalid User ID in token");
+            }
+
+            if (userDto.Id != guidUserId)
+            {
+                return BadRequest("User ID mismatch");
+            }
+
+            var command = new UpdateUserCommand { UpdateUserDto = userDto };
+            var response = await _mediator.Send(command);
+            return Ok(response);
+        }
+
+        [HttpDelete]
+        [Authorize]
+        public async Task<ActionResult> DeleteUser()
+        {
+            var userId = User.FindFirst("sub")?.Value 
+                         ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var guidUserId))
+            {
+                return BadRequest("Invalid User ID in token");
+            }
+
+            var command = new DeleteUserCommand { UserId = guidUserId };
+            await _mediator.Send(command);
+
+            return NoContent();
+        }
     }
 }
