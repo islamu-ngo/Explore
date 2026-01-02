@@ -152,6 +152,17 @@
 @@media (max-width: 600px){
   .stat-grid{ grid-template-columns: repeat(1, 1fr); }
 }
+/* Phone layout */
+@@media (max-width: 480px){
+    .user-header{ padding: 14px; gap: 14px; align-items: flex-start; text-align: left; }
+    .user-avatar{ width: 96px; height: 96px; }
+    .section-card{ border-radius: 12px; }
+    .section-body{ padding: 14px; }
+    .info-row{ flex-direction: column; align-items: flex-start; gap: 8px; }
+    .tags-wrap{ gap: 6px; }
+    .tag{ padding: 7px 12px; }
+    .btn-outline .mud-button-root{ width: 100%; }
+}
 </style>
 
 @if (IsLoading)
