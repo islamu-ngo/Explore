@@ -231,6 +231,9 @@
 @code {
     [Parameter] public EventCallback OnToggleTheme { get; set; }
 
+    // TODO: Backend Integration - Update /auth/status endpoint to return ProfileImageKey
+    // Then update UpdateAuthenticationUI() JavaScript to display S3 profile image instead of initials
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)

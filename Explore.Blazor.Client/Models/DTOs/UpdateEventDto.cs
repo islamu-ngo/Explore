@@ -11,6 +11,10 @@ public class UpdateEventDto
     public int? AudienceAttendees { get; set; }
     public double Price { get; set; }
     public Guid? FeaturedImageId { get; set; }
+    
+    // S3 Image Key for the event image
+    public string? ImageKey { get; set; }
+    
     public bool? IsRegistrationRequired { get; set; }
     public string? Country { get; set; }
     public string? City { get; set; }

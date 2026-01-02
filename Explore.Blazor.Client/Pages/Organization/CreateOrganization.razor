@@ -130,39 +130,15 @@
                     case 0:
                         <MudPaper Class="pa-4 mb-6" Style="background-color: var(--mud-palette-background-grey);">
                             <MudText Typo="Typo.h6" Class="mb-3">Organization Logo</MudText>
-                            <MudStack Row AlignItems="AlignItems.Center" Spacing="4">
-                                <div style="width: 120px; height: 120px; border: 2px dashed var(--mud-palette-lines-default); border-radius: 8px; display: flex; align-items: center; justify-content: center; background-color: var(--mud-palette-surface);">
-                                    @if (!string.IsNullOrEmpty(logoPreview))
-                                    {
-                                        <MudImage Src="@logoPreview" Alt="Logo Preview" Style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px;" />
-                                    }
-                                    else
-                                    {
-                                        <MudStack AlignItems="AlignItems.Center" Spacing="1">
-                                            <MudIcon Icon="Icons.Material.Filled.Business" Size="Size.Large" Color="Color.Secondary" />
-                                            <MudText Typo="Typo.caption" Color="Color.Secondary">No logo</MudText>
-                                        </MudStack>
-                                    }
-                                </div>
-                                <MudStack Spacing="2">
-                                    <MudFileUpload T="IBrowserFile" FilesChanged="OnLogoSelected" Accept=".jpg,.jpeg,.png,.gif">
-                                        <ActivatorContent>
-                                            <MudButton Variant="Variant.Outlined" StartIcon="Icons.Material.Filled.CloudUpload" Color="Color.Primary">
-                                                Upload Logo
-                                            </MudButton>
-                                        </ActivatorContent>
-                                    </MudFileUpload>
-                                    @if (!string.IsNullOrEmpty(logoPreview))
-                                    {
-                                        <MudButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small" OnClick="@(() => RemoveLogo())" StartIcon="@Icons.Material.Filled.Delete">
-                                            Remove Logo
-                                        </MudButton>
-                                    }
-                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                        Supported formats: JPG, PNG, GIF (Max 2MB)
-                                    </MudText>
-                                </MudStack>
-                            </MudStack>
+                            <ImageUpload @bind-ImageKey="organization.LogoImageKey"
+                                        @bind-PreviewUrl="logoPreview"
+                                        Width="120px"
+                                        Height="120px"
+                                        PlaceholderText="No logo"
+                                        UploadButtonText="Upload Logo"
+                                        HintText="Supported formats: JPG, PNG, GIF (Max 2MB)"
+                                        Icon="@Icons.Material.Filled.Business"
+                                        MaxFileSize="@(2 * 1024 * 1024)" />
                         </MudPaper>
 
                         <MudText Typo="Typo.h6" Class="mb-4">
@@ -267,12 +243,23 @@
 
                         <MudPaper Class="pa-4 mb-4" Style="background: var(--mud-palette-background-grey);">
                             <MudText Typo="Typo.subtitle1" Class="mb-3">Logo</MudText>
-                            @if (!string.IsNullOrWhiteSpace(logoPreview))
+                            @if (!string.IsNullOrWhiteSpace(logoPreview) || !string.IsNullOrWhiteSpace(organization.LogoImageKey))
                             {
                                 <MudStack Row AlignItems="AlignItems.Center" Spacing="3">
-                                    <MudImage Src="@logoPreview"
-                                              Alt="Organization Logo"
-                                              Style="width: 120px; height: 120px; object-fit: cover; border-radius: 8px;" />
+                                    @if (!string.IsNullOrEmpty(organization.LogoImageKey))
+                                    {
+                                        <S3Image ImageKey="@organization.LogoImageKey"
+                                                Alt="Organization Logo"
+                                                ObjectFit="cover"
+                                                BorderRadius="8px"
+                                                ContainerStyle="width: 120px; height: 120px;" />
+                                    }
+                                    else if (!string.IsNullOrEmpty(logoPreview))
+                                    {
+                                        <MudImage Src="@logoPreview"
+                                                  Alt="Organization Logo"
+                                                  Style="width: 120px; height: 120px; object-fit: cover; border-radius: 8px;" />
+                                    }
                                     <MudText Typo="Typo.caption" Color="Color.Secondary">
                                         Dit is het logo dat voor uw organisatie wordt gebruikt.
                                     </MudText>
@@ -512,34 +499,17 @@
         }
     }
 
+    // Logo handling is now done by the ImageUpload component
+    // These methods can be removed or kept for backward compatibility
     private async Task OnLogoSelected(IBrowserFile? file)
     {
-        if (file != null)
-        {
-            if (file.Size > 2 * 1024 * 1024)
-            {
-                Console.WriteLine("Bestandsgrootte moet minder dan 2MB zijn.");
-                return;
-            }
-
-            var allowedTypes = new[] { "image/jpeg", "image/png", "image/gif" };
-            if (!allowedTypes.Contains(file.ContentType))
-            {
-                Console.WriteLine("Alleen JPG, PNG en GIF zijn toegestaan.");
-                return;
-            }
-
-            using var stream = file.OpenReadStream(maxAllowedSize: 2 * 1024 * 1024);
-            using var memoryStream = new MemoryStream();
-            await stream.CopyToAsync(memoryStream);
-
-            var base64 = Convert.ToBase64String(memoryStream.ToArray());
-            logoPreview = $"data:{file.ContentType};base64,{base64}";
-        }
+        // This is now handled by ImageUpload component
+        // Kept for backward compatibility if needed
     }
 
     private Task RemoveLogo()
     {
+        // This is now handled by ImageUpload component
         logoPreview = string.Empty;
         return Task.CompletedTask;
     }

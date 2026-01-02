@@ -115,9 +115,20 @@
                             <MudCard Elevation="3" Class="h-100 d-flex flex-column">
                                 <MudCardHeader>
                                     <CardHeaderAvatar>
-                                        <MudAvatar Color="@GetRandomColor(org.FullName)" Variant="Variant.Filled">
-                                            @org.FullName.Substring(0, 1).ToUpper()
-                                        </MudAvatar>
+                                        @if (!string.IsNullOrEmpty(org.LogoImageKey))
+                                        {
+                                            <S3Image ImageKey="@org.LogoImageKey"
+                                                    Alt="@org.FullName Logo"
+                                                    ObjectFit="cover"
+                                                    BorderRadius="50%"
+                                                    ContainerStyle="width: 40px; height: 40px;" />
+                                        }
+                                        else
+                                        {
+                                            <MudAvatar Color="@GetRandomColor(org.FullName)" Variant="Variant.Filled">
+                                                @org.FullName.Substring(0, 1).ToUpper()
+                                            </MudAvatar>
+                                        }
                                     </CardHeaderAvatar>
                                     <CardHeaderContent>
                                         <MudText Typo="Typo.h6" Class="text-truncate">@org.FullName</MudText>

@@ -143,7 +143,17 @@ p{ line-height: 1.6; }
             <!-- HERO -->
             <MudItem xs="12">
                 <div class="hero">
-                    <img src="@($"https://dummyimage.com/1600x900/{GetEventColor()}/ffffff&text={Uri.EscapeDataString(program.Title)}")" alt="@program.Title" />
+                    @if (!string.IsNullOrEmpty(program.ImageKey))
+                    {
+                        <S3Image ImageKey="@program.ImageKey" 
+                                Alt="@program.Title"
+                                ObjectFit="cover"
+                                ContainerStyle="width: 100%; height: 320px;" />
+                    }
+                    else
+                    {
+                        <img src="@($"https://dummyimage.com/1600x900/{GetEventColor()}/ffffff&text={Uri.EscapeDataString(program.Title)}")" alt="@program.Title" />
+                    }
                     <div class="hero-content">
                         <div class="hero-chips">
                             <MudChip T="string" 

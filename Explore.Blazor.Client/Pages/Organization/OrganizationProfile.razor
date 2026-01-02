@@ -134,7 +134,20 @@
                 <div class="org-header">
                     <!-- Avatar -->
                     <div class="org-avatar">
-                        <MudImage Src="https://via.placeholder.com/240x240/2196F3/FFFFFF?text=ORG" Alt="Organization Logo" Style="width:100%; height:100%; object-fit:cover;" />
+                        @if (!string.IsNullOrEmpty(_organization.LogoImageKey))
+                        {
+                            <S3Image ImageKey="@_organization.LogoImageKey"
+                                    Alt="@_organization.FullName Logo"
+                                    ObjectFit="cover"
+                                    BorderRadius="16px"
+                                    ContainerStyle="width: 100%; height: 100%;" />
+                        }
+                        else
+                        {
+                            <MudImage Src="https://via.placeholder.com/240x240/2196F3/FFFFFF?text=ORG" 
+                                     Alt="Organization Logo" 
+                                     Style="width:100%; height:100%; object-fit:cover;" />
+                        }
                     </div>
 
                     <!-- Name + Verified + Stats -->
