@@ -1,8 +1,8 @@
-# ISLAMU Explore
+# ISLAMU Event
 
-# Local & Digital Islamic Event Explorer 
+Event Platform & Management System
 
-This is the repository for the ISLAMU Explore Webapp!
+ISLAMU Event is an Event Pltform that both Allows for Exploration of the local and digital Events that are coming and Allows Event Organizators to manage Events and Increase visibility.
 
 Give it a star ⭐️
 
@@ -16,23 +16,6 @@ Give it a star ⭐️
 [![Discussions](https://img.shields.io/github/discussions/islamu-ngo/Explore?color=594ae2&logo=github&style=flat-square)](https://github.com/islamu-ngo/Explore/discussions)
 [![Discord](https://img.shields.io/discord/1357505436479131668?color=%237289da&label=Discord&logo=discord&logoColor=%237289da&style=flat-square)](https://discord.gg/wrkY824Yv5)
 
-## Why Use ISLAMU Explore ?
-ISLAMU Explore is an ambitious Islamic Program (Event, Education...) Explorer that both Allows Muslims to explore the local and digital Programs that are coming and Allows Program Organizators to Increase their visibility.
-
-**🌐 [Documentation]() (TODO)**
-
-🎨 Beautiful User Interface (UI) for the best User Experience (UX), Dark/White Themes.
-
-💻 Fully Free & Open Source.
-
-📱 PWA (Progressive Web App) for seamless user experience.
-
-🌎 Multiple Language Support (TODO English, French and Arabic).
-
-📖 Rich documentation. (TODO).
-
-🚀 Build in Public! (Notes & more coming soon).
-
 ## Roadmap
 
 [Roadmap Kanban View](https://sites.plane.so/views/b8b7d9fced694f5a9d9a546e9d40d988): All the Work Items, go vote, comment and more!
@@ -41,22 +24,28 @@ ISLAMU Explore is an ambitious Islamic Program (Event, Education...) Explorer th
 
 ## Community
 
-Join the ISLAMU Explore community on [Discord server](https://discord.gg/wrkY824Yv5) and our [GitHub Discussions](https://github.com/islamu-ngo/Explore/discussions). We follow a [Code of Conduct](CODE_OF_CONDUCT.md) in all our community channels.
+Join the ISLAMU community on [Discord server](https://discord.gg/wrkY824Yv5) and our [GitHub Discussions](https://github.com/islamu-ngo/Explore/discussions). We follow a [Code of Conduct](CODE_OF_CONDUCT.md) in all our community channels.
 
 Feel free to ask questions, report bugs, participate in discussions, share ideas, request features, or showcase. We’d love to hear from you!
 
 ## 🛡️ Security
 
-If you discover a security vulnerability in ISLAMU Explore, please report it responsibly instead of opening a public issue. We take all legitimate reports seriously and will investigate them promptly. See [Security policy](SECURITY-POLICY.md) for more info.
+If you discover a security vulnerability in ISLAMU Event, please report it responsibly instead of opening a public issue. We take all legitimate reports seriously and will investigate them promptly. See [Security policy](SECURITY-POLICY.md) for more info.
 
 To disclose any security issues, please email us at contact@openislamu.org.
 
 ## 🤝 Contributing
 
-There are many ways you can contribute to ISLAMU Explore:
+There are many ways you can contribute to ISLAMU Event:
 
 - Submit a bug report, send feedback and trough GitHub's Issues
 - Open a Pull Request
+
+1. Fork it!
+2. Create your feature branch (git checkout -b feature/foobar)
+3. Commit your changes (git commit -am'Add some foobar')
+4. Push to the branch (git push origin feature/foobar)
+5. Create a new Pull Request
 
 please read **[Contribution Guidlines](https://sites.plane.so/pages/b957e6c5278845feac5557d22bd54756)** for details on the process for submitting pull requests to us.
   
@@ -76,20 +65,17 @@ I am deeply grateful to all our amazing contributors!
   
 - [Keycloak](https://www.keycloak.org/): An Open Source Identity and Access Management Provider.
 - [Cerbos](https://www.cerbos.dev/): An Open Source Policy Decision Point.
+- [Svix](https://www.svix.com/): An Open Source Webhooks Service.
 - [Infisical](https://infisical.com/): An Open Source Secret Management Platform.
 - [MudBlazor](https://www.mudblazor.com/): An Open Source Blazor UI library that simplifies the creation of Beautifull Websites/webapps.
-- [MudBlocks](https://mudblocks.cc/): An Open Source collection of MudBlazor Components.
 - [Penpot](https://penpot.app/): An Open Source Design Tool.
-- [ASP.NET Core](https://dotnet.microsoft.com/en-us/apps/aspnet): An Open Source Framework for building Web Apps and Services with .NET and C#.
-- [PostgreSQL](https://www.postgresql.org/): An Open Source Relational Database.
 - [Plane](https://plane.so/): An Open Source Project Management Platform that unifies projects, knowledge and agents with All-in-one Workspace: Projects, Wiki & AI.
 - [Coolify](https://coolify.io/): An Open Source Platform as a Service, alternative to Vercel, Heroku, Netlify and Railway for easy deploying to your own servers.
 - [Kener](https://kener.ing/): An Open Source Status Page.
 
 ## ISLAMU Solutions
 
-- [Explore](https://github.com/islamu-ngo/explore): Local & Digital Islamic Event Explorer
-- [Identity](https://github.com/islamu-ngo/identity): Centralized Authentication for ISLAMU Solutions
+- [ISLAMU Event](https://github.com/islamu-ngo/explore): Event Platform & Management System.
 
 ## Contact
 

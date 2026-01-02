@@ -57,12 +57,7 @@ namespace Explore.Application.Features.Events.Handlers.Commands
             }
 
             var @event = _mapper.Map<Event>(request.EventDto);
-            @event.ProgramTypeId = (int)ProgramTypeEnum.Event;
             @event.TotalViews = 0;
-            
-            // Ensure dates are UTC for PostgreSQL
-            @event.StartDate = @event.StartDate.ToUniversalTime();
-            @event.EndDate = @event.EndDate.ToUniversalTime();
 
             @event = await _eventRepository.Create(@event);
 
