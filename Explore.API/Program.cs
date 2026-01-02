@@ -27,6 +27,23 @@ var authority = builder.Configuration["Keycloak:Authority"];
 var realm = builder.Configuration["Keycloak:Realm"];
 var audience = builder.Configuration["Keycloak:Audience"];
 
+// 1. Lire les variables d’environnement S3
+var s3Region = builder.Configuration["ISLAMU_EVENT_REGION"]; // si tu en as une
+var s3BucketName = builder.Configuration["ISLAMU_EVENT_PRIVATE_BUCKET_NAME"];
+var s3AccessKeyId = builder.Configuration["ISLAMU_EVENT_PRIVATE_ACCESS_KEY_ID"];
+var s3SecretAccessKey = builder.Configuration["ISLAMU_EVENT_PRIVATE_SECRET_ACCESS_KEY_ID"];
+var s3Endpoint = builder.Configuration["ISLAMU_EVENT_S3_ENDPOINT"];
+
+// 2. Ajouter une source de configuration en mémoire qui expose une section "S3Settings"
+var s3SettingsDict = new Dictionary<string, string?>
+{
+    ["S3Settings:Region"] = s3Region,
+    ["S3Settings:BucketName"] = s3BucketName,
+    ["S3Settings:AccessKeyId"] = s3AccessKeyId,
+    ["S3Settings:SecretAccessKey"] = s3SecretAccessKey,
+    ["S3Settings:Endpoint"] = s3Endpoint
+};
+
 //AddSwaggerDoc(builder.Services); moved to AddSwaggerGenWithAuth extension method
 
 // Add services to the container.

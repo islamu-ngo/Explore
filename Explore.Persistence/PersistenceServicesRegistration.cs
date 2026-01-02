@@ -47,9 +47,9 @@ namespace Explore.Persistence
             services.AddScoped<IOrganizationMemberRepository, OrganizationMemberRepository>();
             services.AddScoped<IOrganizationReviewRepository, OrganizationReviewRepository>();
             services.AddScoped<IProgramRepository, ProgramRepository>();
-            services.AddScoped<IProgramRegistrationRepository, ProgramRegistrationRepository>();
+            services.AddScoped<IProgramRegistrationRepository, EventRegistrationRepository>();
             services.AddScoped<IProgramTypeRepository, ProgramTypeRepository>();
-            services.AddScoped<IStatusTypeRepository, StatusTypeRepository>();
+            services.AddScoped<IApprovalStatusRepository, ApprovalStatusRepository>();
             services.AddScoped<IStorageObjectRepository, StorageObjectRepository>();
             services.AddScoped<IUserRepository, UserRepository>();
 

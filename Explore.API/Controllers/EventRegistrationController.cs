@@ -10,12 +10,12 @@ namespace Explore.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class ProgramRegistrationController : ControllerBase
+    public class EventRegistrationController : ControllerBase
     {
         private readonly IMediator _mediator;
-        private readonly ILogger<ProgramRegistrationController> _logger;
+        private readonly ILogger<EventRegistrationController> _logger;
 
-        public ProgramRegistrationController(IMediator mediator, ILogger<ProgramRegistrationController> logger)
+        public EventRegistrationController(IMediator mediator, ILogger<EventRegistrationController> logger)
         {
             _mediator = mediator;
             _logger = logger;

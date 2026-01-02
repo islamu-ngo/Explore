@@ -14,10 +14,10 @@ namespace Explore.Application.Features.Organizations.Handlers.Commands
     public class UpdateOrganizationCommandHandler : IRequestHandler<UpdateOrganizationCommand, Unit>
     {
         private readonly IOrganizationRepository _organizationRepository;
-        private readonly IStatusTypeRepository _statusTypeRepository;
+        private readonly IApprovalStatusRepository _statusTypeRepository;
         private readonly IMapper _mapper;
 
-        public UpdateOrganizationCommandHandler(IOrganizationRepository organizationRepository, IStatusTypeRepository statusTypeRepository, IMapper mapper)
+        public UpdateOrganizationCommandHandler(IOrganizationRepository organizationRepository, IApprovalStatusRepository statusTypeRepository, IMapper mapper)
         {
             _organizationRepository = organizationRepository;
             _statusTypeRepository = statusTypeRepository;

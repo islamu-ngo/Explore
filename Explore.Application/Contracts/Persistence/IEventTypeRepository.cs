@@ -7,7 +7,6 @@ namespace Explore.Application.Contracts.Persistence
 {
     public interface IEventTypeRepository : IGenericRepository<EventType, int>
     {
-        Task<EventType> GetEventTypeWithDetails(int id);
-        Task<List<EventType>> GetEventTypesWithDetails();
+        
     }
 }

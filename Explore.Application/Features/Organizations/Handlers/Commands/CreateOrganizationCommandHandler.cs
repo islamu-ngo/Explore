@@ -38,7 +38,7 @@ namespace Explore.Application.Features.Organizations.Handlers.Commands
 
             var organization = _mapper.Map<Organization>(request.OrganizationDto);
 
-            organization.ApprovalStatusId = (int)StatusTypeEnum.Pending;
+            organization.ApprovalStatusId = (int)ApprovalStatusEnum.Pending;
 
             // why is the below code adding to the members list inside organization domain class? that list should be readonly, add directly inside organizationmember. also no owner role, just admin.
             // Add creator as Owner

@@ -131,6 +131,7 @@ string postgresPublicUrl = postgresqlSecrets.TryGetValue("POSTGRESQL_PUBLIC_URL"
     : "defaultconnectionstring";
 
 
+
 var exploreAPI = builder.AddProject<Projects.Explore_API>("explore-api")
     .WithEnvironment("Keycloak__Authority", authority)
     .WithEnvironment("Keycloak__Audience", "explore-api")

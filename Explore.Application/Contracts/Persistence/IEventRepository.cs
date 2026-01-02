@@ -8,8 +8,8 @@ namespace Explore.Application.Contracts.Persistence
 {
     public interface IEventRepository : IGenericRepository<Event, Guid>
     {
-        Task<EventDto> GetEventWithDetails(Guid id);
-        Task<List<EventListDto>> GetEventsWithDetails();
-        Task<List<EventListDto>> GetMyEventsWithDetails(string userId);
+        Task<Event> GetEventWithDetails(Guid id);
+        Task<List<Event>> GetEventsWithDetails();
+        Task<List<Event>> GetMyEventsWithDetails(string userId);
     }
 }

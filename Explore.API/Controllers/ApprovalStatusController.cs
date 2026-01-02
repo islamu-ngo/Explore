@@ -10,12 +10,12 @@ namespace Explore.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class StatusTypeController : ControllerBase
+    public class ApprovalStatusController : ControllerBase
     {
         private readonly IMediator _mediator;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public StatusTypeController(IMediator mediator, IHttpContextAccessor httpContextAccessor)
+        public ApprovalStatusController(IMediator mediator, IHttpContextAccessor httpContextAccessor)
         {
             _mediator = mediator;
             _httpContextAccessor = httpContextAccessor;

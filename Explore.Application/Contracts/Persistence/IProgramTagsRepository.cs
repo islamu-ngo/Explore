@@ -6,7 +6,7 @@ using Explore.Domain;
 
 namespace Explore.Application.Contracts.Persistence
 {
-    public interface IProgramTagsRepository : IGenericRepository<ProgramTags, Guid>
+    public interface IProgramTagsRepository : IGenericRepository<EventTags, Guid>
     {
         Task<List<ProgramDto>> GetProgramsByTag(Guid tagId);
         Task<List<Tag>> GetTagsByProgram(Guid programId);

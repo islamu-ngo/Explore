@@ -6,8 +6,8 @@ namespace Explore.Domain
     {
         public Guid Id { get; set; }
         public Guid OrganizationId { get; set; }
-        public Guid ProgramId { get; set; }
-        public virtual Program? Program { get; set; }
+        public Guid EventId { get; set; }
+        public virtual Event? Event { get; set; }
         public Guid UserId { get; set; }
         public string ReviewerName { get; set; } = string.Empty;
         public int Rating { get; set; }

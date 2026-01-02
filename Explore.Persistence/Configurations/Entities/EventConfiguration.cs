@@ -12,8 +12,10 @@ namespace Explore.Persistence.Configurations.Entities
     {
         public void Configure(EntityTypeBuilder<Event> builder)
         {
-            builder.Property(e => e.ProgramTypeId)
-                .HasDefaultValue((int)ProgramTypeEnum.Event);
+            builder.UseTptMappingStrategy();
+
+            builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
+            builder.Property(e => e.TotalViews).HasDefaultValue(0);
         }
     }
 }

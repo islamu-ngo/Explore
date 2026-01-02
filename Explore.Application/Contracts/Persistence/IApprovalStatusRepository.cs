@@ -5,7 +5,7 @@ using Explore.Domain;
 
 namespace Explore.Application.Contracts.Persistence
 {
-    public interface IAudienceGenderRepository : IGenericRepository<AudienceGender, int>
+    public interface IApprovalStatusRepository : IGenericRepository<ApprovalStatus, int>
     {
         
     }

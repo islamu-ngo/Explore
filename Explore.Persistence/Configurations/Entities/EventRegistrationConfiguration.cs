@@ -7,14 +7,11 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Explore.Persistence.Configurations.Entities
 {
-    public class ProgramConfiguration : IEntityTypeConfiguration<Program>
+    public class EventRegistrationConfiguration : IEntityTypeConfiguration<EventRegistration>
     {
-        public void Configure(EntityTypeBuilder<Program> builder)
+        public void Configure(EntityTypeBuilder<EventRegistration> builder)
         {
-            builder.UseTptMappingStrategy();
-
             builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
-            builder.Property(e => e.TotalViews).HasDefaultValue(0);
         }
     }
 }

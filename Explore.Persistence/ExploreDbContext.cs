@@ -56,17 +56,13 @@ namespace Explore.Persistence
         public DbSet<AudienceAge> AudienceAges { get; set; }
         public DbSet<AudienceGender> AudienceGenders { get; set; }
         public DbSet<Category> Categories { get; set; }
-        public DbSet<Education> Educations { get; set; }
-        public DbSet<EducationType> EducationTypes { get; set; }
         public DbSet<Event> Events { get; set; }
         public DbSet<EventType> EventTypes { get; set; }
         public DbSet<Organization> Organizations { get; set; }
         public DbSet<OrganizationMember> OrganizationMembers { get; set; }
-        public DbSet<Program> Programs { get; set; }
-        public DbSet<ProgramCategories> ProgramCategories { get; set; } 
-        public DbSet<ProgramRegistration> ProgramRegistrations { get; set; }
-        public DbSet<ProgramTags> ProgramTags { get; set; }
-        public DbSet<ProgramType> ProgramTypes { get; set; }
+        public DbSet<EventCategories> ProgramCategories { get; set; } 
+        public DbSet<EventRegistration> EventRegistrations { get; set; }
+        public DbSet<EventTags> ProgramTags { get; set; }
         public DbSet<ApprovalStatus> ApprovalStatuses { get; set; }
         public DbSet<StorageObject> Files { get; set; }
         public DbSet<Tag> Tags { get; set; }

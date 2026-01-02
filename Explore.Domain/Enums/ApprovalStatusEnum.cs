@@ -4,10 +4,10 @@ using System.Text;
 
 namespace Explore.Domain.Enums
 {
-    public enum EducationTypeEnum
+    public enum ApprovalStatusEnum
     {
-        School = 1,
-        Institut = 2,
-        Course = 3
+        Pending = 1,
+        Approved = 2,
+        Rejected = 3
     }
 }

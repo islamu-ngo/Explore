@@ -8,9 +8,9 @@ namespace Explore.Application.DTOs.Organization.Validators
 {
     public class UpdateOrganizationApprovalStatusDtoValidator : AbstractValidator<UpdateOrganizationApprovalStatusDto>
     {
-        private readonly IStatusTypeRepository _statusTypeRepository;
+        private readonly IApprovalStatusRepository _statusTypeRepository;
 
-        public UpdateOrganizationApprovalStatusDtoValidator(IStatusTypeRepository statusTypeRepository)
+        public UpdateOrganizationApprovalStatusDtoValidator(IApprovalStatusRepository statusTypeRepository)
         {
             _statusTypeRepository = statusTypeRepository;
 
