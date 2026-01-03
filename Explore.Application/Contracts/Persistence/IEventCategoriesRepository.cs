@@ -5,7 +5,7 @@ using Explore.Domain;
 
 namespace Explore.Application.Contracts.Persistence
 {
-    public interface IProgramCategoriesRepository : IGenericRepository<EventCategories, Guid>
+    public interface IEventCategoriesRepository : IGenericRepository<EventCategories, Guid>
     {
         Task<List<Program>> GetProgramsByCategory(Guid categoryId);
         Task<List<Category>> GetCategoriesByProgram(Guid programId);

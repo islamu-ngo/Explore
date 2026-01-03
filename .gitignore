@@ -6,6 +6,19 @@
 # dotenv files
 .env
 
+.env.local
+.env.*.local
+config.ini
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Database
+*.sqlite
+*.db
+
 # User-specific files
 *.rsuser
 *.suo

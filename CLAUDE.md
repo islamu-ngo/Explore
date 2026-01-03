@@ -66,3 +66,12 @@ dotnet test tests/Explore.Application.Tests/
 | Blazor | `https://localhost:7002` |
 | Scalar API Docs | `https://localhost:7001/scalar/v1` |
 | Swagger UI | `https://localhost:7001/swagger` |
+
+Always use Context7 MCP when I need library/API documentation, code generation, setup or configuration steps without me having to explicitly ask.
+
+Always use sequential-thinking MCP when I need to:
+- Break down complex problems into manageable steps
+- Revise and refine thoughts as understanding deepens
+- Branch into alternative paths of reasoning
+- Adjust the total number of thoughts dynamically
+- Generate and verify solution hypotheses
