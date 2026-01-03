@@ -1,0 +1,13 @@
+{
+  "Project": "ISLAMU Event",
+  "Stack": ".NET 10 + Blazor + Aspire",
+  "RootPath": "C:\\ISLAMU\\GitHub\\Explore",
+  "ActiveLayers": {
+    "Frontend": "Active (MudBlazor)",
+    "Backend": "Active (ASP.NET)",
+    "Domain": "Active (DDD)",
+    "Infra": "Active (EF Core)"
+  },
+  "RecentFocus": "General",
+  "LastUpdate": "2026-01-03 20:50:46"
+}

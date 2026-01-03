@@ -1,241 +1,203 @@
 {
-    "version": "1.0",
-    "description": "Skill activation triggers for Claude Code. Controls when skills automatically suggest or block actions.",
-    "skills": {
-        "skill-developer": {
-            "type": "domain",
-            "enforcement": "suggest",
-            "priority": "high",
-            "description": "Meta-skill for creating and managing Claude Code skills",
-            "promptTriggers": {
-                "keywords": [
-                    "skill system",
-                    "create skill",
-                    "add skill",
-                    "skill triggers",
-                    "skill rules",
-                    "hook system",
-                    "skill development",
-                    "skill-rules.json"
-                ],
-                "intentPatterns": [
-                    "(how do|how does|explain).*?skill",
-                    "(create|add|modify|build).*?skill",
-                    "skill.*?(work|trigger|activate|system)"
-                ]
-            }
-        },
-        "backend-dev-guidelines": {
-            "type": "domain",
-            "enforcement": "suggest",
-            "priority": "high",
-            "description": "Backend development patterns for Node.js/Express/TypeScript",
-            "promptTriggers": {
-                "keywords": [
-                    "backend",
-                    "backend development",
-                    "microservice",
-                    "controller",
-                    "service",
-                    "repository",
-                    "route",
-                    "routing",
-                    "express",
-                    "API",
-                    "endpoint",
-                    "middleware",
-                    "validation",
-                    "Zod",
-                    "Prisma",
-                    "database access",
-                    "BaseController",
-                    "dependency injection",
-                    "unifiedConfig",
-                    "configuration"
-                ],
-                "intentPatterns": [
-                    "(create|add|implement|build).*?(route|endpoint|API|controller|service|repository)",
-                    "(fix|handle|debug).*?(error|exception|backend)",
-                    "(add|implement).*?(middleware|validation|error.*?handling)",
-                    "(organize|structure|refactor).*?(backend|service|API)",
-                    "(how to|best practice).*?(backend|route|controller|service)"
-                ]
-            },
-            "fileTriggers": {
-                "pathPatterns": [
-                    "blog-api/src/**/*.ts",
-                    "auth-service/src/**/*.ts",
-                    "notifications-service/src/**/*.ts",
-                    "backend/**/*.ts",
-                    "api/**/*.ts",
-                    "server/**/*.ts",
-                    "services/**/*.ts"
-                ],
-                "pathExclusions": [
-                    "**/*.test.ts",
-                    "**/*.spec.ts"
-                ],
-                "contentPatterns": [
-                    "router\\.",
-                    "app\\.(get|post|put|delete|patch)",
-                    "export.*Controller",
-                    "export.*Service",
-                    "prisma\\."
-                ]
-            }
-        },
-        "frontend-dev-guidelines": {
-            "type": "guardrail",
-            "enforcement": "block",
-            "priority": "high",
-            "description": "React/TypeScript best practices including MUI v7 compatibility",
-            "promptTriggers": {
-                "keywords": [
-                    "component",
-                    "react component",
-                    "UI",
-                    "interface",
-                    "page",
-                    "modal",
-                    "dialog",
-                    "form",
-                    "MUI",
-                    "Material-UI",
-                    "Grid",
-                    "styling",
-                    "frontend",
-                    "React"
-                ],
-                "intentPatterns": [
-                    "(create|add|make|build|update|modify|edit).*?(component|UI|page|modal|dialog|form)",
-                    "(how to|best practice).*?(component|react|MUI)",
-                    "(style|design|layout).*?(component|UI)"
-                ]
-            },
-            "fileTriggers": {
-                "pathPatterns": [
-                    "frontend/src/**/*.tsx",
-                    "frontend/src/**/*.ts",
-                    "client/src/**/*.tsx",
-                    "client/src/**/*.ts",
-                    "src/**/*.tsx"
-                ],
-                "pathExclusions": [
-                    "**/*.test.tsx",
-                    "**/*.test.ts",
-                    "**/*.spec.tsx",
-                    "**/*.spec.ts",
-                    "**/*.styles.ts",
-                    "**/vite.config.ts",
-                    "**/tsconfig.json"
-                ],
-                "contentPatterns": [
-                    "from '@mui/material';",
-                    "import.*Grid.*from.*@mui",
-                    "<Grid ",
-                    "Grid2",
-                    "Unstable_Grid",
-                    "makeStyles",
-                    "@material-ui/core"
-                ]
-            },
-            "blockMessage": "⚠️ BLOCKED - Frontend Best Practices Required\n\n📋 REQUIRED ACTION:\n1. Use Skill tool: 'frontend-dev-guidelines'\n2. Review MUI v7 patterns (Grid uses size={{}} prop, NOT xs/sm props)\n3. Check React/TypeScript best practices\n4. Use proper styling patterns\n5. Then retry this edit\n\nReason: Enforce MUI v7 compatibility and React best practices\nFile: {file_path}\n\n💡 TIP: Add '// @skip-validation' comment to skip future checks",
-            "skipConditions": {
-                "sessionSkillUsed": true,
-                "fileMarkers": [
-                    "@skip-validation"
-                ],
-                "envOverride": "SKIP_FRONTEND_GUIDELINES"
-            }
-        },
-        "route-tester": {
-            "type": "domain",
-            "enforcement": "suggest",
-            "priority": "high",
-            "description": "Testing authenticated API routes with JWT cookie-based auth",
-            "promptTriggers": {
-                "keywords": [
-                    "test route",
-                    "test endpoint",
-                    "test API",
-                    "route testing",
-                    "API testing",
-                    "authenticated route",
-                    "JWT testing",
-                    "cookie auth",
-                    "test with auth"
-                ],
-                "intentPatterns": [
-                    "(test|debug|verify).*?(route|endpoint|API)",
-                    "(how to|how do I).*?test.*?(route|endpoint|API)",
-                    "test.*?(authenticated|auth|JWT|cookie)"
-                ]
-            },
-            "fileTriggers": {
-                "pathPatterns": [
-                    "**/routes/**/*.ts",
-                    "**/test-*.js",
-                    "**/test-*.ts"
-                ],
-                "contentPatterns": [
-                    "router\\.(get|post|put|delete|patch)",
-                    "app\\.(get|post|put|delete|patch)"
-                ]
-            }
-        },
-        "error-tracking": {
-            "type": "domain",
-            "enforcement": "suggest",
-            "priority": "high",
-            "description": "Sentry error tracking and performance monitoring patterns",
-            "promptTriggers": {
-                "keywords": [
-                    "error handling",
-                    "exception",
-                    "sentry",
-                    "error tracking",
-                    "captureException",
-                    "monitoring",
-                    "performance tracking"
-                ],
-                "intentPatterns": [
-                    "(add|create|implement|setup).*?(error handling|sentry|error tracking)",
-                    "(fix|handle|catch).*?(error|exception)",
-                    "(how to|best practice).*?(error|sentry|monitoring)"
-                ]
-            },
-            "fileTriggers": {
-                "pathPatterns": [
-                    "**/instrument.ts",
-                    "**/sentry*.ts",
-                    "**/*Controller.ts",
-                    "**/*Service.ts"
-                ],
-                "contentPatterns": [
-                    "@sentry",
-                    "Sentry\\.",
-                    "captureException",
-                    "captureMessage"
-                ]
-            }
-        }
+  "version": "1.0",
+  "description": "Skill activation triggers for ASP.NET Core & Blazor Clean Architecture context.",
+  "skills": {
+    "clean-architecture-rules": {
+      "type": "guardrail",
+      "enforcement": "block",
+      "priority": "critical",
+      "description": "Enforces Clean Architecture dependency rules (Domain -> Application -> Infrastructure -> API)",
+      "promptTriggers": {
+        "keywords": [
+          "dependency",
+          "reference",
+          "architecture",
+          "layer",
+          "clean architecture",
+          "domain logic",
+          "ef core",
+          "dbcontext"
+        ],
+        "intentPatterns": [
+          "(add|create|reference).*?(dependency|project|layer)",
+          "(where).*?(logic|entity|dto).*?(go|belong)",
+          "fix.*?(dependency|reference).*?error"
+        ]
+      },
+      "fileTriggers": {
+        "pathPatterns": ["**/*.Domain/**/*.cs", "**/*.Application/**/*.cs"],
+        "contentPatterns": [
+          "using.*Infrastructure",
+          "using.*Api",
+          "using.*Microsoft.AspNetCore.Mvc"
+        ]
+      },
+      "blockMessage": "⚠️ BLOCKED - Clean Architecture Violation\n\n📋 VIOLATION DETECTED:\nIt appears you are trying to add a reference that violates the Dependency Rule.\n\n1. **Domain** cannot reference ANYTHING.\n2. **Application** can only reference **Domain**.\n3. **Infrastructure** references **Application** and **Domain**.\n4. **API** references **Application** and **Infrastructure**.\n\nREQUIRED ACTION:\n1. Use Skill: `clean-architecture-rules` to review where code belongs.\n2. Move logic to the correct layer (e.g., interfaces in Application, implementation in Infra).",
+      "skipConditions": {
+        "sessionSkillUsed": true,
+        "fileMarkers": ["@skip-architecture-check"]
+      }
     },
-    "notes": {
-        "enforcement_types": {
-            "suggest": "Skill suggestion appears but doesn't block execution",
-            "block": "Requires skill to be used before proceeding (guardrail)",
-            "warn": "Shows warning but allows proceeding"
-        },
-        "priority_levels": {
-            "critical": "Highest - Always trigger when matched",
-            "high": "Important - Trigger for most matches",
-            "medium": "Moderate - Trigger for clear matches",
-            "low": "Optional - Trigger only for explicit matches"
-        },
-        "customization": {
-            "pathPatterns": "Adjust to match your project structure (blog-api, auth-service, etc.)",
-            "keywords": "Add domain-specific terms relevant to your project",
-            "intentPatterns": "Use regex for flexible user intent matching"
-        }
+    "cqrs-mediatr-guidelines": {
+      "type": "domain",
+      "enforcement": "suggest",
+      "priority": "high",
+      "description": "Best practices for CQRS commands/queries and FluentValidation",
+      "promptTriggers": {
+        "keywords": [
+          "command",
+          "query",
+          "handler",
+          "mediatr",
+          "cqrs",
+          "validation",
+          "validator",
+          "pipeline",
+          "behavior"
+        ],
+        "intentPatterns": [
+          "(create|add|implement).*?(feature|endpoint|use case)",
+          "(handle|validate).*?(request|command|query)",
+          "(how to).*?(mediatr|cqrs)"
+        ]
+      },
+      "fileTriggers": {
+        "pathPatterns": [
+          "**/*.Application/**/*Handler.cs",
+          "**/*.Application/**/*Command.cs",
+          "**/*.Application/**/*Query.cs",
+          "**/*.Application/**/*Validator.cs"
+        ],
+        "contentPatterns": [
+          "IRequest",
+          "IRequestHandler",
+          "AbstractValidator",
+          "FluentValidation"
+        ]
+      }
+    },
+    "blazor-mudblazor-guidelines": {
+      "type": "domain",
+      "enforcement": "suggest",
+      "priority": "high",
+      "description": "Blazor component best practices and MudBlazor usage",
+      "promptTriggers": {
+        "keywords": [
+          "blazor",
+          "component",
+          "razor",
+          "mudblazor",
+          "ui",
+          "page",
+          "dialog",
+          "render",
+          "parameter",
+          "eventcallback"
+        ],
+        "intentPatterns": [
+          "(create|fix|style).*?(component|page|ui|button|grid)",
+          "(how to).*?(blazor|mudblazor)",
+          "(render|lifecycle).*?(issue|bug)"
+        ]
+      },
+      "fileTriggers": {
+        "pathPatterns": ["**/*.razor", "**/*.razor.cs", "**/*.Client/**/*.cs"],
+        "contentPatterns": [
+          "<Mud",
+          "@page",
+          "@inject",
+          "Parameter",
+          "CascadingValue"
+        ]
+      }
+    },
+    "keycloak-auth-debugger": {
+      "type": "domain",
+      "enforcement": "suggest",
+      "priority": "medium",
+      "description": "Helper for debugging OIDC, Claims, and Keycloak BFF issues",
+      "promptTriggers": {
+        "keywords": [
+          "auth",
+          "authentication",
+          "authorization",
+          "keycloak",
+          "oidc",
+          "token",
+          "jwt",
+          "claim",
+          "role",
+          "policy",
+          "cookies",
+          "bff",
+          "yarp"
+        ],
+        "intentPatterns": [
+          "(login|logout|auth).*?(issue|fail|error)",
+          "(check|verify|debug).*?(token|claim|role)",
+          "(configure).*?(keycloak|oidc)"
+        ]
+      },
+      "fileTriggers": {
+        "pathPatterns": [
+          "**/Program.cs",
+          "**/appsettings*.json",
+          "**/*Controller.cs"
+        ],
+        "contentPatterns": [
+          "AddAuthentication",
+          "AddKeycloak",
+          "Authorize",
+          "ClaimTypes",
+          "JwtBearer"
+        ]
+      }
+    },
+    "dotnet-efcore-guidelines": {
+      "type": "domain",
+      "enforcement": "suggest",
+      "priority": "medium",
+      "description": "EF Core configuration, Migrations and Postgres patterns",
+      "promptTriggers": {
+        "keywords": [
+          "database",
+          "postgres",
+          "migration",
+          "dbcontext",
+          "entity",
+          "relationship",
+          "foreign key",
+          "index",
+          "seeding"
+        ],
+        "intentPatterns": [
+          "(add|modify).*?(table|column|entity)",
+          "(run|create|apply).*?(migration)",
+          "(configure).*?(db|context|connection)"
+        ]
+      },
+      "fileTriggers": {
+        "pathPatterns": [
+          "**/*.Infrastructure/**/*.cs",
+          "**/*DbContext.cs",
+          "**/*Configuration.cs"
+        ],
+        "contentPatterns": [
+          "DbSet<",
+          "IEntityTypeConfiguration",
+          "OnModelCreating",
+          "UseNpgsql"
+        ]
+      }
     }
+  },
+  "notes": {
+    "architecture_layers": {
+      "Domain": "Core logic, Entities, ValueObjects. No external deps.",
+      "Application": "Use Cases, Interfaces, DTOs. Depends on Domain.",
+      "Infrastructure": "Db, FileSys, API implementations. Depends on App/Domain.",
+      "API": "Controllers, SignalR. Entry point.",
+      "Blazor": "UI. Depends on Client SDKs or Shared DTOs."
+    }
+  }
 }

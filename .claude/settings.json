@@ -1,18 +1,15 @@
 {
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": [
-    "sequential-thinking",
-    "playwright"
-  ],
+  "enabledMcpjsonServers": ["sequential-thinking", "playwright", "context7"],
   "permissions": {
-    "allow": [
-      "Edit:*",
-      "Write:*",
-      "MultiEdit:*",
-      "NotebookEdit:*",
-      "Bash:*"
-    ],
+    "allow": ["Edit:*", "Write:*", "MultiEdit:*", "NotebookEdit:*", "Bash:*"],
     "defaultMode": "acceptEdits"
+  },
+  "commands": {
+    "build": "dotnet build",
+    "test": "dotnet test",
+    "format": "dotnet format",
+    "run": "dotnet run"
   },
   "hooks": {
     "UserPromptSubmit": [
@@ -20,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/skill-activation-prompt.sh"
+            "command": "dotnet .claude/hooks/SkillTrigger.cs"
           }
         ]
       }
@@ -31,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/post-tool-use-tracker.sh"
+            "command": "dotnet .claude/hooks/ContextTracker.cs"
           }
         ]
       }
@@ -41,14 +38,20 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/tsc-check.sh"
+            "command": "dotnet .claude/hooks/FormatCode.cs"
           },
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/trigger-build-resolver.sh"
+            "command": "dotnet .claude/hooks/BuildCheck.cs"
           }
         ]
       }
     ]
-  }
+  },
+  "trusted_domains": [
+    "localhost",
+    "github.com",
+    "islamu.ngo",
+    "event.islamu.ngo"
+  ]
 }

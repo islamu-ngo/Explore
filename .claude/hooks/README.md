@@ -1,93 +1,62 @@
-# Hooks
+Here is the refactored `README.md` tailored specifically for your **ASP.NET Core / .NET 10** project context on Windows.
 
-Claude Code hooks that enable skill auto-activation, file tracking, and validation.
+---
+
+# Hooks (.NET 10 / C#)
+
+Native C# hooks for Claude Code that enable Clean Architecture tracking, skill auto-activation, and build validation.
 
 ---
 
 ## What Are Hooks?
 
-Hooks are scripts that run at specific points in Claude's workflow:
-- **UserPromptSubmit**: When user submits a prompt
-- **PreToolUse**: Before a tool executes  
-- **PostToolUse**: After a tool completes
-- **Stop**: When user requests to stop
+Hooks are C# scripts that run at specific points in Claude's workflow:
+- **UserPromptSubmit**: Checks your prompt to suggest specialized Agents.
+- **PostToolUse**: Tracks which Clean Architecture layers (Domain, Infra, UI) are being modified.
+- **Stop**: Runs validation tasks like `dotnet build` or `dotnet format` when Claude finishes.
 
-**Key insight:** Hooks can modify prompts, block actions, and track state - enabling features Claude can't do alone.
+**Key insight:** Since this is a .NET 10 project, all hooks are written in **C#** and executed directly via the CLI, eliminating the need for Node.js or Bash scripts.
 
 ---
 
-## Essential Hooks (Start Here)
+## Essential Hooks
 
-### skill-activation-prompt (UserPromptSubmit)
+### 1. SkillTrigger.cs (UserPromptSubmit)
 
-**Purpose:** Automatically suggests relevant skills based on user prompts and file context
+**Purpose:** Automatically suggests relevant specialized agents based on keywords in your prompt.
 
 **How it works:**
-1. Reads `skill-rules.json`
-2. Matches user prompt against trigger patterns
-3. Checks which files user is working with
-4. Injects skill suggestions into Claude's context
+1. Reads the user's prompt from Stdin.
+2. Detects keywords like "controller" (suggests `auth-route-debugger`) or "razor" (suggests `frontend-error-fixer`).
+3. Injects suggestions directly into Claude's context.
 
-**Why it's essential:** This is THE hook that makes skills auto-activate.
-
-**Integration:**
-```bash
-# Copy both files
-cp skill-activation-prompt.sh your-project/.claude/hooks/
-cp skill-activation-prompt.ts your-project/.claude/hooks/
-
-# Make executable
-chmod +x your-project/.claude/hooks/skill-activation-prompt.sh
-
-# Install dependencies
-cd your-project/.claude/hooks
-npm install
-```
-
-**Add to settings.json:**
+**Configuration (`settings.json`):**
 ```json
 {
   "hooks": {
     "UserPromptSubmit": [
       {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/skill-activation-prompt.sh"
-          }
-        ]
+        "type": "command",
+        "command": "dotnet .claude/hooks/SkillTrigger.cs"
       }
     ]
   }
 }
 ```
 
-**Customization:** ✅ None needed - reads skill-rules.json automatically
-
 ---
 
-### post-tool-use-tracker (PostToolUse)
+### 2. ContextTracker.cs (PostToolUse)
 
-**Purpose:** Tracks file changes to maintain context across sessions
+**Purpose:** Tracks file changes to optimize the build process and maintain context.
 
 **How it works:**
-1. Monitors Edit/Write/MultiEdit tool calls
-2. Records which files were modified
-3. Creates cache for context management
-4. Auto-detects project structure (frontend, backend, packages, etc.)
+1. Monitors `Edit` and `Write` tool calls.
+2. Identifies the Clean Architecture layer (e.g., `Explore.Domain`, `Explore.Blazor`).
+3. Logs modified layers to `.claude/build-cache/`.
+4. Prepares targeted build commands (so we don't rebuild the whole solution if only a UI component changed).
 
-**Why it's essential:** Helps Claude understand what parts of your codebase are active.
-
-**Integration:**
-```bash
-# Copy file
-cp post-tool-use-tracker.sh your-project/.claude/hooks/
-
-# Make executable
-chmod +x your-project/.claude/hooks/post-tool-use-tracker.sh
-```
-
-**Add to settings.json:**
+**Configuration (`settings.json`):**
 ```json
 {
   "hooks": {
@@ -97,7 +66,7 @@ chmod +x your-project/.claude/hooks/post-tool-use-tracker.sh
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/post-tool-use-tracker.sh"
+            "command": "dotnet .claude/hooks/ContextTracker.cs"
           }
         ]
       }
@@ -106,58 +75,83 @@ chmod +x your-project/.claude/hooks/post-tool-use-tracker.sh
 }
 ```
 
-**Customization:** ✅ None needed - auto-detects structure
+---
+
+## Quality Assurance Hooks (Stop)
+
+These run when Claude finishes a task or asks for feedback.
+
+### 3. BuildCheck.cs
+
+**Purpose:** Verifies that the code compiles successfully.
+
+**Logic:**
+- Reads the cache created by `ContextTracker`.
+- Runs `dotnet build` on specific projects if possible, or the full Solution (`.sln`) as a fallback.
+- If the build fails, it captures errors for the `auto-error-resolver` agent.
+
+### 4. FormatCode.cs
+
+**Purpose:** Enforces C# coding standards.
+
+**Logic:**
+- Runs `dotnet format` on modified files.
+- Ensures braces, indentation, and imports match `.editorconfig`.
+
+**Configuration (`settings.json`):**
+```json
+{
+  "hooks": {
+    "Stop": [
+      {
+        "type": "command",
+        "command": "dotnet .claude/hooks/FormatCode.cs"
+      },
+      {
+        "type": "command",
+        "command": "dotnet .claude/hooks/BuildCheck.cs"
+      }
+    ]
+  }
+}
+```
 
 ---
 
-## Optional Hooks (Require Customization)
+## Setup & Installation
 
-### tsc-check (Stop)
+### 1. Prerequisites
+- **.NET 10 SDK** installed.
+- **PowerShell 7+** or CMD.
 
-**Purpose:** TypeScript compilation check when user stops
+### 2. Verify Script Permissions
+Ensure your `.cs` files are accessible.
 
-**⚠️ WARNING:** Configured for multi-service monorepo structure
+```powershell
+# Verify files exist
+Get-ChildItem .claude/hooks/*.cs
+```
 
-**Integration:**
+### 3. Usage
+Hooks run automatically based on the events defined in `settings.json`. You do not need to run them manually, though you can test them:
 
-**First, determine if this is right for you:**
-- ✅ Use if: Multi-service TypeScript monorepo
-- ❌ Skip if: Single-service project or different build setup
-
-**If using:**
-1. Copy tsc-check.sh
-2. **EDIT the service detection (line ~28):**
-   ```bash
-   # Replace example services with YOUR services:
-   case "$repo" in
-       api|web|auth|payments|...)  # ← Your actual services
-   ```
-3. Test manually before adding to settings.json
-
-**Customization:** ⚠️⚠️⚠️ Heavy
+```powershell
+# Test compilation hook manually
+dotnet .claude/hooks/BuildCheck.cs
+```
 
 ---
 
-### trigger-build-resolver (Stop)
+## Troubleshooting
 
-**Purpose:** Auto-launches build-error-resolver agent when compilation fails
+### "Command not found" or "dotnet" error
+*   **Cause:** `.NET SDK` is not in your system PATH.
+*   **Fix:** Run `dotnet --version` to verify installation.
 
-**Depends on:** tsc-check hook working correctly
+### Hooks failing on Windows
+*   **Cause:** Path separators (`/` vs `\`) or JSON parsing issues.
+*   **Fix:** The provided C# scripts handle path normalization automatically. Ensure you are not using `$CLAUDE_PROJECT_DIR` in `settings.json` (Unix syntax) but rather relative paths like `dotnet .claude/hooks/...`.
 
-**Customization:** ✅ None (but tsc-check must work first)
-
----
-
-## For Claude Code
-
-**When setting up hooks for a user:**
-
-1. **Read [CLAUDE_INTEGRATION_GUIDE.md](../../CLAUDE_INTEGRATION_GUIDE.md)** first
-2. **Always start with the two essential hooks**
-3. **Ask before adding Stop hooks** - they can block if misconfigured  
-4. **Verify after setup:**
-   ```bash
-   ls -la .claude/hooks/*.sh | grep rwx
-   ```
-
-**Questions?** See [CLAUDE_INTEGRATION_GUIDE.md](../../CLAUDE_INTEGRATION_GUIDE.md)
+### Build is too slow
+*   **Cause:** The hook is rebuilding the entire solution on every stop.
+*   **Fix:** Ensure `ContextTracker.cs` is correctly identifying layers so `BuildCheck.cs` can run targeted builds (e.g., `dotnet build src/Explore.Domain`).

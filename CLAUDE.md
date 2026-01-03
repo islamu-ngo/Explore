@@ -38,6 +38,9 @@ This file is the entrypoint. Detailed docs are imported from `docs/claude/`.
 ## Governance (Contributing)
 @docs/GOVERNANCE.md
 
+## Troubleshooting
+@docs/TROUBLESHOOTING.md
+
 ### Build Commands
 
 ```bash

@@ -1,754 +1,295 @@
-# Validation Patterns - Input Validation with Zod
+# Validation Patterns - Input Validation (.NET 10)
 
-Complete guide to input validation using Zod schemas for type-safe validation.
+Guide complet pour la validation type-safe utilisant **FluentValidation** dans une architecture CQRS.
 
-## Table of Contents
+## Basic Patterns
 
-- [Why Zod?](#why-zod)
-- [Basic Zod Patterns](#basic-zod-patterns)
-- [Schema Examples from Codebase](#schema-examples-from-codebase)
-- [Route-Level Validation](#route-level-validation)
-- [Controller Validation](#controller-validation)
-- [DTO Pattern](#dto-pattern)
-- [Error Handling](#error-handling)
-- [Advanced Patterns](#advanced-patterns)
-
----
-
-## Why Zod?
-
-### Benefits Over Joi/Other Libraries
-
-**Type Safety:**
-- ✅ Full TypeScript inference
-- ✅ Runtime + compile-time validation
-- ✅ Automatic type generation
-
-**Developer Experience:**
-- ✅ Intuitive API
-- ✅ Composable schemas
-- ✅ Excellent error messages
-
-**Performance:**
-- ✅ Fast validation
-- ✅ Small bundle size
-- ✅ Tree-shakeable
-
-### Migration from Joi
-
-Modern validation uses Zod instead of Joi:
-
-```typescript
-// ❌ OLD - Joi (being phased out)
-const schema = Joi.object({
-    email: Joi.string().email().required(),
-    name: Joi.string().min(3).required(),
-});
-
-// ✅ NEW - Zod (preferred)
-const schema = z.object({
-    email: z.string().email(),
-    name: z.string().min(3),
-});
-```
-
----
-
-## Basic Zod Patterns
+La validation se fait généralement dans la couche **Application**, associée aux `Commands` ou `Queries`.
 
 ### Primitive Types
 
-```typescript
-import { z } from 'zod';
+```csharp
+public class PrimitiveValidator : AbstractValidator<UserDto>
+{
+    public PrimitiveValidator()
+    {
+        // Strings
+        RuleFor(x => x.Email)
+            .NotEmpty()
+            .EmailAddress()
+            .MaximumLength(150);
 
-// Strings
-const nameSchema = z.string();
-const emailSchema = z.string().email();
-const urlSchema = z.string().url();
-const uuidSchema = z.string().uuid();
-const minLengthSchema = z.string().min(3);
-const maxLengthSchema = z.string().max(100);
+        // Numbers
+        RuleFor(x => x.Age)
+            .GreaterThan(18)
+            .LessThanOrEqualTo(100);
 
-// Numbers
-const ageSchema = z.number().int().positive();
-const priceSchema = z.number().positive();
-const rangeSchema = z.number().min(0).max(100);
+        // Booleans
+        RuleFor(x => x.TermsAccepted)
+            .Equal(true).WithMessage("Vous devez accepter les conditions.");
 
-// Booleans
-const activeSchema = z.boolean();
+        // Dates
+        RuleFor(x => x.EventDate)
+            .GreaterThan(DateTime.UtcNow).WithMessage("La date doit être dans le futur.");
 
-// Dates
-const dateSchema = z.string().datetime(); // ISO 8601 string
-const nativeDateSchema = z.date(); // Native Date object
-
-// Enums
-const roleSchema = z.enum(['admin', 'operations', 'user']);
-const statusSchema = z.enum(['PENDING', 'APPROVED', 'REJECTED']);
-```
-
-### Objects
-
-```typescript
+        // Enums
+        RuleFor(x => x.Status)
+            .IsInEnum();
+    }
+}
+Objects
 // Simple object
-const userSchema = z.object({
-    email: z.string().email(),
-    name: z.string(),
-    age: z.number().int().positive(),
-});
+RuleFor(x => x.Address).NotNull();
 
-// Nested objects
-const addressSchema = z.object({
-    street: z.string(),
-    city: z.string(),
-    zipCode: z.string().regex(/^\d{5}$/),
-});
+// Nested objects (Utilisation d'un autre validateur)
+RuleFor(x => x.Address).SetValidator(new AddressValidator());
 
-const userWithAddressSchema = z.object({
-    name: z.string(),
-    address: addressSchema,
-});
-
-// Optional fields
-const userSchema = z.object({
-    name: z.string(),
-    email: z.string().email().optional(),
-    phone: z.string().optional(),
-});
+// Optional fields (Validation seulement si non null)
+RuleFor(x => x.PhoneNumber)
+    .Matches(@"^\+[1-9]\d{1,14}$")
+    .When(x => x.PhoneNumber != null);
 
 // Nullable fields
-const userSchema = z.object({
-    name: z.string(),
-    middleName: z.string().nullable(),
-});
-```
+RuleFor(x => x.Website)
+    .Must(uri => Uri.TryCreate(uri, UriKind.Absolute, out _))
+    .When(x => !string.IsNullOrEmpty(x.Website));
+Arrays
+// Array of primitives (ex: List<string>)
+RuleForEach(x => x.Tags)
+    .NotEmpty()
+    .MaximumLength(20);
 
-### Arrays
-
-```typescript
-// Array of primitives
-const rolesSchema = z.array(z.string());
-const numbersSchema = z.array(z.number());
-
-// Array of objects
-const usersSchema = z.array(
-    z.object({
-        id: z.string(),
-        name: z.string(),
-    })
-);
+// Array of objects (ex: List<OrderItem>)
+RuleForEach(x => x.Items).SetValidator(new OrderItemValidator());
 
 // Array with constraints
-const tagsSchema = z.array(z.string()).min(1).max(10);
-const nonEmptyArray = z.array(z.string()).nonempty();
-```
+RuleFor(x => x.Items)
+    .Must(items => items.Count <= 10).WithMessage("Maximum 10 articles.");
+Schema Examples from Codebase
+Form Validation Schemas
+Dans CQRS, les schémas de validation valident directement les Commandes MediatR.
+Fichier : Explore.Application/Features/Forms/Commands/CreateForm/CreateFormCommandValidator.cs
+using FluentValidation;
+using Explore.Domain.Enums;
 
----
+namespace Explore.Application.Features.Forms.Commands.CreateForm;
 
-## Schema Examples from Codebase
+// Question types enum (Défini dans Domain)
+// public enum QuestionType { Text, MultipleChoice, FileUpload }
 
-### Form Validation Schemas
-
-**File:** `/form/src/helpers/zodSchemas.ts`
-
-```typescript
-import { z } from 'zod';
-
-// Question types enum
-export const questionTypeSchema = z.enum([
-    'input',
-    'textbox',
-    'editor',
-    'dropdown',
-    'autocomplete',
-    'checkbox',
-    'radio',
-    'upload',
-]);
-
-// Upload types
-export const uploadTypeSchema = z.array(
-    z.enum(['pdf', 'image', 'excel', 'video', 'powerpoint', 'word']).nullable()
-);
-
-// Input types
-export const inputTypeSchema = z
-    .enum(['date', 'number', 'input', 'currency'])
-    .nullable();
-
-// Question option
-export const questionOptionSchema = z.object({
-    id: z.number().int().positive().optional(),
-    controlTag: z.string().max(150).nullable().optional(),
-    label: z.string().max(100).nullable().optional(),
-    order: z.number().int().min(0).default(0),
-});
-
-// Question schema
-export const questionSchema = z.object({
-    id: z.number().int().positive().optional(),
-    formID: z.number().int().positive(),
-    sectionID: z.number().int().positive().optional(),
-    options: z.array(questionOptionSchema).optional(),
-    label: z.string().max(500),
-    description: z.string().max(5000).optional(),
-    type: questionTypeSchema,
-    uploadTypes: uploadTypeSchema.optional(),
-    inputType: inputTypeSchema.optional(),
-    tags: z.array(z.string().max(150)).optional(),
-    required: z.boolean(),
-    isStandard: z.boolean().optional(),
-    deprecatedKey: z.string().nullable().optional(),
-    maxLength: z.number().int().positive().nullable().optional(),
-    isOptionsSorted: z.boolean().optional(),
-});
-
-// Form section schema
-export const formSectionSchema = z.object({
-    id: z.number().int().positive(),
-    formID: z.number().int().positive(),
-    questions: z.array(questionSchema).optional(),
-    label: z.string().max(500),
-    description: z.string().max(5000).optional(),
-    isStandard: z.boolean(),
-});
-
-// Create form schema
-export const createFormSchema = z.object({
-    id: z.number().int().positive(),
-    label: z.string().max(150),
-    description: z.string().max(6000).nullable().optional(),
-    isPhase: z.boolean().optional(),
-    username: z.string(),
-});
-
-// Update order schema
-export const updateOrderSchema = z.object({
-    source: z.object({
-        index: z.number().int().min(0),
-        sectionID: z.number().int().min(0),
-    }),
-    destination: z.object({
-        index: z.number().int().min(0),
-        sectionID: z.number().int().min(0),
-    }),
-});
-
-// Controller-specific validation schemas
-export const createQuestionValidationSchema = z.object({
-    formID: z.number().int().positive(),
-    sectionID: z.number().int().positive(),
-    question: questionSchema,
-    index: z.number().int().min(0).nullable().optional(),
-    username: z.string(),
-});
-
-export const updateQuestionValidationSchema = z.object({
-    questionID: z.number().int().positive(),
-    username: z.string(),
-    question: questionSchema,
-});
-```
-
-### Proxy Relationship Schema
-
-```typescript
-// Proxy relationship validation
-const createProxySchema = z.object({
-    originalUserID: z.string().min(1),
-    proxyUserID: z.string().min(1),
-    startsAt: z.string().datetime(),
-    expiresAt: z.string().datetime(),
-});
-
-// With custom validation
-const createProxySchemaWithValidation = createProxySchema.refine(
-    (data) => new Date(data.expiresAt) > new Date(data.startsAt),
+public class CreateFormCommandValidator : AbstractValidator<CreateFormCommand>
+{
+    public CreateFormCommandValidator()
     {
-        message: 'expiresAt must be after startsAt',
-        path: ['expiresAt'],
-    }
-);
-```
+        // Form section schema
+        RuleFor(x => x.Title)
+            .NotEmpty().MaximumLength(200);
 
-### Workflow Validation
+        RuleFor(x => x.Description)
+            .MaximumLength(1000);
 
-```typescript
-// Workflow start schema
-const startWorkflowSchema = z.object({
-    workflowCode: z.string().min(1),
-    entityType: z.enum(['Post', 'User', 'Comment']),
-    entityID: z.number().int().positive(),
-    dryRun: z.boolean().optional().default(false),
-});
-
-// Workflow step completion schema
-const completeStepSchema = z.object({
-    stepInstanceID: z.number().int().positive(),
-    answers: z.record(z.string(), z.any()),
-    dryRun: z.boolean().optional().default(false),
-});
-```
-
----
-
-## Route-Level Validation
-
-### Pattern 1: Inline Validation
-
-```typescript
-// routes/proxyRoutes.ts
-import { z } from 'zod';
-
-const createProxySchema = z.object({
-    originalUserID: z.string().min(1),
-    proxyUserID: z.string().min(1),
-    startsAt: z.string().datetime(),
-    expiresAt: z.string().datetime(),
-});
-
-router.post(
-    '/',
-    SSOMiddlewareClient.verifyLoginStatus,
-    async (req, res) => {
-        try {
-            // Validate at route level
-            const validated = createProxySchema.parse(req.body);
-
-            // Delegate to service
-            const proxy = await proxyService.createProxyRelationship(validated);
-
-            res.status(201).json({ success: true, data: proxy });
-        } catch (error) {
-            if (error instanceof z.ZodError) {
-                return res.status(400).json({
-                    success: false,
-                    error: {
-                        message: 'Validation failed',
-                        details: error.errors,
-                    },
-                });
-            }
-            handler.handleException(res, error);
-        }
-    }
-);
-```
-
-**Pros:**
-- Quick and simple
-- Good for simple routes
-
-**Cons:**
-- Validation logic in routes
-- Harder to test
-- Not reusable
-
----
-
-## Controller Validation
-
-### Pattern 2: Controller Validation (Recommended)
-
-```typescript
-// validators/userSchemas.ts
-import { z } from 'zod';
-
-export const createUserSchema = z.object({
-    email: z.string().email(),
-    name: z.string().min(2).max(100),
-    roles: z.array(z.enum(['admin', 'operations', 'user'])),
-    isActive: z.boolean().default(true),
-});
-
-export const updateUserSchema = z.object({
-    email: z.string().email().optional(),
-    name: z.string().min(2).max(100).optional(),
-    roles: z.array(z.enum(['admin', 'operations', 'user'])).optional(),
-    isActive: z.boolean().optional(),
-});
-
-export type CreateUserDTO = z.infer<typeof createUserSchema>;
-export type UpdateUserDTO = z.infer<typeof updateUserSchema>;
-```
-
-```typescript
-// controllers/UserController.ts
-import { Request, Response } from 'express';
-import { BaseController } from './BaseController';
-import { UserService } from '../services/userService';
-import { createUserSchema, updateUserSchema } from '../validators/userSchemas';
-import { z } from 'zod';
-
-export class UserController extends BaseController {
-    private userService: UserService;
-
-    constructor() {
-        super();
-        this.userService = new UserService();
-    }
-
-    async createUser(req: Request, res: Response): Promise<void> {
-        try {
-            // Validate input
-            const validated = createUserSchema.parse(req.body);
-
-            // Call service
-            const user = await this.userService.createUser(validated);
-
-            this.handleSuccess(res, user, 'User created successfully', 201);
-        } catch (error) {
-            if (error instanceof z.ZodError) {
-                // Handle validation errors with 400 status
-                return this.handleError(error, res, 'createUser', 400);
-            }
-            this.handleError(error, res, 'createUser');
-        }
-    }
-
-    async updateUser(req: Request, res: Response): Promise<void> {
-        try {
-            // Validate params and body
-            const userId = req.params.id;
-            const validated = updateUserSchema.parse(req.body);
-
-            const user = await this.userService.updateUser(userId, validated);
-
-            this.handleSuccess(res, user, 'User updated successfully');
-        } catch (error) {
-            if (error instanceof z.ZodError) {
-                return this.handleError(error, res, 'updateUser', 400);
-            }
-            this.handleError(error, res, 'updateUser');
-        }
+        // Update order schema (via collection)
+        RuleForEach(x => x.Sections).SetValidator(new FormSectionValidator());
     }
 }
-```
 
-**Pros:**
-- Clean separation
-- Reusable schemas
-- Easy to test
-- Type-safe DTOs
-
-**Cons:**
-- More files to manage
-
----
-
-## DTO Pattern
-
-### Type Inference from Schemas
-
-```typescript
-import { z } from 'zod';
-
-// Define schema
-const createUserSchema = z.object({
-    email: z.string().email(),
-    name: z.string(),
-    age: z.number().int().positive(),
-});
-
-// Infer TypeScript type from schema
-type CreateUserDTO = z.infer<typeof createUserSchema>;
-
-// Equivalent to:
-// type CreateUserDTO = {
-//     email: string;
-//     name: string;
-//     age: number;
-// }
-
-// Use in service
-class UserService {
-    async createUser(data: CreateUserDTO): Promise<User> {
-        // data is fully typed!
-        console.log(data.email); // ✅ TypeScript knows this exists
-        console.log(data.invalid); // ❌ TypeScript error!
-    }
-}
-```
-
-### Input vs Output Types
-
-```typescript
-// Input schema (what API receives)
-const createUserInputSchema = z.object({
-    email: z.string().email(),
-    name: z.string(),
-    password: z.string().min(8),
-});
-
-// Output schema (what API returns)
-const userOutputSchema = z.object({
-    id: z.string().uuid(),
-    email: z.string().email(),
-    name: z.string(),
-    createdAt: z.string().datetime(),
-    // password excluded!
-});
-
-type CreateUserInput = z.infer<typeof createUserInputSchema>;
-type UserOutput = z.infer<typeof userOutputSchema>;
-```
-
----
-
-## Error Handling
-
-### Zod Error Format
-
-```typescript
-try {
-    const validated = schema.parse(data);
-} catch (error) {
-    if (error instanceof z.ZodError) {
-        console.log(error.errors);
-        // [
-        //   {
-        //     code: 'invalid_type',
-        //     expected: 'string',
-        //     received: 'number',
-        //     path: ['email'],
-        //     message: 'Expected string, received number'
-        //   }
-        // ]
-    }
-}
-```
-
-### Custom Error Messages
-
-```typescript
-const userSchema = z.object({
-    email: z.string().email({ message: 'Please provide a valid email address' }),
-    name: z.string().min(2, { message: 'Name must be at least 2 characters' }),
-    age: z.number().int().positive({ message: 'Age must be a positive number' }),
-});
-```
-
-### Formatted Error Response
-
-```typescript
-// Helper function to format Zod errors
-function formatZodError(error: z.ZodError) {
-    return {
-        message: 'Validation failed',
-        errors: error.errors.map((err) => ({
-            field: err.path.join('.'),
-            message: err.message,
-            code: err.code,
-        })),
-    };
-}
-
-// In controller
-catch (error) {
-    if (error instanceof z.ZodError) {
-        return res.status(400).json({
-            success: false,
-            error: formatZodError(error),
+public class FormSectionValidator : AbstractValidator<FormSectionDto>
+{
+    public FormSectionValidator()
+    {
+        RuleFor(x => x.Title).NotEmpty();
+        
+        // Question schema
+        RuleForEach(x => x.Questions).ChildRules(questions =>
+        {
+            questions.RuleFor(q => q.Text).NotEmpty();
+            questions.RuleFor(q => q.Type).IsInEnum();
+            
+            // Question option (Conditionnel)
+            questions.RuleFor(q => q.Options)
+                .NotEmpty()
+                .When(q => q.Type == QuestionType.MultipleChoice);
         });
     }
 }
-
-// Response example:
-// {
-//   "success": false,
-//   "error": {
-//     "message": "Validation failed",
-//     "errors": [
-//       {
-//         "field": "email",
-//         "message": "Invalid email",
-//         "code": "invalid_string"
-//       }
-//     ]
-//   }
-// }
-```
-
----
-
-## Advanced Patterns
-
-### Conditional Validation
-
-```typescript
-// Validate based on other field values
-const submissionSchema = z.object({
-    type: z.enum(['NEW', 'UPDATE']),
-    postId: z.number().optional(),
-}).refine(
-    (data) => {
-        // If type is UPDATE, postId is required
-        if (data.type === 'UPDATE') {
-            return data.postId !== undefined;
-        }
-        return true;
-    },
+Proxy Relationship Schema
+Validation des relations entre entités (souvent pour les permissions ou les liens parent/enfant).
+// Proxy relationship validation
+public class OrganizationRelationshipValidator : AbstractValidator<LinkOrgCommand>
+{
+    public OrganizationRelationshipValidator()
     {
-        message: 'postId is required when type is UPDATE',
-        path: ['postId'],
+        RuleFor(x => x.ParentOrgId).NotEmpty();
+        RuleFor(x => x.ChildOrgId).NotEmpty();
+
+        // With custom validation (Logique métier simple)
+        RuleFor(x => x)
+            .Must(x => x.ParentOrgId != x.ChildOrgId)
+            .WithMessage("Une organisation ne peut pas être son propre parent.");
     }
-);
-```
-
-### Transform Data
-
-```typescript
-// Transform strings to numbers
-const userSchema = z.object({
-    name: z.string(),
-    age: z.string().transform((val) => parseInt(val, 10)),
-});
-
-// Transform dates
-const eventSchema = z.object({
-    name: z.string(),
-    date: z.string().transform((str) => new Date(str)),
-});
-```
-
-### Preprocess Data
-
-```typescript
-// Trim strings before validation
-const userSchema = z.object({
-    email: z.preprocess(
-        (val) => typeof val === 'string' ? val.trim().toLowerCase() : val,
-        z.string().email()
-    ),
-    name: z.preprocess(
-        (val) => typeof val === 'string' ? val.trim() : val,
-        z.string().min(2)
-    ),
-});
-```
-
-### Union Types
-
-```typescript
-// Multiple possible types
-const idSchema = z.union([z.string(), z.number()]);
-
-// Discriminated unions
-const notificationSchema = z.discriminatedUnion('type', [
-    z.object({
-        type: z.literal('email'),
-        recipient: z.string().email(),
-        subject: z.string(),
-    }),
-    z.object({
-        type: z.literal('sms'),
-        phoneNumber: z.string(),
-        message: z.string(),
-    }),
-]);
-```
-
-### Recursive Schemas
-
-```typescript
-// For nested structures like trees
-type Category = {
-    id: number;
-    name: string;
-    children?: Category[];
-};
-
-const categorySchema: z.ZodType<Category> = z.lazy(() =>
-    z.object({
-        id: z.number(),
-        name: z.string(),
-        children: z.array(categorySchema).optional(),
-    })
-);
-```
-
-### Schema Composition
-
-```typescript
-// Base schemas
-const timestampsSchema = z.object({
-    createdAt: z.string().datetime(),
-    updatedAt: z.string().datetime(),
-});
-
-const auditSchema = z.object({
-    createdBy: z.string(),
-    updatedBy: z.string(),
-});
-
-// Compose schemas
-const userSchema = z.object({
-    id: z.string(),
-    email: z.string().email(),
-    name: z.string(),
-}).merge(timestampsSchema).merge(auditSchema);
-
-// Extend schemas
-const adminUserSchema = userSchema.extend({
-    adminLevel: z.number().int().min(1).max(5),
-    permissions: z.array(z.string()),
-});
-
-// Pick specific fields
-const publicUserSchema = userSchema.pick({
-    id: true,
-    name: true,
-    // email excluded
-});
-
-// Omit fields
-const userWithoutTimestamps = userSchema.omit({
-    createdAt: true,
-    updatedAt: true,
-});
-```
-
-### Validation Middleware
-
-```typescript
-// Create reusable validation middleware
-import { Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
-
-export function validateBody<T extends z.ZodType>(schema: T) {
-    return (req: Request, res: Response, next: NextFunction) => {
-        try {
-            req.body = schema.parse(req.body);
-            next();
-        } catch (error) {
-            if (error instanceof z.ZodError) {
-                return res.status(400).json({
-                    success: false,
-                    error: {
-                        message: 'Validation failed',
-                        details: error.errors,
-                    },
-                });
-            }
-            next(error);
-        }
-    };
+}
+Workflow Validation
+// Workflow start schema
+public class StartWorkflowCommandValidator : AbstractValidator<StartWorkflowCommand>
+{
+    public StartWorkflowCommandValidator()
+    {
+        RuleFor(x => x.WorkflowDefinitionId).NotEmpty();
+        RuleFor(x => x.InitiatorId).NotEmpty();
+    }
 }
 
-// Usage
-router.post('/users',
-    validateBody(createUserSchema),
-    async (req, res) => {
-        // req.body is validated and typed!
-        const user = await userService.createUser(req.body);
-        res.json({ success: true, data: user });
+// Workflow step completion schema
+public class CompleteStepCommandValidator : AbstractValidator<CompleteStepCommand>
+{
+    public CompleteStepCommandValidator()
+    {
+        RuleFor(x => x.StepId).NotEmpty();
+        RuleFor(x => x.Outcome)
+            .Must(o => new[] { "Approved", "Rejected" }.Contains(o))
+            .WithMessage("Résultat invalide.");
     }
-);
-```
+}
+Route-Level Validation
+Pattern 1: Inline Validation (Anti-Pattern)
+❌ À éviter. Ne pas valider manuellement dans le contrôleur.
+// controllers/EventsController.cs
+[HttpPost]
+public IActionResult Create(EventDto dto)
+{
+    // A NE PAS FAIRE : Validation manuelle
+    if (string.IsNullOrEmpty(dto.Title)) return BadRequest();
+    // ...
+}
+Controller Validation
+Pattern 2: Controller Validation (Recommended via MediatR Pipeline)
+Dans notre architecture, le contrôleur ne valide pas explicitement. Il envoie la commande, et le Pipeline Behavior lance la validation automatiquement.
+Validators/CreateEventCommandValidator.cs
+// Définition de la règle
+public class CreateEventCommandValidator : AbstractValidator<CreateEventCommand> { ... }
+Controllers/EventsController.cs
+[HttpPost]
+public async Task<IActionResult> Create(CreateEventCommand command)
+{
+    // Le Pipeline MediatR intercepte ici.
+    // Si la validation échoue, une ValidationException est levée AVANT d'atteindre ce code.
+    var id = await _mediator.Send(command);
+    return Ok(id);
+}
+DTO Pattern
+Type Inference from Schemas
+Contrairement à TypeScript (Zod), C# est nominal. On définit le type (Record/Class) d'abord, puis le validateur.
+// 1. Define schema (Type C#)
+public record CreateEventCommand(string Title, DateTime Date, int Capacity);
 
----
+// 2. Define Validator
+public class Validator : AbstractValidator<CreateEventCommand> { ... }
 
-**Related Files:**
-- [SKILL.md](SKILL.md) - Main guide
-- [routing-and-controllers.md](routing-and-controllers.md) - Using validation in controllers
-- [services-and-repositories.md](services-and-repositories.md) - Using DTOs in services
-- [async-and-errors.md](async-and-errors.md) - Error handling patterns
+// 3. Use
+// L'injection de dépendance scanne l'assembly pour associer IValidator<T> à T.
+Input vs Output Types
+Ségrégation stricte via CQRS.
+// Input schema (what API receives) -> COMMAND
+public record RegisterUserCommand(string Email, string Password) : IRequest<Guid>;
+
+// Output schema (what API returns) -> DTO/ViewModel
+public record UserResponse(Guid Id, string Email, DateTime CreatedAt);
+// Note: Pas de mot de passe dans la réponse !
+Error Handling
+Error Format
+FluentValidation lève une ValidationException. Nous utilisons un middleware global ou un filtre d'exception pour transformer cela en ProblemDetails (RFC 7807).
+Custom Error Messages
+RuleFor(x => x.Age)
+    .GreaterThan(18)
+    .WithMessage("Vous devez être majeur pour créer une organisation.");
+Formatted Error Response
+Exemple de réponse JSON générée automatiquement par l'API en cas d'erreur 400 :
+{
+  "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+  "title": "One or more validation errors occurred.",
+  "status": 400,
+  "errors": {
+    "Email": ["L'adresse email est invalide."],
+    "Age": ["Vous devez être majeur."]
+  }
+}
+Advanced Patterns
+Conditional Validation
+// Validate based on other field values
+RuleFor(x => x.PassportNumber)
+    .NotEmpty()
+    .When(x => x.HasPassport == true)
+    .WithMessage("Le numéro de passeport est requis si vous avez coché la case.");
+Transform Data
+En C#, la transformation se fait généralement lors du Binding ou dans le Handler. FluentValidation sert à vérifier, pas à muter. Cependant, on peut normaliser avant :
+// Transform strings to numbers : géré automatiquement par le ModelBinding ASP.NET Core
+// public int Age { get; set; } // "25" devient 25 automatiquement.
+Preprocess Data
+// Trim strings before validation
+// Astuce : Utiliser un ValueConverter JSON ou le faire dans le constructeur du record
+public record CreateTagCommand(string Name)
+{
+    public string Name { get; init; } = Name?.Trim();
+}
+Union Types
+Simulé en C# via l'héritage ou des champs conditionnels.
+// Discriminated unions (Polymorphic Binding)
+// ASP.NET Core supporte le polymorphisme dans le body JSON
+[JsonDerivedType(typeof(TextQuestion), typeDiscriminator: "text")]
+[JsonDerivedType(typeof(ChoiceQuestion), typeDiscriminator: "choice")]
+public abstract class QuestionBase { ... }
+Recursive Schemas
+// For nested structures like trees (Categories)
+public class CategoryValidator : AbstractValidator<CategoryDto>
+{
+    public CategoryValidator()
+    {
+        RuleFor(x => x.Name).NotEmpty();
+        // Validation récursive
+        RuleForEach(x => x.SubCategories).SetValidator(this);
+    }
+}
+Schema Composition
+// Base schemas (Validator commun)
+public class IdentityValidator : AbstractValidator<IIdentityInfo>
+{
+    public IdentityValidator() { RuleFor(x => x.Id).NotEmpty(); }
+}
+
+// Extend schemas
+public class UserValidator : AbstractValidator<UserDto>
+{
+    public UserValidator()
+    {
+        // Inclure les règles de base
+        Include(new IdentityValidator());
+        RuleFor(x => x.Username).NotEmpty();
+    }
+}
+Validation Middleware
+C'est le cœur de la validation dans Clean Architecture avec MediatR.
+// Create reusable validation pipeline behavior
+public class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
+    where TRequest : IRequest<TResponse>
+{
+    private readonly IEnumerable<IValidator<TRequest>> _validators;
+
+    public ValidationBehavior(IEnumerable<IValidator<TRequest>> validators)
+    {
+        _validators = validators;
+    }
+
+    public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
+    {
+        if (_validators.Any())
+        {
+            var context = new ValidationContext<TRequest>(request);
+            var validationResults = await Task.WhenAll(_validators.Select(v => v.ValidateAsync(context, cancellationToken)));
+            var failures = validationResults.SelectMany(r => r.Errors).Where(f => f != null).ToList();
+
+            if (failures.Count != 0)
+                throw new ValidationException(failures);
+        }
+        return await next();
+    }
+}

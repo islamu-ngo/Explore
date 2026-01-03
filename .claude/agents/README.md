@@ -1,3 +1,9 @@
+---
+name: Agents Documentation
+description: Documentation file - not an executable agent
+disabled: true
+---
+
 # Agents
 
 Specialized agents for complex, multi-step tasks.
@@ -113,11 +119,11 @@ Agents are autonomous Claude instances that handle specific complex tasks. Unlik
 **Purpose:** Test authenticated API endpoints
 
 **When to use:**
-- Testing routes with JWT cookie auth
+- Testing auth
 - Validating endpoint functionality
 - Debugging authentication issues
 
-**Integration:** ⚠️ Requires JWT cookie-based auth
+**Integration:** ⚠️ Requires auth
 
 ---
 
@@ -287,14 +293,3 @@ grep "~/\|/root/\|/Users/" .claude/agents/[agent-name].md
 ```bash
 sed -i 's|~/git/.*project|$CLAUDE_PROJECT_DIR|g' .claude/agents/[agent-name].md
 ```
-
----
-
-## Next Steps
-
-1. **Browse agents above** - Find ones useful for your work
-2. **Copy what you need** - Just the .md file
-3. **Ask Claude to use them** - "Use [agent] to [task]"
-4. **Create your own** - Follow the pattern for your specific needs
-
-**Questions?** See [CLAUDE_INTEGRATION_GUIDE.md](../../CLAUDE_INTEGRATION_GUIDE.md)

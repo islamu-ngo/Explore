@@ -168,20 +168,7 @@ Ideas and concepts for future improvements to the skill system.
 - Coverage reports
 
 **Example Test:**
-```typescript
-describe('database-verification', () => {
-  it('triggers on Prisma imports', () => {
-    const result = testSkill({
-      prompt: "add user tracking",
-      file: "services/user.ts",
-      content: "import { PrismaService } from './prisma'"
-    });
 
-    expect(result.triggered).toBe(true);
-    expect(result.skill).toBe('database-verification');
-  });
-});
-```
 
 **Benefits:**
 - Prevent regressions
