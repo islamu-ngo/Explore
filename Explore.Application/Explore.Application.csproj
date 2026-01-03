@@ -31,7 +31,6 @@
     <Folder Include="DTOs\StorageObject\Validators\" />
     <Folder Include="Features\AudienceGenders\Handlers\Commands\" />
     <Folder Include="Features\AudienceGenders\Requests\Commands\" />
-    <Folder Include="Features\Educations\Requests\Commands\" />
     <Folder Include="Features\StorageObjects\Handlers\Queries\" />
     <Folder Include="Features\StorageObjects\Requests\Queries\" />
   </ItemGroup>

@@ -1,16 +1,20 @@
 {
-  "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["sequential-thinking", "playwright", "context7"],
   "permissions": {
-    "allow": ["Edit:*", "Write:*", "MultiEdit:*", "NotebookEdit:*", "Bash:*"],
+    "allow": [
+      "Edit:*",
+      "Write:*",
+      "MultiEdit:*",
+      "NotebookEdit:*",
+      "Bash:*"
+    ],
     "defaultMode": "acceptEdits"
   },
-  "commands": {
-    "build": "dotnet build",
-    "test": "dotnet test",
-    "format": "dotnet format",
-    "run": "dotnet run"
-  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "sequential-thinking",
+    "playwright",
+    "context7"
+  ],
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -47,6 +51,22 @@
         ]
       }
     ]
+  },
+  "enabledPlugins": {
+    "github@claude-plugins-official": true,
+    "context7@claude-plugins-official": true,
+    "serena@claude-plugins-official": true,
+    "commit-commands@claude-plugins-official": true,
+    "playwright@claude-plugins-official": true,
+    "security-guidance@claude-plugins-official": true,
+    "explanatory-output-style@claude-plugins-official": true,
+    "csharp-lsp@claude-plugins-official": true
+  },
+  "commands": {
+    "build": "dotnet build",
+    "test": "dotnet test",
+    "format": "dotnet format",
+    "run": "dotnet run"
   },
   "trusted_domains": [
     "localhost",
