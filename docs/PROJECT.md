@@ -124,15 +124,17 @@
 
 | Filter | Options | Description |
 |--------|---------|-------------|
-| **Age Audience** | Children, Youth, Adults, Seniors, All Ages | Target demographic |
+| **Audience Age** | Children, Youth, Adults, Seniors, All Ages | Target demographic |
 | **Gender** | Men-only, Women-only, Mixed, Family | Audience type |
 | **Location** | Country, Region, City, Radius | Geographic filtering with PostGIS |
 | **Language** | Arabic, English, French, etc. | Event language |
-| **Event Type** | Local (physical), Digital (online), Hybrid | Delivery mode |
+| **Event Type** | Webinar, Conference | Event Type |
 | **Madhab** | Hanafi, Maliki, Shafi'i, Hanbali | Islamic jurisprudence school |
 | **Category** | Aqidah, Fiqh, Tafsir, Hadith, etc. | Event classification |
 | **Tag** | Mohammed Hijab, Mufti Menk etc... | Event tags |
-| **Event Format** | In-person, Virtual, Hybrid | Event format |
+| **TagType** | Person, Channel, oeuvres | Tag classification |
+| **TagTypeTags** | Specific tags within TagType | e.g., Person → Mohammed Hijab |
+| **Event Format** | In-person Local (physical), Digital (online), Hybrid | Event format |
 | **Date/Time** | Upcoming, This Week, This Month, Custom | Temporal filtering |
 | **Verification** | Verified only, All | Trust level |
 
@@ -156,4 +158,3 @@ Export formats supported:
 - **Full database dump**: Complete data export for self-hosters
 
 ---
-

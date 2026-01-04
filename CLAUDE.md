@@ -6,7 +6,7 @@
 > Last Updated: December 2025
 
 ## What this is
-This file is the entrypoint. Detailed docs are imported from `docs/claude/`.
+This file is the entrypoint. Detailed docs are imported from `docs/`.
 
 ## Project
 @docs/PROJECT.md

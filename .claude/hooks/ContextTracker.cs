@@ -1,4 +1,3 @@
-#!/usr/bin/env dotnet
 using System;
 using System.IO;
 using System.Linq;
