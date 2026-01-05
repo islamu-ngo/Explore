@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+using System;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text;
 
 namespace Explore.Domain
 {
@@ -9,16 +7,23 @@ namespace Explore.Domain
     {
         public Guid Id { get; set; }
         public string FullName { get; set; }
-        public Guid? ProfilePictureId { get; set; }
-        public string? ProfilePictureUrl { get; set; } // because in list page needs to see image, could remove the id of profile picture i thing but not sure, TODO research more
+        public string Email { get; set; }
+        public string Country { get; set; }
+        public string City { get; set; }
+        public string Address { get; set; }
+        public string Postcode { get; set; }
+        public string? WebsiteUrl { get; set; }
+
+        [ForeignKey("ApprovalStatus")]
         public int ApprovalStatusId { get; set; }
-        public string ApprovalStatusName { get; set; }
-        //public ICollection<OrganizationMember> Members { get; set; } = new List<OrganizationMember>(); 
+        public ApprovalStatus ApprovalStatus { get; set; }
 
-        // 1. Private list for EF Core to use internally
-        //private readonly List<OrganizationMember> _members = new();
+        [ForeignKey("Tenant")]
+        public Guid TenantId { get; set; }
+        public Tenant Tenant { get; set; }
 
-        // 2. Public ReadOnly wrapper for your code to Read
-        //public IReadOnlyCollection<OrganizationMember> Members => _members.AsReadOnly();
+        [ForeignKey("Actor")]
+        public Guid? ActorId { get; set; }
+        public Actor? Actor { get; set; }
     }
 }

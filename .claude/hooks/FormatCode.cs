@@ -1,15 +1,15 @@
 using System;
 using System.Diagnostics;
 
-// Script C# pour formater le code selon les standards GOVERNANCE.md
-// Utilise: dotnet format
+// C# Script to format code according to .editorconfig standards
+// Uses: dotnet format
 
-Console.WriteLine("🎨  Standardisation du code (dotnet format)...");
+Console.WriteLine("🎨  Formatting code (dotnet format)...");
 
 try
 {
-    // --include-generated permet de traiter certains fichiers Blazor si besoin,
-    // mais généralement on l'évite. On reste simple.
+    // --include-generated allows processing some Blazor files if needed,
+    // but generally we avoid it. Keeping it simple.
     var processInfo = new ProcessStartInfo("dotnet", "format --verbosity quiet")
     {
         UseShellExecute = false,
@@ -25,20 +25,20 @@ try
         process.WaitForExit();
         if (process.ExitCode == 0)
         {
-            Console.WriteLine("✨  Code formaté.");
+            Console.WriteLine("✨  Code formatted.");
         }
         else
         {
-            // On ne bloque pas pour du formatage, mais on prévient
-            Console.WriteLine("⚠️  Le formatage automatique a rencontré des warnings.");
+            // Don't block for formatting, but warn
+            Console.WriteLine("⚠️  Auto-formatting encountered warnings.");
         }
     }
 }
 catch (Exception)
 {
-    // Ignorer silencieusement si dotnet format n'est pas dispo ou plante
-    Console.WriteLine("⚠️  Impossible de lancer le formatage.");
+    // Silently ignore if dotnet format is not available or crashes
+    Console.WriteLine("⚠️  Unable to run formatter.");
 }
 
-// Toujours succès pour ne pas bloquer Claude
+// Always exit successfully to avoid blocking Claude
 Environment.Exit(0);

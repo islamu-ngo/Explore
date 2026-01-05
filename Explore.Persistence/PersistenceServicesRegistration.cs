@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
@@ -35,23 +35,64 @@ namespace Explore.Persistence
                     .EnableDetailedErrors();
             });
 
+            // Generic Repository
             services.AddScoped(typeof(IGenericRepository<,>), typeof(GenericRepository<,>));
 
+            // Lookup Table Repositories
+            services.AddScoped<IApprovalStatusRepository, ApprovalStatusRepository>();
             services.AddScoped<IAudienceAgeRepository, AudienceAgeRepository>();
             services.AddScoped<IAudienceGenderRepository, AudienceGenderRepository>();
-            services.AddScoped<IEducationRepository, EducationRepository>();
-            services.AddScoped<IEducationTypeRepository, EducationTypeRepository>();
-            services.AddScoped<IEventRepository, EventRepository>();
             services.AddScoped<IEventTypeRepository, EventTypeRepository>();
+            services.AddScoped<IEventStatusRepository, EventStatusRepository>();
+            services.AddScoped<IEventFormatRepository, EventFormatRepository>();
+            services.AddScoped<IVisibilityTypeRepository, VisibilityTypeRepository>();
+            services.AddScoped<IRegistrationModeRepository, RegistrationModeRepository>();
+            services.AddScoped<IMadhabRepository, MadhabRepository>();
+            services.AddScoped<ILanguageRepository, LanguageRepository>();
+            services.AddScoped<IOrganizationRoleRepository, OrganizationRoleRepository>();
+            services.AddScoped<IOrganizationPositionRepository, OrganizationPositionRepository>();
+            services.AddScoped<IActorTypeRepository, ActorTypeRepository>();
+            services.AddScoped<IDidCustodyTypeRepository, DidCustodyTypeRepository>();
+            services.AddScoped<IFileTypeRepository, FileTypeRepository>();
+            services.AddScoped<IUserRoleRepository, UserRoleRepository>();
+
+            // Multi-tenancy Repositories
+            services.AddScoped<ITenantRepository, TenantRepository>();
+            services.AddScoped<ITenantUserRepository, TenantUserRepository>();
+            services.AddScoped<ITenantSettingsRepository, TenantSettingsRepository>();
+
+            // User & Authentication Repositories
+            services.AddScoped<IUserRepository, UserRepository>();
+            services.AddScoped<IUserAuthenticationTokenRepository, UserAuthenticationTokenRepository>();
+            services.AddScoped<IUserExternalLoginRepository, UserExternalLoginRepository>();
+
+            // Actor Repositories
+            services.AddScoped<IActorRepository, ActorRepository>();
+            services.AddScoped<IActorKeyStoreRepository, ActorKeyStoreRepository>();
+
+            // Organization Repositories
             services.AddScoped<IOrganizationRepository, OrganizationRepository>();
             services.AddScoped<IOrganizationMemberRepository, OrganizationMemberRepository>();
             services.AddScoped<IOrganizationReviewRepository, OrganizationReviewRepository>();
-            services.AddScoped<IProgramRepository, ProgramRepository>();
-            services.AddScoped<IProgramRegistrationRepository, EventRegistrationRepository>();
-            services.AddScoped<IProgramTypeRepository, ProgramTypeRepository>();
-            services.AddScoped<IApprovalStatusRepository, ApprovalStatusRepository>();
+
+            // Event Repositories
+            services.AddScoped<IEventRepository, EventRepository>();
+            services.AddScoped<IEventSessionRepository, EventSessionRepository>();
+            services.AddScoped<IEventRegistrationRepository, EventRegistrationRepository>();
+            services.AddScoped<IEventSessionAgendaItemRepository, EventSessionAgendaItemRepository>();
+            services.AddScoped<IEventSessionLanguageRepository, EventSessionLanguageRepository>();
+            services.AddScoped<IEventSessionSpeakerRepository, EventSessionSpeakerRepository>();
+
+            // Location Repository
+            services.AddScoped<ILocationRepository, LocationRepository>();
+
+            // Storage Repository
             services.AddScoped<IStorageObjectRepository, StorageObjectRepository>();
-            services.AddScoped<IUserRepository, UserRepository>();
+
+            // ATProto/Federation Repositories
+            services.AddScoped<IAtprotoRecordRepository, AtprotoRecordRepository>();
+            services.AddScoped<IIndexedDidRepository, IndexedDidRepository>();
+            services.AddScoped<ISyncStateRepository, SyncStateRepository>();
 
             return services;
         }

@@ -16,7 +16,17 @@ namespace Explore.Persistence.Configurations.Entities
             builder.HasOne(m => m.User)
                 .WithMany()
                 .HasForeignKey(m => m.UserId)
-                .IsRequired(false);
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.HasOne(m => m.OrganizationRole)
+                .WithMany()
+                .HasForeignKey(m => m.OrganizationRoleId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(m => m.OrganizationPosition)
+                .WithMany()
+                .HasForeignKey(m => m.OrganizationPositionId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

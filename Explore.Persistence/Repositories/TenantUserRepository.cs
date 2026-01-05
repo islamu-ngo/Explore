@@ -1,0 +1,41 @@
+using Explore.Application.Contracts.Persistence;
+using Explore.Domain;
+using Microsoft.EntityFrameworkCore;
+
+namespace Explore.Persistence.Repositories
+{
+    public class TenantUserRepository : GenericRepository<TenantUser, int>, ITenantUserRepository
+    {
+        private readonly ExploreDbContext _dbContext;
+
+        public TenantUserRepository(ExploreDbContext dbContext) : base(dbContext)
+        {
+            _dbContext = dbContext;
+        }
+
+        public async Task<TenantUser?> GetByUserAndTenant(Guid userId, Guid tenantId)
+        {
+            return await _dbContext.TenantUsers
+                .Include(tu => tu.UserRole)
+                .FirstOrDefaultAsync(tu => tu.UserId == userId && tu.TenantId == tenantId);
+        }
+
+        public async Task<List<TenantUser>> GetByUser(Guid userId)
+        {
+            return await _dbContext.TenantUsers
+                .Include(tu => tu.Tenant)
+                .Include(tu => tu.UserRole)
+                .Where(tu => tu.UserId == userId)
+                .ToListAsync();
+        }
+
+        public async Task<List<TenantUser>> GetByTenant(Guid tenantId)
+        {
+            return await _dbContext.TenantUsers
+                .Include(tu => tu.User)
+                .Include(tu => tu.UserRole)
+                .Where(tu => tu.TenantId == tenantId)
+                .ToListAsync();
+        }
+    }
+}

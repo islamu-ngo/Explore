@@ -3,12 +3,12 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 
-// Script C# pour vérifier la compilation ISLAMU Event (.NET 10)
-// MODE NON-BLOQUANT : Signale les erreurs sans arrêter Claude.
+// C# Script to verify compilation for ISLAMU Event (.NET 10)
+// NON-BLOCKING MODE: Reports errors without stopping Claude.
 
-Console.WriteLine("🏗️  Vérification de la compilation...");
+Console.WriteLine("🏗️  Checking compilation...");
 
-// 1. Recherche de la solution (Explore.sln)
+// 1. Find the solution (Explore.sln)
 string workingDir = Directory.GetCurrentDirectory();
 string solutionPath = Path.Combine(workingDir, "Explore.sln");
 
@@ -20,7 +20,7 @@ if (!File.Exists(solutionPath))
     if (found != null) solutionPath = found;
 }
 
-// 2. Construction de la commande
+// 2. Build the command
 string buildArgs = "build";
 if (File.Exists(solutionPath))
 {
@@ -29,7 +29,7 @@ if (File.Exists(solutionPath))
 }
 else
 {
-    Console.WriteLine($"⚠️  Solution introuvable. Tentative générique...");
+    Console.WriteLine($"⚠️  Solution not found. Trying generic build...");
     buildArgs += " --nologo --verbosity quiet";
 }
 
@@ -47,7 +47,7 @@ try
     var process = Process.Start(processInfo);
     if (process == null)
     {
-        Console.WriteLine("⚠️  Impossible de lancer dotnet.");
+        Console.WriteLine("⚠️  Unable to launch dotnet.");
         Environment.Exit(0);
     }
 
@@ -58,14 +58,14 @@ try
 
     if (process.ExitCode == 0)
     {
-        Console.WriteLine("✅  Compilation réussie.");
-        // Optionnel : Nettoyer les vieux logs si succès
+        Console.WriteLine("✅  Compilation successful.");
+        // Optional: Clean old logs on success
     }
     else
     {
-        Console.WriteLine("⚠️  Erreur de compilation détectée (non-bloquant).");
+        Console.WriteLine("⚠️  Compilation error detected (non-blocking).");
 
-        // --- MODIFICATION DEMANDÉE : HORODATAGE ---
+        // --- ADD TIMESTAMP ---
         var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
         var logFileName = $"error-{timestamp}.txt";
 
@@ -75,16 +75,16 @@ try
         var fullLog = $"DATE: {DateTime.Now}\nSOLUTION: {solutionPath}\n\nSTDOUT:\n{output}\n\nSTDERR:\n{error}";
         File.WriteAllText(Path.Combine(cachePath, logFileName), fullLog);
 
-        // Mise à jour du pointeur "dernier erreur" pour l'agent auto-error-resolver
+        // Update pointer to "last error" for auto-error-resolver agent
         File.WriteAllText(Path.Combine(cachePath, "last-errors.txt"), fullLog);
 
-        // Affichage partiel
+        // Display partial output
         var lines = fullLog.Split(Environment.NewLine)
                            .Where(l => l.Contains("error CS") || l.Contains(": error"))
                            .Take(5);
 
-        Console.WriteLine($"📄  Log sauvegardé : {logFileName}");
-        Console.WriteLine("--- Aperçu ---");
+        Console.WriteLine($"📄  Log saved: {logFileName}");
+        Console.WriteLine("--- Preview ---");
         foreach (var line in lines) Console.WriteLine(line);
     }
 }
@@ -93,5 +93,5 @@ catch (Exception ex)
     Console.WriteLine($"⚠️  Hook error: {ex.Message}");
 }
 
-// Toujours sortir avec 0 pour ne pas bloquer le workflow
+// Always exit with 0 to avoid blocking the workflow
 Environment.Exit(0);

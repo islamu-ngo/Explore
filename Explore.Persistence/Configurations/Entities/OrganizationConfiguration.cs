@@ -26,9 +26,10 @@ namespace Explore.Persistence.Configurations.Entities
                     Email = "contact@openislamu.org",
                     Country = "Belgium",
                     City = "Brussels",
-                    Postcode = 1070,
+                    Postcode = "1070",
                     Address = "Parc Du Peterbos ...",
-                    ApprovalStatusId = (int)ApprovalStatusEnum.Approved
+                    ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
+                    TenantId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000000")
                 });
         }
     }

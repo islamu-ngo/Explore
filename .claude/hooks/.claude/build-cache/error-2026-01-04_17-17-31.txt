@@ -1,0 +1,8 @@
+DATE: 04-01-26 17:17:31
+SOLUTION: C:\ISLAMU\GitHub\Explore\.claude\hooks\Explore.sln
+
+STDOUT:
+MSBUILD : error MSB1003: Spécifiez un fichier projet ou solution. Le répertoire de travail actif n'en contient aucun.
+
+
+STDERR:

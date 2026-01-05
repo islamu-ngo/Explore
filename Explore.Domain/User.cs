@@ -1,14 +1,22 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+using System;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Explore.Domain
 {
     public class User
     {
-        public Guid Id { get; set; } // Keycloak Subject ID
-        public string Email { get; set; } = string.Empty;
-        public string FirstName { get; set; } = string.Empty;
-        public string LastName { get; set; } = string.Empty;
+        public Guid Id { get; set; }
+        public string Email { get; set; }
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+
+        [ForeignKey("Actor")]
+        public Guid? ActorId { get; set; }
+        public Actor? Actor { get; set; }
+
+        public string? AuthProvider { get; set; }
+        public string? AuthProviderId { get; set; }
+        public Guid? DefaultActorId { get; set; }
+        public bool? EmailVerified { get; set; }
     }
 }

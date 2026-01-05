@@ -143,7 +143,7 @@
 **Dynamic Prayer-Relative Scheduling**:
 
 - Events can be scheduled relative to prayer times (e.g., "15 minutes after Maghrib")
-- exact times based on attendee geolocation using Third-party API
+- exact times based on event geolocation using Third-party API
 
 ## Moderation System
 

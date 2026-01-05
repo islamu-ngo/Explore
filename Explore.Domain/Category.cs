@@ -1,6 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+using System;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Explore.Domain
 {
@@ -9,6 +8,13 @@ namespace Explore.Domain
         public Guid Id { get; set; }
         public string MasterCode { get; set; }
         public string FullName { get; set; }
+
+        [ForeignKey("Parent")]
         public Guid? ParentId { get; set; }
+        public Category? Parent { get; set; }
+
+        [ForeignKey("Tenant")]
+        public Guid TenantId { get; set; }
+        public Tenant Tenant { get; set; }
     }
 }

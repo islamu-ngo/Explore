@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Explore.Application.Contracts.Persistence;
@@ -7,55 +7,45 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories
 {
-    public class EventRegistrationRepository : GenericRepository<EventRegistration, Guid>, IProgramRegistrationRepository
+    public class EventRegistrationRepository : GenericRepository<EventRegistration, Guid>, IEventRegistrationRepository
     {
         private readonly ExploreDbContext _dbContext;
+
         public EventRegistrationRepository(ExploreDbContext dbContext) : base(dbContext)
         {
             _dbContext = dbContext;
         }
 
-        public async Task<List<EventRegistration>> GetProgramRegistrationsWithDetails()
+        public async Task<EventRegistration?> GetRegistrationByUserAndSession(Guid userId, Guid eventSessionId)
         {
-            var programRegistrations = await _dbContext.EventRegistrations
-                .Include(pr => pr.Event)
-                .Include(pr => pr.ApprovalStatus)
-                .ToListAsync();
-            return programRegistrations;
+            return await _dbContext.EventRegistrations
+                .Include(r => r.ApprovalStatus)
+                .FirstOrDefaultAsync(r => r.UserId == userId && r.EventSessionId == eventSessionId);
         }
 
-        public async Task<EventRegistration> GetProgramRegistrationWithDetails(Guid id)
+        public async Task<List<EventRegistration>> GetRegistrationsBySession(Guid eventSessionId)
         {
-            var programRegistration = await _dbContext.EventRegistartions
-                .Include(pr => pr.Program)
-                .Include(pr => pr.StatusType)
-                .FirstOrDefaultAsync(pr => pr.Id == id);
-            return programRegistration;
-        }
-
-        public async Task<bool> IsUserAlreadyRegisteredAsync(Guid userId, Guid programId)
-        {
-            return await _dbContext.ProgramRegistartions
-                .AnyAsync(pr => pr.UserId == userId && pr.ProgramId == programId);
-        }
-
-        public async Task<List<ProgramRegistartion>> GetRegistrationsForProgramAsync(Guid programId)
-        {
-            return await _dbContext.ProgramRegistartions
-                .Include(pr => pr.StatusType)
-                .Include(pr => pr.Program)
-                .Where(pr => pr.ProgramId == programId)
+            return await _dbContext.EventRegistrations
+                .Include(r => r.User)
+                .Include(r => r.ApprovalStatus)
+                .Where(r => r.EventSessionId == eventSessionId)
                 .ToListAsync();
         }
 
-        public async Task<List<ProgramRegistartion>> GetRegistrationsForUserAsync(Guid userId)
+        public async Task<List<EventRegistration>> GetRegistrationsByUser(Guid userId)
         {
-            return await _dbContext.ProgramRegistartions
-                .Include(pr => pr.StatusType)
-                .Include(pr => pr.Program)
-                    .ThenInclude(p => p.Organization)
-                .Where(pr => pr.UserId == userId)
+            return await _dbContext.EventRegistrations
+                .Include(r => r.EventSession)
+                    .ThenInclude(s => s.Event)
+                .Include(r => r.ApprovalStatus)
+                .Where(r => r.UserId == userId)
                 .ToListAsync();
+        }
+
+        public async Task<bool> IsUserRegisteredForSession(Guid userId, Guid eventSessionId)
+        {
+            return await _dbContext.EventRegistrations
+                .AnyAsync(r => r.UserId == userId && r.EventSessionId == eventSessionId);
         }
     }
 }

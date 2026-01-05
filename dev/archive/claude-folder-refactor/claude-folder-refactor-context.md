@@ -40,20 +40,18 @@ Orchestration:
 
 ```
 Explore.sln
-├── src/
-│   ├── Explore.Domain/              # Entities, Enums, Value Objects (no dependencies)
-│   ├── Explore.Application/         # CQRS Handlers, DTOs, Validators (→ Domain)
-│   ├── Explore.Persistence/         # EF Core DbContext, Repositories (→ Application)
-│   ├── Explore.Infrastructure/      # External services (→ Application)
-│   ├── Explore.API/                 # REST Controllers (→ All)
-│   ├── Explore.Blazor/              # Server-side Blazor (BFF pattern)
-│   ├── Explore.Blazor.Client/       # WebAssembly components
-│   ├── Explore.AppHost/             # Aspire orchestrator
-│   └── Explore.ServiceDefaults/     # Shared Aspire config
-└── tests/
-    ├── Explore.Domain.Tests/
-    ├── Explore.Application.Tests/
-    └── Explore.API.Tests/
+├── Explore.Domain/              # Entities, Enums, Value Objects (no dependencies)
+├── Explore.Application/         # CQRS Handlers, DTOs, Validators (→ Domain)
+├── Explore.Persistence/         # EF Core DbContext, Repositories (→ Application)
+├── Explore.Infrastructure/      # External services (→ Application)
+├── Explore.API/                 # REST Controllers (→ All)
+├── Explore.Blazor/              # Server-side Blazor (BFF pattern)
+├── Explore.Blazor.Client/       # WebAssembly components
+├── Explore.AppHost/             # Aspire orchestrator
+├── Explore.ServiceDefaults/     # Shared Aspire config
+├── Explore.Domain.Tests/
+├── Explore.Application.Tests/
+└── Explore.API.Tests/
 ```
 
 ---
@@ -95,57 +93,9 @@ Explore.sln
 
 **Pattern**: Separate Commands (write) from Queries (read)
 
-```csharp
-// Command Pattern
-public record CreateEventCommand : IRequest<EventDto>
-{
-    public string Title { get; init; }
-    public DateTime StartsAt { get; init; }
-}
-
-public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, EventDto>
-{
-    private readonly ApplicationDbContext _context;
-
-    public CreateEventCommandHandler(ApplicationDbContext context)
-    {
-        _context = context;
-    }
-
-    public async Task<EventDto> Handle(CreateEventCommand request, CancellationToken cancellationToken)
-    {
-        var entity = new Event
-        {
-            Title = request.Title,
-            StartsAt = request.StartsAt
-        };
-
-        _context.Events.Add(entity);
-        await _context.SaveChangesAsync(cancellationToken);
-
-        return entity.ToDto();
-    }
-}
-
-// Query Pattern
-public record GetEventByIdQuery(Guid Id) : IRequest<EventDto>;
-
-public class GetEventByIdQueryHandler : IRequestHandler<GetEventByIdQuery, EventDto>
-{
-    private readonly ApplicationDbContext _context;
-
-    public async Task<EventDto> Handle(GetEventByIdQuery request, CancellationToken cancellationToken)
-    {
-        return await _context.Events
-            .AsNoTracking()
-            .Where(e => e.Id == request.Id)
-            .Select(e => e.ToDto())
-            .FirstOrDefaultAsync(cancellationToken);
-    }
-}
-```
 
 **Location**: `Explore.Application/Features/{Entity}/`
+example: `Explore.Application/Features/{Entity}/Handlers/Queries/*RequestHandler.cs`
 
 **cqrs-mediatr-guidelines skill**: Provides these patterns
 
@@ -191,8 +141,6 @@ builder.Services.AddRazorComponents()
     </MudGrid>
 </MudContainer>
 ```
-
-**NOT React MUI** - Different syntax, different lifecycle
 
 **blazor-mudblazor-guidelines skill**: Provides MudBlazor patterns
 

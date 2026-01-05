@@ -2,11 +2,11 @@ using System;
 using System.IO;
 using System.Collections.Generic;
 
-// Script déclencheur de Skills/Agents
-// VERSION ROBUSTE : Ne bloque pas si aucune entrée n'est fournie.
+// Skill/Agent trigger script
+// ROBUST VERSION: Won't block if no input is provided.
 
-// 1. SÉCURITÉ ANTI-BLOCAGE
-// Si le script est lancé manuellement sans pipe (ex: "dotnet SkillTrigger.cs"), il s'arrête ici.
+// 1. ANTI-BLOCKING SAFETY
+// If the script is run manually without a pipe (e.g., "dotnet SkillTrigger.cs"), it exits here.
 if (!Console.IsInputRedirected)
 {
     Environment.Exit(0);
@@ -14,48 +14,56 @@ if (!Console.IsInputRedirected)
 
 try
 {
-    // 2. Lecture du prompt (avec timeout de sécurité implicite via le Reader)
+    // 2. Read prompt (with implicit timeout safety via Reader)
     string prompt = "";
     using (var reader = new StreamReader(Console.OpenStandardInput()))
     {
-        // On ne lit pas tout d'un coup pour éviter les blocages sur de très gros flux
-        // Peek vérifie s'il y a des données
+        // Don't read everything at once to avoid blocking on very large streams
+        // Peek checks if data is available
         if (reader.Peek() == -1) Environment.Exit(0);
         prompt = reader.ReadToEnd()?.ToLower() ?? "";
     }
 
     if (string.IsNullOrWhiteSpace(prompt)) Environment.Exit(0);
 
-    // 3. Règles de déclenchement
+    // 3. Trigger rules
     var suggestions = new List<string>();
 
-    // Auth
-    if (prompt.Contains("401") || prompt.Contains("403") || prompt.Contains("keycloak") || prompt.Contains("token"))
-        suggestions.Add("🔒 SUGGESTION: Agent 'auth-route-debugger' pour les problèmes de sécurité.");
+    // Authentication/Authorization
+    if (prompt.Contains("401") || prompt.Contains("403") || prompt.Contains("keycloak") || prompt.Contains("token") || prompt.Contains("cerbos"))
+        suggestions.Add("🔒 SUGGESTION: Use 'auth-route-debugger' agent for security issues.");
 
-    // Frontend
-    if (prompt.Contains("blazor") || prompt.Contains("mudblazor") || prompt.Contains("css") || prompt.Contains("razor"))
-        suggestions.Add("🎨 SUGGESTION: Agent 'frontend-error-fixer' pour l'UI.");
+    // Frontend/UI
+    if (prompt.Contains("blazor") || prompt.Contains("mudblazor") || prompt.Contains("css") || prompt.Contains("razor") || prompt.Contains("component"))
+        suggestions.Add("🎨 SUGGESTION: Use 'frontend-error-fixer' agent for UI issues.");
 
-    // Architecture
-    if (prompt.Contains("refactor") || prompt.Contains("clean arch") || prompt.Contains("mediatr"))
-        suggestions.Add("🏗️ SUGGESTION: Agent 'code-refactor-master' ou 'backend-dev-guidelines'.");
+    // Architecture/Refactoring
+    if (prompt.Contains("refactor") || prompt.Contains("clean arch") || prompt.Contains("mediatr") || prompt.Contains("cqrs"))
+        suggestions.Add("🏗️ SUGGESTION: Use 'code-refactor-master' agent or consult Clean Architecture skills.");
 
     // Build Errors
-    if (prompt.Contains("error cs") || prompt.Contains("build fail"))
-        suggestions.Add("🛠️ SUGGESTION: Agent 'auto-error-resolver' pour fixer la compilation.");
+    if (prompt.Contains("error cs") || prompt.Contains("build fail") || prompt.Contains("compilation"))
+        suggestions.Add("🛠️ SUGGESTION: Use 'auto-error-resolver' agent to fix compilation errors.");
 
-    // 4. Sortie
+    // Database/EF Core
+    if (prompt.Contains("database") || prompt.Contains("ef core") || prompt.Contains("migration") || prompt.Contains("postgres"))
+        suggestions.Add("💾 SUGGESTION: Consult 'dotnet-efcore-guidelines' skill for database patterns.");
+
+    // Testing
+    if (prompt.Contains("test") || prompt.Contains("xunit") || prompt.Contains("mock"))
+        suggestions.Add("🧪 SUGGESTION: Use 'auth-route-tester' agent for API security testing.");
+
+    // 4. Output
     if (suggestions.Count > 0)
     {
-        Console.WriteLine("\n🎯  Skills Suggérés :");
+        Console.WriteLine("\n🎯  Suggested Skills/Agents:");
         foreach (var s in suggestions) Console.WriteLine(s);
         Console.WriteLine("");
     }
 }
 catch
 {
-    // Ne jamais faire échouer le prompt utilisateur à cause d'un hook
+    // Never fail the user prompt because of a hook
 }
 
 Environment.Exit(0);

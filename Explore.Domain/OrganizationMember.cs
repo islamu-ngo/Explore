@@ -1,20 +1,26 @@
-﻿using Explore.Domain.Enums;
 using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text;
 
 namespace Explore.Domain
 {
     public class OrganizationMember
     {
         public Guid Id { get; set; }
-        [ForeignKey("User")]
-        public Guid UserId { get; set; }
-        public User User { get; set; }
+
         [ForeignKey("Organization")]
         public Guid OrganizationId { get; set; }
         public Organization Organization { get; set; }
-        public OrganizationRoleEnum Role { get; set; } = OrganizationRoleEnum.Member;
+
+        [ForeignKey("User")]
+        public Guid UserId { get; set; }
+        public User User { get; set; }
+
+        [ForeignKey("OrganizationRole")]
+        public int OrganizationRoleId { get; set; }
+        public OrganizationRole OrganizationRole { get; set; }
+
+        [ForeignKey("OrganizationPosition")]
+        public int? OrganizationPositionId { get; set; }
+        public OrganizationPosition? OrganizationPosition { get; set; }
     }
 }

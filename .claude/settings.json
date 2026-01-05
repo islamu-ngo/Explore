@@ -59,9 +59,9 @@
     "commit-commands@claude-plugins-official": true,
     "playwright@claude-plugins-official": true,
     "security-guidance@claude-plugins-official": true,
-    "explanatory-output-style@claude-plugins-official": true,
     "csharp-lsp@claude-plugins-official": true,
-    "superpowers@superpowers-marketplace": true
+    "superpowers@superpowers-marketplace": true,
+    "llm-council@the-llm-council": true
   },
   "commands": {
     "build": "dotnet build",

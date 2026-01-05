@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Explore.Application.Contracts.Persistence;
@@ -11,20 +11,20 @@ namespace Explore.Application.DTOs.Event.Validators
         private readonly IAudienceAgeRepository _audienceAgeRepository;
         private readonly IAudienceGenderRepository _audienceGenderRepository;
         private readonly IEventTypeRepository _eventTypeRepository;
-        private readonly IOrganizationRepository _organizationRepository;
+        private readonly IActorRepository _actorRepository;
         private readonly IStorageObjectRepository _storageObjectRepository;
 
         public CreateEventDtoValidator(
             IAudienceAgeRepository audienceAgeRepository,
             IAudienceGenderRepository audienceGenderRepository,
             IEventTypeRepository eventTypeRepository,
-            IOrganizationRepository organizationRepository,
+            IActorRepository actorRepository,
             IStorageObjectRepository storageObjectRepository)
         {
             _audienceAgeRepository = audienceAgeRepository;
             _audienceGenderRepository = audienceGenderRepository;
             _eventTypeRepository = eventTypeRepository;
-            _organizationRepository = organizationRepository;
+            _actorRepository = actorRepository;
             _storageObjectRepository = storageObjectRepository;
 
             RuleFor(p => p.Title)
@@ -36,6 +36,17 @@ namespace Explore.Application.DTOs.Event.Validators
                 .NotEmpty().WithMessage("{PropertyName} is required.")
                 .NotNull()
                 .MaximumLength(500).WithMessage("{PropertyName} must not exceed 500 characters.");
+
+            RuleFor(p => p.Slug)
+                .MaximumLength(500).WithMessage("{PropertyName} must not exceed 500 characters.");
+
+            RuleFor(p => p.EventTypeId)
+                .NotEmpty().WithMessage("{PropertyName} is required.")
+                .MustAsync(async (id, cancellation) =>
+                {
+                    var exists = await _eventTypeRepository.Exists(id);
+                    return exists;
+                }).WithMessage("{PropertyName} does not exist.");
 
             RuleFor(p => p.AudienceGenderId)
                 .NotEmpty().WithMessage("{PropertyName} is required.")
@@ -55,7 +66,7 @@ namespace Explore.Application.DTOs.Event.Validators
                     return audienceAgeExists;
                 }).WithMessage("{PropertyName} does not exist.");
 
-            RuleFor(p => p.OrganizationId)
+            RuleFor(p => p.ActorId)
                 .NotEmpty().WithMessage("{PropertyName} is required.")
                 .NotNull()
                 .MustAsync(async (id, cancellation) =>
@@ -64,19 +75,19 @@ namespace Explore.Application.DTOs.Event.Validators
                     return organizationExists;
                 }).WithMessage("{PropertyName} does not exist.");
 
-            RuleFor(p => p.AudienceAttendees)
-                .GreaterThan(0).When(p => p.AudienceAttendees.HasValue)
-                .WithMessage("{PropertyName} must be greater than 0.");
-
             RuleFor(p => p.Price)
-                .GreaterThanOrEqualTo(0).WithMessage("{PropertyName} must be greater")
-                .NotNull().WithMessage("{PropertyName} is required.");
+                .GreaterThanOrEqualTo(0).When(p => p.Price.HasValue)
+                .WithMessage("{PropertyName} must be greater than or equal to 0.");
+
+            RuleFor(p => p.CurrencyCode)
+                .MaximumLength(3).When(p => !string.IsNullOrEmpty(p.CurrencyCode))
+                .WithMessage("{PropertyName} must be a valid 3-letter currency code.");
 
             RuleFor(p => p.FeaturedImageId)
+                .NotEmpty().WithMessage("{PropertyName} is required.")
+                .NotNull()
                 .MustAsync(async (id, cancellation) =>
                 {
-                    if (!id.HasValue)
-                        return true;
                     var storageObjectExists = await _storageObjectRepository.Exists(id.Value);
                     return storageObjectExists;
                 }).WithMessage("{PropertyName} does not exist.");
@@ -84,44 +95,29 @@ namespace Explore.Application.DTOs.Event.Validators
             //TODO quand je change le Program pour mettre non nullable revient changer ici!
             //RuleFor(p => p.IsRegistrationRequired)
             //    .NotNull().WithMessage("{PropertyName} is required.");
+            RuleFor(p => p.EventStatusId)
+                .NotEmpty().WithMessage("{PropertyName} is required.");
 
-            RuleFor(p => p.Country)
-                .MaximumLength(50).When(p => !string.IsNullOrEmpty(p.Country))
-                .WithMessage("{PropertyName} must not exceed 50 characters.");
+            RuleFor(p => p.VisibilityTypeId)
+                .NotEmpty().WithMessage("{PropertyName} is required.");
 
-            RuleFor(p => p.City)
-                .MaximumLength(50).When(p => !string.IsNullOrEmpty(p.City))
-                .WithMessage("{PropertyName} must not exceed 50 characters.");
+            RuleFor(p => p.EventFormatId)
+                .NotEmpty().WithMessage("{PropertyName} is required.");
 
-            RuleFor(p => p.PostCode)
-                .GreaterThan(0).When(p => p.PostCode.HasValue)
-                .WithMessage("{PropertyName} must be greater than 0.");
+            RuleFor(p => p.ExternalRegistrationUrl)
+                .MaximumLength(500).When(p => !string.IsNullOrEmpty(p.ExternalRegistrationUrl))
+                .WithMessage("{PropertyName} must not exceed 500 characters.");
 
-            RuleFor(p => p.Address)
-                .MaximumLength(100).When(p => !string.IsNullOrEmpty(p.Address))
-                .WithMessage("{PropertyName} must not exceed 100 characters.");
+            RuleFor(p => p.Timezone)
+                .MaximumLength(500).When(p => !string.IsNullOrEmpty(p.Timezone))
+                .WithMessage("{PropertyName} must not exceed 500 characters.");
 
-            // Url can be very long, so we allow up to 4000 characters
-            RuleFor(p => p.ProgramUrl)
-                .MaximumLength(4000).When(p => !string.IsNullOrEmpty(p.ProgramUrl))
-                .WithMessage("{PropertyName} must not exceed 4000 characters.");
+            RuleFor(p => p.EventUrl)
+                .MaximumLength(500).When(p => !string.IsNullOrEmpty(p.EventUrl))
+                .WithMessage("{PropertyName} must not exceed 500 characters.");
 
-            RuleFor(p => p.StartDate)
-                .NotEmpty().WithMessage("{PropertyName} is required.")
-                .GreaterThan(DateTime.MinValue).WithMessage("{PropertyName} must be a valid date.");
-
-            RuleFor(p => p.EndDate)
-                .NotEmpty().WithMessage("{PropertyName} is required.")
-                .GreaterThan(p => p.StartDate).WithMessage("{PropertyName} must be after Start Date.");
-
-            RuleFor(p => p.EventTypeId)
-                .NotEmpty().WithMessage("{PropertyName} is required.")
-                .NotNull()
-                .MustAsync(async (id, cancellation) =>
-                {
-                    var eventTypeExists = await _eventTypeRepository.Exists(id);
-                    return eventTypeExists;
-                }).WithMessage("{PropertyName} does not exist.");
+            RuleFor(p => p.TenantId)
+                .NotEmpty().WithMessage("{PropertyName} is required.");
         }
     }
 }

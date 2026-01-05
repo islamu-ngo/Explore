@@ -1,21 +1,30 @@
-﻿using System;
-using System.Collections.Generic;
+using System;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text;
 
 namespace Explore.Domain
 {
     public class EventRegistration
     {
         public Guid Id { get; set; }
+
         [ForeignKey("User")]
         public Guid UserId { get; set; }
         public User User { get; set; }
-        [ForeignKey("Event")]
-        public Guid EventId { get; set; }
-        public Event Event { get; set; }
+
+        [ForeignKey("EventSession")]
+        public Guid EventSessionId { get; set; }
+        public EventSession EventSession { get; set; }
+
         [ForeignKey("ApprovalStatus")]
-        public int ApprovalStatusId { get; set; }
-        public ApprovalStatus ApprovalStatus { get; set; }
+        public int? ApprovalStatusId { get; set; }
+        public ApprovalStatus? ApprovalStatus { get; set; }
+
+        [ForeignKey("Tenant")]
+        public Guid TenantId { get; set; }
+        public Tenant Tenant { get; set; }
+
+        [ForeignKey("AtprotoRecord")]
+        public Guid? AtprotoRecordId { get; set; }
+        public AtprotoRecord? AtprotoRecord { get; set; }
     }
 }

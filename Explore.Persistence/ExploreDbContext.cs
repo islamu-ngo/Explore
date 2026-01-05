@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using System.Data.Entity.Core.Metadata.Edm;
 using System.Reflection.Metadata;
 using Explore.Domain;
@@ -17,22 +17,7 @@ namespace Explore.Persistence
         {
             base.OnModelCreating(modelBuilder);
 
-            // Use TPT strategy so no program table with discriminator as it is by default!
-            //modelBuilder.ApplyConfiguration(new AudienceAgeConfiguration());
-            //modelBuilder.ApplyConfiguration(new AudienceGenderConfiguration());
-            //modelBuilder.ApplyConfiguration(new EducationConfiguration());
-            //modelBuilder.ApplyConfiguration(new EducationTypeConfiguration());
-            //modelBuilder.ApplyConfiguration(new EventConfiguration());
-            //modelBuilder.ApplyConfiguration(new EventTypeConfiguration());
-            //modelBuilder.ApplyConfiguration(new OrganizationConfiguration());
-            //modelBuilder.ApplyConfiguration(new OrganizationMemberConfiguration());
-            //modelBuilder.ApplyConfiguration(new ProgramConfiguration());
-            modelBuilder.ApplyConfiguration(new ProgramRegistrationConfiguration());
-            modelBuilder.ApplyConfiguration(new OrganizationReviewConfiguration());
-            //modelBuilder.ApplyConfiguration(new ProgramTypeConfiguration());
-            //modelBuilder.ApplyConfiguration(new StatusTypeConfiguration());
-            //modelBuilder.ApplyConfiguration(new StorageObjectConfiguration());
-
+            // Auto-discover and apply all IEntityTypeConfiguration implementations from this assembly
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(ExploreDbContext).Assembly);
         }
 
@@ -40,11 +25,10 @@ namespace Explore.Persistence
         {
             foreach (var entry in ChangeTracker.Entries())
             {
-                //ActionType actionType = ActionType.Update;
-
                 if (entry.State == EntityState.Added)
                 {
                     //actionType = ActionType.Create;
+                    // Could add audit logging here
                 }
                 //var logMessage = CreateLogMessage(entry, actionType);
                 //LogHelper.Log(logMessage); // Assuming LogHelper has a static Log method
@@ -53,21 +37,71 @@ namespace Explore.Persistence
             return base.SaveChangesAsync(cancellationToken);
         }
 
-        public DbSet<AudienceAge> AudienceAges { get; set; }
-        public DbSet<AudienceGender> AudienceGenders { get; set; }
-        public DbSet<Category> Categories { get; set; }
-        public DbSet<Event> Events { get; set; }
-        public DbSet<EventType> EventTypes { get; set; }
+        // ===== Multi-tenancy =====
+        public DbSet<Tenant> Tenants { get; set; }
+        public DbSet<TenantUser> TenantUsers { get; set; }
+        public DbSet<TenantSettings> TenantSettings { get; set; }
+
+        // ===== Users & Authentication =====
+        public DbSet<User> Users { get; set; }
+        public DbSet<UserRole> UserRoles { get; set; }
+        public DbSet<UserAuthenticationToken> UserAuthenticationTokens { get; set; }
+        public DbSet<UserExternalLogin> UserExternalLogins { get; set; }
+
+        // ===== Actors (Federation/ATProto) =====
+        public DbSet<Actor> Actors { get; set; }
+        public DbSet<ActorType> ActorTypes { get; set; }
+        public DbSet<DidCustodyType> DidCustodyTypes { get; set; }
+        public DbSet<ActorKeyStore> ActorKeyStores { get; set; }
+
+        // ===== Organizations =====
         public DbSet<Organization> Organizations { get; set; }
         public DbSet<OrganizationMember> OrganizationMembers { get; set; }
-        public DbSet<EventCategories> ProgramCategories { get; set; } 
+        public DbSet<OrganizationRole> OrganizationRoles { get; set; }
+        public DbSet<OrganizationPosition> OrganizationPositions { get; set; }
+        public DbSet<OrganizationReview> OrganizationReviews { get; set; }
+
+        // ===== Events =====
+        public DbSet<Event> Events { get; set; }
+        public DbSet<EventSession> EventSessions { get; set; }
         public DbSet<EventRegistration> EventRegistrations { get; set; }
-        public DbSet<EventTags> ProgramTags { get; set; }
+        public DbSet<EventSessionLanguage> EventSessionLanguages { get; set; }
+        public DbSet<EventSessionSpeaker> EventSessionSpeakers { get; set; }
+        public DbSet<EventSessionAgendaItem> EventSessionAgendaItems { get; set; }
+
+        // ===== Event Lookup Tables =====
+        public DbSet<EventType> EventTypes { get; set; }
+        public DbSet<EventStatus> EventStatuses { get; set; }
+        public DbSet<EventFormat> EventFormats { get; set; }
+        public DbSet<VisibilityType> VisibilityTypes { get; set; }
+        public DbSet<RegistrationMode> RegistrationModes { get; set; }
+
+        // ===== Event Metadata =====
+        public DbSet<AudienceAge> AudienceAges { get; set; }
+        public DbSet<AudienceGender> AudienceGenders { get; set; }
+        public DbSet<Madhab> Madhabs { get; set; }
+        public DbSet<Language> Languages { get; set; }
         public DbSet<ApprovalStatus> ApprovalStatuses { get; set; }
-        public DbSet<StorageObject> Files { get; set; }
+
+        // ===== Categories & Tags =====
+        public DbSet<Category> Categories { get; set; }
         public DbSet<Tag> Tags { get; set; }
         public DbSet<TagType> TagTypes { get; set; }
         public DbSet<TagTypeTags> TagTypeTags { get; set; }
-        public DbSet<User> Users { get; set; }
+        public DbSet<EventCategories> EventCategories { get; set; }
+        public DbSet<EventTags> EventTags { get; set; }
+
+        // ===== Locations =====
+        public DbSet<Location> Locations { get; set; }
+
+        // ===== Storage =====
+        public DbSet<StorageObject> StorageObjects { get; set; }
+        public DbSet<FileType> FileTypes { get; set; }
+        public DbSet<OwnerType> OwnerTypes { get; set; }
+
+        // ===== Federation/Indexer (ATProto) =====
+        public DbSet<IndexedDid> IndexedDids { get; set; }
+        public DbSet<SyncState> SyncStates { get; set; }
+        public DbSet<AtprotoRecord> AtprotoRecords { get; set; }
     }
 }

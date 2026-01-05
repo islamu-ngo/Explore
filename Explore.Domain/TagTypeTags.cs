@@ -1,17 +1,22 @@
-﻿using System;
-using System.Collections.Generic;
+using System;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text;
 
 namespace Explore.Domain
 {
     public class TagTypeTags
     {
-        [ForeignKey("TagType")]
-        public Guid TagTypeId { get; set; }
-        public TagType TagType { get; set; }
+        public Guid Id { get; set; }
+
         [ForeignKey("Tag")]
         public Guid TagId { get; set; }
         public Tag Tag { get; set; }
+
+        [ForeignKey("TagType")]
+        public int TagTypeId { get; set; }
+        public TagType TagType { get; set; }
+
+        [ForeignKey("Tenant")]
+        public Guid TenantId { get; set; }
+        public Tenant Tenant { get; set; }
     }
 }

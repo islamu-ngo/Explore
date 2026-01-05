@@ -17,9 +17,6 @@ This file is the entrypoint. Detailed docs are imported from `docs/`.
 ## Domain Model & Business Logic
 @docs/DOMAIN.md
 
-## Code Conventions & Standards
-@docs/CONVENTIONS.md
-
 ## Security Architecture (AuthN/AuthZ)
 @docs/SECURITY.md
 
@@ -60,6 +57,9 @@ dotnet test
 dotnet test tests/Explore.Application.Tests/
 ```
 
+### Database Schema
+@schema/islamu-event.md
+
 ### Development URLs (Default)
 
 | Service | URL |
@@ -78,3 +78,15 @@ Always use sequential-thinking MCP when I need to:
 - Branch into alternative paths of reasoning
 - Adjust the total number of thoughts dynamically
 - Generate and verify solution hypotheses
+
+## Context, plans, and task management
+ALWAYS refer to this file and all the files in @dev/active/ that contain context and plan and tasks.
+@dev/active/README.md
+
+## Rules
+- Only write inside this repo project folder, never in users folder, only edits and changes you can make are project specific (not in C:\Users\*\.claude\ for example)
+- When Gettings build errors after making changes, stop trying to build again! Get the errors and work on them and skip building until you have fixed the errors. Only Get certain amounts of trys to build again after fixing errors. If those trys fail, continue working on fixing the errors without building until you are sure the errors are fixed.
+- Always use int instead of long unless absolutely necessary.
+- never Add default values for properties Inside Domain Entities.
+- Do not remove using imports in files even if they appear unused.
+- Always follow Clean Architecture principles.

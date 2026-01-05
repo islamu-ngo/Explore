@@ -18,17 +18,19 @@ namespace Explore.Persistence.Configurations.Entities
                 new EventType
                 {
                     Id = (int)EventTypeEnum.Conference,
+                    MasterCode = "CONFERENCE",
                     FullName = "Conference"
-                }
-                ,
+                },
                 new EventType
                 {
                     Id = (int)EventTypeEnum.Webinar,
+                    MasterCode = "WEBINAR",
                     FullName = "Webinar"
                 },
                 new EventType
                 {
                     Id = (int)EventTypeEnum.Workshop,
+                    MasterCode = "WORKSHOP",
                     FullName = "Workshop"
                 });
         }
