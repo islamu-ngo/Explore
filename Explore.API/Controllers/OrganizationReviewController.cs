@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Explore.API.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/v1/[controller]")]
     [ApiController]
     public class OrganizationReviewController : ControllerBase
     {

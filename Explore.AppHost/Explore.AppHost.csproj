@@ -24,6 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Event.MigrationService\Event.MigrationService.csproj" />
     <ProjectReference Include="..\Explore.API\Explore.API.csproj" />
     <ProjectReference Include="..\Explore.Blazor\Explore.Blazor.csproj" />
   </ItemGroup>

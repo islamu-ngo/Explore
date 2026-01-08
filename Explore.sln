@@ -26,6 +26,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Explore.Infrastructure", "E
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Explore.Persistence", "Explore.Persistence\Explore.Persistence.csproj", "{E2F80BEA-5CAA-4CBA-BF1B-035DB1705C05}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Event.MigrationService", "Event.MigrationService\Event.MigrationService.csproj", "{5AFEDD46-1680-317E-7C2D-ECFA751CF956}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -144,6 +146,18 @@ Global
 		{E2F80BEA-5CAA-4CBA-BF1B-035DB1705C05}.Release|x64.Build.0 = Release|Any CPU
 		{E2F80BEA-5CAA-4CBA-BF1B-035DB1705C05}.Release|x86.ActiveCfg = Release|Any CPU
 		{E2F80BEA-5CAA-4CBA-BF1B-035DB1705C05}.Release|x86.Build.0 = Release|Any CPU
+		{5AFEDD46-1680-317E-7C2D-ECFA751CF956}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5AFEDD46-1680-317E-7C2D-ECFA751CF956}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5AFEDD46-1680-317E-7C2D-ECFA751CF956}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{5AFEDD46-1680-317E-7C2D-ECFA751CF956}.Debug|x64.Build.0 = Debug|Any CPU
+		{5AFEDD46-1680-317E-7C2D-ECFA751CF956}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{5AFEDD46-1680-317E-7C2D-ECFA751CF956}.Debug|x86.Build.0 = Debug|Any CPU
+		{5AFEDD46-1680-317E-7C2D-ECFA751CF956}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5AFEDD46-1680-317E-7C2D-ECFA751CF956}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5AFEDD46-1680-317E-7C2D-ECFA751CF956}.Release|x64.ActiveCfg = Release|Any CPU
+		{5AFEDD46-1680-317E-7C2D-ECFA751CF956}.Release|x64.Build.0 = Release|Any CPU
+		{5AFEDD46-1680-317E-7C2D-ECFA751CF956}.Release|x86.ActiveCfg = Release|Any CPU
+		{5AFEDD46-1680-317E-7C2D-ECFA751CF956}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -154,6 +168,7 @@ Global
 		{B426B091-F657-40E8-87FC-4153C833188E} = {53EBDEF7-ABF1-4664-BF0C-570E5CFBF0CA}
 		{7670877A-1031-4974-8DFB-88E108CE3896} = {9095E438-264F-462D-A26E-6201E2E2D76D}
 		{E2F80BEA-5CAA-4CBA-BF1B-035DB1705C05} = {9095E438-264F-462D-A26E-6201E2E2D76D}
+		{5AFEDD46-1680-317E-7C2D-ECFA751CF956} = {CF01B880-93A7-46DB-BA02-12C566F78341}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {97AF72C6-150A-4236-A337-17C274270ACA}

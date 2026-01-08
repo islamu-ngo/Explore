@@ -99,6 +99,9 @@ builder.Services.AddHealthChecks().AddCheck("mycheck", () =>
 //    .WithHealthCheck("mycheck");
 //var ExploreDB = ExploreServer.AddDatabase("ExploreDB");
 
+var migrations = builder.AddProject<Projects.Event_MigrationService>("event-migrationservice");
+
+
 var realm = keycloakSecrets.TryGetValue("KEYCLOAK_REALM", out var r) ? r : "islamu-dev";
 var authority = $"https://keycloak.openislamu.org/realms/{realm}";
 var metadataAddress = $"{authority}/.well-known/openid-configuration";
@@ -112,7 +115,9 @@ var exploreBlazor = builder.AddProject<Projects.Explore_Blazor>("explore-blazor"
     .WithEnvironment("Keycloak__ClientSecret",
         keycloakSecrets.TryGetValue("EXPLORE_BLAZOR_SERVER_CLIENT_SECRET_COOLIFY", out var n) ? n : "")
     .WithEnvironment("Keycloak__RequireHttpsMetadata", "true")
-    .WithEnvironment("ExploreAPI__BaseUrl", "https://localhost:7039/");
+    .WithEnvironment("ExploreAPI__BaseUrl", "https://localhost:7039/")
+    .WithReference(migrations)
+    .WaitForCompletion(migrations);
 //.WithReference(ExploreDB)
 //.WaitFor(ExploreDB);
 
@@ -141,7 +146,9 @@ var exploreAPI = builder.AddProject<Projects.Explore_API>("explore-api")
     .WithEnvironment("Keycloak__ClientId", "explore-api")
     //.WithEnvironment("Keycloak__ClientSecret", keycloakSecrets.TryGetValue("EXPLORE_API_CLIENT_SECRET_COOLIFY", out var y) ? n : "")
     .WithEnvironment("Keycloak__RequireHttpsMetadata", "true")
-    .WithEnvironment("ConnectionStrings__DefaultConnection", postgresPublicUrl);
+    .WithEnvironment("ConnectionStrings__DefaultConnection", postgresPublicUrl)
+    .WithReference(migrations)
+    .WaitForCompletion(migrations);
 //.WithReference(ExploreDB)
 //.WaitFor(ExploreDB);
 

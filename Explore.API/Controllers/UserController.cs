@@ -9,7 +9,7 @@ using System.Security.Claims;
 
 namespace Explore.API.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/v1/[controller]")]
     [ApiController]
     public class UserController : ControllerBase
     {
@@ -24,7 +24,7 @@ namespace Explore.API.Controllers
         [Authorize]
         public async Task<ActionResult<BaseCommandResponse<Guid>>> SyncUser()
         {
-            var userId = User.FindFirst("sub")?.Value 
+            var userId = User.FindFirst("sub")?.Value
                          ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var guidUserId))
@@ -32,16 +32,16 @@ namespace Explore.API.Controllers
                 return BadRequest("Invalid User ID in token");
             }
 
-            var email = User.FindFirst("email")?.Value 
+            var email = User.FindFirst("email")?.Value
                         ?? User.FindFirst(ClaimTypes.Email)?.Value ?? "";
-            
-            var firstName = User.FindFirst("given_name")?.Value 
+
+            var firstName = User.FindFirst("given_name")?.Value
                             ?? User.FindFirst(ClaimTypes.GivenName)?.Value ?? "";
-            
-            var lastName = User.FindFirst("family_name")?.Value 
+
+            var lastName = User.FindFirst("family_name")?.Value
                            ?? User.FindFirst(ClaimTypes.Surname)?.Value ?? "";
-            
-            var username = User.FindFirst("preferred_username")?.Value 
+
+            var username = User.FindFirst("preferred_username")?.Value
                            ?? User.FindFirst(ClaimTypes.Name)?.Value ?? "";
 
             var userDto = new UserDto
@@ -63,7 +63,7 @@ namespace Explore.API.Controllers
         [Authorize]
         public async Task<ActionResult<UserDto>> GetCurrentUser()
         {
-            var userId = User.FindFirst("sub")?.Value 
+            var userId = User.FindFirst("sub")?.Value
                          ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var guidUserId))
@@ -80,7 +80,7 @@ namespace Explore.API.Controllers
         [Authorize]
         public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateUser([FromBody] UpdateUserDto userDto)
         {
-            var userId = User.FindFirst("sub")?.Value 
+            var userId = User.FindFirst("sub")?.Value
                          ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var guidUserId))
@@ -102,7 +102,7 @@ namespace Explore.API.Controllers
         [Authorize]
         public async Task<ActionResult> DeleteUser()
         {
-            var userId = User.FindFirst("sub")?.Value 
+            var userId = User.FindFirst("sub")?.Value
                          ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var guidUserId))

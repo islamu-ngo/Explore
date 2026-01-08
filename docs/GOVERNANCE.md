@@ -10,6 +10,12 @@
 
 ## Repository Pattern
 
+## Mapping
+
+If DTO property is named EventTitle and your Entity path is Event.Title, AutoMapper automatically figures this out. You don't need .ForMember.
+CreateMap<EventSession, EventSessionDto>()
+    // You only need manual mapping if names DO NOT match
+    .ReverseMap();
 
 ## Validation
 Location: DTOs/{Entity}/Validators/

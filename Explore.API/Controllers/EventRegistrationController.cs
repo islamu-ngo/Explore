@@ -8,7 +8,7 @@ using System.Security.Claims;
 
 namespace Explore.API.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/v1/[controller]")]
     [ApiController]
     public class EventRegistrationController : ControllerBase
     {
