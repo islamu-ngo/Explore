@@ -23,6 +23,7 @@ builder.Services.AddScoped<ILandingPageService, LandingPageService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IOrganizationReviewService, OrganizationReviewService>();
 builder.Services.AddScoped<IMapsService, MapsService>();
+builder.Services.AddScoped<IImageStorageService, ImageStorageService>();
 
 builder.Services.AddScoped<BffClient>();
 

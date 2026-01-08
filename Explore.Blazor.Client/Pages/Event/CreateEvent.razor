@@ -118,6 +118,17 @@
                     }
                 </MudSelect>
 
+                <!-- Event Image Upload -->
+                <MudText Typo="Typo.h6" Class="mb-3">Event Image</MudText>
+                <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
+                    <ImageUpload @bind-ImageKey="createDto.ImageKey"
+                                @bind-PreviewUrl="imagePreviewUrl"
+                                Width="100%"
+                                Height="300px"
+                                PlaceholderText="Add an event image"
+                                HintText="Upload an attractive image for your event (JPG, PNG, GIF, WebP - Max 5MB)" />
+                </MudPaper>
+
                 <!-- Date and Time -->
                 <MudText Typo="Typo.h6" Class="mb-3">Date and Time</MudText>
                 <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
@@ -287,6 +298,7 @@
     private List<AudienceGenderListDto>? audienceGenders;
     private List<AudienceAgeListDto>? audienceAges;
     private bool isLoading = true;
+    private string? imagePreviewUrl;
 
     private DateTime? _startDate = DateTime.Today;
     private TimeSpan? _startTime = new TimeSpan(9, 0, 0);

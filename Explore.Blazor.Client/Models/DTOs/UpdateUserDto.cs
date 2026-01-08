@@ -10,5 +10,8 @@ namespace Explore.Blazor.Client.Models.DTOs
         public string? Bio { get; set; }
         public string? City { get; set; }
         public string? Country { get; set; }
+        
+        // S3 Image Key for the user profile picture
+        public string? ProfileImageKey { get; set; }
     }
 }

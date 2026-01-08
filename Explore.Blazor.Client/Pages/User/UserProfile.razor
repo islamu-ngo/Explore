@@ -183,7 +183,19 @@ else
             <div class="user-header">
                 <!-- Avatar -->
                 <div class="user-avatar">
-                    <MudImage Src="https://via.placeholder.com/280x280/7E6FFF/FFFFFF?text=AS" Alt="User Avatar" Style="width:100%; height:100%; object-fit:cover;" />
+                    @if (!string.IsNullOrEmpty(UserData.ProfileImageKey))
+                    {
+                        <S3Image ImageKey="@UserData.ProfileImageKey"
+                                Alt="@GetFullName()"
+                                ObjectFit="cover"
+                                BorderRadius="50%"
+                                ContainerStyle="width: 100%; height: 100%;"
+                                PlaceholderIcon="@Icons.Material.Filled.Person" />
+                    }
+                    else
+                    {
+                        <MudImage Src="https://via.placeholder.com/280x280/7E6FFF/FFFFFF?text=@GetInitials()" Alt="User Avatar" Style="width:100%; height:100%; object-fit:cover;" />
+                    }
                 </div>
 
                 <!-- Name + Stats -->

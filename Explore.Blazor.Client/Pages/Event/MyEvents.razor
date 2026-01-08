@@ -286,8 +286,21 @@
             {
                 <MudItem xs="12" sm="6" md="4">
                     <MudCard Elevation="0" Class="card" Style="position: relative;">
-                        <MudCardMedia Class="card-media"
-                                      Image="@(evt.FeaturedImageUri ?? $"https://dummyimage.com/1200x800/{GetEventColor(evt)}/ffffff&text={Uri.EscapeDataString(evt.Title)}")" />
+                        <MudCardMedia Class="card-media">
+                            @if (!string.IsNullOrEmpty(evt.ImageKey))
+                            {
+                                <S3Image ImageKey="@evt.ImageKey"
+                                        Alt="@evt.Title"
+                                        ObjectFit="cover"
+                                        ContainerStyle="height: 200px;" />
+                            }
+                            else
+                            {
+                                <img src="@($"https://dummyimage.com/1200x800/{GetEventColor(evt)}/ffffff&text={Uri.EscapeDataString(evt.Title)}")" 
+                                     alt="@evt.Title" 
+                                     style="width: 100%; height: 200px; object-fit: cover;" />
+                            }
+                        </MudCardMedia>
                         
                         <!-- Actions Menu positioned on card -->
                         <div class="actions-menu">

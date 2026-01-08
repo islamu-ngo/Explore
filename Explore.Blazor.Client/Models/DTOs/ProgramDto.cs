@@ -12,6 +12,10 @@ public class ProgramListDto
     public int? AudienceAttendees { get; set; }
     public double Price { get; set; }
     public Guid? FeaturedImageId { get; set; }
+    
+    // S3 Image Key for the program/event image
+    public string? ImageKey { get; set; }
+    
     public int TotalViews { get; set; }
     public string? Country { get; set; }
     public string? City { get; set; }

@@ -20,5 +20,6 @@ namespace Explore.Blazor.Client.Models.DTOs;
         public string? ProgramUrl { get; set; }
         public DateTime? EventStartDate { get; set; }
         public DateTime? EventEndDate { get; set; }
+        public string? ProgramImageKey { get; set; } // S3 Image Key for the program image
         public bool HasReviewed { get; set; }
     }

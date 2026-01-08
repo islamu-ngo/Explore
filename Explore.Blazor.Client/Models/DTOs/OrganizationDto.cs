@@ -11,6 +11,9 @@ public class OrganizationCreateDto
     public string City { get; set; } = string.Empty;
     public int Postcode { get; set; }
     public string Address { get; set; } = string.Empty;
+    
+    // S3 Image Key for the organization logo
+    public string? LogoImageKey { get; set; }
 }
 
 public class OrganizationDto
@@ -29,6 +32,9 @@ public class OrganizationDto
     public string? CreatorUserName { get; set; }
     public string? CreatorEmail { get; set; }
     public DateTime CreatedAt { get; set; }
+    
+    // S3 Image Key for the organization logo
+    public string? LogoImageKey { get; set; }
 }
 
 public class OrganizationListDto
@@ -44,6 +50,9 @@ public class OrganizationListDto
     public int StatusTypeId { get; set; }
     public string ApprovalStatusFullName { get; set; } = string.Empty;
     public OrganizationRole? CurrentUserRole { get; set; }
+    
+    // S3 Image Key for the organization logo
+    public string? LogoImageKey { get; set; }
 }
 
 public class OrganizationStatusTypeListDto

@@ -79,4 +79,17 @@ public partial class UserProfile : ComponentBase
             
         return UserData.Username;
     }
+
+    private string GetInitials()
+    {
+        if (UserData == null) return "?";
+        
+        var firstInitial = !string.IsNullOrEmpty(UserData.FirstName) ? UserData.FirstName[0].ToString().ToUpper() : "";
+        var lastInitial = !string.IsNullOrEmpty(UserData.LastName) ? UserData.LastName[0].ToString().ToUpper() : "";
+        
+        if (!string.IsNullOrEmpty(firstInitial) || !string.IsNullOrEmpty(lastInitial))
+            return $"{firstInitial}{lastInitial}";
+            
+        return !string.IsNullOrEmpty(UserData.Username) ? UserData.Username[0].ToString().ToUpper() : "?";
+    }
 }

@@ -373,7 +373,17 @@
                 <div class="registration-card">
                     <div class="card-content">
                         <div class="event-image">
-                            <img src="@GetEventImage(registration)" alt="@registration.ProgramTitle" />
+                            @if (!string.IsNullOrEmpty(registration.ProgramImageKey))
+                            {
+                                <S3Image ImageKey="@registration.ProgramImageKey" 
+                                       Alt="@registration.ProgramTitle"
+                                       ObjectFit="cover"
+                                       PlaceholderIcon="@Icons.Material.Filled.Event" />
+                            }
+                            else
+                            {
+                                <img src="@GetEventImage(registration)" alt="@registration.ProgramTitle" />
+                            }
                         </div>
 
                         <div class="event-details">

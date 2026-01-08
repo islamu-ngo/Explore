@@ -20,6 +20,10 @@ public class EventListDto
     public double Price { get; set; }
     public Guid? FeaturedImageId { get; set; }
     public string? FeaturedImageUri { get; set; }
+    
+    // S3 Image Key for the event image
+    public string? ImageKey { get; set; }
+    
     public bool? IsRegistrationRequired { get; set; }
     public int TotalViews { get; set; }
     public DateTime StartDate { get; set; }

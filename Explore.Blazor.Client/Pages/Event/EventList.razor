@@ -305,8 +305,19 @@
                 {
                     <MudItem xs="12" sm="6" md="4">
                         <MudCard Elevation="0" Class="card">
-                            <MudCardMedia Class="card-media"
-                                          Image="@GetEventImage(evt)" />
+                            <MudCardMedia Class="card-media">
+                                @if (!string.IsNullOrEmpty(evt.ImageKey))
+                                {
+                                    <S3Image ImageKey="@evt.ImageKey" 
+                                            Alt="@evt.Title"
+                                            ObjectFit="cover"
+                                            ContainerStyle="height: 200px;" />
+                                }
+                                else
+                                {
+                                    <img src="@GetEventImage(evt)" alt="@evt.Title" style="width: 100%; height: 200px; object-fit: cover;" />
+                                }
+                            </MudCardMedia>
                             <MudCardContent>
                                 <div class="badges">
                                     <MudChip T="string" Size="Size.Small" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Category">
