@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Explore.Domain;
@@ -10,7 +10,7 @@ namespace Explore.Application.Contracts.Persistence
         Task<List<User>> GetUsersByOrganization(Guid organizationId);
         Task<List<Organization>> GetOrganizationsByUser(Guid userId);
         Task<bool> Exists(Guid organizationId, Guid userId);
-        Task<OrganizationMember> GetOrganizationMemberWithDetails(Guid id);
+        Task<OrganizationMember?> GetOrganizationMemberWithDetails(Guid id);
         Task<List<OrganizationMember>> GetOrganizationMembersWithDetails();
         Task<List<OrganizationMember>> GetMembersByOrganizationId(Guid organizationId);
         Task<List<OrganizationMember>> GetInvitesByEmail(string email);

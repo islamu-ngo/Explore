@@ -13,19 +13,24 @@ namespace Explore.Persistence.Repositories
             _dbContext = dbContext;
         }
 
-        public async Task<User?> GetByIdAsync(Guid id)
+        public async Task<User?> GetUserWithDetails(Guid id)
         {
-            return await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == id);
+            return await _dbContext.Users
+                .Include(u => u.Actor)
+                .FirstOrDefaultAsync(u => u.Id == id);
         }
 
         public async Task<List<User>> GetUsersByIdsAsync(List<Guid> ids)
         {
-            return await _dbContext.Users.Where(u => ids.Contains(u.Id)).ToListAsync();
+            return await _dbContext.Users
+                .Where(u => ids.Contains(u.Id))
+                .ToListAsync();
         }
 
-        public async Task<bool> ExistsByEmailAsync(string email)
+        public async Task<bool> ExistsByEmail(string email)
         {
-            return await _dbContext.Users.AnyAsync(u => u.Email == email);
+            return await _dbContext.Users
+                .AnyAsync(u => u.Email == email);
         }
     }
 }

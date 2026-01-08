@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Explore.Domain
@@ -25,5 +26,8 @@ namespace Explore.Domain
         [ForeignKey("Actor")]
         public Guid? ActorId { get; set; }
         public Actor? Actor { get; set; }
+
+        // Navigation property for members
+        public ICollection<OrganizationMember> Members { get; set; }
     }
 }

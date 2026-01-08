@@ -1,20 +1,10 @@
 {
   "permissions": {
-    "allow": [
-      "Edit:*",
-      "Write:*",
-      "MultiEdit:*",
-      "NotebookEdit:*",
-      "Bash:*"
-    ],
+    "allow": ["Edit:*", "Write:*", "MultiEdit:*", "NotebookEdit:*", "Bash:*"],
     "defaultMode": "acceptEdits"
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": [
-    "sequential-thinking",
-    "playwright",
-    "context7"
-  ],
+  "enabledMcpjsonServers": ["sequential-thinking", "playwright", "context7"],
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -60,7 +50,6 @@
     "playwright@claude-plugins-official": true,
     "security-guidance@claude-plugins-official": true,
     "csharp-lsp@claude-plugins-official": true,
-    "superpowers@superpowers-marketplace": true,
     "llm-council@the-llm-council": true
   },
   "commands": {

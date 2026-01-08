@@ -1,220 +1,100 @@
 # DBML Sync - Task Checklist
 
-**Last Updated:** 2026-01-05
-
-## ✅ ANALYSIS PHASE (COMPLETED)
-
-### Codebase Analysis (2026-01-04)
-- [x] Analyze Organization entity implementation across all layers
-- [x] Document Domain layer patterns (entities, enums, navigation)
-- [x] Document Application layer patterns (DTOs, CQRS, validators, handlers)
-- [x] Document Persistence layer patterns (configurations, repositories)
-- [x] Document API layer patterns (controllers, routing, auth)
-- [x] Identify actual naming conventions used in codebase
-- [x] Identify response patterns (BaseCommandResponse<T>)
-- [x] Identify repository return type patterns (DTOs vs entities)
-- [x] Create comprehensive refactored plan (60+ pages)
-
-### DBML Schema Analysis
-- [x] Compare DBML with existing codebase entities
-- [x] Identify type mismatches (atproto_record uuid vs varchar)
-- [x] Identify missing columns (tenant_id in 3 tables)
-- [x] Identify missing tables (OrganizationReview)
-- [x] Identify timestamp inconsistencies
-- [x] Document all corrections in dbml-corrections-required.md
-
-### Design Decisions (ALL RESOLVED)
-- [x] atproto_record type decision → varchar (255/500) for did/record_key/cid
-- [x] location geo representation → PostGIS geometry + lat/long
-- [x] tenant enforcement strategy → Multi-layered (filters + repo + middleware)
-- [x] join entities modeling → Explicit entities with tenant_id
-- [x] delete behaviors → Cascade for children, Restrict for cross-aggregate
-- [x] API routing → Standardize to /api/v1/[controller]
-- [x] repository return types → DTOs for queries, entities for commands
-- [x] user ID extraction → Centralized extension method
-
-### Documentation Created
-- [x] Updated dbml-sync-context.md with all findings
-- [x] Updated dbml-sync-plan.md with executive summary
-- [x] Created dbml-corrections-required.md (CRITICAL)
-- [x] Created comprehensive plan at C:\Users\AM5\.claude\plans\purrfect-weaving-sun.md
+**Last Updated:** 2026-01-08
 
 ---
 
-## Phase 0: Discovery & Alignment Spec ⏳ READY TO START (After DBML Corrections)
+## ✅ PHASE 0: ANALYSIS (COMPLETE)
 
-### 0.1 Entity Mapping (See comprehensive plan for complete table)
-- [ ] Create entity mapping table (43 entities total)
-  - [ ] Identify aggregates: Tenant, User, Actor, Organization, Event, EventRegistration, Category, Tag, Location, StorageObject, IndexedDid, SyncState
-  - [ ] Map sub-entities to aggregates
-  - [ ] Map lookup tables to enums or entities
-  - [ ] Confirm explicit join entities:
-    - [x] event_categories (CONFIRMED)
-    - [x] event_tags (CONFIRMED)
-    - [x] tag_type_tags (CONFIRMED)
-    - [x] event_session_languages (CONFIRMED)
-    - [x] event_session_speakers (CONFIRMED)
-    - [x] organization_members (CONFIRMED)
-    - [x] tenant_user (CONFIRMED)
-
-### 0.2 CQRS Use Case Mapping (See comprehensive plan for complete list)
-- [ ] Define Events use cases (create, update, get, list, search with filters)
-- [ ] Define EventSessions use cases
-- [ ] Define EventRegistrations use cases
-- [ ] Define Organizations use cases
-- [ ] Define Tags/Categories use cases
-- [ ] Define Locations use cases
-- [ ] Define Actors use cases (federation)
-- [ ] Define ATProto Records use cases (internal)
-
-### 0.3 Verification
-- [x] All blocking decisions resolved (8/8 complete)
-- [ ] Entity mapping document created
-- [ ] CQRS use case list created
-- [ ] No unresolved critical questions
-
-Acceptance (Phase 0):
-- [x] context.md updated with decisions ✅
-- [ ] Concrete entity mapping table created
-- [ ] CQRS use case list documented
-- [x] No unresolved critical type questions ✅
+- [x] Analyze codebase patterns (Organization entity across all layers)
+- [x] Document naming conventions, file structures
+- [x] Identify DBML schema corrections needed
+- [x] Resolve all blocking design decisions (8/8 complete)
 
 ---
 
-## Phase 1: Domain Layer (DBML → Entities) ✅ COMPLETED
-### 1.1 Create/Update Entities
-- [x] tenant, tenant_user, tenant_settings
-- [x] user, user_role, user_authentication_token, user_external_login
-- [x] actor, actor_type, did_custody_type, actor_key_store
-- [x] organization, organization_members, organization_role, organization_position, approval_status
-- [x] event, event_session, event_registration
-- [x] event_type, event_status, visibility_type, event_format, registration_mode
-- [x] madhab, audience_age, audience_gender, language
-- [x] category (with parent relationship)
-- [x] tag, tag_type, tag_type_tags
-- [x] join entities:
-  - [x] event_categories
-  - [x] event_tags
-  - [x] event_session_languages
-  - [x] event_session_speakers
-- [x] event_session_agenda_items
-- [x] location
-- [x] storage_object, file_type
-- [x] indexed_did, sync_state, atproto_record
+## ✅ PHASE 1: DOMAIN LAYER (COMPLETE)
 
-### 1.2 Relationship & Invariant Review
-- [x] Verify required fields align with DBML [not null]
-- [x] Changed all `long` to `int` except where necessary (size, cursor)
-- [x] Removed default values from Tag.cs (per CLAUDE.md rules)
+### Entity Creation/Updates
+- [x] Tenant, TenantUser, TenantSettings
+- [x] User, UserRole, UserAuthenticationToken, UserExternalLogin
+- [x] Actor, ActorType, DidCustodyType, ActorKeyStore
+- [x] Organization, OrganizationMember, OrganizationRole, OrganizationPosition
+- [x] Event, EventSession, EventRegistration
+- [x] EventType, EventStatus, VisibilityType, EventFormat, RegistrationMode
+- [x] Madhab, AudienceAge, AudienceGender, Language
+- [x] Category (with parent), Tag, TagType, TagTypeTags
+- [x] EventCategories, EventTags, EventSessionLanguages, EventSessionSpeakers
+- [x] EventSessionAgendaItem
+- [x] Location
+- [x] StorageObject, FileType
+- [x] IndexedDid, SyncState, AtprotoRecord
+- [x] OrganizationReview
+
+### Entity Fixes Applied
+- [x] Changed `long` to `int` (per CLAUDE.md) except size/cursor
+- [x] Removed default values from entities
 - [x] Added missing TenantId to Location, ActorKeyStore, UserAuthenticationToken, UserExternalLogin
-
-Acceptance (Phase 1):
-- [x] Domain entities match DBML shape and relationships
-- [x] All int/long consistency applied
-- [x] No default values in Domain entities (moved to configurations)
+- [x] Added `Members` navigation to Organization (readonly)
 
 ---
 
-## Phase 2: Application Layer (CQRS + DTOs + Validation + Mapping) ⏳ NOT STARTED
+## ✅ PHASE 2: APPLICATION LAYER (PARTIAL - DTOs & Validators)
 
-### 2.1 Repository Interfaces
-- [ ] Define repository interfaces for aggregates per your conventions
-  - [ ] IEventRepository (and session/registration access as needed)
-  - [ ] IOrganizationRepository (members/roles as needed)
-  - [ ] ITagRepository / ICategoryRepository (or a unified discovery repo)
-  - [ ] ILocationRepository
-  - [ ] IActorRepository (if required by use cases)
-  - [ ] IAtProtoRecordRepository (if required)
+### DTOs Updated
+- [x] EventDto, EventListDto, CreateEventDto, UpdateEventDto
+- [x] DTOs now reference ActorId instead of OrganizationId
 
-- [ ] Ensure interfaces support tenant scoping (explicit parameter or implicit context)
+### Validators Updated
+- [x] CreateEventDtoValidator - uses IActorRepository
+- [x] UpdateEventDtoValidator - uses IActorRepository
 
-### 2.2 CQRS Use Cases
-- [ ] Events
-  - [ ] Create event
-  - [ ] Update event
-  - [ ] Get event by id/slug
-  - [ ] List/search events (filters: tenant, visibility, status, gender/age, madhab, tags/categories, date ranges, format)
+### Repository Interfaces (45+ total)
+- [x] All interfaces return ENTITIES (not DTOs)
+- [x] Fixed ITagTypeTagsRepository generic type
+- [x] Fixed IEventTagsRepository/IEventCategoriesRepository (Event not Program)
+- [x] Fixed ITagTypeRepository key type (int not Guid)
+- [x] Fixed IUserRepository method names
+- [x] Fixed IOrganizationRepository parameter types
+- [x] Fixed IStorageObjectRepository imports
 
-- [ ] Sessions
-  - [ ] Create session
-  - [ ] Update session
-  - [ ] Get session details
-  - [ ] List sessions by event
-
-- [ ] Registrations
-  - [ ] Register user to session
-  - [ ] Approve/reject registration (if required)
-  - [ ] List registrations (scoped)
-
-- [ ] Organizations
-  - [ ] Create organization (or application flow)
-  - [ ] Update organization
-  - [ ] Approve organization (Tier 2 verification hook via approval_status)
-  - [ ] Manage organization members + roles/positions
-
-- [ ] Tags/Categories
-  - [ ] List/search tags
-  - [ ] List categories + tree (parent_id)
-
-- [ ] Locations
-  - [ ] Create/update location
-  - [ ] Search location by city/country and/or geo (depending on decision)
-
-- [ ] Federation/indexer (only if used by API)
-  - [ ] Upsert/resolve atproto_record links (internal)
-  - [ ] Sync state read/update (internal tooling)
-
-### 2.3 DTOs
-- [ ] Define DTOs for each request/response per your conventions
-- [ ] Ensure DTOs align with DBML fields (and API contract decisions)
-- [ ] Ensure nested shapes (event with sessions, etc.) follow your documented patterns
-
-### 2.4 FluentValidation
-- [ ] Validators for commands/queries per conventions
-- [ ] Validate required fields + length constraints
-- [ ] Validate FK references strategy (existence checks) per your conventions
-
-### 2.5 AutoMapper
-- [ ] Update mapping profiles for all new/changed DTOs and entities
-- [ ] Ensure profiles are registered in DI
-
-Acceptance (Phase 2):
-- [ ] Application compiles
-- [ ] CQRS flows exist for core scenarios
-- [ ] Validators and mappings wired correctly
+### CQRS Handlers
+- [ ] Update Event handlers to use new DTOs (if needed)
+- [ ] Update Organization handlers (if needed)
+- [ ] Verify AutoMapper profiles exist for new DTOs
 
 ---
 
-## Phase 3: Persistence Layer (DbContext + Configurations + Repositories + Migrations) 🟡 IN PROGRESS
+## ✅ PHASE 3: PERSISTENCE LAYER (COMPLETE except Migrations)
 
-### 3.1 DbContext ✅ COMPLETED
-- [x] Add DbSet for all entities needed
-- [x] Cleaned up OnModelCreating (removed obsolete commented code)
-- [x] Using ApplyConfigurationsFromAssembly for auto-discovery
+### 3.1 DbContext ✅
+- [x] All DbSets defined (45+ entities)
+- [x] ApplyConfigurationsFromAssembly for auto-discovery
+- [x] Removed obsolete Program/Education DbSets
 
-### 3.2 Entity Configurations ✅ COMPLETED (39 configurations)
+### 3.2 Entity Configurations ✅ (39 configurations)
 
-**Lookup Tables (ValueGeneratedNever + Seed Data):**
+**Lookup Tables (with seed data):**
 - [x] ApprovalStatusConfiguration
 - [x] EventTypeConfiguration
 - [x] AudienceAgeConfiguration
 - [x] AudienceGenderConfiguration
-- [x] MadhabConfiguration (NEW)
-- [x] LanguageConfiguration (NEW)
-- [x] EventStatusConfiguration (NEW)
-- [x] EventFormatConfiguration (NEW)
-- [x] VisibilityTypeConfiguration (NEW)
-- [x] RegistrationModeConfiguration (NEW)
-- [x] OrganizationRoleConfiguration (NEW)
-- [x] OrganizationPositionConfiguration (NEW)
-- [x] DidCustodyTypeConfiguration (NEW)
-- [x] ActorTypeConfiguration (NEW)
-- [x] FileTypeConfiguration (NEW)
-- [x] OwnerTypeConfiguration (NEW)
-- [x] UserRoleConfiguration (NEW)
+- [x] MadhabConfiguration
+- [x] LanguageConfiguration
+- [x] EventStatusConfiguration
+- [x] EventFormatConfiguration
+- [x] VisibilityTypeConfiguration
+- [x] RegistrationModeConfiguration
+- [x] OrganizationRoleConfiguration
+- [x] OrganizationPositionConfiguration
+- [x] DidCustodyTypeConfiguration
+- [x] ActorTypeConfiguration
+- [x] FileTypeConfiguration
+- [x] OwnerTypeConfiguration
+- [x] UserRoleConfiguration
 - [x] TagTypeConfiguration
 
-**Entity Configurations (UUID/relationships):**
+**Entity Configurations:**
 - [x] TenantConfiguration
 - [x] TenantUserConfiguration
 - [x] TenantSettingsConfiguration
@@ -243,63 +123,108 @@ Acceptance (Phase 2):
 - [x] SyncStateConfiguration
 - [x] AtprotoRecordConfiguration
 
-### 3.3 Repositories
-- [ ] Implement repository interfaces
-- [ ] Ensure queries used by Application handlers are efficient and correct
-- [ ] Confirm includes/projections match mapping approach
+### 3.3 Repositories ✅
 
-### 3.4 Migrations & Schema Validation
-- [ ] Generate/adjust migrations to match DBML
-- [ ] If existing DB already deployed:
-  - [ ] define baseline strategy (documented)
-  - [ ] create safe incremental migrations
+**Fixed Interfaces:**
+- [x] IEventRepository - returns Event entities
+- [x] IOrganizationRepository - returns Organization entities
+- [x] IUserRepository - GetUserWithDetails returns User?
+- [x] IOrganizationMemberRepository - nullable returns
+- [x] IStorageObjectRepository - proper imports
+- [x] ITagTypeTagsRepository - correct generic type
+- [x] IEventTagsRepository - Event not Program
+- [x] IEventCategoriesRepository - Event not Program
+- [x] ITagTypeRepository - int key not Guid
 
-Acceptance (Phase 3):
-- [x] All entity configurations created
-- [ ] DB can be migrated/created to match DBML
-- [ ] Core queries and commands work end-to-end
+**New Implementations:**
+- [x] TagRepository
+- [x] TagTypeRepository
+- [x] TagTypeTagsRepository
+- [x] CategoryRepository
+- [x] EventTagsRepository
+- [x] EventCategoriesRepository
 
----
+**Updated Implementations:**
+- [x] EventRepository - proper includes for new entity
+- [x] OrganizationRepository - returns entities
+- [x] UserRepository - renamed methods
+- [x] OrganizationMemberRepository - all interface methods
+- [x] StorageObjectRepository - correct DbSet name
 
-## Phase 4: API Layer (Controllers + Middleware) ⏳ NOT STARTED
+**DI Registration:**
+- [x] All repositories registered in PersistenceServicesRegistration.cs
 
-### 4.1 Controllers
-- [ ] Events controller endpoints mapped to CQRS
-- [ ] Sessions controller endpoints mapped to CQRS
-- [ ] Registrations controller endpoints mapped to CQRS
-- [ ] Organizations controller endpoints mapped to CQRS
-- [ ] Tags/Categories/Locations endpoints as needed
-
-### 4.2 Middleware / Cross-cutting
-- [ ] Tenant resolution middleware (if part of your architecture)
-- [ ] Exception handling middleware updated for new validation/errors
-- [ ] Authentication/Authorization integration remains consistent (Keycloak/Cerbos)
-- [ ] Ensure ProblemDetails / error responses follow your conventions
-
-Acceptance (Phase 4):
-- [ ] API compiles and runs
-- [ ] Endpoints hit handlers correctly
-- [ ] Auth and tenant behavior correct
+### 3.4 Migrations ⏳ NOT STARTED
+- [ ] Generate migration to sync with DBML
+- [ ] Verify migration is safe for existing data
+- [ ] Test migration on local DB
 
 ---
 
-## Phase 5: Verification, Cleanup, Documentation ⏳ NOT STARTED
-- [ ] Remove/replace obsolete entities/configurations/endpoints
-- [ ] Add/update tests (unit/integration) according to your conventions
-- [ ] Confirm no lingering schema mismatch references remain
-- [ ] Update context.md SESSION PROGRESS and decisions log
-- [ ] Archive dev docs when complete (optional per your workflow)
+## ⏳ PHASE 4: API LAYER (NOT STARTED)
 
-Acceptance (Phase 5):
-- [ ] “DBML mismatch” resolved for all in-scope modules
-- [ ] Tests pass (or updated consistently)
-- [ ] Documentation reflects final state
+### Controllers
+- [ ] EventsController - verify CQRS mapping
+- [ ] EventSessionsController
+- [ ] EventRegistrationsController
+- [ ] OrganizationsController
+- [ ] TagsController / CategoriesController
+- [ ] LocationsController
+
+### Middleware
+- [ ] Tenant resolution middleware
+- [ ] Exception handling
+- [ ] Auth/Authz integration
 
 ---
 
-## Quick Resume
-1. Complete Phase 0 decisions (atproto_record types, geo, tenant strategy, join modeling).
-2. Implement Domain entities first until Domain compiles.
-3. Implement Application CQRS + DTOs + validators + mappings.
-4. Implement Persistence mappings + repositories + migrations.
-5. Update API controllers/middleware.
+## ⏳ PHASE 5: CLEANUP (NOT STARTED)
+
+### Obsolete Files to Delete (USER TASK)
+```
+Explore.Persistence/Repositories/
+  - ProgramRepository.cs
+  - EducationRepository.cs
+  - EducationTypeRepository.cs
+
+Explore.Application/Contracts/Persistence/
+  - IProgramRepository.cs
+  - IProgramRegistrationRepository.cs
+
+Explore.Application/Features/
+  - Programs/ (entire folder)
+  - ProgramRegistration/ (entire folder)
+
+Explore.Application/DTOs/
+  - Program/ (entire folder)
+  - Education/ (entire folder)
+```
+
+### Verification
+- [ ] `dotnet build` succeeds
+- [ ] All tests pass
+- [ ] No schema mismatch warnings
+- [ ] API endpoints work
+
+---
+
+## 🎯 QUICK RESUME CHECKLIST
+
+When resuming after context reset:
+
+1. **Read these files first:**
+   - `dev/active/dbml-sync/dbml-sync-context.md`
+   - `dev/active/dbml-sync/dbml-sync-tasks.md`
+
+2. **User action required:**
+   - Delete obsolete files listed above
+
+3. **Next implementation steps:**
+   - Run `dotnet build` to verify state
+   - Generate migrations (Phase 3.4)
+   - Update API controllers (Phase 4)
+
+4. **Key decision to remember:**
+   - Repositories return ENTITIES only
+   - DTO mapping in Application handlers
+   - Navigation properties on link tables are readonly

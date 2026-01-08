@@ -89,6 +89,14 @@ namespace Explore.Persistence
             // Storage Repository
             services.AddScoped<IStorageObjectRepository, StorageObjectRepository>();
 
+            // Tag & Category Repositories
+            services.AddScoped<ITagRepository, TagRepository>();
+            services.AddScoped<ITagTypeRepository, TagTypeRepository>();
+            services.AddScoped<ITagTypeTagsRepository, TagTypeTagsRepository>();
+            services.AddScoped<ICategoryRepository, CategoryRepository>();
+            services.AddScoped<IEventTagsRepository, EventTagsRepository>();
+            services.AddScoped<IEventCategoriesRepository, EventCategoriesRepository>();
+
             // ATProto/Federation Repositories
             services.AddScoped<IAtprotoRecordRepository, AtprotoRecordRepository>();
             services.AddScoped<IIndexedDidRepository, IndexedDidRepository>();
