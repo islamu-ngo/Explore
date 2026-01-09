@@ -1,12 +1,16 @@
 # DBML Sync - Task Checklist
 
-**Last Updated:** 2026-01-08 22:00
+**Last Updated:** 2026-01-09
 
 **Session Summary:**
 - ✅ EventSession - COMPLETE (20 files)
 - ✅ Location - COMPLETE (20 files)  
 - ✅ Category - COMPLETE (18 files)
-- **Progress:** 8/45 entities done (18%)
+- ✅ Tag - COMPLETE (16 files) - 2026-01-09
+- ✅ EventSessionAgendaItem - COMPLETE (18 files) - 2026-01-09
+- ✅ EventSessionSpeaker - COMPLETE (20 files) - 2026-01-09
+- ✅ Language - COMPLETE (6 files, readonly) - 2026-01-09
+- **Progress:** 12/45 entities done (27%)
 
 ---
 
@@ -226,26 +230,26 @@ Explore.Application/DTOs/
 
 ## 🚨 DBML SYNC PROJECT - IN PROGRESS (NOT COMPLETE)
 
-**Status Update:** Project is only ~15% complete for Application/API layers.
+**Status Update:** Project is ~27% complete for Application/API layers.
 
 ✅ **Phase 0: Analysis** - COMPLETE  
 ✅ **Phase 1: Domain Layer** - COMPLETE (45+ entities)  
 ✅ **Phase 2: Application Layer (Persistence side)** - COMPLETE (Repositories)  
-⚠️ **Phase 3: Application Layer (CQRS side)** - 15% COMPLETE (5/45 entities)  
-⚠️ **Phase 4: API Layer** - 15% COMPLETE (11/45 controllers)  
+⚠️ **Phase 3: Application Layer (CQRS side)** - 27% COMPLETE (12/45 entities)  
+⚠️ **Phase 4: API Layer** - 27% COMPLETE (15/45 controllers)  
 
-**Completed Entities:** Event, Organization, User, OrganizationMember, OrganizationReview  
-**Remaining Entities:** 34+ entities need Features/DTOs/Controllers  
+**Completed Entities:** Event, Organization, User, OrganizationMember, OrganizationReview, EventSession, Location, Category, Tag, EventSessionAgendaItem, EventSessionSpeaker, Language  
+**Remaining Entities:** 33+ entities need Features/DTOs/Controllers  
 
-**Total Time:** Multiple sessions (2026-01-08 and prior)
+**Total Time:** Multiple sessions (2026-01-08, 2026-01-09)
 
 ---
 
-## 🚀 PHASE 5: HIGH PRIORITY ENTITIES (IN PROGRESS)
+## 🚀 PHASE 5: HIGH PRIORITY ENTITIES (COMPLETE)
 
-**Progress:** 3 of 7 complete (43%)
+**Progress:** 7 of 7 complete (100%) ✅
 
-### ✅ Completed Entities (3)
+### ✅ Completed Entities (7)
 
 #### EventSession ✅ (2026-01-08)
 - [x] DTOs (4 files) + Validators (2 files)
@@ -268,7 +272,34 @@ Explore.Application/DTOs/
 - [x] AutoMapper profiles
 - [x] Self-referencing validation (ParentId checks)
 
-### ⏳ Remaining High Priority Entities (4)
+#### Tag ✅ (2026-01-09)
+- [x] DTOs (4 files) + Validators (2 files)
+- [x] Features folder (Commands/Queries/Handlers)
+- [x] Controller with 5 endpoints
+- [x] AutoMapper profiles
+
+#### EventSessionAgendaItem ✅ (2026-01-09)
+- [x] DTOs (4 files) + Validators (2 files)
+- [x] Features folder (Commands/Queries/Handlers)
+- [x] Controller with 6 endpoints
+- [x] AutoMapper profiles
+- [x] Custom query: GetAgendaItemsBySessionRequest
+
+#### EventSessionSpeaker ✅ (2026-01-09)
+- [x] DTOs (4 files) + Validators (2 files)
+- [x] Features folder (Commands/Queries/Handlers)
+- [x] Controller with 7 endpoints
+- [x] AutoMapper profiles
+- [x] Custom queries: GetSpeakersBySessionRequest, GetSessionsByActorRequest
+- [x] Fixed IEventSessionSpeakerRepository key type (int → Guid)
+
+#### Language ✅ (2026-01-09)
+- [x] DTOs (2 files) - readonly lookup
+- [x] Features folder (Queries/Handlers only - no commands for lookup)
+- [x] Controller with 2 endpoints (GET only)
+- [x] AutoMapper profiles
+
+### ⏳ Remaining High Priority Entities (0) - ALL COMPLETE
 
 **Pattern to follow for each entity:**
 
@@ -316,31 +347,12 @@ For entity "EventSession":
    - Add EventSession mappings to MappingProfile.cs
 ```
 
-### Remaining Tasks
+### ✅ All High Priority Tasks Complete
 
-- [ ] **Tag** (event tagging) - NEXT UP
-  - [ ] Features folder with Commands/Queries/Handlers
-  - [ ] DTOs with Validators
-  - [ ] Controller with endpoints
-  - [ ] AutoMapper profile
-
-- [ ] **EventSessionAgendaItem** (session agenda details)
-  - [ ] Features folder
-  - [ ] DTOs with Validators
-  - [ ] Controller
-  - [ ] AutoMapper profile
-
-- [ ] **EventSessionSpeaker** (who's speaking)
-  - [ ] Features folder
-  - [ ] DTOs with Validators
-  - [ ] Controller
-  - [ ] AutoMapper profile
-
-- [ ] **Language** (multilingual support lookup table)
-  - [ ] Features folder (GET only for lookup)
-  - [ ] DTOs
-  - [ ] Controller (readonly)
-  - [ ] AutoMapper profile
+- [x] **Tag** (event tagging) - COMPLETE 2026-01-09
+- [x] **EventSessionAgendaItem** (session agenda details) - COMPLETE 2026-01-09
+- [x] **EventSessionSpeaker** (who's speaking) - COMPLETE 2026-01-09
+- [x] **Language** (multilingual support lookup table) - COMPLETE 2026-01-09
 
 ---
 

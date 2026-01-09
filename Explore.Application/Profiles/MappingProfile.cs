@@ -15,6 +15,11 @@ using Explore.Application.DTOs.OrganizationReview;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.Location;
 using Explore.Application.DTOs.Category;
+using Explore.Application.DTOs.Tag;
+using Explore.Application.DTOs.EventSessionAgendaItem;
+using Explore.Application.DTOs.EventSessionSpeaker;
+using Explore.Application.DTOs.Language;
+using Explore.Application.DTOs.EventSessionLanguage;
 
 namespace Explore.Application.Profiles
 {
@@ -65,6 +70,38 @@ namespace Explore.Application.Profiles
                 .ForMember(dest => dest.ParentFullName, opt => opt.MapFrom(src => src.Parent != null ? src.Parent.FullName : null));
             CreateMap<CreateCategoryDto, Category>();
             CreateMap<UpdateCategoryDto, Category>();
+
+            // Tag mappings
+            CreateMap<Tag, TagDto>().ReverseMap();
+            CreateMap<Tag, TagListDto>();
+            CreateMap<CreateTagDto, Tag>();
+            CreateMap<UpdateTagDto, Tag>();
+
+            // EventSessionAgendaItem mappings
+            CreateMap<EventSessionAgendaItem, EventSessionAgendaItemDto>().ReverseMap();
+            CreateMap<EventSessionAgendaItem, EventSessionAgendaItemListDto>().ReverseMap();
+            CreateMap<EventSessionAgendaItem, CreateEventSessionAgendaItemDto>().ReverseMap();
+            CreateMap<EventSessionAgendaItem, UpdateEventSessionAgendaItemDto>().ReverseMap();
+
+            // EventSessionSpeaker mappings
+            CreateMap<EventSessionSpeaker, EventSessionSpeakerDto>().ReverseMap();
+            CreateMap<EventSessionSpeaker, EventSessionSpeakerListDto>().ReverseMap();
+            CreateMap<EventSessionSpeaker, CreateEventSessionSpeakerDto>().ReverseMap();
+            CreateMap<EventSessionSpeaker, UpdateEventSessionSpeakerDto>().ReverseMap();
+
+            // Language mappings (readonly lookup)
+            CreateMap<Language, LanguageDto>().ReverseMap();
+            CreateMap<Language, LanguageListDto>().ReverseMap();
+
+            // EventSessionLanguage mappings (link table)
+            CreateMap<EventSessionLanguage, EventSessionLanguageDto>()
+                .ForMember(dest => dest.EventSessionTitle, opt => opt.MapFrom(src => src.EventSession != null ? src.EventSession.Title : null))
+                .ForMember(dest => dest.LanguageFullName, opt => opt.MapFrom(src => src.Language != null ? src.Language.FullName : null))
+                .ForMember(dest => dest.LanguageMasterCode, opt => opt.MapFrom(src => src.Language != null ? src.Language.MasterCode : null))
+                .ReverseMap();
+            CreateMap<EventSessionLanguage, EventSessionLanguageListDto>().ReverseMap();
+            CreateMap<EventSessionLanguage, CreateEventSessionLanguageDto>().ReverseMap();
+            CreateMap<EventSessionLanguage, UpdateEventSessionLanguageDto>().ReverseMap();
         }
     }
 }

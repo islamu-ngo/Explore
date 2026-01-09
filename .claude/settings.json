@@ -49,7 +49,7 @@
     "commit-commands@claude-plugins-official": true,
     "playwright@claude-plugins-official": true,
     "security-guidance@claude-plugins-official": true,
-    "csharp-lsp@claude-plugins-official": true,
+    "csharp-lsp@claude-plugins-official": false,
     "llm-council@the-llm-council": true
   },
   "commands": {

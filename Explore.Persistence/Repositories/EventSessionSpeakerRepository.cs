@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories
 {
-    public class EventSessionSpeakerRepository : GenericRepository<EventSessionSpeaker, int>, IEventSessionSpeakerRepository
+    public class EventSessionSpeakerRepository : GenericRepository<EventSessionSpeaker, Guid>, IEventSessionSpeakerRepository
     {
         private readonly ExploreDbContext _dbContext;
 
