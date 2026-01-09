@@ -30,6 +30,97 @@
 | Client ID (Blazor) | `explore-blazor` |
 | Grant Types | Authorization Code (Blazor), Client Credentials (service) |
 
+### User ID Extraction from JWT
+
+**Critical Pattern**: Extract userId from JWT claims with fallback order:
+
+```csharp
+// In controllers requiring user ID extraction
+var userId = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
+    ?? _httpContextAccessor.HttpContext?.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
+    ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sid")?.Value;
+
+if (string.IsNullOrEmpty(userId))
+{
+    return Unauthorized(new { error = "User ID not found in token" });
+}
+```
+
+**Fallback Order**:
+1. `sub` - Standard OIDC subject claim
+2. `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier` - Legacy JWT claim
+3. `sid` - Session ID (fallback for certain auth flows)
+
+### JWT Claims Structure
+
+Typical JWT token payload:
+
+```json
+{
+  "sub": "user-guid-here",
+  "name": "John Doe",
+  "email": "john@example.com",
+  "preferred_username": "johndoe",
+  "email_verified": true,
+  "realm_access": {
+    "roles": ["user", "organization_admin"]
+  },
+  "resource_access": {
+    "explore-api": {
+      "roles": ["read", "write"]
+    }
+  }
+}
+```
+
+### Authorization Patterns
+
+**Public Read Access**:
+```csharp
+[HttpGet]
+[AllowAnonymous]
+public async Task<ActionResult<List<EventListDto>>> GetAll()
+{
+    // No authentication required
+    var events = await _mediator.Send(new GetEventListRequest());
+    return Ok(events);
+}
+```
+
+**Authenticated Write Access**:
+```csharp
+[HttpPost]
+[Authorize]
+public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventDto dto)
+{
+    // Requires valid JWT token
+    var command = new CreateEventCommand { EventDto = dto };
+    var response = await _mediator.Send(command);
+    return Ok(response);
+}
+```
+
+**User-Specific Operations**:
+```csharp
+[HttpGet("my")]
+[Authorize]
+public async Task<ActionResult<List<EventListDto>>> GetMyEvents()
+{
+    // Extract userId from JWT claims
+    var userId = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
+        ?? _httpContextAccessor.HttpContext?.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
+        ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sid")?.Value;
+
+    if (string.IsNullOrEmpty(userId))
+    {
+        return Unauthorized(new { error = "User ID not found in token" });
+    }
+
+    var events = await _mediator.Send(new GetMyEventsRequest { UserId = userId });
+    return Ok(events);
+}
+```
+
 ## Authorization (Cerbos)
 
 **Pattern**: Policy Decision Point (PDP) with attribute-based access control (ABAC)

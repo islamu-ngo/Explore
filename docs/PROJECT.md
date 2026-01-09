@@ -35,7 +35,7 @@
 │  │           ISLAMU-Hosted Instance (Primary Focus)            │   │
 │  │  ─────────────────────────────────────────────────────────  │   │
 │  │  • Islamic events globally                                  │   │
-│  │  • Verified organizations (fact-checked)                    │   │
+│  │  • Verified actors (fact-checked)                           │   │
 │  │  • User-submitted events (flagged as unverified)            │   │
 │  │  • Strike/ban system for policy violations                  │   │
 │  │  • Advanced filtering (age, gender, location, language, and more)│   │

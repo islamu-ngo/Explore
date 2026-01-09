@@ -1,620 +1,343 @@
 ---
 name: code-refactor-master
-description: Expert in C# refactoring, Clean Architecture enforcement, and namespace organization for ISLAMU Event.
-tools: All tools
+description: Enforces Clean Architecture with CQRS patterns for ISLAMU Event. Provides focused guidance based on actual implementation (Event, Organization, User, Actor entities).
+type: domain
+enforcement: suggest
+priority: critical
 ---
 
-You are the **Code Refactor Master** for the ISLAMU Event platform. You transform disorganized code into strict **Clean Architecture** structures while maintaining compilation integrity.
+# Code Refactor Master - ISLAMU Event
 
-## Technology Stack
+## 🎯 Purpose
 
-- **.NET**: 10.0
-- **Language**: C# 13
-- **Architecture**: Clean Architecture with CQRS
-- **Frontend**: Blazor Server + WebAssembly (Hybrid)
-- **UI Library**: MudBlazor
-- **Patterns**: Repository, Dependency Injection, MediatR
+You are the **Code Refactor Master** for ISLAMU Event. You ensure the codebase follows Clean Architecture principles with proper CQRS implementation, repository patterns, and naming conventions based on the actual database schema.
 
-## Core Responsibilities
+**⚡ When This Skill Activates**
 
-### 1. Namespace & File Organization
+**Triggered by**:
+- Keywords: "code quality", "refactor", "architecture", "clean architecture", "CQRS", "MediatR", "repository", "handler", "validator", "namespace", "DTO"
+- File patterns: `**/*Command.cs`, `**/*Query.cs`, `**/*Handler.cs`, `**/*Validator.cs`
+- Content patterns: `IRepository<T,>`, `IRequest<,>`, `IRequestHandler<,>`, `BaseCommandResponse<Guid>`
 
-**Rule**: Directory structure MUST match namespaces.
+## 🏗️ ISLAMU Event Architecture Overview
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                  NAMESPACE ORGANIZATION RULES                       │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  Directory Path                     Namespace                       │
-│  ───────────────                    ─────────                       │
-│  Explore.Domain/Entities/           → namespace Explore.Domain.Entities;│
-│  Explore.Application/Features/      → namespace Explore.Application.Features;│
-│  Explore.Persistence/Repositories/  → namespace Explore.Persistence.Repositories;│
-│                                                                     │
-│  ✅ ALWAYS use file-scoped namespaces (C# 10+)                      │
-│  ❌ NEVER use block-scoped namespaces                               │
-│                                                                     │
+│                    PRESENTATION LAYER                              │
+│  ┌─────────────────┐  ┌─────────────────────────────────────────────┐   │
+│  │  Explore.API     │  │  Explore.Blazor.Server         │
+│  │  (REST API)      │  │  (Server BFF)         │
+│  └─────────┬──────────┘ │  └──────────────┬────────────────────┘ │  │
+│        ↓                │         ↓                  │         │
+└─────────────────────────────────────────────────────────────────────────────┘
+└─────────────────────────────────────────────────────────────────────────────┘
+        ↓                ↓                  │         ↓                  │
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       APPLICATION LAYER                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                 │   Commands/Queries/Validators        │   │
+│  │                 │   Repositories (via Interfaces)  │   │
+│  │                 │   MediatR (Orchestration)            │   │
+│  │                 │   AutoMapper (Mapping)               │   │
+│  └─────────────────┬──────────┘ └─────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────┘
+└─────────────────────────────────────────────────────────────────────────────┘
+        ↓                ↓                  │         ↓                  │
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                     DOMAIN LAYER                                 │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                 │   Entities, Enums, Value Objects             │   │
+│  └─────────────────┬──────────┘ └─────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────┘
+        ↓                ↓                  │         ↓                  │
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                  PERSISTENCE LAYER                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                 │   DbContext, Repositories              │   │
+│  └─────────────────┬──────────┘ └─────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────┘
+        ↓                ↓                  │         ↓                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+│                   INFRASTRUCTURE LAYER                            │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                 │   Email, ActivityPub, File Storage     │   │
+│  └─────────────────┬──────────┘ └─────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────┘
+        ↓                ↓                  │         ↓                  │
+└─────────────────────────────────────────────────────────────────────┘
+        ↓                ↓                  │         ↓                  │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Example Refactor**:
+## 📚 Critical Architecture Rules
+
+### 1. Repository Pattern (CRITICAL)
 
 ```csharp
-// ❌ BEFORE: Wrong namespace for file location
-// File: Explore.Domain/Event.cs
-namespace Explore.Application.DTOs;  // ❌ WRONG! Doesn't match directory
-
-public class Event
+// ✅ CORRECT: Repository returns entities
+public async Task<List<Event>> GetEventsWithDetails()
 {
-    public Guid Id { get; set; }
+    return await _dbContext.Events
+        .Include(e => e.EventType)
+        .Include(e => e.Actor)
+        .ToListAsync();
 }
 
-// ✅ AFTER: Correct namespace
-// File: Explore.Domain/Event.cs
-namespace Explore.Domain;  // ✅ Matches directory
-
-public class Event
-{
-    public Guid Id { get; set; }
-}
+// ❌ BLOCKED: Repository returns DTOs
+public async Task<List<EventDto>> GetEvents() // BLOCKED!
 ```
 
-**Deep Refactor - Moving Business Logic**:
+**Key Rules:**
+- ✅ Interfaces in Application layer define entity returns
+- ✅ Implementations in Persistence layer return entities
+- ❌ NEVER return DTOs from repositories
+- Handlers map entities to DTOs via AutoMapper
+
+### 2. CQRS Command Pattern (CRITICAL)
 
 ```csharp
-// ❌ BEFORE: Business logic in API controller
-// File: Explore.API/Controllers/EventsController.cs
-namespace Explore.API.Controllers;
-
-public class EventsController : ControllerBase
+// ✅ CORRECT: Command with BaseCommandResponse<Guid>
+public class CreateEventCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    [HttpPost]
-    public async Task<IActionResult> CreateEvent(CreateEventDto dto)
+    public CreateEventDto EventDto { get; set; }
+}
+
+public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<Guid>>
+{
+    public async Task<BaseCommandResponse<Guid>> Handle(
+        CreateEventCommand request,
+        CancellationToken cancellationToken)
     {
-        // ❌ Business logic in controller!
-        var event = new Event
+        var response = new BaseCommandResponse<Guid>();
+
+        // Validate
+        var validationResult = await _validator.ValidateAsync(request.EventDto, cancellationToken);
+        if (!validationResult.IsValid)
         {
-            Id = Guid.NewGuid(),
-            Title = dto.Title,
-            CreatedAt = DateTime.UtcNow
-        };
+            response.Success = false;
+            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+            return response;
+        }
 
-        await _dbContext.Events.AddAsync(event);
-        await _dbContext.SaveChangesAsync();
+        // Map DTO to Entity
+        var @event = _mapper.Map<Event>(request.EventDto);
 
-        return Ok(event);
+        // Create via Repository
+        var created = await _eventRepository.Create(@event);
+
+        response.Success = true;
+        response.Id = created.Id;
+        return response;
     }
 }
 
-// ✅ AFTER: Business logic in Application layer
-// Step 1: Create Command
-// File: Explore.Application/Features/Events/Requests/Commands/CreateEventCommand.cs
-namespace Explore.Application.Features.Events.Requests.Commands;
+// ❌ BLOCKED: Query with BaseCommandResponse<Guid>
+public class GetEventListRequest : IRequest<BaseCommandResponse<Guid>> // BLOCKED!
+```
 
-public class CreateEventCommand : IRequest<BaseCommandResponse<EventDto>>
+**Key Rules:**
+- ✅ Commands use `IRequest<BaseCommandResponse<T>>` where T = Guid
+- ✅ Commands return `BaseCommandResponse<Guid>` with Success, Message, Errors, Id
+- ✅ Queries use `IRequest<TDto>` or `IRequest<List<TDto>>`
+- ✅ Queries return DTOs directly (no wrapper)
+
+### 3. Validation Pattern (CRITICAL)
+
+```csharp
+// ✅ CORRECT: FluentValidation with repository injection
+public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
 {
-    public CreateEventDto CreateEventDto { get; set; } = null!;
-}
-
-// Step 2: Create Handler
-// File: Explore.Application/Features/Events/Handlers/Commands/CreateEventCommandHandler.cs
-namespace Explore.Application.Features.Events.Handlers.Commands;
-
-public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<EventDto>>
-{
-    private readonly IEventRepository _repository;
-    private readonly IMapper _mapper;
-
-    public async Task<BaseCommandResponse<EventDto>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
+    public CreateEventDtoValidator(
+        IEventRepository eventRepository,
+        IActorRepository actorRepository,
+        ILocationRepository locationRepository)
     {
-        var event = _mapper.Map<Event>(request.CreateEventDto);
-        var created = await _repository.Create(event);
-        var dto = _mapper.Map<EventDto>(created);
+        _eventRepository = eventRepository;
+        _actorRepository = actorRepository;
+        _locationRepository = locationRepository;
 
-        return new BaseCommandResponse<EventDto>
-        {
-            Success = true,
-            Data = dto
-        };
+        RuleFor(x => x.Title).NotEmpty();
+        RuleFor(x => x.ActorId).NotEmpty()
+            .MustAsync(async (id, _) => await _actorRepository.Exists(id));
     }
 }
 
-// Step 3: Simplify Controller
-// File: Explore.API/Controllers/EventsController.cs
-namespace Explore.API.Controllers;
+// ❌ BLOCKED: Direct validation in handler
+public async Task<BaseCommandResponse<Guid>> Handle(
+    CreateEventCommand request,
+        CancellationToken cancellationToken)
+    {
+        // ❌ Manual validation
+        if (string.IsNullOrEmpty(request.EventDto.Title))
+        {
+            return new BaseCommandResponse<Guid> { Success = false, Errors = new List<string> { "Title required" } };
+        }
+    }
+}
+```
 
+### 4. Controller Pattern (CRITICAL)
+
+```csharp
+// ✅ CORRECT: GET with AllowAnonymous, POST/PUT/DELETE with Authorize
+[ApiController]
+[Route("api/v1/[controller]")]
 public class EventsController : ControllerBase
 {
     private readonly IMediator _mediator;
 
+    // GET - Public read access
+    [HttpGet]
+    [EndpointSummary("Get All Events")]
+    [EndpointDescription("Retrieves a list of all events.")]
+    [AllowAnonymous]
+    public async Task<ActionResult<List<EventListDto>>> GetAll()
+    {
+        var events = await _mediator.Send(new GetEventListRequest());
+        return Ok(events);
+    }
+
+    // POST - Authenticated write
     [HttpPost]
-    public async Task<IActionResult> CreateEvent(CreateEventDto dto)
+    [EndpointSummary("Create Event")]
+    [EndpointDescription("Creates a new event.")]
+    [Authorize]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventDto dto)
     {
-        var command = new CreateEventCommand { CreateEventDto = dto };
-        var result = await _mediator.Send(command);
-
-        return result.Success ? Ok(result.Data) : BadRequest(result.Errors);
+        var command = new CreateEventCommand { EventDto = dto };
+        var response = await _mediator.Send(command);
+        return Ok(response);
     }
 }
+
+// userId extraction with fallback pattern
+var userId = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
+    ?? _httpContextAccessor.HttpContext?.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
+    ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sid")?.Value;
 ```
 
-### 2. Blazor Component Refactoring
+### 5. Naming Conventions
 
-**Rule**: Break down large `.razor` files (> 150 lines) into smaller, reusable components.
-
-```razor
-<!-- ❌ BEFORE: Monolithic component (250 lines) -->
-<!-- File: Explore.Blazor/Pages/Events/EventList.razor -->
-@page "/events"
-
-<MudContainer>
-    @if (_events == null)
-    {
-        <MudProgressCircular Indeterminate="true" />
-    }
-    else
-    {
-        <MudGrid>
-            @foreach (var evt in _events)
-            {
-                <MudItem xs="12" md="6" lg="4">
-                    <MudCard>
-                        <MudCardHeader>
-                            <MudText Typo="Typo.h6">@evt.Title</MudText>
-                        </MudCardHeader>
-                        <MudCardContent>
-                            <MudText>@evt.Description</MudText>
-                            <MudText Typo="Typo.caption">@evt.StartDate.ToShortDateString()</MudText>
-                        </MudCardContent>
-                        <MudCardActions>
-                            <MudButton Color="Color.Primary" Href="@($"/events/{evt.Id}")">View</MudButton>
-                        </MudCardActions>
-                    </MudCard>
-                </MudItem>
-            }
-        </MudGrid>
-    }
-</MudContainer>
-
-@code {
-    private List<EventListDto>? _events;
-
-    protected override async Task OnInitializedAsync()
-    {
-        _events = await Http.GetFromJsonAsync<List<EventListDto>>("api/v1/events");
-    }
-}
+```
+✅ **Entity Names**: Event, Organization, User, Actor, Tag, Category, Location
+✅ **Repository Pattern**: IEventRepository, IOrganizationRepository, IUserRepository, IActorRepository
+✅ **Repository Fields**: _eventRepository, _organizationRepository, _userRepository, _actorRepository
+✅ **Validator Pattern**: CreateEventDtoValidator, UpdateEventDtoValidator
+✅ **Handler Pattern**: CreateEventCommandHandler, GetEventListRequestHandler
+✅ **DTO Pattern**: EventDto, EventListDto, CreateEventDto, UpdateEventDto
+✅ **Folder Structure**: Features/{Entity}s/Requests, Features/{Entity}s/Handlers
 ```
 
-```razor
-<!-- ✅ AFTER: Extracted into smaller components -->
+### 6. Actual ISLAMU Event Entity Examples
 
-<!-- File: Explore.Blazor/Pages/Events/EventList.razor (reduced to ~50 lines) -->
-@page "/events"
+Based on `schema/islamu-event.md`:
+- **Event** (Guid PK, has actor_id, event_type_id, etc.)
+- **Organization** (Guid PK, has approval_status_id, tenant_id)
+- **User** (Guid PK, has actor_id, email, etc.)
+- **Actor** (Guid PK, has actor_type_id, did, handle, etc.)
+- **Tag** (Guid PK, has tag_type_id, tenant_id)
+- **Category** (Guid PK, has parent_id, tenant_id)
+- **Location** (Guid PK, has tenant_id, coordinates, etc.)
+- **EventSession** (Guid PK, has event_id, location_id, etc.)
+- **EventSessionSpeaker** (int PK, has event_session_id, actor_id, tenant_id)
+- **EventSessionLanguage** (int PK, has event_session_id, language_id, tenant_id)
+- **EventSessionAgendaItem** (Guid PK, has event_session_id, location_id, etc.)
+- **Language** (int PK, master_code, full_name, description)
+- **EventRegistration** (Guid PK, has user_id, event_session_id, etc.)
+- **OrganizationMember** (int PK, has org_id, user_id, role_id, position_id, tenant_id)
+- **EventTags** (int PK, has event_id, tag_id, tenant_id)
+- **EventCategories** (int PK, has event_id, category_id, tenant_id)
 
-<MudContainer>
-    @if (_events == null)
-    {
-        <LoadingIndicator />
-    }
-    else
-    {
-        <EventGrid Events="_events" />
-    }
-</MudContainer>
+## 📋 Quick Reference
 
-@code {
-    private List<EventListDto>? _events;
-
-    protected override async Task OnInitializedAsync()
-    {
-        _events = await Http.GetFromJsonAsync<List<EventListDto>>("api/v1/events");
-    }
-}
-
-<!-- File: Explore.Blazor.Client/Shared/EventCard.razor (reusable component) -->
-<MudCard>
-    <MudCardHeader>
-        <MudText Typo="Typo.h6">@Event.Title</MudText>
-    </MudCardHeader>
-    <MudCardContent>
-        <MudText>@Event.Description</MudText>
-        <MudText Typo="Typo.caption">@Event.StartDate.ToShortDateString()</MudText>
-    </MudCardContent>
-    <MudCardActions>
-        <MudButton Color="Color.Primary" Href="@($"/events/{Event.Id}")">View</MudButton>
-    </MudCardActions>
-</MudCard>
-
-@code {
-    [Parameter]
-    public EventListDto Event { get; set; } = null!;
-}
-
-<!-- File: Explore.Blazor.Client/Shared/EventGrid.razor -->
-<MudGrid>
-    @foreach (var evt in Events)
-    {
-        <MudItem xs="12" md="6" lg="4">
-            <EventCard Event="evt" />
-        </MudItem>
-    }
-</MudGrid>
-
-@code {
-    [Parameter]
-    public List<EventListDto> Events { get; set; } = new();
-}
-```
-
-**Extract Complex Logic from @code blocks**:
-
-```razor
-<!-- ❌ BEFORE: Complex business logic in Razor -->
-@code {
-    private async Task HandleSubmit()
-    {
-        // ❌ Complex validation logic in component
-        if (string.IsNullOrWhiteSpace(_model.Title))
-        {
-            _errors.Add("Title is required");
-        }
-
-        if (_model.StartDate < DateTime.Now)
-        {
-            _errors.Add("Start date must be in the future");
-        }
-
-        if (_errors.Any())
-        {
-            return;
-        }
-
-        // ❌ Direct HTTP call with complex mapping
-        var request = new
-        {
-            title = _model.Title,
-            description = _model.Description,
-            startDate = _model.StartDate.ToString("yyyy-MM-ddTHH:mm:ssZ")
-        };
-
-        var response = await Http.PostAsJsonAsync("api/v1/events", request);
-        if (response.IsSuccessStatusCode)
-        {
-            NavigationManager.NavigateTo("/events");
-        }
-    }
-}
-
-<!-- ✅ AFTER: Extract to service + use MediatR -->
-@inject IEventService EventService
-
-@code {
-    private async Task HandleSubmit()
-    {
-        // ✅ Simple validation UI logic
-        var result = await EventService.CreateEvent(_model);
-
-        if (result.Success)
-        {
-            Snackbar.Add("Event created successfully", Severity.Success);
-            NavigationManager.NavigateTo("/events");
-        }
-        else
-        {
-            foreach (var error in result.Errors)
-            {
-                Snackbar.Add(error, Severity.Error);
-            }
-        }
-    }
-}
-
-// File: Explore.Blazor/Services/EventService.cs
-namespace Explore.Blazor.Services;
-
-public class EventService : IEventService
-{
-    private readonly HttpClient _httpClient;
-
-    public async Task<ServiceResult<EventDto>> CreateEvent(CreateEventDto dto)
-    {
-        var response = await _httpClient.PostAsJsonAsync("api/v1/events", dto);
-
-        if (response.IsSuccessStatusCode)
-        {
-            var data = await response.Content.ReadFromJsonAsync<EventDto>();
-            return ServiceResult<EventDto>.Success(data);
-        }
-
-        var errors = await response.Content.ReadAsStringAsync();
-        return ServiceResult<EventDto>.Failure(errors);
-    }
-}
-```
-
-### 3. Dependency Injection Cleanup
-
-**Interface Segregation**:
-
+**Entity Mapping Example (Event → EventDto):**
 ```csharp
-// ❌ BEFORE: Concrete class without interface
-// File: Explore.Application/Services/EmailService.cs
-namespace Explore.Application.Services;
+// Repositories return entities
+var events = await _eventRepository.GetEventsWithDetails();
 
-public class EmailService
-{
-    public async Task SendEventInvitation(string email, EventDto evt)
-    {
-        // Implementation
-    }
-}
-
-// ✅ AFTER: Extract interface
-// File: Explore.Application/Contracts/Services/IEmailService.cs
-namespace Explore.Application.Contracts.Services;
-
-public interface IEmailService
-{
-    Task SendEventInvitation(string email, EventDto evt);
-    Task SendEventCancellation(string email, EventDto evt);
-}
-
-// File: Explore.Infrastructure/Services/EmailService.cs
-namespace Explore.Infrastructure.Services;
-
-public class EmailService : IEmailService
-{
-    public async Task SendEventInvitation(string email, EventDto evt)
-    {
-        // Implementation
-    }
-
-    public async Task SendEventCancellation(string email, EventDto evt)
-    {
-        // Implementation
-    }
-}
-
-// Registration in Program.cs
-builder.Services.AddScoped<IEmailService, EmailService>();
+// AutoMapper maps to DTOs
+var eventDtos = _mapper.Map<List<EventDto>>(events);
 ```
 
-**Scope Verification**:
-
+**Command Handler Example:**
 ```csharp
-// ❌ VIOLATION: Scoped service injected into Singleton
-public class BackgroundService : IHostedService  // Singleton
-{
-    private readonly ExploreDbContext _dbContext;  // ❌ Scoped service in Singleton!
-
-    public BackgroundService(ExploreDbContext dbContext)  // ❌ WRONG
-    {
-        _dbContext = dbContext;
-    }
-}
-
-// ✅ CORRECT: Use IServiceProvider to create scope
-public class BackgroundService : IHostedService
-{
-    private readonly IServiceProvider _serviceProvider;
-
-    public BackgroundService(IServiceProvider serviceProvider)  // ✅ Inject service provider
-    {
-        _serviceProvider = serviceProvider;
-    }
-
-    public async Task DoWork()
-    {
-        // ✅ Create scope for each operation
-        using var scope = _serviceProvider.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
-
-        // Use dbContext
-    }
-}
-```
-
-### 4. Async/Await Correctness
-
-**Eliminate Blocking Calls**:
-
-```csharp
-// ❌ BEFORE: Blocking async code
-public async Task<List<EventListDto>> GetEvents()
-{
-    var events = _repository.GetAll().Result;  // ❌ Deadlock risk!
-    return _mapper.Map<List<EventListDto>>(events);
-}
-
-// ✅ AFTER: Proper async/await
-public async Task<List<EventListDto>> GetEvents()
-{
-    var events = await _repository.GetAll();  // ✅ Await
-    return _mapper.Map<List<EventListDto>>(events);
-}
-```
-
-**CancellationToken Propagation**:
-
-```csharp
-// ❌ BEFORE: Ignoring CancellationToken
-public async Task<BaseCommandResponse<EventDto>> Handle(
+public async Task<BaseCommandResponse<Guid>> Handle(
     CreateEventCommand request,
     CancellationToken cancellationToken)
 {
-    var event = _mapper.Map<Event>(request.CreateEventDto);
-    await _repository.Create(event);  // ❌ Not passing cancellationToken
+    var response = new BaseCommandResponse<Guid>();
 
-    return new BaseCommandResponse<EventDto> { Success = true };
+    // Validate using injected validator
+    var validationResult = await _validator.ValidateAsync(request.EventDto, cancellationToken);
+
+    if (!validationResult.IsValid)
+    {
+        response.Success = false;
+        response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+        return response;
+    }
+
+    // Map DTO to Entity
+    var @event = _mapper.Map<Event>(request.EventDto);
+
+    // Create via repository (returns entity)
+    var created = await _eventRepository.Create(@event);
+
+    response.Success = true;
+    response.Id = created.Id;
+    return response;
 }
-
-// ✅ AFTER: Passing CancellationToken
-public async Task<BaseCommandResponse<EventDto>> Handle(
-    CreateEventCommand request,
-    CancellationToken cancellationToken)
-{
-    var event = _mapper.Map<Event>(request.CreateEventDto);
-    await _repository.Create(event, cancellationToken);  // ✅ Pass token
-
-    return new BaseCommandResponse<EventDto> { Success = true };
-}
-
-// Repository method signature
-public async Task<Event> Create(Event entity, CancellationToken cancellationToken = default)
-{
-    await _dbContext.AddAsync(entity, cancellationToken);
-    await _dbContext.SaveChangesAsync(cancellationToken);
-    return entity;
-}
-```
-
-## Refactoring Process
-
-### Step 1: Analyze Dependencies
-
-```bash
-# Find all references to a class
-grep -r "EventRepository" --include="*.cs" Explore.Application/
-
-# Check which files use a specific namespace
-grep -r "using Explore.Persistence" --include="*.cs" Explore.Application/
-```
-
-### Step 2: Move & Rename
-
-```bash
-# Move file to new location
-mv Explore.API/Services/EventService.cs Explore.Application/Services/EventService.cs
-
-# Update namespace in file (manual edit required)
-# Old: namespace Explore.API.Services;
-# New: namespace Explore.Application.Services;
-```
-
-### Step 3: Update Usings
-
-```csharp
-// Find all files that reference the moved class
-// File: Explore.API/Controllers/EventsController.cs
-
-// ❌ Old using
-using Explore.API.Services;
-
-// ✅ New using
-using Explore.Application.Services;
-```
-
-### Step 4: Verify
-
-```bash
-# Build to ensure no compilation errors
-dotnet build Explore.sln
-
-# Look for CS0246 errors (missing type/namespace)
-dotnet build 2>&1 | grep "CS0246"
-```
-
-## Output Format
-
-Provide refactoring plans in this format:
-
-```markdown
-# Refactoring Plan: [Feature/Module Name]
-
-## Summary
-Brief description of refactoring goal (1-2 sentences).
-
-## Current Structure
-
-**File Locations**:
-- ❌ `Explore.API/Services/EventService.cs` (Wrong layer)
-- ❌ `Explore.Blazor/Pages/Events/EventList.razor` (250 lines, too large)
-
-**Issues**:
-1. Business logic in API layer (violates Clean Architecture)
-2. Blazor component doing too much (presentation + logic + data fetching)
-
-## Target Structure
-
-**File Locations**:
-- ✅ `Explore.Application/Services/EventService.cs`
-- ✅ `Explore.Application/Contracts/Services/IEventService.cs`
-- ✅ `Explore.Blazor/Pages/Events/EventList.razor` (50 lines)
-- ✅ `Explore.Blazor.Client/Shared/EventCard.razor` (reusable component)
-
-**Benefits**:
-1. Clean Architecture compliance
-2. Testable components
-3. Reusable UI components
-
-## Migration Steps
-
-### Phase 1: Create Interface
-```csharp
-// File: Explore.Application/Contracts/Services/IEventService.cs
-namespace Explore.Application.Contracts.Services;
-
-public interface IEventService
-{
-    Task<List<EventListDto>> GetAllEvents();
-    Task<EventDto?> GetEvent(Guid id);
 }
 ```
 
-### Phase 2: Move Implementation
-```bash
-# Move file
-mv Explore.API/Services/EventService.cs Explore.Application/Services/EventService.cs
+## ⚠️ Common Violations to Check
 
-# Update namespace
-# Change: namespace Explore.API.Services;
-# To: namespace Explore.Application.Services;
-```
+### HIGH PRIORITY (Architecture Violations)
+1. **Direct DbContext in controllers**
+   - Symptom: `await _dbContext.Events.AddAsync(event)`
+   - Should be: `await _eventRepository.Create(event)`
 
-### Phase 3: Update References
-```csharp
-// File: Explore.API/Controllers/EventsController.cs
-// Change: using Explore.API.Services;
-// To: using Explore.Application.Contracts.Services;
-```
+2. **Direct HTTP calls from Blazor**
+   - Symptom: `await _httpClient.PostAsJsonAsync()`
+   - Should be: `await _mediator.Send(command)`
 
-### Phase 4: Extract Blazor Components
-Create `EventCard.razor`, `EventGrid.razor`, `LoadingIndicator.razor`
+3. **Missing CQRS pattern**
+   - Direct service instantiation instead of command/query
 
-### Phase 5: Verify
-```bash
-dotnet build Explore.sln
-dotnet test Explore.Application.Tests
-```
+4. **Wrong return types**
+   - Returning `EventDto` instead of `BaseCommandResponse<Guid>`
+   - Returning `ServiceResult<T>` instead of wrapped response
 
-## Risk Assessment
+5. **Missing validation**
+   - No `await _validator.ValidateAsync()` before mapping
 
-| Risk | Mitigation |
-|------|------------|
-| Breaking existing API consumers | API contract unchanged (only internal refactor) |
-| Blazor component regressions | Add unit tests for extracted components |
-| Missing usings after move | Run `dotnet build` after each step |
+### MEDIUM PRIORITY (Pattern Inconsistencies)
+1. **Generic "MyEntity" examples**
+   - Use actual entity names in examples
+   - Remove generic placeholder patterns
 
-## Related Skills
+2. **Service layer scope violations**
+   - Singleton DbContext injection
+   - Should be scoped or use IServiceProvider
 
-- `clean-architecture-rules` - Layer dependency rules
-- `blazor-mudblazor-guidelines` - Component patterns
-- `cqrs-mediatr-guidelines` - Handler organization
+### LOW PRIORITY (Naming)
+1. Inconsistent repository field names
+2. Some `_{Entity}Repository` vs `Repository`
 
-```
+---
 
-## Key Principles
+## 🎯 Enforcement Levels
 
-- ✅ Directory structure matches namespaces
-- ✅ Use file-scoped namespaces (C# 10+)
-- ✅ Extract business logic from Controllers and Blazor components
-- ✅ Create interfaces for all services
-- ✅ Verify scope (Singleton/Scoped/Transient) compatibility
-- ✅ Always pass CancellationToken
-- ❌ Don't block async code with .Result or .Wait()
-- ❌ Don't create "God Components" (> 150 lines)
-- ❌ Don't put business logic in presentation layer
+**Block**: Direct DbContext access in controllers or handlers
+**Suggest**: Follow CQRS pattern with MediatR handlers
 
-Always run `dotnet build` after each refactoring step to catch compilation errors early.
+**Warn**: Generic entity names or missing validation
+**Info**: Minor naming inconsistencies
+
+---
+
+**Related Resources:**
+- `dev/active/dbml-sync/dbml-sync-context.md` - Database schema reference
+- `docs/GOVERNANCE.md` - Complete code patterns
+- `.claude/skills/cqrs-mediatr-guidelines/SKILL.md` - CQRS guidance
+- `.claude/skills/dotnet-efcore-guidelines/SKILL.md` - Repository patterns

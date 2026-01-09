@@ -131,8 +131,10 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
 
 ### Repository Pattern
 
+**CRITICAL RULE**: Repositories return ENTITIES, not DTOs. DTO mapping happens in Application layer handlers via AutoMapper.
+
 ```csharp
-// Generic Repository
+// Generic Repository (in Persistence layer)
 public class GenericRepository<T, TKey> : IGenericRepository<T, TKey> where T : class
 {
     private readonly ExploreDbContext _dbContext;
@@ -171,7 +173,7 @@ public class GenericRepository<T, TKey> : IGenericRepository<T, TKey> where T : 
         await GetById(id) != null;
 }
 
-// Event Repository with custom methods
+// Event Repository with custom methods (returns ENTITIES)
 public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
 {
     private readonly ExploreDbContext _dbContext;
@@ -181,22 +183,59 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
         _dbContext = dbContext;
     }
 
-    public async Task<List<EventListDto>> GetEventsWithDetails()
+    // Returns ENTITIES, not DTOs
+    public async Task<List<Event>> GetEventsWithDetails()
     {
         return await _dbContext.Events
             .Include(e => e.EventType)
-            .Include(e => e.Organization)
+            .Include(e => e.AudienceGender)
+            .Include(e => e.AudienceAge)
+            .Include(e => e.Actor)
+            .Include(e => e.EventStatus)
+            .Include(e => e.VisibilityType)
+            .Include(e => e.EventFormat)
+            .Include(e => e.Madhab)
             .Include(e => e.FeaturedImage)
-            .Select(e => new EventListDto
-            {
-                Id = e.Id,
-                Title = e.Title,
-                Description = e.Description,
-                OrganizationFullName = e.Organization.FullName,
-                EventTypeFullName = e.EventType.FullName,
-                FeaturedImageUri = e.FeaturedImage.Uri
-            })
+            .Include(e => e.AtprotoRecord)
             .ToListAsync();
+    }
+
+    public async Task<Event?> GetEventWithDetails(Guid id)
+    {
+        return await _dbContext.Events
+            .Include(e => e.EventType)
+            .Include(e => e.AudienceGender)
+            .Include(e => e.AudienceAge)
+            .Include(e => e.Actor)
+            .Include(e => e.EventStatus)
+            .Include(e => e.VisibilityType)
+            .Include(e => e.EventFormat)
+            .Include(e => e.Madhab)
+            .Include(e => e.FeaturedImage)
+            .Include(e => e.AtprotoRecord)
+            .FirstOrDefaultAsync(e => e.Id == id);
+    }
+}
+
+// Handler uses Repository (returns ENTITIES) → AutoMapper → DTO
+public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, List<EventListDto>>
+{
+    private readonly IEventRepository _eventRepository;
+    private readonly IMapper _mapper;
+
+    public GetEventListRequestHandler(IEventRepository eventRepository, IMapper mapper)
+    {
+        _eventRepository = eventRepository;
+        _mapper = mapper;
+    }
+
+    public async Task<List<EventListDto>> Handle(GetEventListRequest request, CancellationToken cancellationToken)
+    {
+        // Repository returns ENTITIES
+        var events = await _eventRepository.GetEventsWithDetails();
+
+        // AutoMapper maps ENTITIES to DTOs
+        return _mapper.Map<List<EventListDto>>(events);
     }
 }
 ```
@@ -206,14 +245,17 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
 ```csharp
 // Multiple levels
 var events = await _dbContext.Events
-    .Include(e => e.Organization)
-        .ThenInclude(o => o.Members)
-    .Include(e => e.FeaturedImage)
+    .Include(e => e.EventType)
+    .Include(e => e.AudienceGender)
+    .Include(e => e.AudienceAge)
+    .Include(e => e.Actor)
+    .Include(e => e.EventSessions)
+        .ThenInclude(s => s.Location)
     .ToListAsync();
 
 // Filtered Include (EF Core 5+)
 var events = await _dbContext.Organizations
-    .Include(o => o.Events.Where(e => e.StartDate > DateTime.Now))
+    .Include(o => o.Members.Where(m => m.IsActive))
     .ToListAsync();
 ```
 
@@ -234,6 +276,7 @@ var events = await _dbContext.Organizations
 
 - ❌ **DON'T** use DbContext directly in Application layer (use repositories)
 - ❌ **DON'T** configure entities in OnModelCreating (use IEntityTypeConfiguration)
+- ❌ **DON'T** return DTOs from repositories (return entities only)
 - ❌ **DON'T** load entire entities when you only need specific fields
 - ❌ **DON'T** use lazy loading (explicit Include or Select instead)
 - ❌ **DON'T** track entities for read-only queries (use AsNoTracking)

@@ -20,6 +20,21 @@ using Explore.Application.DTOs.EventSessionAgendaItem;
 using Explore.Application.DTOs.EventSessionSpeaker;
 using Explore.Application.DTOs.Language;
 using Explore.Application.DTOs.EventSessionLanguage;
+using Explore.Application.DTOs.TagType;
+using Explore.Application.DTOs.TagTypeTags;
+using Explore.Application.DTOs.EventTags;
+using Explore.Application.DTOs.EventCategories;
+using Explore.Application.DTOs.EventRegistration;
+using Explore.Application.DTOs.RegistrationMode;
+using Explore.Application.DTOs.Madhab;
+using Explore.Application.DTOs.EventStatus;
+using Explore.Application.DTOs.EventFormat;
+using Explore.Application.DTOs.VisibilityType;
+using Explore.Application.DTOs.ActorType;
+using Explore.Application.DTOs.DidCustodyType;
+using Explore.Application.DTOs.OrganizationRole;
+using Explore.Application.DTOs.OrganizationPosition;
+using Explore.Application.DTOs.FileType;
 
 namespace Explore.Application.Profiles
 {
@@ -102,6 +117,105 @@ namespace Explore.Application.Profiles
             CreateMap<EventSessionLanguage, EventSessionLanguageListDto>().ReverseMap();
             CreateMap<EventSessionLanguage, CreateEventSessionLanguageDto>().ReverseMap();
             CreateMap<EventSessionLanguage, UpdateEventSessionLanguageDto>().ReverseMap();
+
+            // TagType mappings (readonly lookup)
+            CreateMap<TagType, TagTypeDto>().ReverseMap();
+            CreateMap<TagType, TagTypeListDto>().ReverseMap();
+
+            // TagTypeTags mappings (link table)
+            CreateMap<Domain.TagTypeTags, TagTypeTagsDto>()
+                .ForMember(dest => dest.TagFullName, opt => opt.MapFrom(src => src.Tag != null ? src.Tag.FullName : null))
+                .ForMember(dest => dest.TagMasterCode, opt => opt.MapFrom(src => src.Tag != null ? src.Tag.MasterCode : null))
+                .ForMember(dest => dest.TagTypeFullName, opt => opt.MapFrom(src => src.TagType != null ? src.TagType.FullName : null))
+                .ForMember(dest => dest.TagTypeMasterCode, opt => opt.MapFrom(src => src.TagType != null ? src.TagType.MasterCode : null))
+                .ReverseMap();
+            CreateMap<Domain.TagTypeTags, TagTypeTagsListDto>()
+                .ForMember(dest => dest.TagFullName, opt => opt.MapFrom(src => src.Tag != null ? src.Tag.FullName : null))
+                .ForMember(dest => dest.TagMasterCode, opt => opt.MapFrom(src => src.Tag != null ? src.Tag.MasterCode : null))
+                .ForMember(dest => dest.TagTypeFullName, opt => opt.MapFrom(src => src.TagType != null ? src.TagType.FullName : null))
+                .ForMember(dest => dest.TagTypeMasterCode, opt => opt.MapFrom(src => src.TagType != null ? src.TagType.MasterCode : null))
+                .ReverseMap();
+            CreateMap<Domain.TagTypeTags, CreateTagTypeTagsDto>().ReverseMap();
+            CreateMap<Domain.TagTypeTags, UpdateTagTypeTagsDto>().ReverseMap();
+
+            // EventTags mappings (link table)
+            CreateMap<EventTags, EventTagsDto>()
+                .ForMember(dest => dest.EventTitle, opt => opt.MapFrom(src => src.Event != null ? src.Event.Title : null))
+                .ForMember(dest => dest.TagFullName, opt => opt.MapFrom(src => src.Tag != null ? src.Tag.FullName : null))
+                .ForMember(dest => dest.TagMasterCode, opt => opt.MapFrom(src => src.Tag != null ? src.Tag.MasterCode : null))
+                .ReverseMap();
+            CreateMap<EventTags, EventTagsListDto>()
+                .ForMember(dest => dest.EventTitle, opt => opt.MapFrom(src => src.Event != null ? src.Event.Title : null))
+                .ForMember(dest => dest.TagFullName, opt => opt.MapFrom(src => src.Tag != null ? src.Tag.FullName : null))
+                .ForMember(dest => dest.TagMasterCode, opt => opt.MapFrom(src => src.Tag != null ? src.Tag.MasterCode : null))
+                .ReverseMap();
+            CreateMap<EventTags, CreateEventTagsDto>().ReverseMap();
+            CreateMap<EventTags, UpdateEventTagsDto>().ReverseMap();
+
+            // EventCategories mappings (link table)
+            CreateMap<EventCategories, EventCategoriesDto>().ReverseMap();
+            CreateMap<EventCategories, EventCategoriesListDto>().ReverseMap();
+            CreateMap<EventCategories, CreateEventCategoriesDto>().ReverseMap();
+            CreateMap<EventCategories, UpdateEventCategoriesDto>().ReverseMap();
+
+            // EventRegistration mappings
+            CreateMap<EventRegistration, EventRegistrationDto>()
+                .ForMember(dest => dest.UserFirstName, opt => opt.MapFrom(src => src.User != null ? src.User.FirstName : null))
+                .ForMember(dest => dest.UserLastName, opt => opt.MapFrom(src => src.User != null ? src.User.LastName : null))
+                .ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null))
+                .ForMember(dest => dest.EventSessionTitle, opt => opt.MapFrom(src => src.EventSession != null ? src.EventSession.Title : null))
+                .ForMember(dest => dest.ApprovalStatusFullName, opt => opt.MapFrom(src => src.ApprovalStatus != null ? src.ApprovalStatus.FullName : null))
+                .ForMember(dest => dest.ApprovalStatusMasterCode, opt => opt.MapFrom(src => src.ApprovalStatus != null ? src.ApprovalStatus.MasterCode : null))
+                .ReverseMap();
+            CreateMap<EventRegistration, EventRegistrationListDto>()
+                .ForMember(dest => dest.UserFirstName, opt => opt.MapFrom(src => src.User != null ? src.User.FirstName : null))
+                .ForMember(dest => dest.UserLastName, opt => opt.MapFrom(src => src.User != null ? src.User.LastName : null))
+                .ForMember(dest => dest.EventSessionTitle, opt => opt.MapFrom(src => src.EventSession != null ? src.EventSession.Title : null))
+                .ForMember(dest => dest.ApprovalStatusFullName, opt => opt.MapFrom(src => src.ApprovalStatus != null ? src.ApprovalStatus.FullName : null))
+                .ForMember(dest => dest.ApprovalStatusMasterCode, opt => opt.MapFrom(src => src.ApprovalStatus != null ? src.ApprovalStatus.MasterCode : null))
+                .ReverseMap();
+            CreateMap<EventRegistration, CreateEventRegistrationDto>().ReverseMap();
+            CreateMap<EventRegistration, UpdateEventRegistrationDto>().ReverseMap();
+
+            // RegistrationMode mappings (readonly lookup)
+            CreateMap<RegistrationMode, RegistrationModeDto>().ReverseMap();
+            CreateMap<RegistrationMode, RegistrationModeListDto>().ReverseMap();
+
+            // Madhab mappings (readonly lookup)
+            CreateMap<Madhab, MadhabDto>().ReverseMap();
+            CreateMap<Madhab, MadhabListDto>().ReverseMap();
+
+            // EventStatus mappings (readonly lookup)
+            CreateMap<Domain.EventStatus, EventStatusDto>().ReverseMap();
+            CreateMap<Domain.EventStatus, EventStatusListDto>().ReverseMap();
+
+            // EventFormat mappings (readonly lookup)
+            CreateMap<EventFormat, EventFormatDto>().ReverseMap();
+            CreateMap<EventFormat, EventFormatListDto>().ReverseMap();
+
+            // VisibilityType mappings (readonly lookup)
+            CreateMap<VisibilityType, VisibilityTypeDto>().ReverseMap();
+            CreateMap<VisibilityType, VisibilityTypeListDto>().ReverseMap();
+
+            // ActorType mappings (readonly lookup)
+            CreateMap<Domain.ActorType, ActorTypeDto>().ReverseMap();
+            CreateMap<Domain.ActorType, ActorTypeListDto>().ReverseMap();
+
+            // DidCustodyType mappings (readonly lookup)
+            CreateMap<Domain.DidCustodyType, DidCustodyTypeDto>().ReverseMap();
+            CreateMap<Domain.DidCustodyType, DidCustodyTypeListDto>().ReverseMap();
+
+            // OrganizationRole mappings (readonly lookup)
+            CreateMap<Domain.OrganizationRole, OrganizationRoleDto>().ReverseMap();
+            CreateMap<Domain.OrganizationRole, OrganizationRoleListDto>().ReverseMap();
+
+            // OrganizationPosition mappings (readonly lookup)
+            CreateMap<Domain.OrganizationPosition, OrganizationPositionDto>().ReverseMap();
+            CreateMap<Domain.OrganizationPosition, OrganizationPositionListDto>().ReverseMap();
+
+            // FileType mappings (readonly lookup)
+            CreateMap<Domain.FileType, FileTypeDto>().ReverseMap();
+            CreateMap<Domain.FileType, FileTypeListDto>().ReverseMap();
         }
     }
 }

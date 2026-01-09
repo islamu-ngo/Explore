@@ -38,13 +38,21 @@ Agents are autonomous Claude instances that handle specific complex tasks. Unlik
 ---
 
 ### code-refactor-master
-**Purpose:** Plan and execute comprehensive refactoring
+**Purpose:** Enforce Clean Architecture with CQRS patterns for ISLAMU Event
 
 **When to use:**
-- Reorganizing file structures
-- Breaking down large components
-- Updating import paths after moves
-- Improving code maintainability
+- Reviewing code for Clean Architecture violations
+- Checking CQRS pattern compliance (commands vs queries)
+- Validating repository pattern (entities not DTOs)
+- Ensuring FluentValidation with repository injection
+- Reviewing authentication/authorization patterns
+
+**Key Features:**
+- Repository pattern enforcement (entities only, no DTOs)
+- CQRS validation (BaseCommandResponse<Guid> for commands)
+- Validation pattern checks (manual validation in handlers)
+- Controller pattern review (AllowAnonymous vs Authorize)
+- Actual ISLAMU Event entity names (Event, Organization, User, Actor, etc.)
 
 **Integration:** ✅ Copy as-is
 
@@ -157,15 +165,14 @@ Agents are autonomous Claude instances that handle specific complex tasks. Unlik
 ### Standard Integration (Most Agents)
 
 **Step 1: Copy the file**
-```bash
-cp showcase/.claude/agents/agent-name.md \\
-   your-project/.claude/agents/
+```powershell
+Copy-Item showcase\.claude\agents\agent-name.md your-project\.claude\agents\
 ```
 
 **Step 2: Verify (optional)**
-```bash
+```powershell
 # Check for hardcoded paths
-grep -n "~/git/\|/root/git/\|/Users/" your-project/.claude/agents/agent-name.md
+Select-String -Path "your-project\.claude\agents\agent-name.md" -Pattern "~/git/|/root/git/|/Users/"
 ```
 
 **Step 3: Use it**
@@ -233,8 +240,8 @@ That's it! Agents work immediately.
 1. **Read [CLAUDE_INTEGRATION_GUIDE.md](../../CLAUDE_INTEGRATION_GUIDE.md)**
 2. **Just copy the .md file** - agents are standalone
 3. **Check for hardcoded paths:**
-   ```bash
-   grep "~/git/\|/root/" agent-name.md
+   ```powershell
+   Select-String -Path "agent-name.md" -Pattern "~/git/|/root/"
    ```
 4. **Update paths if found** to `$CLAUDE_PROJECT_DIR` or `.`
 5. **For auth agents:** Ask if they use JWT cookie auth first
@@ -277,19 +284,19 @@ What format to return results in
 ### Agent not found
 
 **Check:**
-```bash
+```powershell
 # Is agent file present?
-ls -la .claude/agents/[agent-name].md
+Get-ChildItem .claude\agents\agent-name.md
 ```
 
 ### Agent fails with path errors
 
 **Check for hardcoded paths:**
-```bash
-grep "~/\|/root/\|/Users/" .claude/agents/[agent-name].md
+```powershell
+Select-String -Path ".claude\agents\agent-name.md" -Pattern "~/|/root/|/Users/"
 ```
 
 **Fix:**
-```bash
-sed -i 's|~/git/.*project|$CLAUDE_PROJECT_DIR|g' .claude/agents/[agent-name].md
+```powershell
+(Get-Content ".claude\agents\agent-name.md") -replace '~/git/.*project', '$CLAUDE_PROJECT_DIR' | Set-Content ".claude\agents\agent-name.md"
 ```

@@ -109,6 +109,13 @@ protected override async Task OnInitializedAsync()
 ✅ <MudItem xs="12">Content</MudItem>
 ```
 
+**Grid System Errors**:
+```razor
+❌ <MudItem xs="full">Content</MudItem>
+
+✅ <MudItem xs="12">Content</MudItem>
+```
+
 **Missing CascadingParameter**:
 ```razor
 ❌ MudDialog.Close(); <!-- MudDialog is null -->

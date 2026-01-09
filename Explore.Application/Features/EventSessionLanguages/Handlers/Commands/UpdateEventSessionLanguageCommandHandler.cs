@@ -12,21 +12,21 @@ namespace Explore.Application.Features.EventSessionLanguages.Handlers.Commands
 {
     public class UpdateEventSessionLanguageCommandHandler : IRequestHandler<UpdateEventSessionLanguageCommand, BaseCommandResponse<int>>
     {
-        private readonly IEventSessionLanguageRepository _sessionLanguageRepository;
+        private readonly IEventSessionLanguageRepository _repository;
+        private readonly IMapper _mapper;
         private readonly IEventSessionRepository _eventSessionRepository;
         private readonly ILanguageRepository _languageRepository;
-        private readonly IMapper _mapper;
 
         public UpdateEventSessionLanguageCommandHandler(
-            IEventSessionLanguageRepository sessionLanguageRepository,
+            IEventSessionLanguageRepository repository,
+            IMapper mapper,
             IEventSessionRepository eventSessionRepository,
-            ILanguageRepository languageRepository,
-            IMapper mapper)
+            ILanguageRepository languageRepository)
         {
-            _sessionLanguageRepository = sessionLanguageRepository;
+            _repository = repository;
+            _mapper = mapper;
             _eventSessionRepository = eventSessionRepository;
             _languageRepository = languageRepository;
-            _mapper = mapper;
         }
 
         public async Task<BaseCommandResponse<int>> Handle(UpdateEventSessionLanguageCommand request, CancellationToken cancellationToken)
@@ -34,32 +34,30 @@ namespace Explore.Application.Features.EventSessionLanguages.Handlers.Commands
             var response = new BaseCommandResponse<int>();
 
             var validator = new UpdateEventSessionLanguageDtoValidator(_eventSessionRepository, _languageRepository);
-            var validationResult = await validator.ValidateAsync(request.SessionLanguageDto);
+            var validationResult = await validator.ValidateAsync(request.EventSessionLanguageDto, cancellationToken);
 
             if (!validationResult.IsValid)
             {
                 response.Success = false;
-                response.Message = "Session language assignment update failed.";
+                response.Message = "Event Session Language update failed.";
                 response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
                 return response;
             }
 
-            var sessionLanguage = await _sessionLanguageRepository.GetById(request.SessionLanguageDto.Id);
-
-            if (sessionLanguage == null)
+            var eventSessionLanguage = await _repository.GetById(request.EventSessionLanguageDto.Id);
+            if (eventSessionLanguage == null)
             {
                 response.Success = false;
-                response.Message = "Session language assignment not found.";
+                response.Message = "Event Session Language not found.";
                 return response;
             }
 
-            _mapper.Map(request.SessionLanguageDto, sessionLanguage);
-
-            await _sessionLanguageRepository.Update(sessionLanguage);
+            _mapper.Map(request.EventSessionLanguageDto, eventSessionLanguage);
+            await _repository.Update(eventSessionLanguage);
 
             response.Success = true;
-            response.Id = sessionLanguage.Id;
-            response.Message = "Session language assignment updated successfully.";
+            response.Id = eventSessionLanguage.Id;
+            response.Message = "Event Session Language updated successfully.";
 
             return response;
         }

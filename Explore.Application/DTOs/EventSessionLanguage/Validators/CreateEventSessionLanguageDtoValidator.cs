@@ -15,24 +15,28 @@ namespace Explore.Application.DTOs.EventSessionLanguage.Validators
             _eventSessionRepository = eventSessionRepository;
             _languageRepository = languageRepository;
 
-            RuleFor(p => p.EventSessionId)
-                .NotEmpty().WithMessage("{PropertyName} is required.")
-                .MustAsync(async (id, cancellation) =>
-                {
-                    var exists = await _eventSessionRepository.Exists(id);
-                    return exists;
-                }).WithMessage("EventSession does not exist.");
+            RuleFor(x => x.EventSessionId)
+                .NotEmpty().WithMessage("{PropertyName} is required")
+                .MustAsync(EventSessionExists)
+                .WithMessage("{PropertyName} not found");
 
-            RuleFor(p => p.LanguageId)
-                .NotEmpty().WithMessage("{PropertyName} is required.")
-                .MustAsync(async (id, cancellation) =>
-                {
-                    var exists = await _languageRepository.Exists(id);
-                    return exists;
-                }).WithMessage("Language does not exist.");
+            RuleFor(x => x.LanguageId)
+                .NotEmpty().WithMessage("{PropertyName} is required")
+                .MustAsync(LanguageExists)
+                .WithMessage("{PropertyName} not found");
 
-            RuleFor(p => p.TenantId)
-                .NotEmpty().WithMessage("{PropertyName} is required.");
+            RuleFor(x => x.TenantId)
+                .NotEmpty().WithMessage("{PropertyName} is required");
+        }
+
+        private async Task<bool> EventSessionExists(Guid eventSessionId, CancellationToken cancellationToken)
+        {
+            return await _eventSessionRepository.Exists(eventSessionId);
+        }
+
+        private async Task<bool> LanguageExists(int languageId, CancellationToken cancellationToken)
+        {
+            return await _languageRepository.Exists(languageId);
         }
     }
 }

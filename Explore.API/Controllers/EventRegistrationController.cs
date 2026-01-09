@@ -1,6 +1,10 @@
-using Explore.Application.DTOs.ProgramRegistration;
-using Explore.Application.Features.ProgramRegistration.Requests.Commands;
-using Explore.Application.Features.ProgramRegistration.Requests.Queries;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Explore.Application.DTOs.EventRegistration;
+using Explore.Application.Features.EventRegistrations.Requests.Commands;
+using Explore.Application.Features.EventRegistrations.Requests.Queries;
+using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -21,159 +25,116 @@ namespace Explore.API.Controllers
             _logger = logger;
         }
 
-        // POST: api/ProgramRegistration
+        // GET: api/v1/eventregistration
+        [HttpGet]
+        [EndpointSummary("Get all Event Registrations")]
+        [EndpointDescription("Retrieve a list of all event registrations across all sessions")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(List<EventRegistrationListDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<List<EventRegistrationListDto>>> GetAll()
+        {
+            var eventRegistrations = await _mediator.Send(new GetEventRegistrationListRequest());
+            return Ok(eventRegistrations);
+        }
+
+        // GET: api/v1/eventregistration/{id}
+        [HttpGet("{id}")]
+        [EndpointSummary("Get Event Registration by ID")]
+        [EndpointDescription("Retrieve details of a specific event registration including approval status")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(EventRegistrationDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<EventRegistrationDto>> GetById(Guid id)
+        {
+            var eventRegistration = await _mediator.Send(new GetEventRegistrationDetailsRequest { Id = id });
+            return Ok(eventRegistration);
+        }
+
+        // GET: api/v1/eventregistration/by-session/{eventSessionId}
+        [HttpGet("by-session/{eventSessionId}")]
+        [EndpointSummary("Get Registrations by Event Session")]
+        [EndpointDescription("Retrieve all user registrations for a specific event session")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(List<EventRegistrationListDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<List<EventRegistrationListDto>>> GetRegistrationsBySession(Guid eventSessionId)
+        {
+            var registrations = await _mediator.Send(new GetRegistrationsBySessionRequest { EventSessionId = eventSessionId });
+            return Ok(registrations);
+        }
+
+        // GET: api/v1/eventregistration/by-user/{userId}
+        [HttpGet("by-user/{userId}")]
+        [EndpointSummary("Get Registrations by User")]
+        [EndpointDescription("Retrieve all event registrations for a specific user")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(List<EventRegistrationListDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<List<EventRegistrationListDto>>> GetRegistrationsByUser(Guid userId)
+        {
+            var registrations = await _mediator.Send(new GetRegistrationsByUserRequest { UserId = userId });
+            return Ok(registrations);
+        }
+
+        // POST: api/v1/eventregistration
         [HttpPost]
-        [EndpointSummary("Register for a Program/Event")]
-        [EndpointDescription("Register a user for a specific program (event or education)")]
-        public async Task<ActionResult<Guid>> CreateRegistration([FromBody] CreateProgramRegistrationDto registrationDto)
+        [EndpointSummary("Register User for Event Session")]
+        [EndpointDescription("Create a new event registration (may require approval depending on registration mode)")]
+        [Authorize]
+        [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventRegistrationDto dto)
         {
-            try
-            {
-                // Get user ID from claims (when authentication is enabled)
-                var userId = User?.FindFirstValue(ClaimTypes.NameIdentifier) 
-                    ?? User?.FindFirstValue("sub") 
-                    ?? "00000000-0000-0000-0000-000000000001"; // Fixed test user ID
-
-                var command = new CreateProgramRegistrationCommand
-                {
-                    ProgramRegistrationDto = registrationDto,
-                    UserId = userId
-                };
-
-                var result = await _mediator.Send(command);
-
-                if (result.Success)
-                {
-                    return Ok(new { id = result.Id, message = result.Message });
-                }
-
-                return BadRequest(new { message = result.Message, errors = result.Errors });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creating program registration");
-                return StatusCode(500, new { message = "Internal server error", error = ex.Message });
-            }
+            var command = new CreateEventRegistrationCommand { EventRegistrationDto = dto };
+            var response = await _mediator.Send(command);
+            return Ok(response);
         }
 
-        // GET: api/ProgramRegistration/check/{programId}
-        [HttpGet("check/{programId}")]
-        [EndpointSummary("Check if user is registered for a Program/Event")]
-        [EndpointDescription("Check if the current user is already registered for a specific program")]
-        public async Task<ActionResult<bool>> CheckRegistrationStatus(Guid programId)
+        // PUT: api/v1/eventregistration/{id}
+        [HttpPut("{id}")]
+        [EndpointSummary("Update Event Registration")]
+        [EndpointDescription("Update an existing event registration (e.g., change approval status)")]
+        [Authorize]
+        [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventRegistrationDto dto)
         {
-            try
+            if (id != dto.Id)
             {
-                // Get user ID from claims (when authentication is enabled)
-                var userId = User?.FindFirstValue(ClaimTypes.NameIdentifier) 
-                    ?? User?.FindFirstValue("sub") 
-                    ?? "00000000-0000-0000-0000-000000000001"; // Fixed test user ID
-
-                if (!Guid.TryParse(userId, out var userGuid))
-                {
-                    return BadRequest(new { message = "Invalid user ID" });
-                }
-
-                var query = new CheckUserRegistrationStatusRequest
-                {
-                    UserId = userGuid,
-                    ProgramId = programId
-                };
-
-                var isRegistered = await _mediator.Send(query);
-                return Ok(new { isRegistered });
+                return BadRequest(new { error = "Event Registration ID mismatch" });
             }
-            catch (Exception ex)
+
+            var command = new UpdateEventRegistrationCommand { EventRegistrationDto = dto };
+            var response = await _mediator.Send(command);
+
+            if (!response.Success)
             {
-                _logger.LogError(ex, "Error checking registration status for program {ProgramId}", programId);
-                return StatusCode(500, new { message = "Internal server error", error = ex.Message });
+                return BadRequest(response);
             }
+
+            return Ok(response);
         }
 
-        // GET: api/ProgramRegistration/program/{programId}
-        [HttpGet("program/{programId}")]
-        [EndpointSummary("Get all registrations for a Program/Event")]
-        [EndpointDescription("Get a list of all users registered for a specific program")]
-        public async Task<ActionResult<List<ProgramRegistrationListDto>>> GetRegistrationsForProgram(Guid programId)
+        // DELETE: api/v1/eventregistration/{id}
+        [HttpDelete("{id}")]
+        [EndpointSummary("Cancel Event Registration")]
+        [EndpointDescription("Delete/cancel a user's event registration")]
+        [Authorize]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult> Delete(Guid id)
         {
-            try
+            var command = new DeleteEventRegistrationCommand { Id = id };
+            var result = await _mediator.Send(command);
+
+            if (!result)
             {
-                var query = new GetProgramRegistrationsRequest { ProgramId = programId };
-                var registrations = await _mediator.Send(query);
-                return Ok(registrations);
+                return NotFound(new { error = "Event Registration not found" });
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error fetching registrations for program {ProgramId}", programId);
-                return StatusCode(500, new { message = "Internal server error", error = ex.Message });
-            }
-        }
 
-        // GET: api/ProgramRegistration/my
-        [HttpGet("my")]
-        [EndpointSummary("Get current user's registrations")]
-        [EndpointDescription("Return all program registrations for the authenticated user")]
-        public async Task<ActionResult<List<ProgramRegistrationListDto>>> GetMyRegistrations()
-        {
-            try
-            {
-                var userId = User?.FindFirstValue(ClaimTypes.NameIdentifier)
-                    ?? User?.FindFirstValue("sub")
-                    ?? string.Empty;
-
-                if (!Guid.TryParse(userId, out var userGuid))
-                {
-                    return Unauthorized(new { message = "User not authenticated" });
-                }
-
-                var query = new GetMyProgramRegistrationsRequest { UserId = userGuid };
-                var registrations = await _mediator.Send(query);
-                return Ok(registrations);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error fetching registrations for current user");
-                return StatusCode(500, new { message = "Internal server error", error = ex.Message });
-            }
-        }
-
-        // DELETE: api/ProgramRegistration/{registrationId}
-        [HttpDelete("{registrationId}")]
-        [EndpointSummary("Unregister from a Program/Event")]
-        [EndpointDescription("Remove the current user's registration for a program")]
-        public async Task<ActionResult> DeleteRegistration(Guid registrationId)
-        {
-            try
-            {
-                var userId = User?.FindFirstValue(ClaimTypes.NameIdentifier)
-                    ?? User?.FindFirstValue("sub")
-                    ?? string.Empty;
-
-                if (!Guid.TryParse(userId, out var userGuid))
-                {
-                    return Unauthorized(new { message = "User not authenticated" });
-                }
-
-                var command = new DeleteProgramRegistrationCommand
-                {
-                    RegistrationId = registrationId,
-                    UserId = userGuid
-                };
-
-                var result = await _mediator.Send(command);
-
-                if (result.Success)
-                {
-                    return Ok(new { message = result.Message });
-                }
-
-                return BadRequest(new { message = result.Message, errors = result.Errors });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error deleting registration {RegistrationId}", registrationId);
-                return StatusCode(500, new { message = "Internal server error", error = ex.Message });
-            }
+            return NoContent();
         }
     }
 }

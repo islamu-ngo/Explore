@@ -115,10 +115,10 @@ namespace Explore.Application.Contracts.Persistence;
 
 public interface IEventRepository : IGenericRepository<Event, Guid>
 {
-    Task<List<EventListDto>> GetEventsWithDetails();
-    Task<EventDto> GetEventWithDetails(Guid id);
-    Task<List<EventListDto>> GetMyEventsWithDetails(string userId);
-    Task<List<EventListDto>> GetEventsByOrganization(Guid organizationId);
+    Task<List<Event>> GetEventsWithDetails();
+    Task<Event?> GetEventWithDetails(Guid id);
+    Task<List<Event>> GetMyEventsWithDetails(string userId);
+    Task<List<Event>> GetEventsByActor(Guid actorId);
 }
 ```
 
@@ -142,122 +142,68 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
         _dbContext = dbContext;
     }
 
-    public async Task<List<EventListDto>> GetEventsWithDetails()
+    // ✅ REPOSITORIES RETURN ENTITIES, NOT DTOs
+    public async Task<List<Event>> GetEventsWithDetails()
     {
         return await _dbContext.Events
             .Include(e => e.EventType)
-            .Include(e => e.Organization)
-            .Include(e => e.FeaturedImage)
-            .Include(e => e.AudienceAge)
             .Include(e => e.AudienceGender)
-            .Select(e => new EventListDto
-            {
-                Id = e.Id,
-                Title = e.Title,
-                Description = e.Description,
-                StartDate = e.StartDate,
-                EndDate = e.EndDate,
-                OrganizationId = e.OrganizationId,
-                OrganizationFullName = e.Organization.FullName,
-                EventTypeFullName = e.EventType.FullName,
-                FeaturedImageUri = e.FeaturedImage.Uri,
-                AudienceAgeFullName = e.AudienceAge.FullName,
-                AudienceGenderFullName = e.AudienceGender.FullName,
-                TotalViews = e.TotalViews,
-                Country = e.Country,
-                City = e.City
-            })
+            .Include(e => e.AudienceAge)
+            .Include(e => e.Actor)
+            .Include(e => e.EventStatus)
+            .Include(e => e.VisibilityType)
+            .Include(e => e.EventFormat)
+            .Include(e => e.Madhab)
+            .Include(e => e.FeaturedImage)
+            .Include(e => e.AtprotoRecord)
             .ToListAsync();
     }
 
-    public async Task<EventDto> GetEventWithDetails(Guid id)
-    {
-        var eventDto = await _dbContext.Events
-            .Include(e => e.EventType)
-            .Include(e => e.Organization)
-            .Include(e => e.FeaturedImage)
-            .Include(e => e.AudienceAge)
-            .Include(e => e.AudienceGender)
-            .Where(e => e.Id == id)
-            .Select(e => new EventDto
-            {
-                Id = e.Id,
-                Title = e.Title,
-                Description = e.Description,
-                StartDate = e.StartDate,
-                EndDate = e.EndDate,
-                OrganizationId = e.OrganizationId,
-                OrganizationFullName = e.Organization.FullName,
-                EventTypeId = e.EventTypeId,
-                EventTypeFullName = e.EventType.FullName,
-                FeaturedImageUri = e.FeaturedImage.Uri,
-                TotalViews = e.TotalViews,
-                Country = e.Country,
-                City = e.City,
-                Address = e.Address,
-                PostCode = e.PostCode,
-                Price = e.Price,
-                IsRegistrationRequired = e.IsRegistrationRequired,
-                AudienceAttendees = e.AudienceAttendees
-            })
-            .FirstOrDefaultAsync();
-
-        return eventDto ?? throw new KeyNotFoundException($"Event with ID {id} not found");
-    }
-
-    public async Task<List<EventListDto>> GetEventsByOrganization(Guid organizationId)
+    public async Task<Event?> GetEventWithDetails(Guid id)
     {
         return await _dbContext.Events
-            .Where(e => e.OrganizationId == organizationId)
             .Include(e => e.EventType)
+            .Include(e => e.AudienceGender)
+            .Include(e => e.AudienceAge)
+            .Include(e => e.Actor)
+            .Include(e => e.EventStatus)
+            .Include(e => e.VisibilityType)
+            .Include(e => e.EventFormat)
+            .Include(e => e.Madhab)
             .Include(e => e.FeaturedImage)
-            .Select(e => new EventListDto
-            {
-                Id = e.Id,
-                Title = e.Title,
-                Description = e.Description,
-                StartDate = e.StartDate,
-                EventTypeFullName = e.EventType.FullName,
-                FeaturedImageUri = e.FeaturedImage.Uri
-            })
-            .ToListAsync();
+            .Include(e => e.AtprotoRecord)
+            .FirstOrDefaultAsync(e => e.Id == id);
     }
 
-    public async Task<List<EventListDto>> GetMyEventsWithDetails(string userId)
+    public async Task<List<Event>> GetEventsByActor(Guid actorId)
     {
-        Guid userGuid = Guid.TryParse(userId, out var guid) ? guid : Guid.Empty;
-
-        var query = _dbContext.Events
-            .Include(e => e.Organization)
-                .ThenInclude(o => o.Members)
+        return await _dbContext.Events
+            .Where(e => e.ActorId == actorId)
             .Include(e => e.EventType)
             .Include(e => e.FeaturedImage)
-            .AsQueryable();
-
-        if (userGuid != Guid.Empty)
-        {
-            query = query.Where(e =>
-                e.Organization.CreatedByUserId == userId ||
-                e.Organization.Members.Any(m => m.UserId == userGuid));
-        }
-        else
-        {
-            query = query.Where(e => e.Organization.CreatedByUserId == userId);
-        }
-
-        return await query
-            .Select(e => new EventListDto
-            {
-                Id = e.Id,
-                Title = e.Title,
-                Description = e.Description,
-                StartDate = e.StartDate,
-                OrganizationFullName = e.Organization.FullName,
-                EventTypeFullName = e.EventType.FullName,
-                FeaturedImageUri = e.FeaturedImage.Uri
-            })
             .ToListAsync();
     }
+
+    public async Task<List<Event>> GetMyEventsWithDetails(string userId)
+    {
+        // Returns entities; handler will map to DTOs
+        return await _dbContext.Events
+            .Where(e => e.Organization.Members.Any(m => m.UserId == userId))
+            .Include(e => e.EventType)
+            .Include(e => e.FeaturedImage)
+            .ToListAsync();
+    }
+
+    // NOTE: In the Application layer handler, entities are mapped to DTOs:
+    //
+    // public async Task<List<EventListDto>> Handle(GetEventListRequest request, CancellationToken cancellationToken)
+    // {
+    //     // Repository returns ENTITIES
+    //     var events = await _eventRepository.GetEventsWithDetails();
+    //
+    //     // AutoMapper maps ENTITIES to DTOs
+    //     return _mapper.Map<List<EventListDto>>(events);
+    // }
 }
 ```
 
@@ -301,56 +247,56 @@ builder.Services.AddPersistenceServices();
 
 ## Repository Method Patterns
 
-### Projection to DTO (Recommended)
+### Return Entities (Standard Pattern)
+
+**CRITICAL**: Repositories return ENTITIES, not DTOs. DTO mapping happens in Application layer handlers via AutoMapper.
 
 ```csharp
-public async Task<List<EventListDto>> GetEventsWithDetails()
+// ✅ CORRECT: Repository returns entities
+public async Task<List<Event>> GetEventsWithDetails()
 {
-    // ✅ Project directly to DTO (no entities tracked)
     return await _dbContext.Events
-        .Include(e => e.Organization)
-        .Select(e => new EventListDto
-        {
-            Id = e.Id,
-            Title = e.Title,
-            OrganizationName = e.Organization.FullName
-        })
+        .Include(e => e.EventType)
+        .Include(e => e.AudienceGender)
+        .Include(e => e.AudienceAge)
+        .Include(e => e.Actor)
         .ToListAsync();
+}
+
+// ✅ CORRECT: Handler maps entities to DTOs
+public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, List<EventListDto>>
+{
+    private readonly IEventRepository _eventRepository;
+    private readonly IMapper _mapper;
+
+    public async Task<List<EventListDto>> Handle(GetEventListRequest request, CancellationToken cancellationToken)
+    {
+        // Repository returns ENTITIES
+        var events = await _eventRepository.GetEventsWithDetails();
+
+        // AutoMapper maps ENTITIES to DTOs
+        return _mapper.Map<List<EventListDto>>(events);
+    }
 }
 ```
 
 **Benefits**:
-- ✅ No change tracking (faster)
-- ✅ Only selected columns retrieved
-- ✅ Returns DTO directly
+- ✅ Clean separation of concerns
+- ✅ Repositories focus on data access only
+- ✅ Handlers handle DTO mapping with AutoMapper
+- ✅ Reusable repositories for different DTO shapes
 
-### Return Entity (Use Sparingly)
-
-```csharp
-public async Task<Event?> GetEventWithIncludes(Guid id)
-{
-    // ⚠️ Returns tracked entity
-    return await _dbContext.Events
-        .Include(e => e.Organization)
-        .Include(e => e.FeaturedImage)
-        .FirstOrDefaultAsync(e => e.Id == id);
-}
-```
-
-**When to use**:
-- ⚠️ Only when you need to update the entity
-- ⚠️ Use `AsNoTracking()` if read-only
-
-### AsNoTracking for Read-Only
+### AsNoTracking for Read-Only Queries
 
 ```csharp
-public async Task<Event?> GetEventReadOnly(Guid id)
+public async Task<List<Event>> GetEventsReadOnly()
 {
-    // ✅ No change tracking
+    // ✅ No change tracking (faster for read-only)
     return await _dbContext.Events
         .AsNoTracking()
+        .Include(e => e.EventType)
         .Include(e => e.Organization)
-        .FirstOrDefaultAsync(e => e.Id == id);
+        .ToListAsync();
 }
 ```
 
@@ -369,14 +315,14 @@ public interface ISpecification<T>
 }
 
 // File: Application/Specifications/EventSpecification.cs
-public class EventsByOrganizationSpec : ISpecification<Event>
+public class EventsByActorSpec : ISpecification<Event>
 {
-    public EventsByOrganizationSpec(Guid organizationId)
+    public EventsByActorSpec(Guid actorId)
     {
-        Criteria = e => e.OrganizationId == organizationId;
+        Criteria = e => e.ActorId == actorId;
         Includes = new List<Expression<Func<Event, object>>>
         {
-            e => e.Organization,
+            e => e.Actor,
             e => e.EventType
         };
     }
@@ -400,13 +346,14 @@ public async Task<List<Event>> Find(ISpecification<Event> spec)
 ### Pagination
 
 ```csharp
-public async Task<PaginatedList<EventListDto>> GetEventsPaginated(
+public async Task<List<Event>> GetEventsPaginated(
     int page,
     int pageSize,
     string? searchTerm)
 {
     var query = _dbContext.Events
-        .Include(e => e.Organization)
+        .Include(e => e.Actor)
+        .Include(e => e.EventType)
         .AsQueryable();
 
     if (!string.IsNullOrWhiteSpace(searchTerm))
@@ -422,16 +369,11 @@ public async Task<PaginatedList<EventListDto>> GetEventsPaginated(
         .OrderByDescending(e => e.StartDate)
         .Skip((page - 1) * pageSize)
         .Take(pageSize)
-        .Select(e => new EventListDto
-        {
-            Id = e.Id,
-            Title = e.Title,
-            OrganizationName = e.Organization.FullName
-        })
         .ToListAsync();
 
-    return new PaginatedList<EventListDto>(items, totalCount, page, pageSize);
+    return items;
 }
+```
 ```
 
 ---

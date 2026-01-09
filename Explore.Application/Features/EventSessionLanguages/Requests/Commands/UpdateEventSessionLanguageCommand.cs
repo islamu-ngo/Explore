@@ -6,6 +6,6 @@ namespace Explore.Application.Features.EventSessionLanguages.Requests.Commands
 {
     public class UpdateEventSessionLanguageCommand : IRequest<BaseCommandResponse<int>>
     {
-        public UpdateEventSessionLanguageDto SessionLanguageDto { get; set; }
+        public UpdateEventSessionLanguageDto EventSessionLanguageDto { get; set; }
     }
 }

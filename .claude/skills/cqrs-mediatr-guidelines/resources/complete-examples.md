@@ -18,7 +18,7 @@ public class CreateEventDto
 {
     public string Title { get; set; }
     public DateTime StartDate { get; set; }
-    public Guid OrganizationId { get; set; }
+    public Guid ActorId { get; set; }
 }
 ```
 
@@ -26,10 +26,10 @@ public class CreateEventDto
 ```csharp
 public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
 {
-    public CreateEventDtoValidator(IOrganizationRepository orgRepo)
+    public CreateEventDtoValidator(IActorRepository actorRepo)
     {
         RuleFor(x => x.Title).NotEmpty().MaximumLength(200);
-        RuleFor(x => x.OrganizationId).MustAsync(async (id, _) => await orgRepo.Exists(id));
+        RuleFor(x => x.ActorId).MustAsync(async (id, _) => await actorRepo.Exists(id));
     }
 }
 ```
@@ -39,14 +39,14 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
 public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<Guid>>
 {
     private readonly IEventRepository _eventRepository;
-    private readonly IOrganizationRepository _organizationRepository;
+    private readonly IActorRepository _actorRepository;
     private readonly IMapper _mapper;
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
     {
         var response = new BaseCommandResponse<Guid>();
 
-        var validator = new CreateEventDtoValidator(_organizationRepository);
+        var validator = new CreateEventDtoValidator(_actorRepository);
         var validationResult = await validator.ValidateAsync(request.EventDto);
 
         if (!validationResult.IsValid)
@@ -72,7 +72,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
 ```csharp
 public class GetEventListRequest : IRequest<List<EventListDto>>
 {
-    public Guid? OrganizationId { get; set; }
+    public Guid? ActorId { get; set; }
 }
 ```
 
@@ -87,8 +87,8 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, L
     {
         var events = await _eventRepository.GetAll();
 
-        if (request.OrganizationId.HasValue)
-            events = events.Where(e => e.OrganizationId == request.OrganizationId.Value).ToList();
+        if (request.ActorId.HasValue)
+            events = events.Where(e => e.ActorId == request.ActorId.Value).ToList();
 
         return _mapper.Map<List<EventListDto>>(events);
     }
@@ -112,9 +112,9 @@ public class EventsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<EventListDto>>> GetAll([FromQuery] Guid? organizationId)
+    public async Task<ActionResult<List<EventListDto>>> GetAll([FromQuery] Guid? actorId)
     {
-        var result = await _mediator.Send(new GetEventListRequest { OrganizationId = organizationId });
+        var result = await _mediator.Send(new GetEventListRequest { ActorId = actorId });
         return Ok(result);
     }
 }

@@ -8,24 +8,22 @@ namespace Explore.Application.Features.EventSessionLanguages.Handlers.Commands
 {
     public class DeleteEventSessionLanguageCommandHandler : IRequestHandler<DeleteEventSessionLanguageCommand, bool>
     {
-        private readonly IEventSessionLanguageRepository _sessionLanguageRepository;
+        private readonly IEventSessionLanguageRepository _repository;
 
-        public DeleteEventSessionLanguageCommandHandler(IEventSessionLanguageRepository sessionLanguageRepository)
+        public DeleteEventSessionLanguageCommandHandler(IEventSessionLanguageRepository repository)
         {
-            _sessionLanguageRepository = sessionLanguageRepository;
+            _repository = repository;
         }
 
         public async Task<bool> Handle(DeleteEventSessionLanguageCommand request, CancellationToken cancellationToken)
         {
-            var sessionLanguage = await _sessionLanguageRepository.GetById(request.Id);
-
-            if (sessionLanguage == null)
+            var eventSessionLanguage = await _repository.GetById(request.Id);
+            if (eventSessionLanguage == null)
             {
                 return false;
             }
 
-            await _sessionLanguageRepository.Delete(sessionLanguage);
-
+            await _repository.Delete(eventSessionLanguage);
             return true;
         }
     }

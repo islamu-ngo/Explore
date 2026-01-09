@@ -1,0 +1,51 @@
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Explore.Application.Contracts.Persistence;
+using FluentValidation;
+
+namespace Explore.Application.DTOs.EventTags.Validators
+{
+    public class UpdateEventTagsDtoValidator : AbstractValidator<UpdateEventTagsDto>
+    {
+        private readonly IEventRepository _eventRepository;
+        private readonly ITagRepository _tagRepository;
+        private readonly IEventTagsRepository _eventTagsRepository;
+
+        public UpdateEventTagsDtoValidator(
+            IEventRepository eventRepository,
+            ITagRepository tagRepository,
+            IEventTagsRepository eventTagsRepository)
+        {
+            _eventRepository = eventRepository;
+            _tagRepository = tagRepository;
+            _eventTagsRepository = eventTagsRepository;
+
+            RuleFor(x => x.Id)
+                .NotEmpty().WithMessage("{PropertyName} is required");
+
+            RuleFor(x => x.EventId)
+                .NotEmpty().WithMessage("{PropertyName} is required")
+                .MustAsync(EventExists)
+                .WithMessage("{PropertyName} not found");
+
+            RuleFor(x => x.TagId)
+                .NotEmpty().WithMessage("{PropertyName} is required")
+                .MustAsync(TagExists)
+                .WithMessage("{PropertyName} not found");
+
+            RuleFor(x => x.TenantId)
+                .NotEmpty().WithMessage("{PropertyName} is required");
+        }
+
+        private async Task<bool> EventExists(Guid eventId, CancellationToken cancellationToken)
+        {
+            return await _eventRepository.Exists(eventId);
+        }
+
+        private async Task<bool> TagExists(Guid tagId, CancellationToken cancellationToken)
+        {
+            return await _tagRepository.Exists(tagId);
+        }
+    }
+}

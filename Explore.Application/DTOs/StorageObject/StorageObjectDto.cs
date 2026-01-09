@@ -4,7 +4,18 @@ using System.Text;
 
 namespace Explore.Application.DTOs.StorageObject
 {
-    internal class StorageObjectDto
+    public class StorageObjectDto
     {
+        public Guid Id { get; set; }
+        public int FileTypeId { get; set; }
+        public string? FileTypeFullName { get; set; }
+        public string? FileTypeMasterCode { get; set; } // For i18n with Tolgee
+        public string Uri { get; set; }
+        public string FullName { get; set; }
+        public string Extension { get; set; }
+        public long Size { get; set; }
+        public Guid TenantId { get; set; }
+        public Guid? ActorId { get; set; }
+        public string? ActorDisplayName { get; set; }
     }
 }

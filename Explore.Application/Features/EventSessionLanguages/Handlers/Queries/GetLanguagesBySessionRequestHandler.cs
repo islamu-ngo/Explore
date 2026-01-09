@@ -11,21 +11,19 @@ namespace Explore.Application.Features.EventSessionLanguages.Handlers.Queries
 {
     public class GetLanguagesBySessionRequestHandler : IRequestHandler<GetLanguagesBySessionRequest, List<EventSessionLanguageListDto>>
     {
-        private readonly IEventSessionLanguageRepository _sessionLanguageRepository;
+        private readonly IEventSessionLanguageRepository _repository;
         private readonly IMapper _mapper;
 
-        public GetLanguagesBySessionRequestHandler(
-            IEventSessionLanguageRepository sessionLanguageRepository,
-            IMapper mapper)
+        public GetLanguagesBySessionRequestHandler(IEventSessionLanguageRepository repository, IMapper mapper)
         {
-            _sessionLanguageRepository = sessionLanguageRepository;
+            _repository = repository;
             _mapper = mapper;
         }
 
         public async Task<List<EventSessionLanguageListDto>> Handle(GetLanguagesBySessionRequest request, CancellationToken cancellationToken)
         {
-            var sessionLanguages = await _sessionLanguageRepository.GetBySession(request.EventSessionId);
-            return _mapper.Map<List<EventSessionLanguageListDto>>(sessionLanguages);
+            var eventSessionLanguages = await _repository.GetBySession(request.EventSessionId);
+            return _mapper.Map<List<EventSessionLanguageListDto>>(eventSessionLanguages);
         }
     }
 }

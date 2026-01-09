@@ -28,8 +28,8 @@ namespace Explore.API.Controllers
         [AllowAnonymous]
         public async Task<ActionResult<List<EventSessionLanguageListDto>>> GetAll()
         {
-            var sessionLanguages = await _mediator.Send(new GetEventSessionLanguageListRequest());
-            return Ok(sessionLanguages);
+            var eventSessionLanguages = await _mediator.Send(new GetEventSessionLanguageListRequest());
+            return Ok(eventSessionLanguages);
         }
 
         // GET: api/v1/eventsessionlanguage/{id}
@@ -39,14 +39,8 @@ namespace Explore.API.Controllers
         [AllowAnonymous]
         public async Task<ActionResult<EventSessionLanguageDto>> GetById(int id)
         {
-            var sessionLanguage = await _mediator.Send(new GetEventSessionLanguageDetailsRequest { Id = id });
-
-            if (sessionLanguage == null)
-            {
-                return NotFound(new { error = "Session language assignment not found" });
-            }
-
-            return Ok(sessionLanguage);
+            var eventSessionLanguage = await _mediator.Send(new GetEventSessionLanguageDetailsRequest { Id = id });
+            return Ok(eventSessionLanguage);
         }
 
         // GET: api/v1/eventsessionlanguage/by-session/{sessionId}
@@ -56,8 +50,8 @@ namespace Explore.API.Controllers
         [AllowAnonymous]
         public async Task<ActionResult<List<EventSessionLanguageListDto>>> GetBySession(Guid sessionId)
         {
-            var sessionLanguages = await _mediator.Send(new GetLanguagesBySessionRequest { EventSessionId = sessionId });
-            return Ok(sessionLanguages);
+            var eventSessionLanguages = await _mediator.Send(new GetLanguagesBySessionRequest { EventSessionId = sessionId });
+            return Ok(eventSessionLanguages);
         }
 
         // POST: api/v1/eventsessionlanguage
@@ -65,16 +59,10 @@ namespace Explore.API.Controllers
         [EndpointSummary("Assign Language to Session")]
         [EndpointDescription("Assign a language to an event session")]
         [Authorize]
-        public async Task<ActionResult<BaseCommandResponse<int>>> Create([FromBody] CreateEventSessionLanguageDto sessionLanguage)
+        public async Task<ActionResult<BaseCommandResponse<int>>> Create([FromBody] CreateEventSessionLanguageDto dto)
         {
-            var command = new CreateEventSessionLanguageCommand { SessionLanguageDto = sessionLanguage };
+            var command = new CreateEventSessionLanguageCommand { EventSessionLanguageDto = dto };
             var response = await _mediator.Send(command);
-
-            if (!response.Success)
-            {
-                return BadRequest(response);
-            }
-
             return Ok(response);
         }
 
@@ -83,14 +71,14 @@ namespace Explore.API.Controllers
         [EndpointSummary("Update Session Language")]
         [EndpointDescription("Update an existing session language assignment")]
         [Authorize]
-        public async Task<ActionResult<BaseCommandResponse<int>>> Update(int id, [FromBody] UpdateEventSessionLanguageDto sessionLanguage)
+        public async Task<ActionResult<BaseCommandResponse<int>>> Update(int id, [FromBody] UpdateEventSessionLanguageDto dto)
         {
-            if (id != sessionLanguage.Id)
+            if (id != dto.Id)
             {
-                return BadRequest(new { error = "Session language ID mismatch" });
+                return BadRequest(new { error = "Event Session Language ID mismatch" });
             }
 
-            var command = new UpdateEventSessionLanguageCommand { SessionLanguageDto = sessionLanguage };
+            var command = new UpdateEventSessionLanguageCommand { EventSessionLanguageDto = dto };
             var response = await _mediator.Send(command);
 
             if (!response.Success)
@@ -115,14 +103,14 @@ namespace Explore.API.Controllers
 
                 if (!result)
                 {
-                    return NotFound(new { error = "Session language assignment not found" });
+                    return NotFound(new { error = "Event Session Language not found" });
                 }
 
                 return NoContent();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error removing session language assignment {SessionLanguageId}", id);
+                _logger.LogError(ex, "Error deleting Event Session Language {Id}", id);
                 return StatusCode(500, new { error = ex.Message });
             }
         }
