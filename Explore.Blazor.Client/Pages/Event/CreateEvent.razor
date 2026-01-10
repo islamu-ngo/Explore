@@ -121,8 +121,10 @@
                 <!-- Event Image Upload -->
                 <MudText Typo="Typo.h6" Class="mb-3">Event Image</MudText>
                 <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
-                    <ImageUpload @bind-ImageKey="createDto.ImageKey"
-                                @bind-PreviewUrl="imagePreviewUrl"
+                    <ImageUpload ImageKey="@createDto.ImageKey"
+                                ImageKeyChanged="@((value) => createDto.ImageKey = value)"
+                                PreviewUrl="@imagePreviewUrl"
+                                PreviewUrlChanged="@((value) => imagePreviewUrl = value)"
                                 Width="100%"
                                 Height="300px"
                                 PlaceholderText="Add an event image"

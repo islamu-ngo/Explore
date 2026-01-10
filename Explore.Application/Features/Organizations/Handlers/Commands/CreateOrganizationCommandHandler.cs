@@ -14,11 +14,16 @@ namespace Explore.Application.Features.Organizations.Handlers.Commands
     public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizationCommand, BaseCommandResponse<Guid>>
     {
         private readonly IOrganizationRepository _organizationRepository;
+        private readonly IUserRepository _userRepository;
         private readonly IMapper _mapper;
 
-        public CreateOrganizationCommandHandler(IOrganizationRepository organizationRepository, IMapper mapper)
+        public CreateOrganizationCommandHandler(
+            IOrganizationRepository organizationRepository, 
+            IUserRepository userRepository,
+            IMapper mapper)
         {
             _organizationRepository = organizationRepository;
+            _userRepository = userRepository;
             _mapper = mapper;
         }
 
@@ -42,14 +47,17 @@ namespace Explore.Application.Features.Organizations.Handlers.Commands
             organization.CreatedByUserId = request.UserId;
             organization.CreatedAt = DateTime.UtcNow;
 
-            // Add creator as Owner
+            // Add creator as Owner with their actual email
             if (Guid.TryParse(request.UserId, out Guid userGuid))
             {
+                var user = await _userRepository.GetByIdAsync(userGuid);
+                var creatorEmail = user?.Email ?? request.OrganizationDto.Email; // Fallback to org email if user not found
+                
                 organization.Members.Add(new OrganizationMember
                 {
                     UserId = userGuid,
                     Role = OrganizationRole.Creator,
-                    Email = request.OrganizationDto.Email // Fallback to org email as we don't have user email here
+                    Email = creatorEmail
                 });
             }
 

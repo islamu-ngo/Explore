@@ -16,6 +16,7 @@ using Explore.Application.DTOs.ProgramType;
 using Explore.Application.DTOs.StatusType;
 using Explore.Application.DTOs.User;
 using Explore.Application.DTOs.OrganizationReview;
+using Explore.Application.DTOs.OrganizationMember;
 
 namespace Explore.Application.Profiles
 {
@@ -48,6 +49,16 @@ namespace Explore.Application.Profiles
                 .ForMember(dest => dest.ProgramTitle, opt => opt.MapFrom(src => src.Program != null ? src.Program.Title : string.Empty))
                 .ReverseMap();
             CreateMap<OrganizationReview, CreateOrganizationReviewDto>().ReverseMap();
+            
+            // OrganizationMember mappings
+            CreateMap<OrganizationMember, OrganizationMemberDto>()
+                .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.User != null ? src.User.Username : null))
+                .ReverseMap();
+            CreateMap<OrganizationMember, AddOrganizationMemberDto>().ReverseMap();
+            CreateMap<OrganizationMember, UpdateOrganizationMemberRoleDto>().ReverseMap();
+            CreateMap<OrganizationMember, OrganizationInvitationDto>()
+                .ForMember(dest => dest.OrganizationName, opt => opt.MapFrom(src => src.Organization != null ? src.Organization.FullName : string.Empty))
+                .ReverseMap();
         }
     }
 }

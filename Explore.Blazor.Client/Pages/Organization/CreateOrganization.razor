@@ -130,8 +130,10 @@
                     case 0:
                         <MudPaper Class="pa-4 mb-6" Style="background-color: var(--mud-palette-background-grey);">
                             <MudText Typo="Typo.h6" Class="mb-3">Organization Logo</MudText>
-                            <ImageUpload @bind-ImageKey="organization.LogoImageKey"
-                                        @bind-PreviewUrl="logoPreview"
+                            <ImageUpload ImageKey="@organization.LogoImageKey"
+                                        ImageKeyChanged="@((value) => organization.LogoImageKey = value)"
+                                        PreviewUrl="@logoPreview"
+                                        PreviewUrlChanged="@((value) => logoPreview = value)"
                                         Width="120px"
                                         Height="120px"
                                         PlaceholderText="No logo"

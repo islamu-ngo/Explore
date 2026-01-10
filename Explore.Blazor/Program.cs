@@ -1366,6 +1366,249 @@ protectedBff.MapPost("/OrganizationReview", async (HttpContext ctx, IHttpClientF
     );
 });
 
+// OrganizationMember endpoints
+protectedBff.MapGet("/OrganizationMember/{organizationId}", async (Guid organizationId, IHttpClientFactory f) =>
+{
+    try
+    {
+        var http = f.CreateClient("ExploreApi");
+        var response = await http.GetAsync($"api/OrganizationMember/{organizationId}");
+        
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"GetOrganizationMembers API Error: {errorContent}");
+            return Results.Problem(
+                detail: errorContent,
+                statusCode: (int)response.StatusCode
+            );
+        }
+        
+        return Results.Stream(
+            await response.Content.ReadAsStreamAsync(),
+            response.Content.Headers.ContentType?.ToString()
+        );
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error in GetOrganizationMembers endpoint: {ex.Message}");
+        return Results.Problem($"Error fetching organization members: {ex.Message}");
+    }
+});
+
+protectedBff.MapPost("/OrganizationMember", async (HttpContext ctx, IHttpClientFactory f) =>
+{
+    try
+    {
+        var http = f.CreateClient("ExploreApi");
+        var request = new HttpRequestMessage(HttpMethod.Post, "api/OrganizationMember");
+        request.Content = new StreamContent(ctx.Request.Body)
+        {
+            Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json") }
+        };
+        
+        var response = await http.SendAsync(request);
+        
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"InviteMember API Error: {errorContent}");
+            return Results.Problem(
+                detail: errorContent,
+                statusCode: (int)response.StatusCode
+            );
+        }
+        
+        return Results.Stream(
+            await response.Content.ReadAsStreamAsync(),
+            response.Content.Headers.ContentType?.ToString()
+        );
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error in InviteMember endpoint: {ex.Message}");
+        return Results.Problem($"Error inviting member: {ex.Message}");
+    }
+});
+
+protectedBff.MapPut("/OrganizationMember/role", async (HttpContext ctx, IHttpClientFactory f) =>
+{
+    try
+    {
+        var http = f.CreateClient("ExploreApi");
+        var request = new HttpRequestMessage(HttpMethod.Put, "api/OrganizationMember/role");
+        request.Content = new StreamContent(ctx.Request.Body)
+        {
+            Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json") }
+        };
+        
+        var response = await http.SendAsync(request);
+        
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"UpdateMemberRole API Error: {errorContent}");
+            return Results.Problem(
+                detail: errorContent,
+                statusCode: (int)response.StatusCode
+            );
+        }
+        
+        return Results.Stream(
+            await response.Content.ReadAsStreamAsync(),
+            response.Content.Headers.ContentType?.ToString()
+        );
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error in UpdateMemberRole endpoint: {ex.Message}");
+        return Results.Problem($"Error updating member role: {ex.Message}");
+    }
+});
+
+protectedBff.MapGet("/OrganizationMember/invitations", async (IHttpClientFactory f) =>
+{
+    try
+    {
+        var http = f.CreateClient("ExploreApi");
+        var response = await http.GetAsync("api/OrganizationMember/invitations");
+        
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"GetMyInvitations API Error: {errorContent}");
+            return Results.Problem(
+                detail: errorContent,
+                statusCode: (int)response.StatusCode
+            );
+        }
+        
+        return Results.Stream(
+            await response.Content.ReadAsStreamAsync(),
+            response.Content.Headers.ContentType?.ToString()
+        );
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error in GetMyInvitations endpoint: {ex.Message}");
+        return Results.Problem($"Error fetching invitations: {ex.Message}");
+    }
+});
+
+protectedBff.MapPost("/OrganizationMember/invitations/{id}/accept", async (Guid id, IHttpClientFactory f) =>
+{
+    try
+    {
+        var http = f.CreateClient("ExploreApi");
+        var response = await http.PostAsync($"api/OrganizationMember/invitations/{id}/accept", null);
+        
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"AcceptInvitation API Error: {errorContent}");
+            return Results.Problem(
+                detail: errorContent,
+                statusCode: (int)response.StatusCode
+            );
+        }
+        
+        return Results.Stream(
+            await response.Content.ReadAsStreamAsync(),
+            response.Content.Headers.ContentType?.ToString()
+        );
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error in AcceptInvitation endpoint: {ex.Message}");
+        return Results.Problem($"Error accepting invitation: {ex.Message}");
+    }
+});
+
+protectedBff.MapPost("/OrganizationMember/invitations/{id}/decline", async (Guid id, IHttpClientFactory f) =>
+{
+    try
+    {
+        var http = f.CreateClient("ExploreApi");
+        var response = await http.PostAsync($"api/OrganizationMember/invitations/{id}/decline", null);
+        
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"DeclineInvitation API Error: {errorContent}");
+            return Results.Problem(
+                detail: errorContent,
+                statusCode: (int)response.StatusCode
+            );
+        }
+        
+        return Results.Stream(
+            await response.Content.ReadAsStreamAsync(),
+            response.Content.Headers.ContentType?.ToString()
+        );
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error in DeclineInvitation endpoint: {ex.Message}");
+        return Results.Problem($"Error declining invitation: {ex.Message}");
+    }
+});
+
+protectedBff.MapDelete("/OrganizationMember/{id}", async (Guid id, IHttpClientFactory f) =>
+{
+    try
+    {
+        var http = f.CreateClient("ExploreApi");
+        var response = await http.DeleteAsync($"api/OrganizationMember/{id}");
+        
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"DeleteMember API Error: {errorContent}");
+            return Results.Problem(
+                detail: errorContent,
+                statusCode: (int)response.StatusCode
+            );
+        }
+        
+        return Results.NoContent();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error in DeleteMember endpoint: {ex.Message}");
+        return Results.Problem($"Error deleting member: {ex.Message}");
+    }
+});
+
+// User/exists endpoint
+protectedBff.MapGet("/User/exists/{email}", async (string email, IHttpClientFactory f) =>
+{
+    try
+    {
+        var http = f.CreateClient("ExploreApi");
+        var response = await http.GetAsync($"api/User/exists/{Uri.EscapeDataString(email)}");
+        
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"CheckUserExists API Error: {errorContent}");
+            return Results.Problem(
+                detail: errorContent,
+                statusCode: (int)response.StatusCode
+            );
+        }
+        
+        return Results.Stream(
+            await response.Content.ReadAsStreamAsync(),
+            response.Content.Headers.ContentType?.ToString()
+        );
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error in CheckUserExists endpoint: {ex.Message}");
+        return Results.Problem($"Error checking user existence: {ex.Message}");
+    }
+});
+
 // Example POST with CSRF validation
 protectedBff.MapPost("/events", async (HttpContext ctx, IHttpClientFactory f) =>
 {

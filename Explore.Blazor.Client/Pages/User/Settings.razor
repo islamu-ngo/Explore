@@ -35,8 +35,10 @@
                 <MudForm @ref="_form" @bind-IsValid="_success">
                     <div class="mb-6">
                         <MudText Typo="Typo.subtitle1" Class="mb-4">Profile Picture</MudText>
-                        <ImageUpload @bind-ImageKey="_user.ProfileImageKey" 
-                                   @bind-PreviewUrl="_profileImagePreview" 
+                        <ImageUpload ImageKey="@_user.ProfileImageKey"
+                                   ImageKeyChanged="@((value) => _user.ProfileImageKey = value)"
+                                   PreviewUrl="@_profileImagePreview"
+                                   PreviewUrlChanged="@((value) => _profileImagePreview = value)"
                                    Label="Profile Picture" 
                                    HelperText="JPG, GIF or PNG. Max size of 800K" />
                     </div>

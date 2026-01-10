@@ -4,6 +4,7 @@ using Explore.Application.DTOs.OrganizationMember;
 using Explore.Application.Features.OrganizationMembers.Requests.Queries;
 using MediatR;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -23,7 +24,18 @@ namespace Explore.Application.Features.OrganizationMembers.Handlers.Queries
         public async Task<List<OrganizationInvitationDto>> Handle(GetMyInvitationsRequest request, CancellationToken cancellationToken)
         {
             var invitations = await _organizationMemberRepository.GetInvitesByEmail(request.Email);
-            return _mapper.Map<List<OrganizationInvitationDto>>(invitations);
+            
+            // Manual mapping to avoid AutoMapper navigation property issues
+            var result = invitations.Select(m => new OrganizationInvitationDto
+            {
+                Id = m.Id,
+                OrganizationId = m.OrganizationId,
+                OrganizationName = m.Organization?.FullName ?? string.Empty,
+                Email = m.Email,
+                Role = m.Role
+            }).ToList();
+            
+            return result;
         }
     }
 }

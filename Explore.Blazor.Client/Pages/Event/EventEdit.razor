@@ -45,8 +45,10 @@ else if (currentEvent != null && updateDto != null)
                         <div class="mb-4">
                             <MudText Typo="Typo.h6" Class="mb-3">Event Image</MudText>
                             <MudPaper Class="pa-4" Style="background-color: var(--mud-palette-background-grey);">
-                                <ImageUpload @bind-ImageKey="updateDto.ImageKey"
-                                            @bind-PreviewUrl="selectedImageUrl"
+                                <ImageUpload ImageKey="@updateDto.ImageKey"
+                                             ImageKeyChanged="@((value) => updateDto.ImageKey = value)"
+                                             PreviewUrl="@_previewImageUrl"
+                                             PreviewUrlChanged="@((value) => _previewImageUrl = value)"
                                             Width="100%"
                                             Height="300px"
                                             PlaceholderText="Update event image"
