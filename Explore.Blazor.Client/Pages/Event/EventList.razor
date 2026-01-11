@@ -31,6 +31,18 @@
     .filter-cell, .filter-cell.search{ grid-column: 1/-1; }
 }
 
+    /* Phone layout */
+    @@media (max-width: 480px){
+        .page-wrap{ padding-block: 14px 20px; }
+        .section-head{ flex-direction: column; align-items: flex-start; gap: 10px; }
+        .filters-bar{ grid-template-columns: 1fr; gap: 10px; }
+        .filter-cell, .filter-cell.search{ grid-column: 1/-1; }
+        .filter-paper{ width: 100%; }
+        .card{ border-radius: 12px; }
+        .card-media{ height: 160px; }
+        .pager, .results{ padding-inline: 4px; }
+    }
+
 /* Pill trigger */
 .filter-paper{
     background-color: var(--mud-palette-surface);
