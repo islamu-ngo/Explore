@@ -1,7 +1,9 @@
 ﻿using Amazon;
 using Amazon.S3;
+using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Models;
+using Explore.Infrastructure.Identity;
 using Explore.Infrastructure.Mail;
 using Explore.Infrastructure.Services;
 using Microsoft.Extensions.Configuration;
@@ -33,6 +35,9 @@ namespace Explore.Infrastructure
             });
 
             services.AddTransient<IObjectStorageService, ObjectStorageService>();
+
+            // Identity services
+            services.AddScoped<IUserContext, UserContext>();
 
             return services;
         }

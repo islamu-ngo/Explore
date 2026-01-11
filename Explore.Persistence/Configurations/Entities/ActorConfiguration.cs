@@ -1,4 +1,6 @@
 using Explore.Domain;
+using Explore.Domain.Enums;
+using Explore.Persistence.Seed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -33,10 +35,68 @@ namespace Explore.Persistence.Configurations.Entities
                 .HasForeignKey(e => e.DidCustodyTypeId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            builder.HasOne(e => e.ProfilePictureStorage)
+            builder.HasOne(e => e.ProfilePicture)
                 .WithMany()
                 .HasForeignKey(e => e.ProfilePictureId)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            // User relationship - An Actor can be owned by a User (personal actor)
+            builder.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Organization relationship - An Actor can be owned by an Organization
+            builder.HasOne(e => e.Organization)
+                .WithMany()
+                .HasForeignKey(e => e.OrganizationId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Unique indexes to ensure one Actor per User and one per Organization
+            builder.HasIndex(e => e.UserId)
+                .IsUnique()
+                .HasFilter("user_id IS NOT NULL");
+
+            builder.HasIndex(e => e.OrganizationId)
+                .IsUnique()
+                .HasFilter("organization_id IS NOT NULL");
+
+            // Check constraint: Actor must be either User OR Organization (XOR), 
+            // OR it can be a Bot (both null for system actors)
+            // For User type: UserId must be set, OrganizationId must be null
+            // For Organization type: OrganizationId must be set, UserId must be null
+            // For Bot type: Both can be null (system actors)
+            builder.ToTable(t => t.HasCheckConstraint(
+                "CK_Actor_UserOrOrganization",
+                @"(user_id IS NOT NULL AND organization_id IS NULL) OR " + // User actor
+                @"(user_id IS NULL AND organization_id IS NOT NULL)" // Organization actor
+            ));
+
+            builder.HasData(
+                // System User's personal Actor
+                new Actor
+                {
+                    Id = SeedIds.SystemUserActorId,
+                    ActorTypeId = (int)ActorTypeEnum.User,
+                    TenantId = SeedIds.DefaultTenantId,
+                    DisplayName = "System Account",
+                    Handle = "system",
+                    Description = "System user account",
+                    UserId = SeedIds.SystemUserId,
+                    OrganizationId = null
+                },
+                // ISLAMU Organization Actor
+                new Actor
+                {
+                    Id = SeedIds.IslamuOrganizationActorId,
+                    ActorTypeId = (int)ActorTypeEnum.Organization,
+                    TenantId = SeedIds.DefaultTenantId,
+                    DisplayName = "ISLAMU",
+                    Handle = "islamu",
+                    Description = "ISLAMU NGO - Islamic Learning and Media Union",
+                    UserId = null,
+                    OrganizationId = SeedIds.IslamuOrganizationId
+                });
         }
     }
 }

@@ -29,6 +29,9 @@ temp/
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
+# MCP config
+.mcp.json
+
 # Mono auto generated files
 mono_crash.*
 

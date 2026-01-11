@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventTags;
+using EventTagsEntity = Explore.Domain.EventTags;
 using Explore.Application.Features.EventTags.Requests.Queries;
 using MediatR;
 
@@ -22,7 +23,7 @@ namespace Explore.Application.Features.EventTags.Handlers.Queries
 
         public async Task<List<EventTagsListDto>> Handle(GetEventTagsListRequest request, CancellationToken cancellationToken)
         {
-            var eventTags = await _eventTagsRepository.GetAllAsync();
+            var eventTags = await _eventTagsRepository.GetAll();
             return _mapper.Map<List<EventTagsListDto>>(eventTags);
         }
     }

@@ -20,8 +20,15 @@ namespace Explore.API.Controllers
             _mediator = mediator;
         }
 
+        /// <summary>
+        /// Syncs the authenticated user from Keycloak to the local database.
+        /// Creates a new User and Actor if they don't exist, otherwise updates the user's basic info.
+        /// Call this endpoint after login/registration to ensure user exists in the system.
+        /// </summary>
         [HttpPost("sync")]
         [Authorize]
+        [EndpointSummary("Sync user from Keycloak")]
+        [EndpointDescription("Creates or updates the user in the local database. Also creates the user's personal Actor if new user. Call this after login/registration.")]
         public async Task<ActionResult<BaseCommandResponse<Guid>>> SyncUser()
         {
             var userId = User.FindFirst("sub")?.Value
@@ -29,7 +36,12 @@ namespace Explore.API.Controllers
 
             if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var guidUserId))
             {
-                return BadRequest("Invalid User ID in token");
+                return BadRequest(new BaseCommandResponse<Guid>
+                {
+                    Success = false,
+                    Message = "Invalid User ID in token",
+                    Errors = new List<string> { "Could not parse user ID from authentication token." }
+                });
             }
 
             var email = User.FindFirst("email")?.Value
@@ -44,17 +56,33 @@ namespace Explore.API.Controllers
             var username = User.FindFirst("preferred_username")?.Value
                            ?? User.FindFirst(ClaimTypes.Name)?.Value ?? "";
 
+            // Validate required fields
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                return BadRequest(new BaseCommandResponse<Guid>
+                {
+                    Success = false,
+                    Message = "Email is required",
+                    Errors = new List<string> { "Email claim not found in token." }
+                });
+            }
+
             var userDto = new UserDto
             {
                 Id = guidUserId,
                 Email = email,
-                FirstName = firstName,
-                LastName = lastName,
+                FirstName = string.IsNullOrWhiteSpace(firstName) ? "User" : firstName,
+                LastName = string.IsNullOrWhiteSpace(lastName) ? "" : lastName,
                 Username = username
             };
 
             var command = new SyncUserCommand { UserDto = userDto };
             var response = await _mediator.Send(command);
+
+            if (!response.Success)
+            {
+                return BadRequest(response);
+            }
 
             return Ok(response);
         }

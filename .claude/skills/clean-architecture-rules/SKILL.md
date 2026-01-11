@@ -218,6 +218,204 @@ For comprehensive guidance:
 - **Common Violations**: [violation-examples.md](resources/violation-examples.md)
 - **Fix Patterns**: [fix-patterns.md](resources/fix-patterns.md)
 
+## 🔑 CRITICAL: Validator Manual Instantiation Pattern
+
+### Rule: Validators Must Be Instantiated Manually, NOT DI Injected
+
+**BLOCKED Violation**: Validators injected via DI in handler constructor
+
+```csharp
+// ❌ BLOCKED: DI injection of validators
+public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<Guid>>
+{
+    private readonly IValidator<CreateEventDto> _validator;  // ❌ BLOCKED!
+
+    public CreateEventCommandHandler(
+        IEventRepository eventRepository,
+        IMapper mapper,
+        IValidator<CreateEventDto> validator)  // ❌ BLOCKED - DI injection
+    {
+        _validator = validator;  // ❌ BLOCKED
+    }
+
+    public async Task<BaseCommandResponse<Guid>> Handle(...)
+    {
+        var validationResult = await _validator.ValidateAsync(request.EventDto);  // ❌ BLOCKED
+        ...
+    }
+}
+```
+
+**✅ Correct Pattern**: Validator instantiated with dependencies passed to constructor
+
+**Real Example from Explore.Application/Features/Events/Handlers/Commands/CreateEventCommandHandler.cs:**
+```csharp
+// ✅ CORRECT: Manual instantiation with dependencies
+namespace Explore.Application.Features.Events.Handlers.Commands;
+
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using AutoMapper;
+using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.Event.Validators;
+using Explore.Application.Features.Events.Requests.Commands;
+using Explore.Application.Responses;
+using Explore.Domain;
+using MediatR;
+
+public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<Guid>>
+{
+    private readonly IEventRepository _eventRepository;
+    private readonly IAudienceAgeRepository _audienceAgeRepository;
+    private readonly IAudienceGenderRepository _audienceGenderRepository;
+    private readonly IEventTypeRepository _eventTypeRepository;
+    private readonly IActorRepository _actorRepository;
+    private readonly IStorageObjectRepository _storageObjectRepository;
+    private readonly IMapper _mapper;
+
+    public CreateEventCommandHandler(
+        IEventRepository eventRepository, 
+        IAudienceAgeRepository audienceAgeRepository,
+        IAudienceGenderRepository audienceGenderRepository,
+        IEventTypeRepository eventTypeRepository,
+        IActorRepository actorRepository,
+        IStorageObjectRepository storageObjectRepository, 
+        IMapper mapper)
+    {
+        _eventRepository = eventRepository;
+        _audienceAgeRepository = audienceAgeRepository;
+        _audienceGenderRepository = audienceGenderRepository;
+        _eventTypeRepository = eventTypeRepository;
+        _actorRepository = actorRepository;
+        _storageObjectRepository = storageObjectRepository;
+        _mapper = mapper;
+    }
+
+    public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
+    {
+        var response = new BaseCommandResponse<Guid>();
+
+        // ✅ CORRECT: Validator instantiated manually with all dependencies
+        var validator = new CreateEventDtoValidator(
+            _audienceAgeRepository, 
+            _audienceGenderRepository, 
+            _eventTypeRepository, 
+            _actorRepository, 
+            _storageObjectRepository);
+        
+        var validationResult = await validator.ValidateAsync(request.EventDto);
+
+        if (!validationResult.IsValid)
+        {
+            response.Success = false;
+            response.Message = "Event creation failed.";
+            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+            return response;
+        }
+
+        // Map DTO to Entity
+        var @event = _mapper.Map<Event>(request.EventDto);
+        @event.TotalViews = 0;  // Set non-mapped properties
+
+        // Save through repository
+        @event = await _eventRepository.Create(@event);
+
+        response.Success = true;
+        response.Id = @event.Id;
+        response.Message = "Event created successfully.";
+
+        return response;
+    }
+}
+```
+
+### Why Manual Instantiation?
+
+1. **Fine-grained dependency control**: Each validator receives specific repositories it needs
+2. **Prevents DI configuration issues**: No need to register validators in DI container
+3. **Simplifies testing**: Easy to create test validators with mocked repositories
+4. **Follows dbml-sync pattern**: Consistent with 45+ entity implementations
+
+### Validator Constructor Pattern
+
+Validators MUST accept repositories in constructor for FK validation.
+
+**Real Example from Explore.Application/DTOs/Event/Validators/CreateEventDtoValidator.cs:**
+
+```csharp
+namespace Explore.Application.DTOs.Event.Validators;
+
+using FluentValidation;
+using Explore.Application.Contracts.Persistence;
+
+public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
+{
+    private readonly IAudienceAgeRepository _audienceAgeRepository;
+    private readonly IAudienceGenderRepository _audienceGenderRepository;
+    private readonly IEventTypeRepository _eventTypeRepository;
+    private readonly IActorRepository _actorRepository;
+    private readonly IStorageObjectRepository _storageObjectRepository;
+
+    public CreateEventDtoValidator(
+        IAudienceAgeRepository audienceAgeRepository,
+        IAudienceGenderRepository audienceGenderRepository,
+        IEventTypeRepository eventTypeRepository,
+        IActorRepository actorRepository,
+        IStorageObjectRepository storageObjectRepository)
+    {
+        _audienceAgeRepository = audienceAgeRepository;
+        _audienceGenderRepository = audienceGenderRepository;
+        _eventTypeRepository = eventTypeRepository;
+        _actorRepository = actorRepository;
+        _storageObjectRepository = storageObjectRepository;
+
+        // Standard validation rules
+        RuleFor(x => x.Title)
+            .NotEmpty().WithMessage("Title is required")
+            .MaximumLength(500);
+
+        // Foreign key validation with repository
+        RuleFor(x => x.AudienceAgeId)
+            .NotEmpty().WithMessage("Audience Age is required")
+            .MustAsync(async (id, cancellation) =>
+            {
+                var exists = await _audienceAgeRepository.Exists(id);
+                return exists;
+            })
+            .WithMessage("Audience Age not found");
+
+        RuleFor(x => x.EventTypeId)
+            .NotEmpty().WithMessage("Event Type is required")
+            .MustAsync(async (id, cancellation) =>
+            {
+                var exists = await _eventTypeRepository.Exists(id);
+                return exists;
+            })
+            .WithMessage("Event Type not found");
+
+        RuleFor(x => x.ActorId)
+            .NotEmpty().WithMessage("Actor is required")
+            .MustAsync(async (id, cancellation) =>
+            {
+                var exists = await _actorRepository.Exists(id);
+                return exists;
+            })
+            .WithMessage("Actor not found");
+
+        // Optional FK validation
+        RuleFor(x => x.FeaturedImageId)
+            .MustAsync(async (id, cancellation) =>
+            {
+                if (!id.HasValue) return true;
+                var exists = await _storageObjectRepository.Exists(id.Value);
+                return exists;
+            })
+            .WithMessage("Featured Image not found");
+    }
+}
+```
+
 ---
 
 **Enforcement Level**: 🚨 BLOCK (Violations are prevented)

@@ -15,6 +15,7 @@ namespace Explore.Application.DTOs.StorageObject
         public string Extension { get; set; }
         public long Size { get; set; }
         public Guid TenantId { get; set; }
+        public string? TenantFullName { get; set; }
         public Guid? ActorId { get; set; }
         public string? ActorDisplayName { get; set; }
     }

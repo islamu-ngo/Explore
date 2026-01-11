@@ -36,6 +36,7 @@ namespace Explore.Persistence.Repositories
         {
             return await _dbContext.EventSessions
                 .Include(s => s.Event)
+                .Include(s => s.RegistrationMode)
                 .Where(s => s.LocationId == locationId)
                 .OrderBy(s => s.StartTime)
                 .ToListAsync();

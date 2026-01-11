@@ -165,27 +165,130 @@ List<OrganizationListDto>
 
 **Validation Pattern:**
 ```csharp
-public class CreateOrganizationDtoValidator : AbstractValidator<CreateOrganizationDto>
+using System;
+using System.Collections.Generic;
+using System.Text;
+using Explore.Application.Contracts.Persistence;
+using FluentValidation;
+
+namespace Explore.Application.DTOs.Event.Validators
 {
-    private readonly IApprovalStatusRepository _repository;
-
-    public CreateOrganizationDtoValidator(IApprovalStatusRepository repository)
+    public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
     {
-        _repository = repository;
+        private readonly IAudienceAgeRepository _audienceAgeRepository;
+        private readonly IAudienceGenderRepository _audienceGenderRepository;
+        private readonly IEventTypeRepository _eventTypeRepository;
+        private readonly IActorRepository _actorRepository;
+        private readonly IStorageObjectRepository _storageObjectRepository;
 
-        RuleFor(p => p.FullName)
-            .NotEmpty().WithMessage("{PropertyName} is required.")
-            .MaximumLength(100).WithMessage("{PropertyName} must not exceed 100 characters.");
+        public CreateEventDtoValidator(
+            IAudienceAgeRepository audienceAgeRepository,
+            IAudienceGenderRepository audienceGenderRepository,
+            IEventTypeRepository eventTypeRepository,
+            IActorRepository actorRepository,
+            IStorageObjectRepository storageObjectRepository)
+        {
+            _audienceAgeRepository = audienceAgeRepository;
+            _audienceGenderRepository = audienceGenderRepository;
+            _eventTypeRepository = eventTypeRepository;
+            _actorRepository = actorRepository;
+            _storageObjectRepository = storageObjectRepository;
 
-        RuleFor(p => p.Email)
-            .EmailAddress().WithMessage("{PropertyName} must be a valid email address.");
+            RuleFor(p => p.Title)
+                .NotEmpty().WithMessage("{PropertyName} is required.")
+                .NotNull()
+                .MaximumLength(50).WithMessage("{PropertyName} must not exceed 50 characters.");
 
-        RuleFor(p => p.WebsiteUrl)
-            .Must(uri => Uri.IsWellFormedUriString(uri, UriKind.Absolute))
-            .When(p => p.WebsiteUrl.Length > 0)
-            .WithMessage("{PropertyName} must be a valid Uri.");
+            RuleFor(p => p.Description)
+                .NotEmpty().WithMessage("{PropertyName} is required.")
+                .NotNull()
+                .MaximumLength(500).WithMessage("{PropertyName} must not exceed 500 characters.");
+
+            RuleFor(p => p.Slug)
+                .MaximumLength(500).WithMessage("{PropertyName} must not exceed 500 characters.");
+
+            RuleFor(p => p.EventTypeId)
+                .NotEmpty().WithMessage("{PropertyName} is required.")
+                .MustAsync(async (id, cancellation) =>
+                {
+                    var exists = await _eventTypeRepository.Exists(id);
+                    return exists;
+                }).WithMessage("{PropertyName} does not exist.");
+
+            RuleFor(p => p.AudienceGenderId)
+                .NotEmpty().WithMessage("{PropertyName} is required.")
+                .NotNull()
+                .MustAsync(async (id, cancellation) =>
+                {
+                    var audienceGenderExists = await _audienceGenderRepository.Exists(id);
+                    return audienceGenderExists;
+                }).WithMessage("{PropertyName} does not exist.");
+
+            RuleFor(p => p.AudienceAgeId)
+                .NotEmpty().WithMessage("{PropertyName} is required.")
+                .NotNull()
+                .MustAsync(async (id, cancellation) =>
+                {
+                    var audienceAgeExists = await _audienceAgeRepository.Exists(id);
+                    return audienceAgeExists;
+                }).WithMessage("{PropertyName} does not exist.");
+
+            RuleFor(p => p.ActorId)
+                .NotEmpty().WithMessage("{PropertyName} is required.")
+                .NotNull()
+                .MustAsync(async (id, cancellation) =>
+                {
+                    var actorExists = await _actorRepository.Exists(id);
+                    return actorExists;
+                }).WithMessage("{PropertyName} does not exist.");
+
+            RuleFor(p => p.Price)
+                .GreaterThanOrEqualTo(0).When(p => p.Price.HasValue)
+                .WithMessage("{PropertyName} must be greater than or equal to 0.");
+
+            RuleFor(p => p.CurrencyCode)
+                .MaximumLength(3).When(p => !string.IsNullOrEmpty(p.CurrencyCode))
+                .WithMessage("{PropertyName} must be a valid 3-letter currency code.");
+
+            RuleFor(p => p.FeaturedImageId)
+                .NotEmpty().WithMessage("{PropertyName} is required.")
+                .NotNull()
+                .MustAsync(async (id, cancellation) =>
+                {
+                    var storageObjectExists = await _storageObjectRepository.Exists(id.Value);
+                    return storageObjectExists;
+                }).WithMessage("{PropertyName} does not exist.");
+
+            //TODO quand je change le Program pour mettre non nullable revient changer ici!
+            //RuleFor(p => p.IsRegistrationRequired)
+            //    .NotNull().WithMessage("{PropertyName} is required.");
+            RuleFor(p => p.EventStatusId)
+                .NotEmpty().WithMessage("{PropertyName} is required.");
+
+            RuleFor(p => p.VisibilityTypeId)
+                .NotEmpty().WithMessage("{PropertyName} is required.");
+
+            RuleFor(p => p.EventFormatId)
+                .NotEmpty().WithMessage("{PropertyName} is required.");
+
+            RuleFor(p => p.ExternalRegistrationUrl)
+                .MaximumLength(500).When(p => !string.IsNullOrEmpty(p.ExternalRegistrationUrl))
+                .WithMessage("{PropertyName} must not exceed 500 characters.");
+
+            RuleFor(p => p.Timezone)
+                .MaximumLength(500).When(p => !string.IsNullOrEmpty(p.Timezone))
+                .WithMessage("{PropertyName} must not exceed 500 characters.");
+
+            RuleFor(p => p.EventUrl)
+                .MaximumLength(500).When(p => !string.IsNullOrEmpty(p.EventUrl))
+                .WithMessage("{PropertyName} must not exceed 500 characters.");
+
+            RuleFor(p => p.TenantId)
+                .NotEmpty().WithMessage("{PropertyName} is required.");
+        }
     }
 }
+
 ```
 
 **Repository Interface Pattern:**
@@ -195,7 +298,7 @@ public interface IOrganizationRepository : IGenericRepository<Organization, Guid
     // IMPORTANT: Methods return DTOs, not entities
     Task<OrganizationDto> GetOrganizationWithDetails(Guid id);
     Task<List<OrganizationListDto>> GetOrganizationsWithDetails();
-    Task<List<OrganizationListDto>> GetMyOrganizations(string userId);
+    Task<List<OrganizationListDto>> GetMyOrganizations(Guid userId);
 }
 
 public interface IGenericRepository<T, TKey> where T : class
@@ -213,7 +316,7 @@ public interface IGenericRepository<T, TKey> where T : class
 ```csharp
 // In MappingProfile.cs
 CreateMap<Organization, OrganizationDto>().ReverseMap();
-CreateMap<Organization, OrganizationListDto>();  // One-way
+CreateMap<Organization, OrganizationListDto>().ReverseMap();
 CreateMap<Organization, CreateOrganizationDto>().ReverseMap();
 CreateMap<Organization, UpdateOrganizationApprovalStatusDto>().ReverseMap();
 ```
@@ -277,41 +380,61 @@ public class OrganizationConfiguration : IEntityTypeConfiguration<Organization>
 
 **Repository Implementation Pattern:**
 ```csharp
-public class OrganizationRepository : GenericRepository<Organization, Guid>, IOrganizationRepository
+using System;
+using System.Collections.Generic;
+using System.Text;
+using Explore.Application.Contracts.Persistence;
+using Explore.Domain;
+using Microsoft.EntityFrameworkCore;
+
+namespace Explore.Persistence.Repositories
 {
-    public OrganizationRepository(ExploreDbContext context) : base(context) { }
-
-    // CRITICAL: Returns DTOs, not entities
-    public async Task<OrganizationDto> GetOrganizationWithDetails(Guid id)
+    public class OrganizationRepository : GenericRepository<Organization, Guid>, IOrganizationRepository
     {
-        var organization = await _context.Organizations
-            .Include(o => o.ApprovalStatus)
-            .FirstOrDefaultAsync(o => o.Id == id);
+        private readonly ExploreDbContext _dbContext;
 
-        // Manual mapping or projection
-        return new OrganizationDto
+        public OrganizationRepository(ExploreDbContext dbContext) : base(dbContext)
         {
-            Id = organization.Id,
-            FullName = organization.FullName,
-            ApprovalStatusFullName = organization.ApprovalStatus.FullName,
-            ...
-        };
-    }
+            _dbContext = dbContext;
+        }
 
-    public async Task<List<OrganizationListDto>> GetOrganizationsWithDetails()
-    {
-        return await _context.Organizations
-            .Include(o => o.ApprovalStatus)
-            .Select(o => new OrganizationListDto
-            {
-                Id = o.Id,
-                FullName = o.FullName,
-                ApprovalStatusFullName = o.ApprovalStatus.FullName,
-                ...
-            })
-            .ToListAsync();
+        public async Task<List<Organization>> GetOrganizationsWithDetails()
+        {
+            return await _dbContext.Organizations
+                .Include(o => o.ApprovalStatus)
+                .Include(o => o.Actor)
+                .Include(o => o.Tenant)
+                .ToListAsync();
+        }
+
+        public async Task<Organization?> GetOrganizationWithDetails(Guid id)
+        {
+            return await _dbContext.Organizations
+                .Include(o => o.ApprovalStatus)
+                .Include(o => o.Actor)
+                .Include(o => o.Tenant)
+                .Include(o => o.Members)
+                    .ThenInclude(m => m.User)
+                .Include(o => o.Members)
+                    .ThenInclude(m => m.OrganizationRole)
+                .Include(o => o.Members)
+                    .ThenInclude(m => m.OrganizationPosition)
+                .FirstOrDefaultAsync(o => o.Id == id);
+        }
+
+        public async Task<List<Organization>> GetMyOrganizations(Guid userId)
+        {
+            return await _dbContext.Organizations
+                .Include(o => o.ApprovalStatus)
+                .Include(o => o.Actor)
+                .Include(o => o.Members)
+                    .ThenInclude(m => m.OrganizationRole)
+                .Where(o => o.Members.Any(m => m.UserId == userId))
+                .ToListAsync();
+        }
     }
 }
+
 ```
 
 **DbContext Pattern:**

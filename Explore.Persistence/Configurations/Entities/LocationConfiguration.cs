@@ -1,4 +1,5 @@
 using Explore.Domain;
+using Explore.Persistence.Seed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -21,6 +22,19 @@ namespace Explore.Persistence.Configurations.Entities
                 .WithMany()
                 .HasForeignKey(e => e.TenantId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasData(
+                new Location
+                {
+                    Id = SeedIds.OnlineLocationId,
+                    FullName = "Online / Virtual",
+                    Address = "Virtual",
+                    Postcode = "00000",
+                    Country = "Internet",
+                    City = "Virtual",
+                    Timezone = "UTC",
+                    TenantId = SeedIds.DefaultTenantId
+                });
         }
     }
 }

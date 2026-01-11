@@ -23,7 +23,7 @@ namespace Explore.Application.Features.Users.Handlers.Commands
         public async Task<BaseCommandResponse<Guid>> Handle(UpdateUserCommand request, CancellationToken cancellationToken)
         {
             var response = new BaseCommandResponse<Guid>();
-            var user = await _userRepository.GetByIdAsync(request.UpdateUserDto.Id);
+            var user = await _userRepository.GetById(request.UpdateUserDto.Id);
 
             if (user == null)
             {

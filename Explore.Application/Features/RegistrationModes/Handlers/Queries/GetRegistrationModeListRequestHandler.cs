@@ -22,7 +22,7 @@ namespace Explore.Application.Features.RegistrationModes.Handlers.Queries
 
         public async Task<List<RegistrationModeListDto>> Handle(GetRegistrationModeListRequest request, CancellationToken cancellationToken)
         {
-            var registrationModes = await _registrationModeRepository.GetAllAsync();
+            var registrationModes = await _registrationModeRepository.GetAll();
             return _mapper.Map<List<RegistrationModeListDto>>(registrationModes);
         }
     }

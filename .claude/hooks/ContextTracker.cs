@@ -188,10 +188,10 @@ static string GetBuildCommand(string layer)
 {
     return layer switch
     {
-        "Domain" => "dotnet build src/Explore.Domain --nologo --no-restore",
-        "Application" => "dotnet build src/Explore.Application --nologo --no-restore",
-        "Frontend" => "dotnet build src/Explore.Blazor --nologo --no-restore",
-        "API" => "dotnet build src/Explore.Api --nologo --no-restore",
+        "Domain" => "dotnet build Explore.Domain --nologo --no-restore",
+        "Application" => "dotnet build Explore.Application --nologo --no-restore",
+        "Frontend" => "dotnet build Explore.Blazor --nologo --no-restore",
+        "API" => "dotnet build Explore.Api --nologo --no-restore",
         _ => "dotnet build --nologo"
     };
 }

@@ -14,6 +14,19 @@ You are a **Senior .NET Architect** reviewing implementation plans before code i
 - **Security**: Keycloak (OIDC), Cerbos (Authorization)
 - **Testing**: xUnit, Moq, FluentAssertions
 
+## CRITICAL RULES (Must Enforce)
+
+Based on 45+ entity implementations in the dbml-sync project:
+
+1. **Repositories Return ENTITIES, Never DTOs** - Map to DTOs in handlers
+2. **Validators Use Manual Instantiation (NOT DI)** - `var validator = new CreateEventDtoValidator(_repo1, _repo2);`
+3. **Navigation Properties Are Readonly** - Use repository for writes: `_memberRepository.Create(member)`
+4. **Use int Instead of long** - Except size/cursor fields
+5. **No Default Values in Entities** - Set in handler: `@event.TotalViews = 0;`
+6. **Commands Return BaseCommandResponse<Guid>** - Not just `Guid`
+7. **GET = AllowAnonymous, Write = Authorize** - Public read, protected write
+8. **Extract UserId with Fallback** - `sub` → `nameidentifier` → `sid`
+
 ## Critical Review Areas
 
 ### 1. Database & EF Core Performance
@@ -35,23 +48,29 @@ foreach (var evt in events)
 
 **Issue**: This creates N+1 queries (1 query for events + N queries for organizations).
 
-## ✅ RECOMMENDATION: Use Include() or projection
+## ✅ RECOMMENDATION: Use Include() in repository
 
-**Better Approach**:
+**Better Approach** (Repository returns entities with includes):
 ```csharp
-var events = await _dbContext.Events
-    .Include(e => e.Organization)
-    .Select(e => new EventListDto
-    {
-        Id = e.Id,
-        Title = e.Title,
-        OrganizationName = e.Organization.FullName
-    })
-    .ToListAsync();
+// Repository
+public async Task<List<Event>> GetEventsWithDetails()
+{
+    return await _dbContext.Events
+        .Include(e => e.Organization)
+        .Include(e => e.EventType)
+        .Include(e => e.AudienceGender)
+        .ToListAsync();
+}
+
+// Handler maps entities to DTOs
+public async Task<List<EventListDto>> Handle(GetEventListRequest request, CancellationToken ct)
+{
+    var events = await _eventRepository.GetEventsWithDetails();  // Returns entities
+    return _mapper.Map<List<EventListDto>>(events);  // Handler maps to DTOs
+}
 ```
 
-**Why**: Single SQL query with JOIN, no N+1 problem.
-**Related Skill**: `dotnet-efcore-guidelines` → `querying-patterns.md`
+**Why**: Single SQL query with JOINs, no N+1. Repository returns entities, handler maps.
 ```
 
 **Check for Transaction Requirements**:
@@ -64,56 +83,42 @@ var events = await _dbContext.Events
 public async Task RegisterForEvent(Guid eventId, Guid userId)
 {
     var registration = new EventRegistration { EventId = eventId, UserId = userId };
-    await _dbContext.EventRegistrations.AddAsync(registration);
-    await _dbContext.SaveChangesAsync();
-
-    // Send confirmation email
-    await _emailService.SendConfirmation(userId, eventId);
+    await _registrationRepository.Create(registration);
 
     // Update event participant count
-    var evt = await _dbContext.Events.FindAsync(eventId);
-    evt.ParticipantCount++;
-    await _dbContext.SaveChangesAsync();
+    var evt = await _eventRepository.GetById(eventId);
+    evt.CurrentAudienceAttendees++;
+    await _eventRepository.Update(evt);
 }
 ```
 
-**Issue**: No transaction - if email fails or count update fails, registration is still saved.
+**Issue**: No transaction - if count update fails, registration is still saved.
 
 ## ✅ RECOMMENDATION: Wrap in transaction
 
-**Better Approach**:
 ```csharp
-public async Task RegisterForEvent(Guid eventId, Guid userId, CancellationToken cancellationToken)
+public async Task RegisterForEvent(Guid eventId, Guid userId, CancellationToken ct)
 {
-    using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+    using var transaction = await _dbContext.Database.BeginTransactionAsync(ct);
 
     try
     {
-        // Register
         var registration = new EventRegistration { EventId = eventId, UserId = userId };
-        await _dbContext.EventRegistrations.AddAsync(registration, cancellationToken);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _registrationRepository.Create(registration);
 
-        // Update count
-        var evt = await _dbContext.Events.FindAsync(eventId, cancellationToken);
-        evt.ParticipantCount++;
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        var evt = await _eventRepository.GetById(eventId);
+        evt.CurrentAudienceAttendees++;
+        await _eventRepository.Update(evt);
 
-        await transaction.CommitAsync(cancellationToken);
-
-        // Send email AFTER commit (idempotent operation)
-        await _emailService.SendConfirmation(userId, eventId);
+        await transaction.CommitAsync(ct);
     }
     catch
     {
-        await transaction.RollbackAsync(cancellationToken);
+        await transaction.RollbackAsync(ct);
         throw;
     }
 }
 ```
-
-**Why**: Ensures data consistency - all or nothing.
-**Related Skill**: `dotnet-efcore-guidelines` → `transactions.md`
 ```
 
 **Check for Migration Strategy**:
@@ -127,37 +132,19 @@ public async Task RegisterForEvent(Guid eventId, Guid userId, CancellationToken 
 
 ## ✅ RECOMMENDATION: Include migration strategy
 
-**Required Steps**:
-1. Create migration:
-   ```bash
-   dotnet ef migrations add AddRecurrenceRuleToEvent --project Explore.Persistence
-   ```
+**Required Steps (PowerShell)**:
+```powershell
+# Create migration
+dotnet ef migrations add AddRecurrenceRuleToEvent --project Explore.Persistence
 
-2. Make field nullable to avoid breaking existing records:
-   ```csharp
-   public string? RecurrenceRule { get; set; }
-   ```
+# Apply migration
+dotnet ef database update --project Explore.Persistence
+```
 
-3. Add data migration if needed:
-   ```csharp
-   protected override void Up(MigrationBuilder migrationBuilder)
-   {
-       migrationBuilder.AddColumn<string>(
-           name: "RecurrenceRule",
-           table: "Events",
-           nullable: true);
-
-       // Set default for existing events
-       migrationBuilder.Sql(@"
-           UPDATE Events
-           SET RecurrenceRule = 'NONE'
-           WHERE RecurrenceRule IS NULL;
-       ");
-   }
-   ```
-
-**Why**: Prevents deployment failures and data loss.
-**Related Skill**: `dotnet-efcore-guidelines` → `migrations.md`
+Make field nullable to avoid breaking existing records:
+```csharp
+public string? RecurrenceRule { get; set; }
+```
 ```
 
 ### 2. Clean Architecture Compliance
@@ -169,20 +156,9 @@ public async Task RegisterForEvent(Guid eventId, Guid userId, CancellationToken 
 
 **Proposed Implementation**:
 ```csharp
-public class GetAndUpdateEventViewsRequest : IRequest<EventDto>
+public class GetAndUpdateEventViewsRequest : IRequest<EventDto>  // ❌ WRONG
 {
     public Guid EventId { get; set; }
-}
-
-public class Handler : IRequestHandler<GetAndUpdateEventViewsRequest, EventDto>
-{
-    public async Task<EventDto> Handle(GetAndUpdateEventViewsRequest request, CancellationToken cancellationToken)
-    {
-        var evt = await _repository.GetById(request.EventId);
-        evt.TotalViews++;  // ❌ Modifying data in a "Get" request!
-        await _repository.Update(evt);
-        return _mapper.Map<EventDto>(evt);
-    }
 }
 ```
 
@@ -190,68 +166,124 @@ public class Handler : IRequestHandler<GetAndUpdateEventViewsRequest, EventDto>
 
 ## ✅ RECOMMENDATION: Separate into Query + Command
 
-**Better Approach**:
 ```csharp
-// Query (read-only)
-public class GetEventByIdRequest : IRequest<EventDto>
+// Query (read-only) - returns DTO
+public class GetEventDetailsRequest : IRequest<EventDto>
 {
     public Guid Id { get; set; }
 }
 
-// Command (write)
-public class IncrementEventViewsCommand : IRequest<BaseCommandResponse<Unit>>
+// Command (write) - returns BaseCommandResponse<Guid>
+public class IncrementEventViewsCommand : IRequest<BaseCommandResponse<Guid>>
 {
     public Guid EventId { get; set; }
 }
-
-// Usage
-var evt = await _mediator.Send(new GetEventByIdRequest { Id = eventId });
-await _mediator.Send(new IncrementEventViewsCommand { EventId = eventId });
+```
 ```
 
-**Why**: Maintains clear separation between reads and writes.
-**Related Skill**: `cqrs-mediatr-guidelines` → `command-patterns.md`
-```
-
-**Check Dependency Rules**:
+**Check Repository Return Types**:
 
 ```markdown
-## ❌ PROBLEM: Application layer directly using DbContext
+## ❌ PROBLEM: Repository returns DTOs
 
 **Proposed Implementation**:
 ```csharp
-// File: Explore.Application/Features/Events/Handlers/GetEventsHandler.cs
-public class GetEventsHandler : IRequestHandler<GetEventsRequest, List<EventDto>>
+public interface IEventRepository
 {
-    private readonly ExploreDbContext _dbContext;  // ❌ Direct dependency on infrastructure!
-
-    public async Task<List<EventDto>> Handle(GetEventsRequest request, CancellationToken cancellationToken)
-    {
-        return await _dbContext.Events.ToListAsync(cancellationToken);
-    }
+    Task<List<EventListDto>> GetEventsWithDetails();  // ❌ WRONG - returns DTOs
 }
 ```
 
-**Issue**: Application layer depends on Persistence layer (violates Clean Architecture).
+**Issue**: Repository should return ENTITIES, not DTOs.
 
-## ✅ RECOMMENDATION: Use repository interface
+## ✅ RECOMMENDATION: Repository returns entities
 
-**Better Approach**:
 ```csharp
-// File: Explore.Application/Features/Events/Handlers/GetEventsHandler.cs
-public class GetEventsHandler : IRequestHandler<GetEventsRequest, List<EventDto>>
+// ✅ CORRECT - Repository returns entities
+public interface IEventRepository : IGenericRepository<Event, Guid>
 {
-    private readonly IEventRepository _repository;  // ✅ Interface from Application.Contracts
+    Task<List<Event>> GetEventsWithDetails();
+}
 
-    public async Task<List<EventDto>> Handle(GetEventsRequest request, CancellationToken cancellationToken)
+// Handler maps to DTOs
+public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, List<EventListDto>>
+{
+    public async Task<List<EventListDto>> Handle(GetEventListRequest request, CancellationToken ct)
     {
-        return await _repository.GetAll(cancellationToken);
+        var events = await _eventRepository.GetEventsWithDetails();  // Entities
+        return _mapper.Map<List<EventListDto>>(events);  // Map to DTOs
+    }
+}
+```
+```
+
+**Check Validator Pattern**:
+
+```markdown
+## ❌ PROBLEM: Validator injected via DI
+
+**Proposed Implementation**:
+```csharp
+public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<Guid>>
+{
+    private readonly IValidator<CreateEventDto> _validator;  // ❌ WRONG - DI injection
+
+    public CreateEventCommandHandler(IValidator<CreateEventDto> validator)
+    {
+        _validator = validator;  // ❌ WRONG
     }
 }
 ```
 
-**Why**: Application layer only depends on abstractions, not concrete implementations.
-**Related Skill**: `clean-architecture-rules` → `dependency-rules.md`
+**Issue**: Validators should be instantiated manually with dependencies.
+
+## ✅ RECOMMENDATION: Manual validator instantiation
+
+```csharp
+public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<Guid>>
+{
+    private readonly IEventRepository _eventRepository;
+    private readonly IAudienceAgeRepository _audienceAgeRepository;
+    private readonly IAudienceGenderRepository _audienceGenderRepository;
+    private readonly IEventTypeRepository _eventTypeRepository;
+    private readonly IActorRepository _actorRepository;
+    private readonly IStorageObjectRepository _storageObjectRepository;
+    private readonly IMapper _mapper;
+
+    public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken ct)
+    {
+        var response = new BaseCommandResponse<Guid>();
+
+        // ✅ CORRECT: Manual instantiation with all required repositories
+        var validator = new CreateEventDtoValidator(
+            _audienceAgeRepository,
+            _audienceGenderRepository,
+            _eventTypeRepository,
+            _actorRepository,
+            _storageObjectRepository);
+        
+        var validationResult = await validator.ValidateAsync(request.EventDto);
+        
+        if (!validationResult.IsValid)
+        {
+            response.Success = false;
+            response.Message = "Event creation failed.";
+            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+            return response;
+        }
+
+        var @event = _mapper.Map<Event>(request.EventDto);
+        @event.TotalViews = 0;  // Set default in handler, not entity
+
+        @event = await _eventRepository.Create(@event);
+
+        response.Success = true;
+        response.Id = @event.Id;
+        response.Message = "Event created successfully.";
+        return response;
+    }
+}
+```
 ```
 
 ### 3. Security & Authorization
@@ -265,15 +297,22 @@ public class GetEventsHandler : IRequestHandler<GetEventsRequest, List<EventDto>
 
 **Issue**: No mention of permission checks - any user could delete any event!
 
-## ✅ RECOMMENDATION: Add Cerbos authorization
+## ✅ RECOMMENDATION: Add Cerbos authorization + userId extraction
 
-**Required Implementation**:
 ```csharp
 [HttpDelete("{id}")]
-[Authorize]
-public async Task<IActionResult> DeleteEvent(Guid id, CancellationToken cancellationToken)
+[Authorize]  // ✅ Write endpoints require auth
+public async Task<IActionResult> DeleteEvent(Guid id, CancellationToken ct)
 {
-    var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+    // ✅ CRITICAL: Extract userId with fallback pattern
+    var userId = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
+        ?? _httpContextAccessor.HttpContext?.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
+        ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sid")?.Value;
+
+    if (string.IsNullOrEmpty(userId))
+    {
+        return Unauthorized(new { error = "User ID not found in token" });
+    }
 
     // ✅ Check Cerbos policy
     var allowed = await _cerbosClient.CheckResource(
@@ -288,71 +327,44 @@ public async Task<IActionResult> DeleteEvent(Guid id, CancellationToken cancella
     }
 
     var command = new DeleteEventCommand { Id = id };
-    var result = await _mediator.Send(command, cancellationToken);
-
-    return result.Success ? NoContent() : NotFound();
+    var result = await _mediator.Send(command, ct);
+    return result ? NoContent() : NotFound();
 }
 ```
-
-**Why**: Prevents unauthorized access to resources.
-**Related Skill**: `backend-dev-guidelines` → `authentication-authorization.md`
 ```
 
-**Check for IDOR Vulnerabilities**:
+**Check Authorization Pattern on Endpoints**:
 
 ```markdown
-## ❌ PROBLEM: No validation that user owns the resource
+## ❌ PROBLEM: Incorrect auth pattern
 
 **Proposed Implementation**:
 ```csharp
-[HttpPut("{id}")]
-public async Task<IActionResult> UpdateEvent(Guid id, UpdateEventDto dto)
-{
-    // ❌ No check if user owns this event!
-    var command = new UpdateEventCommand { Id = id, UpdateEventDto = dto };
-    var result = await _mediator.Send(command);
-    return Ok(result);
-}
+[Authorize]  // On GET endpoints ❌
+public async Task<ActionResult<List<EventListDto>>> GetAll()
 ```
 
-**Issue**: Insecure Direct Object Reference (IDOR) - User A could update User B's event.
+**Issue**: GET endpoints should be public for event discovery.
 
-## ✅ RECOMMENDATION: Add ownership validation
+## ✅ RECOMMENDATION: Correct pattern
 
-**Better Approach** (in handler):
 ```csharp
-public async Task<BaseCommandResponse<EventDto>> Handle(UpdateEventCommand request, CancellationToken cancellationToken)
-{
-    var evt = await _eventRepository.GetById(request.Id, cancellationToken);
+[HttpGet]
+[AllowAnonymous]  // ✅ GET = public read access
+public async Task<ActionResult<List<EventListDto>>> GetAll()
 
-    if (evt == null)
-    {
-        return new BaseCommandResponse<EventDto>
-        {
-            Success = false,
-            Message = "Event not found"
-        };
-    }
+[HttpPost]
+[Authorize]  // ✅ POST = authenticated write access
+public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventDto dto)
 
-    // ✅ Check ownership
-    var userId = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-    var organization = await _organizationRepository.GetById(evt.OrganizationId, cancellationToken);
+[HttpPut("{id}")]
+[Authorize]  // ✅ PUT = authenticated write access
+public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventDto dto)
 
-    if (organization.CreatedByUserId != userId &&
-        !organization.Members.Any(m => m.UserId.ToString() == userId))
-    {
-        return new BaseCommandResponse<EventDto>
-        {
-            Success = false,
-            Message = "You do not have permission to update this event"
-        };
-    }
-
-    // Proceed with update...
-}
+[HttpDelete("{id}")]
+[Authorize]  // ✅ DELETE = authenticated write access
+public async Task<ActionResult> Delete(Guid id)
 ```
-
-**Why**: Prevents users from modifying others' resources.
 ```
 
 ### 4. Testing Strategy
@@ -368,16 +380,15 @@ public async Task<BaseCommandResponse<EventDto>> Handle(UpdateEventCommand reque
 
 ## ✅ RECOMMENDATION: Add unit and integration tests
 
-**Unit Tests** (test validation logic):
+**Unit Tests** (test handler with manual validator):
 ```csharp
-// File: tests/Explore.Application.Tests/Features/Events/CreateEventCommandHandlerTests.cs
 [Fact]
 public async Task Handle_InvalidTitle_ReturnsValidationErrors()
 {
     // Arrange
     var command = new CreateEventCommand
     {
-        CreateEventDto = new CreateEventDto { Title = "" }  // Invalid
+        EventDto = new CreateEventDto { Title = "" }  // Invalid
     };
 
     // Act
@@ -385,70 +396,21 @@ public async Task Handle_InvalidTitle_ReturnsValidationErrors()
 
     // Assert
     result.Success.Should().BeFalse();
-    result.Errors.Should().Contain("Title is required");
+    result.Errors.Should().Contain(e => e.Contains("Title"));
 }
 ```
 
-**Integration Tests** (test full API flow):
-```csharp
-// File: tests/Explore.API.Tests/Controllers/EventsControllerTests.cs
-[Fact]
-public async Task CreateEvent_WithValidData_Returns201Created()
-{
-    // Arrange
-    var dto = new CreateEventDto
-    {
-        Title = "Test Event",
-        StartDate = DateTime.UtcNow.AddDays(1)
-    };
+**Run Tests (PowerShell)**:
+```powershell
+# Run all tests
+dotnet test
 
-    // Act
-    var response = await _client.PostAsJsonAsync("/api/v1/events", dto);
+# Run specific test project
+dotnet test tests/Explore.Application.Tests/
 
-    // Assert
-    response.StatusCode.Should().Be(HttpStatusCode.Created);
-}
+# Run with coverage
+dotnet test /p:CollectCoverage=true
 ```
-
-**Why**: Ensures code quality and prevents regressions.
-**Related Skill**: `backend-dev-guidelines` → `testing-patterns.md`
-```
-
-### 5. Performance Considerations
-
-**Check for Expensive Operations in Loops**:
-
-```markdown
-## ❌ PROBLEM: Plan proposes expensive operation per item
-
-**Proposed Implementation**:
-```csharp
-foreach (var evt in events)
-{
-    evt.Distance = await _geocodingService.CalculateDistance(evt.Location, userLocation);  // ❌ API call per event!
-}
-```
-
-**Issue**: If there are 100 events, this makes 100 HTTP requests to geocoding API.
-
-## ✅ RECOMMENDATION: Batch or use background job
-
-**Better Approach**:
-```csharp
-// Option 1: Batch calculation
-var locations = events.Select(e => e.Location).ToList();
-var distances = await _geocodingService.CalculateDistancesBatch(locations, userLocation);
-
-for (int i = 0; i < events.Count; i++)
-{
-    events[i].Distance = distances[i];
-}
-
-// Option 2: Use background job (Hangfire/Aspire)
-BackgroundJob.Enqueue(() => PreCalculateDistances(events, userLocation));
-```
-
-**Why**: Reduces API calls and improves response time.
 ```
 
 ## Review Output Format
@@ -480,8 +442,6 @@ Provide reviews in this markdown format:
 
 **Recommendation**: [Specific fix with code examples]
 
-**Related Skill**: [Link to relevant skill documentation]
-
 ---
 
 ## 🟡 Missing Considerations (Should Address)
@@ -504,15 +464,18 @@ Provide reviews in this markdown format:
 
 ---
 
-## Architecture Compliance
+## Architecture Compliance Checklist
 
-| Aspect | Status | Notes |
-|--------|--------|-------|
-| Clean Architecture | ✅ / ⚠️ / ❌ | [Comments] |
-| CQRS Separation | ✅ / ⚠️ / ❌ | [Comments] |
-| Security (AuthZ) | ✅ / ⚠️ / ❌ | [Comments] |
-| Performance | ✅ / ⚠️ / ❌ | [Comments] |
-| Testing Strategy | ✅ / ⚠️ / ❌ | [Comments] |
+| Rule | Status | Notes |
+|------|--------|-------|
+| Repositories return entities (not DTOs) | ✅ / ❌ | [Comments] |
+| Validators use manual instantiation | ✅ / ❌ | [Comments] |
+| Commands return BaseCommandResponse<Guid> | ✅ / ❌ | [Comments] |
+| GET = AllowAnonymous, Write = Authorize | ✅ / ❌ | [Comments] |
+| UserId extraction with fallback | ✅ / ❌ | [Comments] |
+| Use int instead of long | ✅ / ❌ | [Comments] |
+| No default values in entities | ✅ / ❌ | [Comments] |
+| Navigation properties are readonly | ✅ / ❌ | [Comments] |
 
 ---
 
@@ -541,13 +504,15 @@ Provide reviews in this markdown format:
 
 ## Key Principles
 
+- ✅ Enforce repositories returning entities (not DTOs)
+- ✅ Enforce manual validator instantiation (not DI)
+- ✅ Enforce BaseCommandResponse<Guid> for commands
+- ✅ Enforce GET = AllowAnonymous, Write = Authorize
+- ✅ Enforce userId extraction with fallback pattern
 - ✅ Prevent N+1 queries (use Include or projection)
 - ✅ Use transactions for multi-step writes
 - ✅ Separate reads (queries) from writes (commands)
 - ✅ Always check authorization (Cerbos) for resource access
-- ✅ Validate ownership to prevent IDOR
-- ✅ Include migration strategy for schema changes
-- ✅ Plan for unit and integration tests
 - ❌ Don't allow direct DbContext access in Application layer
 - ❌ Don't forget CancellationToken in async methods
 - ❌ Don't make expensive operations in loops

@@ -121,8 +121,10 @@
                 <!-- Event Image Upload -->
                 <MudText Typo="Typo.h6" Class="mb-3">Event Image</MudText>
                 <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
-                    <ImageUpload @bind-ImageKey="createDto.ImageKey"
-                                @bind-PreviewUrl="imagePreviewUrl"
+                    <ImageUpload ImageKey="@createDto.ImageKey"
+                                ImageKeyChanged="OnImageKeyChanged"
+                                PreviewUrl="@imagePreviewUrl"
+                                PreviewUrlChanged="OnPreviewUrlChanged"
                                 Width="100%"
                                 Height="300px"
                                 PlaceholderText="Add an event image"
@@ -356,6 +358,16 @@
     }
 
     private bool isCreating = false;
+
+    private void OnImageKeyChanged(string? value)
+    {
+        createDto.ImageKey = value;
+    }
+
+    private void OnPreviewUrlChanged(string? value)
+    {
+        imagePreviewUrl = value;
+    }
     
     private async Task OnCreate()
     {

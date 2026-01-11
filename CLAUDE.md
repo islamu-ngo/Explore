@@ -8,6 +8,23 @@
 ## What this is
 This file is the entrypoint. Detailed docs are imported from `docs/`.
 
+## ⚠️ CRITICAL RULES - Quick Reference
+
+**MUST READ**: These 10 rules are based on 45+ entity implementations. Never violate them.
+
+1. **Repositories Return ENTITIES, Never DTOs** - Map to DTOs in handlers
+2. **Validators Use Manual Instantiation (NOT DI)** - `var validator = new CreateEventDtoValidator(_repo1, _repo2);`
+3. **Navigation Properties Are Readonly** - Use repository for writes: `_memberRepository.Create(member)`
+4. **Use int Instead of long** - Except size/cursor fields
+5. **No Default Values in Entities** - Set in handler: `@event.TotalViews = 0;`
+6. **Do Not Remove Using Statements** - Keep ALL using statements
+7. **Commands Return BaseCommandResponse<Guid>** - Not just `Guid`
+8. **GET = AllowAnonymous, Write = Authorize** - Public read, protected write
+9. **Extract UserId with Fallback** - `sub` → `nameidentifier` → `sid`
+10. **File-Scoped Namespaces** - `namespace Explore.Application.Features.Events;`
+
+**Full Details**: [@docs/QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md)
+
 ## Project
 @docs/PROJECT.md
 

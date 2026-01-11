@@ -25,5 +25,19 @@ namespace Explore.Persistence.Repositories
                 .Where(l => l.UserId == userId)
                 .ToListAsync();
         }
+
+        public async Task<UserExternalLogin?> GetUserExternalLoginWithDetails(Guid id)
+        {
+            return await _dbContext.UserExternalLogins
+                .Include(l => l.User)
+                .FirstOrDefaultAsync(l => l.Id == id);
+        }
+
+        public async Task<List<UserExternalLogin>> GetUserExternalLoginsWithDetails()
+        {
+            return await _dbContext.UserExternalLogins
+                .Include(l => l.User)
+                .ToListAsync();
+        }
     }
 }

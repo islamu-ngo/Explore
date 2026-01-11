@@ -69,7 +69,7 @@ public class AdminService : IAdminService
         try
         {
             // Status 2 = Approved (volgens ERD status_type tabel)
-            var updateDto = new UpdateOrganizationStatusTypeDto { StatusTypeId = 2 };
+            var updateDto = new UpdateOrganizationStatusTypeDto { ApprovalStatusId = 2 };
             Console.WriteLine($"Approving organization {id} with status 2");
             var response = await _httpClient.PutAsJsonAsync($"/bff/api/admin/organizations/{id}/status", updateDto);
             Console.WriteLine($"Approve response status: {response.StatusCode}");
@@ -92,7 +92,7 @@ public class AdminService : IAdminService
         try
         {
             // Status 3 = Rejected (volgens ERD status_type tabel)
-            var updateDto = new UpdateOrganizationStatusTypeDto { StatusTypeId = 3 };
+            var updateDto = new UpdateOrganizationStatusTypeDto { ApprovalStatusId = 3 };
             Console.WriteLine($"Rejecting organization {id} with status 3");
             var response = await _httpClient.PutAsJsonAsync($"/bff/api/admin/organizations/{id}/status", updateDto);
             Console.WriteLine($"Reject response status: {response.StatusCode}");
@@ -115,7 +115,7 @@ public class AdminService : IAdminService
         try
         {
             // Status 1 = Pending (volgens ERD status_type tabel)
-            var updateDto = new UpdateOrganizationStatusTypeDto { StatusTypeId = 1 };
+            var updateDto = new UpdateOrganizationStatusTypeDto { ApprovalStatusId = 1 };
             Console.WriteLine($"Reverting organization {id} to pending with status 1");
             var response = await _httpClient.PutAsJsonAsync($"/bff/api/admin/organizations/{id}/status", updateDto);
             Console.WriteLine($"Revert response status: {response.StatusCode}");

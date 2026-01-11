@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories
 {
-    public class TenantUserRepository : GenericRepository<TenantUser, int>, ITenantUserRepository
+    public class TenantUserRepository : GenericRepository<TenantUser, Guid>, ITenantUserRepository
     {
         private readonly ExploreDbContext _dbContext;
 
@@ -35,6 +35,24 @@ namespace Explore.Persistence.Repositories
                 .Include(tu => tu.User)
                 .Include(tu => tu.UserRole)
                 .Where(tu => tu.TenantId == tenantId)
+                .ToListAsync();
+        }
+
+        public async Task<TenantUser?> GetTenantUserWithDetails(Guid id)
+        {
+            return await _dbContext.TenantUsers
+                .Include(tu => tu.User)
+                .Include(tu => tu.Tenant)
+                .Include(tu => tu.UserRole)
+                .FirstOrDefaultAsync(tu => tu.Id == id);
+        }
+
+        public async Task<List<TenantUser>> GetTenantUsersWithDetails()
+        {
+            return await _dbContext.TenantUsers
+                .Include(tu => tu.User)
+                .Include(tu => tu.Tenant)
+                .Include(tu => tu.UserRole)
                 .ToListAsync();
         }
     }

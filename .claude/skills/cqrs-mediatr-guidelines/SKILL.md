@@ -17,7 +17,7 @@ Provides best practices for implementing **CQRS** (Command Query Responsibility 
 **Triggered by**:
 - Keywords: "command", "query", "handler", "mediatr", "cqrs", "validation", "validator"
 - Intent patterns: "create feature", "add endpoint", "implement use case"
-- File patterns: **/*Command.cs, **/*Query.cs, **/*Handler.cs, **/*Validator.cs
+- File patterns: `**/*Command.cs`, `**/*Query.cs`, `**/*Handler.cs`, `**/*Validator.cs`
 - Content patterns: `IRequest`, `IRequestHandler`, `AbstractValidator`
 
 ## 📐 CQRS Pattern Overview
@@ -39,7 +39,7 @@ Provides best practices for implementing **CQRS** (Command Query Responsibility 
 │                    └─────────────────┘                     │
 │                                                             │
 │  READ OPERATIONS (Queries)                                  │
-│  ─────────────────────────                                  │
+│  ─────────────────────────                                   │
 │  ┌─────────────┐   ┌─────────────────┐   ┌──────────────┐  │
 │  │  Controller │──▶│ GetEventList    │──▶│  EventDto[]  │  │
 │  │  or Page    │   │ Query           │   │  (Read-only) │  │
@@ -61,6 +61,7 @@ Provides best practices for implementing **CQRS** (Command Query Responsibility 
 5. **Thin Controllers**: Controllers just send requests to MediatR
 6. **CancellationToken**: Always pass to async methods
 7. **Repository Returns Entities**: Handlers map entities to DTOs
+8. **Validators Use Manual Instantiation**: Validators are instantiated in handlers, NOT injected via DI
 
 ## 📚 Resources
 
@@ -91,6 +92,8 @@ public class CreateEventCommand : IRequest<BaseCommandResponse<Guid>>
 ```
 
 **Step 2: Command Validator**
+
+**Real Example from CreateEventDtoValidator.cs:**
 ```csharp
 // File: Explore.Application/DTOs/Event/Validators/CreateEventDtoValidator.cs
 using FluentValidation;
@@ -98,112 +101,163 @@ using Explore.Application.Contracts.Persistence;
 
 public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
 {
-    private readonly IEventRepository _eventRepository;
-    private readonly ILocationRepository _locationRepository;
-    // ... other repos for FK checks
+    private readonly IAudienceAgeRepository _audienceAgeRepository;
+    private readonly IAudienceGenderRepository _audienceGenderRepository;
+    private readonly IEventTypeRepository _eventTypeRepository;
+    private readonly IActorRepository _actorRepository;
+    private readonly IStorageObjectRepository _storageObjectRepository;
 
     public CreateEventDtoValidator(
-        IEventRepository eventRepository,
-        ILocationRepository locationRepository)
+        IAudienceAgeRepository audienceAgeRepository,
+        IAudienceGenderRepository audienceGenderRepository,
+        IEventTypeRepository eventTypeRepository,
+        IActorRepository actorRepository,
+        IStorageObjectRepository storageObjectRepository)
     {
-        _eventRepository = eventRepository;
-        _locationRepository = locationRepository;
-    }
+        _audienceAgeRepository = audienceAgeRepository;
+        _audienceGenderRepository = audienceGenderRepository;
+        _eventTypeRepository = eventTypeRepository;
+        _actorRepository = actorRepository;
+        _storageObjectRepository = storageObjectRepository;
 
-    public CreateEventDtoValidator()
-    {
         // Standard validation rules
         RuleFor(x => x.Title)
             .NotEmpty().WithMessage("Title is required")
             .MaximumLength(500);
 
-        // Date/time validation
-        RuleFor(x => x.StartTime)
-            .NotEmpty().WithMessage("Start time is required");
-
-        RuleFor(x => x.EndTime)
-            .NotEmpty().WithMessage("End time is required")
-            .GreaterThan(x => x.StartTime)
-            .WithMessage("End time must be after start time");
+        RuleFor(x => x.Description)
+            .MaximumLength(5000);
 
         // Foreign key validation with repository
-        RuleFor(x => x.EventId)
-            .NotEmpty().WithMessage("Event is required")
-            .MustAsync(EventExists)
-            .WithMessage("Event not found");
+        RuleFor(x => x.AudienceAgeId)
+            .NotEmpty().WithMessage("Audience Age is required")
+            .MustAsync(async (id, cancellation) =>
+            {
+                var exists = await _audienceAgeRepository.Exists(id);
+                return exists;
+            })
+            .WithMessage("Audience Age not found");
 
-        RuleFor(x => x.LocationId)
-            .MustAsync(LocationExists)
-            .WithMessage("Location not found");
-    }
+        RuleFor(x => x.AudienceGenderId)
+            .NotEmpty().WithMessage("Audience Gender is required")
+            .MustAsync(async (id, cancellation) =>
+            {
+                var exists = await _audienceGenderRepository.Exists(id);
+                return exists;
+            })
+            .WithMessage("Audience Gender not found");
 
-    private async Task<bool> EventExists(Guid eventId, CancellationToken cancellationToken)
-    {
-        return await _eventRepository.Exists(eventId);
-    }
+        RuleFor(x => x.EventTypeId)
+            .NotEmpty().WithMessage("Event Type is required")
+            .MustAsync(async (id, cancellation) =>
+            {
+                var exists = await _eventTypeRepository.Exists(id);
+                return exists;
+            })
+            .WithMessage("Event Type not found");
 
-    private async Task<bool> LocationExists(Guid? locationId, CancellationToken cancellationToken)
-    {
-        if (!locationId.HasValue) return true;
-        return await _locationRepository.Exists(locationId.Value);
+        RuleFor(x => x.ActorId)
+            .NotEmpty().WithMessage("Actor is required")
+            .MustAsync(async (id, cancellation) =>
+            {
+                var exists = await _actorRepository.Exists(id);
+                return exists;
+            })
+            .WithMessage("Actor not found");
+
+        // Optional FK validation
+        RuleFor(x => x.FeaturedImage)
+            .MustAsync(async (id, cancellation) =>
+            {
+                if (!id.HasValue) return true;
+                var exists = await _storageObjectRepository.Exists(id.Value);
+                return exists;
+            })
+            .WithMessage("Featured Image not found");
     }
 }
 ```
 
 **Step 3: Command Handler**
+
+**Real Example from Explore.Application/Features/Events/Handlers/Commands/CreateEventCommandHandler.cs:**
+
 ```csharp
-// File: Explore.Application/Features/Events/Handlers/Commands/CreateEventCommandHandler.cs
-using MediatR;
+namespace Explore.Application.Features.Events.Handlers.Commands;
+
+using System.Linq;
+using System.Threading;
+using System.Threading.Task;
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event.Validators;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
-using FluentValidation;
+using MediatR;
 
-namespace Explore.Application.Features.Events.Handlers.Commands
+public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<Guid>>
 {
-    public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<Guid>>
+    private readonly IEventRepository _eventRepository;
+    private readonly IAudienceAgeRepository _audienceAgeRepository;
+    private readonly IAudienceGenderRepository _audienceGenderRepository;
+    private readonly IEventTypeRepository _eventTypeRepository;
+    private readonly IActorRepository _actorRepository;
+    private readonly IStorageObjectRepository _storageObjectRepository;
+    private readonly IMapper _mapper;
+
+    public CreateEventCommandHandler(
+        IEventRepository eventRepository, 
+        IAudienceAgeRepository audienceAgeRepository,
+        IAudienceGenderRepository audienceGenderRepository,
+        IEventTypeRepository eventTypeRepository,
+        IActorRepository actorRepository,
+        IStorageObjectRepository storageObjectRepository, 
+        IMapper mapper)
     {
-        private readonly IEventRepository _eventRepository;
-        private readonly IMapper _mapper;
+        _eventRepository = eventRepository;
+        _audienceAgeRepository = audienceAgeRepository;
+        _audienceGenderRepository = audienceGenderRepository;
+        _eventTypeRepository = eventTypeRepository;
+        _actorRepository = actorRepository;
+        _storageObjectRepository = storageObjectRepository;
+        _mapper = mapper;
+    }
 
-        public CreateEventCommandHandler(
-            IEventRepository eventRepository,
-            IMapper mapper)
+    public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
+    {
+        var response = new BaseCommandResponse<Guid>();
+
+        // CRITICAL: Validate using FluentValidation - Validator instantiated manually with dependencies
+        var validator = new CreateEventDtoValidator(
+            _audienceAgeRepository, 
+            _audienceGenderRepository, 
+            _eventTypeRepository, 
+            _actorRepository, 
+            _storageObjectRepository);
+        
+        var validationResult = await validator.ValidateAsync(request.EventDto);
+
+        if (!validationResult.IsValid)
         {
-            _eventRepository = eventRepository;
-            _mapper = mapper;
-        }
-
-        public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
-        {
-            var response = new BaseCommandResponse<Guid>();
-
-            // Validate using FluentValidation
-            var validator = new CreateEventDtoValidator(_eventRepository, _locationRepository);
-            var validationResult = await validator.ValidateAsync(request.EventDto);
-            if (!validationResult.IsValid)
-            {
-                response.Success = false;
-                response.Message = "Event creation failed.";
-                response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-                return response;
-            }
-
-            // Map DTO to Entity
-            var @event = _mapper.Map<Event>(request.EventDto);
-
-            // Save through repository
-            @event = await _eventRepository.Create(@event);
-
-            response.Success = true;
-            response.Id = @event.Id;
-            response.Message = "Event created successfully.";
-
+            response.Success = false;
+            response.Message = "Event creation failed.";
+            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
             return response;
         }
+
+        // Map DTO to Entity
+        var @event = _mapper.Map<Event>(request.EventDto);
+        @event.TotalViews = 0;  // Set non-mapped properties
+
+        // Save through repository
+        @event = await _eventRepository.Create(@event);
+
+        response.Success = true;
+        response.Id = @event.Id;
+        response.Message = "Event created successfully.";
+
+        return response;
     }
 }
 ```
@@ -221,42 +275,50 @@ public class GetEventListRequest : IRequest<List<EventListDto>>
 ```
 
 **Step 5: Query Handler**
+
+**Real Example from Explore.Application/Features/Events/Handlers/Queries/GetEventListRequestHandler.cs:**
+
 ```csharp
-// File: Explore.Application/Features/Events/Handlers/Queries/GetEventListRequestHandler.cs
-using MediatR;
+namespace Explore.Application.Features.Events.Handlers.Queries;
+
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event;
 using Explore.Application.Features.Events.Requests.Queries;
+using MediatR;
 
-namespace Explore.Application.Features.Events.Handlers.Queries
+public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, List<EventListDto>>
 {
-    public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, List<EventListDto>>
+    private readonly IEventRepository _eventRepository;
+    private readonly IMapper _mapper;
+
+    public GetEventListRequestHandler(IEventRepository eventRepository, IMapper mapper)
     {
-        private readonly IEventRepository _eventRepository;
-        private readonly IMapper _mapper;
+        _eventRepository = eventRepository;
+        _mapper = mapper;
+    }
 
-        public GetEventListRequestHandler(IEventRepository eventRepository, IMapper mapper)
-        {
-            _eventRepository = eventRepository;
-            _mapper = mapper;
-        }
+    public async Task<List<EventListDto>> Handle(GetEventListRequest request, CancellationToken cancellationToken)
+    {
+        // Repository returns ENTITIES
+        var events = await _eventRepository.GetEventsWithDetails();
 
-        public async Task<List<EventListDto>> Handle(GetEventListRequest request, CancellationToken cancellationToken)
-        {
-            // Repository returns ENTITIES
-            var events = await _eventRepository.GetEventsWithDetails();
-
-            // AutoMapper maps ENTITIES to DTOs
-            return _mapper.Map<List<EventListDto>>(events);
-        }
+        // AutoMapper maps ENTITIES to DTOs
+        return _mapper.Map<List<EventListDto>>(events);
     }
 }
 ```
 
 **Step 6: Controller (Thin)**
+
+**Real Example from Explore.API/Controllers/EventController.cs:**
+
 ```csharp
-// File: Explore.API/Controllers/EventController.cs
+namespace Explore.API.Controllers;
+
 using Explore.Application.DTOs.Event;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Features.Events.Requests.Queries;
@@ -270,11 +332,23 @@ using Microsoft.AspNetCore.Mvc;
 public class EventController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly ILogger<EventController> _logger;
 
-    public EventController(IMediator mediator) => _mediator = mediator;
+    public EventController(
+        IMediator mediator, 
+        IHttpContextAccessor httpContextAccessor, 
+        ILogger<EventController> logger)
+    {
+        _mediator = mediator;
+        _httpContextAccessor = httpContextAccessor;
+        _logger = logger;
+    }
 
     // GET: api/v1/event
     [HttpGet]
+    [EndpointSummary("Get all Events (Conference, Webinar, Workshop ...)")]
+    [EndpointDescription("Get A List of all the Events")]
     [AllowAnonymous]
     public async Task<ActionResult<List<EventListDto>>> GetAll()
     {
@@ -284,15 +358,19 @@ public class EventController : ControllerBase
 
     // GET: api/v1/event/{id}
     [HttpGet("{id}")]
+    [EndpointSummary("Get Event Details")]
+    [EndpointDescription("Get Details of the Event")]
     [AllowAnonymous]
     public async Task<ActionResult<EventDto>> GetById(Guid id)
     {
-        var result = await _mediator.Send(new GetEventDetailsRequest { Id = id });
-        return Ok(result);
+        var @event = await _mediator.Send(new GetEventDetailsRequest { Id = id });
+        return Ok(@event);
     }
 
     // POST: api/v1/event
     [HttpPost]
+    [EndpointSummary("Create an Event")]
+    [EndpointDescription("Create a new event")]
     [Authorize]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventDto @event)
     {
@@ -303,6 +381,8 @@ public class EventController : ControllerBase
 
     // PUT: api/v1/event/{id}
     [HttpPut("{id}")]
+    [EndpointSummary("Update an Event")]
+    [EndpointDescription("Update an existing event")]
     [Authorize]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventDto @event)
     {
@@ -313,29 +393,48 @@ public class EventController : ControllerBase
 
         var command = new UpdateEventCommand { EventDto = @event };
         var response = await _mediator.Send(command);
-
+        
         if (!response.Success)
         {
             return BadRequest(response);
         }
-
+        
         return Ok(response);
     }
 
     // DELETE: api/v1/event/{id}
     [HttpDelete("{id}")]
+    [EndpointSummary("Delete an Event")]
+    [EndpointDescription("Delete an event (only if user owns the organization)")]
     [Authorize]
     public async Task<ActionResult> Delete(Guid id)
     {
-        var command = new DeleteEventCommand { Id = id };
-        var result = await _mediator.Send(command);
-
-        if (!result)
+        try
         {
-            return NotFound(new { error = "Event not found or you don't have permission to delete it" });
-        }
+            var userId = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
+                ?? _httpContextAccessor.HttpContext?.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
+                ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sid")?.Value;
 
-        return NoContent();
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized(new { error = "User ID not found in token" });
+            }
+
+            var command = new DeleteEventCommand { Id = id, UserId = userId };
+            var result = await _mediator.Send(command);
+
+            if (!result)
+            {
+                return NotFound(new { error = "Event not found or you don't have permission to delete it" });
+            }
+
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting event {EventId}", id);
+            return StatusCode(500, new { error = ex.Message });
+        }
     }
 }
 ```
@@ -352,6 +451,8 @@ public class EventController : ControllerBase
 - ✅ **DO** use AutoMapper for entity → DTO mapping
 - ✅ **DO** use `[AllowAnonymous]` for GET endpoints
 - ✅ **DO** use `[Authorize]` for POST/PUT/DELETE
+- ✅ **DO** instantiate validators manually with dependencies (NOT DI inject)
+- ✅ **DO** implement `IDisposable` for event cleanup
 
 ## ❌ Don'ts
 
@@ -365,6 +466,7 @@ public class EventController : ControllerBase
 - ❌ **DON'T** mutate state in queries
 - ❌ **DON'T** throw exceptions for validation (use FluentValidation)
 - ❌ **DON'T** extract userId without fallback pattern (sub → nameidentifier → sid)
+- ❌ **DON'T** inject validators via DI (instantiate manually with dependencies)
 
 ## 🔄 MediatR Pipeline
 
@@ -402,5 +504,6 @@ For comprehensive guidance:
 - `clean-architecture-rules` - Ensures handlers are in correct layer
 - `dotnet-efcore-guidelines` - Database access patterns for handlers
 - `backend-dev-guidelines` - Overall backend architecture
+- `blazor-mudblazor-guidelines` - Blazor component patterns
 
 **Enforcement Level**: 💡 SUGGEST (Provides guidance, doesn't block)

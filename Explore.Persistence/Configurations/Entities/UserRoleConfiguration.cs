@@ -1,4 +1,5 @@
 using Explore.Domain;
+using Explore.Persistence.Seed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -18,6 +19,40 @@ namespace Explore.Persistence.Configurations.Entities
                 .WithMany()
                 .HasForeignKey(e => e.TenantId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasData(
+                new UserRole
+                {
+                    Id = 1,
+                    MasterCode = "SUPER_ADMIN",
+                    FullName = "Super Administrator",
+                    Description = "Full system access across all tenants",
+                    TenantId = SeedIds.DefaultTenantId
+                },
+                new UserRole
+                {
+                    Id = 2,
+                    MasterCode = "ADMIN",
+                    FullName = "Administrator",
+                    Description = "Tenant administrator with full access within tenant",
+                    TenantId = SeedIds.DefaultTenantId
+                },
+                new UserRole
+                {
+                    Id = 3,
+                    MasterCode = "MODERATOR",
+                    FullName = "Moderator",
+                    Description = "Content moderation and user management",
+                    TenantId = SeedIds.DefaultTenantId
+                },
+                new UserRole
+                {
+                    Id = 4,
+                    MasterCode = "USER",
+                    FullName = "User",
+                    Description = "Standard user role",
+                    TenantId = SeedIds.DefaultTenantId
+                });
         }
     }
 }

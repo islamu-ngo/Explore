@@ -4,8 +4,10 @@ namespace Explore.Application.Contracts.Persistence
 {
     public interface IAtprotoRecordRepository : IGenericRepository<AtprotoRecord, Guid>
     {
-        Task<AtprotoRecord?> GetByUri(string uri);
-        Task<AtprotoRecord?> GetByDidAndCollection(string did, string collection, string recordKey);
-        Task<List<AtprotoRecord>> GetByDid(string did);
+        Task<List<AtprotoRecord>> GetAllAtprotoRecords();
+        Task<AtprotoRecord?> GetAtprotoRecordByUri(string uri);
+        Task<List<AtprotoRecord>> GetAtprotoRecordsByDid(string did);
+        Task<List<AtprotoRecord>> GetAtprotoRecordsByCollection(string collection);
+        Task<bool> Exists(Guid id);
     }
 }

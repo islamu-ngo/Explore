@@ -154,4 +154,4 @@ dotnet .claude/hooks/BuildCheck.cs
 
 ### Build is too slow
 *   **Cause:** The hook is rebuilding the entire solution on every stop.
-*   **Fix:** Ensure `ContextTracker.cs` is correctly identifying layers so `BuildCheck.cs` can run targeted builds (e.g., `dotnet build src/Explore.Domain`).
+*   **Fix:** Ensure `ContextTracker.cs` is correctly identifying layers so `BuildCheck.cs` can run targeted builds (e.g., `dotnet build Explore.Domain`).

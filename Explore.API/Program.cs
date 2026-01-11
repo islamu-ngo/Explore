@@ -1,5 +1,6 @@
 using Explore.API.Extensions;
 using Explore.API.Middleware;
+using Explore.API.Services;
 using Explore.Application;
 using Explore.Infrastructure;
 using Explore.Persistence;
@@ -58,46 +59,15 @@ builder.Services.AddEndpointsApiExplorer();
 //builder.Services.AddSwaggerGen(); // moved to AddSwaggerGenWithAuth extension method
 builder.Services.AddSwaggerGenWithAuth(builder.Configuration);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-//builder.Services.AddOpenApi(opt =>
-//{
-//    opt.AddDocumentTransformer((document, context, CancellationToken) =>
-//    {
-//        document.Info.Title = "ISLAMU Explore API";
-//        document.Info.Contact = new OpenApiContact()
-//        {
-//            Name = "Amir",
-//            Email = "contact@openislamu.org"
-//        };
 
-//        // Add JWT Bearer security scheme
-//        document.Components ??= new();
-//        document.Components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
-//        {
-//            Type = SecuritySchemeType.Http,
-//            Scheme = "bearer",
-//            BearerFormat = "JWT",
-//            Description = "Enter JWT Bearer token"
-//        };
+// The build tool needs this to generate the JSON file
+builder.Services.AddOpenApi("explore-api");
 
-//        // Add global security requirement
-//        document.SecurityRequirements.Add(new OpenApiSecurityRequirement
-//        {
-//            {
-//                new OpenApiSecurityScheme
-//                {
-//                    Reference = new OpenApiReference
-//                    {
-//                        Type = ReferenceType.SecurityScheme,
-//                        Id = "Bearer"
-//                    }
-//                },
-//                Array.Empty<string>()
-//            }
-//        });
+// Add HttpClient for OpenAPI export service
+builder.Services.AddHttpClient();
 
-//        return Task.CompletedTask;
-//    });
-//});
+// Register OpenAPI export service (exports swagger.json at startup in Development)
+builder.Services.AddHostedService<OpenApiExportService>();
 
 builder.Services.AddCors(options =>
 {
@@ -156,7 +126,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudiences = new[] { "explore-api" },
             ValidateLifetime = true,
             NameClaimType = "preferred_username",
-            RoleClaimType = "roles" // see mapper note below
+            RoleClaimType = "roles"
         };
 
         options.BackchannelHttpHandler = new HttpClientHandler

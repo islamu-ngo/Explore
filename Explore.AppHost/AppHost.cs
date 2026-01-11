@@ -99,43 +99,22 @@ builder.Services.AddHealthChecks().AddCheck("mycheck", () =>
 //    .WithHealthCheck("mycheck");
 //var ExploreDB = ExploreServer.AddDatabase("ExploreDB");
 
-var migrations = builder.AddProject<Projects.Event_MigrationService>("event-migrationservice");
+string postgresPublicUrl = postgresqlSecrets.TryGetValue("POSTGRESQL_PUBLIC_URL", out var pgPublicUrl) && pgPublicUrl != null
+    ? pgPublicUrl
+    : "defaultconnectionstring";
 
+// Log which environment we're connecting to
+Console.WriteLine($"===========================================");
+Console.WriteLine($"Infisical Environment: {infisicalEnv}");
+Console.WriteLine($"===========================================");
+
+var migrations = builder.AddProject<Projects.Event_MigrationService>("event-migrationservice")
+    .WithEnvironment("ConnectionStrings__EventMigrationService", postgresPublicUrl);
 
 var realm = keycloakSecrets.TryGetValue("KEYCLOAK_REALM", out var r) ? r : "islamu-dev";
 var authority = $"https://keycloak.openislamu.org/realms/{realm}";
 var metadataAddress = $"{authority}/.well-known/openid-configuration";
 var authorizationUrl = $"{authority}/protocol/openid-connect/auth";
-
-var exploreBlazor = builder.AddProject<Projects.Explore_Blazor>("explore-blazor")
-    .WithEnvironment("Keycloak__Authority", authority)
-    //.WithEnvironment("keycloak__Audience", "explore-api") there is no audiance for the blazor server...
-    .WithEnvironment("Keycloak__Realm", realm)
-    .WithEnvironment("Keycloak__ClientId", "explore-blazor-server")
-    .WithEnvironment("Keycloak__ClientSecret",
-        keycloakSecrets.TryGetValue("EXPLORE_BLAZOR_SERVER_CLIENT_SECRET_COOLIFY", out var n) ? n : "")
-    .WithEnvironment("Keycloak__RequireHttpsMetadata", "true")
-    .WithEnvironment("ExploreAPI__BaseUrl", "https://localhost:7039/")
-    .WithReference(migrations)
-    .WaitForCompletion(migrations);
-//.WithReference(ExploreDB)
-//.WaitFor(ExploreDB);
-
-// for url accessible from the internet, not needed!
-//var tunnel = builder.AddDevTunnel("tunnel", "islamu-dev-tunnel")
-//    .WithAnonymousAccess()
-//    .WaitFor(exploreBlazor)
-//    .WithReference(exploreBlazor);
-
-foreach (var kv in blazorSecrets)
-{
-    exploreBlazor.WithEnvironment(kv.Key, kv.Value);
-}
-string postgresPublicUrl = postgresqlSecrets.TryGetValue("POSTGRESQL_PUBLIC_URL", out var pgPublicUrl) && pgPublicUrl != null
-    ? pgPublicUrl
-    : "defaultconnectionstring";
-
-
 
 var exploreAPI = builder.AddProject<Projects.Explore_API>("explore-api")
     .WithEnvironment("Keycloak__Authority", authority)
@@ -157,6 +136,31 @@ foreach (var kv in apiSecrets)
     exploreAPI.WithEnvironment(kv.Key, kv.Value);
 }
 
+var exploreBlazor = builder.AddProject<Projects.Explore_Blazor>("explore-blazor")
+    .WithEnvironment("Keycloak__Authority", authority)
+    //.WithEnvironment("keycloak__Audience", "explore-api") there is no audiance for the blazor server...
+    .WithEnvironment("Keycloak__Realm", realm)
+    .WithEnvironment("Keycloak__ClientId", "explore-blazor-server")
+    .WithEnvironment("Keycloak__ClientSecret",
+        keycloakSecrets.TryGetValue("EXPLORE_BLAZOR_SERVER_CLIENT_SECRET_COOLIFY", out var n) ? n : "")
+    .WithEnvironment("Keycloak__RequireHttpsMetadata", "true")
+    .WithEnvironment("ExploreAPI__BaseUrl", "https://localhost:7039/")
+    .WithReference(migrations)
+    .WaitForCompletion(migrations)
+    .WithReference(exploreAPI)
+    .WaitFor(exploreAPI);
+
+// for url accessible from the internet, not needed!
+//var tunnel = builder.AddDevTunnel("tunnel", "islamu-dev-tunnel")
+//    .WithAnonymousAccess()
+//    .WaitFor(exploreBlazor)
+//    .WithReference(exploreBlazor);
+
+foreach (var kv in blazorSecrets)
+{
+    exploreBlazor.WithEnvironment(kv.Key, kv.Value);
+}
+
 // Not for now!
 //builder.AddRedis("redis");
 
@@ -164,3 +168,23 @@ foreach (var kv in apiSecrets)
 //builder.AddRabbitMQ("rabbitmq");
 
 builder.Build().Run();
+
+// Helper to extract just the host from connection string for logging
+static string ExtractHostFromConnectionString(string connectionString)
+{
+    try
+    {
+        var parts = connectionString.Split(';')
+            .Select(p => p.Split('='))
+            .Where(p => p.Length == 2)
+            .ToDictionary(p => p[0].Trim(), p => p[1].Trim(), StringComparer.OrdinalIgnoreCase);
+        
+        var host = parts.TryGetValue("Host", out var h) ? h : "unknown";
+        var db = parts.TryGetValue("Database", out var d) ? d : "unknown";
+        return $"{host} / {db}";
+    }
+    catch
+    {
+        return "Could not parse connection string";
+    }
+}

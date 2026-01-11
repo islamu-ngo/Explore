@@ -22,12 +22,12 @@ You are the **Documentation Architect** for the ISLAMU Event platform. You ensur
 
 ```csharp
 // ❌ BEFORE: No documentation
-public class EventsController : ControllerBase
+public class EventController : ControllerBase
 {
     [HttpPost]
     public async Task<IActionResult> Create(CreateEventDto dto)
     {
-        var command = new CreateEventCommand { CreateEventDto = dto };
+        var command = new CreateEventCommand { EventDto = dto };
         var result = await _mediator.Send(command);
         return Ok(result);
     }
@@ -39,15 +39,15 @@ public class EventsController : ControllerBase
 /// </summary>
 [ApiController]
 [Route("api/v1/[controller]")]
-public class EventsController : ControllerBase
+public class EventController : ControllerBase
 {
     private readonly IMediator _mediator;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="EventsController"/> class.
+    /// Initializes a new instance of the <see cref="EventController"/> class.
     /// </summary>
     /// <param name="mediator">The MediatR instance for command/query handling.</param>
-    public EventsController(IMediator mediator)
+    public EventController(IMediator mediator)
     {
         _mediator = mediator;
     }
@@ -55,124 +55,122 @@ public class EventsController : ControllerBase
     /// <summary>
     /// Creates a new event with the specified details.
     /// </summary>
-    /// <param name="dto">The event creation data transfer object containing title, description, dates, etc.</param>
-    /// <param name="cancellationToken">Cancellation token to cancel the operation.</param>
-    /// <returns>The newly created event with its assigned ID.</returns>
-    /// <response code="201">Event created successfully.</response>
-    /// <response code="400">Invalid input data (validation errors).</response>
+    /// <param name="dto">The event creation data transfer object.</param>
+    /// <returns>A BaseCommandResponse containing the created event ID.</returns>
+    /// <response code="200">Event created successfully (BaseCommandResponse with success=true).</response>
+    /// <response code="400">Invalid input data (validation errors from FluentValidation).</response>
     /// <response code="401">Unauthorized - requires authentication.</response>
-    /// <response code="403">Forbidden - user does not have permission to create events.</response>
     /// <remarks>
     /// Sample request:
     ///
-    ///     POST /api/v1/events
+    ///     POST /api/v1/event
     ///     {
     ///        "title": "Community Iftar 2025",
     ///        "description": "Join us for iftar and maghrib prayer",
-    ///        "startDate": "2025-03-15T18:30:00Z",
-    ///        "endDate": "2025-03-15T20:00:00Z",
-    ///        "organizationId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-    ///        "eventTypeId": 1
+    ///        "eventTypeId": 1,
+    ///        "audienceGenderId": 1,
+    ///        "audienceAgeId": 1,
+    ///        "actorId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    ///        "featuredImageId": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
     ///     }
     ///
     /// </remarks>
     [HttpPost]
     [Authorize]
-    [ProducesResponseType(typeof(EventDto), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> Create(
-        CreateEventDto dto,
-        CancellationToken cancellationToken = default)
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventDto dto)
     {
-        var command = new CreateEventCommand { CreateEventDto = dto };
-        var result = await _mediator.Send(command, cancellationToken);
-
-        return result.Success
-            ? CreatedAtAction(nameof(GetById), new { id = result.Data!.Id }, result.Data)
-            : BadRequest(new ProblemDetails
-            {
-                Title = "Validation Failed",
-                Detail = result.Message,
-                Status = StatusCodes.Status400BadRequest
-            });
+        var command = new CreateEventCommand { EventDto = dto };
+        var response = await _mediator.Send(command);
+        return Ok(response);
     }
 
     /// <summary>
-    /// Retrieves an event by its unique identifier.
+    /// Retrieves all events.
     /// </summary>
-    /// <param name="id">The unique identifier (GUID) of the event.</param>
-    /// <param name="cancellationToken">Cancellation token to cancel the operation.</param>
-    /// <returns>The event details if found.</returns>
-    /// <response code="200">Event found and returned successfully.</response>
-    /// <response code="404">Event not found with the specified ID.</response>
-    [HttpGet("{id}")]
+    /// <returns>A list of all events.</returns>
+    /// <response code="200">Events retrieved successfully.</response>
+    [HttpGet]
     [AllowAnonymous]
-    [ProducesResponseType(typeof(EventDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken = default)
+    [ProducesResponseType(typeof(List<EventListDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<EventListDto>>> GetAll()
     {
-        var request = new GetEventByIdRequest { Id = id };
-        var result = await _mediator.Send(request, cancellationToken);
-
-        return result != null ? Ok(result) : NotFound();
+        var events = await _mediator.Send(new GetEventListRequest());
+        return Ok(events);
     }
 }
 ```
 
-**MediatR Handler Documentation**:
+**MediatR Handler Documentation** (CRITICAL: Document the validator pattern):
 
 ```csharp
 // ❌ BEFORE: No documentation
-public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<EventDto>>
+public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<Guid>>
 {
-    public async Task<BaseCommandResponse<EventDto>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
+    public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
     {
         // Implementation
     }
 }
 
-// ✅ AFTER: Well-documented handler
+// ✅ AFTER: Well-documented handler with validator pattern documented
 /// <summary>
 /// Handles the creation of new events in the system.
 /// </summary>
 /// <remarks>
 /// This handler performs the following operations:
-/// 1. Validates the event data using FluentValidation
-/// 2. Maps the DTO to a domain entity
-/// 3. Persists the event to the database via repository
-/// 4. Returns the created event DTO
+/// 1. Validates the event data using FluentValidation (manually instantiated)
+/// 2. Maps the DTO to a domain entity via AutoMapper
+/// 3. Persists the event to the database via repository (returns entity)
+/// 4. Returns BaseCommandResponse with the created event ID
+///
+/// CRITICAL PATTERNS:
+/// - Validators are instantiated manually with dependencies (NOT DI injected)
+/// - Repositories return ENTITIES, handler maps to DTOs
+/// - Commands return BaseCommandResponse&lt;Guid&gt;
 ///
 /// Business Rules:
-/// - Event start date must be in the future
-/// - User must be a member or owner of the organization
-/// - Event title must be unique within the organization
+/// - All FK references (EventTypeId, AudienceGenderId, etc.) must exist
+/// - Event title is required
 /// </remarks>
-public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<EventDto>>
+public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<Guid>>
 {
     private readonly IEventRepository _eventRepository;
+    private readonly IAudienceAgeRepository _audienceAgeRepository;
+    private readonly IAudienceGenderRepository _audienceGenderRepository;
+    private readonly IEventTypeRepository _eventTypeRepository;
+    private readonly IActorRepository _actorRepository;
+    private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly IMapper _mapper;
-    private readonly IValidator<CreateEventDto> _validator;
-    private readonly ILogger<CreateEventCommandHandler> _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CreateEventCommandHandler"/> class.
     /// </summary>
     /// <param name="eventRepository">The event repository for data persistence.</param>
+    /// <param name="audienceAgeRepository">Repository for FK validation.</param>
+    /// <param name="audienceGenderRepository">Repository for FK validation.</param>
+    /// <param name="eventTypeRepository">Repository for FK validation.</param>
+    /// <param name="actorRepository">Repository for FK validation.</param>
+    /// <param name="storageObjectRepository">Repository for FK validation.</param>
     /// <param name="mapper">The AutoMapper instance for DTO/entity mapping.</param>
-    /// <param name="validator">The FluentValidation validator for CreateEventDto.</param>
-    /// <param name="logger">The logger instance for structured logging.</param>
     public CreateEventCommandHandler(
         IEventRepository eventRepository,
-        IMapper mapper,
-        IValidator<CreateEventDto> validator,
-        ILogger<CreateEventCommandHandler> logger)
+        IAudienceAgeRepository audienceAgeRepository,
+        IAudienceGenderRepository audienceGenderRepository,
+        IEventTypeRepository eventTypeRepository,
+        IActorRepository actorRepository,
+        IStorageObjectRepository storageObjectRepository,
+        IMapper mapper)
     {
         _eventRepository = eventRepository;
+        _audienceAgeRepository = audienceAgeRepository;
+        _audienceGenderRepository = audienceGenderRepository;
+        _eventTypeRepository = eventTypeRepository;
+        _actorRepository = actorRepository;
+        _storageObjectRepository = storageObjectRepository;
         _mapper = mapper;
-        _validator = validator;
-        _logger = logger;
     }
 
     /// <summary>
@@ -181,42 +179,45 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     /// <param name="request">The command containing event creation data.</param>
     /// <param name="cancellationToken">Cancellation token to cancel the operation.</param>
     /// <returns>
-    /// A <see cref="BaseCommandResponse{EventDto}"/> containing the created event data if successful,
+    /// A <see cref="BaseCommandResponse{Guid}"/> containing the created event ID if successful,
     /// or validation errors if the request is invalid.
     /// </returns>
-    public async Task<BaseCommandResponse<EventDto>> Handle(
+    public async Task<BaseCommandResponse<Guid>> Handle(
         CreateEventCommand request,
         CancellationToken cancellationToken)
     {
-        // Validate
-        var validationResult = await _validator.ValidateAsync(request.CreateEventDto, cancellationToken);
+        var response = new BaseCommandResponse<Guid>();
+
+        // ✅ CRITICAL: Validator instantiated manually with all required repositories
+        var validator = new CreateEventDtoValidator(
+            _audienceAgeRepository,
+            _audienceGenderRepository,
+            _eventTypeRepository,
+            _actorRepository,
+            _storageObjectRepository);
+        
+        var validationResult = await validator.ValidateAsync(request.EventDto, cancellationToken);
 
         if (!validationResult.IsValid)
         {
-            _logger.LogWarning("Event creation validation failed: {Errors}",
-                string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage)));
-
-            return new BaseCommandResponse<EventDto>
-            {
-                Success = false,
-                Message = "Validation failed",
-                Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList()
-            };
+            response.Success = false;
+            response.Message = "Event creation failed.";
+            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+            return response;
         }
 
-        // Map and create
-        var evt = _mapper.Map<Event>(request.CreateEventDto);
-        var created = await _eventRepository.Create(evt, cancellationToken);
-        var dto = _mapper.Map<EventDto>(created);
+        // Map DTO to Entity
+        var @event = _mapper.Map<Event>(request.EventDto);
+        @event.TotalViews = 0;  // Set default in handler, not entity
 
-        _logger.LogInformation("Event created successfully: {EventId} - {Title}", created.Id, created.Title);
+        // Repository returns Entity
+        @event = await _eventRepository.Create(@event);
 
-        return new BaseCommandResponse<EventDto>
-        {
-            Success = true,
-            Data = dto,
-            Message = "Event created successfully"
-        };
+        response.Success = true;
+        response.Id = @event.Id;
+        response.Message = "Event created successfully.";
+
+        return response;
     }
 }
 ```
@@ -229,67 +230,51 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
 /// </summary>
 /// <remarks>
 /// Events can be physical (in-person), digital (online), or hybrid.
-/// Each event belongs to an organization and has specific audience targeting
+/// Each event belongs to an actor and has specific audience targeting
 /// based on age, gender, and Islamic jurisprudence (madhab).
+/// 
+/// CRITICAL: Do NOT add default values in entity properties.
+/// Set defaults in command handlers instead.
 /// </remarks>
 public class Event
 {
     /// <summary>
     /// Gets or sets the unique identifier for the event.
     /// </summary>
-    /// <remarks>
-    /// Uses UUIDv7 for time-ordered GUIDs, generated by PostgreSQL.
-    /// </remarks>
     public Guid Id { get; set; }
 
     /// <summary>
     /// Gets or sets the event title.
     /// </summary>
     /// <remarks>
-    /// Maximum length: 200 characters. Required field.
+    /// Maximum length: 500 characters. Required field.
     /// </remarks>
     public string Title { get; set; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets the event description (supports Markdown).
+    /// Gets or sets the event description.
     /// </summary>
-    /// <remarks>
-    /// Optional field. Can contain HTML/Markdown formatting.
-    /// </remarks>
     public string? Description { get; set; }
 
     /// <summary>
-    /// Gets or sets the event start date and time in UTC.
+    /// Gets or sets the total view count.
     /// </summary>
     /// <remarks>
-    /// Must be in the future for new events.
+    /// Set to 0 in CreateEventCommandHandler. Do NOT set default here.
     /// </remarks>
-    public DateTime StartDate { get; set; }
+    public int TotalViews { get; set; }
 
     /// <summary>
-    /// Gets or sets the organization that created this event.
+    /// Gets or sets the event type ID (FK to EventType lookup table).
     /// </summary>
-    /// <remarks>
-    /// Navigation property. Required - every event must belong to an organization.
-    /// </remarks>
-    public virtual Organization Organization { get; set; } = null!;
+    public int EventTypeId { get; set; }
 
     /// <summary>
-    /// Gets or sets the foreign key to the organization.
+    /// Gets or sets the event type navigation property.
     /// </summary>
-    public Guid OrganizationId { get; set; }
+    public virtual EventType? EventType { get; set; }
 
-    /// <summary>
-    /// Checks if the event is upcoming (start date in the future).
-    /// </summary>
-    /// <returns>True if the event starts after the current UTC time; otherwise, false.</returns>
-    public bool IsUpcoming() => StartDate > DateTime.UtcNow;
-
-    /// <summary>
-    /// Checks if the event has already ended.
-    /// </summary>
-    /// <returns>True if the event's end date is in the past; otherwise, false.</returns>
-    public bool HasEnded() => EndDate < DateTime.UtcNow;
+    // ... other properties
 }
 ```
 
@@ -316,26 +301,6 @@ app.MapScalarApiReference(options =>
 app.MapOpenApi();
 ```
 
-**API Versioning Documentation**:
-
-```csharp
-/// <summary>
-/// Base controller for API version 1 endpoints.
-/// </summary>
-/// <remarks>
-/// All endpoints in this version follow Clean Architecture with CQRS patterns.
-/// Authentication: JWT Bearer tokens from Keycloak.
-/// Authorization: Cerbos policy-based access control.
-/// </remarks>
-[ApiController]
-[ApiVersion("1.0")]
-[Route("api/v{version:apiVersion}/[controller]")]
-[Produces("application/json")]
-public abstract class V1ControllerBase : ControllerBase
-{
-}
-```
-
 ### 3. Architecture Documentation
 
 **Create Mermaid.js Diagrams**:
@@ -346,37 +311,38 @@ public abstract class V1ControllerBase : ControllerBase
 
 ## Create Event Flow
 
-\`\`\`mermaid
+```mermaid
 sequenceDiagram
     participant Client
-    participant API as EventsController
+    participant API as EventController
     participant MediatR
     participant Handler as CreateEventCommandHandler
-    participant Validator as FluentValidation
+    participant Validator as FluentValidation (Manual)
     participant Repo as EventRepository
     participant DB as PostgreSQL
 
-    Client->>API: POST /api/v1/events
+    Client->>API: POST /api/v1/event
     API->>MediatR: Send(CreateEventCommand)
     MediatR->>Handler: Handle(command)
+    Handler->>Validator: new CreateEventDtoValidator(repos...)
     Handler->>Validator: ValidateAsync(dto)
     Validator-->>Handler: ValidationResult
     alt Validation Failed
-        Handler-->>API: BaseCommandResponse (Errors)
+        Handler-->>API: BaseCommandResponse (Success=false, Errors)
         API-->>Client: 400 Bad Request
     else Validation Passed
-        Handler->>Repo: Create(event)
+        Handler->>Repo: Create(event entity)
         Repo->>DB: INSERT INTO Events
         DB-->>Repo: Event Entity
-        Repo-->>Handler: Created Event
-        Handler-->>API: BaseCommandResponse (Success)
-        API-->>Client: 201 Created
+        Repo-->>Handler: Created Event Entity
+        Handler-->>API: BaseCommandResponse (Success=true, Id=Guid)
+        API-->>Client: 200 OK
     end
-\`\`\`
+```
 
 ## Clean Architecture Layers
 
-\`\`\`mermaid
+```mermaid
 graph TD
     A[Explore.API<br/>Controllers] --> B[MediatR]
     B --> C[Explore.Application<br/>Handlers]
@@ -389,7 +355,7 @@ graph TD
     style C fill:#9f9,stroke:#333
     style E fill:#99f,stroke:#333
     style F fill:#ff9,stroke:#333
-\`\`\`
+```
 ```
 
 **Layer Dependency Documentation**:
@@ -424,8 +390,8 @@ graph TD
 | Layer | Responsibilities | Forbidden Dependencies |
 |-------|------------------|------------------------|
 | **Domain** | Entities, Value Objects, Domain Logic | EF Core, MediatR, AutoMapper, Infrastructure |
-| **Application** | DTOs, MediatR Handlers, Validators | Persistence, Infrastructure (use interfaces) |
-| **Persistence** | DbContext, Repositories, EF Config | N/A (can reference Application + Domain) |
+| **Application** | DTOs, MediatR Handlers, Validators | Persistence implementation (use interfaces) |
+| **Persistence** | DbContext, Repositories, EF Config | N/A (implements Application interfaces) |
 | **API** | Controllers, Dependency Injection | N/A (can reference all layers) |
 ```
 
@@ -435,81 +401,127 @@ graph TD
 
 ```markdown
 <!-- File: docs/guides/creating-a-feature.md -->
-# Creating a New Feature (CQRS)
+# Creating a New Feature (CQRS Pattern)
 
 ## Step 1: Create Domain Entity
 
-\`\`\`csharp
+```csharp
 // File: Explore.Domain/MyEntity.cs
 namespace Explore.Domain;
 
 /// <summary>
 /// Represents a [description] in the ISLAMU Event platform.
 /// </summary>
+/// <remarks>
+/// CRITICAL: Do NOT add default values in properties.
+/// </remarks>
 public class MyEntity
 {
-    /// <summary>
-    /// Gets or sets the unique identifier.
-    /// </summary>
     public Guid Id { get; set; }
-
-    /// <summary>
-    /// Gets or sets the name.
-    /// </summary>
     public string Name { get; set; } = string.Empty;
+    public int TenantId { get; set; }  // Use int, not long
 }
-\`\`\`
+```
 
-## Step 2: Create DTO
+## Step 2: Create DTOs
 
-\`\`\`csharp
+```csharp
 // File: Explore.Application/DTOs/MyEntity/MyEntityDto.cs
 namespace Explore.Application.DTOs.MyEntity;
 
-/// <summary>
-/// Data transfer object for MyEntity.
-/// </summary>
 public class MyEntityDto
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
 }
-\`\`\`
+
+// File: Explore.Application/DTOs/MyEntity/MyEntityListDto.cs
+public class MyEntityListDto
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+}
+
+// File: Explore.Application/DTOs/MyEntity/CreateMyEntityDto.cs
+public class CreateMyEntityDto
+{
+    public string Name { get; set; } = string.Empty;
+}
+```
 
 ## Step 3: Create Command
 
-\`\`\`csharp
-// File: Explore.Application/Features/MyEntity/Requests/Commands/CreateMyEntityCommand.cs
-namespace Explore.Application.Features.MyEntity.Requests.Commands;
+```csharp
+// File: Explore.Application/Features/MyEntities/Requests/Commands/CreateMyEntityCommand.cs
+namespace Explore.Application.Features.MyEntities.Requests.Commands;
 
 /// <summary>
 /// Command to create a new MyEntity.
 /// </summary>
-public class CreateMyEntityCommand : IRequest<BaseCommandResponse<MyEntityDto>>
+public class CreateMyEntityCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public CreateMyEntityDto CreateMyEntityDto { get; set; } = null!;
+    public CreateMyEntityDto MyEntityDto { get; set; } = null!;
 }
-\`\`\`
+```
 
-## Step 4: Create Handler
+## Step 4: Create Handler (CRITICAL: Manual Validator Pattern)
 
-\`\`\`csharp
-// File: Explore.Application/Features/MyEntity/Handlers/Commands/CreateMyEntityCommandHandler.cs
-namespace Explore.Application.Features.MyEntity.Handlers.Commands;
+```csharp
+// File: Explore.Application/Features/MyEntities/Handlers/Commands/CreateMyEntityCommandHandler.cs
+namespace Explore.Application.Features.MyEntities.Handlers.Commands;
 
-/// <summary>
-/// Handles the creation of new MyEntity instances.
-/// </summary>
-public class CreateMyEntityCommandHandler
-    : IRequestHandler<CreateMyEntityCommand, BaseCommandResponse<MyEntityDto>>
+public class CreateMyEntityCommandHandler : IRequestHandler<CreateMyEntityCommand, BaseCommandResponse<Guid>>
 {
-    // Implementation...
+    private readonly IMyEntityRepository _myEntityRepository;
+    private readonly IRelatedRepository _relatedRepository;  // For FK validation
+    private readonly IMapper _mapper;
+
+    public CreateMyEntityCommandHandler(
+        IMyEntityRepository myEntityRepository,
+        IRelatedRepository relatedRepository,
+        IMapper mapper)
+    {
+        _myEntityRepository = myEntityRepository;
+        _relatedRepository = relatedRepository;
+        _mapper = mapper;
+    }
+
+    public async Task<BaseCommandResponse<Guid>> Handle(
+        CreateMyEntityCommand request,
+        CancellationToken cancellationToken)
+    {
+        var response = new BaseCommandResponse<Guid>();
+
+        // ✅ CRITICAL: Validator instantiated manually with dependencies
+        var validator = new CreateMyEntityDtoValidator(_relatedRepository);
+        var validationResult = await validator.ValidateAsync(request.MyEntityDto);
+
+        if (!validationResult.IsValid)
+        {
+            response.Success = false;
+            response.Message = "MyEntity creation failed.";
+            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+            return response;
+        }
+
+        // Map DTO to Entity (NOT the other way around!)
+        var entity = _mapper.Map<MyEntity>(request.MyEntityDto);
+
+        // Repository returns Entity
+        entity = await _myEntityRepository.Create(entity);
+
+        response.Success = true;
+        response.Id = entity.Id;
+        response.Message = "MyEntity created successfully.";
+
+        return response;
+    }
 }
-\`\`\`
+```
 
 ## Step 5: Create Controller
 
-\`\`\`csharp
+```csharp
 // File: Explore.API/Controllers/MyEntityController.cs
 namespace Explore.API.Controllers;
 
@@ -528,32 +540,45 @@ public class MyEntityController : ControllerBase
     }
 
     /// <summary>
+    /// Gets all MyEntities.
+    /// </summary>
+    [HttpGet]
+    [AllowAnonymous]  // ✅ GET = public read access
+    [ProducesResponseType(typeof(List<MyEntityListDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<MyEntityListDto>>> GetAll()
+    {
+        var entities = await _mediator.Send(new GetMyEntityListRequest());
+        return Ok(entities);
+    }
+
+    /// <summary>
     /// Creates a new MyEntity.
     /// </summary>
     [HttpPost]
-    [Authorize]
-    [ProducesResponseType(typeof(MyEntityDto), StatusCodes.Status201Created)]
-    public async Task<IActionResult> Create(CreateMyEntityDto dto)
+    [Authorize]  // ✅ POST = authenticated write access
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateMyEntityDto dto)
     {
-        var command = new CreateMyEntityCommand { CreateMyEntityDto = dto };
-        var result = await _mediator.Send(command);
-        return result.Success ? Created(string.Empty, result.Data) : BadRequest(result.Errors);
+        var command = new CreateMyEntityCommand { MyEntityDto = dto };
+        var response = await _mediator.Send(command);
+        return Ok(response);
     }
 }
-\`\`\`
+```
 
-## Step 6: Run Tests
+## Step 6: Run Build (PowerShell)
 
-\`\`\`bash
-# Run unit tests
-dotnet test tests/Explore.Application.Tests/
+```powershell
+# Build the solution
+dotnet build Explore.sln
 
-# Run integration tests
-dotnet test tests/Explore.API.Tests/
+# Run tests
+dotnet test
 
-# Generate coverage report
-dotnet test /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
-\`\`\`
+# Run with Aspire
+dotnet run --project Explore.AppHost
+```
 ```
 
 ## Key Principles
@@ -562,6 +587,7 @@ dotnet test /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
 - ✅ Add XML comments to all public APIs
 - ✅ Use `/// <summary>`, `/// <param>`, `/// <returns>`, `/// <remarks>`
 - ✅ Add `[ProducesResponseType]` for all HTTP endpoints
+- ✅ Document the CRITICAL validator pattern (manual instantiation)
 - ✅ Create Mermaid diagrams for complex flows
 - ✅ Keep documentation close to code (same repository)
 - ❌ Don't write documentation that duplicates code

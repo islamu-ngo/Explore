@@ -19,8 +19,13 @@ namespace Explore.Application.Features.Organizations.Handlers.Queries
 
         public async Task<List<OrganizationListDto>> Handle(GetMyOrganizationsRequest request, CancellationToken cancellationToken)
         {
-            var organizations = await _organizationRepository.GetMyOrganizations(request.UserId);
-            return organizations;
+            if (!Guid.TryParse(request.UserId, out Guid userGuid))
+            {
+                return new List<OrganizationListDto>();
+            }
+
+            var organizations = await _organizationRepository.GetMyOrganizations(userGuid);
+            return _mapper.Map<List<OrganizationListDto>>(organizations);
         }
     }
 }

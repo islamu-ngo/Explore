@@ -6,5 +6,7 @@ namespace Explore.Application.Contracts.Persistence
     {
         Task<UserExternalLogin?> GetByProviderAndKey(string provider, string providerKey);
         Task<List<UserExternalLogin>> GetByUser(Guid userId);
+        Task<UserExternalLogin?> GetUserExternalLoginWithDetails(Guid id);
+        Task<List<UserExternalLogin>> GetUserExternalLoginsWithDetails();
     }
 }

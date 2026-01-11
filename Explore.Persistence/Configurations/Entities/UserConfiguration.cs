@@ -1,4 +1,5 @@
 using Explore.Domain;
+using Explore.Persistence.Seed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -16,10 +17,27 @@ namespace Explore.Persistence.Configurations.Entities
             builder.Property(e => e.AuthProvider).HasMaxLength(500);
             builder.Property(e => e.AuthProviderId).HasMaxLength(500);
 
+            // Every User must have an Actor (non-nullable)
             builder.HasOne(e => e.Actor)
                 .WithMany()
                 .HasForeignKey(e => e.ActorId)
-                .OnDelete(DeleteBehavior.SetNull);
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Unique index on email
+            builder.HasIndex(e => e.Email).IsUnique();
+
+            builder.HasData(
+                new User
+                {
+                    Id = SeedIds.SystemUserId,
+                    Email = "system@islamu.org",
+                    FirstName = "System",
+                    LastName = "Account",
+                    ActorId = SeedIds.SystemUserActorId,
+                    AuthProvider = "system",
+                    AuthProviderId = "system",
+                    EmailVerified = true
+                });
         }
     }
 }

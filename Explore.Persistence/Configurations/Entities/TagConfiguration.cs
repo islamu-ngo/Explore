@@ -1,4 +1,5 @@
 using Explore.Domain;
+using Explore.Persistence.Seed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -17,6 +18,57 @@ namespace Explore.Persistence.Configurations.Entities
                 .WithMany()
                 .HasForeignKey(e => e.TenantId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasData(
+                new Tag
+                {
+                    Id = SeedIds.BeginnerTagId,
+                    MasterCode = "BEGINNER",
+                    FullName = "Beginner",
+                    TenantId = SeedIds.DefaultTenantId
+                },
+                new Tag
+                {
+                    Id = SeedIds.IntermediateTagId,
+                    MasterCode = "INTERMEDIATE",
+                    FullName = "Intermediate",
+                    TenantId = SeedIds.DefaultTenantId
+                },
+                new Tag
+                {
+                    Id = SeedIds.AdvancedTagId,
+                    MasterCode = "ADVANCED",
+                    FullName = "Advanced",
+                    TenantId = SeedIds.DefaultTenantId
+                },
+                new Tag
+                {
+                    Id = SeedIds.FreeTagId,
+                    MasterCode = "FREE",
+                    FullName = "Free",
+                    TenantId = SeedIds.DefaultTenantId
+                },
+                new Tag
+                {
+                    Id = SeedIds.PaidTagId,
+                    MasterCode = "PAID",
+                    FullName = "Paid",
+                    TenantId = SeedIds.DefaultTenantId
+                },
+                new Tag
+                {
+                    Id = SeedIds.OnlineTagId,
+                    MasterCode = "ONLINE",
+                    FullName = "Online",
+                    TenantId = SeedIds.DefaultTenantId
+                },
+                new Tag
+                {
+                    Id = SeedIds.InPersonTagId,
+                    MasterCode = "IN_PERSON",
+                    FullName = "In-Person",
+                    TenantId = SeedIds.DefaultTenantId
+                });
         }
     }
 }

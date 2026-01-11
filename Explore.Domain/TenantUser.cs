@@ -15,7 +15,7 @@ namespace Explore.Domain
         public Guid TenantId { get; set; }
         public Tenant Tenant { get; set; }
         [ForeignKey("UserRole")]
-        public long UserRoleId { get; set; }
+        public int UserRoleId { get; set; }
         public UserRole UserRole { get; set; }
     }
 }

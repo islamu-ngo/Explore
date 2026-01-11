@@ -15,7 +15,7 @@ WORKDIR /src
 COPY ["Explore.API/Explore.API.csproj", "Explore.API/"]
 RUN dotnet restore "./Explore.API/Explore.API.csproj"
 COPY . .
-WORKDIR "/src/Explore.API"
+WORKDIR "/Explore.API"
 RUN dotnet build "./Explore.API.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 # Cette étape permet de publier le projet de service à copier dans la phase finale

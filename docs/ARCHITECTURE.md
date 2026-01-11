@@ -116,7 +116,7 @@
 
 ```
 Explore.sln
-├── src/
+├── 
 │   ├── Explore.Domain/              # Domain layer (innermost) Domain entities, enums, value objects (no dependencies)
 │   ├── Explore.Application/         # Application layer DTOs, MediatR handlers, FluentValidation
 │   │   ├── Features/

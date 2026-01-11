@@ -14,5 +14,15 @@ namespace Explore.Application.Contracts.Persistence
         Task<List<OrganizationMember>> GetOrganizationMembersWithDetails();
         Task<List<OrganizationMember>> GetMembersByOrganizationId(Guid organizationId);
         Task<List<OrganizationMember>> GetInvitesByEmail(string email);
+        
+        /// <summary>
+        /// Gets the organization member record for a specific user in an organization.
+        /// </summary>
+        Task<OrganizationMember?> GetByOrganizationAndUser(Guid organizationId, Guid userId);
+        
+        /// <summary>
+        /// Checks if the user has admin-level permissions (Creator, CoOwner, or Admin role) in the organization.
+        /// </summary>
+        Task<bool> IsUserAdminOfOrganization(Guid organizationId, Guid userId);
     }
 }

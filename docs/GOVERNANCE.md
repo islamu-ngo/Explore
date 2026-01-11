@@ -1,7 +1,100 @@
-# Code Conventions
+# Code Conventions & Governance
+
+## ⚠️ CRITICAL RULES (Must Follow - No Exceptions)
+
+These rules are based on 45+ entity implementations in the dbml-sync project. Violations will break the architecture.
+
+### 1. **Repositories Return ENTITIES, Never DTOs**
+```csharp
+// ❌ WRONG
+Task<List<EventListDto>> GetEventsWithDetails();
+
+// ✅ CORRECT
+Task<List<Event>> GetEventsWithDetails();
+```
+
+### 2. **Validators Use Manual Instantiation (NOT DI)**
+```csharp
+// ❌ WRONG - DI injection
+public CreateEventCommandHandler(IValidator<CreateEventDto> validator) { }
+
+// ✅ CORRECT - Manual instantiation
+var validator = new CreateEventDtoValidator(_{Entity}Repository);
+```
+
+### 3. **Navigation Properties on Link Tables Are Readonly**
+```csharp
+// ❌ WRONG - Write through navigation
+org.Members.Add(member);
+
+// ✅ CORRECT - Write through repository
+await _organizationMemberRepository.Create(member);
+```
+
+### 4. **Use int Instead of long** (except size/cursor and absolutly neccesery fields)
+```csharp
+// ❌ WRONG
+public long Id { get; set; }
+
+// ✅ CORRECT
+public int Id { get; set; }  // or Guid for main entities
+```
+
+### 5. **No Default Values in Entities**
+```csharp
+// ❌ WRONG
+public int TotalViews { get; set; } = 0;
+
+// ✅ CORRECT
+public int TotalViews { get; set; }  // Set in handler or database
+```
+
+### 6. **Do Not Remove Using Statements**
+```csharp
+// ✅ KEEP all using statements even if they appear unused
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+// ... etc
+```
+
+### 7. **Commands Return BaseCommandResponse<Guid>**
+```csharp
+// ❌ WRONG
+public class CreateEventCommand : IRequest<Guid>
+
+// ✅ CORRECT
+public class CreateEventCommand : IRequest<BaseCommandResponse<Guid>>
+```
+
+### 8. **GET Endpoints Are AllowAnonymous, Write Endpoints Are Authorize**
+```csharp
+[HttpGet]
+[AllowAnonymous]  // ✅ Public read access
+
+[HttpPost]
+[Authorize]  // ✅ Authenticated write access
+```
+
+### 9. **Extract UserId with Fallback Pattern**
+```csharp
+var userId = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
+    ?? _httpContextAccessor.HttpContext?.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
+    ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sid")?.Value;
+```
+
+### 10. **File-Scoped Namespaces**
+```csharp
+// ✅ CORRECT
+namespace Explore.Application.Features.Events.Handlers.Commands;
+
+public class CreateEventCommandHandler { }
+```
+
+---
 
 ## C# Style Guide
-
 - **Naming**: PascalCase for public members, _camelCase for private fields
 - **File-scoped namespaces**: Use file-scoped namespace declarations
 - **Always use `int` instead of `long`** unless absolutely necessary (only for size/cursor fields)
@@ -47,24 +140,22 @@ public class Create{Entity}CommandHandler : IRequestHandler<Create{Entity}Comman
 {
     private readonly I{Entity}Repository _{Entity}Repository;
     private readonly IMapper _mapper;
-    private readonly IValidator<Create{Entity}Dto> _validator;
 
     public Create{Entity}CommandHandler(
         I{Entity}Repository {Entity}Repository,
-        IMapper mapper,
-        IValidator<Create{Entity}Dto> validator)
+        IMapper mapper)
     {
         _{Entity}Repository = {Entity}Repository;
         _mapper = mapper;
-        _validator = validator;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(Create{Entity}Command request, CancellationToken cancellationToken)
     {
         var response = new BaseCommandResponse<Guid>();
 
-        // Validate using FluentValidation
-        var validationResult = await _validator.ValidateAsync(request.{Entity}Dto);
+        // Validate using FluentValidation - CRITICAL: Validator instantiated manually with dependencies
+        var validator = new Create{Entity}DtoValidator(_{RelatedEntity1}Repository, _{RelatedEntity2}Repository, ...);
+        var validationResult = await validator.ValidateAsync(request.{Entity}Dto);
 
         if (!validationResult.IsValid)
         {
@@ -163,7 +254,7 @@ Explore.Application/Features/{Entity}s/
     └── Queries/
         ├── Get{Entity}ListRequestHandler.cs
         ├── Get{Entity}DetailsRequestHandler.cs
-        └── Get{Entities}By{RelatedEntity}RequestHandler.cs
+        └── Get{Entities}By{RelatedEntity}RequestHandler.cs (custom queries)
 
 Explore.Application/DTOs/{Entity}/
 ├── {Entity}Dto.cs
@@ -320,7 +411,6 @@ CreateMap<EventSession, EventSessionDto>()
 
 // ✅ SIMPLE - Navigation property auto-mapping
 // If DTO has "EventTitle" and entity has "Event.Title", AutoMapper figures it out
-
 // ❌ AVOID - Manual mapping not needed for matching names
 // .ForMember(dest => dest.EventTitle, opt => opt.MapFrom(src => src.Event.Title))  // NOT NEEDED
 // .ForMember(dest => dest.LocationName, opt => opt.MapFrom(src => src.Location.FullName))  // NOT NEEDED
@@ -360,18 +450,9 @@ public class MappingProfile : Profile
 
 ## Validation
 
-### Location
+### CRITICAL PATTERN: Validators Use Manual Instantiation (NOT DI Injection)
 
-Validators are located in:
-```
-Explore.Application/DTOs/{Entity}/Validators/
-├── Create{Entity}DtoValidator.cs
-└── Update{Entity}DtoValidator.cs
-```
-
-### Pattern with Repository Injection
-
-Validators inject repositories to check foreign key existence and validate relationships.
+**IMPORTANT**: Validators are instantiated in handlers with dependencies passed to constructor. They are NOT injected via DI.
 
 ```csharp
 // File: Explore.Application/DTOs/{Entity}/Validators/Create{Entity}DtoValidator.cs
@@ -401,18 +482,66 @@ public class Create{Entity}DtoValidator : AbstractValidator<Create{Entity}Dto>
         // Date/time validation
         RuleFor(x => x.StartTime)
             .NotEmpty().WithMessage("Start time is required")
-            .GreaterThan(DateTime.Now).WithMessage("Event must start in the future");
+            .GreaterThan(DateTime.Now).WithMessage("Event must start in future");
 
         // Foreign key validation with repository
         RuleFor(x => x.{RelatedEntity1}Id)
             .NotEmpty().WithMessage("{RelatedEntity1} is required")
-            .MustAsync({RelatedEntity1}Exists)
+            .MustAsync(async (id, cancellation) =>
+            {
+                var exists = await _{RelatedEntity1}Repository.Exists(id);
+                return exists;
+            })
             .WithMessage("{RelatedEntity1} not found");
 
         RuleFor(x => x.{RelatedEntity2}Id)
-            .MustAsync({RelatedEntity2}Exists)
+            .MustAsync(async (id, cancellation) =>
+            {
+                if (!id.HasValue) return true;
+                var exists = await _{RelatedEntity2}Repository.Exists(id.Value);
+                return exists;
+            })
             .WithMessage("{RelatedEntity2} not found");
     }
+}
+```
+
+**Real Example from CreateEventCommandHandler:**
+```csharp
+public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
+{
+    var response = new BaseCommandResponse<Guid>();
+
+    // ✅ CORRECT: Validator instantiated manually with all required repositories
+    var validator = new CreateEventDtoValidator(
+        _audienceAgeRepository, 
+        _audienceGenderRepository, 
+        _eventTypeRepository, 
+        _actorRepository, 
+        _storageObjectRepository);
+    
+    var validationResult = await validator.ValidateAsync(request.EventDto);
+    
+    if (!validationResult.IsValid)
+    {
+        response.Success = false;
+        response.Message = "Event creation failed.";
+        response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+        return response;
+    }
+
+    // Map DTO to Entity
+    var @event = _mapper.Map<Event>(request.EventDto);
+    @event.TotalViews = 0;
+
+    // Save through repository
+    @event = await _eventRepository.Create(@event);
+
+    response.Success = true;
+    response.Id = @event.Id;
+    response.Message = "Event created successfully.";
+
+    return response;
 }
 ```
 
@@ -441,13 +570,6 @@ public class CreateCategoryDtoValidator : AbstractValidator<CreateCategoryDto>
             .When(x => x.ParentId.HasValue)
             .WithMessage("Would create circular reference");
     }
-}
-
-private async Task<bool> NotCreateCircularReference(UpdateCategoryDto dto, Guid? parentId, CancellationToken cancellationToken)
-{
-    // Check if assigning this parent would create a circular reference
-    // Implementation depends on your hierarchy logic
-    return true;
 }
 ```
 
@@ -573,7 +695,7 @@ if (string.IsNullOrEmpty(userId))
 2. **Navigation properties on link tables are readonly** - writes via repository
 3. **Use int instead of long** (except size/cursor)
 4. **No default values in entities** - set values in code or database
-5. **Validators inject repositories** - for FK checks
+5. **Validators use manual instantiation** - instantiated with dependencies, NOT DI injected
 6. **Commands return BaseCommandResponse<Guid>** - for Create/Update/Delete
 7. **Queries return DTOs directly** - no wrapper
 8. **GET endpoints are AllowAnonymous** - public read

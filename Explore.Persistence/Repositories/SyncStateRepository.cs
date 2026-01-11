@@ -1,5 +1,5 @@
-using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Application.Contracts.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories
@@ -13,39 +13,24 @@ namespace Explore.Persistence.Repositories
             _dbContext = dbContext;
         }
 
-        public async Task<SyncState?> GetByService(string service)
+        public async Task<List<SyncState>> GetAllSyncStates()
         {
-            return await _dbContext.SyncStates
-                .FirstOrDefaultAsync(s => s.Service == service);
+            return await _dbContext.SyncStates.ToListAsync();
         }
 
-        public async Task<long> GetCursor(string service)
+        public async Task<SyncState?> GetSyncStateByService(string service)
         {
-            var state = await GetByService(service);
-            return state?.Cursor ?? 0;
+            return await _dbContext.SyncStates.FirstOrDefaultAsync(s => s.Service == service);
         }
 
-        public async Task UpdateCursor(string service, long cursor)
+        public async Task<bool> Exists(int id)
         {
-            var state = await GetByService(service);
-            if (state != null)
-            {
-                state.Cursor = cursor;
-                state.UpdatedAt = DateTime.UtcNow;
-                _dbContext.Entry(state).State = EntityState.Modified;
-                await _dbContext.SaveChangesAsync();
-            }
-            else
-            {
-                var newState = new SyncState
-                {
-                    Service = service,
-                    Cursor = cursor,
-                    UpdatedAt = DateTime.UtcNow
-                };
-                await _dbContext.SyncStates.AddAsync(newState);
-                await _dbContext.SaveChangesAsync();
-            }
+            return await _dbContext.SyncStates.AnyAsync(s => s.Id == id);
+        }
+
+        public async Task<bool> ExistsByService(string service)
+        {
+            return await _dbContext.SyncStates.AnyAsync(s => s.Service == service);
         }
     }
 }

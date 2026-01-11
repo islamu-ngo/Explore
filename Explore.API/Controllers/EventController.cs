@@ -1,4 +1,4 @@
-﻿using Explore.Application.DTOs.Event;
+using Explore.Application.DTOs.Event;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Features.Events.Requests.Queries;
 using Explore.Application.Responses;
@@ -98,13 +98,19 @@ namespace Explore.API.Controllers
 
         // POST api/<EventController>
         [HttpPost]
-        [EndpointSummary("")]
-        [EndpointDescription("")]
+        [EndpointSummary("Create a new Event")]
+        [EndpointDescription("Creates a new event. If OrganizationId is provided, the event is created under that organization (user must be admin). If null, the event is created under the user's personal actor.")]
         [Authorize]
         public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventDto @event)
         {
             var command = new CreateEventCommand { EventDto = @event };
             var response = await _mediator.Send(command);
+            
+            if (!response.Success)
+            {
+                return BadRequest(response);
+            }
+            
             return Ok(response);
         }
 

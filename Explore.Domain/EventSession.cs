@@ -21,7 +21,9 @@ namespace Explore.Domain
         public string? Slug { get; set; }
         public int? MaxAudienceAttendees { get; set; }
         public int? CurrentAudienceAttendees { get; set; }
+        [ForeignKey("RegistrationMode")]
         public int? RegistrationModeId { get; set; }
+        public RegistrationMode? RegistrationMode { get; set; }
         public string? Description { get; set; }
     }
 }

@@ -8,9 +8,15 @@ namespace Explore.Application.DTOs.User
         public string Email { get; set; }
         public string FirstName { get; set; }
         public string LastName { get; set; }
-        public string Username { get; set; }
-        // TODO hold user location data? or fetch when user visit page and then used fetched location with user permission for when location is needed for whatever?
-        //public string? City { get; set; }
-        //public string? Country { get; set; }
+        public string? Username { get; set; }
+        
+        // Actor
+        public Guid ActorId { get; set; }
+        public string? ActorDisplayName { get; set; }
+        public string? ActorHandle { get; set; }
+        
+        // Auth
+        public string? AuthProvider { get; set; }
+        public bool? EmailVerified { get; set; }
     }
 }

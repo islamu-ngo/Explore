@@ -1,0 +1,121 @@
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Explore.Application.DTOs.UserAuthenticationToken;
+using Explore.Application.Features.UserAuthenticationTokens.Requests.Commands;
+using Explore.Application.Features.UserAuthenticationTokens.Requests.Queries;
+using Explore.Application.Responses;
+using MediatR;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+
+namespace Explore.API.Controllers
+{
+    [Route("api/v1/[controller]")]
+    [ApiController]
+    public class UserAuthenticationTokenController : ControllerBase
+    {
+        private readonly IMediator _mediator;
+
+        public UserAuthenticationTokenController(IMediator mediator)
+        {
+            _mediator = mediator;
+        }
+
+        // GET: api/v1/userauthenticationtoken
+        [HttpGet]
+        [EndpointSummary("Get all User Authentication Tokens")]
+        [EndpointDescription("Retrieve a list of all user authentication tokens")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(List<UserAuthenticationTokenListDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<List<UserAuthenticationTokenListDto>>> GetAll()
+        {
+            var tokens = await _mediator.Send(new GetUserAuthenticationTokenListRequest());
+            return Ok(tokens);
+        }
+
+        // GET: api/v1/userauthenticationtoken/{id}
+        [HttpGet("{id}")]
+        [EndpointSummary("Get User Authentication Token by ID")]
+        [EndpointDescription("Retrieve details of a specific user authentication token")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(UserAuthenticationTokenDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<UserAuthenticationTokenDto>> GetById(Guid id)
+        {
+            var token = await _mediator.Send(new GetUserAuthenticationTokenDetailsRequest { Id = id });
+            if (token == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(token);
+        }
+
+        // POST: api/v1/userauthenticationtoken
+        [HttpPost]
+        [EndpointSummary("Create new User Authentication Token")]
+        [EndpointDescription("Create a new user authentication token")]
+        [Authorize]
+        [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateUserAuthenticationTokenDto dto)
+        {
+            var command = new CreateUserAuthenticationTokenCommand { UserAuthenticationTokenDto = dto };
+            var response = await _mediator.Send(command);
+
+            if (!response.Success)
+            {
+                return BadRequest(response);
+            }
+
+            return Ok(response);
+        }
+
+        // PUT: api/v1/userauthenticationtoken/{id}
+        [HttpPut("{id}")]
+        [EndpointSummary("Update User Authentication Token")]
+        [EndpointDescription("Update an existing user authentication token")]
+        [Authorize]
+        [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateUserAuthenticationTokenDto dto)
+        {
+            if (id != dto.Id)
+            {
+                return BadRequest(new { error = "User Authentication Token ID mismatch" });
+            }
+
+            var command = new UpdateUserAuthenticationTokenCommand { UserAuthenticationTokenDto = dto };
+            var response = await _mediator.Send(command);
+
+            if (!response.Success)
+            {
+                return BadRequest(response);
+            }
+
+            return Ok(response);
+        }
+
+        // DELETE: api/v1/userauthenticationtoken/{id}
+        [HttpDelete("{id}")]
+        [EndpointSummary("Delete User Authentication Token")]
+        [EndpointDescription("Delete a user authentication token")]
+        [Authorize]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult> Delete(Guid id)
+        {
+            var command = new DeleteUserAuthenticationTokenCommand { Id = id };
+            var result = await _mediator.Send(command);
+
+            if (!result)
+            {
+                return NotFound(new { error = "User Authentication Token not found" });
+            }
+
+            return NoContent();
+        }
+    }
+}

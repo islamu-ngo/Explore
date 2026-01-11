@@ -7,7 +7,6 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventTags.Validators;
 using Explore.Application.Features.EventTags.Requests.Commands;
 using Explore.Application.Responses;
-using Explore.Domain;
 using MediatR;
 
 namespace Explore.Application.Features.EventTags.Handlers.Commands
@@ -46,7 +45,7 @@ namespace Explore.Application.Features.EventTags.Handlers.Commands
                 return response;
             }
 
-            var eventTags = _mapper.Map<EventTags>(request.EventTagsDto);
+            var eventTags = _mapper.Map<Domain.EventTags>(request.EventTagsDto);
             eventTags = await _eventTagsRepository.Create(eventTags);
 
             response.Success = true;

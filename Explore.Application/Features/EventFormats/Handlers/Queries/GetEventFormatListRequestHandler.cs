@@ -22,7 +22,7 @@ namespace Explore.Application.Features.EventFormats.Handlers.Queries
 
         public async Task<List<EventFormatListDto>> Handle(GetEventFormatListRequest request, CancellationToken cancellationToken)
         {
-            var eventFormats = await _eventFormatRepository.GetAllAsync();
+            var eventFormats = await _eventFormatRepository.GetAll();
             return _mapper.Map<List<EventFormatListDto>>(eventFormats);
         }
     }

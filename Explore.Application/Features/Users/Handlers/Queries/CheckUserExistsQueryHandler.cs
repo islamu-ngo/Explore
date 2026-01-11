@@ -15,7 +15,7 @@ namespace Explore.Application.Features.Users.Handlers.Queries
 
         public async Task<bool> Handle(CheckUserExistsQuery request, CancellationToken cancellationToken)
         {
-            return await _userRepository.ExistsByEmailAsync(request.Email);
+            return await _userRepository.ExistsByEmail(request.Email);
         }
     }
 }

@@ -279,9 +279,9 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
 - `docs/ARCHITECTURE.md` - Architecture overview
 - `docs/CONVENTIONS.md` - Code conventions
 - `docs/SECURITY.md` - Auth/Authz patterns
-- `src/Explore.Application/Features/` - CQRS examples
-- `src/Explore.Blazor/` - Blazor component examples
-- `src/Explore.Persistence/Configurations/` - EF Core examples
+- `Explore.Application/Features/` - CQRS examples
+- `Explore.Blazor/` - Blazor component examples
+- `Explore.Persistence/Configurations/` - EF Core examples
 
 **For Structure**:
 - `.claude/skills/backend-dev-guidelines/` - Template structure

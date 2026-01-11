@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Persistence.Seed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -20,16 +21,17 @@ namespace Explore.Persistence.Configurations.Entities
             builder.HasData(
                 new Organization
                 {
-                    Id = Guid.Parse("018e4e5c-7f00-7000-8000-000000000001"),
+                    Id = SeedIds.IslamuOrganizationId,
                     FullName = "ISLAMU",
                     WebsiteUrl = "https://islamu.ngo",
                     Email = "contact@openislamu.org",
                     Country = "Belgium",
                     City = "Brussels",
                     Postcode = "1070",
-                    Address = "Parc Du Peterbos ...",
+                    Address = "Parc Du Peterbos",
                     ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
-                    TenantId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000000")
+                    TenantId = SeedIds.DefaultTenantId,
+                    ActorId = SeedIds.IslamuOrganizationActorId
                 });
         }
     }

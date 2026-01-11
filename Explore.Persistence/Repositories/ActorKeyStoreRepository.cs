@@ -26,5 +26,19 @@ namespace Explore.Persistence.Repositories
                 .Where(k => k.ActorId == actorId)
                 .ToListAsync();
         }
+
+        public async Task<ActorKeyStore?> GetActorKeyStoreWithDetails(Guid id)
+        {
+            return await _dbContext.ActorKeyStores
+                .Include(k => k.Actor)
+                .FirstOrDefaultAsync(k => k.Id == id);
+        }
+
+        public async Task<List<ActorKeyStore>> GetActorKeyStoresWithDetails()
+        {
+            return await _dbContext.ActorKeyStores
+                .Include(k => k.Actor)
+                .ToListAsync();
+        }
     }
 }

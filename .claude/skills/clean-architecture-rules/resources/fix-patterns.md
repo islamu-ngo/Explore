@@ -6,101 +6,205 @@
 
 **❌ Before** (Logic in wrong layer):
 ```csharp
-// File: src/Explore.API/Controllers/EventsController.cs
+// File: Explore.API/Controllers/EventController.cs
 [HttpPost]
 public async Task<ActionResult> Create(CreateEventDto dto)
 {
     // ❌ Business logic in controller
-    if (dto.StartsAt < DateTime.UtcNow)
-        return BadRequest("Event must start in the future");
+    if (dto.Title == null || dto.Title.Length > 500)
+        return BadRequest("Title must be between 1 and 500 characters");
 
-    if (dto.EndsAt.HasValue && dto.EndsAt < dto.StartsAt)
-        return BadRequest("End date must be after start date");
+    if (dto.EventTypeId <= 0)
+        return BadRequest("Event type is required");
 
-    var entity = new Event
+    var @event = new Event
     {
         Id = Guid.NewGuid(),
         Title = dto.Title,
-        StartsAt = dto.StartsAt,
-        EndsAt = dto.EndsAt
+        EventTypeId = dto.EventTypeId,
+        TotalViews = 0
     };
 
-    _context.Events.Add(entity);
-    await _context.SaveChangesAsync();
+    _dbContext.Events.Add(@event);
+    await _dbContext.SaveChangesAsync();
 
-    return Ok(entity.Id);
+    return Ok(@event.Id);
 }
 ```
 
 **✅ After** (Logic in correct layers):
 ```csharp
 // Step 1: Create Command in Application layer
-// File: src/Explore.Application/Features/Events/Commands/CreateEventCommand.cs
-namespace Explore.Application.Features.Events.Commands;
+// File: Explore.Application/Features/Events/Requests/Commands/CreateEventCommand.cs
+namespace Explore.Application.Features.Events.Requests.Commands;
 
-public record CreateEventCommand : IRequest<Guid>
+using Explore.Application.DTOs.Event;
+using Explore.Application.Responses;
+using MediatR;
+
+public class CreateEventCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public string Title { get; init; } = string.Empty;
-    public DateTime StartsAt { get; init; }
-    public DateTime? EndsAt { get; init; }
+    public CreateEventDto EventDto { get; set; }
 }
 
 // Step 2: Create Validator in Application layer
-// File: src/Explore.Application/Features/Events/Commands/CreateEventCommandValidator.cs
-public class CreateEventCommandValidator : AbstractValidator<CreateEventCommand>
+// File: Explore.Application/DTOs/Event/Validators/CreateEventDtoValidator.cs
+namespace Explore.Application.DTOs.Event.Validators;
+
+using FluentValidation;
+using Explore.Application.Contracts.Persistence;
+
+public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
 {
-    public CreateEventCommandValidator()
+    private readonly IAudienceAgeRepository _audienceAgeRepository;
+    private readonly IAudienceGenderRepository _audienceGenderRepository;
+    private readonly IEventTypeRepository _eventTypeRepository;
+
+    public CreateEventDtoValidator(
+        IAudienceAgeRepository audienceAgeRepository,
+        IAudienceGenderRepository audienceGenderRepository,
+        IEventTypeRepository eventTypeRepository)
     {
+        _audienceAgeRepository = audienceAgeRepository;
+        _audienceGenderRepository = audienceGenderRepository;
+        _eventTypeRepository = eventTypeRepository;
+
         RuleFor(x => x.Title)
             .NotEmpty().WithMessage("Title is required")
-            .MaximumLength(200);
+            .MaximumLength(500);
 
-        RuleFor(x => x.StartsAt)
-            .GreaterThan(DateTime.UtcNow)
-            .WithMessage("Event must start in the future");
+        RuleFor(x => x.EventTypeId)
+            .NotEmpty().WithMessage("Event type is required")
+            .MustAsync(async (id, cancellation) =>
+            {
+                var exists = await _eventTypeRepository.Exists(id);
+                return exists;
+            })
+            .WithMessage("Event type not found");
 
-        RuleFor(x => x.EndsAt)
-            .GreaterThan(x => x.StartsAt).When(x => x.EndsAt.HasValue)
-            .WithMessage("End date must be after start date");
+        RuleFor(x => x.AudienceGenderId)
+            .NotEmpty().WithMessage("Audience gender is required")
+            .MustAsync(async (id, cancellation) =>
+            {
+                var exists = await _audienceGenderRepository.Exists(id);
+                return exists;
+            })
+            .WithMessage("Audience gender not found");
     }
 }
 
 // Step 3: Create Handler in Application layer
-// File: src/Explore.Application/Features/Events/Commands/CreateEventCommandHandler.cs
-public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Guid>
-{
-    private readonly IApplicationDbContext _context;
+// File: Explore.Application/Features/Events/Handlers/Commands/CreateEventCommandHandler.cs
+namespace Explore.Application.Features.Events.Handlers.Commands;
 
-    public CreateEventCommandHandler(IApplicationDbContext context)
+using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using AutoMapper;
+using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.Event.Validators;
+using Explore.Application.Features.Events.Requests.Commands;
+using Explore.Application.Responses;
+using Explore.Domain;
+using MediatR;
+
+public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<Guid>>
+{
+    private readonly IEventRepository _eventRepository;
+    private readonly IAudienceAgeRepository _audienceAgeRepository;
+    private readonly IAudienceGenderRepository _audienceGenderRepository;
+    private readonly IEventTypeRepository _eventTypeRepository;
+    private readonly IActorRepository _actorRepository;
+    private readonly IStorageObjectRepository _storageObjectRepository;
+    private readonly IMapper _mapper;
+
+    public CreateEventCommandHandler(
+        IEventRepository eventRepository,
+        IAudienceAgeRepository audienceAgeRepository,
+        IAudienceGenderRepository audienceGenderRepository,
+        IEventTypeRepository eventTypeRepository,
+        IActorRepository actorRepository,
+        IStorageObjectRepository storageObjectRepository,
+        IMapper mapper)
     {
-        _context = context;
+        _eventRepository = eventRepository;
+        _audienceAgeRepository = audienceAgeRepository;
+        _audienceGenderRepository = audienceGenderRepository;
+        _eventTypeRepository = eventTypeRepository;
+        _actorRepository = actorRepository;
+        _storageObjectRepository = storageObjectRepository;
+        _mapper = mapper;
     }
 
-    public async Task<Guid> Handle(CreateEventCommand request, CancellationToken cancellationToken)
+    public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
     {
-        var entity = Event.Create(request.Title, request.OrganizationId);
-        entity.SetSchedule(request.StartsAt, request.EndsAt);
+        var response = new BaseCommandResponse<Guid>();
 
-        _context.Events.Add(entity);
-        await _context.SaveChangesAsync(cancellationToken);
+        // ✅ Validate using FluentValidation - instantiated manually with dependencies
+        var validator = new CreateEventDtoValidator(
+            _audienceAgeRepository,
+            _audienceGenderRepository,
+            _eventTypeRepository);
 
-        return entity.Id;
+        var validationResult = await validator.ValidateAsync(request.EventDto);
+
+        if (!validationResult.IsValid)
+        {
+            response.Success = false;
+            response.Message = "Event creation failed.";
+            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+            return response;
+        }
+
+        // ✅ Map DTO to Entity
+        var @event = _mapper.Map<Event>(request.EventDto);
+        @event.TotalViews = 0;
+
+        // ✅ Save through repository
+        @event = await _eventRepository.Create(@event);
+
+        response.Success = true;
+        response.Id = @event.Id;
+        response.Message = "Event created successfully.";
+
+        return response;
     }
 }
 
 // Step 4: Thin Controller in API layer
-// File: src/Explore.API/Controllers/EventsController.cs
-[HttpPost]
-public async Task<ActionResult<Guid>> Create(CreateEventCommand command, CancellationToken cancellationToken)
+// File: Explore.API/Controllers/EventController.cs
+namespace Explore.API.Controllers;
+
+using Explore.Application.DTOs.Event;
+using Explore.Application.Features.Events.Requests.Commands;
+using Explore.Application.Responses;
+using MediatR;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+[Route("api/v1/[controller]")]
+[ApiController]
+public class EventController : ControllerBase
 {
-    var eventId = await _mediator.Send(command, cancellationToken);
-    return CreatedAtAction(nameof(GetById), new { id = eventId }, eventId);
+    private readonly IMediator _mediator;
+
+    public EventController(IMediator mediator) => _mediator = mediator;
+
+    [HttpPost]
+    [Authorize]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventDto dto)
+    {
+        var command = new CreateEventCommand { EventDto = dto };
+        var response = await _mediator.Send(command);
+        return Ok(response);
+    }
 }
 ```
 
 **Benefits**:
 - ✅ Business logic is testable without HTTP
-- ✅ Validation runs automatically via MediatR pipeline
+- ✅ Validation runs automatically via FluentValidation
 - ✅ Controller is thin (5 lines)
 - ✅ Logic can be reused from Blazor, CLI, etc.
 
@@ -112,21 +216,21 @@ public async Task<ActionResult<Guid>> Create(CreateEventCommand command, Cancell
 
 **❌ Before** (Direct dependency):
 ```csharp
-// File: src/Explore.Application/Features/Events/Commands/CreateEventHandler.cs
+// File: Explore.Application/Features/Events/Handlers/Commands/CreateEventCommandHandler.cs
 using Explore.Infrastructure.Email;  // ❌ VIOLATION!
 using SendGrid;  // ❌ Infrastructure concern
 
-public class CreateEventHandler : IRequestHandler<CreateEventCommand, Guid>
+public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<Guid>>
 {
     private readonly SendGridEmailService _emailService;  // ❌ Concrete class
 
-    public async Task<Guid> Handle(CreateEventCommand request, CancellationToken cancellationToken)
+    public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
     {
         // ... create event
 
         await _emailService.SendAsync(email);  // ❌ Tightly coupled
 
-        return entity.Id;
+        return response;
     }
 }
 ```
@@ -134,8 +238,12 @@ public class CreateEventHandler : IRequestHandler<CreateEventCommand, Guid>
 **✅ After** (Dependency Inversion):
 ```csharp
 // Step 1: Define interface in Application layer
-// File: src/Explore.Application/Interfaces/IEmailService.cs
-namespace Explore.Application.Interfaces;
+// File: Explore.Application/Contracts/Infrastructure/IEmailService.cs
+namespace Explore.Application.Contracts.Infrastructure;
+
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 public interface IEmailService
 {
@@ -147,45 +255,60 @@ public interface IEmailService
 }
 
 // Step 2: Use interface in Application layer
-// File: src/Explore.Application/Features/Events/Commands/CreateEventHandler.cs
-namespace Explore.Application.Features.Events.Commands;
+// File: Explore.Application/Features/Events/Handlers/Commands/CreateEventCommandHandler.cs
+namespace Explore.Application.Features.Events.Handlers.Commands;
 
-using Explore.Application.Interfaces;  // ✅ Same layer
+using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using AutoMapper;
+using Explore.Application.Contracts.Infrastructure;  // ✅ Same layer interface
+using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.Event.Validators;
+using Explore.Application.Features.Events.Requests.Commands;
+using Explore.Application.Responses;
+using Explore.Domain;
+using MediatR;
 
-public class CreateEventHandler : IRequestHandler<CreateEventCommand, Guid>
+public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<Guid>>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IEventRepository _eventRepository;
     private readonly IEmailService _emailService;  // ✅ Interface
+    private readonly IMapper _mapper;
+    // ... other dependencies
 
-    public CreateEventHandler(IApplicationDbContext context, IEmailService emailService)
+    public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
     {
-        _context = context;
-        _emailService = emailService;
-    }
+        var response = new BaseCommandResponse<Guid>();
 
-    public async Task<Guid> Handle(CreateEventCommand request, CancellationToken cancellationToken)
-    {
-        var entity = Event.Create(request.Title, request.OrganizationId);
-
-        _context.Events.Add(entity);
-        await _context.SaveChangesAsync(cancellationToken);
+        // Validation...
+        var @event = _mapper.Map<Event>(request.EventDto);
+        @event.TotalViews = 0;
+        @event = await _eventRepository.Create(@event);
 
         // ✅ Calls interface, doesn't know about SendGrid
         await _emailService.SendEventCreatedNotificationAsync(
-            entity.Id,
-            entity.Title,
-            request.OrganizerEmail,
+            @event.Id,
+            @event.Title,
+            request.EventDto.OrganizerEmail,
             cancellationToken);
 
-        return entity.Id;
+        response.Success = true;
+        response.Id = @event.Id;
+        return response;
     }
 }
 
 // Step 3: Implement in Infrastructure layer
-// File: src/Explore.Infrastructure/Email/SendGridEmailService.cs
+// File: Explore.Infrastructure/Email/SendGridEmailService.cs
 namespace Explore.Infrastructure.Email;
 
-using Explore.Application.Interfaces;  // ✅ Implements interface
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Explore.Application.Contracts.Infrastructure;  // ✅ Implements interface
+using Microsoft.Extensions.Logging;
 using SendGrid;
 using SendGrid.Helpers.Mail;
 
@@ -226,8 +349,8 @@ public class SendGridEmailService : IEmailService
     }
 }
 
-// Step 4: Register in API/Blazor (Composition Root)
-// File: src/Explore.API/Program.cs
+// Step 4: Register in API (Composition Root)
+// File: Explore.API/Program.cs
 builder.Services.AddScoped<IEmailService, SendGridEmailService>();
 ```
 
@@ -244,31 +367,28 @@ builder.Services.AddScoped<IEmailService, SendGridEmailService>();
 
 **❌ Before** (Direct DbContext access):
 ```csharp
-// File: src/Explore.Application/Features/Events/Queries/GetEventListHandler.cs
+// File: Explore.Application/Features/Events/Handlers/Queries/GetEventListRequestHandler.cs
 using Explore.Persistence;  // ❌ VIOLATION!
 using Microsoft.EntityFrameworkCore;  // ❌ VIOLATION!
 
-public class GetEventListHandler : IRequestHandler<GetEventListQuery, List<EventDto>>
+public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, List<EventListDto>>
 {
-    private readonly ApplicationDbContext _context;  // ❌ Concrete class
+    private readonly ExploreDbContext _context;  // ❌ Concrete class
 
-    public async Task<List<EventDto>> Handle(GetEventListQuery request, CancellationToken cancellationToken)
+    public async Task<List<EventListDto>> Handle(GetEventListRequest request, CancellationToken cancellationToken)
     {
         // ❌ Complex EF Core query in Application layer
         return await _context.Events
-            .Include(e => e.Organization)
-            .Include(e => e.Participants)
-            .Where(e => e.Status == EventStatus.Published)
-            .Where(e => e.StartsAt >= DateTime.UtcNow)
-            .OrderBy(e => e.StartsAt)
-            .Skip((request.Page - 1) * request.PageSize)
-            .Take(request.PageSize)
-            .Select(e => new EventDto
+            .Include(e => e.EventType)
+            .Include(e => e.AudienceGender)
+            .Include(e => e.Actor)
+            .Where(e => e.EventStatusId == 2) // Published
+            .OrderBy(e => e.FirstSessionDate)
+            .Select(e => new EventListDto
             {
                 Id = e.Id,
                 Title = e.Title,
-                OrganizationName = e.Organization.Name,
-                ParticipantCount = e.Participants.Count
+                EventTypeName = e.EventType.FullName
             })
             .ToListAsync(cancellationToken);
     }
@@ -278,132 +398,130 @@ public class GetEventListHandler : IRequestHandler<GetEventListQuery, List<Event
 **✅ After** (Repository pattern):
 ```csharp
 // Step 1: Define repository interface in Application layer
-// File: src/Explore.Application/Interfaces/IEventRepository.cs
-namespace Explore.Application.Interfaces;
+// File: Explore.Application/Contracts/Persistence/IEventRepository.cs
+namespace Explore.Application.Contracts.Persistence;
 
-using Explore.Domain.Entities;
-using Explore.Domain.Enums;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Explore.Domain;
 
-public interface IEventRepository
+public interface IEventRepository : IGenericRepository<Event, Guid>
 {
-    Task<Event?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
-
-    Task<List<Event>> GetPublishedUpcomingAsync(
-        int page,
-        int pageSize,
-        CancellationToken cancellationToken = default);
-
-    Task<List<Event>> GetByOrganizationAsync(
-        Guid organizationId,
-        CancellationToken cancellationToken = default);
-
-    Task<int> GetTotalCountAsync(
-        EventStatus? status = null,
-        CancellationToken cancellationToken = default);
-
-    void Add(Event entity);
-    void Update(Event entity);
-    void Remove(Event entity);
+    Task<Event?> GetEventWithDetails(Guid id);
+    Task<List<Event>> GetEventsWithDetails();
+    Task<List<Event>> GetMyEventsWithDetails(string userId);
 }
 
 // Step 2: Use interface in Application layer
-// File: src/Explore.Application/Features/Events/Queries/GetEventListHandler.cs
-namespace Explore.Application.Features.Events.Queries;
+// File: Explore.Application/Features/Events/Handlers/Queries/GetEventListRequestHandler.cs
+namespace Explore.Application.Features.Events.Handlers.Queries;
 
-using Explore.Application.Interfaces;  // ✅ Same layer
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using AutoMapper;
+using Explore.Application.Contracts.Persistence;  // ✅ Same layer
+using Explore.Application.DTOs.Event;
+using Explore.Application.Features.Events.Requests.Queries;
+using MediatR;
 
-public class GetEventListHandler : IRequestHandler<GetEventListQuery, PagedResult<EventDto>>
+public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, List<EventListDto>>
 {
-    private readonly IEventRepository _repository;  // ✅ Interface
+    private readonly IEventRepository _eventRepository;  // ✅ Interface
     private readonly IMapper _mapper;
 
-    public GetEventListHandler(IEventRepository repository, IMapper mapper)
+    public GetEventListRequestHandler(IEventRepository eventRepository, IMapper mapper)
     {
-        _repository = repository;
+        _eventRepository = eventRepository;
         _mapper = mapper;
     }
 
-    public async Task<PagedResult<EventDto>> Handle(
-        GetEventListQuery request,
-        CancellationToken cancellationToken)
+    public async Task<List<EventListDto>> Handle(GetEventListRequest request, CancellationToken cancellationToken)
     {
-        var events = await _repository.GetPublishedUpcomingAsync(
-            request.Page,
-            request.PageSize,
-            cancellationToken);
-
-        var totalCount = await _repository.GetTotalCountAsync(
-            EventStatus.Published,
-            cancellationToken);
-
-        var dtos = _mapper.Map<List<EventDto>>(events);
-
-        return new PagedResult<EventDto>(dtos, totalCount, request.Page, request.PageSize);
+        var events = await _eventRepository.GetEventsWithDetails();  // ✅ Returns List<Event>
+        return _mapper.Map<List<EventListDto>>(events);  // ✅ Maps to DTOs
     }
 }
 
 // Step 3: Implement repository in Persistence layer
-// File: src/Explore.Persistence/Repositories/EventRepository.cs
+// File: Explore.Persistence/Repositories/EventRepository.cs
 namespace Explore.Persistence.Repositories;
 
-using Explore.Application.Interfaces;  // ✅ Implements interface
-using Explore.Domain.Entities;
-using Explore.Domain.Enums;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Explore.Application.Contracts.Persistence;  // ✅ Implements interface
+using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
 
-public class EventRepository : IEventRepository
+public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
 {
-    private readonly ApplicationDbContext _context;
+    private readonly ExploreDbContext _dbContext;
 
-    public EventRepository(ApplicationDbContext context)
+    public EventRepository(ExploreDbContext dbContext) : base(dbContext)
     {
-        _context = context;
+        _dbContext = dbContext;
     }
 
-    public async Task<Event?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<Event?> GetEventWithDetails(Guid id)
     {
-        return await _context.Events
-            .Include(e => e.Organization)
-            .Include(e => e.Participants)
-            .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
+        return await _dbContext.Events
+            .Include(e => e.EventType)
+            .Include(e => e.AudienceGender)
+            .Include(e => e.AudienceAge)
+            .Include(e => e.Actor)
+                .ThenInclude(a => a.ActorType)
+            .Include(e => e.EventStatus)
+            .Include(e => e.VisibilityType)
+            .Include(e => e.EventFormat)
+            .Include(e => e.Madhab)
+            .Include(e => e.FeaturedImage)
+            .Include(e => e.AtprotoRecord)
+            .FirstOrDefaultAsync(e => e.Id == id);
     }
 
-    public async Task<List<Event>> GetPublishedUpcomingAsync(
-        int page,
-        int pageSize,
-        CancellationToken cancellationToken = default)
+    public async Task<List<Event>> GetEventsWithDetails()
     {
-        return await _context.Events
-            .AsNoTracking()  // Performance: read-only query
-            .Include(e => e.Organization)
-            .Include(e => e.Participants)
-            .Where(e => e.Status == EventStatus.Published)
-            .Where(e => e.StartsAt >= DateTime.UtcNow)
-            .OrderBy(e => e.StartsAt)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync(cancellationToken);
+        return await _dbContext.Events
+            .Include(e => e.EventType)
+            .Include(e => e.AudienceGender)
+            .Include(e => e.AudienceAge)
+            .Include(e => e.Actor)
+                .ThenInclude(a => a.ActorType)
+            .Include(e => e.EventStatus)
+            .Include(e => e.VisibilityType)
+            .Include(e => e.EventFormat)
+            .Include(e => e.Madhab)
+            .Include(e => e.FeaturedImage)
+            .Include(e => e.AtprotoRecord)
+            .ToListAsync();
     }
 
-    public async Task<int> GetTotalCountAsync(
-        EventStatus? status = null,
-        CancellationToken cancellationToken = default)
+    public async Task<List<Event>> GetMyEventsWithDetails(string userId)
     {
-        var query = _context.Events.AsQueryable();
-
-        if (status.HasValue)
-            query = query.Where(e => e.Status == status.Value);
-
-        return await query.CountAsync(cancellationToken);
+        return await _dbContext.Events
+            .Include(e => e.EventType)
+            .Include(e => e.AudienceGender)
+            .Include(e => e.AudienceAge)
+            .Include(e => e.Actor)
+                .ThenInclude(a => a.ActorType)
+                .ThenInclude(at => at.Organization)
+                .ThenInclude(o => o.Members.Where(m => m.UserId.ToString() == userId))
+            .Include(e => e.EventStatus)
+            .Include(e => e.VisibilityType)
+            .Include(e => e.EventFormat)
+            .Include(e => e.Madhab)
+            .Include(e => e.FeaturedImage)
+            .Include(e => e.AtprotoRecord)
+            .Where(e => e.Actor.Organization.Members.Any(m => m.UserId.ToString() == userId))
+            .ToListAsync();
     }
-
-    public void Add(Event entity) => _context.Events.Add(entity);
-    public void Update(Event entity) => _context.Events.Update(entity);
-    public void Remove(Event entity) => _context.Events.Remove(entity);
 }
 
-// Step 4: Register in API/Blazor
-// File: src/Explore.API/Program.cs
+// Step 4: Register in API (Composition Root)
+// File: Explore.API/Program.cs
 builder.Services.AddScoped<IEventRepository, EventRepository>();
 ```
 
@@ -425,120 +543,114 @@ builder.Services.AddScoped<IEventRepository, EventRepository>();
 
 **❌ Before** (Validation in wrong place):
 ```csharp
-// File: src/Explore.Domain/Entities/Event.cs
+// File: Explore.Domain/Event.cs
 using System.ComponentModel.DataAnnotations;  // ❌ VIOLATION!
 
 public class Event
 {
     [Required]  // ❌ This is validation, not an invariant
-    [MaxLength(200)]  // ❌ Database concern
+    [MaxLength(500)]  // ❌ Database concern
     public string Title { get; set; } = string.Empty;
 
     [Range(1, 10000)]  // ❌ Arbitrary validation rule
-    public int? MaxParticipants { get; set; }
+    public int? MaxAudienceAttendees { get; set; }
 }
 ```
 
 **✅ After** (Proper separation):
 ```csharp
-// File: src/Explore.Domain/Entities/Event.cs
-namespace Explore.Domain.Entities;
+// File: Explore.Domain/Event.cs
+namespace Explore.Domain;
+
+using System;
+using System.ComponentModel.DataAnnotations.Schema;
 
 public class Event
 {
-    public Guid Id { get; private set; }
-    public string Title { get; private set; } = string.Empty;
-    public int? MaxParticipants { get; private set; }
+    public Guid Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public decimal? Price { get; set; }
+    public string CurrencyCode { get; set; } = string.Empty;
+    public int TotalViews { get; set; }
+    
+    [ForeignKey("EventType")]
+    public int EventTypeId { get; set; }
+    public EventType EventType { get; set; }
 
-    private readonly List<Participant> _participants = new();
-    public IReadOnlyCollection<Participant> Participants => _participants.AsReadOnly();
-
-    // ✅ INVARIANT: Title cannot be empty (business rule)
-    public void SetTitle(string title)
-    {
-        if (string.IsNullOrWhiteSpace(title))
-            throw new ArgumentException("Title cannot be empty", nameof(title));
-
-        Title = title.Trim();
-    }
-
-    // ✅ INVARIANT: Cannot exceed max participants (business rule)
-    public void AddParticipant(Participant participant)
-    {
-        if (MaxParticipants.HasValue && _participants.Count >= MaxParticipants.Value)
-            throw new EventCapacityExceededException(Id, MaxParticipants.Value);
-
-        _participants.Add(participant);
-    }
-
-    // ✅ INVARIANT: Max participants must be >= current participants
-    public void SetMaxParticipants(int maxParticipants)
-    {
-        if (maxParticipants < _participants.Count)
-            throw new InvalidOperationException(
-                $"Cannot set max participants to {maxParticipants} when {_participants.Count} are already registered");
-
-        MaxParticipants = maxParticipants;
-    }
+    [ForeignKey("AudienceGender")]
+    public int AudienceGenderId { get; set; }
+    public AudienceGender AudienceGender { get; set; }
+    
+    // ✅ No validation annotations - domain is pure
 }
 
-// File: src/Explore.Application/Features/Events/Commands/CreateEventCommandValidator.cs
-namespace Explore.Application.Features.Events.Commands;
+// File: Explore.Application/DTOs/Event/Validators/CreateEventDtoValidator.cs
+namespace Explore.Application.DTOs.Event.Validators;
 
 using FluentValidation;
+using Explore.Application.Contracts.Persistence;
 
 // ✅ INPUT VALIDATION: Can vary by use case
-public class CreateEventCommandValidator : AbstractValidator<CreateEventCommand>
+public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
 {
-    public CreateEventCommandValidator()
+    private readonly IEventTypeRepository _eventTypeRepository;
+    private readonly IAudienceGenderRepository _audienceGenderRepository;
+    private readonly IAudienceAgeRepository _audienceAgeRepository;
+
+    public CreateEventDtoValidator(
+        IAudienceAgeRepository audienceAgeRepository,
+        IAudienceGenderRepository audienceGenderRepository,
+        IEventTypeRepository eventTypeRepository)
     {
+        _audienceAgeRepository = audienceAgeRepository;
+        _audienceGenderRepository = audienceGenderRepository;
+        _eventTypeRepository = eventTypeRepository;
+
         RuleFor(x => x.Title)
             .NotEmpty().WithMessage("Title is required")
-            .MaximumLength(200).WithMessage("Title must not exceed 200 characters")
-            .Matches(@"^[a-zA-Z0-9\s\-]+$").WithMessage("Title contains invalid characters");
+            .MaximumLength(500).WithMessage("Title must not exceed 500 characters");
 
-        RuleFor(x => x.MaxParticipants)
-            .InclusiveBetween(1, 10000).When(x => x.MaxParticipants.HasValue)
-            .WithMessage("Max participants must be between 1 and 10000");
+        RuleFor(x => x.Description)
+            .MaximumLength(500).When(x => !string.IsNullOrEmpty(x.Description))
+            .WithMessage("Description must not exceed 500 characters");
+
+        RuleFor(x => x.EventTypeId)
+            .NotEmpty().WithMessage("Event type is required")
+            .MustAsync(async (id, cancellation) =>
+            {
+                var exists = await _eventTypeRepository.Exists(id);
+                return exists;
+            })
+            .WithMessage("Event type not found");
     }
 }
 
-// File: src/Explore.Application/Features/Events/Commands/UpdateEventCommandValidator.cs
+// File: Explore.Application/DTOs/Event/Validators/UpdateEventDtoValidator.cs
 // ✅ UPDATE validation can be different (e.g., allow partial updates)
-public class UpdateEventCommandValidator : AbstractValidator<UpdateEventCommand>
+public class UpdateEventDtoValidator : AbstractValidator<UpdateEventDto>
 {
-    public UpdateEventCommandValidator()
+    public UpdateEventDtoValidator()
     {
+        RuleFor(x => x.Id)
+            .NotEmpty().WithMessage("Id is required");
+
         // Maybe title is optional when updating
         RuleFor(x => x.Title)
-            .MaximumLength(200).When(x => !string.IsNullOrEmpty(x.Title))
-            .WithMessage("Title must not exceed 200 characters");
-    }
-}
-
-// File: src/Explore.Persistence/Configurations/EventConfiguration.cs
-namespace Explore.Persistence.Configurations;
-
-// ✅ DATABASE CONSTRAINTS
-public class EventConfiguration : IEntityTypeConfiguration<Event>
-{
-    public void Configure(EntityTypeBuilder<Event> builder)
-    {
-        builder.Property(e => e.Title)
-            .IsRequired()        // Database constraint
-            .HasMaxLength(200);  // Database constraint
+            .MaximumLength(500).When(x => !string.IsNullOrEmpty(x.Title))
+            .WithMessage("Title must not exceed 500 characters");
     }
 }
 ```
 
 **Decision Matrix**:
 
-| Question | Domain Invariant | Application Validation | Persistence Constraint |
-|----------|------------------|----------------------|----------------------|
-| Can it vary by use case? | ❌ No | ✅ Yes | ❌ No |
-| Can entity exist without it? | ❌ No | ✅ Yes | ✅ Yes |
-| Is it a business rule? | ✅ Yes | ⚠️ Maybe | ❌ No |
-| Example | "Capacity cannot be less than current participants" | "Title required for CREATE, optional for UPDATE" | "Title max 200 chars in DB" |
+| Question | Domain Invariant | Application Validation |
+|----------|------------------|----------------------|
+| Can it vary by use case? | ❌ No | ✅ Yes |
+| Can entity exist without it? | ❌ No | ✅ Yes |
+| Is it a business rule? | ✅ Yes | ⚠️ Maybe |
+| Example | "Event must have actor" | "Title required for CREATE, optional for UPDATE" |
 
 ---
 
@@ -548,7 +660,7 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
 
 **❌ Before** (DTOs in wrong layer):
 ```csharp
-// File: src/Explore.API/Models/EventDto.cs
+// File: Explore.API/Models/EventDto.cs
 namespace Explore.API.Models;  // ❌ API-specific
 
 public class EventDto
@@ -557,7 +669,7 @@ public class EventDto
     public string Title { get; set; } = string.Empty;
 }
 
-// File: src/Explore.Blazor.Client/Models/EventDto.cs
+// File: Explore.Blazor.Client/Models/EventDto.cs
 namespace Explore.Blazor.Client.Models;  // ❌ Duplicated!
 
 public class EventDto  // ❌ Same DTO copied
@@ -569,42 +681,60 @@ public class EventDto  // ❌ Same DTO copied
 
 **✅ After** (DTOs in Application layer):
 ```csharp
-// File: src/Explore.Application/DTOs/Events/EventDto.cs
-namespace Explore.Application.DTOs.Events;
+// File: Explore.Application/DTOs/Event/EventListDto.cs
+namespace Explore.Application.DTOs.Event;
+
+using System;
 
 // ✅ Shared DTO in Application layer
-public record EventDto
+public class EventListDto
 {
-    public Guid Id { get; init; }
-    public string Title { get; init; } = string.Empty;
-    public string Description { get; init; } = string.Empty;
-    public DateTime StartsAt { get; init; }
-    public DateTime? EndsAt { get; init; }
-    public string OrganizationName { get; init; } = string.Empty;
-    public int ParticipantCount { get; init; }
+    public Guid Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string EventTypeName { get; set; } = string.Empty;
+    public string AudienceGenderName { get; set; } = string.Empty;
+    public string AudienceAgeName { get; set; } = string.Empty;
 }
 
-// File: src/Explore.API/Controllers/EventsController.cs
-using Explore.Application.DTOs.Events;  // ✅ References Application DTOs
+// File: Explore.API/Controllers/EventController.cs
+namespace Explore.API.Controllers;
 
-[HttpGet("{id:guid}")]
-public async Task<ActionResult<EventDto>> GetById(Guid id)
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Explore.Application.DTOs.Event;  // ✅ References Application DTOs
+using Explore.Application.Features.Events.Requests.Queries;
+using MediatR;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+[Route("api/v1/[controller]")]
+[ApiController]
+public class EventController : ControllerBase
 {
-    var query = new GetEventByIdQuery(id);
-    var result = await _mediator.Send(query);
-    return result is not null ? Ok(result) : NotFound();
+    private readonly IMediator _mediator;
+
+    public EventController(IMediator mediator) => _mediator = mediator;
+
+    [HttpGet]
+    [AllowAnonymous]
+    public async Task<ActionResult<List<EventListDto>>> GetAll()
+    {
+        var events = await _mediator.Send(new GetEventListRequest());
+        return Ok(events);
+    }
 }
 
-// File: src/Explore.Blazor.Client/Pages/EventsList.razor
-@using Explore.Application.DTOs.Events  @* ✅ References same DTOs *@
+// File: Explore.Blazor.Client/Pages/EventsList.razor
+@using Explore.Application.DTOs.Event  @* ✅ References same DTOs *@
 @inject HttpClient Http
 
 @code {
-    private List<EventDto>? _events;
+    private List<EventListDto>? _events;
 
     protected override async Task OnInitializedAsync()
     {
-        _events = await Http.GetFromJsonAsync<List<EventDto>>("/api/v1/events");
+        _events = await Http.GetFromJsonAsync<List<EventListDto>>("/api/v1/event");
     }
 }
 ```
@@ -623,8 +753,9 @@ public async Task<ActionResult<EventDto>> GetById(Guid id)
 
 **Location**: Always in **API or Blazor Program.cs** (Presentation layer)
 
+**Real Example from Explore.API/Program.cs**:
 ```csharp
-// File: src/Explore.API/Program.cs
+// File: Explore.API/Program.cs
 using Explore.Application;
 using Explore.Infrastructure;
 using Explore.Persistence;
@@ -632,96 +763,30 @@ using Explore.Persistence;
 var builder = WebApplication.CreateBuilder(args);
 
 // ✅ Register Application layer services
-builder.Services.AddApplication();  // Extension method from Application
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(MappingProfile).Assembly));
+builder.Services.AddAutoMapper(typeof(MappingProfile));
+
+// ✅ Register Persistence layer services (DbContext, Repositories)
+builder.Services.AddDbContext<ExploreDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddScoped<IEventRepository, EventRepository>();
+builder.Services.AddScoped<IActorRepository, ActorRepository>();
+builder.Services.AddScoped<IOrganizationRepository, OrganizationRepository>();
 
 // ✅ Register Infrastructure layer services
-builder.Services.AddInfrastructure(builder.Configuration);  // Extension method from Infrastructure
-
-// ✅ Register Persistence layer services
-builder.Services.AddPersistence(builder.Configuration);  // Extension method from Persistence
+builder.Services.AddScoped<IEmailService, SendGridEmailService>();
+builder.Services.AddScoped<IFileStorageService, AzureBlobStorageService>();
 
 var app = builder.Build();
 app.Run();
-
-// File: src/Explore.Application/DependencyInjection.cs
-namespace Explore.Application;
-
-public static class DependencyInjection
-{
-    public static IServiceCollection AddApplication(this IServiceCollection services)
-    {
-        // Register MediatR
-        services.AddMediatR(cfg =>
-            cfg.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly));
-
-        // Register FluentValidation
-        services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
-
-        // Register AutoMapper
-        services.AddAutoMapper(typeof(DependencyInjection).Assembly);
-
-        return services;
-    }
-}
-
-// File: src/Explore.Persistence/DependencyInjection.cs
-namespace Explore.Persistence;
-
-public static class DependencyInjection
-{
-    public static IServiceCollection AddPersistence(
-        this IServiceCollection services,
-        IConfiguration configuration)
-    {
-        // Register DbContext
-        services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseNpgsql(
-                configuration.GetConnectionString("DefaultConnection"),
-                b => b.UseNetTopologySuite()));  // PostGIS support
-
-        // Register interface → implementation mapping
-        services.AddScoped<IApplicationDbContext>(provider =>
-            provider.GetRequiredService<ApplicationDbContext>());
-
-        // Register repositories
-        services.AddScoped<IEventRepository, EventRepository>();
-        services.AddScoped<IOrganizationRepository, OrganizationRepository>();
-
-        return services;
-    }
-}
-
-// File: src/Explore.Infrastructure/DependencyInjection.cs
-namespace Explore.Infrastructure;
-
-public static class DependencyInjection
-{
-    public static IServiceCollection AddInfrastructure(
-        this IServiceCollection services,
-        IConfiguration configuration)
-    {
-        // Register email service
-        services.AddScoped<ISendGridClient>(provider =>
-            new SendGridClient(configuration["SendGrid:ApiKey"]));
-
-        services.AddScoped<IEmailService, SendGridEmailService>();
-
-        // Register file storage
-        services.AddScoped<IFileStorageService, AzureBlobStorageService>();
-
-        // Register time provider
-        services.AddSingleton<TimeProvider>(TimeProvider.System);
-
-        return services;
-    }
-}
 ```
 
 **Benefits**:
-- ✅ All layers register their own dependencies
-- ✅ API/Blazor just calls extension methods
-- ✅ Each layer is responsible for its own DI setup
-- ✅ Clear separation of concerns
+- ✅ All dependencies registered in one place
+- ✅ Clear composition root
+- ✅ Each layer provides services
+- ✅ Testable with mock implementations
 
 ---
 

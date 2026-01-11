@@ -1,5 +1,5 @@
-using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Application.Contracts.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories
@@ -13,23 +13,29 @@ namespace Explore.Persistence.Repositories
             _dbContext = dbContext;
         }
 
-        public async Task<AtprotoRecord?> GetByUri(string uri)
+        public async Task<List<AtprotoRecord>> GetAllAtprotoRecords()
         {
-            return await _dbContext.AtprotoRecords
-                .FirstOrDefaultAsync(r => r.Uri == uri);
+            return await _dbContext.AtprotoRecords.ToListAsync();
         }
 
-        public async Task<AtprotoRecord?> GetByDidAndCollection(string did, string collection, string recordKey)
+        public async Task<AtprotoRecord?> GetAtprotoRecordByUri(string uri)
         {
-            return await _dbContext.AtprotoRecords
-                .FirstOrDefaultAsync(r => r.Did == did && r.Collection == collection && r.RecordKey == recordKey);
+            return await _dbContext.AtprotoRecords.FirstOrDefaultAsync(r => r.Uri == uri);
         }
 
-        public async Task<List<AtprotoRecord>> GetByDid(string did)
+        public async Task<List<AtprotoRecord>> GetAtprotoRecordsByDid(string did)
         {
-            return await _dbContext.AtprotoRecords
-                .Where(r => r.Did == did)
-                .ToListAsync();
+            return await _dbContext.AtprotoRecords.Where(r => r.Did == did).ToListAsync();
+        }
+
+        public async Task<List<AtprotoRecord>> GetAtprotoRecordsByCollection(string collection)
+        {
+            return await _dbContext.AtprotoRecords.Where(r => r.Collection == collection).ToListAsync();
+        }
+
+        public async Task<bool> Exists(Guid id)
+        {
+            return await _dbContext.AtprotoRecords.AnyAsync(r => r.Id == id);
         }
     }
 }

@@ -25,5 +25,19 @@ namespace Explore.Persistence.Repositories
                 .Where(t => t.UserId == userId)
                 .ToListAsync();
         }
+
+        public async Task<UserAuthenticationToken?> GetUserAuthenticationTokenWithDetails(Guid id)
+        {
+            return await _dbContext.UserAuthenticationTokens
+                .Include(t => t.User)
+                .FirstOrDefaultAsync(t => t.Id == id);
+        }
+
+        public async Task<List<UserAuthenticationToken>> GetUserAuthenticationTokensWithDetails()
+        {
+            return await _dbContext.UserAuthenticationTokens
+                .Include(t => t.User)
+                .ToListAsync();
+        }
     }
 }

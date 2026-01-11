@@ -7,7 +7,6 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventCategories.Validators;
 using Explore.Application.Features.EventCategories.Requests.Commands;
 using Explore.Application.Responses;
-using Explore.Domain;
 using MediatR;
 
 namespace Explore.Application.Features.EventCategories.Handlers.Commands
@@ -46,7 +45,7 @@ namespace Explore.Application.Features.EventCategories.Handlers.Commands
                 return response;
             }
 
-            var eventCategories = _mapper.Map<EventCategories>(request.EventCategoriesDto);
+            var eventCategories = _mapper.Map<Domain.EventCategories>(request.EventCategoriesDto);
             eventCategories = await _eventCategoriesRepository.Create(eventCategories);
 
             response.Success = true;

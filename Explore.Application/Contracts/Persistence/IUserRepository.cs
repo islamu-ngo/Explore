@@ -8,6 +8,7 @@ namespace Explore.Application.Contracts.Persistence
     public interface IUserRepository : IGenericRepository<User, Guid>
     {
         Task<User?> GetUserWithDetails(Guid id);
+        Task<User?> GetUserByEmail(string email);
         Task<bool> ExistsByEmail(string email);
         Task<List<User>> GetUsersByIdsAsync(List<Guid> ids);
     }

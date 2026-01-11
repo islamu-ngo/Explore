@@ -20,6 +20,8 @@ namespace Explore.Persistence.Repositories
                 .Include(a => a.DidCustodyType)
                 .Include(a => a.ProfilePicture)
                 .Include(a => a.Tenant)
+                .Include(a => a.User)
+                .Include(a => a.Organization)
                 .FirstOrDefaultAsync(a => a.Id == id);
         }
 
@@ -43,6 +45,25 @@ namespace Explore.Persistence.Repositories
                 .Include(a => a.ActorType)
                 .Where(a => a.TenantId == tenantId)
                 .ToListAsync();
+        }
+
+        public async Task<bool> DidExists(string did)
+        {
+            return await _dbContext.Actors.AnyAsync(a => a.Did == did);
+        }
+
+        public async Task<Actor?> GetActorByUserId(Guid userId)
+        {
+            return await _dbContext.Actors
+                .Include(a => a.ActorType)
+                .FirstOrDefaultAsync(a => a.UserId == userId);
+        }
+
+        public async Task<Actor?> GetActorByOrganizationId(Guid organizationId)
+        {
+            return await _dbContext.Actors
+                .Include(a => a.ActorType)
+                .FirstOrDefaultAsync(a => a.OrganizationId == organizationId);
         }
     }
 }

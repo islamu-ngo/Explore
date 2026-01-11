@@ -1,10 +1,11 @@
-﻿using Explore.Application.DTOs.AudienceAge;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Explore.Application.DTOs.AudienceAge;
 using Explore.Application.Features.AudienceAges.Requests.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-
-// For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
 namespace Explore.API.Controllers
 {
@@ -13,48 +14,40 @@ namespace Explore.API.Controllers
     public class AudienceAgeController : ControllerBase
     {
         private readonly IMediator _mediator;
-        private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public AudienceAgeController(IMediator mediator, IHttpContextAccessor httpContextAccessor)
+        public AudienceAgeController(IMediator mediator)
         {
             _mediator = mediator;
-            _httpContextAccessor = httpContextAccessor;
         }
 
-        // GET: api/<AudienceAgeController>
+        // GET: api/v1/audienceage
         [HttpGet]
-        [EndpointSummary("Get all Audience Ages Options")]
-        [EndpointDescription("Get A List of all the Audience Ages Options")]
+        [EndpointSummary("Get all Audience Age groups")]
+        [EndpointDescription("Retrieve a list of all audience age groups (Children, Youth, Adults, Seniors, All Ages)")]
         [AllowAnonymous]
+        [ProducesResponseType(typeof(List<AudienceAgeListDto>), StatusCodes.Status200OK)]
         public async Task<ActionResult<List<AudienceAgeListDto>>> GetAll()
         {
             var audienceAges = await _mediator.Send(new GetAudienceAgeListRequest());
             return Ok(audienceAges);
         }
 
-        // GET api/<AudienceAgeController>/5
+        // GET: api/v1/audienceage/{id}
         [HttpGet("{id}")]
-        public string Get(int id)
+        [EndpointSummary("Get Audience Age group by ID")]
+        [EndpointDescription("Retrieve details of a specific audience age group")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(AudienceAgeDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<AudienceAgeDto>> GetById(int id)
         {
-            return "value";
-        }
+            var audienceAge = await _mediator.Send(new GetAudienceAgeDetailsRequest { Id = id });
+            if (audienceAge == null)
+            {
+                return NotFound();
+            }
 
-        // POST api/<AudienceAgeController>
-        [HttpPost]
-        public void Post([FromBody] string value)
-        {
-        }
-
-        // PUT api/<AudienceAgeController>/5
-        [HttpPut("{id}")]
-        public void Put(int id, [FromBody] string value)
-        {
-        }
-
-        // DELETE api/<AudienceAgeController>/5
-        [HttpDelete("{id}")]
-        public void Delete(int id)
-        {
+            return Ok(audienceAge);
         }
     }
 }

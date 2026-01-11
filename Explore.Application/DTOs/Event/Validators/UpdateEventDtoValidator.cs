@@ -72,8 +72,8 @@ namespace Explore.Application.DTOs.Event.Validators
                 .NotNull()
                 .MustAsync(async (id, cancellation) =>
                 {
-                    var organizationExists = await _organizationRepository.Exists(id);
-                    return organizationExists;
+                    var actorExists = await _actorRepository.Exists(id);
+                    return actorExists;
                 }).WithMessage("{PropertyName} does not exist.");
 
             RuleFor(p => p.Price)
@@ -89,9 +89,7 @@ namespace Explore.Application.DTOs.Event.Validators
                 .NotNull()
                 .MustAsync(async (id, cancellation) =>
                 {
-                    if (!id.HasValue)
-                        return true;
-                    var storageObjectExists = await _storageObjectRepository.Exists(id.Value);
+                    var storageObjectExists = await _storageObjectRepository.Exists(id);
                     return storageObjectExists;
                 }).WithMessage("{PropertyName} does not exist.");
 

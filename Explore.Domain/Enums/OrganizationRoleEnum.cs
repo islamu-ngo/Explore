@@ -2,8 +2,11 @@ namespace Explore.Domain.Enums
 {
     public enum OrganizationRoleEnum
     {
-        Admin = 1,
-        Moderator = 2,
-        Member = 3
+        Creator = 1,
+        CoOwner = 2,
+        Admin = 3,
+        Moderator = 4,
+        Member = 5,
+        Viewer = 6
     }
 }

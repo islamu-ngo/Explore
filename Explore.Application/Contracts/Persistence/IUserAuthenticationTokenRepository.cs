@@ -6,5 +6,7 @@ namespace Explore.Application.Contracts.Persistence
     {
         Task<UserAuthenticationToken?> GetByUserAndProvider(Guid userId, string provider);
         Task<List<UserAuthenticationToken>> GetByUser(Guid userId);
+        Task<UserAuthenticationToken?> GetUserAuthenticationTokenWithDetails(Guid id);
+        Task<List<UserAuthenticationToken>> GetUserAuthenticationTokensWithDetails();
     }
 }

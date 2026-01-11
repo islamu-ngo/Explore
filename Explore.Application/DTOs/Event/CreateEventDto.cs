@@ -17,8 +17,12 @@ namespace Explore.Application.DTOs.Event
         public int AudienceGenderId { get; set; }
         public int AudienceAgeId { get; set; }
 
-        // Actor (Owner - User or Organization)
-        public Guid ActorId { get; set; }
+        /// <summary>
+        /// Optional: The organization that owns this event.
+        /// If null, the event is created under the user's personal actor.
+        /// If provided, the user must be an admin of the organization.
+        /// </summary>
+        public Guid? OrganizationId { get; set; }
 
         // Pricing
         public decimal? Price { get; set; }

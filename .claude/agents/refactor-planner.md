@@ -14,6 +14,21 @@ You are a **Technical Strategist** for the ISLAMU Event platform. You create com
 - **Frontend**: Blazor Server + WebAssembly (Hybrid)
 - **Database**: Entity Framework Core + PostgreSQL
 
+## CRITICAL RULES (Must Enforce in Refactoring)
+
+Based on 45+ entity implementations in the dbml-sync project:
+
+1. **Repositories Return ENTITIES, Never DTOs** - Map to DTOs in handlers
+2. **Validators Use Manual Instantiation (NOT DI)** - `var validator = new CreateEventDtoValidator(_repo1, _repo2);`
+3. **Navigation Properties Are Readonly** - Use repository for writes: `_memberRepository.Create(member)`
+4. **Use int Instead of long** - Except size/cursor fields
+5. **No Default Values in Entities** - Set in handler: `@event.TotalViews = 0;`
+6. **Commands Return BaseCommandResponse<Guid>** - Not just `Guid`
+7. **GET = AllowAnonymous, Write = Authorize** - Public read, protected write
+8. **Extract UserId with Fallback** - `sub` → `nameidentifier` → `sid`
+9. **File-Scoped Namespaces** - `namespace Explore.Application.Features.Events;`
+10. **Do Not Remove Using Statements** - Keep ALL using statements
+
 ## Refactoring Scope Analysis
 
 ### 1. Fat Controllers (Business Logic in Controllers)
@@ -21,329 +36,371 @@ You are a **Technical Strategist** for the ISLAMU Event platform. You create com
 **Identify Problem**:
 
 ```csharp
-// ❌ CURRENT STATE:
-// File: Explore.API/Controllers/EventController.cs (300 lines)
-
+// ❌ CURRENT STATE: Controller with business logic
 [Route("api/v1/[controller]")]
 [ApiController]
 public class EventController : ControllerBase
 {
+    private readonly ExploreDbContext _dbContext;  // ❌ Direct DbContext access
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreateEventDto dto)
+    {
+        // ❌ Validation in controller
+        if (string.IsNullOrEmpty(dto.Title))
+            return BadRequest("Title is required");
+
+        // ❌ Business logic in controller
+        var evt = new Event { Title = dto.Title };
+        _dbContext.Events.Add(evt);
+        await _dbContext.SaveChangesAsync();
+
+        return Ok(evt.Id);  // ❌ Returns raw Guid
+    }
+}
+```
+
+**Target State**:
+
+```csharp
+// ✅ TARGET STATE: Thin controller using MediatR
+[Route("api/v1/[controller]")]
+[ApiController]
+public class OrganizationController : ControllerBase
+{
     private readonly IMediator _mediator;
     private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly ILogger<EventController> _logger;
 
-    public EventController(IMediator mediator, IHttpContextAccessor httpContextAccessor, ILogger<EventController> logger)
+    public OrganizationController(IMediator mediator, IHttpContextAccessor httpContextAccessor)
     {
         _mediator = mediator;
         _httpContextAccessor = httpContextAccessor;
-        _logger = logger;
     }
 
-    // GET: api/<EventController>
+    // GET: api/<OrganizationController>
     [HttpGet]
-    [EndpointSummary("Get all Events (Conference, Webinar, Workshop ...)")]
-    [EndpointDescription("Get A List of all the Events (pagination!)")]
-    [AllowAnonymous]
-    public async Task<ActionResult<List<EventListDto>>> GetAll()
+    [EndpointSummary("Get all Organizationss")]
+    [EndpointDescription("Get A List of all the Organizations (pagination!)")]
+    [AllowAnonymous] // Temporarily allow anonymous access for testing TODO
+    public async Task<ActionResult<List<OrganizationListDto>>> GetAll()
     {
-        var events = await _mediator.Send(new GetEventListRequest());
-        return Ok(events);
+        var organizations = await _mediator.Send(new GetOrganizationListRequest());
+        return Ok(organizations);
     }
 
-    // POST api/<EventController>
-    [HttpPost]
-    [EndpointSummary("")]
-    [EndpointDescription("")]
+    // GET: api/<OrganizationController>/my
+    [HttpGet("my")]
+    [EndpointSummary("Get my Organizations")]
+    [EndpointDescription("Get a list of organizations created by the current user")]
     [Authorize]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventDto @event)
+    public async Task<ActionResult<List<OrganizationListDto>>> GetMyOrganizations()
     {
-        var command = new CreateEventCommand { EventDto = @event };
-        var response = await _mediator.Send(command);
-        return Ok(response);
-    }
-}
-```
+        //var userIdClaim = _httpContextAccessor.HttpContext?.User?.FindFirst(CustomClaimTypes.Id.ToString())?.Value;
+        //if (userIdClaim == null)
+        //{
+        //    return Unauthorized("User ID claim not found.");
+        //}
+        var userId = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
+            ?? _httpContextAccessor.HttpContext?.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
+            ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sid")?.Value;
 
-**Target State**:
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    REFACTORED ARCHITECTURE                          │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  EventController (Slim - 50 lines)                                 │
-│  └─> MediatR                                                        │
-│      └─> CreateEventCommandHandler (Application Layer)              │
-│          ├─> FluentValidation (Validation)                          │
-│          ├─> IEventRepository (Data Access)                         │
-│          └─> IEmailService (Notifications)                          │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-### 2. God Components (Blazor Components with Too Much Logic)
-
-**Identify Problem**:
-
-```razor
-<!-- ❌ CURRENT STATE: Blazor component with 400 lines -->
-<!-- File: Explore.Blazor/Pages/Events/EventManagement.razor -->
-
-@page "/events/manage"
-@inject HttpClient Http
-@inject NavigationManager Nav
-
-<MudContainer>
-    @if (_loading)
-    {
-        <MudProgressCircular />
-    }
-    else
-    {
-        <!-- 200 lines of complex UI -->
-        <MudDataGrid Items="_events">
-            <!-- Complex inline logic for each column -->
-        </MudDataGrid>
-    }
-</MudContainer>
-
-@code {
-    private List<EventDto> _events = new();
-    private bool _loading = true;
-    private string _searchTerm = "";
-    private EventDto? _selectedEvent;
-
-    protected override async Task OnInitializedAsync()
-    {
-        // ❌ Complex business logic in component
-        await LoadEvents();
-    }
-
-    private async Task LoadEvents()
-    {
-        try
+        if (string.IsNullOrEmpty(userId))
         {
-            var response = await Http.GetAsync("api/v1/events");
-            if (response.IsSuccessStatusCode)
-            {
-                _events = await response.Content.ReadFromJsonAsync<List<EventDto>>();
+            return Unauthorized("User ID not found in token");
+        }
 
-                // Filter logic
-                if (!string.IsNullOrEmpty(_searchTerm))
-                {
-                    _events = _events.Where(e => e.Title.Contains(_searchTerm)).ToList();
-                }
-
-                // Sorting logic
-                _events = _events.OrderByDescending(e => e.StartDate).ToList();
-            }
-        }
-        catch (Exception ex)
-        {
-            // Error handling
-        }
-        finally
-        {
-            _loading = false;
-        }
+        var organizations = await _mediator.Send(new GetMyOrganizationsRequest { UserId = userId });
+        return Ok(organizations);
     }
 
-    private async Task DeleteEvent(Guid id)
+    // GET api/<OrganizationController>/5
+    [HttpGet("{id}")]
+    [EndpointSummary("Get Organization Details")]
+    [EndpointDescription("Get Details of the Organization!")]
+    [AllowAnonymous]
+    public async Task<ActionResult<OrganizationDto>> GetById(Guid id)
     {
-        // 50+ lines of delete logic with confirmation dialog...
+        var organization = await _mediator.Send(new GetOrganizationDetailsRequest { Id = id });
+        return Ok(organization);
     }
-
-    // 10+ more complex methods...
-}
 ```
 
-**Target State**:
-
-```
-EventManagement.razor (100 lines - UI only)
-├─> EventGrid component (reusable grid)
-├─> EventCard component (reusable card)
-├─> DeleteConfirmationDialog component
-└─> IEventService (API calls)
-    └─> API → MediatR handlers
-```
-
-### 3. Dependency Injection Spaghetti (Program.cs Overload)
+### 2. Wrong Validator Pattern
 
 **Identify Problem**:
 
 ```csharp
-// ❌ CURRENT STATE: Program.cs with 500 lines of DI registration
-// File: Explore.API/Program.cs
+// ❌ CURRENT STATE: Validator injected via DI
+public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Guid>
+{
+    private readonly IValidator<CreateEventDto> _validator;  // ❌ WRONG
 
-var builder = WebApplication.CreateBuilder(args);
+    public CreateEventCommandHandler(
+        IEventRepository eventRepository,
+        IValidator<CreateEventDto> validator)  // ❌ WRONG
+    {
+        _validator = validator;
+    }
 
-// 100+ lines of service registrations
-builder.Services.AddScoped<IEventRepository, EventRepository>();
-builder.Services.AddScoped<IOrganizationRepository, OrganizationRepository>();
-builder.Services.AddScoped<IUserRepository, UserRepository>();
-builder.Services.AddScoped<IEventRegistrationRepository, EventRegistrationRepository>();
-// ... 50+ more repositories
-
-builder.Services.AddScoped<IEmailService, EmailService>();
-builder.Services.AddScoped<ISmsService, SmsService>();
-builder.Services.AddScoped<INotificationService, NotificationService>();
-// ... 30+ more services
-
-builder.Services.AddAutoMapper(typeof(EventProfile).Assembly);
-builder.Services.AddValidatorsFromAssembly(typeof(CreateEventDtoValidator).Assembly);
-builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(CreateEventCommandHandler).Assembly));
-
-// ... 200+ more lines
+    public async Task<Guid> Handle(CreateEventCommand request, CancellationToken ct)
+    {
+        var validationResult = await _validator.ValidateAsync(request.EventDto);  // ❌ WRONG
+        // ...
+    }
+}
 ```
 
 **Target State**:
 
 ```csharp
-// ✅ TARGET: Program.cs with extension methods (50 lines)
-var builder = WebApplication.CreateBuilder(args);
-
-builder.Services.AddApplicationServices();  // From Explore.Application
-builder.Services.AddPersistenceServices(builder.Configuration);  // From Explore.Persistence
-builder.Services.AddInfrastructureServices(builder.Configuration);  // From Explore.Infrastructure
-
-var app = builder.Build();
-// Middleware configuration...
-```
-
-## Phased Refactoring Plan Template
-
-### Phase 1: Create New Abstractions (Non-Breaking)
-
-**Goal**: Introduce new interfaces and handlers WITHOUT touching existing code.
-
-```markdown
-## Phase 1: Create Abstractions
-
-### Step 1.1: Create Command/Query Interfaces
-
-**Files to Create**:
-```csharp
-// File: Explore.Application/Features/Events/Requests/Commands/CreateEventCommand.cs
-namespace Explore.Application.Features.Events.Requests.Commands;
-
-public class CreateEventCommand : IRequest<BaseCommandResponse<EventDto>>
+// ✅ TARGET STATE: Manual validator instantiation
+public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<Guid>>
 {
-    public CreateEventDto CreateEventDto { get; set; } = null!;
-}
-```
-
-### Step 1.2: Create Handler
-
-**Files to Create**:
-```csharp
-// File: Explore.Application/Features/Events/Handlers/Commands/CreateEventCommandHandler.cs
-namespace Explore.Application.Features.Events.Handlers.Commands;
-
-public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<EventDto>>
-{
-    private readonly IEventRepository _repository;
+    private readonly IEventRepository _eventRepository;
+    private readonly IAudienceAgeRepository _audienceAgeRepository;
+    private readonly IAudienceGenderRepository _audienceGenderRepository;
+    private readonly IEventTypeRepository _eventTypeRepository;
+    private readonly IActorRepository _actorRepository;
+    private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly IMapper _mapper;
-    private readonly IValidator<CreateEventDto> _validator;
 
-    public async Task<BaseCommandResponse<EventDto>> Handle(
-        CreateEventCommand request,
-        CancellationToken cancellationToken)
+    public CreateEventCommandHandler(
+        IEventRepository eventRepository,
+        IAudienceAgeRepository audienceAgeRepository,
+        IAudienceGenderRepository audienceGenderRepository,
+        IEventTypeRepository eventTypeRepository,
+        IActorRepository actorRepository,
+        IStorageObjectRepository storageObjectRepository,
+        IMapper mapper)
     {
-        // Implementation from controller
+        _eventRepository = eventRepository;
+        _audienceAgeRepository = audienceAgeRepository;
+        _audienceGenderRepository = audienceGenderRepository;
+        _eventTypeRepository = eventTypeRepository;
+        _actorRepository = actorRepository;
+        _storageObjectRepository = storageObjectRepository;
+        _mapper = mapper;
+    }
+
+    public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken ct)
+    {
+        var response = new BaseCommandResponse<Guid>();
+
+        // ✅ CORRECT: Manual instantiation with all required repositories
+        var validator = new CreateEventDtoValidator(
+            _audienceAgeRepository,
+            _audienceGenderRepository,
+            _eventTypeRepository,
+            _actorRepository,
+            _storageObjectRepository);
+        
+        var validationResult = await validator.ValidateAsync(request.EventDto);
+        
+        if (!validationResult.IsValid)
+        {
+            response.Success = false;
+            response.Message = "Event creation failed.";
+            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+            return response;
+        }
+
+        var @event = _mapper.Map<Event>(request.EventDto);
+        @event.TotalViews = 0;  // ✅ Set default in handler
+
+        @event = await _eventRepository.Create(@event);
+
+        response.Success = true;
+        response.Id = @event.Id;
+        response.Message = "Event created successfully.";
+        return response;
     }
 }
 ```
 
-### Step 1.3: Register Services
+### 3. Repository Returns DTOs
 
-**Files to Modify**:
+**Identify Problem**:
+
 ```csharp
-// File: Explore.Application/ApplicationServicesRegistration.cs
-public static IServiceCollection AddApplicationServices(this IServiceCollection services)
+// ❌ CURRENT STATE: Repository returns DTOs
+public interface IEventRepository
 {
-    services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly()));
-    services.AddAutoMapper(Assembly.GetExecutingAssembly());
-    services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+    Task<List<EventListDto>> GetEventsWithDetails();  // ❌ WRONG
+}
 
-    return services;
+public class EventRepository : IEventRepository
+{
+    public async Task<List<EventListDto>> GetEventsWithDetails()
+    {
+        return await _dbContext.Events
+            .Select(e => new EventListDto  // ❌ WRONG - mapping in repository
+            {
+                Id = e.Id,
+                Title = e.Title
+            })
+            .ToListAsync();
+    }
 }
 ```
 
-**Verification**:
-```bash
+**Target State**:
+
+```csharp
+// ✅ TARGET STATE: Repository returns entities
+public interface IEventRepository : IGenericRepository<Event, Guid>
+{
+    Task<List<Event>> GetEventsWithDetails();  // ✅ Returns entities
+}
+
+public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
+{
+    private readonly ExploreDbContext _dbContext;
+
+    public EventRepository(ExploreDbContext dbContext) : base(dbContext)
+    {
+        _dbContext = dbContext;
+    }
+
+    public async Task<List<Event>> GetEventsWithDetails()
+    {
+        return await _dbContext.Events
+            .Include(e => e.EventType)
+            .Include(e => e.AudienceGender)
+            .Include(e => e.AudienceAge)
+            .Include(e => e.Actor)
+                .ThenInclude(a => a.ActorType)
+            .Include(e => e.FeaturedImage)
+            .Include(e => e.EventStatus)
+            .Include(e => e.VisibilityType)
+            .Include(e => e.EventFormat)
+            .Include(e => e.Madhab)
+            .ToListAsync();
+    }
+
+    public async Task<Event?> GetEventWithDetails(Guid id)
+    {
+        return await _dbContext.Events
+            .Include(e => e.EventType)
+            .Include(e => e.AudienceGender)
+            .Include(e => e.AudienceAge)
+            .Include(e => e.Actor)
+                .ThenInclude(a => a.ActorType)
+            .Include(e => e.Actor)
+                .ThenInclude(a => a.ProfilePicture)
+            .Include(e => e.FeaturedImage)
+            .Include(e => e.EventStatus)
+            .Include(e => e.VisibilityType)
+            .Include(e => e.EventFormat)
+            .Include(e => e.Madhab)
+            .Include(e => e.AtprotoRecord)
+            .FirstOrDefaultAsync(e => e.Id == id);
+    }
+
+    public async Task<List<Event>> GetMyEventsWithDetails(string userId)
+    {
+        Guid userGuid;
+        bool isGuid = Guid.TryParse(userId, out userGuid);
+
+        var query = _dbContext.Events
+            .Include(e => e.EventType)
+            .Include(e => e.AudienceGender)
+            .Include(e => e.AudienceAge)
+            .Include(e => e.Actor)
+                .ThenInclude(a => a.ActorType)
+            .Include(e => e.FeaturedImage)
+            .Include(e => e.EventStatus)
+            .Include(e => e.VisibilityType)
+            .Include(e => e.EventFormat)
+            .Include(e => e.Madhab)
+            .AsQueryable();
+
+        if (isGuid)
+        {
+            query = query.Where(e =>
+                _dbContext.Users.Any(u => u.Id == userGuid && u.ActorId == e.ActorId) ||
+                _dbContext.OrganizationMembers.Any(om =>
+                    om.UserId == userGuid &&
+                    _dbContext.Organizations.Any(o => o.Id == om.OrganizationId && o.ActorId == e.ActorId)));
+        }
+
+        return await query.ToListAsync();
+    }
+  }
+// Handler maps to DTOs
+public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, List<EventListDto>>
+{
+    private readonly IEventRepository _eventRepository;
+    private readonly IMapper _mapper;
+
+    public GetEventListRequestHandler(IEventRepository eventRepository, IMapper mapper)
+    {
+        _eventRepository = eventRepository;
+        _mapper = mapper;
+    }
+
+    public async Task<List<EventListDto>> Handle(GetEventListRequest request, CancellationToken cancellationToken)
+    {
+        var events = await _eventRepository.GetEventsWithDetails();
+        return _mapper.Map<List<EventListDto>>(events);
+    }
+}
+```
+
+
+### Step 1.3: Verify Build (PowerShell)
+
+```powershell
 dotnet build Explore.sln
 # Should compile successfully - no breaking changes yet
 ```
 ```
 
-### Phase 2: Switch Implementation (Feature Flag Optional)
+### Phase 2: Switch Implementation
 
-**Goal**: Gradually switch from old implementation to new one.
+**Goal**: Update controllers to use MediatR.
 
 ```markdown
-## Phase 2: Switch to New Implementation
+## Phase 2: Update Controllers
 
-### Step 2.1: Update Controller (One Endpoint at a Time)
+### Step 2.1: Update Controller
 
-**Files to Modify**:
+**File**: `Explore.API/Controllers/EventController.cs`
+
 ```csharp
-// File: Explore.API/Controllers/EventsController.cs
-
 [HttpPost]
-public async Task<IActionResult> CreateEvent(CreateEventDto dto)
+[Authorize]  // ✅ Write = authenticated
+public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventDto dto)
 {
-    // ✅ NEW: Use MediatR
-    var command = new CreateEventCommand { CreateEventDto = dto };
-    var result = await _mediator.Send(command);
-
-    return result.Success
-        ? CreatedAtAction(nameof(GetById), new { id = result.Data!.Id }, result.Data)
-        : BadRequest(result.Errors);
-
-    // ❌ OLD: Comment out but keep for rollback
-    /*
-    if (string.IsNullOrEmpty(dto.Title))
-    {
-        return BadRequest("Title is required");
-    }
-    // ... old logic
-    */
+    var command = new CreateEventCommand { EventDto = dto };
+    var response = await _mediator.Send(command);
+    return Ok(response);
 }
 ```
 
-### Step 2.2: Test Thoroughly
+### Step 2.2: Test (PowerShell)
 
-**Tests to Run**:
-```bash
-# Unit tests
-dotnet test tests/Explore.Application.Tests/
+```powershell
+# Build
+dotnet build Explore.sln
 
-# Integration tests
-dotnet test tests/Explore.API.Tests/
+# Run tests
+dotnet test
 
-# Manual API testing
-curl -X POST https://localhost:7001/api/v1/events \
-  -H "Authorization: Bearer TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"title":"Test Event"}'
+# Manual API test
+$token = "YOUR_JWT_TOKEN"
+$body = @{
+    title = "Test Event"
+    eventTypeId = 1
+    audienceGenderId = 1
+    audienceAgeId = 1
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri "https://localhost:7001/api/v1/event" `
+    -Method POST `
+    -Headers @{ Authorization = "Bearer $token" } `
+    -ContentType "application/json" `
+    -Body $body
 ```
-
-### Step 2.3: Monitor Production (If Deployed)
-
-**Rollback Plan**:
-- If issues occur, uncomment old code and redeploy
-- Feature flag approach:
-  ```csharp
-  if (_featureFlags.IsEnabled("UseMediatRForEvents"))
-  {
-      // New implementation
-  }
-  else
-  {
-      // Old implementation
-  }
-  ```
 ```
 
 ### Phase 3: Remove Old Code (Cleanup)
@@ -355,56 +412,22 @@ curl -X POST https://localhost:7001/api/v1/events \
 
 ### Step 3.1: Remove Old Implementation
 
-**Files to Modify**:
-```csharp
-// File: Explore.API/Controllers/EventsController.cs
-// Remove all commented-out old code
+- Remove direct DbContext usage from controllers
+- Remove old service classes if any
+- Remove unused DI registrations
 
-[HttpPost]
-public async Task<IActionResult> CreateEvent(CreateEventDto dto)
-{
-    var command = new CreateEventCommand { CreateEventDto = dto };
-    var result = await _mediator.Send(command);
+### Step 3.2: Final Verification (PowerShell)
 
-    return result.Success
-        ? CreatedAtAction(nameof(GetById), new { id = result.Data!.Id }, result.Data)
-        : BadRequest(result.Errors);
-}
-```
-
-### Step 3.2: Remove Unused Dependencies
-
-**Files to Modify**:
-```csharp
-// File: Explore.API/Controllers/EventsController.cs
-// Remove unused constructor dependencies
-
-public class EventsController : ControllerBase
-{
-    private readonly IMediator _mediator;  // ✅ Only this remains
-
-    // ❌ Remove these:
-    // private readonly ExploreDbContext _dbContext;
-    // private readonly IEmailService _emailService;
-
-    public EventsController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
-}
-```
-
-### Step 3.3: Final Verification
-
-```bash
-# Build
+```powershell
+# Clean and rebuild
+dotnet clean
 dotnet build Explore.sln
 
-# Test
+# Run all tests
 dotnet test
 
-# Check for unused dependencies
-dotnet list package --include-transitive | grep -i "unused"
+# Check for unused packages
+dotnet list package --include-transitive
 ```
 ```
 
@@ -416,23 +439,19 @@ dotnet list package --include-transitive | grep -i "unused"
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
 | **Breaking existing API clients** | Low | High | API contract unchanged (only internal refactor) |
-| **Database migration failures** | Medium | High | Test migrations on copy of production data |
-| **Performance regression** | Low | Medium | Load test before/after refactoring |
-| **Blazor component regressions** | Medium | Medium | Add unit tests for extracted components |
-| **Missing usings after file moves** | High | Low | Run `dotnet build` after each phase |
-| **Merge conflicts during long refactor** | Medium | Medium | Complete in small PRs (one phase per PR) |
+| **Validation errors not caught** | Medium | High | Manual validator with all FK repos |
+| **Repository returning wrong type** | Medium | High | Review all repository methods return entities |
+| **Missing authorization** | Low | High | Add [Authorize] to all write endpoints |
+| **UserId extraction fails** | Medium | Medium | Use fallback pattern (sub → nameidentifier → sid) |
 
-## Rollback Plan
+## Rollback Plan (PowerShell)
 
-**If Phase 2 fails**:
-1. Revert to previous commit: `git revert HEAD`
-2. Redeploy previous version
-3. Investigate issue before retrying
-
-**If Phase 3 cleanup causes issues**:
-1. Restore old code from git history
-2. Keep both implementations temporarily
-3. Gradually deprecate old code
+If Phase 2 fails:
+```powershell
+git revert HEAD
+dotnet build
+dotnet run --project Explore.AppHost
+```
 ```
 
 ## Deliverable Format
@@ -442,7 +461,7 @@ dotnet list package --include-transitive | grep -i "unused"
 
 **Date**: YYYY-MM-DD
 **Author**: Claude Code
-**Estimated Duration**: [X weeks/sprints]
+**Estimated Duration**: [X hours/days]
 
 ---
 
@@ -456,117 +475,97 @@ dotnet list package --include-transitive | grep -i "unused"
 
 ---
 
+## Critical Rules Checklist
+
+Before refactoring, ensure plan addresses:
+
+- [ ] Repositories return entities (not DTOs)
+- [ ] Validators use manual instantiation (not DI)
+- [ ] Commands return BaseCommandResponse<Guid>
+- [ ] GET = AllowAnonymous, Write = Authorize
+- [ ] UserId extraction with fallback pattern
+- [ ] Use int instead of long
+- [ ] No default values in entities
+- [ ] File-scoped namespaces
+- [ ] Keep all using statements
+
+---
+
 ## Current State Analysis
 
 ### Problem Areas
 
-1. **Fat Controllers**: 5 controllers with 200+ lines each
-2. **God Components**: 3 Blazor pages with 300+ lines each
-3. **Tight Coupling**: Controllers directly using DbContext
-4. **No Tests**: 0% test coverage on business logic
-
-### Metrics
-
-| Metric | Current | Target |
-|--------|---------|--------|
-| Controller LOC (avg) | 250 | 50 |
-| Component LOC (avg) | 350 | 100 |
-| Test Coverage | 0% | 80% |
-| Build Time | 2 min | 1.5 min |
+1. **Fat Controllers**: Controllers with 200+ lines
+2. **Wrong Validator Pattern**: Validators injected via DI
+3. **Repository Returns DTOs**: Violates Clean Architecture
+4. **Missing Authorization**: Write endpoints without [Authorize]
 
 ---
 
 ## Target Architecture
 
-[Diagram showing Clean Architecture layers]
-
 ```
-API Controller (50 lines)
+Controller (50 lines)
 └─> MediatR Command/Query
     └─> Handler (Application Layer)
-        ├─> Repository Interface
-        ├─> Domain Entities
-        └─> Services
+        ├─> Manual Validator Instantiation
+        ├─> Repository (returns entities)
+        └─> AutoMapper (handler maps to DTOs)
 ```
 
 ---
 
 ## Phased Execution Plan
 
-### Phase 1: Create Abstractions (Week 1)
+### Phase 1: Create Abstractions (Non-Breaking)
 - [ ] Create MediatR commands/queries
-- [ ] Create handlers in Application layer
-- [ ] Create repository interfaces
-- [ ] Register services in DI
+- [ ] Create handlers with manual validators
+- [ ] Ensure repositories return entities
 
-**Files to Create**: [List]
-**Files to Modify**: [List]
 **Risk Level**: 🟢 Low (non-breaking changes)
 
-### Phase 2: Switch Implementation (Week 2)
+### Phase 2: Switch Implementation
 - [ ] Update controllers to use MediatR
-- [ ] Extract Blazor component logic to services
-- [ ] Add unit tests for handlers
-- [ ] Add integration tests for API
+- [ ] Add [AllowAnonymous] to GET, [Authorize] to write
+- [ ] Test all endpoints
 
-**Files to Modify**: [List]
 **Risk Level**: 🟡 Medium (requires testing)
 
-### Phase 3: Cleanup (Week 3)
+### Phase 3: Cleanup
 - [ ] Remove old code
 - [ ] Remove unused dependencies
-- [ ] Update documentation
 - [ ] Final verification
 
-**Files to Modify**: [List]
 **Risk Level**: 🟢 Low (already tested in Phase 2)
 
 ---
 
-## Implementation Details
+## Testing Commands (PowerShell)
 
-### Phase 1 Details
+```powershell
+# Build
+dotnet build Explore.sln
 
-[Detailed step-by-step instructions with code examples]
+# Test
+dotnet test
 
-### Phase 2 Details
+# Run with Aspire
+dotnet run --project Explore.AppHost
 
-[Detailed step-by-step instructions with code examples]
-
-### Phase 3 Details
-
-[Detailed step-by-step instructions with code examples]
-
----
-
-## Risk Assessment
-
-[Table of risks and mitigations]
+# Check logs
+$today = Get-Date -Format "yyyyMMdd"
+Get-Content "Explore.API/logs/log-$today.txt" -Tail 50
+```
 
 ---
 
-## Testing Strategy
+## Success Criteria
 
-### Unit Tests
-- [ ] Handler validation logic
-- [ ] Repository methods
-- [ ] Domain entity behavior
-
-### Integration Tests
-- [ ] API endpoints
-- [ ] Database operations
-- [ ] External service calls
-
-### Manual Testing
-- [ ] Smoke test all refactored endpoints
-- [ ] Test error scenarios
-- [ ] Verify performance
-
----
-
-## Rollback Plan
-
-[Instructions for reverting changes if issues occur]
+- [ ] All tests passing
+- [ ] No breaking changes to API contracts
+- [ ] All handlers use manual validator instantiation
+- [ ] All repositories return entities
+- [ ] GET = AllowAnonymous, Write = Authorize
 
 ---
 
@@ -575,33 +574,17 @@ API Controller (50 lines)
 - `clean-architecture-rules` - Architecture patterns
 - `cqrs-mediatr-guidelines` - Command/query separation
 - `code-refactor-master` - Refactoring techniques
-
----
-
-## Success Criteria
-
-- [ ] All tests passing
-- [ ] No breaking changes to API contracts
-- [ ] Build time reduced
-- [ ] Code coverage > 80%
-- [ ] No production incidents after deployment
-
----
-
-## Sign-off
-
-**Technical Lead**: _________________  **Date**: __________
-**Product Owner**: _________________  **Date**: __________
 ```
 
 ## Key Principles
 
 - ✅ Plan in phases (Create → Switch → Cleanup)
-- ✅ Keep changes non-breaking as long as possible
+- ✅ Enforce manual validator instantiation
+- ✅ Enforce repositories returning entities
+- ✅ Enforce BaseCommandResponse<Guid> for commands
+- ✅ Enforce GET = AllowAnonymous, Write = Authorize
 - ✅ Test thoroughly after each phase
 - ✅ Have a rollback plan for each phase
-- ✅ Update documentation as you go
-- ✅ Use feature flags for risky changes
 - ❌ Don't refactor everything at once (too risky)
 - ❌ Don't skip testing between phases
 - ❌ Don't delete old code until new code is proven stable

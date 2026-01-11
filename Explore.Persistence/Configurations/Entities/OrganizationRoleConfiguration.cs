@@ -18,24 +18,45 @@ namespace Explore.Persistence.Configurations.Entities
             builder.HasData(
                 new OrganizationRole
                 {
-                    Id = (int)OrganizationRoles.Admin,
-                    MasterCode = OrganizationRoles.Admin.ToString(),
-                    FullName = "Administrator",
-                    Description = "Organization Administrator with full access"
+                    Id = (int)OrganizationRoleEnum.Creator,
+                    MasterCode = "CREATOR",
+                    FullName = "Creator",
+                    Description = "Organization creator with full ownership"
                 },
                 new OrganizationRole
                 {
-                    Id = (int)OrganizationRoles.Moderator,
-                    MasterCode = OrganizationRoles.Moderator.ToString(),
+                    Id = (int)OrganizationRoleEnum.CoOwner,
+                    MasterCode = "CO_OWNER",
+                    FullName = "Co-Owner",
+                    Description = "Co-owner with near-full access"
+                },
+                new OrganizationRole
+                {
+                    Id = (int)OrganizationRoleEnum.Admin,
+                    MasterCode = "ADMIN",
+                    FullName = "Administrator",
+                    Description = "Organization Administrator with management access"
+                },
+                new OrganizationRole
+                {
+                    Id = (int)OrganizationRoleEnum.Moderator,
+                    MasterCode = "MODERATOR",
                     FullName = "Moderator",
                     Description = "Organization Moderator with limited access"
                 },
                 new OrganizationRole
                 {
-                    Id = (int)OrganizationRoles.Member,
-                    MasterCode = OrganizationRoles.Member.ToString(),
+                    Id = (int)OrganizationRoleEnum.Member,
+                    MasterCode = "MEMBER",
                     FullName = "Member",
                     Description = "Regular organization member"
+                },
+                new OrganizationRole
+                {
+                    Id = (int)OrganizationRoleEnum.Viewer,
+                    MasterCode = "VIEWER",
+                    FullName = "Viewer",
+                    Description = "Read-only access to organization"
                 }
             );
         }

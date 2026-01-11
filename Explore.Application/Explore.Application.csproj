@@ -7,10 +7,29 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="DTOs\EducationType\**" />
+    <Compile Remove="DTOs\Education\**" />
+    <Compile Remove="DTOs\ProgramRegistration\**" />
+    <Compile Remove="DTOs\ProgramType\**" />
+    <Compile Remove="DTOs\Program\**" />
+    <EmbeddedResource Remove="DTOs\EducationType\**" />
+    <EmbeddedResource Remove="DTOs\Education\**" />
+    <EmbeddedResource Remove="DTOs\ProgramRegistration\**" />
+    <EmbeddedResource Remove="DTOs\ProgramType\**" />
+    <EmbeddedResource Remove="DTOs\Program\**" />
+    <None Remove="DTOs\EducationType\**" />
+    <None Remove="DTOs\Education\**" />
+    <None Remove="DTOs\ProgramRegistration\**" />
+    <None Remove="DTOs\ProgramType\**" />
+    <None Remove="DTOs\Program\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1" />
     <PackageReference Include="EntityFramework" Version="6.5.1" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.0.0" />
     <PackageReference Include="MediatR.Extensions.Microsoft.DependencyInjection" Version="11.1.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.0-rc.1.25451.107" />
   </ItemGroup>
 
   <ItemGroup>
@@ -20,13 +39,9 @@
   <ItemGroup>
     <Folder Include="DTOs\AudienceAge\Validators\" />
     <Folder Include="DTOs\AudienceGender\Validators\" />
-    <Folder Include="DTOs\EducationType\Validators\" />
-    <Folder Include="DTOs\Education\Validators\" />
     <Folder Include="DTOs\EventType\Validators\" />
-    <Folder Include="DTOs\ProgramRegistration\" />
     <Folder Include="DTOs\OrganizationMember\Validators\" />
-    <Folder Include="DTOs\ProgramType\Validators\" />
-    <Folder Include="DTOs\Program\Validators\" />
+    <Folder Include="DTOs\OwnerType\" />
     <Folder Include="DTOs\StatusType\Validators\" />
     <Folder Include="DTOs\StorageObject\Validators\" />
     <Folder Include="Features\AudienceGenders\Handlers\Commands\" />

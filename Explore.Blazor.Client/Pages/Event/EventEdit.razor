@@ -45,8 +45,10 @@ else if (currentEvent != null && updateDto != null)
                         <div class="mb-4">
                             <MudText Typo="Typo.h6" Class="mb-3">Event Image</MudText>
                             <MudPaper Class="pa-4" Style="background-color: var(--mud-palette-background-grey);">
-                                <ImageUpload @bind-ImageKey="updateDto.ImageKey"
-                                            @bind-PreviewUrl="selectedImageUrl"
+                                <ImageUpload ImageKey="@updateDto.ImageKey"
+                                            ImageKeyChanged="OnImageKeyChanged"
+                                            PreviewUrl="@selectedImageUrl"
+                                            PreviewUrlChanged="OnPreviewUrlChanged"
                                             Width="100%"
                                             Height="300px"
                                             PlaceholderText="Update event image"
@@ -457,5 +459,18 @@ else
     private void NavigateBack()
     {
         Navigation.NavigateTo("/myevents");
+    }
+
+    private void OnImageKeyChanged(string? value)
+    {
+        if (updateDto != null)
+        {
+            updateDto.ImageKey = value;
+        }
+    }
+
+    private void OnPreviewUrlChanged(string? value)
+    {
+        selectedImageUrl = value ?? string.Empty;
     }
 }

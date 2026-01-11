@@ -4,6 +4,7 @@ using System.Text;
 using Amazon.S3;
 using Amazon.S3.Model;
 using Explore.Application.Contracts.Infrastructure;
+using Microsoft.Extensions.Options;
 
 namespace Explore.Infrastructure.Services
 {
@@ -12,10 +13,10 @@ namespace Explore.Infrastructure.Services
         private readonly IAmazonS3 _s3Client;
         private readonly S3Settings _s3Settings;
 
-        public ObjectStorageService(IAmazonS3 s3Client, S3Settings s3Settings)
+        public ObjectStorageService(IAmazonS3 s3Client, IOptions<S3Settings> s3Settings)
         {
             _s3Client = s3Client;
-            _s3Settings = s3Settings;
+            _s3Settings = s3Settings.Value;
         }
 
         public Task<string> GeneratePresignedUploadUrl(string fileName, string contentType)

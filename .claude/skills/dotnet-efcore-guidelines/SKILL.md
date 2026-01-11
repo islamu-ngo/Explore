@@ -133,8 +133,16 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
 
 **CRITICAL RULE**: Repositories return ENTITIES, not DTOs. DTO mapping happens in Application layer handlers via AutoMapper.
 
+**Real Example from Explore.Persistence/Repositories/GenericRepository.cs:**
+
 ```csharp
-// Generic Repository (in Persistence layer)
+namespace Explore.Persistence.Repositories;
+
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Explore.Application.Contracts.Persistence;
+using Microsoft.EntityFrameworkCore;
+
 public class GenericRepository<T, TKey> : IGenericRepository<T, TKey> where T : class
 {
     private readonly ExploreDbContext _dbContext;
@@ -168,12 +176,22 @@ public class GenericRepository<T, TKey> : IGenericRepository<T, TKey> where T : 
         _dbContext.Set<T>().Remove(entity);
         await _dbContext.SaveChangesAsync();
     }
-
-    public async Task<bool> Exists(TKey id) =>
-        await GetById(id) != null;
 }
+```
 
-// Event Repository with custom methods (returns ENTITIES)
+**Real Example from Explore.Persistence/Repositories/EventRepository.cs:**
+
+```csharp
+namespace Explore.Persistence.Repositories;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Explore.Application.Contracts.Persistence;
+using Explore.Domain;
+using Microsoft.EntityFrameworkCore;
+
 public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
 {
     private readonly ExploreDbContext _dbContext;
@@ -191,12 +209,12 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
             .Include(e => e.AudienceGender)
             .Include(e => e.AudienceAge)
             .Include(e => e.Actor)
+                .ThenInclude(a => a.ActorType)
+            .Include(e => e.FeaturedImage)
             .Include(e => e.EventStatus)
             .Include(e => e.VisibilityType)
             .Include(e => e.EventFormat)
             .Include(e => e.Madhab)
-            .Include(e => e.FeaturedImage)
-            .Include(e => e.AtprotoRecord)
             .ToListAsync();
     }
 
@@ -207,17 +225,66 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
             .Include(e => e.AudienceGender)
             .Include(e => e.AudienceAge)
             .Include(e => e.Actor)
+                .ThenInclude(a => a.ActorType)
+            .Include(e => e.Actor)
+                .ThenInclude(a => a.ProfilePicture)
+            .Include(e => e.FeaturedImage)
             .Include(e => e.EventStatus)
             .Include(e => e.VisibilityType)
             .Include(e => e.EventFormat)
             .Include(e => e.Madhab)
-            .Include(e => e.FeaturedImage)
             .Include(e => e.AtprotoRecord)
             .FirstOrDefaultAsync(e => e.Id == id);
     }
-}
 
-// Handler uses Repository (returns ENTITIES) → AutoMapper → DTO
+    public async Task<List<Event>> GetMyEventsWithDetails(string userId)
+    {
+        Guid userGuid;
+        bool isGuid = Guid.TryParse(userId, out userGuid);
+
+        var query = _dbContext.Events
+            .Include(e => e.EventType)
+            .Include(e => e.AudienceGender)
+            .Include(e => e.AudienceAge)
+            .Include(e => e.Actor)
+                .ThenInclude(a => a.ActorType)
+            .Include(e => e.FeaturedImage)
+            .Include(e => e.EventStatus)
+            .Include(e => e.VisibilityType)
+            .Include(e => e.EventFormat)
+            .Include(e => e.Madhab)
+            .AsQueryable();
+
+        if (isGuid)
+        {
+            query = query.Where(e =>
+                _dbContext.Users.Any(u => u.Id == userGuid && u.ActorId == e.ActorId) ||
+                _dbContext.OrganizationMembers.Any(om =>
+                    om.UserId == userGuid &&
+                    _dbContext.Organizations.Any(o => o.Id == om.OrganizationId && o.ActorId == e.ActorId)));
+        }
+
+        return await query.ToListAsync();
+    }
+}
+```
+
+**Handler Example - Repository returns ENTITIES → AutoMapper → DTOs:**
+
+**Real Example from Explore.Application/Features/Events/Handlers/Queries/GetEventListRequestHandler.cs:**
+
+```csharp
+namespace Explore.Application.Features.Events.Handlers.Queries;
+
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using AutoMapper;
+using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.Event;
+using Explore.Application.Features.Events.Requests.Queries;
+using MediatR;
+
 public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, List<EventListDto>>
 {
     private readonly IEventRepository _eventRepository;
@@ -349,18 +416,6 @@ builder.Property(e => e.Location)
        .HasColumnType("geography(point)");
 ```
 
-### Custom PostgreSQL Functions
-
-```csharp
-// In migration
-migrationBuilder.Sql(@"
-    CREATE OR REPLACE FUNCTION uuidv7() RETURNS uuid AS $$
-    BEGIN
-        RETURN gen_random_uuid();
-    END;
-    $$ LANGUAGE plpgsql;
-");
-```
 
 ## 📖 Deep Dive
 

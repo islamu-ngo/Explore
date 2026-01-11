@@ -19,7 +19,7 @@ You are a specialized agent for fixing **C# / .NET** compilation and runtime err
 ### 1. Check for Error Information
 
 **Build Errors**:
-```bash
+```powershell
 # Run build to get latest errors
 dotnet build Explore.sln
 
@@ -28,12 +28,13 @@ dotnet build Explore.Application/Explore.Application.csproj
 ```
 
 **Runtime Errors**:
-```bash
-# Check today's server logs
-cat Explore.API/logs/log-$(date +%Y%m%d).txt
+```powershell
+# Check today's server logs (PowerShell)
+$today = Get-Date -Format "yyyyMMdd"
+Get-Content "Explore.API/logs/log-$today.txt"
 
-# Tail logs in real-time
-tail -f Explore.API/logs/log-$(date +%Y%m%d).txt
+# Tail logs in real-time (PowerShell)
+Get-Content "Explore.API/logs/log-$today.txt" -Wait -Tail 50
 ```
 
 ### 2. Analyze Error Codes
@@ -156,29 +157,21 @@ using MudBlazor;                             // UI components (Blazor)
 // ❌ No mapping configured
 var dto = _mapper.Map<EventListDto>(entity);  // Runtime error!
 
-// ✅ Create mapping profile
-public class EventProfile : Profile
-{
-    public EventProfile()
-    {
-        CreateMap<Event, EventListDto>();
-        CreateMap<CreateEventDto, Event>();
-    }
-}
-
-// Register in Program.cs
-builder.Services.AddAutoMapper(typeof(EventProfile).Assembly);
+// ✅ Create mapping profile in Explore.Application/Profiles/MappingProfile.cs
+CreateMap<Event, EventListDto>.ReverseMap();
+CreateMap<CreateEventDto, Event>.ReverseMap();
 ```
 
 #### EF Core Migration Errors
 
-```bash
+```powershell
 # Error: "The model backing the context has changed"
+# Note: Migrations run automatically via Explore.MigrationService worker on startup
 
-# ✅ Fix: Add migration
+# If manual migration needed:
 dotnet ef migrations add DescriptiveName --project Explore.Persistence
 
-# Apply migration
+# Apply migration (usually automatic)
 dotnet ef database update --project Explore.Persistence
 ```
 
@@ -188,8 +181,8 @@ dotnet ef database update --project Explore.Persistence
 // ❌ Service not registered
 public EventController(IEventRepository repository)  // Runtime error: Unable to resolve service
 
-// ✅ Register in Program.cs or PersistenceServicesRegistration
-builder.Services.AddScoped<IEventRepository, EventRepository>();
+// ✅ Register in Explore.Persistence/PersistenceServicesRegistration.cs
+services.AddScoped<IEventRepository, EventRepository>();
 ```
 
 ### 4. Layer-Specific Errors
@@ -229,7 +222,7 @@ builder.Services.AddScoped<IEventRepository, EventRepository>();
 5. Handle remaining warnings
 
 **Commands to Run**:
-```bash
+```powershell
 # Clean build
 dotnet clean
 dotnet build
@@ -248,12 +241,12 @@ dotnet test
 
 After making changes:
 
-```bash
+```powershell
 # 1. Build the solution
 dotnet build
 
-# 2. If build succeeds, check logs don't have runtime warnings
-dotnet run --project Explore.API
+# 2. If build succeeds, run the app with Aspire
+dotnet run --project Explore.AppHost/Explore.AppHost.csproj
 
 # 3. Run tests
 dotnet test
@@ -262,20 +255,114 @@ dotnet test
 dotnet format --verify-no-changes
 ```
 
+## CRITICAL RULES (Must Follow)
+
+Based on 45+ entity implementations. **DO NOT VIOLATE THESE RULES when fixing errors:**
+
+### 1. Repositories Return ENTITIES, Never DTOs
+```csharp
+// ❌ WRONG - Repository returns DTOs
+public interface IEventRepository
+{
+    Task<List<EventListDto>> GetEventsWithDetails();  // WRONG
+}
+
+// ✅ CORRECT - Repository returns entities
+public interface IEventRepository
+{
+    Task<List<Event>> GetEventsWithDetails();  // CORRECT
+}
+
+// Handler maps to DTOs
+var events = await _eventRepository.GetEventsWithDetails();
+return _mapper.Map<List<EventListDto>>(events);
+```
+
+### 2. Validators Use Manual Instantiation (NOT DI)
+```csharp
+// ❌ WRONG - DI injection
+public CreateEventCommandHandler(IValidator<CreateEventDto> validator) { }
+
+// ✅ CORRECT - Manual instantiation in Handle method
+public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
+{
+    var validator = new CreateEventDtoValidator(
+        _audienceAgeRepository, 
+        _audienceGenderRepository, 
+        _eventTypeRepository,
+        _actorRepository,
+        _storageObjectRepository);
+    var validationResult = await validator.ValidateAsync(request.EventDto);
+    // ...
+}
+```
+
+### 3. Navigation Properties Are Readonly
+```csharp
+// ❌ WRONG - Write through navigation
+org.Members.Add(member);
+
+// ✅ CORRECT - Write through repository
+await _organizationMemberRepository.Create(member);
+```
+
+### 4. Use int Instead of long (except size/cursor)
+```csharp
+// ❌ WRONG
+public long Id { get; set; }
+
+// ✅ CORRECT
+public int Id { get; set; }  // For lookup tables
+public Guid Id { get; set; }  // For main entities
+```
+
+### 5. No Default Values in Entities
+```csharp
+// ❌ WRONG
+public class Event
+{
+    public int TotalViews { get; set; } = 0;  // WRONG
+}
+
+// ✅ CORRECT - Set in handler
+var @event = _mapper.Map<Event>(request.EventDto);
+@event.TotalViews = 0;  // Set here
+```
+
+### 6. Do Not Remove Using Statements
+Keep ALL using statements even if they appear unused, except for old references that are broken like old entities or renamed namespaces and so on.
+
+5. **No Default Values in Entities**
+   - Fix: Remove `= 0` from entity properties
+   - Set in handler: `@event.TotalViews = 0;`
+
+// ✅ CORRECT
+public class CreateEventCommand : IRequest<BaseCommandResponse<Guid>>
+```
+
+### 8. File-Scoped Namespaces
+```csharp
+// ✅ CORRECT
+namespace Explore.Application.Features.Events.Handlers.Commands;
+
+public class CreateEventCommandHandler { }
+```
+
 ## Important Guidelines
 
 - ✅ **DO** fix the root cause, not symptoms
 - ✅ **DO** follow ISLAMU Event patterns (check skills: `clean-architecture-rules`, `cqrs-mediatr-guidelines`)
 - ✅ **DO** use PascalCase for public members, _camelCase for private fields
-- ✅ **DO** use file-scoped namespaces (`namespace Explore.Domain;`)
 - ✅ **DO** verify fixes with `dotnet build`
+- ✅ **DO** check validator instantiation pattern (manual, not DI)
 - ❌ **DON'T** refactor unrelated code
 - ❌ **DON'T** change architectural patterns
 - ❌ **DON'T** ignore warnings (they become errors later)
+- ❌ **DON'T** inject validators via DI (instantiate manually)
 
 ## Example Workflow
 
-```bash
+```powershell
 # 1. Check build errors
 dotnet build Explore.sln
 
@@ -292,7 +379,7 @@ dotnet build Explore.sln
 # Output: Build succeeded. 0 Warning(s). 0 Error(s).
 
 # 4. Report
-# ✅ Fixed CS0246 in CreateEventCommandHandler.cs by adding 'using Explore.Domain;'
+# Fixed CS0246 in CreateEventCommandHandler.cs by adding 'using Explore.Domain;'
 ```
 
 ## Related Skills

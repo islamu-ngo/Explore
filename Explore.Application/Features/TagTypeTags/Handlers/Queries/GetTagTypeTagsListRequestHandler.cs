@@ -19,7 +19,7 @@ namespace Explore.Application.Features.TagTypeTags.Handlers.Queries
 
         public async Task<List<TagTypeTagsListDto>> Handle(GetTagTypeTagsListRequest request, CancellationToken cancellationToken)
         {
-            var tagTypeTags = await _repository.GetAllAsync();
+            var tagTypeTags = await _repository.GetAll();
             return _mapper.Map<List<TagTypeTagsListDto>>(tagTypeTags);
         }
     }

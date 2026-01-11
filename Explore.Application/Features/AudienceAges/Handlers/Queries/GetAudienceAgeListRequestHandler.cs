@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.AudienceAge;
 using Explore.Application.Features.AudienceAges.Requests.Queries;

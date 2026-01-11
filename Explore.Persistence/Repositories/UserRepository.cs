@@ -20,6 +20,12 @@ namespace Explore.Persistence.Repositories
                 .FirstOrDefaultAsync(u => u.Id == id);
         }
 
+        public async Task<User?> GetUserByEmail(string email)
+        {
+            return await _dbContext.Users
+                .FirstOrDefaultAsync(u => u.Email == email);
+        }
+
         public async Task<List<User>> GetUsersByIdsAsync(List<Guid> ids)
         {
             return await _dbContext.Users

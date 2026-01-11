@@ -49,6 +49,8 @@ public class OrganizationListDto
     public string Address { get; set; } = string.Empty;
     public int StatusTypeId { get; set; }
     public string ApprovalStatusFullName { get; set; } = string.Empty;
+    public string StatusTypeFullName => ApprovalStatusFullName; // Alias for backward compatibility
+    public DateTime CreatedAt { get; set; }
     public OrganizationRole? CurrentUserRole { get; set; }
     
     // S3 Image Key for the organization logo

@@ -35,16 +35,6 @@ Migrations are version-controlled schema changes that allow you to evolve your d
 ```bash
 # Basic migration
 dotnet ef migrations add AddEventEntity --project Explore.Persistence
-
-# With specific context
-dotnet ef migrations add AddEventEntity \
-  --project Explore.Persistence \
-  --context ExploreDbContext
-
-# With output directory
-dotnet ef migrations add AddEventEntity \
-  --project Explore.Persistence \
-  --output-dir Migrations
 ```
 
 ### Migration Naming Conventions

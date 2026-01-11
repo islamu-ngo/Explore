@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventCategories;
+using EventCategoriesEntity = Explore.Domain.EventCategories;
 using Explore.Application.Features.EventCategories.Requests.Queries;
 using MediatR;
 
@@ -22,7 +23,7 @@ namespace Explore.Application.Features.EventCategories.Handlers.Queries
 
         public async Task<List<EventCategoriesListDto>> Handle(GetEventCategoriesListRequest request, CancellationToken cancellationToken)
         {
-            var eventCategories = await _eventCategoriesRepository.GetAllAsync();
+            var eventCategories = await _eventCategoriesRepository.GetAll();
             return _mapper.Map<List<EventCategoriesListDto>>(eventCategories);
         }
     }

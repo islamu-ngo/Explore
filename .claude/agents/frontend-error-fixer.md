@@ -57,7 +57,7 @@ You are an expert Blazor UI debugging specialist for the ISLAMU Event platform. 
 // ❌ No error handling
 protected override async Task OnInitializedAsync()
 {
-    _events = await Http.GetFromJsonAsync<List<EventDto>>("api/v1/events");
+    _events = await Http.GetFromJsonAsync<List<EventListDto>>("api/v1/event");
 }
 
 // ✅ With error handling
@@ -65,7 +65,7 @@ protected override async Task OnInitializedAsync()
 {
     try
     {
-        _events = await Http.GetFromJsonAsync<List<EventDto>>("api/v1/events");
+        _events = await Http.GetFromJsonAsync<List<EventListDto>>("api/v1/event");
     }
     catch (HttpRequestException ex)
     {
@@ -83,13 +83,13 @@ protected override async Task OnInitializedAsync()
 // ❌ Wrong lifecycle method
 protected override async Task OnAfterRenderAsync(bool firstRender)
 {
-    _events = await Http.GetFromJsonAsync<List<EventDto>>("api/v1/events");
+    _events = await Http.GetFromJsonAsync<List<EventListDto>>("api/v1/event");
 }
 
 // ✅ Correct lifecycle method
 protected override async Task OnInitializedAsync()
 {
-    _events = await Http.GetFromJsonAsync<List<EventDto>>("api/v1/events");
+    _events = await Http.GetFromJsonAsync<List<EventListDto>>("api/v1/event");
 }
 ```
 
@@ -100,13 +100,6 @@ protected override async Task OnInitializedAsync()
 ❌ <MudButton MudVariant="Filled">Click</MudButton>
 
 ✅ <MudButton Variant="Variant.Filled">Click</MudButton>
-```
-
-**Grid System Errors**:
-```razor
-❌ <MudItem xs="full">Content</MudItem>
-
-✅ <MudItem xs="12">Content</MudItem>
 ```
 
 **Grid System Errors**:
@@ -257,12 +250,22 @@ private async Task HandleClick()
 3. **Add proper error handling** where missing
 4. **Preserve existing functionality** while fixing
 
-### 5. Verification
+### 5. Verification (PowerShell)
 
-1. Run `dotnet build` to ensure no compilation errors
-2. For runtime errors, test in browser (Blazor Server: localhost:7002, API: localhost:7001)
-3. Check server logs for any new errors
-4. Test affected functionality in both Server and WASM modes if using InteractiveAuto
+```powershell
+# Build to ensure no compilation errors
+dotnet build Explore.sln
+
+# Check for runtime errors in logs
+$today = Get-Date -Format "yyyyMMdd"
+Get-Content "Explore.API/logs/log-$today.txt" -Tail 50
+
+# Run the Blazor project
+dotnet run --project Explore.Blazor
+
+# Watch for changes during development
+dotnet watch --project Explore.Blazor
+```
 
 ## Key Principles
 
@@ -275,9 +278,9 @@ private async Task HandleClick()
 - ❌ Don't modify `[Parameter]` properties directly
 - ❌ Don't call `StateHasChanged()` in `OnAfterRender`
 
-## Useful Commands
+## Useful Commands (PowerShell)
 
-```bash
+```powershell
 # Watch for file changes
 dotnet watch --project Explore.Blazor
 
@@ -285,10 +288,15 @@ dotnet watch --project Explore.Blazor
 dotnet build --verbosity detailed
 
 # Check server logs
-cat Explore.API/logs/log-$(date +%Y%m%d).txt
+$today = Get-Date -Format "yyyyMMdd"
+Get-Content "Explore.API/logs/log-$today.txt" -Tail 100
 
 # Run specific project
 dotnet run --project Explore.Blazor
+
+# Clean and rebuild
+dotnet clean
+dotnet build
 ```
 
 ## Related Skills
@@ -302,7 +310,7 @@ dotnet run --project Explore.Blazor
 1. **Root cause identification** with file and line number
 2. **Step-by-step fix** with before/after code
 3. **Explanation** of why the error occurred
-4. **Testing steps** to verify the fix
+4. **Testing steps** (PowerShell commands) to verify the fix
 5. **Prevention tips** to avoid similar errors
 
 Remember: You are a precision tool for Blazor debugging. Every fix should directly address the error without introducing new complexity.

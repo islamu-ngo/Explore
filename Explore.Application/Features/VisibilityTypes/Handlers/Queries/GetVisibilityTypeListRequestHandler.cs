@@ -22,7 +22,7 @@ namespace Explore.Application.Features.VisibilityTypes.Handlers.Queries
 
         public async Task<List<VisibilityTypeListDto>> Handle(GetVisibilityTypeListRequest request, CancellationToken cancellationToken)
         {
-            var visibilityTypes = await _visibilityTypeRepository.GetAllAsync();
+            var visibilityTypes = await _visibilityTypeRepository.GetAll();
             return _mapper.Map<List<VisibilityTypeListDto>>(visibilityTypes);
         }
     }

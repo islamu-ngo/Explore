@@ -22,7 +22,7 @@ namespace Explore.Application.Features.EventSessionLanguages.Handlers.Queries
 
         public async Task<List<EventSessionLanguageListDto>> Handle(GetEventSessionLanguageListRequest request, CancellationToken cancellationToken)
         {
-            var eventSessionLanguages = await _repository.GetAllAsync();
+            var eventSessionLanguages = await _repository.GetAll();
             return _mapper.Map<List<EventSessionLanguageListDto>>(eventSessionLanguages);
         }
     }

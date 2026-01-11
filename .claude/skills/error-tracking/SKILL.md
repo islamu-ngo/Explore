@@ -1,375 +1,491 @@
 ---
 name: error-tracking
-description: Add Sentry v8 error tracking and performance monitoring to your project services. Use this skill when adding error handling, creating new controllers, instrumenting cron jobs, or tracking database performance. ALL ERRORS MUST BE CAPTURED TO SENTRY - no exceptions.
+description: Add Sentry error tracking and performance monitoring to ISLAMU Event .NET services. Use this skill when adding error handling, creating new controllers, or tracking performance. ALL ERRORS MUST BE CAPTURED TO SENTRY - no exceptions.
+type: guardrail
+enforcement: suggest
+priority: high
 ---
 
-# your project Sentry Integration Skill
+# ISLAMU Event Sentry Integration Skill
 
 ## Purpose
-This skill enforces comprehensive Sentry error tracking and performance monitoring across all your project services following Sentry v8 patterns.
+This skill enforces comprehensive Sentry error tracking and performance monitoring across ISLAMU Event .NET services (API, Blazor).
 
 ## When to Use This Skill
-- Adding error handling to any code
-- Creating new controllers or routes
-- Instrumenting cron jobs
-- Tracking database performance
-- Adding performance spans
-- Handling workflow errors
+- Adding error handling to controllers or pages
+- Creating new API endpoints
+- Tracking performance of database operations
+- Handling exceptions in command/query handlers
+- Monitoring Blazor component errors
 
 ## 🚨 CRITICAL RULE
 
-**ALL ERRORS MUST BE CAPTURED TO SENTRY** - No exceptions. Never use console.error alone.
+**ALL ERRORS MUST BE CAPTURED TO SENTRY** - No exceptions. Never use `Console.WriteLine` alone for errors.
 
-## Current Status
+## Current Integration Status
 
-### Form Service ✅ Complete
-- Sentry v8 fully integrated
-- All workflow errors tracked
-- SystemActionQueueProcessor instrumented
-- Test endpoints available
+### Explore.API ✅ (To be implemented)
+- Sentry SDK integration
+- Controller error handling
+- MediatR pipeline instrumentation
+- Database performance monitoring
 
-### Email Service 🟡 In Progress
-- Phase 1-2 complete (6/22 tasks)
-- 189 ErrorLogger.log() calls remaining
+### Explore.Blazor 🟡 (To be implemented)
+- Blazor error boundary
+- Component lifecycle errors
+- SignalR connection errors
 
 ## Sentry Integration Patterns
 
-### 1. Controller Error Handling
+### 1. API Controller Error Handling
 
-```typescript
-// ✅ CORRECT - Use BaseController
-import { BaseController } from '../controllers/BaseController';
+**Pattern**: Use try-catch with Sentry capture in all controller actions.
 
-export class MyController extends BaseController {
-    async myMethod() {
-        try {
-            // ... your code
-        } catch (error) {
-            this.handleError(error, 'myMethod'); // Automatically sends to Sentry
+```csharp
+// Explore.API/Controllers/EventController.cs
+using Sentry;
+
+[Route("api/v1/[controller]")]
+[ApiController]
+public class EventController : ControllerBase
+{
+    private readonly IMediator _mediator;
+    private readonly ILogger<EventController> _logger;
+
+    [HttpPost]
+    [Authorize]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventDto dto)
+    {
+        try
+        {
+            var command = new CreateEventCommand { EventDto = dto };
+            var response = await _mediator.Send(command);
+
+            if (!response.Success)
+            {
+                // Business validation failures
+                return BadRequest(response);
+            }
+
+            return Ok(response);
         }
-    }
-}
-```
-
-### 2. Route Error Handling (Without BaseController)
-
-```typescript
-import * as Sentry from '@sentry/node';
-
-router.get('/route', async (req, res) => {
-    try {
-        // ... your code
-    } catch (error) {
-        Sentry.captureException(error, {
-            tags: { route: '/route', method: 'GET' },
-            extra: { userId: req.user?.id }
-        });
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-```
-
-### 3. Workflow Error Handling
-
-```typescript
-import { WorkflowSentryHelper } from '../workflow/utils/sentryHelper';
-
-// ✅ CORRECT - Use WorkflowSentryHelper
-WorkflowSentryHelper.captureWorkflowError(error, {
-    workflowCode: 'DHS_CLOSEOUT',
-    instanceId: 123,
-    stepId: 456,
-    userId: 'user-123',
-    operation: 'stepCompletion',
-    metadata: { additionalInfo: 'value' }
-});
-```
-
-### 4. Cron Jobs (MANDATORY Pattern)
-
-```typescript
-#!/usr/bin/env node
-// FIRST LINE after shebang - CRITICAL!
-import '../instrument';
-import * as Sentry from '@sentry/node';
-
-async function main() {
-    return await Sentry.startSpan({
-        name: 'cron.job-name',
-        op: 'cron',
-        attributes: {
-            'cron.job': 'job-name',
-            'cron.startTime': new Date().toISOString(),
-        }
-    }, async () => {
-        try {
-            // Your cron job logic
-        } catch (error) {
-            Sentry.captureException(error, {
-                tags: {
-                    'cron.job': 'job-name',
-                    'error.type': 'execution_error'
-                }
+        catch (Exception ex)
+        {
+            // Capture exception to Sentry
+            SentrySdk.CaptureException(ex, scope =>
+            {
+                scope.SetTag("controller", "EventController");
+                scope.SetTag("action", "Create");
+                scope.SetTag("userId", User.FindFirst("sub")?.Value ?? "anonymous");
+                scope.SetExtra("dto", dto);
             });
-            console.error('[Job] Error:', error);
-            process.exit(1);
+
+            _logger.LogError(ex, "Error creating event");
+            return StatusCode(500, new { error = "Internal server error" });
         }
-    });
+    }
 }
-
-main()
-    .then(() => {
-        console.log('[Job] Completed successfully');
-        process.exit(0);
-    })
-    .catch((error) => {
-        console.error('[Job] Fatal error:', error);
-        process.exit(1);
-    });
 ```
 
-### 5. Database Performance Monitoring
+### 2. MediatR Handler Error Handling
 
-```typescript
-import { DatabasePerformanceMonitor } from '../utils/databasePerformance';
+**Pattern**: Wrap handler logic in try-catch, capture to Sentry.
 
-// ✅ CORRECT - Wrap database operations
-const result = await DatabasePerformanceMonitor.withPerformanceTracking(
-    'findMany',
-    'UserProfile',
-    async () => {
-        return await PrismaService.main.userProfile.findMany({
-            take: 5,
-        });
+```csharp
+// Explore.Application/Features/Events/Handlers/Commands/CreateEventCommandHandler.cs
+using Sentry;
+
+public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<Guid>>
+{
+    public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
+    {
+        var response = new BaseCommandResponse<Guid>();
+
+        try
+        {
+            // Validation
+            var validator = new CreateEventDtoValidator(...);
+            var validationResult = await validator.ValidateAsync(request.EventDto);
+
+            if (!validationResult.IsValid)
+            {
+                response.Success = false;
+                response.Message = "Event creation failed.";
+                response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+                return response;
+            }
+
+            // Business logic
+            var @event = _mapper.Map<Event>(request.EventDto);
+            @event.TotalViews = 0;
+            @event = await _eventRepository.Create(@event);
+
+            response.Success = true;
+            response.Id = @event.Id;
+            response.Message = "Event created successfully.";
+
+            return response;
+        }
+        catch (Exception ex)
+        {
+            SentrySdk.CaptureException(ex, scope =>
+            {
+                scope.SetTag("handler", "CreateEventCommandHandler");
+                scope.SetTag("command", "CreateEventCommand");
+                scope.SetExtra("eventDto", request.EventDto);
+            });
+
+            response.Success = false;
+            response.Message = "An error occurred while creating the event.";
+            response.Errors = new List<string> { ex.Message };
+            return response;
+        }
     }
-);
+}
 ```
 
-### 6. Async Operations with Spans
+### 3. Database Performance Monitoring
 
-```typescript
-import * as Sentry from '@sentry/node';
+**Pattern**: Wrap database operations with Sentry spans.
 
-const result = await Sentry.startSpan({
-    name: 'operation.name',
-    op: 'operation.type',
-    attributes: {
-        'custom.attribute': 'value'
+```csharp
+// Explore.Persistence/Repositories/EventRepository.cs
+using Sentry;
+
+public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
+{
+    public async Task<List<Event>> GetEventsWithDetails()
+    {
+        var transaction = SentrySdk.StartTransaction("repository.get-events-with-details", "db.query");
+        var span = transaction.StartChild("db.query", "GetEventsWithDetails");
+
+        try
+        {
+            var events = await _dbContext.Events
+                .Include(e => e.EventType)
+                .Include(e => e.AudienceGender)
+                .Include(e => e.AudienceAge)
+                .Include(e => e.Actor)
+                .Include(e => e.EventStatus)
+                .ToListAsync();
+
+            span.Finish(SpanStatus.Ok);
+            return events;
+        }
+        catch (Exception ex)
+        {
+            span.Finish(SpanStatus.InternalError);
+            SentrySdk.CaptureException(ex, scope =>
+            {
+                scope.SetTag("repository", "EventRepository");
+                scope.SetTag("method", "GetEventsWithDetails");
+            });
+            throw;
+        }
+        finally
+        {
+            transaction.Finish();
+        }
     }
-}, async () => {
-    // Your async operation
-    return await someAsyncOperation();
+}
+```
+
+### 4. Blazor Error Boundary
+
+**Pattern**: Use ErrorBoundary component for UI errors.
+
+```razor
+<!-- Explore.Blazor/Components/Pages/Events.razor -->
+<ErrorBoundary>
+    <ChildContent>
+        @if (_events == null)
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+        else
+        {
+            <!-- Event list -->
+        }
+    </ChildContent>
+    <ErrorContent Context="ex">
+        <MudAlert Severity="Severity.Error">
+            An error occurred while loading events.
+        </MudAlert>
+        @code {
+            SentrySdk.CaptureException(ex, scope =>
+            {
+                scope.SetTag("component", "Events");
+                scope.SetTag("error-boundary", "true");
+            });
+        }
+    </ErrorContent>
+</ErrorBoundary>
+
+@code {
+    private List<EventListDto>? _events;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _events = await Http.GetFromJsonAsync<List<EventListDto>>("api/v1/event");
+        }
+        catch (Exception ex)
+        {
+            SentrySdk.CaptureException(ex, scope =>
+            {
+                scope.SetTag("component", "Events");
+                scope.SetTag("lifecycle", "OnInitializedAsync");
+            });
+            throw; // Let ErrorBoundary handle it
+        }
+    }
+}
+```
+
+### 5. ASP.NET Core Middleware Integration
+
+**Pattern**: Use Sentry middleware for automatic request tracking.
+
+```csharp
+// Explore.API/Program.cs or Explore.AppHost/Program.cs
+using Sentry;
+using Sentry.AspNetCore;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add Sentry
+builder.WebHost.UseSentry(options =>
+{
+    options.Dsn = builder.Configuration["Sentry:Dsn"];
+    options.Environment = builder.Environment.EnvironmentName;
+    options.TracesSampleRate = 0.1; // 10% of transactions
+    options.AutoSessionTracking = true;
+    options.IsGlobalModeEnabled = true;
+    
+    // Performance monitoring
+    options.EnableTracing = true;
+    options.ProfilesSampleRate = 0.1;
+    
+    // Filter out sensitive data
+    options.BeforeSend = (sentryEvent) =>
+    {
+        // Remove sensitive headers
+        if (sentryEvent.Request?.Headers != null)
+        {
+            sentryEvent.Request.Headers.Remove("Authorization");
+            sentryEvent.Request.Headers.Remove("Cookie");
+        }
+        return sentryEvent;
+    };
 });
+
+var app = builder.Build();
+
+// Use Sentry middleware (must be FIRST)
+app.UseSentryTracing();
+
+// ... other middleware
+app.UseAuthentication();
+app.UseAuthorization();
 ```
 
 ## Error Levels
 
 Use appropriate severity levels:
 
-- **fatal**: System is unusable (database down, critical service failure)
-- **error**: Operation failed, needs immediate attention
-- **warning**: Recoverable issues, degraded performance
-- **info**: Informational messages, successful operations
-- **debug**: Detailed debugging information (dev only)
+- **Fatal**: System is unusable (database down, critical service failure)
+- **Error**: Operation failed, needs immediate attention
+- **Warning**: Recoverable issues, degraded performance
+- **Info**: Informational messages, successful operations
+- **Debug**: Detailed debugging information (dev only)
+
+```csharp
+// Example usage
+SentrySdk.CaptureMessage("Event created successfully", SentryLevel.Info);
+SentrySdk.CaptureMessage("Database query slow", SentryLevel.Warning);
+SentrySdk.CaptureException(ex, scope => { scope.Level = SentryLevel.Fatal; });
+```
 
 ## Required Context
 
-```typescript
-import * as Sentry from '@sentry/node';
+```csharp
+SentrySdk.CaptureException(ex, scope =>
+{
+    // User context
+    scope.User = new User
+    {
+        Id = userId,
+        Email = userEmail,
+        Username = username
+    };
 
-Sentry.withScope((scope) => {
-    // ALWAYS include these if available
-    scope.setUser({ id: userId });
-    scope.setTag('service', 'form'); // or 'email', 'users', etc.
-    scope.setTag('environment', process.env.NODE_ENV);
+    // Tags for filtering
+    scope.SetTag("service", "explore-api");
+    scope.SetTag("environment", "production");
+    scope.SetTag("tenant", tenantId);
+    scope.SetTag("feature", "event-management");
 
-    // Add operation-specific context
-    scope.setContext('operation', {
-        type: 'workflow.start',
-        workflowCode: 'DHS_CLOSEOUT',
-        entityId: 123
+    // Additional context
+    scope.SetContext("operation", new
+    {
+        Type = "event.create",
+        EventId = eventId,
+        OrganizationId = orgId
     });
 
-    Sentry.captureException(error);
+    // Extra data
+    scope.SetExtra("request", requestDto);
 });
 ```
 
-## Service-Specific Integration
+## Configuration (appsettings.json)
 
-### Form Service
-
-**Location**: `./blog-api/src/instrument.ts`
-
-```typescript
-import * as Sentry from '@sentry/node';
-import { nodeProfilingIntegration } from '@sentry/profiling-node';
-
-Sentry.init({
-    dsn: process.env.SENTRY_DSN,
-    environment: process.env.NODE_ENV || 'development',
-    integrations: [
-        nodeProfilingIntegration(),
-    ],
-    tracesSampleRate: 0.1,
-    profilesSampleRate: 0.1,
-});
-```
-
-**Key Helpers**:
-- `WorkflowSentryHelper` - Workflow-specific errors
-- `DatabasePerformanceMonitor` - DB query tracking
-- `BaseController` - Controller error handling
-
-### Email Service
-
-**Location**: `./notifications/src/instrument.ts`
-
-```typescript
-import * as Sentry from '@sentry/node';
-import { nodeProfilingIntegration } from '@sentry/profiling-node';
-
-Sentry.init({
-    dsn: process.env.SENTRY_DSN,
-    environment: process.env.NODE_ENV || 'development',
-    integrations: [
-        nodeProfilingIntegration(),
-    ],
-    tracesSampleRate: 0.1,
-    profilesSampleRate: 0.1,
-});
-```
-
-**Key Helpers**:
-- `EmailSentryHelper` - Email-specific errors
-- `BaseController` - Controller error handling
-
-## Configuration (config.ini)
-
-```ini
-[sentry]
-dsn = your-sentry-dsn
-environment = development
-tracesSampleRate = 0.1
-profilesSampleRate = 0.1
-
-[databaseMonitoring]
-enableDbTracing = true
-slowQueryThreshold = 100
-logDbQueries = false
-dbErrorCapture = true
-enableN1Detection = true
-```
-
-## Testing Sentry Integration
-
-### Form Service Test Endpoints
-
-```bash
-# Test basic error capture
-curl http://localhost:3002/blog-api/api/sentry/test-error
-
-# Test workflow error
-curl http://localhost:3002/blog-api/api/sentry/test-workflow-error
-
-# Test database performance
-curl http://localhost:3002/blog-api/api/sentry/test-database-performance
-
-# Test error boundary
-curl http://localhost:3002/blog-api/api/sentry/test-error-boundary
-```
-
-### Email Service Test Endpoints
-
-```bash
-# Test basic error capture
-curl http://localhost:3003/notifications/api/sentry/test-error
-
-# Test email-specific error
-curl http://localhost:3003/notifications/api/sentry/test-email-error
-
-# Test performance tracking
-curl http://localhost:3003/notifications/api/sentry/test-performance
+```json
+{
+  "Sentry": {
+    "Dsn": "https://your-sentry-dsn@sentry.io/project-id",
+    "Environment": "Production",
+    "TracesSampleRate": 0.1,
+    "ProfilesSampleRate": 0.1,
+    "Debug": false,
+    "DiagnosticLevel": "Error"
+  }
+}
 ```
 
 ## Performance Monitoring
 
 ### Requirements
 
-1. **All API endpoints** must have transaction tracking
-2. **Database queries > 100ms** are automatically flagged
-3. **N+1 queries** are detected and reported
-4. **Cron jobs** must track execution time
+1. **All API endpoints** must have automatic transaction tracking (via middleware)
+2. **Database queries > 100ms** should be flagged
+3. **Command/Query handlers** should track execution time
+4. **External API calls** must be tracked
 
 ### Transaction Tracking
 
-```typescript
-import * as Sentry from '@sentry/node';
+```csharp
+// Automatic via middleware for HTTP requests
+// Manual for background jobs or custom operations
 
-// Automatic transaction tracking for Express routes
-app.use(Sentry.Handlers.requestHandler());
-app.use(Sentry.Handlers.tracingHandler());
-
-// Manual transaction for custom operations
-const transaction = Sentry.startTransaction({
-    op: 'operation.type',
-    name: 'Operation Name',
-});
-
-try {
+var transaction = SentrySdk.StartTransaction("job.sync-events", "background");
+try
+{
     // Your operation
-} finally {
-    transaction.finish();
+    transaction.Status = SpanStatus.Ok;
+}
+catch (Exception ex)
+{
+    transaction.Status = SpanStatus.InternalError;
+    SentrySdk.CaptureException(ex);
+    throw;
+}
+finally
+{
+    transaction.Finish();
 }
 ```
 
 ## Common Mistakes to Avoid
 
-❌ **NEVER** use console.error without Sentry
-❌ **NEVER** swallow errors silently
-❌ **NEVER** expose sensitive data in error context
+❌ **NEVER** use Console.WriteLine for errors in production
+❌ **NEVER** swallow exceptions silently
+❌ **NEVER** expose sensitive data (passwords, tokens, PII) in error context
 ❌ **NEVER** use generic error messages without context
 ❌ **NEVER** skip error handling in async operations
-❌ **NEVER** forget to import instrument.ts as first line in cron jobs
+❌ **NEVER** forget to configure Sentry DSN in appsettings
 
 ## Implementation Checklist
 
 When adding Sentry to new code:
 
-- [ ] Imported Sentry or appropriate helper
+- [ ] Added Sentry NuGet package reference
+- [ ] Configured Sentry in Program.cs
 - [ ] All try/catch blocks capture to Sentry
 - [ ] Added meaningful context to errors
 - [ ] Used appropriate error level
 - [ ] No sensitive data in error messages
 - [ ] Added performance tracking for slow operations
 - [ ] Tested error handling paths
-- [ ] For cron jobs: instrument.ts imported first
+- [ ] Verified Sentry dashboard receives events
 
-## Key Files
+## NuGet Packages
 
-### Form Service
-- `/blog-api/src/instrument.ts` - Sentry initialization
-- `/blog-api/src/workflow/utils/sentryHelper.ts` - Workflow errors
-- `/blog-api/src/utils/databasePerformance.ts` - DB monitoring
-- `/blog-api/src/controllers/BaseController.ts` - Controller base
+### Explore.API
+```xml
+<PackageReference Include="Sentry.AspNetCore" Version="4.0.0" />
+<PackageReference Include="Sentry.Serilog" Version="4.0.0" />
+```
 
-### Email Service
-- `/notifications/src/instrument.ts` - Sentry initialization
-- `/notifications/src/utils/EmailSentryHelper.ts` - Email errors
-- `/notifications/src/controllers/BaseController.ts` - Controller base
+### Explore.Blazor
+```xml
+<PackageReference Include="Sentry.AspNetCore" Version="4.0.0" />
+```
 
-### Configuration
-- `/blog-api/config.ini` - Form service config
-- `/notifications/config.ini` - Email service config
-- `/sentry.ini` - Shared Sentry config
+### Explore.Application (Optional)
+```xml
+<PackageReference Include="Sentry" Version="4.0.0" />
+```
 
-## Documentation
+## Testing Sentry Integration
 
-- Full implementation: `/dev/active/email-sentry-integration/`
-- Form service docs: `/blog-api/docs/sentry-integration.md`
-- Email service docs: `/notifications/docs/sentry-integration.md`
+### API Test Endpoint
+
+```csharp
+[HttpGet("sentry/test-error")]
+[AllowAnonymous]
+public IActionResult TestSentryError()
+{
+    try
+    {
+        throw new InvalidOperationException("Test Sentry exception from API");
+    }
+    catch (Exception ex)
+    {
+        SentrySdk.CaptureException(ex, scope =>
+        {
+            scope.SetTag("test", "true");
+            scope.SetTag("endpoint", "test-error");
+        });
+        throw;
+    }
+}
+
+[HttpGet("sentry/test-performance")]
+[AllowAnonymous]
+public async Task<IActionResult> TestPerformance()
+{
+    var transaction = SentrySdk.StartTransaction("test.performance", "test");
+    try
+    {
+        await Task.Delay(1000); // Simulate slow operation
+        transaction.Status = SpanStatus.Ok;
+        return Ok(new { message = "Performance test completed" });
+    }
+    finally
+    {
+        transaction.Finish();
+    }
+}
+```
+
+### Test Commands
+
+```bash
+# Test error capture
+curl https://localhost:7001/api/v1/sentry/test-error
+
+# Test performance tracking
+curl https://localhost:7001/api/v1/sentry/test-performance
+```
 
 ## Related Skills
 
-- Use **database-verification** before database operations
-- Use **workflow-builder** for workflow error context
-- Use **database-scripts** for database error handling
+- Use **clean-architecture-rules** for proper error handling layer placement
+- Use **cqrs-mediatr-guidelines** for handler error patterns
+- Use **dotnet-efcore-guidelines** for database error handling
+
+---
+
+**Enforcement Level**: 💡 SUGGEST (Provides guidance, encourages adoption)

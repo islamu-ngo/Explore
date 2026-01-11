@@ -92,7 +92,7 @@ When planning features, always consider:
 
 ## Phase 1: Domain Layer (Week 1)
 ### Task 1.1: Create EventRegistration Entity
-- **File**: `src/Explore.Domain/EventRegistration.cs`
+- **File**: `Explore.Domain/EventRegistration.cs`
 - **Acceptance Criteria**:
   - [ ] Entity has UserId, EventId, Status properties
   - [ ] Includes CancellationReason nullable property

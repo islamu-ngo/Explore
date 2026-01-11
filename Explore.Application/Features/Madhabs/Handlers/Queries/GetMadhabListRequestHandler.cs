@@ -22,7 +22,7 @@ namespace Explore.Application.Features.Madhabs.Handlers.Queries
 
         public async Task<List<MadhabListDto>> Handle(GetMadhabListRequest request, CancellationToken cancellationToken)
         {
-            var madhabs = await _madhabRepository.GetAllAsync();
+            var madhabs = await _madhabRepository.GetAll();
             return _mapper.Map<List<MadhabListDto>>(madhabs);
         }
     }

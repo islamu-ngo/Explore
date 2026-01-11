@@ -1,5 +1,6 @@
 using System;
 using Explore.Domain;
+using Explore.Persistence.Seed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -19,7 +20,7 @@ namespace Explore.Persistence.Configurations.Entities
             builder.HasData(
                 new Tenant
                 {
-                    Id = Guid.Parse("018e4e5c-7f00-7000-8000-000000000000"),
+                    Id = SeedIds.DefaultTenantId,
                     FullName = "ISLAMU Default Tenant",
                     Slug = "default",
                     IsActive = true

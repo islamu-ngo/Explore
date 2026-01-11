@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories
@@ -72,12 +73,35 @@ namespace Explore.Persistence.Repositories
 
         public async Task<List<OrganizationMember>> GetInvitesByEmail(string email)
         {
-            // Get members by looking up user email
             return await _dbContext.OrganizationMembers
                 .Include(m => m.Organization)
                 .Include(m => m.User)
                 .Where(m => m.User.Email == email)
                 .ToListAsync();
+        }
+
+        public async Task<OrganizationMember?> GetByOrganizationAndUser(Guid organizationId, Guid userId)
+        {
+            return await _dbContext.OrganizationMembers
+                .Include(m => m.OrganizationRole)
+                .Include(m => m.Organization)
+                .FirstOrDefaultAsync(m => m.OrganizationId == organizationId && m.UserId == userId);
+        }
+
+        public async Task<bool> IsUserAdminOfOrganization(Guid organizationId, Guid userId)
+        {
+            // Admin-level roles: Creator, CoOwner, Admin
+            var adminRoles = new[]
+            {
+                (int)OrganizationRoleEnum.Creator,
+                (int)OrganizationRoleEnum.CoOwner,
+                (int)OrganizationRoleEnum.Admin
+            };
+
+            return await _dbContext.OrganizationMembers
+                .AnyAsync(m => m.OrganizationId == organizationId 
+                    && m.UserId == userId 
+                    && adminRoles.Contains(m.OrganizationRoleId));
         }
     }
 }

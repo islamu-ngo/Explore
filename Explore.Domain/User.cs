@@ -10,9 +10,13 @@ namespace Explore.Domain
         public string FirstName { get; set; }
         public string LastName { get; set; }
 
+        /// <summary>
+        /// Every User MUST have an associated Actor for identity in the system.
+        /// Created automatically when user syncs/registers.
+        /// </summary>
         [ForeignKey("Actor")]
-        public Guid? ActorId { get; set; }
-        public Actor? Actor { get; set; }
+        public Guid ActorId { get; set; }
+        public Actor Actor { get; set; }
 
         public string? AuthProvider { get; set; }
         public string? AuthProviderId { get; set; }
