@@ -1,7 +1,7 @@
 @page "/eventedit/{eventId:guid}"
 @using MudBlazor
 @using Explore.Blazor.Client.Models
-@using Explore.Blazor.Client.Models.DTOs
+@using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Services
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components
@@ -45,14 +45,14 @@ else if (currentEvent != null && updateDto != null)
                         <div class="mb-4">
                             <MudText Typo="Typo.h6" Class="mb-3">Event Image</MudText>
                             <MudPaper Class="pa-4" Style="background-color: var(--mud-palette-background-grey);">
-                                <ImageUpload ImageKey="@updateDto.ImageKey"
-                                            ImageKeyChanged="OnImageKeyChanged"
-                                            PreviewUrl="@selectedImageUrl"
-                                            PreviewUrlChanged="OnPreviewUrlChanged"
-                                            Width="100%"
-                                            Height="300px"
-                                            PlaceholderText="Update event image"
-                                            HintText="Upload a new image or keep the existing one (JPG, PNG, GIF, WebP - Max 5MB)" />
+                                @if (!string.IsNullOrEmpty(selectedImageUrl))
+                                {
+                                    <img src="@selectedImageUrl" alt="Event image" style="width: 100%; max-height: 300px; object-fit: cover;" />
+                                }
+                                else
+                                {
+                                    <MudText>No image uploaded</MudText>
+                                }
                             </MudPaper>
                         </div>
 
@@ -94,101 +94,56 @@ else if (currentEvent != null && updateDto != null)
                             </MudGrid>
                         </MudPaper>
 
-                        <!-- Location Info -->
-                        <MudText Typo="Typo.h6" Class="mb-3">Location</MudText>
+                        <!-- Event Format -->
+                        <MudText Typo="Typo.h6" Class="mb-3">Event Format</MudText>
                         <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
-                            <MudSwitch @bind-Value="_isOnline" Label="Online Event (No physical location)" Color="Color.Primary" Class="mb-3" />
+                            <MudSelect @bind-Value="updateDto.EventFormatId"
+                                      Label="Event Format"
+                                      Variant="Variant.Outlined"
+                                      Required>
+                                <MudSelectItem Value="1">In-Person</MudSelectItem>
+                                <MudSelectItem Value="2">Online</MudSelectItem>
+                                <MudSelectItem Value="3">Hybrid</MudSelectItem>
+                            </MudSelect>
                             
-                            @if (_isOnline)
+                            @if (updateDto?.EventFormatId == 2 || updateDto?.EventFormatId == 3)
                             {
-                                <MudTextField @bind-Value="updateDto.ProgramUrl" 
-                                            Label="Online Meeting Link (e.g. Teams)" 
+                                <MudTextField @bind-Value="updateDto.ExternalRegistrationUrl" 
+                                            Label="Online Meeting/Registration Link" 
                                             Variant="Variant.Outlined" 
                                             FullWidth 
-                                            Class="mb-3"
+                                            Class="mt-3"
                                             Adornment="Adornment.Start"
                                             AdornmentIcon="@Icons.Material.Filled.Link" />
                             }
-                            else
-                            {
-                                <MudGrid Spacing="3">
-                                    <MudItem xs="12">
-                                        <MudTextField @bind-Value="updateDto.Address" 
-                                                    Label="Address" 
-                                                    Variant="Variant.Outlined" 
-                                                    FullWidth
-                                                    Placeholder="Street name and number"
-                                                    Adornment="Adornment.Start"
-                                                    AdornmentIcon="@Icons.Material.Filled.Home" />
-                                    </MudItem>
-                                    <MudItem xs="12" sm="6">
-                                        <MudTextField @bind-Value="updateDto.City" 
-                                                    Label="City" 
-                                                    Variant="Variant.Outlined" 
-                                                    FullWidth
-                                                    Placeholder="City name"
-                                                    Adornment="Adornment.Start"
-                                                    AdornmentIcon="@Icons.Material.Filled.LocationCity" />
-                                    </MudItem>
-                                    <MudItem xs="12" sm="6">
-                                        <MudSelect @bind-Value="updateDto.Country" 
-                                                   Label="Country" 
-                                                   Variant="Variant.Outlined" 
-                                                   FullWidth
-                                                   Placeholder="Select Country"
-                                                   Adornment="Adornment.Start"
-                                                   AdornmentIcon="@Icons.Material.Filled.Public">
-                                            <MudSelectItem Value="@("Belgium")">Belgium</MudSelectItem>
-                                            <MudSelectItem Value="@("Netherlands")">Netherlands</MudSelectItem>
-                                            <MudSelectItem Value="@("France")">France</MudSelectItem>
-                                            <MudSelectItem Value="@("Germany")">Germany</MudSelectItem>
-                                            <MudSelectItem Value="@("Spain")">Spain</MudSelectItem>
-                                            <MudSelectItem Value="@("Italy")">Italy</MudSelectItem>
-                                            <MudSelectItem Value="@("United Kingdom")">United Kingdom</MudSelectItem>
-                                            <MudSelectItem Value="@("Portugal")">Portugal</MudSelectItem>
-                                            <MudSelectItem Value="@("Austria")">Austria</MudSelectItem>
-                                            <MudSelectItem Value="@("Switzerland")">Switzerland</MudSelectItem>
-                                            <MudSelectItem Value="@("Poland")">Poland</MudSelectItem>
-                                            <MudSelectItem Value="@("Sweden")">Sweden</MudSelectItem>
-                                            <MudSelectItem Value="@("Denmark")">Denmark</MudSelectItem>
-                                            <MudSelectItem Value="@("Norway")">Norway</MudSelectItem>
-                                            <MudSelectItem Value="@("Finland")">Finland</MudSelectItem>
-                                        </MudSelect>
-                                    </MudItem>
-                                    <MudItem xs="12" sm="6">
-                                        <MudNumericField @bind-Value="updateDto.PostCode" 
-                                                       Label="Postal Code" 
-                                                       Variant="Variant.Outlined" 
-                                                       FullWidth />
-                                    </MudItem>
-                                </MudGrid>
-                            }
+
+                            <MudAlert Severity="Severity.Info" Class="mt-3">
+                                Location details are managed at the session level after creating the event.
+                            </MudAlert>
                         </MudPaper>
 
                         <!-- Price -->
-                        <div class="mb-3">
-                            <MudNumericField @bind-Value="updateDto.Price" 
-                                           Label="Price" 
-                                           Variant="Variant.Outlined" 
-                                           FullWidth
-                                           Min="0"
-                                           Adornment="Adornment.Start"
-                                           AdornmentIcon="@Icons.Material.Filled.Euro" />
-                        </div>
-
-                        <!-- URL -->
-                        @if (!_isOnline)
-                        {
-                            <div class="mb-3">
-                                <MudTextField @bind-Value="updateDto.ProgramUrl" 
-                                            Label="Event URL (optional)" 
-                                            Variant="Variant.Outlined" 
-                                            FullWidth
-                                            Placeholder="https://..."
-                                            Adornment="Adornment.Start"
-                                            AdornmentIcon="@Icons.Material.Filled.Link" />
-                            </div>
-                        }
+                        <MudText Typo="Typo.h6" Class="mb-3">Pricing</MudText>
+                        <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
+                            <MudGrid Spacing="3">
+                                <MudItem xs="12" sm="6">
+                                    <MudNumericField @bind-Value="updateDto.Price" 
+                                                   Label="Price" 
+                                                   Variant="Variant.Outlined" 
+                                                   FullWidth
+                                                   Min="0"
+                                                   Adornment="Adornment.Start"
+                                                   AdornmentIcon="@Icons.Material.Filled.Euro" />
+                                </MudItem>
+                                <MudItem xs="12" sm="6">
+                                    <MudTextField @bind-Value="updateDto.CurrencyCode" 
+                                                 Label="Currency Code" 
+                                                 Variant="Variant.Outlined"
+                                                 FullWidth
+                                                 Placeholder="EUR" />
+                                </MudItem>
+                            </MudGrid>
+                        </MudPaper>
 
                         <!-- Event Type -->
                         <div class="mb-3">
@@ -212,7 +167,7 @@ else if (currentEvent != null && updateDto != null)
                         <!-- Read-only Organization -->
                         <MudAlert Severity="Severity.Info" Class="mb-3">
                             <MudText Typo="Typo.body2">
-                                <strong>Organization:</strong> @currentEvent.OrganizationFullName<br/>
+                                <strong>Organizer:</strong> @(currentEvent.ActorDisplayName ?? "Unknown")<br/>
                                 <MudText Typo="Typo.caption">To change organization, please contact support.</MudText>
                             </MudText>
                         </MudAlert>
@@ -246,7 +201,7 @@ else
 @code {
     [Parameter] public Guid EventId { get; set; }
     
-    private EventDetailsDto? currentEvent;
+    private EventDto? currentEvent;
     private UpdateEventDto? updateDto;
     private DateTime? _startDate;
     private TimeSpan? _startTime;
@@ -255,7 +210,7 @@ else
     private bool _isOnline = false;
     private string selectedImageUrl = string.Empty;
     private bool isLoading = true;
-    private List<EventTypeListDto>? eventTypes;
+    private ICollection<EventTypeListDto>? eventTypes;
 
     protected override async Task OnInitializedAsync()
     {
@@ -278,34 +233,36 @@ else
                     Description = currentEvent.Description,
                     AudienceGenderId = currentEvent.AudienceGenderId,
                     AudienceAgeId = currentEvent.AudienceAgeId,
-                    OrganizationId = currentEvent.OrganizationId,
-                    AudienceAttendees = currentEvent.AudienceAttendees,
                     Price = currentEvent.Price,
+                    CurrencyCode = currentEvent.CurrencyCode,
                     FeaturedImageId = currentEvent.FeaturedImageId,
                     IsRegistrationRequired = currentEvent.IsRegistrationRequired,
-                    Country = currentEvent.Country,
-                    City = currentEvent.City,
-                    PostCode = currentEvent.PostCode,
-                    Address = currentEvent.Address,
-                    ProgramUrl = currentEvent.ProgramUrl,
+                    ExternalRegistrationUrl = currentEvent.EventUrl,
                     EventTypeId = currentEvent.EventTypeId,
-                    StartDate = currentEvent.StartDate,
-                    EndDate = currentEvent.EndDate
+                    EventFormatId = currentEvent.EventFormatId,
+                    EventStatusId = currentEvent.EventStatusId,
+                    VisibilityTypeId = currentEvent.VisibilityTypeId,
+                    FirstSessionDate = currentEvent.FirstSessionDate,
+                    LastSessionDate = currentEvent.LastSessionDate
                 };
                 
                 // Initialize date/time pickers
-                var localStart = currentEvent.StartDate.ToLocalTime();
-                var localEnd = currentEvent.EndDate.ToLocalTime();
+                if (currentEvent.FirstSessionDate.HasValue)
+                {
+                    var localStart = currentEvent.FirstSessionDate.Value.LocalDateTime;
+                    _startDate = localStart.Date;
+                    _startTime = localStart.TimeOfDay;
+                }
                 
-                _startDate = localStart.Date;
-                _startTime = localStart.TimeOfDay;
-                _endDate = localEnd.Date;
-                _endTime = localEnd.TimeOfDay;
+                if (currentEvent.LastSessionDate.HasValue)
+                {
+                    var localEnd = currentEvent.LastSessionDate.Value.LocalDateTime;
+                    _endDate = localEnd.Date;
+                    _endTime = localEnd.TimeOfDay;
+                }
                 
-                // Determine if online based on address fields being empty and URL present
-                _isOnline = string.IsNullOrEmpty(currentEvent.Address) && 
-                           string.IsNullOrEmpty(currentEvent.City) && 
-                           !string.IsNullOrEmpty(currentEvent.ProgramUrl);
+                // Determine if online based on format
+                _isOnline = currentEvent.EventFormatId == 2; // Assuming 2 = Online
                 
                 selectedImageUrl = currentEvent.FeaturedImageUri ?? GeneratePlaceholderImage();
             }
@@ -391,86 +348,48 @@ else
             catch (Exception ex)
             {
                 Snackbar.Add($"Error uploading image: {ex.Message}", Severity.Error);
-                selectedImageUrl = GeneratePlaceholderImage();
             }
         }
     }
     
-    private void RemoveImage()
-    {
-        selectedImageUrl = GeneratePlaceholderImage();
-        if (updateDto != null)
-        {
-            updateDto.FeaturedImageId = null;
-        }
-        StateHasChanged();
-    }
-
     private async Task HandleValidSubmit()
     {
-        if (updateDto != null)
+        if (updateDto == null) return;
+        
+        try
         {
-            try
+            // Update dates
+            if (_startDate.HasValue && _startTime.HasValue)
             {
-                // Update dates
-                if (_startDate.HasValue && _startTime.HasValue)
-                {
-                    updateDto.StartDate = (_startDate.Value.Date + _startTime.Value).ToUniversalTime();
-                }
-                
-                if (_endDate.HasValue && _endTime.HasValue)
-                {
-                    updateDto.EndDate = (_endDate.Value.Date + _endTime.Value).ToUniversalTime();
-                }
-
-                // Handle online/offline logic
-                if (_isOnline)
-                {
-                    updateDto.Address = null;
-                    updateDto.City = null;
-                    updateDto.Country = null;
-                    updateDto.PostCode = null;
-                }
-                else
-                {
-                    // If switching to offline, clear URL if desired, or keep it as optional
-                    // updateDto.ProgramUrl = null; 
-                }
-
-                var success = await EventService.UpdateEventAsync(EventId, updateDto);
-                
-                if (success)
-                {
-                    Snackbar.Add("Event updated successfully!", Severity.Success);
-                    Navigation.NavigateTo("/myevents");
-                }
-                else
-                {
-                    Snackbar.Add("Failed to update event", Severity.Error);
-                }
+                updateDto.FirstSessionDate = new DateTimeOffset(_startDate.Value.Date + _startTime.Value, TimeSpan.Zero);
             }
-            catch (Exception ex)
+            
+            if (_endDate.HasValue && _endTime.HasValue)
             {
-                Snackbar.Add($"Error updating event: {ex.Message}", Severity.Error);
+                updateDto.LastSessionDate = new DateTimeOffset(_endDate.Value.Date + _endTime.Value, TimeSpan.Zero);
+            }
+            
+            var response = await EventService.UpdateEventAsync(updateDto.Id, updateDto);
+            
+            if (response?.Success == true)
+            {
+                Snackbar.Add("Event updated successfully!", Severity.Success);
+                Navigation.NavigateTo("/myevents");
+            }
+            else
+            {
+                Snackbar.Add(response?.Message ?? "Failed to update event", Severity.Error);
             }
         }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error updating event: {ex.Message}", Severity.Error);
+        }
     }
-
+    
     private void NavigateBack()
     {
         Navigation.NavigateTo("/myevents");
     }
-
-    private void OnImageKeyChanged(string? value)
-    {
-        if (updateDto != null)
-        {
-            updateDto.ImageKey = value;
-        }
-    }
-
-    private void OnPreviewUrlChanged(string? value)
-    {
-        selectedImageUrl = value ?? string.Empty;
-    }
 }
+

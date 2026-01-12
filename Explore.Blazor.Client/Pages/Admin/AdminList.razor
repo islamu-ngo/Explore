@@ -1,11 +1,13 @@
 @page "/admin"
 @using MudBlazor
-@using Explore.Blazor.Client.Models.DTOs
+@using Explore.Blazor.Client.Clients;
 @using Explore.Blazor.Client.Services
+@using Microsoft.AspNetCore.Components
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
 @inject IAdminService AdminService
+@inject IUserService UserService
 
 <style>
     :root{
@@ -573,13 +575,14 @@
 </div>
 
 @code {
-    // Status mapping van API naar local enum
+    // Status mapping from API to local enum
     private enum RequestStatus { Pending = 1, Approved = 2, Rejected = 3 }
 
-    private List<OrganizationListDto> _organizationRequests = new();
+    private ICollection<OrganizationListDto> _organizationRequests = new List<OrganizationListDto>();
     private string _search = string.Empty;
     private int _activeTab = 0;
     private bool _isLoading = true;
+    private string? _errorMessage;
     private HashSet<RequestStatus> _selectedStatuses = new();
     private enum SortOption { OldestFirst, NewestFirst, Name, Status }
     private SortOption _sort = SortOption.OldestFirst;
@@ -592,30 +595,39 @@
     private async Task LoadOrganizationRequests()
     {
         _isLoading = true;
+        _errorMessage = null;
+
         try
         {
-            _organizationRequests = await AdminService.GetOrganizationRequestsAsync();
-            Console.WriteLine($"Loaded {_organizationRequests.Count} organizations");
-            foreach (var org in _organizationRequests)
+            Console.WriteLine("[ADMIN] Loading organizations from API");
+            var tempOrgs = await AdminService.GetOrganizationRequestsAsync();
+
+            if (tempOrgs != null)
             {
-                Console.WriteLine($"Org: {org.FullName}, Status: {org.StatusTypeId} - {org.StatusTypeFullName}");
+                _organizationRequests = tempOrgs;
+                Console.WriteLine($"[ADMIN] Loaded {_organizationRequests.Count} organizations");
+            }
+            else
+            {
+                _organizationRequests = new List<OrganizationListDto>();
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading organizations: {ex.Message}");
-            Snackbar.Add($"Fout bij laden organisaties: {ex.Message}", Severity.Error);
+            _errorMessage = $"Failed to load organizations: {ex.Message}";
+            Console.WriteLine($"[ADMIN] ERROR: {ex.Message}");
+            Snackbar.Add(_errorMessage, Severity.Error);
+            _organizationRequests = new List<OrganizationListDto>();
         }
         finally
         {
             _isLoading = false;
-            StateHasChanged();
         }
     }
 
-    private int PendingCount  => _organizationRequests.Count(r => r.StatusTypeId == (int)RequestStatus.Pending);
-    private int ApprovedCount => _organizationRequests.Count(r => r.StatusTypeId == (int)RequestStatus.Approved);
-    private int RejectedCount => _organizationRequests.Count(r => r.StatusTypeId == (int)RequestStatus.Rejected);
+    private int PendingCount  => _organizationRequests.Count(r => r.ApprovalStatusId == (int)RequestStatus.Pending);
+    private int ApprovedCount => _organizationRequests.Count(r => r.ApprovalStatusId == (int)RequestStatus.Approved);
+    private int RejectedCount => _organizationRequests.Count(r => r.ApprovalStatusId == (int)RequestStatus.Rejected);
 
     // filter + sorteer (oudste bovenaan)
     private IEnumerable<OrganizationListDto> GetFilteredAndSorted(RequestStatus? status)
@@ -623,13 +635,13 @@
         IEnumerable<OrganizationListDto> q = _organizationRequests;
 
         if (status.HasValue)
-            q = q.Where(r => r.StatusTypeId == (int)status.Value);
+            q = q.Where(r => r.ApprovalStatusId == (int)status.Value);
 
         // apply chip filters if any selected
         if (_selectedStatuses.Count > 0)
         {
             var allowed = _selectedStatuses.Select(s => (int)s).ToHashSet();
-            q = q.Where(r => allowed.Contains(r.StatusTypeId));
+            q = q.Where(r => allowed.Contains(r.ApprovalStatusId));
         }
 
         if (!string.IsNullOrWhiteSpace(_search))
@@ -648,7 +660,7 @@
         {
             SortOption.NewestFirst => q.OrderByDescending(r => r.CreatedAt),
             SortOption.Name        => q.OrderBy(r => r.FullName),
-            SortOption.Status      => q.OrderBy(r => r.StatusTypeId),
+            SortOption.Status      => q.OrderBy(r => r.ApprovalStatusId),
             _ => q.OrderBy(r => r.CreatedAt)
         };
 
@@ -699,7 +711,7 @@
 
                     <MudTd DataLabel="Status">
                         <MudChip T="string"
-                                 Color="@StatusColor((RequestStatus)context.StatusTypeId)"
+                                 Color="@StatusColor((RequestStatus)context.ApprovalStatusId)"
                                  Variant="Variant.Filled"
                                  Class="status-pill">
                             @context.StatusTypeFullName
@@ -708,7 +720,7 @@
 
                     <MudTd DataLabel="Actions" Style="text-align:center">
                         <div class="table-actions">
-                            @if (context.StatusTypeId == (int)RequestStatus.Pending)
+                            @if (context.ApprovalStatusId == (int)RequestStatus.Pending)
                             {
                                 <MudTooltip Text="Approve">
                                     <MudIconButton Icon="@Icons.Material.Filled.CheckCircle"
@@ -725,7 +737,7 @@
                                                    Style="border-radius:14px;" />
                                 </MudTooltip>
                             }
-                            else if (context.StatusTypeId == (int)RequestStatus.Approved)
+                            else if (context.ApprovalStatusId == (int)RequestStatus.Approved)
                             {
                                 <MudTooltip Text="Revoke approval">
                                     <MudIconButton Icon="@Icons.Material.Filled.Restore"
@@ -735,7 +747,7 @@
                                                    Style="border-radius:14px;" />
                                 </MudTooltip>
                             }
-                            else if (context.StatusTypeId == (int)RequestStatus.Rejected)
+                            else if (context.ApprovalStatusId == (int)RequestStatus.Rejected)
                             {
                                 <MudTooltip Text="Move back to pending">
                                     <MudIconButton Icon="@Icons.Material.Filled.Restore"
@@ -795,7 +807,7 @@
                         </div>
                         <div class="card-status">
                             <MudChip T="string"
-                                     Color="@StatusColor((RequestStatus)org.StatusTypeId)"
+                                     Color="@StatusColor((RequestStatus)org.ApprovalStatusId)"
                                      Variant="Variant.Filled"
                                      Style="font-size:0.75rem; padding:2px 8px !important; border-radius:6px !important;">
                                 @org.StatusTypeFullName
@@ -819,7 +831,7 @@
                     </div>
 
                     <div class="card-actions">
-                        @if (org.StatusTypeId == (int)RequestStatus.Pending)
+                        @if (org.ApprovalStatusId == (int)RequestStatus.Pending)
                         {
                             <MudButton Variant="Variant.Filled"
                                        Color="Color.Success"
@@ -836,7 +848,7 @@
                                 Reject
                             </MudButton>
                         }
-                        else if (org.StatusTypeId == (int)RequestStatus.Approved)
+                        else if (org.ApprovalStatusId == (int)RequestStatus.Approved)
                         {
                             <MudButton Variant="Variant.Filled"
                                        Color="Color.Warning"
@@ -846,7 +858,7 @@
                                 Revoke
                             </MudButton>
                         }
-                        else if (org.StatusTypeId == (int)RequestStatus.Rejected)
+                        else if (org.ApprovalStatusId == (int)RequestStatus.Rejected)
                         {
                             <MudButton Variant="Variant.Filled"
                                        Color="Color.Info"
@@ -910,9 +922,9 @@
     };
 
     // relatieve tijdsweergave
-    private string GetRelative(DateTime utc)
+    private string GetRelative(DateTimeOffset utc)
     {
-        var ts = DateTime.UtcNow - utc;
+        var ts = DateTimeOffset.UtcNow - utc;
         if (ts.TotalDays    >= 1) return $"{(int)ts.TotalDays}d ago";
         if (ts.TotalHours   >= 1) return $"{(int)ts.TotalHours}h ago";
         if (ts.TotalMinutes >= 1) return $"{(int)ts.TotalMinutes}m ago";

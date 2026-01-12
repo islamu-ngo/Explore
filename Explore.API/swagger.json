@@ -6,16 +6,18 @@
   },
   "servers": [
     {
-      "url": "https://localhost:53445"
+      "url": "https://localhost:50419"
     },
     {
-      "url": "http://localhost:53446"
+      "url": "http://localhost:50420"
     }
   ],
   "paths": {
     "/admin/migrate": {
       "post": {
-        "tags": ["Explore.API"],
+        "tags": [
+          "Explore.API"
+        ],
         "responses": {
           "200": {
             "description": "OK"
@@ -25,7 +27,9 @@
     },
     "/api/v1/Actor": {
       "get": {
-        "tags": ["Actor"],
+        "tags": [
+          "Actor"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -59,7 +63,9 @@
         }
       },
       "post": {
-        "tags": ["Actor"],
+        "tags": [
+          "Actor"
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -72,7 +78,7 @@
                 "$ref": "#/components/schemas/CreateActorDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/CreateActorDto"
               }
@@ -106,7 +112,9 @@
     },
     "/api/v1/Actor/{id}": {
       "get": {
-        "tags": ["Actor"],
+        "tags": [
+          "Actor"
+        ],
         "parameters": [
           {
             "name": "id",
@@ -142,7 +150,9 @@
         }
       },
       "put": {
-        "tags": ["Actor"],
+        "tags": [
+          "Actor"
+        ],
         "parameters": [
           {
             "name": "id",
@@ -166,7 +176,7 @@
                 "$ref": "#/components/schemas/UpdateActorDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateActorDto"
               }
@@ -198,7 +208,9 @@
         }
       },
       "delete": {
-        "tags": ["Actor"],
+        "tags": [
+          "Actor"
+        ],
         "parameters": [
           {
             "name": "id",
@@ -219,7 +231,9 @@
     },
     "/api/v1/Actor/by-did/{did}": {
       "get": {
-        "tags": ["Actor"],
+        "tags": [
+          "Actor"
+        ],
         "parameters": [
           {
             "name": "did",
@@ -256,7 +270,9 @@
     },
     "/api/v1/Actor/by-tenant/{tenantId}": {
       "get": {
-        "tags": ["Actor"],
+        "tags": [
+          "Actor"
+        ],
         "parameters": [
           {
             "name": "tenantId",
@@ -303,7 +319,9 @@
     },
     "/api/v1/ActorKeyStore": {
       "get": {
-        "tags": ["ActorKeyStore"],
+        "tags": [
+          "ActorKeyStore"
+        ],
         "summary": "Get all Actor Key Stores",
         "description": "Retrieve a list of all actor key stores",
         "responses": {
@@ -339,7 +357,9 @@
         }
       },
       "post": {
-        "tags": ["ActorKeyStore"],
+        "tags": [
+          "ActorKeyStore"
+        ],
         "summary": "Create new Actor Key Store",
         "description": "Create a new actor key store",
         "requestBody": {
@@ -354,7 +374,7 @@
                 "$ref": "#/components/schemas/CreateActorKeyStoreDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/CreateActorKeyStoreDto"
               }
@@ -408,7 +428,9 @@
     },
     "/api/v1/ActorKeyStore/{id}": {
       "get": {
-        "tags": ["ActorKeyStore"],
+        "tags": [
+          "ActorKeyStore"
+        ],
         "summary": "Get Actor Key Store by ID",
         "description": "Retrieve details of a specific actor key store",
         "parameters": [
@@ -466,7 +488,9 @@
         }
       },
       "put": {
-        "tags": ["ActorKeyStore"],
+        "tags": [
+          "ActorKeyStore"
+        ],
         "summary": "Update Actor Key Store",
         "description": "Update an existing actor key store",
         "parameters": [
@@ -492,7 +516,7 @@
                 "$ref": "#/components/schemas/UpdateActorKeyStoreDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateActorKeyStoreDto"
               }
@@ -564,7 +588,9 @@
         }
       },
       "delete": {
-        "tags": ["ActorKeyStore"],
+        "tags": [
+          "ActorKeyStore"
+        ],
         "summary": "Delete Actor Key Store",
         "description": "Delete an actor key store",
         "parameters": [
@@ -607,7 +633,9 @@
     },
     "/api/v1/ActorType": {
       "get": {
-        "tags": ["ActorType"],
+        "tags": [
+          "ActorType"
+        ],
         "summary": "Get all Actor Types",
         "description": "Retrieve a list of all actor types (User, Organization, Service, Bot)",
         "responses": {
@@ -645,7 +673,9 @@
     },
     "/api/v1/ActorType/{id}": {
       "get": {
-        "tags": ["ActorType"],
+        "tags": [
+          "ActorType"
+        ],
         "summary": "Get Actor Type by ID",
         "description": "Retrieve details of a specific actor type",
         "parameters": [
@@ -705,7 +735,9 @@
     },
     "/api/v1/ApprovalStatus": {
       "get": {
-        "tags": ["ApprovalStatus"],
+        "tags": [
+          "ApprovalStatus"
+        ],
         "summary": "Get all Status Types",
         "description": "Get A List of all the Status Type Options",
         "responses": {
@@ -741,7 +773,9 @@
         }
       },
       "post": {
-        "tags": ["ApprovalStatus"],
+        "tags": [
+          "ApprovalStatus"
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -754,7 +788,7 @@
                 "type": "string"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "type": "string"
               }
@@ -771,7 +805,9 @@
     },
     "/api/v1/ApprovalStatus/{id}": {
       "get": {
-        "tags": ["ApprovalStatus"],
+        "tags": [
+          "ApprovalStatus"
+        ],
         "parameters": [
           {
             "name": "id",
@@ -807,7 +843,9 @@
         }
       },
       "put": {
-        "tags": ["ApprovalStatus"],
+        "tags": [
+          "ApprovalStatus"
+        ],
         "parameters": [
           {
             "name": "id",
@@ -831,7 +869,7 @@
                 "type": "string"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "type": "string"
               }
@@ -846,7 +884,9 @@
         }
       },
       "delete": {
-        "tags": ["ApprovalStatus"],
+        "tags": [
+          "ApprovalStatus"
+        ],
         "parameters": [
           {
             "name": "id",
@@ -867,7 +907,9 @@
     },
     "/api/v1/AtprotoRecord": {
       "get": {
-        "tags": ["AtprotoRecord"],
+        "tags": [
+          "AtprotoRecord"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -901,7 +943,9 @@
         }
       },
       "post": {
-        "tags": ["AtprotoRecord"],
+        "tags": [
+          "AtprotoRecord"
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -914,7 +958,7 @@
                 "$ref": "#/components/schemas/CreateAtprotoRecordDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/CreateAtprotoRecordDto"
               }
@@ -948,7 +992,9 @@
     },
     "/api/v1/AtprotoRecord/{id}": {
       "get": {
-        "tags": ["AtprotoRecord"],
+        "tags": [
+          "AtprotoRecord"
+        ],
         "parameters": [
           {
             "name": "id",
@@ -984,7 +1030,9 @@
         }
       },
       "put": {
-        "tags": ["AtprotoRecord"],
+        "tags": [
+          "AtprotoRecord"
+        ],
         "parameters": [
           {
             "name": "id",
@@ -1008,7 +1056,7 @@
                 "$ref": "#/components/schemas/UpdateAtprotoRecordDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateAtprotoRecordDto"
               }
@@ -1040,7 +1088,9 @@
         }
       },
       "delete": {
-        "tags": ["AtprotoRecord"],
+        "tags": [
+          "AtprotoRecord"
+        ],
         "parameters": [
           {
             "name": "id",
@@ -1061,7 +1111,9 @@
     },
     "/api/v1/AudienceAge": {
       "get": {
-        "tags": ["AudienceAge"],
+        "tags": [
+          "AudienceAge"
+        ],
         "summary": "Get all Audience Age groups",
         "description": "Retrieve a list of all audience age groups (Children, Youth, Adults, Seniors, All Ages)",
         "responses": {
@@ -1099,7 +1151,9 @@
     },
     "/api/v1/AudienceAge/{id}": {
       "get": {
-        "tags": ["AudienceAge"],
+        "tags": [
+          "AudienceAge"
+        ],
         "summary": "Get Audience Age group by ID",
         "description": "Retrieve details of a specific audience age group",
         "parameters": [
@@ -1159,7 +1213,9 @@
     },
     "/api/v1/AudienceGender": {
       "get": {
-        "tags": ["AudienceGender"],
+        "tags": [
+          "AudienceGender"
+        ],
         "summary": "Get all Audience Gender types",
         "description": "Retrieve a list of all audience gender types (Men-only, Women-only, Mixed, Family)",
         "responses": {
@@ -1197,7 +1253,9 @@
     },
     "/api/v1/AudienceGender/{id}": {
       "get": {
-        "tags": ["AudienceGender"],
+        "tags": [
+          "AudienceGender"
+        ],
         "summary": "Get Audience Gender type by ID",
         "description": "Retrieve details of a specific audience gender type",
         "parameters": [
@@ -1257,7 +1315,9 @@
     },
     "/api/v1/Category": {
       "get": {
-        "tags": ["Category"],
+        "tags": [
+          "Category"
+        ],
         "summary": "Get all Categories",
         "description": "Get a list of all event categories",
         "responses": {
@@ -1293,7 +1353,9 @@
         }
       },
       "post": {
-        "tags": ["Category"],
+        "tags": [
+          "Category"
+        ],
         "summary": "Create Category",
         "description": "Create a new event category",
         "requestBody": {
@@ -1308,7 +1370,7 @@
                 "$ref": "#/components/schemas/CreateCategoryDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/CreateCategoryDto"
               }
@@ -1342,7 +1404,9 @@
     },
     "/api/v1/Category/{id}": {
       "get": {
-        "tags": ["Category"],
+        "tags": [
+          "Category"
+        ],
         "summary": "Get Category Details",
         "description": "Get detailed information about a specific category",
         "parameters": [
@@ -1380,7 +1444,9 @@
         }
       },
       "put": {
-        "tags": ["Category"],
+        "tags": [
+          "Category"
+        ],
         "summary": "Update Category",
         "description": "Update an existing category",
         "parameters": [
@@ -1406,7 +1472,7 @@
                 "$ref": "#/components/schemas/UpdateCategoryDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateCategoryDto"
               }
@@ -1438,7 +1504,9 @@
         }
       },
       "delete": {
-        "tags": ["Category"],
+        "tags": [
+          "Category"
+        ],
         "summary": "Delete Category",
         "description": "Delete a category",
         "parameters": [
@@ -1461,7 +1529,9 @@
     },
     "/api/v1/DidCustodyType": {
       "get": {
-        "tags": ["DidCustodyType"],
+        "tags": [
+          "DidCustodyType"
+        ],
         "summary": "Get all DID Custody Types",
         "description": "Retrieve a list of all DID custody types (Self-Custodied, Custodial, Managed)",
         "responses": {
@@ -1499,7 +1569,9 @@
     },
     "/api/v1/DidCustodyType/{id}": {
       "get": {
-        "tags": ["DidCustodyType"],
+        "tags": [
+          "DidCustodyType"
+        ],
         "summary": "Get DID Custody Type by ID",
         "description": "Retrieve details of a specific DID custody type",
         "parameters": [
@@ -1559,7 +1631,9 @@
     },
     "/api/v1/EventCategories": {
       "get": {
-        "tags": ["EventCategories"],
+        "tags": [
+          "EventCategories"
+        ],
         "summary": "Get all Event Categories",
         "description": "Retrieve a list of all event-category assignments",
         "responses": {
@@ -1595,7 +1669,9 @@
         }
       },
       "post": {
-        "tags": ["EventCategories"],
+        "tags": [
+          "EventCategories"
+        ],
         "summary": "Assign Category to Event",
         "description": "Create a new event-category assignment for content classification",
         "requestBody": {
@@ -1610,7 +1686,7 @@
                 "$ref": "#/components/schemas/CreateEventCategoriesDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/CreateEventCategoriesDto"
               }
@@ -1684,7 +1760,9 @@
     },
     "/api/v1/EventCategories/{id}": {
       "get": {
-        "tags": ["EventCategories"],
+        "tags": [
+          "EventCategories"
+        ],
         "summary": "Get Event Category by ID",
         "description": "Retrieve details of a specific event-category assignment",
         "parameters": [
@@ -1742,7 +1820,9 @@
         }
       },
       "put": {
-        "tags": ["EventCategories"],
+        "tags": [
+          "EventCategories"
+        ],
         "summary": "Update Event Category Assignment",
         "description": "Update an existing event-category assignment",
         "parameters": [
@@ -1768,7 +1848,7 @@
                 "$ref": "#/components/schemas/UpdateEventCategoriesDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateEventCategoriesDto"
               }
@@ -1860,7 +1940,9 @@
         }
       },
       "delete": {
-        "tags": ["EventCategories"],
+        "tags": [
+          "EventCategories"
+        ],
         "summary": "Remove Category from Event",
         "description": "Delete an event-category assignment",
         "parameters": [
@@ -1923,7 +2005,9 @@
     },
     "/api/v1/EventCategories/by-event/{eventId}": {
       "get": {
-        "tags": ["EventCategories"],
+        "tags": [
+          "EventCategories"
+        ],
         "summary": "Get Categories by Event",
         "description": "Retrieve all categories assigned to a specific event for hierarchical filtering",
         "parameters": [
@@ -1972,7 +2056,9 @@
     },
     "/api/v1/EventCategories/by-category/{categoryId}": {
       "get": {
-        "tags": ["EventCategories"],
+        "tags": [
+          "EventCategories"
+        ],
         "summary": "Get Events by Category",
         "description": "Retrieve all events that belong to a specific category (Aqidah, Fiqh, Tafsir, etc.)",
         "parameters": [
@@ -2021,7 +2107,9 @@
     },
     "/api/v1/Event": {
       "get": {
-        "tags": ["Event"],
+        "tags": [
+          "Event"
+        ],
         "summary": "Get all Events (Conference, Webinar, Workshop ...)",
         "description": "Get A List of all the Events (pagination!)",
         "responses": {
@@ -2057,9 +2145,11 @@
         }
       },
       "post": {
-        "tags": ["Event"],
+        "tags": [
+          "Event"
+        ],
         "summary": "Create a new Event",
-        "description": "Creates a new event. If OrganizationId is provided, the event is created under that organization (user must be admin). If null, the event is created under the user's personal actor.",
+        "description": "Creates a new event. If OrganizationId is provided, the event is created under that organization (user must be admin). If null, the event is created under the user\u0027s personal actor.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -2072,7 +2162,7 @@
                 "$ref": "#/components/schemas/CreateEventDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/CreateEventDto"
               }
@@ -2106,9 +2196,11 @@
     },
     "/api/v1/Event/my": {
       "get": {
-        "tags": ["Event"],
+        "tags": [
+          "Event"
+        ],
         "summary": "Get My Events",
-        "description": "Get a list of events created by the current user's organizations",
+        "description": "Get a list of events created by the current user\u0027s organizations",
         "responses": {
           "200": {
             "description": "OK",
@@ -2144,7 +2236,9 @@
     },
     "/api/v1/Event/{id}": {
       "get": {
-        "tags": ["Event"],
+        "tags": [
+          "Event"
+        ],
         "summary": "Get Event (Conference, Webinar, Workshop ...) Details",
         "description": "Get Details of the Event!",
         "parameters": [
@@ -2182,7 +2276,9 @@
         }
       },
       "put": {
-        "tags": ["Event"],
+        "tags": [
+          "Event"
+        ],
         "summary": "Update an Event",
         "description": "Update an existing event",
         "parameters": [
@@ -2208,7 +2304,7 @@
                 "$ref": "#/components/schemas/UpdateEventDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateEventDto"
               }
@@ -2240,7 +2336,9 @@
         }
       },
       "delete": {
-        "tags": ["Event"],
+        "tags": [
+          "Event"
+        ],
         "summary": "Delete an Event",
         "description": "Delete an event (only if user owns the organization)",
         "parameters": [
@@ -2263,7 +2361,9 @@
     },
     "/api/v1/EventFormat": {
       "get": {
-        "tags": ["EventFormat"],
+        "tags": [
+          "EventFormat"
+        ],
         "summary": "Get all Event Formats",
         "description": "Retrieve a list of all event delivery formats (In-person Local, Digital Online, Hybrid)",
         "responses": {
@@ -2301,7 +2401,9 @@
     },
     "/api/v1/EventFormat/{id}": {
       "get": {
-        "tags": ["EventFormat"],
+        "tags": [
+          "EventFormat"
+        ],
         "summary": "Get Event Format by ID",
         "description": "Retrieve details of a specific event delivery format",
         "parameters": [
@@ -2361,7 +2463,9 @@
     },
     "/api/v1/EventRegistration": {
       "get": {
-        "tags": ["EventRegistration"],
+        "tags": [
+          "EventRegistration"
+        ],
         "summary": "Get all Event Registrations",
         "description": "Retrieve a list of all event registrations across all sessions",
         "responses": {
@@ -2397,7 +2501,9 @@
         }
       },
       "post": {
-        "tags": ["EventRegistration"],
+        "tags": [
+          "EventRegistration"
+        ],
         "summary": "Register User for Event Session",
         "description": "Create a new event registration (may require approval depending on registration mode)",
         "requestBody": {
@@ -2412,7 +2518,7 @@
                 "$ref": "#/components/schemas/CreateEventRegistrationDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/CreateEventRegistrationDto"
               }
@@ -2486,7 +2592,9 @@
     },
     "/api/v1/EventRegistration/{id}": {
       "get": {
-        "tags": ["EventRegistration"],
+        "tags": [
+          "EventRegistration"
+        ],
         "summary": "Get Event Registration by ID",
         "description": "Retrieve details of a specific event registration including approval status",
         "parameters": [
@@ -2544,7 +2652,9 @@
         }
       },
       "put": {
-        "tags": ["EventRegistration"],
+        "tags": [
+          "EventRegistration"
+        ],
         "summary": "Update Event Registration",
         "description": "Update an existing event registration (e.g., change approval status)",
         "parameters": [
@@ -2570,7 +2680,7 @@
                 "$ref": "#/components/schemas/UpdateEventRegistrationDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateEventRegistrationDto"
               }
@@ -2662,9 +2772,11 @@
         }
       },
       "delete": {
-        "tags": ["EventRegistration"],
+        "tags": [
+          "EventRegistration"
+        ],
         "summary": "Cancel Event Registration",
-        "description": "Delete/cancel a user's event registration",
+        "description": "Delete/cancel a user\u0027s event registration",
         "parameters": [
           {
             "name": "id",
@@ -2725,7 +2837,9 @@
     },
     "/api/v1/EventRegistration/by-session/{eventSessionId}": {
       "get": {
-        "tags": ["EventRegistration"],
+        "tags": [
+          "EventRegistration"
+        ],
         "summary": "Get Registrations by Event Session",
         "description": "Retrieve all user registrations for a specific event session",
         "parameters": [
@@ -2774,7 +2888,9 @@
     },
     "/api/v1/EventRegistration/by-user/{userId}": {
       "get": {
-        "tags": ["EventRegistration"],
+        "tags": [
+          "EventRegistration"
+        ],
         "summary": "Get Registrations by User",
         "description": "Retrieve all event registrations for a specific user",
         "parameters": [
@@ -2823,7 +2939,9 @@
     },
     "/api/v1/EventSessionAgendaItem": {
       "get": {
-        "tags": ["EventSessionAgendaItem"],
+        "tags": [
+          "EventSessionAgendaItem"
+        ],
         "summary": "Get all Agenda Items",
         "description": "Get a list of all event session agenda items",
         "responses": {
@@ -2859,7 +2977,9 @@
         }
       },
       "post": {
-        "tags": ["EventSessionAgendaItem"],
+        "tags": [
+          "EventSessionAgendaItem"
+        ],
         "summary": "Create Agenda Item",
         "description": "Create a new agenda item for an event session",
         "requestBody": {
@@ -2874,7 +2994,7 @@
                 "$ref": "#/components/schemas/CreateEventSessionAgendaItemDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/CreateEventSessionAgendaItemDto"
               }
@@ -2908,7 +3028,9 @@
     },
     "/api/v1/EventSessionAgendaItem/{id}": {
       "get": {
-        "tags": ["EventSessionAgendaItem"],
+        "tags": [
+          "EventSessionAgendaItem"
+        ],
         "summary": "Get Agenda Item Details",
         "description": "Get detailed information about a specific agenda item",
         "parameters": [
@@ -2946,7 +3068,9 @@
         }
       },
       "put": {
-        "tags": ["EventSessionAgendaItem"],
+        "tags": [
+          "EventSessionAgendaItem"
+        ],
         "summary": "Update Agenda Item",
         "description": "Update an existing agenda item",
         "parameters": [
@@ -2972,7 +3096,7 @@
                 "$ref": "#/components/schemas/UpdateEventSessionAgendaItemDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateEventSessionAgendaItemDto"
               }
@@ -3004,7 +3128,9 @@
         }
       },
       "delete": {
-        "tags": ["EventSessionAgendaItem"],
+        "tags": [
+          "EventSessionAgendaItem"
+        ],
         "summary": "Delete Agenda Item",
         "description": "Delete an agenda item",
         "parameters": [
@@ -3027,7 +3153,9 @@
     },
     "/api/v1/EventSessionAgendaItem/by-session/{sessionId}": {
       "get": {
-        "tags": ["EventSessionAgendaItem"],
+        "tags": [
+          "EventSessionAgendaItem"
+        ],
         "summary": "Get Agenda Items by Session",
         "description": "Get all agenda items for a specific event session",
         "parameters": [
@@ -3076,7 +3204,9 @@
     },
     "/api/v1/EventSession": {
       "get": {
-        "tags": ["EventSession"],
+        "tags": [
+          "EventSession"
+        ],
         "summary": "Get all Event Sessions",
         "description": "Get a list of all event sessions",
         "responses": {
@@ -3112,7 +3242,9 @@
         }
       },
       "post": {
-        "tags": ["EventSession"],
+        "tags": [
+          "EventSession"
+        ],
         "summary": "Create Event Session",
         "description": "Create a new event session",
         "requestBody": {
@@ -3127,7 +3259,7 @@
                 "$ref": "#/components/schemas/CreateEventSessionDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/CreateEventSessionDto"
               }
@@ -3161,7 +3293,9 @@
     },
     "/api/v1/EventSession/{id}": {
       "get": {
-        "tags": ["EventSession"],
+        "tags": [
+          "EventSession"
+        ],
         "summary": "Get Event Session Details",
         "description": "Get detailed information about a specific event session",
         "parameters": [
@@ -3199,7 +3333,9 @@
         }
       },
       "put": {
-        "tags": ["EventSession"],
+        "tags": [
+          "EventSession"
+        ],
         "summary": "Update Event Session",
         "description": "Update an existing event session",
         "parameters": [
@@ -3225,7 +3361,7 @@
                 "$ref": "#/components/schemas/UpdateEventSessionDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateEventSessionDto"
               }
@@ -3257,7 +3393,9 @@
         }
       },
       "delete": {
-        "tags": ["EventSession"],
+        "tags": [
+          "EventSession"
+        ],
         "summary": "Delete Event Session",
         "description": "Delete an event session",
         "parameters": [
@@ -3280,7 +3418,9 @@
     },
     "/api/v1/EventSession/by-event/{eventId}": {
       "get": {
-        "tags": ["EventSession"],
+        "tags": [
+          "EventSession"
+        ],
         "summary": "Get Sessions by Event",
         "description": "Get all sessions for a specific event",
         "parameters": [
@@ -3329,7 +3469,9 @@
     },
     "/api/v1/EventSessionLanguage": {
       "get": {
-        "tags": ["EventSessionLanguage"],
+        "tags": [
+          "EventSessionLanguage"
+        ],
         "summary": "Get all Session Languages",
         "description": "Get a list of all event session language assignments",
         "responses": {
@@ -3365,7 +3507,9 @@
         }
       },
       "post": {
-        "tags": ["EventSessionLanguage"],
+        "tags": [
+          "EventSessionLanguage"
+        ],
         "summary": "Assign Language to Session",
         "description": "Assign a language to an event session",
         "requestBody": {
@@ -3380,7 +3524,7 @@
                 "$ref": "#/components/schemas/CreateEventSessionLanguageDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/CreateEventSessionLanguageDto"
               }
@@ -3414,7 +3558,9 @@
     },
     "/api/v1/EventSessionLanguage/{id}": {
       "get": {
-        "tags": ["EventSessionLanguage"],
+        "tags": [
+          "EventSessionLanguage"
+        ],
         "summary": "Get Session Language Details",
         "description": "Get detailed information about a specific session language assignment",
         "parameters": [
@@ -3452,7 +3598,9 @@
         }
       },
       "put": {
-        "tags": ["EventSessionLanguage"],
+        "tags": [
+          "EventSessionLanguage"
+        ],
         "summary": "Update Session Language",
         "description": "Update an existing session language assignment",
         "parameters": [
@@ -3478,7 +3626,7 @@
                 "$ref": "#/components/schemas/UpdateEventSessionLanguageDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateEventSessionLanguageDto"
               }
@@ -3510,7 +3658,9 @@
         }
       },
       "delete": {
-        "tags": ["EventSessionLanguage"],
+        "tags": [
+          "EventSessionLanguage"
+        ],
         "summary": "Remove Language from Session",
         "description": "Remove a language assignment from an event session",
         "parameters": [
@@ -3533,7 +3683,9 @@
     },
     "/api/v1/EventSessionLanguage/by-session/{sessionId}": {
       "get": {
-        "tags": ["EventSessionLanguage"],
+        "tags": [
+          "EventSessionLanguage"
+        ],
         "summary": "Get Languages by Session",
         "description": "Get all languages for a specific event session",
         "parameters": [
@@ -3582,7 +3734,9 @@
     },
     "/api/v1/EventSessionSpeaker": {
       "get": {
-        "tags": ["EventSessionSpeaker"],
+        "tags": [
+          "EventSessionSpeaker"
+        ],
         "summary": "Get all Session Speakers",
         "description": "Get a list of all event session speaker assignments",
         "responses": {
@@ -3618,7 +3772,9 @@
         }
       },
       "post": {
-        "tags": ["EventSessionSpeaker"],
+        "tags": [
+          "EventSessionSpeaker"
+        ],
         "summary": "Assign Speaker to Session",
         "description": "Assign a speaker (actor) to an event session",
         "requestBody": {
@@ -3633,7 +3789,7 @@
                 "$ref": "#/components/schemas/CreateEventSessionSpeakerDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/CreateEventSessionSpeakerDto"
               }
@@ -3667,7 +3823,9 @@
     },
     "/api/v1/EventSessionSpeaker/{id}": {
       "get": {
-        "tags": ["EventSessionSpeaker"],
+        "tags": [
+          "EventSessionSpeaker"
+        ],
         "summary": "Get Speaker Assignment Details",
         "description": "Get detailed information about a specific speaker assignment",
         "parameters": [
@@ -3705,7 +3863,9 @@
         }
       },
       "put": {
-        "tags": ["EventSessionSpeaker"],
+        "tags": [
+          "EventSessionSpeaker"
+        ],
         "summary": "Update Speaker Assignment",
         "description": "Update an existing speaker assignment",
         "parameters": [
@@ -3731,7 +3891,7 @@
                 "$ref": "#/components/schemas/UpdateEventSessionSpeakerDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateEventSessionSpeakerDto"
               }
@@ -3763,7 +3923,9 @@
         }
       },
       "delete": {
-        "tags": ["EventSessionSpeaker"],
+        "tags": [
+          "EventSessionSpeaker"
+        ],
         "summary": "Remove Speaker from Session",
         "description": "Remove a speaker assignment from an event session",
         "parameters": [
@@ -3786,7 +3948,9 @@
     },
     "/api/v1/EventSessionSpeaker/by-session/{sessionId}": {
       "get": {
-        "tags": ["EventSessionSpeaker"],
+        "tags": [
+          "EventSessionSpeaker"
+        ],
         "summary": "Get Speakers by Session",
         "description": "Get all speakers for a specific event session",
         "parameters": [
@@ -3835,7 +3999,9 @@
     },
     "/api/v1/EventSessionSpeaker/by-actor/{actorId}": {
       "get": {
-        "tags": ["EventSessionSpeaker"],
+        "tags": [
+          "EventSessionSpeaker"
+        ],
         "summary": "Get Sessions by Actor",
         "description": "Get all sessions where a specific actor is speaking",
         "parameters": [
@@ -3884,7 +4050,9 @@
     },
     "/api/v1/EventStatus": {
       "get": {
-        "tags": ["EventStatus"],
+        "tags": [
+          "EventStatus"
+        ],
         "summary": "Get all Event Statuses",
         "description": "Retrieve a list of all event lifecycle statuses (Draft, Published, Cancelled, Completed)",
         "responses": {
@@ -3922,7 +4090,9 @@
     },
     "/api/v1/EventStatus/{id}": {
       "get": {
-        "tags": ["EventStatus"],
+        "tags": [
+          "EventStatus"
+        ],
         "summary": "Get Event Status by ID",
         "description": "Retrieve details of a specific event lifecycle status",
         "parameters": [
@@ -3982,7 +4152,9 @@
     },
     "/api/v1/EventTags": {
       "get": {
-        "tags": ["EventTags"],
+        "tags": [
+          "EventTags"
+        ],
         "summary": "Get all Event Tags",
         "description": "Retrieve a list of all event-tag assignments",
         "responses": {
@@ -4018,7 +4190,9 @@
         }
       },
       "post": {
-        "tags": ["EventTags"],
+        "tags": [
+          "EventTags"
+        ],
         "summary": "Assign Tag to Event",
         "description": "Create a new event-tag assignment for discovery and filtering",
         "requestBody": {
@@ -4033,7 +4207,7 @@
                 "$ref": "#/components/schemas/CreateEventTagsDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/CreateEventTagsDto"
               }
@@ -4107,7 +4281,9 @@
     },
     "/api/v1/EventTags/{id}": {
       "get": {
-        "tags": ["EventTags"],
+        "tags": [
+          "EventTags"
+        ],
         "summary": "Get Event Tag by ID",
         "description": "Retrieve details of a specific event-tag assignment",
         "parameters": [
@@ -4165,7 +4341,9 @@
         }
       },
       "put": {
-        "tags": ["EventTags"],
+        "tags": [
+          "EventTags"
+        ],
         "summary": "Update Event Tag Assignment",
         "description": "Update an existing event-tag assignment",
         "parameters": [
@@ -4191,7 +4369,7 @@
                 "$ref": "#/components/schemas/UpdateEventTagsDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateEventTagsDto"
               }
@@ -4283,7 +4461,9 @@
         }
       },
       "delete": {
-        "tags": ["EventTags"],
+        "tags": [
+          "EventTags"
+        ],
         "summary": "Remove Tag from Event",
         "description": "Delete an event-tag assignment",
         "parameters": [
@@ -4346,7 +4526,9 @@
     },
     "/api/v1/EventTags/by-event/{eventId}": {
       "get": {
-        "tags": ["EventTags"],
+        "tags": [
+          "EventTags"
+        ],
         "summary": "Get Tags by Event",
         "description": "Retrieve all tags assigned to a specific event",
         "parameters": [
@@ -4395,7 +4577,9 @@
     },
     "/api/v1/EventTags/by-tag/{tagId}": {
       "get": {
-        "tags": ["EventTags"],
+        "tags": [
+          "EventTags"
+        ],
         "summary": "Get Events by Tag",
         "description": "Retrieve all events that have a specific tag assigned",
         "parameters": [
@@ -4444,7 +4628,9 @@
     },
     "/api/v1/EventType": {
       "get": {
-        "tags": ["EventType"],
+        "tags": [
+          "EventType"
+        ],
         "summary": "Get all Event TYpes",
         "description": "Get A List of all the Event Type Options",
         "responses": {
@@ -4480,7 +4666,9 @@
         }
       },
       "post": {
-        "tags": ["EventType"],
+        "tags": [
+          "EventType"
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -4493,7 +4681,7 @@
                 "type": "string"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "type": "string"
               }
@@ -4510,7 +4698,9 @@
     },
     "/api/v1/EventType/{id}": {
       "get": {
-        "tags": ["EventType"],
+        "tags": [
+          "EventType"
+        ],
         "parameters": [
           {
             "name": "id",
@@ -4546,7 +4736,9 @@
         }
       },
       "put": {
-        "tags": ["EventType"],
+        "tags": [
+          "EventType"
+        ],
         "parameters": [
           {
             "name": "id",
@@ -4570,7 +4762,7 @@
                 "type": "string"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "type": "string"
               }
@@ -4585,7 +4777,9 @@
         }
       },
       "delete": {
-        "tags": ["EventType"],
+        "tags": [
+          "EventType"
+        ],
         "parameters": [
           {
             "name": "id",
@@ -4606,7 +4800,9 @@
     },
     "/api/v1/FileType": {
       "get": {
-        "tags": ["FileType"],
+        "tags": [
+          "FileType"
+        ],
         "summary": "Get all File Types",
         "description": "Retrieve a list of all file types (Image, Document, Video, Audio)",
         "responses": {
@@ -4644,7 +4840,9 @@
     },
     "/api/v1/FileType/{id}": {
       "get": {
-        "tags": ["FileType"],
+        "tags": [
+          "FileType"
+        ],
         "summary": "Get File Type by ID",
         "description": "Retrieve details of a specific file type",
         "parameters": [
@@ -4704,7 +4902,9 @@
     },
     "/api/v1/IndexedDid": {
       "get": {
-        "tags": ["IndexedDid"],
+        "tags": [
+          "IndexedDid"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -4738,7 +4938,9 @@
         }
       },
       "post": {
-        "tags": ["IndexedDid"],
+        "tags": [
+          "IndexedDid"
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -4751,7 +4953,7 @@
                 "$ref": "#/components/schemas/CreateIndexedDidDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/CreateIndexedDidDto"
               }
@@ -4785,7 +4987,9 @@
     },
     "/api/v1/IndexedDid/{did}": {
       "get": {
-        "tags": ["IndexedDid"],
+        "tags": [
+          "IndexedDid"
+        ],
         "parameters": [
           {
             "name": "did",
@@ -4820,7 +5024,9 @@
         }
       },
       "put": {
-        "tags": ["IndexedDid"],
+        "tags": [
+          "IndexedDid"
+        ],
         "parameters": [
           {
             "name": "did",
@@ -4843,7 +5049,7 @@
                 "$ref": "#/components/schemas/UpdateIndexedDidDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateIndexedDidDto"
               }
@@ -4875,7 +5081,9 @@
         }
       },
       "delete": {
-        "tags": ["IndexedDid"],
+        "tags": [
+          "IndexedDid"
+        ],
         "parameters": [
           {
             "name": "did",
@@ -4895,7 +5103,9 @@
     },
     "/api/v1/Language": {
       "get": {
-        "tags": ["Language"],
+        "tags": [
+          "Language"
+        ],
         "summary": "Get all Languages",
         "description": "Get a list of all available languages (lookup table)",
         "responses": {
@@ -4933,7 +5143,9 @@
     },
     "/api/v1/Language/{id}": {
       "get": {
-        "tags": ["Language"],
+        "tags": [
+          "Language"
+        ],
         "summary": "Get Language Details",
         "description": "Get detailed information about a specific language",
         "parameters": [
@@ -4973,7 +5185,9 @@
     },
     "/api/v1/Location": {
       "get": {
-        "tags": ["Location"],
+        "tags": [
+          "Location"
+        ],
         "summary": "Get all Locations",
         "description": "Get a list of all locations",
         "responses": {
@@ -5009,7 +5223,9 @@
         }
       },
       "post": {
-        "tags": ["Location"],
+        "tags": [
+          "Location"
+        ],
         "summary": "Create Location",
         "description": "Create a new location",
         "requestBody": {
@@ -5024,7 +5240,7 @@
                 "$ref": "#/components/schemas/CreateLocationDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/CreateLocationDto"
               }
@@ -5058,7 +5274,9 @@
     },
     "/api/v1/Location/{id}": {
       "get": {
-        "tags": ["Location"],
+        "tags": [
+          "Location"
+        ],
         "summary": "Get Location Details",
         "description": "Get detailed information about a specific location",
         "parameters": [
@@ -5096,7 +5314,9 @@
         }
       },
       "put": {
-        "tags": ["Location"],
+        "tags": [
+          "Location"
+        ],
         "summary": "Update Location",
         "description": "Update an existing location",
         "parameters": [
@@ -5122,7 +5342,7 @@
                 "$ref": "#/components/schemas/UpdateLocationDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateLocationDto"
               }
@@ -5154,7 +5374,9 @@
         }
       },
       "delete": {
-        "tags": ["Location"],
+        "tags": [
+          "Location"
+        ],
         "summary": "Delete Location",
         "description": "Delete a location",
         "parameters": [
@@ -5177,7 +5399,9 @@
     },
     "/api/v1/Location/by-city/{city}": {
       "get": {
-        "tags": ["Location"],
+        "tags": [
+          "Location"
+        ],
         "summary": "Get Locations by City",
         "description": "Get all locations in a specific city",
         "parameters": [
@@ -5225,7 +5449,9 @@
     },
     "/api/v1/Location/by-country/{country}": {
       "get": {
-        "tags": ["Location"],
+        "tags": [
+          "Location"
+        ],
         "summary": "Get Locations by Country",
         "description": "Get all locations in a specific country",
         "parameters": [
@@ -5273,9 +5499,11 @@
     },
     "/api/v1/Madhab": {
       "get": {
-        "tags": ["Madhab"],
+        "tags": [
+          "Madhab"
+        ],
         "summary": "Get all Madhabs",
-        "description": "Retrieve a list of all Islamic jurisprudence schools (Hanafi, Maliki, Shafi'i, Hanbali)",
+        "description": "Retrieve a list of all Islamic jurisprudence schools (Hanafi, Maliki, Shafi\u0027i, Hanbali)",
         "responses": {
           "200": {
             "description": "OK",
@@ -5311,7 +5539,9 @@
     },
     "/api/v1/Madhab/{id}": {
       "get": {
-        "tags": ["Madhab"],
+        "tags": [
+          "Madhab"
+        ],
         "summary": "Get Madhab by ID",
         "description": "Retrieve details of a specific Islamic jurisprudence school",
         "parameters": [
@@ -5371,7 +5601,9 @@
     },
     "/api/v1/Organization": {
       "get": {
-        "tags": ["Organization"],
+        "tags": [
+          "Organization"
+        ],
         "summary": "Get all Organizationss",
         "description": "Get A List of all the Organizations (pagination!)",
         "responses": {
@@ -5407,7 +5639,9 @@
         }
       },
       "post": {
-        "tags": ["Organization"],
+        "tags": [
+          "Organization"
+        ],
         "summary": "Create Organization",
         "description": "Create a new Organization",
         "requestBody": {
@@ -5422,7 +5656,7 @@
                 "$ref": "#/components/schemas/CreateOrganizationDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/CreateOrganizationDto"
               }
@@ -5456,7 +5690,9 @@
     },
     "/api/v1/Organization/my": {
       "get": {
-        "tags": ["Organization"],
+        "tags": [
+          "Organization"
+        ],
         "summary": "Get my Organizations",
         "description": "Get a list of organizations created by the current user",
         "responses": {
@@ -5494,7 +5730,9 @@
     },
     "/api/v1/Organization/{id}": {
       "get": {
-        "tags": ["Organization"],
+        "tags": [
+          "Organization"
+        ],
         "summary": "Get Organization Details",
         "description": "Get Details of the Organization!",
         "parameters": [
@@ -5532,7 +5770,9 @@
         }
       },
       "put": {
-        "tags": ["Organization"],
+        "tags": [
+          "Organization"
+        ],
         "parameters": [
           {
             "name": "id",
@@ -5556,7 +5796,7 @@
                 "$ref": "#/components/schemas/UpdateOrganizationDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateOrganizationDto"
               }
@@ -5588,7 +5828,9 @@
         }
       },
       "delete": {
-        "tags": ["Organization"],
+        "tags": [
+          "Organization"
+        ],
         "parameters": [
           {
             "name": "id",
@@ -5609,7 +5851,9 @@
     },
     "/api/v1/Organization/updatestatustype/{id}": {
       "put": {
-        "tags": ["Organization"],
+        "tags": [
+          "Organization"
+        ],
         "parameters": [
           {
             "name": "id",
@@ -5633,7 +5877,7 @@
                 "$ref": "#/components/schemas/UpdateOrganizationApprovalStatusDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateOrganizationApprovalStatusDto"
               }
@@ -5650,7 +5894,9 @@
     },
     "/api/v1/OrganizationMember/{organizationId}": {
       "get": {
-        "tags": ["OrganizationMember"],
+        "tags": [
+          "OrganizationMember"
+        ],
         "parameters": [
           {
             "name": "organizationId",
@@ -5697,7 +5943,9 @@
     },
     "/api/v1/OrganizationMember": {
       "post": {
-        "tags": ["OrganizationMember"],
+        "tags": [
+          "OrganizationMember"
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -5710,7 +5958,7 @@
                 "$ref": "#/components/schemas/AddOrganizationMemberDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/AddOrganizationMemberDto"
               }
@@ -5744,7 +5992,9 @@
     },
     "/api/v1/OrganizationMember/role": {
       "put": {
-        "tags": ["OrganizationMember"],
+        "tags": [
+          "OrganizationMember"
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -5757,7 +6007,7 @@
                 "$ref": "#/components/schemas/UpdateOrganizationMemberRoleDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateOrganizationMemberRoleDto"
               }
@@ -5791,7 +6041,9 @@
     },
     "/api/v1/OrganizationMember/invitations": {
       "get": {
-        "tags": ["OrganizationMember"],
+        "tags": [
+          "OrganizationMember"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -5827,7 +6079,9 @@
     },
     "/api/v1/OrganizationMember/invitations/{id}/accept": {
       "post": {
-        "tags": ["OrganizationMember"],
+        "tags": [
+          "OrganizationMember"
+        ],
         "parameters": [
           {
             "name": "id",
@@ -5865,7 +6119,9 @@
     },
     "/api/v1/OrganizationMember/invitations/{id}/decline": {
       "post": {
-        "tags": ["OrganizationMember"],
+        "tags": [
+          "OrganizationMember"
+        ],
         "parameters": [
           {
             "name": "id",
@@ -5903,7 +6159,9 @@
     },
     "/api/v1/OrganizationMember/{id}": {
       "delete": {
-        "tags": ["OrganizationMember"],
+        "tags": [
+          "OrganizationMember"
+        ],
         "parameters": [
           {
             "name": "id",
@@ -5941,7 +6199,9 @@
     },
     "/api/v1/OrganizationPosition": {
       "get": {
-        "tags": ["OrganizationPosition"],
+        "tags": [
+          "OrganizationPosition"
+        ],
         "summary": "Get all Organization Positions",
         "description": "Retrieve a list of all organization positions (President, Secretary, Member)",
         "responses": {
@@ -5979,7 +6239,9 @@
     },
     "/api/v1/OrganizationPosition/{id}": {
       "get": {
-        "tags": ["OrganizationPosition"],
+        "tags": [
+          "OrganizationPosition"
+        ],
         "summary": "Get Organization Position by ID",
         "description": "Retrieve details of a specific organization position",
         "parameters": [
@@ -6039,7 +6301,9 @@
     },
     "/api/v1/OrganizationReview/{organizationId}": {
       "get": {
-        "tags": ["OrganizationReview"],
+        "tags": [
+          "OrganizationReview"
+        ],
         "parameters": [
           {
             "name": "organizationId",
@@ -6086,7 +6350,9 @@
     },
     "/api/v1/OrganizationReview/user/{userId}": {
       "get": {
-        "tags": ["OrganizationReview"],
+        "tags": [
+          "OrganizationReview"
+        ],
         "parameters": [
           {
             "name": "userId",
@@ -6133,7 +6399,9 @@
     },
     "/api/v1/OrganizationReview": {
       "post": {
-        "tags": ["OrganizationReview"],
+        "tags": [
+          "OrganizationReview"
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -6146,7 +6414,7 @@
                 "$ref": "#/components/schemas/CreateOrganizationReviewDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/CreateOrganizationReviewDto"
               }
@@ -6180,7 +6448,9 @@
     },
     "/api/v1/OrganizationRole": {
       "get": {
-        "tags": ["OrganizationRole"],
+        "tags": [
+          "OrganizationRole"
+        ],
         "summary": "Get all Organization Roles",
         "description": "Retrieve a list of all organization roles (Owner, Admin, Member)",
         "responses": {
@@ -6218,7 +6488,9 @@
     },
     "/api/v1/OrganizationRole/{id}": {
       "get": {
-        "tags": ["OrganizationRole"],
+        "tags": [
+          "OrganizationRole"
+        ],
         "summary": "Get Organization Role by ID",
         "description": "Retrieve details of a specific organization role",
         "parameters": [
@@ -6278,7 +6550,9 @@
     },
     "/api/v1/RegistrationMode": {
       "get": {
-        "tags": ["RegistrationMode"],
+        "tags": [
+          "RegistrationMode"
+        ],
         "summary": "Get all Registration Modes",
         "description": "Retrieve a list of all registration modes (Open, ApprovalRequired, InvitationOnly)",
         "responses": {
@@ -6316,7 +6590,9 @@
     },
     "/api/v1/RegistrationMode/{id}": {
       "get": {
-        "tags": ["RegistrationMode"],
+        "tags": [
+          "RegistrationMode"
+        ],
         "summary": "Get Registration Mode by ID",
         "description": "Retrieve details of a specific registration mode",
         "parameters": [
@@ -6376,7 +6652,9 @@
     },
     "/api/v1/StorageObject": {
       "get": {
-        "tags": ["StorageObject"],
+        "tags": [
+          "StorageObject"
+        ],
         "summary": "Get all Storage Objects",
         "description": "Retrieve a list of all storage objects (files, images, documents, etc.)",
         "responses": {
@@ -6412,9 +6690,11 @@
         }
       },
       "post": {
-        "tags": ["StorageObject"],
-        "summary": "Upload Storage Object",
-        "description": "Upload a new storage object (file/image/document)",
+        "tags": [
+          "StorageObject"
+        ],
+        "summary": "Create Storage Object Record",
+        "description": "Create a storage object record after successful file upload to S3",
         "requestBody": {
           "content": {
             "application/json": {
@@ -6427,7 +6707,7 @@
                 "$ref": "#/components/schemas/CreateStorageObjectDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/CreateStorageObjectDto"
               }
@@ -6501,7 +6781,9 @@
     },
     "/api/v1/StorageObject/{id}": {
       "get": {
-        "tags": ["StorageObject"],
+        "tags": [
+          "StorageObject"
+        ],
         "summary": "Get Storage Object by ID",
         "description": "Retrieve details of a specific storage object",
         "parameters": [
@@ -6559,7 +6841,9 @@
         }
       },
       "put": {
-        "tags": ["StorageObject"],
+        "tags": [
+          "StorageObject"
+        ],
         "summary": "Update Storage Object",
         "description": "Update an existing storage object",
         "parameters": [
@@ -6585,7 +6869,7 @@
                 "$ref": "#/components/schemas/UpdateStorageObjectDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateStorageObjectDto"
               }
@@ -6677,7 +6961,9 @@
         }
       },
       "delete": {
-        "tags": ["StorageObject"],
+        "tags": [
+          "StorageObject"
+        ],
         "summary": "Delete Storage Object",
         "description": "Delete a storage object",
         "parameters": [
@@ -6738,141 +7024,13 @@
         }
       }
     },
-    "/api/v1/StorageObjects": {
-      "get": {
-        "tags": ["StorageObjects"],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/StorageObjects/{id}": {
-      "get": {
-        "tags": ["StorageObjects"],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "string"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": ["StorageObjects"],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "string"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "type": "string"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "type": "string"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      },
-      "delete": {
-        "tags": ["StorageObjects"],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/v1/StorageObjects/generate-upload-url": {
+    "/api/v1/StorageObject/generate-upload-url": {
       "post": {
-        "tags": ["StorageObjects"],
+        "tags": [
+          "StorageObject"
+        ],
+        "summary": "Generate Pre-signed Upload URL",
+        "description": "Generate a pre-signed URL for uploading a file directly to S3-compatible storage (Hetzner Object Storage)",
         "requestBody": {
           "content": {
             "application/json": {
@@ -6885,7 +7043,7 @@
                 "$ref": "#/components/schemas/UploadRequestDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/UploadRequestDto"
               }
@@ -6895,14 +7053,73 @@
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadUrlResponseDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadUrlResponseDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadUrlResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
     },
     "/api/v1/SyncState": {
       "get": {
-        "tags": ["SyncState"],
+        "tags": [
+          "SyncState"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -6936,7 +7153,9 @@
         }
       },
       "post": {
-        "tags": ["SyncState"],
+        "tags": [
+          "SyncState"
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -6949,7 +7168,7 @@
                 "$ref": "#/components/schemas/CreateSyncStateDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/CreateSyncStateDto"
               }
@@ -6983,7 +7202,9 @@
     },
     "/api/v1/SyncState/{id}": {
       "get": {
-        "tags": ["SyncState"],
+        "tags": [
+          "SyncState"
+        ],
         "parameters": [
           {
             "name": "id",
@@ -7019,7 +7240,9 @@
         }
       },
       "put": {
-        "tags": ["SyncState"],
+        "tags": [
+          "SyncState"
+        ],
         "parameters": [
           {
             "name": "id",
@@ -7043,7 +7266,7 @@
                 "$ref": "#/components/schemas/UpdateSyncStateDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateSyncStateDto"
               }
@@ -7075,7 +7298,9 @@
         }
       },
       "delete": {
-        "tags": ["SyncState"],
+        "tags": [
+          "SyncState"
+        ],
         "parameters": [
           {
             "name": "id",
@@ -7096,7 +7321,9 @@
     },
     "/api/v1/Tag": {
       "get": {
-        "tags": ["Tag"],
+        "tags": [
+          "Tag"
+        ],
         "summary": "Get all Tags",
         "description": "Get a list of all tags for events",
         "responses": {
@@ -7132,7 +7359,9 @@
         }
       },
       "post": {
-        "tags": ["Tag"],
+        "tags": [
+          "Tag"
+        ],
         "summary": "Create Tag",
         "description": "Create a new tag for events",
         "requestBody": {
@@ -7147,7 +7376,7 @@
                 "$ref": "#/components/schemas/CreateTagDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/CreateTagDto"
               }
@@ -7181,7 +7410,9 @@
     },
     "/api/v1/Tag/{id}": {
       "get": {
-        "tags": ["Tag"],
+        "tags": [
+          "Tag"
+        ],
         "summary": "Get Tag Details",
         "description": "Get detailed information about a specific tag",
         "parameters": [
@@ -7219,7 +7450,9 @@
         }
       },
       "put": {
-        "tags": ["Tag"],
+        "tags": [
+          "Tag"
+        ],
         "summary": "Update Tag",
         "description": "Update an existing tag",
         "parameters": [
@@ -7245,7 +7478,7 @@
                 "$ref": "#/components/schemas/UpdateTagDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateTagDto"
               }
@@ -7277,7 +7510,9 @@
         }
       },
       "delete": {
-        "tags": ["Tag"],
+        "tags": [
+          "Tag"
+        ],
         "summary": "Delete Tag",
         "description": "Delete a tag",
         "parameters": [
@@ -7300,7 +7535,9 @@
     },
     "/api/v1/TagType": {
       "get": {
-        "tags": ["TagType"],
+        "tags": [
+          "TagType"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -7336,7 +7573,9 @@
     },
     "/api/v1/TagType/{id}": {
       "get": {
-        "tags": ["TagType"],
+        "tags": [
+          "TagType"
+        ],
         "parameters": [
           {
             "name": "id",
@@ -7374,7 +7613,9 @@
     },
     "/api/v1/TagTypeTags": {
       "get": {
-        "tags": ["TagTypeTags"],
+        "tags": [
+          "TagTypeTags"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -7408,7 +7649,9 @@
         }
       },
       "post": {
-        "tags": ["TagTypeTags"],
+        "tags": [
+          "TagTypeTags"
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -7421,7 +7664,7 @@
                 "$ref": "#/components/schemas/CreateTagTypeTagsDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/CreateTagTypeTagsDto"
               }
@@ -7455,7 +7698,9 @@
     },
     "/api/v1/TagTypeTags/{id}": {
       "get": {
-        "tags": ["TagTypeTags"],
+        "tags": [
+          "TagTypeTags"
+        ],
         "parameters": [
           {
             "name": "id",
@@ -7491,7 +7736,9 @@
         }
       },
       "put": {
-        "tags": ["TagTypeTags"],
+        "tags": [
+          "TagTypeTags"
+        ],
         "parameters": [
           {
             "name": "id",
@@ -7515,7 +7762,7 @@
                 "$ref": "#/components/schemas/UpdateTagTypeTagsDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateTagTypeTagsDto"
               }
@@ -7547,7 +7794,9 @@
         }
       },
       "delete": {
-        "tags": ["TagTypeTags"],
+        "tags": [
+          "TagTypeTags"
+        ],
         "parameters": [
           {
             "name": "id",
@@ -7568,7 +7817,9 @@
     },
     "/api/v1/TagTypeTags/by-tagtype/{tagTypeId}": {
       "get": {
-        "tags": ["TagTypeTags"],
+        "tags": [
+          "TagTypeTags"
+        ],
         "parameters": [
           {
             "name": "tagTypeId",
@@ -7615,7 +7866,9 @@
     },
     "/api/v1/TagTypeTags/by-tag/{tagId}": {
       "get": {
-        "tags": ["TagTypeTags"],
+        "tags": [
+          "TagTypeTags"
+        ],
         "parameters": [
           {
             "name": "tagId",
@@ -7662,7 +7915,9 @@
     },
     "/api/v1/Tenant": {
       "get": {
-        "tags": ["Tenant"],
+        "tags": [
+          "Tenant"
+        ],
         "summary": "Get all Tenants",
         "description": "Retrieve a list of all tenants",
         "responses": {
@@ -7698,7 +7953,9 @@
         }
       },
       "post": {
-        "tags": ["Tenant"],
+        "tags": [
+          "Tenant"
+        ],
         "summary": "Create new Tenant",
         "description": "Create a new tenant",
         "requestBody": {
@@ -7713,7 +7970,7 @@
                 "$ref": "#/components/schemas/CreateTenantDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/CreateTenantDto"
               }
@@ -7767,7 +8024,9 @@
     },
     "/api/v1/Tenant/{id}": {
       "get": {
-        "tags": ["Tenant"],
+        "tags": [
+          "Tenant"
+        ],
         "summary": "Get Tenant by ID",
         "description": "Retrieve details of a specific tenant",
         "parameters": [
@@ -7825,7 +8084,9 @@
         }
       },
       "put": {
-        "tags": ["Tenant"],
+        "tags": [
+          "Tenant"
+        ],
         "summary": "Update Tenant",
         "description": "Update an existing tenant",
         "parameters": [
@@ -7851,7 +8112,7 @@
                 "$ref": "#/components/schemas/UpdateTenantDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateTenantDto"
               }
@@ -7923,7 +8184,9 @@
         }
       },
       "delete": {
-        "tags": ["Tenant"],
+        "tags": [
+          "Tenant"
+        ],
         "summary": "Delete Tenant",
         "description": "Delete a tenant",
         "parameters": [
@@ -7966,7 +8229,9 @@
     },
     "/api/v1/TenantSettings": {
       "get": {
-        "tags": ["TenantSettings"],
+        "tags": [
+          "TenantSettings"
+        ],
         "summary": "Get all Tenant Settings",
         "description": "Retrieve a list of all tenant settings",
         "responses": {
@@ -8002,7 +8267,9 @@
         }
       },
       "post": {
-        "tags": ["TenantSettings"],
+        "tags": [
+          "TenantSettings"
+        ],
         "summary": "Create new Tenant Settings",
         "description": "Create new tenant settings",
         "requestBody": {
@@ -8017,7 +8284,7 @@
                 "$ref": "#/components/schemas/CreateTenantSettingsDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/CreateTenantSettingsDto"
               }
@@ -8071,7 +8338,9 @@
     },
     "/api/v1/TenantSettings/{id}": {
       "get": {
-        "tags": ["TenantSettings"],
+        "tags": [
+          "TenantSettings"
+        ],
         "summary": "Get Tenant Settings by ID",
         "description": "Retrieve details of specific tenant settings",
         "parameters": [
@@ -8129,7 +8398,9 @@
         }
       },
       "put": {
-        "tags": ["TenantSettings"],
+        "tags": [
+          "TenantSettings"
+        ],
         "summary": "Update Tenant Settings",
         "description": "Update existing tenant settings",
         "parameters": [
@@ -8155,7 +8426,7 @@
                 "$ref": "#/components/schemas/UpdateTenantSettingsDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateTenantSettingsDto"
               }
@@ -8227,7 +8498,9 @@
         }
       },
       "delete": {
-        "tags": ["TenantSettings"],
+        "tags": [
+          "TenantSettings"
+        ],
         "summary": "Delete Tenant Settings",
         "description": "Delete tenant settings",
         "parameters": [
@@ -8270,7 +8543,9 @@
     },
     "/api/v1/TenantUser": {
       "get": {
-        "tags": ["TenantUser"],
+        "tags": [
+          "TenantUser"
+        ],
         "summary": "Get all Tenant Users",
         "description": "Retrieve a list of all tenant users",
         "responses": {
@@ -8306,7 +8581,9 @@
         }
       },
       "post": {
-        "tags": ["TenantUser"],
+        "tags": [
+          "TenantUser"
+        ],
         "summary": "Create new Tenant User",
         "description": "Create a new tenant user association",
         "requestBody": {
@@ -8321,7 +8598,7 @@
                 "$ref": "#/components/schemas/CreateTenantUserDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/CreateTenantUserDto"
               }
@@ -8375,7 +8652,9 @@
     },
     "/api/v1/TenantUser/{id}": {
       "get": {
-        "tags": ["TenantUser"],
+        "tags": [
+          "TenantUser"
+        ],
         "summary": "Get Tenant User by ID",
         "description": "Retrieve details of a specific tenant user",
         "parameters": [
@@ -8433,7 +8712,9 @@
         }
       },
       "put": {
-        "tags": ["TenantUser"],
+        "tags": [
+          "TenantUser"
+        ],
         "summary": "Update Tenant User",
         "description": "Update an existing tenant user association",
         "parameters": [
@@ -8459,7 +8740,7 @@
                 "$ref": "#/components/schemas/UpdateTenantUserDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateTenantUserDto"
               }
@@ -8531,7 +8812,9 @@
         }
       },
       "delete": {
-        "tags": ["TenantUser"],
+        "tags": [
+          "TenantUser"
+        ],
         "summary": "Delete Tenant User",
         "description": "Delete a tenant user association",
         "parameters": [
@@ -8574,7 +8857,9 @@
     },
     "/api/v1/UserAuthenticationToken": {
       "get": {
-        "tags": ["UserAuthenticationToken"],
+        "tags": [
+          "UserAuthenticationToken"
+        ],
         "summary": "Get all User Authentication Tokens",
         "description": "Retrieve a list of all user authentication tokens",
         "responses": {
@@ -8610,7 +8895,9 @@
         }
       },
       "post": {
-        "tags": ["UserAuthenticationToken"],
+        "tags": [
+          "UserAuthenticationToken"
+        ],
         "summary": "Create new User Authentication Token",
         "description": "Create a new user authentication token",
         "requestBody": {
@@ -8625,7 +8912,7 @@
                 "$ref": "#/components/schemas/CreateUserAuthenticationTokenDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/CreateUserAuthenticationTokenDto"
               }
@@ -8679,7 +8966,9 @@
     },
     "/api/v1/UserAuthenticationToken/{id}": {
       "get": {
-        "tags": ["UserAuthenticationToken"],
+        "tags": [
+          "UserAuthenticationToken"
+        ],
         "summary": "Get User Authentication Token by ID",
         "description": "Retrieve details of a specific user authentication token",
         "parameters": [
@@ -8737,7 +9026,9 @@
         }
       },
       "put": {
-        "tags": ["UserAuthenticationToken"],
+        "tags": [
+          "UserAuthenticationToken"
+        ],
         "summary": "Update User Authentication Token",
         "description": "Update an existing user authentication token",
         "parameters": [
@@ -8763,7 +9054,7 @@
                 "$ref": "#/components/schemas/UpdateUserAuthenticationTokenDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateUserAuthenticationTokenDto"
               }
@@ -8835,7 +9126,9 @@
         }
       },
       "delete": {
-        "tags": ["UserAuthenticationToken"],
+        "tags": [
+          "UserAuthenticationToken"
+        ],
         "summary": "Delete User Authentication Token",
         "description": "Delete a user authentication token",
         "parameters": [
@@ -8878,9 +9171,11 @@
     },
     "/api/v1/User/sync": {
       "post": {
-        "tags": ["User"],
+        "tags": [
+          "User"
+        ],
         "summary": "Sync user from Keycloak",
-        "description": "Creates or updates the user in the local database. Also creates the user's personal Actor if new user. Call this after login/registration.",
+        "description": "Creates or updates the user in the local database. Also creates the user\u0027s personal Actor if new user. Call this after login/registration.",
         "responses": {
           "200": {
             "description": "OK",
@@ -8907,7 +9202,9 @@
     },
     "/api/v1/User": {
       "get": {
-        "tags": ["User"],
+        "tags": [
+          "User"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -8932,7 +9229,9 @@
         }
       },
       "put": {
-        "tags": ["User"],
+        "tags": [
+          "User"
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -8945,7 +9244,7 @@
                 "$ref": "#/components/schemas/UpdateUserDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateUserDto"
               }
@@ -8977,7 +9276,9 @@
         }
       },
       "delete": {
-        "tags": ["User"],
+        "tags": [
+          "User"
+        ],
         "responses": {
           "200": {
             "description": "OK"
@@ -8985,9 +9286,62 @@
         }
       }
     },
+    "/api/v1/User/{userId}/organizations": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Get user\u0027s organizations",
+        "description": "Gets all organizations the user is a member of, including their role in each organization.",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrganizationListDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrganizationListDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrganizationListDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/UserExternalLogin": {
       "get": {
-        "tags": ["UserExternalLogin"],
+        "tags": [
+          "UserExternalLogin"
+        ],
         "summary": "Get all User External Logins",
         "description": "Retrieve a list of all user external logins",
         "responses": {
@@ -9023,7 +9377,9 @@
         }
       },
       "post": {
-        "tags": ["UserExternalLogin"],
+        "tags": [
+          "UserExternalLogin"
+        ],
         "summary": "Create new User External Login",
         "description": "Create a new user external login",
         "requestBody": {
@@ -9038,7 +9394,7 @@
                 "$ref": "#/components/schemas/CreateUserExternalLoginDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/CreateUserExternalLoginDto"
               }
@@ -9092,7 +9448,9 @@
     },
     "/api/v1/UserExternalLogin/{id}": {
       "get": {
-        "tags": ["UserExternalLogin"],
+        "tags": [
+          "UserExternalLogin"
+        ],
         "summary": "Get User External Login by ID",
         "description": "Retrieve details of a specific user external login",
         "parameters": [
@@ -9150,7 +9508,9 @@
         }
       },
       "put": {
-        "tags": ["UserExternalLogin"],
+        "tags": [
+          "UserExternalLogin"
+        ],
         "summary": "Update User External Login",
         "description": "Update an existing user external login",
         "parameters": [
@@ -9176,7 +9536,7 @@
                 "$ref": "#/components/schemas/UpdateUserExternalLoginDto"
               }
             },
-            "application/*+json": {
+            "application/*\u002Bjson": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateUserExternalLoginDto"
               }
@@ -9248,7 +9608,9 @@
         }
       },
       "delete": {
-        "tags": ["UserExternalLogin"],
+        "tags": [
+          "UserExternalLogin"
+        ],
         "summary": "Delete User External Login",
         "description": "Delete a user external login",
         "parameters": [
@@ -9291,7 +9653,9 @@
     },
     "/api/v1/UserRole": {
       "get": {
-        "tags": ["UserRole"],
+        "tags": [
+          "UserRole"
+        ],
         "summary": "Get all User Roles",
         "description": "Retrieve a list of all user roles (Admin, Moderator, User, etc.)",
         "responses": {
@@ -9329,7 +9693,9 @@
     },
     "/api/v1/UserRole/{id}": {
       "get": {
-        "tags": ["UserRole"],
+        "tags": [
+          "UserRole"
+        ],
         "summary": "Get User Role by ID",
         "description": "Retrieve details of a specific user role",
         "parameters": [
@@ -9389,7 +9755,9 @@
     },
     "/api/v1/VisibilityType": {
       "get": {
-        "tags": ["VisibilityType"],
+        "tags": [
+          "VisibilityType"
+        ],
         "summary": "Get all Visibility Types",
         "description": "Retrieve a list of all event visibility types (Public, Private, Unlisted)",
         "responses": {
@@ -9427,7 +9795,9 @@
     },
     "/api/v1/VisibilityType/{id}": {
       "get": {
-        "tags": ["VisibilityType"],
+        "tags": [
+          "VisibilityType"
+        ],
         "summary": "Get Visibility Type by ID",
         "description": "Retrieve details of a specific event visibility type",
         "parameters": [
@@ -10235,7 +10605,8 @@
           },
           "featuredImageId": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "nullable": true
           },
           "isRegistrationRequired": {
             "type": "boolean"
@@ -10263,12 +10634,12 @@
           },
           "firstSessionDate": {
             "type": "string",
-            "format": "date",
+            "format": "date-time",
             "nullable": true
           },
           "lastSessionDate": {
             "type": "string",
-            "format": "date",
+            "format": "date-time",
             "nullable": true
           },
           "timezone": {
@@ -10278,10 +10649,6 @@
           "eventUrl": {
             "type": "string",
             "nullable": true
-          },
-          "tenantId": {
-            "type": "string",
-            "format": "uuid"
           }
         }
       },
@@ -13617,6 +13984,24 @@
           }
         }
       },
+      "UploadUrlResponseDto": {
+        "type": "object",
+        "properties": {
+          "uploadUrl": {
+            "type": "string"
+          },
+          "objectKey": {
+            "type": "string"
+          },
+          "viewUrl": {
+            "type": "string"
+          },
+          "expiresInMinutes": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "UserAuthenticationTokenDto": {
         "type": "object",
         "properties": {
@@ -13974,9 +14359,6 @@
     },
     {
       "name": "StorageObject"
-    },
-    {
-      "name": "StorageObjects"
     },
     {
       "name": "SyncState"

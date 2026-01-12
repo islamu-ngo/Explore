@@ -1,7 +1,8 @@
 @page "/event/detail/{eventId:guid}"
 @using MudBlazor
-@using Explore.Blazor.Client.Models.DTOs
+@using Explore.Blazor.Client.Clients;
 @using Explore.Blazor.Client.Services
+@using Microsoft.AspNetCore.Components
 @inject NavigationManager Navigation
 @inject IProgramService ProgramService
 @inject IDialogService DialogService
@@ -143,12 +144,11 @@ p{ line-height: 1.6; }
             <!-- HERO -->
             <MudItem xs="12">
                 <div class="hero">
-                    @if (!string.IsNullOrEmpty(program.ImageKey))
+                    @if (!string.IsNullOrEmpty(program.FeaturedImageUri))
                     {
-                        <S3Image ImageKey="@program.ImageKey" 
-                                Alt="@program.Title"
-                                ObjectFit="cover"
-                                ContainerStyle="width: 100%; height: 320px;" />
+                        <img src="@program.FeaturedImageUri"
+                             alt="@program.Title"
+                             style="width: 100%; height: 320px; object-fit: cover;" />
                     }
                     else
                     {
@@ -156,35 +156,35 @@ p{ line-height: 1.6; }
                     }
                     <div class="hero-content">
                         <div class="hero-chips">
-                            <MudChip T="string" 
-                                     Color="Color.Primary" 
-                                     StartIcon="@Icons.Material.Filled.Category" 
+                            <MudChip T="string"
+                                     Color="Color.Primary"
+                                     StartIcon="@Icons.Material.Filled.Category"
                                      Size="Size.Small"
                                      Style="background-color: rgba(33, 150, 243, 0.9); color: white; font-weight: 500;">
-                                @GetProgramTypeName()
+                                @(program.EventTypeFullName ?? "Event")
                             </MudChip>
-                            <MudChip T="string" 
-                                     Color="Color.Secondary" 
-                                     StartIcon="@Icons.Material.Filled.Place" 
+                            <MudChip T="string"
+                                     Color="Color.Secondary"
+                                     StartIcon="@Icons.Material.Filled.Place"
                                      Size="Size.Small"
                                      Style="background-color: rgba(255, 255, 255, 0.9); color: #333; font-weight: 500;">
-                                @GetLocationDisplay()
+                                @(program.EventFormatFullName ?? "Online")
                             </MudChip>
-                            @if (program.Price > 0)
+                            @if (program.Price.HasValue && program.Price > 0)
                             {
-                                <MudChip T="string" 
-                                         Color="Color.Success" 
-                                         StartIcon="@Icons.Material.Filled.Euro" 
+                                <MudChip T="string"
+                                         Color="Color.Success"
+                                         StartIcon="@Icons.Material.Filled.Euro"
                                          Size="Size.Small"
                                          Style="background-color: rgba(76, 175, 80, 0.9); color: white; font-weight: 500;">
-                                    €@program.Price.ToString("F2")
+                                    @($"{program.CurrencyCode ?? "€"}{program.Price:F2}")
                                 </MudChip>
                             }
                             else
                             {
-                                <MudChip T="string" 
-                                         Color="Color.Success" 
-                                         StartIcon="@Icons.Material.Filled.CardGiftcard" 
+                                <MudChip T="string"
+                                         Color="Color.Success"
+                                         StartIcon="@Icons.Material.Filled.CardGiftcard"
                                          Size="Size.Small"
                                          Style="background-color: rgba(76, 175, 80, 0.9); color: white; font-weight: 500;">
                                     Free
@@ -204,7 +204,7 @@ p{ line-height: 1.6; }
                     <div>
                         <MudPaper Elevation="0" Class="body-card">
                             <div class="body-section">
-                                <MudText Typo="Typo.h6" Class="mb-1">About this @(program.ProgramTypeId == 1 ? "event" : "program")</MudText>
+                                <MudText Typo="Typo.h6" Class="mb-1">About this event</MudText>
                                 <MudText Typo="Typo.body1">
                                     @program.Description
                                 </MudText>
@@ -215,7 +215,7 @@ p{ line-height: 1.6; }
                                 <div class="detail-list">
                                     <div class="detail-row">
                                         <MudIcon Icon="@Icons.Material.Filled.Category" />
-                                        <MudText>@GetProgramTypeName() @(program.Event != null ? $"- {GetEventTypeName()}" : program.Education != null ? $"- {GetEducationTypeName()}" : "")</MudText>
+                                        <MudText>@GetProgramTypeName()</MudText>
                                     </div>
                                     <div class="detail-row">
                                         <MudIcon Icon="@Icons.Material.Filled.CalendarToday" />
@@ -227,31 +227,21 @@ p{ line-height: 1.6; }
                                     </div>
                                     <div class="detail-row">
                                         <MudIcon Icon="@Icons.Material.Filled.Euro" />
-                                        <MudText>@(program.Price > 0 ? $"€{program.Price:F2}" : "Free")</MudText>
+                                        <MudText>@(program.Price.HasValue && program.Price > 0 ? $"{program.CurrencyCode ?? "€"}{program.Price:F2}" : "Free")</MudText>
                                     </div>
-                                    @if (program.AudienceAttendees.HasValue && program.AudienceAttendees.Value > 0)
-                                    {
-                                        <div class="detail-row">
-                                            <MudIcon Icon="@Icons.Material.Filled.People" />
-                                            <MudText>Expected attendees: @program.AudienceAttendees</MudText>
-                                        </div>
-                                    }
-                                    @if (program.IsRegistrationRequired.HasValue)
-                                    {
-                                        <div class="detail-row">
-                                            <MudIcon Icon="@(program.IsRegistrationRequired.Value ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Info)" />
-                                            <MudText>@(program.IsRegistrationRequired.Value ? "Registration required" : "No registration required")</MudText>
-                                        </div>
-                                    }
+                                    <div class="detail-row">
+                                        <MudIcon Icon="@(program.IsRegistrationRequired ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Info)" />
+                                        <MudText>@(program.IsRegistrationRequired ? "Registration required" : "No registration required")</MudText>
+                                    </div>
                                     <div class="detail-row">
                                         <MudIcon Icon="@Icons.Material.Filled.Visibility" />
                                         <MudText>@program.TotalViews views</MudText>
                                     </div>
-                                    @if (!string.IsNullOrWhiteSpace(program.ProgramUrl))
+                                    @if (!string.IsNullOrWhiteSpace(program.EventUrl))
                                     {
                                         <div class="detail-row">
                                             <MudIcon Icon="@Icons.Material.Filled.Link" />
-                                            <MudLink Href="@program.ProgramUrl" Target="_blank">Event website</MudLink>
+                                            <MudLink Href="@program.EventUrl" Target="_blank">Event website</MudLink>
                                         </div>
                                     }
                                 </div>
@@ -273,7 +263,7 @@ p{ line-height: 1.6; }
                     <div>
                         <MudPaper Elevation="0" Class="sticky">
                             <MudStack Spacing="2">
-                                <MudText Typo="Typo.subtitle1">@(program.ProgramTypeId == 1 ? "Attend this event" : "Join this program")</MudText>
+                                <MudText Typo="Typo.subtitle1">Attend this event</MudText>
 
                                 <div class="aside-row">
                                     <MudIcon Icon="@Icons.Material.Filled.Place" />
@@ -297,7 +287,7 @@ p{ line-height: 1.6; }
                                             <MudText Typo="Typo.subtitle2">@organization.FullName</MudText>
                                         </div>
                                     </div>
-                                    
+
                                     <MudDivider Class="aside-divider" />
                                 }
 
@@ -322,9 +312,9 @@ p{ line-height: 1.6; }
                                 <MudDivider Class="aside-divider" />
 
                                 <div>
-                                    <MudMenu Icon="@Icons.Material.Filled.CalendarMonth" 
+                                    <MudMenu Icon="@Icons.Material.Filled.CalendarMonth"
                                              Label="Add to Calendar"
-                                             Variant="Variant.Outlined" 
+                                             Variant="Variant.Outlined"
                                              Color="Color.Default"
                                              FullWidth="true"
                                              Style="border-radius: 10px;"
@@ -344,28 +334,16 @@ p{ line-height: 1.6; }
 
                                 <MudDivider Class="aside-divider" />
 
-                                @if (!string.IsNullOrWhiteSpace(program.Country))
-                                {
-                                    if (!string.IsNullOrWhiteSpace(mapEmbedUrl))
-                                    {
-                                        <div class="mapbox">
-                                            <iframe title="Location map"
-                                                    src="@mapEmbedUrl"
-                                                    loading="lazy"
-                                                    allowfullscreen></iframe>
-                                        </div>
-                                    }
-                                    else
-                                    {
-                                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true">
-                                            Map preview unavailable. Please contact the organizer for details.
-                                        </MudAlert>
-                                    }
-                                }
-                                else
+                                @if (program.EventFormatId == 1) @* In-Person *@
                                 {
                                     <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true">
                                         Location details will be provided by the organizer.
+                                    </MudAlert>
+                                }
+                                else if (program.EventFormatId == 2) @* Online *@
+                                {
+                                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true">
+                                        This is an online event. Details will be provided by the organizer.
                                     </MudAlert>
                                 }
                             </MudStack>
@@ -398,11 +376,14 @@ p{ line-height: 1.6; }
 @code {
     [Parameter] public Guid EventId { get; set; }
 
-    private ProgramDto? program;
+    private EventDto? program;
     private OrganizationDto? organization;
+    private ICollection<EventSessionListDto>? eventSessions;
+    private EventSessionListDto? primarySession;
     private bool isLoading = true;
     private bool isUserRegistered = false;
     private bool isCheckingRegistration = true;
+    private string? errorMessage;
     private Dictionary<int, string> programTypeMap = new();
     private Dictionary<int, string> eventTypeMap = new();
     private Dictionary<int, string> educationTypeMap = new();
@@ -410,68 +391,42 @@ p{ line-height: 1.6; }
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadDataAsync();
+        await LoadEventData();
     }
 
-    private async Task LoadDataAsync()
+    private async Task LoadEventData()
     {
         isLoading = true;
         isCheckingRegistration = true;
+        errorMessage = null;
 
         try
         {
-            // Load program details and lookup data in parallel
-            var programTask = ProgramService.GetProgramByIdAsync(EventId);
-            var programTypesTask = ProgramService.GetProgramTypesAsync();
-            var eventTypesTask = ProgramService.GetEventTypesAsync();
+            Console.WriteLine($"[EVENT DETAIL] Loading event {EventId}");
+            program = await ProgramService.GetProgramByIdAsync(EventId);
 
-            await Task.WhenAll(programTask, programTypesTask, eventTypesTask);
-
-            program = await programTask;
-            
-            // Check registration status if program loaded successfully
             if (program != null)
             {
-                try
-                {
-                    organization = await OrganizationService.GetOrganizationByIdAsync(program.OrganizationId);
+                Console.WriteLine($"[EVENT DETAIL] Loaded event: {program.Title}");
 
-                    Console.WriteLine($"Checking registration for program: {program.Id}");
-                    isUserRegistered = await ProgramService.IsUserRegisteredAsync(program.Id);
-                    Console.WriteLine($"Is user registered: {isUserRegistered}");
+                // Load event sessions
+                eventSessions = await ProgramService.GetSessionsByEventAsync(EventId);
+                primarySession = eventSessions?.FirstOrDefault();
+                Console.WriteLine($"[EVENT DETAIL] Loaded {eventSessions?.Count ?? 0} sessions");
 
-                    // Load map URL if location is available
-                    if (!string.IsNullOrWhiteSpace(program.Country))
-                    {
-                        mapEmbedUrl = await GetMapEmbedUrl();
-                    }
-                }
-                catch (Exception ex)
+                if (program.ActorId != Guid.Empty)
                 {
-                    Console.WriteLine($"Error checking registration status: {ex.Message}");
-                    isUserRegistered = false;
+                    organization = await OrganizationService.GetOrganizationByIdAsync(program.ActorId);
                 }
+
+                // Check registration status (if applicable)
+                isUserRegistered = false;
             }
-            
-            // Build lookup maps
-            var programTypes = await programTypesTask;
-            programTypeMap = programTypes.ToDictionary(pt => pt.Id, pt => pt.FullName);
-
-            var eventTypes = await eventTypesTask;
-            eventTypeMap = eventTypes.ToDictionary(et => et.Id, et => et.FullName);
-
-            // Note: EducationType endpoint would be needed for full education support
-            // For now, we'll use mock data for education types
-            educationTypeMap = new Dictionary<int, string>
-            {
-                { 1, "Course" },
-                { 2, "Bootcamp" },
-                { 3, "Workshop Series" }
-            };
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading event details: {ex.Message}");
+            errorMessage = $"Failed to load event details: {ex.Message}";
+            Console.WriteLine($"[EVENT DETAIL] ERROR: {ex.Message}");
         }
         finally
         {
@@ -482,90 +437,102 @@ p{ line-height: 1.6; }
 
     private string GetProgramTypeName()
     {
-        if (program == null) return "";
-        return programTypeMap.TryGetValue(program.ProgramTypeId, out var name) ? name : "Program";
+        return program?.EventTypeFullName ?? "Event";
     }
 
     private string GetEventTypeName()
     {
-        if (program?.Event == null) return "";
-        return eventTypeMap.TryGetValue(program.Event.EventTypeId, out var name) ? name : "Event";
+        return program?.EventTypeFullName ?? "Event";
     }
 
     private string GetEducationTypeName()
     {
-        if (program?.Education == null) return "";
-        return educationTypeMap.TryGetValue(program.Education.EducationTypeId, out var name) ? name : "Education";
+        return "Education";
     }
 
     private string GetDateDisplay()
     {
-        if (program == null) return "";
-        
-        var start = program.StartDate.ToLocalTime();
-        var end = program.EndDate.ToLocalTime();
-        
-        if (start.Date == end.Date)
+        // Use session data if available, otherwise fall back to event dates
+        if (primarySession != null)
         {
-            return $"{start:dddd d MMMM yyyy} • {start:HH:mm} - {end:HH:mm}";
+            var start = primarySession.StartTime.LocalDateTime;
+            var end = primarySession.EndTime.LocalDateTime;
+
+            if (start.Date == end.Date)
+            {
+                return $"{start:dddd d MMMM yyyy} • {start:HH:mm} - {end:HH:mm}";
+            }
+
+            return $"{start:dd/MM/yyyy HH:mm} - {end:dd/MM/yyyy HH:mm}";
         }
-        
-        return $"{start:dd/MM/yyyy HH:mm} - {end:dd/MM/yyyy HH:mm}";
+
+        if (program == null) return "";
+
+        if (program.FirstSessionDate.HasValue && program.LastSessionDate.HasValue)
+        {
+            var start = program.FirstSessionDate.Value.LocalDateTime;
+            var end = program.LastSessionDate.Value.LocalDateTime;
+
+            if (start.Date == end.Date)
+            {
+                return $"{start:dddd d MMMM yyyy} • {start:HH:mm} - {end:HH:mm}";
+            }
+
+            return $"{start:dd/MM/yyyy HH:mm} - {end:dd/MM/yyyy HH:mm}";
+        }
+
+        return "Date TBD";
     }
 
     private string GetLocationDisplay()
     {
-        if (program == null) return "";
-        
-        if (!string.IsNullOrWhiteSpace(program.Country))
+        // Use session location if available
+        if (primarySession != null && !string.IsNullOrEmpty(primarySession.LocationFullName))
         {
-            return program.Country;
+            return primarySession.LocationFullName;
         }
-        
-        return "Location TBD";
+        if (primarySession != null && !string.IsNullOrEmpty(primarySession.LocationCity))
+        {
+            return primarySession.LocationCity;
+        }
+
+        return program?.EventFormatFullName ?? "Online";
     }
 
     private string GetFullLocation()
     {
-        if (program == null) return "";
+        // Use session location if available
+        if (primarySession != null)
+        {
+            var parts = new List<string>();
+            if (!string.IsNullOrEmpty(primarySession.LocationFullName))
+                parts.Add(primarySession.LocationFullName);
+            if (!string.IsNullOrEmpty(primarySession.LocationCity))
+                parts.Add(primarySession.LocationCity);
 
-        var parts = new List<string>();
-        
-        if (!string.IsNullOrWhiteSpace(program.Address))
-            parts.Add(program.Address);
-        
-        if (!string.IsNullOrWhiteSpace(program.City))
-            parts.Add(program.City);
-        
-        if (program.PostCode.HasValue)
-            parts.Add(program.PostCode.Value.ToString());
-        
-        if (!string.IsNullOrWhiteSpace(program.Country))
-            parts.Add(program.Country);
+            if (parts.Any())
+                return string.Join(", ", parts);
+        }
 
-        return parts.Count > 0 ? string.Join(", ", parts) : "Location to be announced";
+        return program?.EventFormatFullName ?? "Location to be announced";
     }
 
     private async Task<string> GetMapEmbedUrl()
     {
-        if (program == null) return string.Empty;
-
-        var location = GetFullLocation();
-        if (string.IsNullOrWhiteSpace(location)) return string.Empty;
-
-        return await MapsService.GetEmbedUrlAsync(location);
+        return string.Empty;
     }
 
     private string GetEventColor()
     {
         if (program == null) return "607D8B";
 
-        // Generate color based on program type
-        return program.ProgramTypeId switch
+        // Generate color based on event type
+        return program.EventTypeFullName?.ToLower() switch
         {
-            1 => "2196F3",    // Event - Blue
-            2 => "9C27B0",    // Education - Purple
-            _ => "607D8B"     // Default - Blue Grey
+            var s when s?.Contains("conference") == true => "2196F3",
+            var s when s?.Contains("workshop") == true => "FF9800",
+            var s when s?.Contains("seminar") == true => "9C27B0",
+            _ => "607D8B"
         };
     }
 
@@ -579,8 +546,8 @@ p{ line-height: 1.6; }
             { "Title", $"Register for {program.Title}" }
         };
 
-        var options = new DialogOptions 
-        { 
+        var options = new DialogOptions
+        {
             CloseOnEscapeKey = true,
             MaxWidth = MaxWidth.Medium,
             FullWidth = true,
@@ -588,21 +555,19 @@ p{ line-height: 1.6; }
         };
 
         var dialog = await DialogService.ShowAsync<Components.EventRegistration>(
-            "Register", 
-            parameters, 
+            "Register",
+            parameters,
             options
         );
-        
+
         var result = await dialog.Result;
-        
+
         if (result != null && !result.Canceled)
         {
             // Refresh registration status
             try
             {
-                Console.WriteLine("Registration dialog closed successfully, refreshing status...");
-                isUserRegistered = await ProgramService.IsUserRegisteredAsync(program.Id);
-                Console.WriteLine($"Updated registration status: {isUserRegistered}");
+                Console.WriteLine("Registration dialog closed successfully");
                 StateHasChanged();
             }
             catch (Exception ex)

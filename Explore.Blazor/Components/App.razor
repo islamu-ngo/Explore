@@ -1,4 +1,5 @@
-﻿@using Explore.Blazor.Client.Layout
+@using Explore.Blazor.Client.Layout
+@using Microsoft.AspNetCore.Components.Web
 @inject IHttpContextAccessor HttpContextAccessor
 
 <!DOCTYPE html>
@@ -14,35 +15,25 @@
                connect-src 'self' http://localhost:8080 http://keycloak:8080;
                img-src 'self' data:;
                font-src 'self' https://fonts.gstatic.com;"> *@
-	<base href="/" />  
+	<base href="/" />
 	<link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
 	<link href=@Assets["_content/MudBlazor/MudBlazor.min.css"] rel="stylesheet" />
 	<link href="css/site.css" rel="stylesheet" />
 	<ImportMap />
 	<link rel="icon" type="image/ico" href="favicon.ico" />
-	<HeadOutlet @rendermode="InteractiveAuto" />
+	<HeadOutlet @rendermode="new InteractiveServerRenderMode(prerender: false)" />
 </head>
 
 <body>
     @{
         var theme = HttpContextAccessor.HttpContext?.Request.Cookies["theme"];
         // Default to light if no cookie is present, or if cookie says light
-        var isDark = theme == "dark"; 
+        var isDark = theme == "dark";
     }
-    
-    @* 
-       We use a CascadingValue to pass the initial theme to the MainLayout 
-       during the Server Prerendering phase.
-       However, MainLayout uses PersistentComponentState to transfer this to the Client.
-       So we need to make sure MainLayout initializes _isDarkMode correctly on the Server.
-       
-       Since MainLayout is inside Routes, we can't easily pass parameters.
-       But we can use a CascadingValue!
-    *@
-    
+
 	<CascadingAuthenticationState>
         <CascadingValue Value="isDark" Name="InitialTheme">
-		    <Routes @rendermode="InteractiveAuto" />
+		    <Routes @rendermode="new InteractiveServerRenderMode(prerender: false)" />
         </CascadingValue>
 	</CascadingAuthenticationState>
 	<script src="_framework/blazor.web.js"></script>
@@ -51,4 +42,3 @@
 </body>
 
 </html>
-

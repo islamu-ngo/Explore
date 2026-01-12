@@ -65,6 +65,16 @@ namespace Explore.Persistence.Repositories
                 .ToListAsync();
         }
 
+        public async Task<List<OrganizationMember>> GetMembershipsByUser(Guid userId)
+        {
+            return await _dbContext.OrganizationMembers
+                .Include(m => m.Organization)
+                    .ThenInclude(o => o.ApprovalStatus)
+                .Include(m => m.OrganizationRole)
+                .Where(m => m.UserId == userId)
+                .ToListAsync();
+        }
+
         public async Task<bool> Exists(Guid organizationId, Guid userId)
         {
             return await _dbContext.OrganizationMembers

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using Explore.Application.Contracts.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace Explore.Persistence.Repositories
 {
@@ -17,9 +18,21 @@ namespace Explore.Persistence.Repositories
 
         public async Task<T> Create(T entity)
         {
-            await _dbContext.AddAsync(entity);
-            await _dbContext.SaveChangesAsync();
-            return entity;
+            try
+            {
+                await _dbContext.AddAsync(entity);
+                await _dbContext.SaveChangesAsync();
+                return entity;
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is PostgresException pgEx && pgEx.SqlState == "23505")
+            {
+                // Duplicate key violation - detach the entity and rethrow with more context
+                _dbContext.Entry(entity).State = EntityState.Detached;
+                throw new InvalidOperationException(
+                    $"A record with the same unique key already exists. Constraint: {pgEx.ConstraintName}. " +
+                    $"Detail: {pgEx.Detail}", 
+                    ex);
+            }
         }
 
         public async Task Delete(T entity)

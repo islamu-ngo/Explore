@@ -27,6 +27,10 @@ namespace Explore.Domain
         public Guid? ActorId { get; set; }
         public Actor? Actor { get; set; }
 
+        // Audit fields
+        public DateTime? CreatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+
         // Navigation property for members
         public ICollection<OrganizationMember> Members { get; set; }
     }

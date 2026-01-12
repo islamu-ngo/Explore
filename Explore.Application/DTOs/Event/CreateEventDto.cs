@@ -28,32 +28,29 @@ namespace Explore.Application.DTOs.Event
         public decimal? Price { get; set; }
         public string? CurrencyCode { get; set; }
 
-        // Featured Image
-        public Guid FeaturedImageId { get; set; }
+        // Featured Image (optional - null if no image uploaded)
+        public Guid? FeaturedImageId { get; set; }
 
         // Registration
         public bool IsRegistrationRequired { get; set; }
         public string? ExternalRegistrationUrl { get; set; }
 
-        // Status & Visibility
-        public int EventStatusId { get; set; }
-        public int VisibilityTypeId { get; set; }
+        // Status & Visibility (defaults: Draft=1, Public=1)
+        public int EventStatusId { get; set; } = 1; // Default: Draft
+        public int VisibilityTypeId { get; set; } = 1; // Default: Public
 
         // Format
-        public int EventFormatId { get; set; }
+        public int EventFormatId { get; set; } = 1; // Default: In-Person
 
         // Islamic Context
         public int? MadhabId { get; set; }
 
         // Session Info (computed, but can be set initially)
-        public DateOnly? FirstSessionDate { get; set; }
-        public DateOnly? LastSessionDate { get; set; }
+        public DateTimeOffset? FirstSessionDate { get; set; }
+        public DateTimeOffset? LastSessionDate { get; set; }
         public string? Timezone { get; set; }
 
         // Metadata
         public string? EventUrl { get; set; }
-
-        // Tenant (set by system based on context)
-        public Guid TenantId { get; set; }
     }
 }

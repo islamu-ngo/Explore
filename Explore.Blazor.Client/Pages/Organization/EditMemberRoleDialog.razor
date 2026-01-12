@@ -1,4 +1,4 @@
-@using Explore.Blazor.Client.Models.DTOs.OrganizationMember
+@using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Models.Enums
 @using Explore.Blazor.Client.Services
 @using MudBlazor
@@ -7,7 +7,7 @@
 
 <MudDialog>
     <DialogContent>
-        <MudText>Change role for @Member.Email</MudText>
+        <MudText>Change role for @Member.UserEmail</MudText>
         <MudSelect T="OrganizationRole" Label="Role" @bind-Value="newRole" AnchorOrigin="Origin.BottomCenter">
             @foreach (OrganizationRole role in Enum.GetValues(typeof(OrganizationRole)))
             {
@@ -33,7 +33,7 @@
 
     protected override void OnInitialized()
     {
-        newRole = Member.Role;
+        newRole = (OrganizationRole)Member.OrganizationRoleId;
     }
 
     private void Cancel() => MudDialog.Cancel();
@@ -45,7 +45,7 @@
             var updateDto = new UpdateOrganizationMemberRoleDto
             {
                 Id = Member.Id,
-                Role = newRole
+                Role = (int)newRole
             };
 
             await MemberService.UpdateMemberRoleAsync(updateDto);

@@ -1,6 +1,6 @@
 @page "/organization/create"
 @using MudBlazor
-@using Explore.Blazor.Client.Models.DTOs
+@using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Services
 @inject NavigationManager NavigationManager
 @inject IOrganizationService OrganizationService
@@ -130,17 +130,13 @@
                     case 0:
                         <MudPaper Class="pa-4 mb-6" Style="background-color: var(--mud-palette-background-grey);">
                             <MudText Typo="Typo.h6" Class="mb-3">Organization Logo</MudText>
-                            <ImageUpload ImageKey="@organization.LogoImageKey"
-                                        ImageKeyChanged="OnLogoImageKeyChanged"
-                                        PreviewUrl="@logoPreview"
-                                        PreviewUrlChanged="OnLogoPreviewUrlChanged"
-                                        Width="120px"
-                                        Height="120px"
-                                        PlaceholderText="No logo"
-                                        UploadButtonText="Upload Logo"
-                                        HintText="Supported formats: JPG, PNG, GIF (Max 2MB)"
-                                        Icon="@Icons.Material.Filled.Business"
-                                        MaxFileSize="@(2 * 1024 * 1024)" />
+                            <MudText Typo="Typo.body2" Class="mb-2 mud-text-secondary">
+                                Logo upload will be available after organization creation.
+                            </MudText>
+                            @if (!string.IsNullOrWhiteSpace(logoPreview))
+                            {
+                                <img src="@logoPreview" alt="Logo preview" style="width: 120px; height: 120px; object-fit: cover;" />
+                            }
                         </MudPaper>
 
                         <MudText Typo="Typo.h6" Class="mb-4">
@@ -245,31 +241,20 @@
 
                         <MudPaper Class="pa-4 mb-4" Style="background: var(--mud-palette-background-grey);">
                             <MudText Typo="Typo.subtitle1" Class="mb-3">Logo</MudText>
-                            @if (!string.IsNullOrWhiteSpace(logoPreview) || !string.IsNullOrWhiteSpace(organization.LogoImageKey))
+                            @if (!string.IsNullOrWhiteSpace(logoPreview))
                             {
                                 <MudStack Row AlignItems="AlignItems.Center" Spacing="3">
-                                    @if (!string.IsNullOrEmpty(organization.LogoImageKey))
-                                    {
-                                        <S3Image ImageKey="@organization.LogoImageKey"
-                                                Alt="Organization Logo"
-                                                ObjectFit="cover"
-                                                BorderRadius="8px"
-                                                ContainerStyle="width: 120px; height: 120px;" />
-                                    }
-                                    else if (!string.IsNullOrEmpty(logoPreview))
-                                    {
-                                        <MudImage Src="@logoPreview"
-                                                  Alt="Organization Logo"
-                                                  Style="width: 120px; height: 120px; object-fit: cover; border-radius: 8px;" />
-                                    }
+                                    <MudImage Src="@logoPreview"
+                                              Alt="Organization Logo"
+                                              Style="width: 120px; height: 120px; object-fit: cover; border-radius: 8px;" />
                                     <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                        Dit is het logo dat voor uw organisatie wordt gebruikt.
+                                        This will be the logo used for your organization.
                                     </MudText>
                                 </MudStack>
                             }
                             else
                             {
-                                <MudText Typo="Typo.body2" Color="Color.Secondary">Geen logo geüpload.</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">No logo uploaded yet.</MudText>
                             }
                         </MudPaper>
 
@@ -369,8 +354,8 @@
 </MudContainer>
 
 @code {
-    // Organisatie gegevens voor de API
-    private OrganizationCreateDto organization = new();
+    // Organization data for the API
+    private CreateOrganizationDto organization = new();
     private bool acceptTerms = false;
     private bool confirmInformation = false;
     private bool isSubmitting = false;
@@ -458,7 +443,7 @@
     protected override async Task OnInitializedAsync()
     {
         // Initialiseer de organisatie met standaard waarden
-        organization = new OrganizationCreateDto();
+        organization = new CreateOrganizationDto();
         await base.OnInitializedAsync();
     }
 
@@ -538,7 +523,8 @@
 
     private void OnLogoImageKeyChanged(string? value)
     {
-        organization.LogoImageKey = value;
+        // Logo will be handled after organization creation
+        logoPreview = value ?? string.Empty;
     }
 
     private void OnLogoPreviewUrlChanged(string? value)
@@ -546,3 +532,4 @@
         logoPreview = value ?? string.Empty;
     }
 }
+

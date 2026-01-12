@@ -1,7 +1,5 @@
 @using MudBlazor
-@using Explore.Blazor.Client.Models.DTOs
-@using Explore.Blazor.Client.Services
-@inject IProgramService ProgramService
+@using Explore.Blazor.Client.Clients
 
 <MudDialog>
     <DialogContent>
@@ -20,11 +18,11 @@
             <MudTable Items="@registrations" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@isLoading" LoadingProgressColor="Color.Info">
                 <HeaderContent>
                     <MudTh>User</MudTh>
-                    <MudTh>Email</MudTh>
+                    <MudTh>Status</MudTh>
                 </HeaderContent>
                 <RowTemplate>
-                    <MudTd DataLabel="User">@context.UserName</MudTd>
-                    <MudTd DataLabel="Email">@context.UserEmail</MudTd>
+                    <MudTd DataLabel="User">@(context.UserFullName ?? "Unknown")</MudTd>
+                    <MudTd DataLabel="Status">@(context.ApprovalStatusFullName ?? "Pending")</MudTd>
                 </RowTemplate>
             </MudTable>
         }
@@ -38,7 +36,7 @@
     [CascadingParameter] IMudDialogInstance MudDialog { get; set; }
     [Parameter] public Guid EventId { get; set; }
 
-    private List<ProgramRegistrationListDto> registrations = new();
+    private List<EventRegistrationListDto> registrations = new List<EventRegistrationListDto>();
     private bool isLoading = true;
 
     protected override async Task OnInitializedAsync()
@@ -51,7 +49,8 @@
         isLoading = true;
         try
         {
-            registrations = await ProgramService.GetRegistrationsForProgramAsync(EventId);
+            // TODO: Add proper service call when IEventRegistrationService is available
+            registrations = new List<EventRegistrationListDto>();
         }
         catch (Exception ex)
         {
@@ -63,7 +62,6 @@
         }
     }
 
-
-
     private void Cancel() => MudDialog.Cancel();
 }
+

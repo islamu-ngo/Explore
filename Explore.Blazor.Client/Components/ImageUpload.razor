@@ -79,7 +79,7 @@
                 <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
             </div>
         }
-        
+
         @if (!string.IsNullOrEmpty(PreviewUrl))
         {
             <img src="@PreviewUrl" alt="@(Alt ?? "Image preview")" />
@@ -94,13 +94,13 @@
     </div>
 
     <div class="image-actions">
-        <MudFileUpload T="IBrowserFile" 
-                       FilesChanged="OnFileSelected" 
+        <MudFileUpload T="IBrowserFile"
+                       FilesChanged="OnFileSelected"
                        Accept="@AcceptedFormats"
                        Disabled="@IsUploading">
             <ActivatorContent>
-                <MudButton Variant="Variant.Outlined" 
-                          StartIcon="@Icons.Material.Filled.CloudUpload" 
+                <MudButton Variant="Variant.Outlined"
+                          StartIcon="@Icons.Material.Filled.CloudUpload"
                           Color="Color.Primary"
                           Disabled="@IsUploading">
                     @(UploadButtonText ?? "Upload Image")
@@ -110,8 +110,8 @@
 
         @if (HasImage && !IsUploading)
         {
-            <MudButton Variant="Variant.Text" 
-                      Color="Color.Error" 
+            <MudButton Variant="Variant.Text"
+                      Color="Color.Error"
                       StartIcon="@Icons.Material.Filled.Delete"
                       OnClick="RemoveImage">
                 Remove
@@ -130,7 +130,9 @@
     [Parameter] public EventCallback<string?> ImageKeyChanged { get; set; }
     [Parameter] public string? PreviewUrl { get; set; }
     [Parameter] public EventCallback<string?> PreviewUrlChanged { get; set; }
-    
+    [Parameter] public Guid? StorageObjectId { get; set; }
+    [Parameter] public EventCallback<Guid?> StorageObjectIdChanged { get; set; }
+
     // Customization parameters
     [Parameter] public string? Width { get; set; }
     [Parameter] public string? Height { get; set; }
@@ -141,7 +143,11 @@
     [Parameter] public string? Alt { get; set; }
     [Parameter] public string AcceptedFormats { get; set; } = ".jpg,.jpeg,.png,.gif,.webp";
     [Parameter] public long MaxFileSize { get; set; } = 5 * 1024 * 1024; // 5MB default
-    
+    /// <summary>
+    /// When true, creates a StorageObject record after upload and returns the ID via StorageObjectIdChanged
+    /// </summary>
+    [Parameter] public bool CreateStorageRecord { get; set; } = true;
+
     private bool IsUploading { get; set; }
     private bool HasImage => !string.IsNullOrEmpty(ImageKey) || !string.IsNullOrEmpty(PreviewUrl);
 
@@ -176,34 +182,60 @@
             await PreviewUrlChanged.InvokeAsync(localPreview);
             StateHasChanged();
 
-            // Get upload URL from backend
-            var uploadResponse = await ImageStorageService.GetUploadUrlAsync(file.Name, file.ContentType);
-            
-            if (uploadResponse == null)
+            if (CreateStorageRecord)
             {
-                Snackbar.Add("Failed to get upload URL. Please try again.", Severity.Error);
-                return;
-            }
+                // Upload and create StorageObject record in one step
+                var result = await ImageStorageService.UploadImageAndCreateRecordAsync(file);
 
-            // Upload the file
-            var uploadSuccess = await ImageStorageService.UploadImageAsync(uploadResponse.UploadUrl, file);
-            
-            if (uploadSuccess)
-            {
-                // Update with S3 URLs
-                ImageKey = uploadResponse.ImageKey;
-                PreviewUrl = uploadResponse.ViewUrl;
-                
-                await ImageKeyChanged.InvokeAsync(uploadResponse.ImageKey);
-                await PreviewUrlChanged.InvokeAsync(uploadResponse.ViewUrl);
-                
-                Snackbar.Add("Image uploaded successfully", Severity.Success);
+                if (result?.Success == true)
+                {
+                    // Update with S3 URLs and StorageObject ID
+                    ImageKey = result.ObjectKey;
+                    PreviewUrl = result.ViewUrl;
+                    StorageObjectId = result.StorageObjectId;
+
+                    await ImageKeyChanged.InvokeAsync(result.ObjectKey);
+                    await PreviewUrlChanged.InvokeAsync(result.ViewUrl);
+                    await StorageObjectIdChanged.InvokeAsync(result.StorageObjectId);
+
+                    Snackbar.Add("Image uploaded successfully", Severity.Success);
+                }
+                else
+                {
+                    Snackbar.Add(result?.ErrorMessage ?? "Failed to upload image. Please try again.", Severity.Error);
+                    PreviewUrl = null;
+                    await PreviewUrlChanged.InvokeAsync(null);
+                }
             }
             else
             {
-                Snackbar.Add("Failed to upload image. Please try again.", Severity.Error);
-                PreviewUrl = null;
-                await PreviewUrlChanged.InvokeAsync(null);
+                // Just upload to S3 without creating a record
+                var uploadResponse = await ImageStorageService.GetUploadUrlAsync(file.Name, file.ContentType);
+
+                if (uploadResponse == null)
+                {
+                    Snackbar.Add("Failed to get upload URL. Please try again.", Severity.Error);
+                    return;
+                }
+
+                var uploadSuccess = await ImageStorageService.UploadImageAsync(uploadResponse.UploadUrl, file);
+
+                if (uploadSuccess)
+                {
+                    ImageKey = uploadResponse.ObjectKey;
+                    PreviewUrl = uploadResponse.ViewUrl;
+
+                    await ImageKeyChanged.InvokeAsync(uploadResponse.ObjectKey);
+                    await PreviewUrlChanged.InvokeAsync(uploadResponse.ViewUrl);
+
+                    Snackbar.Add("Image uploaded successfully", Severity.Success);
+                }
+                else
+                {
+                    Snackbar.Add("Failed to upload image. Please try again.", Severity.Error);
+                    PreviewUrl = null;
+                    await PreviewUrlChanged.InvokeAsync(null);
+                }
             }
         }
         catch (Exception ex)
@@ -230,10 +262,12 @@
 
         ImageKey = null;
         PreviewUrl = null;
-        
+        StorageObjectId = null;
+
         await ImageKeyChanged.InvokeAsync(null);
         await PreviewUrlChanged.InvokeAsync(null);
-        
+        await StorageObjectIdChanged.InvokeAsync(null);
+
         Snackbar.Add("Image removed", Severity.Info);
     }
 

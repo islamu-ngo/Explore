@@ -1,13 +1,13 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
+using Explore.Application.DTOs.StorageObject;
 using MediatR;
 
-namespace Explore.Application.Features.StorageObjects.Requests.Commands
+namespace Explore.Application.Features.StorageObjects.Requests.Commands;
+
+public class GenerateUploadUrlCommand : IRequest<UploadUrlResponseDto>
 {
-    public class GenerateUploadUrlCommand : IRequest<string>
-    {
-        public string FileName { get; set; }
-        public string ContentType { get; set; }
-    }
+    public string FileName { get; set; } = string.Empty;
+    public string ContentType { get; set; } = string.Empty;
 }

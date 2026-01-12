@@ -1,7 +1,8 @@
 @page "/organization/reviews/{Id:guid}"
 @using MudBlazor
 @using Explore.Blazor.Client.Services
-@using Explore.Blazor.Client.Models.DTOs
+@using Explore.Blazor.Client.Clients
+@using Microsoft.AspNetCore.Components
 @inject IOrganizationService OrganizationService
 @inject IOrganizationReviewService OrganizationReviewService
 @inject NavigationManager Navigation
@@ -59,11 +60,11 @@
                             <MudStack Spacing="2">
                                 <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
                                     <MudAvatar Size="Size.Medium" Color="Color.Primary">
-                                        <MudText>@(string.IsNullOrEmpty(review.ReviewerName) ? "?" : review.ReviewerName.Substring(0, 1).ToUpper())</MudText>
+                                        <MudText>@(string.IsNullOrEmpty(review.UserFullName) ? "?" : review.UserFullName.Substring(0, 1).ToUpper())</MudText>
                                     </MudAvatar>
                                     <MudStack Spacing="0">
-                                        <MudText Typo="Typo.subtitle2">@review.ReviewerName</MudText>
-                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@review.CreatedAt.ToShortDateString()</MudText>
+                                        <MudText Typo="Typo.subtitle2">@review.UserFullName</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@review.CreatedAt.DateTime.ToShortDateString()</MudText>
                                     </MudStack>
                                 </MudStack>
 
@@ -108,22 +109,35 @@
     private List<OrganizationReviewDto> _reviews = new();
     private bool _isLoading = true;
 
+    // Client-only load state (no prerender persistence)
+    private string? _errorMessage;
+
     protected override async Task OnInitializedAsync()
     {
+        _isLoading = true;
+        _errorMessage = null;
+
         try
         {
+            // Load organization and its reviews from API (client-side)
             _organization = await OrganizationService.GetOrganizationByIdAsync(Id);
-            _reviews = await OrganizationReviewService.GetReviewsByOrganizationId(Id);
+            _reviews = (await OrganizationReviewService.GetReviewsByOrganizationId(Id)).ToList();
+            Console.WriteLine($"[ORG REVIEWS] Loaded organization {Id} with {_reviews.Count} reviews");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading reviews: {ex.Message}");
+            _errorMessage = $"Failed to load reviews: {ex.Message}";
+            Console.WriteLine($"[ORG REVIEWS] ERROR: {ex.Message}");
         }
         finally
         {
             _isLoading = false;
         }
     }
+
+    // PersistData removed: no PersistentComponentState usage in client-only rendering mode.
+
+    // Dispose removed: no persistence subscription to dispose.
 
     private void GoBack()
     {

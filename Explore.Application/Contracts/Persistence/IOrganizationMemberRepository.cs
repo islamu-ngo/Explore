@@ -24,5 +24,10 @@ namespace Explore.Application.Contracts.Persistence
         /// Checks if the user has admin-level permissions (Creator, CoOwner, or Admin role) in the organization.
         /// </summary>
         Task<bool> IsUserAdminOfOrganization(Guid organizationId, Guid userId);
+        
+        /// <summary>
+        /// Gets all organization memberships for a user, including organization details and role.
+        /// </summary>
+        Task<List<OrganizationMember>> GetMembershipsByUser(Guid userId);
     }
 }

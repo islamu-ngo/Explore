@@ -1,5 +1,6 @@
 @page "/event-created/{EventId:guid}"
 @using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Clients
 @inject IEventService EventService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
@@ -46,12 +47,8 @@
                 </MudItem>
 
                 <MudItem xs="12" sm="6">
-                    <MudText Typo="Typo.subtitle2" Color="Color.Primary">Location</MudText>
-                    <MudText Typo="Typo.body1" Class="mb-3">
-                        @eventDetails.Address<br />
-                        @eventDetails.City, @eventDetails.PostCode<br />
-                        @eventDetails.Country
-                    </MudText>
+                    <MudText Typo="Typo.subtitle2" Color="Color.Primary">Event Format</MudText>
+                    <MudText Typo="Typo.body1" Class="mb-3">@eventDetails.EventFormatFullName</MudText>
                 </MudItem>
 
                 <MudItem xs="12" sm="6">
@@ -60,31 +57,39 @@
                 </MudItem>
 
                 <MudItem xs="12" sm="6">
-                    <MudText Typo="Typo.subtitle2" Color="Color.Primary">Expected Attendees</MudText>
-                    <MudText Typo="Typo.body1" Class="mb-3">@(eventDetails.AudienceAttendees?.ToString() ?? "Not specified")</MudText>
+                    <MudText Typo="Typo.subtitle2" Color="Color.Primary">Target Audience</MudText>
+                    <MudText Typo="Typo.body1" Class="mb-3">@eventDetails.AudienceGenderFullName, @eventDetails.AudienceAgeFullName</MudText>
                 </MudItem>
 
                 <MudItem xs="12" sm="6">
                     <MudText Typo="Typo.subtitle2" Color="Color.Primary">Price</MudText>
                     <MudText Typo="Typo.body1" Class="mb-3">
-                        @(eventDetails.Price > 0 ? $"€{eventDetails.Price:N2}" : "Free")
+                        @(eventDetails.Price > 0 ? $"{eventDetails.CurrencyCode} {eventDetails.Price:N2}" : "Free")
                     </MudText>
                 </MudItem>
 
                 <MudItem xs="12" sm="6">
                     <MudText Typo="Typo.subtitle2" Color="Color.Primary">Registration Required</MudText>
                     <MudText Typo="Typo.body1" Class="mb-3">
-                        @(eventDetails.IsRegistrationRequired == true ? "Yes" : "No")
+                        @(eventDetails.IsRegistrationRequired ? "Yes" : "No")
                     </MudText>
                 </MudItem>
 
-                @if (!string.IsNullOrEmpty(eventDetails.ProgramUrl))
+                @if (!string.IsNullOrEmpty(eventDetails.EventUrl))
                 {
                     <MudItem xs="12" sm="6">
-                        <MudText Typo="Typo.subtitle2" Color="Color.Primary">Program URL</MudText>
-                        <MudLink Href="@eventDetails.ProgramUrl" Target="_blank" Typo="Typo.body1">
-                            View Program
+                        <MudText Typo="Typo.subtitle2" Color="Color.Primary">Event URL</MudText>
+                        <MudLink Href="@eventDetails.EventUrl" Target="_blank" Typo="Typo.body1">
+                            View Event Page
                         </MudLink>
+                    </MudItem>
+                }
+
+                @if (eventDetails.FirstSessionDate.HasValue)
+                {
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.subtitle2" Color="Color.Primary">First Session</MudText>
+                        <MudText Typo="Typo.body1" Class="mb-3">@eventDetails.FirstSessionDate.Value.ToString("g")</MudText>
                     </MudItem>
                 }
             </MudGrid>
@@ -108,9 +113,7 @@
     else
     {
         <MudPaper Class="pa-8 text-center">
-            <MudIcon Icon="@Icons.Material.Filled.Error" 
-                    Color="Color.Error" 
-                    Size="Size.Large" />
+            <MudIcon Icon="@Icons.Material.Filled.Error" Color="Color.Error" Size="Size.Large" />
             <MudText Typo="Typo.h6" Class="mt-4">Event not found</MudText>
             <MudButton Variant="Variant.Filled" 
                       Color="Color.Primary"
@@ -126,7 +129,7 @@
     [Parameter]
     public Guid EventId { get; set; }
 
-    private EventDetailsDto? eventDetails;
+    private EventDto? eventDetails;
     private bool isLoading = true;
 
     protected override async Task OnInitializedAsync()
@@ -146,3 +149,4 @@
         }
     }
 }
+

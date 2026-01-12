@@ -84,22 +84,20 @@ namespace Explore.Application.DTOs.Event.Validators
                 .When(p => !string.IsNullOrEmpty(p.CurrencyCode))
                 .WithMessage("{PropertyName} must be a valid 3-letter currency code.");
 
+            // FeaturedImageId is optional - only validate if provided
             RuleFor(p => p.FeaturedImageId)
-                .NotEmpty().WithMessage("{PropertyName} is required.")
                 .MustAsync(async (id, cancellation) =>
                 {
-                    var storageObjectExists = await _storageObjectRepository.Exists(id);
+                    if (!id.HasValue) return true;
+                    var storageObjectExists = await _storageObjectRepository.Exists(id.Value);
                     return storageObjectExists;
-                }).WithMessage("{PropertyName} does not exist.");
+                })
+                .When(p => p.FeaturedImageId.HasValue)
+                .WithMessage("{PropertyName} does not exist.");
 
-            RuleFor(p => p.EventStatusId)
-                .NotEmpty().WithMessage("{PropertyName} is required.");
-
-            RuleFor(p => p.VisibilityTypeId)
-                .NotEmpty().WithMessage("{PropertyName} is required.");
-
-            RuleFor(p => p.EventFormatId)
-                .NotEmpty().WithMessage("{PropertyName} is required.");
+            // EventStatusId defaults to 1 (Draft) - no validation needed for existence
+            // VisibilityTypeId defaults to 1 (Public) - no validation needed for existence
+            // EventFormatId defaults to 1 (In-Person) - no validation needed for existence
 
             RuleFor(p => p.ExternalRegistrationUrl)
                 .MaximumLength(500)
@@ -116,8 +114,8 @@ namespace Explore.Application.DTOs.Event.Validators
                 .When(p => !string.IsNullOrEmpty(p.EventUrl))
                 .WithMessage("{PropertyName} must not exceed 500 characters.");
 
-            RuleFor(p => p.TenantId)
-                .NotEmpty().WithMessage("{PropertyName} is required.");
+            // TenantId is set by the handler from context, not by the client
+            // No validation needed here
         }
     }
 }

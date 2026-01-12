@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventSessionAgendaItem.Validators;
 using Explore.Application.Features.EventSessionAgendaItems.Requests.Commands;
@@ -17,17 +18,20 @@ namespace Explore.Application.Features.EventSessionAgendaItems.Handlers.Commands
         private readonly IEventSessionAgendaItemRepository _agendaItemRepository;
         private readonly IEventSessionRepository _eventSessionRepository;
         private readonly ILocationRepository _locationRepository;
+        private readonly ITenantContext _tenantContext;
         private readonly IMapper _mapper;
 
         public CreateEventSessionAgendaItemCommandHandler(
             IEventSessionAgendaItemRepository agendaItemRepository,
             IEventSessionRepository eventSessionRepository,
             ILocationRepository locationRepository,
+            ITenantContext tenantContext,
             IMapper mapper)
         {
             _agendaItemRepository = agendaItemRepository;
             _eventSessionRepository = eventSessionRepository;
             _locationRepository = locationRepository;
+            _tenantContext = tenantContext;
             _mapper = mapper;
         }
 
@@ -47,6 +51,9 @@ namespace Explore.Application.Features.EventSessionAgendaItems.Handlers.Commands
             }
 
             var agendaItem = _mapper.Map<EventSessionAgendaItem>(request.AgendaItemDto);
+
+            // Set TenantId from the request context
+            agendaItem.TenantId = _tenantContext.TenantId;
 
             agendaItem = await _agendaItemRepository.Create(agendaItem);
 

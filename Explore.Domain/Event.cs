@@ -30,8 +30,8 @@ namespace Explore.Domain
         public string? CurrencyCode { get; set; }
 
         [ForeignKey("FeaturedImage")]
-        public Guid FeaturedImageId { get; set; }
-        public StorageObject FeaturedImage { get; set; }
+        public Guid? FeaturedImageId { get; set; }
+        public StorageObject? FeaturedImage { get; set; }
 
         public int TotalViews { get; set; }
         public bool IsRegistrationRequired { get; set; }

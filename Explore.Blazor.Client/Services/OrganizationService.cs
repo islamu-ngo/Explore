@@ -1,117 +1,150 @@
-using System.Net.Http.Json;
-using Explore.Blazor.Client.Models.DTOs;
-using Explore.Blazor.Client.Models.Responses;
+using Explore.Blazor.Client.Clients;
 
 namespace Explore.Blazor.Client.Services;
 
 public interface IOrganizationService
 {
-    Task<OrganizationDto?> CreateOrganizationAsync(OrganizationCreateDto organization);
-    Task<List<OrganizationStatusTypeListDto>> GetStatusTypesAsync();
-    Task<List<OrganizationListDto>> GetMyOrganizationsAsync();
+    Task<BaseCommandResponseOfGuid?> CreateOrganizationAsync(CreateOrganizationDto organization);
+    Task<ICollection<StatusTypeListDto>> GetStatusTypesAsync();
+    Task<ICollection<OrganizationListDto>> GetMyOrganizationsAsync();
+    Task<ICollection<OrganizationListDto>> GetOrganizationsByUserAsync(Guid userId);
     Task<OrganizationDto?> GetOrganizationByIdAsync(Guid id);
-    Task<bool> UpdateOrganizationAsync(Guid id, OrganizationCreateDto organization);
+    Task<BaseCommandResponseOfGuid?> UpdateOrganizationAsync(Guid id, UpdateOrganizationDto organization);
 }
 
 public class OrganizationService : IOrganizationService
 {
-    private readonly HttpClient _httpClient;
+    private readonly IEventApiClient _apiClient;
 
-    public OrganizationService(HttpClient httpClient)
+    public OrganizationService(IEventApiClient apiClient)
     {
-        _httpClient = httpClient;
+        _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
     }
 
-    public async Task<OrganizationDto?> CreateOrganizationAsync(OrganizationCreateDto organization)
+    public async Task<BaseCommandResponseOfGuid?> CreateOrganizationAsync(CreateOrganizationDto organization)
     {
         try
         {
-            Console.WriteLine($"Verzenden naar API: /bff/api/Organization");
-            Console.WriteLine($"Data: {System.Text.Json.JsonSerializer.Serialize(organization)}");
-            
-            var response = await _httpClient.PostAsJsonAsync("/bff/api/Organization", organization);
-            
-            Console.WriteLine($"API Response Status: {response.StatusCode}");
-            
-            if (response.IsSuccessStatusCode)
+            if (_apiClient == null)
             {
-                // API geeft een BaseCommandResponse<Guid> terug
-                var commandResponse = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
-                
-                if (commandResponse != null && commandResponse.Success)
+                Console.WriteLine("[ORG SERVICE] ERROR: API client is null");
+                return null;
+            }
+            
+            Console.WriteLine($"[ORG SERVICE] Creating organization: {organization.FullName}");
+            var response = await _apiClient.OrganizationPOSTAsync(organization);
+            Console.WriteLine($"[ORG SERVICE] API Response: Success={response?.Success}, Id={response?.Id}");
+            return response;
+        }
+        catch (ApiException ex)
+        {
+            Console.WriteLine($"[ORG SERVICE] API error creating organization: {ex.StatusCode} - {ex.Message}");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ORG SERVICE] Exception creating organization: {ex.Message}");
+            throw;
+        }
+    }
+
+    public async Task<ICollection<StatusTypeListDto>> GetStatusTypesAsync()
+    {
+        try
+        {
+            if (_apiClient == null)
+            {
+                Console.WriteLine("[ORG SERVICE] ERROR: API client is null");
+                return new List<StatusTypeListDto>();
+            }
+            
+            var response = await _apiClient.ApprovalStatusAllAsync();
+            return response ?? new List<StatusTypeListDto>();
+        }
+        catch (ApiException ex)
+        {
+            Console.WriteLine($"[ORG SERVICE] API error fetching status types: {ex.StatusCode} - {ex.Message}");
+            return new List<StatusTypeListDto>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ORG SERVICE] Error fetching status types: {ex.Message}");
+            return new List<StatusTypeListDto>();
+        }
+    }
+
+    public async Task<ICollection<OrganizationListDto>> GetMyOrganizationsAsync()
+    {
+        try
+        {
+            if (_apiClient == null)
+            {
+                Console.WriteLine("[ORG SERVICE] ERROR: API client is null");
+                return new List<OrganizationListDto>();
+            }
+            
+            Console.WriteLine("[ORG SERVICE] Fetching my organizations via Organization/my...");
+            var response = await _apiClient.My2Async();
+            Console.WriteLine($"[ORG SERVICE] Received {response?.Count ?? 0} organizations");
+            return response ?? new List<OrganizationListDto>();
+        }
+        catch (ApiException ex)
+        {
+            Console.WriteLine($"[ORG SERVICE] API error fetching my organizations: {ex.StatusCode} - {ex.Message}");
+            return new List<OrganizationListDto>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ORG SERVICE] Error fetching my organizations: {ex.Message}");
+            return new List<OrganizationListDto>();
+        }
+    }
+
+    public async Task<ICollection<OrganizationListDto>> GetOrganizationsByUserAsync(Guid userId)
+    {
+        try
+        {
+            if (_apiClient == null)
+            {
+                Console.WriteLine("[ORG SERVICE] ERROR: API client is null");
+                return new List<OrganizationListDto>();
+            }
+            
+            Console.WriteLine($"[ORG SERVICE] Fetching organizations for user: {userId} via User/{userId}/organizations...");
+            var response = await _apiClient.OrganizationsAsync(userId);
+            Console.WriteLine($"[ORG SERVICE] Received {response?.Count ?? 0} organizations for user {userId}");
+            
+            if (response != null)
+            {
+                foreach (var org in response)
                 {
-                    var orgId = commandResponse.Id;
-                    
-                    if (orgId == Guid.Empty)
-                    {
-                        throw new Exception("API retourneerde geen geldig GUID");
-                    }
-                    
-                    Console.WriteLine($"Organisatie succesvol aangemaakt met ID: {orgId}");
-                    
-                    // Maak een OrganizationDto met de bekende gegevens
-                    var createdOrg = new OrganizationDto
-                    {
-                        Id = orgId,
-                        FullName = organization.FullName,
-                        WebsiteUrl = organization.WebsiteUrl,
-                        Email = organization.Email,
-                        Country = organization.Country,
-                        City = organization.City,
-                        Postcode = organization.Postcode,
-                        Address = organization.Address,
-                        StatusTypeId = 1, // Pending
-                        CreatedAt = DateTime.UtcNow
-                    };
-                    
-                    return createdOrg;
-                }
-                else if (commandResponse != null && !commandResponse.Success)
-                {
-                    var errors = commandResponse.Errors != null 
-                        ? string.Join(", ", commandResponse.Errors) 
-                        : commandResponse.Message ?? "Onbekende fout";
-                    Console.WriteLine($"API fout: {errors}");
-                    throw new Exception(errors);
+                    Console.WriteLine($"[ORG SERVICE] - Org: {org.FullName}, Role: {org.CurrentUserRole}");
                 }
             }
             
-            // Log de foutmelding voor debugging
-            var errorContent = await response.Content.ReadAsStringAsync();
-            Console.WriteLine($"API fout bij aanmaken organisatie: {response.StatusCode} - {errorContent}");
-            throw new Exception($"HTTP {response.StatusCode}: {errorContent}");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Exception bij aanmaken organisatie: {ex.Message}");
-            throw; // Gooi de exception door zodat de UI deze kan afhandelen
-        }
-    }
-
-    public async Task<List<OrganizationStatusTypeListDto>> GetStatusTypesAsync()
-    {
-        try
-        {
-            var response = await _httpClient.GetFromJsonAsync<List<OrganizationStatusTypeListDto>>("/bff/api/StatusType");
-            return response ?? new List<OrganizationStatusTypeListDto>();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error fetching status types: {ex.Message}");
-            return new List<OrganizationStatusTypeListDto>();
-        }
-    }
-
-    public async Task<List<OrganizationListDto>> GetMyOrganizationsAsync()
-    {
-        try
-        {
-            var response = await _httpClient.GetFromJsonAsync<List<OrganizationListDto>>("/bff/api/Organization/my");
             return response ?? new List<OrganizationListDto>();
         }
+        catch (ApiException ex)
+        {
+            Console.WriteLine($"[ORG SERVICE] API error fetching organizations for user {userId}: {ex.StatusCode} - {ex.Message}");
+            
+            // Fallback to My2Async if the new endpoint fails
+            Console.WriteLine("[ORG SERVICE] Falling back to My2Async...");
+            try
+            {
+                var fallbackResponse = await _apiClient.My2Async();
+                Console.WriteLine($"[ORG SERVICE] Fallback received {fallbackResponse?.Count ?? 0} organizations");
+                return fallbackResponse ?? new List<OrganizationListDto>();
+            }
+            catch (Exception fallbackEx)
+            {
+                Console.WriteLine($"[ORG SERVICE] Fallback also failed: {fallbackEx.Message}");
+                return new List<OrganizationListDto>();
+            }
+        }
         catch (Exception ex)
         {
-            Console.WriteLine($"Fout bij ophalen mijn organisaties: {ex.Message}");
+            Console.WriteLine($"[ORG SERVICE] Error fetching organizations for user {userId}: {ex.Message}");
             return new List<OrganizationListDto>();
         }
     }
@@ -120,54 +153,55 @@ public class OrganizationService : IOrganizationService
     {
         try
         {
-            Console.WriteLine($"Fetching organization: /bff/api/Organization/{id}");
-            var response = await _httpClient.GetFromJsonAsync<OrganizationDto>($"/bff/api/Organization/{id}");
-            return response;
+            if (_apiClient == null)
+            {
+                Console.WriteLine("[ORG SERVICE] ERROR: API client is null");
+                return null;
+            }
+            
+            Console.WriteLine($"[ORG SERVICE] Fetching organization: {id}");
+            return await _apiClient.OrganizationGETAsync(id);
+        }
+        catch (ApiException ex) when (ex.StatusCode == 404)
+        {
+            Console.WriteLine($"[ORG SERVICE] Organization not found: {id}");
+            return null;
+        }
+        catch (ApiException ex)
+        {
+            Console.WriteLine($"[ORG SERVICE] API error fetching organization: {ex.StatusCode} - {ex.Message}");
+            return null;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error fetching organization: {ex.Message}");
+            Console.WriteLine($"[ORG SERVICE] Error fetching organization: {ex.Message}");
             return null;
         }
     }
 
-    public async Task<bool> UpdateOrganizationAsync(Guid id, OrganizationCreateDto organization)
+    public async Task<BaseCommandResponseOfGuid?> UpdateOrganizationAsync(Guid id, UpdateOrganizationDto organization)
     {
         try
         {
-            Console.WriteLine($"Updating organization: /bff/api/Organization/{id}");
-            Console.WriteLine($"Data: {System.Text.Json.JsonSerializer.Serialize(organization)}");
-            
-            var response = await _httpClient.PutAsJsonAsync($"/bff/api/Organization/{id}", organization);
-            
-            Console.WriteLine($"API Response Status: {response.StatusCode}");
-            
-            if (response.IsSuccessStatusCode)
+            if (_apiClient == null)
             {
-                var commandResponse = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
-                
-                if (commandResponse != null && commandResponse.Success)
-                {
-                    Console.WriteLine($"Organization updated successfully");
-                    return true;
-                }
-                else if (commandResponse != null && !commandResponse.Success)
-                {
-                    var errors = commandResponse.Errors != null 
-                        ? string.Join(", ", commandResponse.Errors) 
-                        : commandResponse.Message ?? "Unknown error";
-                    Console.WriteLine($"API error: {errors}");
-                    throw new Exception(errors);
-                }
+                Console.WriteLine("[ORG SERVICE] ERROR: API client is null");
+                return null;
             }
             
-            var errorContent = await response.Content.ReadAsStringAsync();
-            Console.WriteLine($"API error updating organization: {response.StatusCode} - {errorContent}");
-            throw new Exception($"HTTP {response.StatusCode}: {errorContent}");
+            Console.WriteLine($"[ORG SERVICE] Updating organization: {id}");
+            var response = await _apiClient.OrganizationPUTAsync(id, organization);
+            Console.WriteLine($"[ORG SERVICE] API Response: Success={response?.Success}");
+            return response;
+        }
+        catch (ApiException ex)
+        {
+            Console.WriteLine($"[ORG SERVICE] API error updating organization: {ex.StatusCode} - {ex.Message}");
+            throw;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Exception updating organization: {ex.Message}");
+            Console.WriteLine($"[ORG SERVICE] Exception updating organization: {ex.Message}");
             throw;
         }
     }

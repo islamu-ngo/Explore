@@ -1,4 +1,5 @@
 using AutoMapper;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.TagTypeTags.Validators;
 using Explore.Application.Features.TagTypeTags.Requests.Commands;
@@ -14,17 +15,20 @@ namespace Explore.Application.Features.TagTypeTags.Handlers.Commands
         private readonly IMapper _mapper;
         private readonly ITagRepository _tagRepository;
         private readonly ITagTypeRepository _tagTypeRepository;
+        private readonly ITenantContext _tenantContext;
 
         public CreateTagTypeTagsCommandHandler(
             ITagTypeTagsRepository repository,
             IMapper mapper,
             ITagRepository tagRepository,
-            ITagTypeRepository tagTypeRepository)
+            ITagTypeRepository tagTypeRepository,
+            ITenantContext tenantContext)
         {
             _repository = repository;
             _mapper = mapper;
             _tagRepository = tagRepository;
             _tagTypeRepository = tagTypeRepository;
+            _tenantContext = tenantContext;
         }
 
         public async Task<BaseCommandResponse<Guid>> Handle(CreateTagTypeTagsCommand request, CancellationToken cancellationToken)
@@ -43,6 +47,10 @@ namespace Explore.Application.Features.TagTypeTags.Handlers.Commands
             }
 
             var tagTypeTags = _mapper.Map<Domain.TagTypeTags>(request.TagTypeTagsDto);
+
+            // Set TenantId from request context
+            tagTypeTags.TenantId = _tenantContext.TenantId;
+
             tagTypeTags = await _repository.Create(tagTypeTags);
 
             response.Success = true;

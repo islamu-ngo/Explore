@@ -2,6 +2,7 @@ using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Organization;
 using Explore.Application.Features.Organizations.Requests.Queries;
+using Explore.Domain.Enums;
 using MediatR;
 
 namespace Explore.Application.Features.Organizations.Handlers.Queries
@@ -25,7 +26,23 @@ namespace Explore.Application.Features.Organizations.Handlers.Queries
             }
 
             var organizations = await _organizationRepository.GetMyOrganizations(userGuid);
-            return _mapper.Map<List<OrganizationListDto>>(organizations);
+            var dtos = _mapper.Map<List<OrganizationListDto>>(organizations);
+
+            // Populate CurrentUserRole for each organization based on the user's membership
+            foreach (var dto in dtos)
+            {
+                var org = organizations.FirstOrDefault(o => o.Id == dto.Id);
+                if (org != null)
+                {
+                    var userMembership = org.Members?.FirstOrDefault(m => m.UserId == userGuid);
+                    if (userMembership != null)
+                    {
+                        dto.CurrentUserRole = (OrganizationRoleEnum)userMembership.OrganizationRoleId;
+                    }
+                }
+            }
+
+            return dtos;
         }
     }
 }

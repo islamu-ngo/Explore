@@ -1,0 +1,146 @@
+@using Microsoft.JSInterop
+@inject IJSRuntime JSRuntime
+
+@if (_isVisible)
+{
+    <div class="announcement-bar" @onclick="HandleClick">
+        <div class="announcement-content">
+            <MudIcon Icon="@Icons.Material.Filled.Info" Color="Color.Inherit" Size="Size.Medium" Class="announcement-icon" />
+            <MudText Class="announcement-text">
+                This is a development environment. All information displayed is for demonstration purposes only and does not represent actual data.
+            </MudText>
+            <a href="https://github.com/islamu-ngo/explore" target="_blank" rel="noopener noreferrer" class="announcement-link" @onclick:stopPropagation>
+                View GitHub Repository
+            </a>
+        </div>
+        <MudIconButton Icon="@Icons.Material.Filled.Close" Class="close-btn" OnClick="CloseBar" Variant="Variant.Text" />
+    </div>
+}
+
+<style>
+    .announcement-bar {
+        background: linear-gradient(90deg, #7e6fff, #635bff);
+        color: white;
+        padding: 12px 24px;
+        text-align: center;
+        font-size: 0.9rem;
+        position: relative;
+        overflow: hidden;
+        z-index: 1000;
+    }
+
+    .announcement-content {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .announcement-icon {
+        opacity: 1;
+        transform: scale(1);
+        transition: all 0.5s ease;
+    }
+
+    .announcement-icon:hover {
+        opacity: 0.8;
+        transform: scale(1.05);
+    }
+
+    .announcement-text {
+        font-weight: 500;
+        margin: 0;
+    }
+
+    .announcement-link {
+        color: white;
+        text-decoration: underline;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+
+    .announcement-link:hover {
+        color: #f0f0f0;
+        text-decoration: none;
+    }
+
+    .close-btn {
+        position: absolute;
+        right: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: white;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .close-btn:hover {
+        color: #f0f0f0;
+        transform: translateY(-50%) scale(1.1);
+    }
+</style>
+
+@code {
+    private bool _isVisible = true;
+    private bool _isInitialized = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        await LoadDismissalState();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_isInitialized)
+        {
+            _isInitialized = true;
+            // Ensure state is loaded after server render
+            await LoadDismissalState();
+            StateHasChanged();
+        }
+
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private async Task LoadDismissalState()
+    {
+        try
+        {
+            // Check localStorage for dismissal preference
+            var dismissed = await JSRuntime.InvokeAsync<bool>("localStorage.getItem", "announcementDismissed");
+            if (dismissed)
+            {
+                _isVisible = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            // Fail gracefully - likely running on server where localStorage isn't available
+            Console.WriteLine($"[AnnouncementBar] Error loading dismissal state: {ex.Message}");
+        }
+    }
+
+    private async Task CloseBar()
+    {
+        _isVisible = false;
+
+        try
+        {
+            // Persist dismissal preference
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "announcementDismissed", "true");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[AnnouncementBar] Error saving dismissal state: {ex.Message}");
+        }
+
+        StateHasChanged();
+    }
+
+    private void HandleClick()
+    {
+        // Optional: Add click handler if needed for the entire bar
+    }
+}

@@ -2,6 +2,7 @@ using Explore.API.Extensions;
 using Explore.API.Middleware;
 using Explore.API.Services;
 using Explore.Application;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Infrastructure;
 using Explore.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -52,6 +53,9 @@ var s3SettingsDict = new Dictionary<string, string?>
 builder.Services.ConfigureApplicationServices();
 builder.Services.ConfigureInfrastructureServices(builder.Configuration);
 builder.Services.CongfigurePersistenceServices(builder.Configuration);
+
+// Register tenant context for single-tenant mode
+builder.Services.AddScoped<ITenantContext, TenantContext>();
 
 builder.Services.AddControllers();
 

@@ -38,9 +38,6 @@ namespace Explore.Application.DTOs.StorageObject.Validators
             RuleFor(x => x.Size)
                 .GreaterThan(0).WithMessage("{PropertyName} must be greater than 0");
 
-            RuleFor(x => x.TenantId)
-                .NotEmpty().WithMessage("{PropertyName} is required");
-
             RuleFor(x => x.ActorId)
                 .MustAsync(ActorExists)
                 .When(x => x.ActorId.HasValue)

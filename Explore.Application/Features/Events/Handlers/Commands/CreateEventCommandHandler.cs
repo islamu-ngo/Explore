@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
 using Explore.Application.Contracts.Identity;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event.Validators;
 using Explore.Application.Features.Events.Requests.Commands;
@@ -17,6 +18,7 @@ namespace Explore.Application.Features.Events.Handlers.Commands
     public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<Guid>>
     {
         private readonly IEventRepository _eventRepository;
+        private readonly IEventSessionRepository _eventSessionRepository;
         private readonly IActorRepository _actorRepository;
         private readonly IOrganizationRepository _organizationRepository;
         private readonly IOrganizationMemberRepository _organizationMemberRepository;
@@ -25,10 +27,12 @@ namespace Explore.Application.Features.Events.Handlers.Commands
         private readonly IEventTypeRepository _eventTypeRepository;
         private readonly IStorageObjectRepository _storageObjectRepository;
         private readonly IUserContext _userContext;
+        private readonly ITenantContext _tenantContext;
         private readonly IMapper _mapper;
 
         public CreateEventCommandHandler(
             IEventRepository eventRepository,
+            IEventSessionRepository eventSessionRepository,
             IActorRepository actorRepository,
             IOrganizationRepository organizationRepository,
             IOrganizationMemberRepository organizationMemberRepository,
@@ -37,9 +41,11 @@ namespace Explore.Application.Features.Events.Handlers.Commands
             IEventTypeRepository eventTypeRepository,
             IStorageObjectRepository storageObjectRepository,
             IUserContext userContext,
+            ITenantContext tenantContext,
             IMapper mapper)
         {
             _eventRepository = eventRepository;
+            _eventSessionRepository = eventSessionRepository;
             _actorRepository = actorRepository;
             _organizationRepository = organizationRepository;
             _organizationMemberRepository = organizationMemberRepository;
@@ -48,6 +54,7 @@ namespace Explore.Application.Features.Events.Handlers.Commands
             _eventTypeRepository = eventTypeRepository;
             _storageObjectRepository = storageObjectRepository;
             _userContext = userContext;
+            _tenantContext = tenantContext;
             _mapper = mapper;
         }
 
@@ -115,8 +122,8 @@ namespace Explore.Application.Features.Events.Handlers.Commands
             else
             {
                 // ===== IDENTITY CONTEXT (Personal) =====
-                // User wants to create event under their personal actor
-                // Find Actor where UserId == currentUserId
+                // Business rule: Events should only be created by organizations
+                // But we keep the personal actor fallback for backward compatibility
                 var userActor = await _actorRepository.GetActorByUserId(currentUserId);
                 if (userActor == null)
                 {
@@ -138,15 +145,68 @@ namespace Explore.Application.Features.Events.Handlers.Commands
             // Set the resolved ActorId and initialize defaults
             @event.ActorId = actorId;
             @event.TotalViews = 0;
+            @event.TenantId = _tenantContext.TenantId;
+            
+            // Set defaults for status and visibility if not provided
+            if (@event.EventStatusId == 0) @event.EventStatusId = 1; // Draft
+            if (@event.VisibilityTypeId == 0) @event.VisibilityTypeId = 1; // Public
+            if (@event.EventFormatId == 0) @event.EventFormatId = 1; // In-Person
 
-            // Persist the event in a single atomic operation
+            // Persist the event
             @event = await _eventRepository.Create(@event);
+            Console.WriteLine($"[CREATE EVENT] Event created with ID: {@event.Id}");
+
+            // ===== CREATE DEFAULT EVENT SESSION =====
+            // Each event must have at least one session
+            // Use the dates from the DTO to create the first session
+            var eventSession = new EventSession
+            {
+                EventId = @event.Id,
+                TenantId = _tenantContext.TenantId,
+                Title = @event.Title, // Use event title as default session title
+                Description = @event.Description,
+                StartTime = request.EventDto.FirstSessionDate ?? DateTimeOffset.UtcNow,
+                EndTime = request.EventDto.LastSessionDate ?? DateTimeOffset.UtcNow.AddHours(2),
+                LocationId = null, // Location can be added later
+                MaxAudienceAttendees = null,
+                CurrentAudienceAttendees = 0,
+                RegistrationModeId = request.EventDto.IsRegistrationRequired ? 1 : null, // 1 = Required
+                Slug = GenerateSlug(@event.Title)
+            };
+
+            await _eventSessionRepository.Create(eventSession);
+            Console.WriteLine($"[CREATE EVENT] Default EventSession created with ID: {eventSession.Id}");
 
             response.Success = true;
             response.Id = @event.Id;
-            response.Message = "Event created successfully.";
+            response.Message = "Event and session created successfully.";
 
             return response;
+        }
+
+        /// <summary>
+        /// Generate a URL-friendly slug from the title
+        /// </summary>
+        private string GenerateSlug(string title)
+        {
+            if (string.IsNullOrWhiteSpace(title))
+                return $"session-{Guid.NewGuid().ToString("N").Substring(0, 8)}";
+
+            var slug = title.ToLowerInvariant()
+                .Replace(" ", "-")
+                .Replace("'", "")
+                .Replace("\"", "")
+                .Replace(".", "")
+                .Replace(",", "");
+
+            // Remove any non-alphanumeric characters except hyphens
+            slug = System.Text.RegularExpressions.Regex.Replace(slug, @"[^a-z0-9\-]", "");
+
+            // Limit length
+            if (slug.Length > 50)
+                slug = slug.Substring(0, 50);
+
+            return slug;
         }
     }
 }

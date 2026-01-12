@@ -1,5 +1,6 @@
 using MediatR;
 using AutoMapper;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Actor.Validators;
 using Explore.Application.Features.Actors.Requests.Commands;
@@ -17,6 +18,7 @@ public class CreateActorCommandHandler : IRequestHandler<CreateActorCommand, Bas
     private readonly ITenantRepository _tenantRepository;
     private readonly IUserRepository _userRepository;
     private readonly IOrganizationRepository _organizationRepository;
+    private readonly ITenantContext _tenantContext;
     private readonly IMapper _mapper;
 
     public CreateActorCommandHandler(
@@ -27,6 +29,7 @@ public class CreateActorCommandHandler : IRequestHandler<CreateActorCommand, Bas
         ITenantRepository tenantRepository,
         IUserRepository userRepository,
         IOrganizationRepository organizationRepository,
+        ITenantContext tenantContext,
         IMapper mapper)
     {
         _actorRepository = actorRepository;
@@ -36,6 +39,7 @@ public class CreateActorCommandHandler : IRequestHandler<CreateActorCommand, Bas
         _tenantRepository = tenantRepository;
         _userRepository = userRepository;
         _organizationRepository = organizationRepository;
+        _tenantContext = tenantContext;
         _mapper = mapper;
     }
 
@@ -63,6 +67,9 @@ public class CreateActorCommandHandler : IRequestHandler<CreateActorCommand, Bas
         }
 
         var actor = _mapper.Map<Actor>(request.ActorDto);
+
+        // Override TenantId with the value from the request context
+        actor.TenantId = _tenantContext.TenantId;
 
         actor = await _actorRepository.Create(actor);
 

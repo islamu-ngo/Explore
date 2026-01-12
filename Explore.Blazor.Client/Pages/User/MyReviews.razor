@@ -1,6 +1,7 @@
 @page "/user/reviews"
-@using Explore.Blazor.Client.Models.DTOs
+@using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Services
+@using Microsoft.AspNetCore.Components
 @inject IOrganizationReviewService OrganizationReviewService
 @inject IUserService UserService
 @inject AuthenticationStateProvider AuthenticationStateProvider
@@ -27,7 +28,7 @@
                     <MudPaper Class="pa-4" Elevation="2">
                         <MudStack Spacing="2">
                             <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-                                <MudText Typo="Typo.h6">@review.ProgramTitle</MudText>
+                                <MudText Typo="Typo.h6">@review.OrganizationFullName</MudText>
                                 <div class="d-flex">
                                     @for (int i = 1; i <= 5; i++)
                                     {
@@ -56,6 +57,8 @@
     private List<OrganizationReviewDto> Reviews { get; set; } = new();
     private bool IsLoading { get; set; } = true;
 
+    // No prerender persistence. Load reviews on the client in OnInitializedAsync.
+
     protected override async Task OnInitializedAsync()
     {
         try
@@ -68,7 +71,7 @@
                 var userData = await UserService.GetCurrentUserAsync();
                 if (userData != null)
                 {
-                    Reviews = await OrganizationReviewService.GetReviewsByUserId(userData.Id);
+                    Reviews = (await OrganizationReviewService.GetReviewsByUserId(userData.Id)).ToList();
                 }
             }
         }
@@ -81,4 +84,8 @@
             IsLoading = false;
         }
     }
+
+    // PersistData removed - no PersistentComponentState usage in client-only rendering mode.
+
+    // Dispose removed - no subscriptions to dispose for persistence.
 }

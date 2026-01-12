@@ -1,5 +1,5 @@
 @page "/settings"
-@using Explore.Blazor.Client.Models.DTOs
+@using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Components
 @inject IUserService UserService
@@ -33,14 +33,6 @@
             </MudCardHeader>
             <MudCardContent>
                 <MudForm @ref="_form" @bind-IsValid="_success">
-                    <div class="mb-6">
-                        <MudText Typo="Typo.subtitle1" Class="mb-4">Profile Picture</MudText>
-                        <ImageUpload @bind-ImageKey="_user.ProfileImageKey" 
-                                   @bind-PreviewUrl="_profileImagePreview" 
-                                   Label="Profile Picture" 
-                                   HelperText="JPG, GIF or PNG. Max size of 800K" />
-                    </div>
-
                     <MudGrid>
                         <MudItem xs="12" sm="6">
                             <MudTextField @bind-Value="_user.FirstName" Label="First Name" Required="true" Variant="Variant.Outlined" />
@@ -49,13 +41,10 @@
                             <MudTextField @bind-Value="_user.LastName" Label="Last Name" Required="true" Variant="Variant.Outlined" />
                         </MudItem>
                         <MudItem xs="12">
-                            <MudTextField @bind-Value="_user.Bio" Label="Bio" Variant="Variant.Outlined" Lines="3" />
+                            <MudTextField @bind-Value="_user.Username" Label="Username" Variant="Variant.Outlined" />
                         </MudItem>
-                        <MudItem xs="12" sm="6">
-                            <MudTextField @bind-Value="_user.City" Label="City" Variant="Variant.Outlined" />
-                        </MudItem>
-                        <MudItem xs="12" sm="6">
-                            <MudTextField @bind-Value="_user.Country" Label="Country" Variant="Variant.Outlined" />
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="_user.Email" Label="Email" Variant="Variant.Outlined" ReadOnly="true" />
                         </MudItem>
                     </MudGrid>
                     <div class="d-flex justify-end mt-4">
@@ -83,7 +72,6 @@
     private bool _isSaving = false;
     private bool _success;
     private MudForm _form = default!;
-    private string? _profileImagePreview;
 
     protected override async Task OnInitializedAsync()
     {
@@ -120,21 +108,17 @@
                 FirstName = _user.FirstName,
                 LastName = _user.LastName,
                 Email = _user.Email,
-                Username = _user.Username,
-                Bio = _user.Bio,
-                City = _user.City,
-                Country = _user.Country,
-                ProfileImageKey = _user.ProfileImageKey
+                Username = _user.Username
             };
 
             var result = await UserService.UpdateUserAsync(updateDto);
-            if (result)
+            if (result?.Success == true)
             {
                 Snackbar.Add("Settings saved successfully", Severity.Success);
             }
             else
             {
-                Snackbar.Add("Failed to save settings", Severity.Error);
+                Snackbar.Add(result?.Message ?? "Failed to save settings", Severity.Error);
             }
         }
         catch (Exception ex)
@@ -147,3 +131,4 @@
         }
     }
 }
+

@@ -2,19 +2,50 @@ using Microsoft.AspNetCore.Components.WebAssembly.Authentication;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MudBlazor.Services;
 using Explore.Blazor.Client.Services;
+using Explore.Blazor.Client.Clients;
 using Microsoft.AspNetCore.Components.Authorization;
 using System.Net.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Components.WebAssembly.Http;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
 
 builder.Services.AddMudServices();
 
-builder.Services.AddScoped(sp => new HttpClient
+// Register the message handler that adds credentials to requests
+builder.Services.AddTransient<BrowserCredentialsMessageHandler>();
+
+// Register handler for 401 responses that triggers a server-side login
+builder.Services.AddTransient<BffUnauthorizedHandler>();
+
+// Configure default HttpClient for WASM with credentials
+// This HttpClient sends cookies with all requests
+builder.Services.AddHttpClient("BffClient", client =>
 {
-    BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)
+    client.BaseAddress = new Uri(builder.HostEnvironment.BaseAddress);
+})
+.AddHttpMessageHandler<BrowserCredentialsMessageHandler>()
+.AddHttpMessageHandler<BffUnauthorizedHandler>();
+
+// Register a default HttpClient for general use (also with credentials)
+builder.Services.AddScoped(sp =>
+{
+    var factory = sp.GetRequiredService<IHttpClientFactory>();
+    return factory.CreateClient("BffClient");
 });
+
+// Register NSwag-generated API client for WASM
+// In WASM mode, the client calls through BFF endpoints (same origin)
+// The BFF handles authentication token attachment
+// IMPORTANT: AddHttpMessageHandler to send credentials (cookies) with every request
+builder.Services.AddHttpClient<IEventApiClient, EventApiClient>(client =>
+{
+    // Use base address pointing to self - BFF will proxy to API
+    client.BaseAddress = new Uri(builder.HostEnvironment.BaseAddress);
+})
+.AddHttpMessageHandler<BrowserCredentialsMessageHandler>()
+.AddHttpMessageHandler<BffUnauthorizedHandler>();
 
 builder.Services.AddScoped<IEventService, EventService>();
 builder.Services.AddScoped<IProgramService, ProgramService>();
@@ -31,10 +62,12 @@ builder.Services.AddScoped<BffClient>();
 
 builder.Services.AddAuthorizationCore();
 
+// Use PersistentAuthenticationStateProvider that reads auth state from PersistentComponentState
+// This enables seamless auth state transfer from server to WASM during InteractiveAuto hydration
+builder.Services.AddScoped<AuthenticationStateProvider, PersistentAuthenticationStateProvider>();
 
-
-// Add a basic AuthenticationStateProvider that always returns not authenticated for WebAssembly
-builder.Services.AddScoped<AuthenticationStateProvider, AnonymousAuthenticationStateProvider>();
+// Add logging for debugging in WASM
+builder.Logging.SetMinimumLevel(LogLevel.Information);
 
 await builder.Build().RunAsync();
 

@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventSession.Validators;
 using Explore.Application.Features.EventSessions.Requests.Commands;
@@ -18,6 +19,7 @@ namespace Explore.Application.Features.EventSessions.Handlers.Commands
         private readonly IEventRepository _eventRepository;
         private readonly ILocationRepository _locationRepository;
         private readonly IRegistrationModeRepository _registrationModeRepository;
+        private readonly ITenantContext _tenantContext;
         private readonly IMapper _mapper;
 
         public CreateEventSessionCommandHandler(
@@ -25,12 +27,14 @@ namespace Explore.Application.Features.EventSessions.Handlers.Commands
             IEventRepository eventRepository,
             ILocationRepository locationRepository,
             IRegistrationModeRepository registrationModeRepository,
+            ITenantContext tenantContext,
             IMapper mapper)
         {
             _eventSessionRepository = eventSessionRepository;
             _eventRepository = eventRepository;
             _locationRepository = locationRepository;
             _registrationModeRepository = registrationModeRepository;
+            _tenantContext = tenantContext;
             _mapper = mapper;
         }
 
@@ -51,6 +55,9 @@ namespace Explore.Application.Features.EventSessions.Handlers.Commands
 
             var eventSession = _mapper.Map<EventSession>(request.EventSessionDto);
             eventSession.CurrentAudienceAttendees = 0;
+
+            // Set TenantId from the request context
+            eventSession.TenantId = _tenantContext.TenantId;
 
             eventSession = await _eventSessionRepository.Create(eventSession);
 

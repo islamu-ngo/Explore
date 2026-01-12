@@ -1,7 +1,8 @@
 @page "/admin/organization/{OrganizationId:guid}"
 @using MudBlazor
-@using Explore.Blazor.Client.Models.DTOs
+@using Explore.Blazor.Client.Clients;
 @using Explore.Blazor.Client.Services
+@using Microsoft.AspNetCore.Components
 @inject IAdminService AdminService
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
@@ -290,10 +291,10 @@
             <!-- STATUS BADGE IN HERO -->
             <MudStack Row AlignItems="AlignItems.Center" Spacing="1" Style="margin-top:16px;">
                 <MudChip T="string"
-                         Color="@StatusColor(organization.StatusTypeId)"
+                         Color="@StatusColor(organization.ApprovalStatusId)"
                          Variant="Variant.Filled"
                          Style="border-radius:999px; padding:8px 16px; font-weight:600;">
-                    @GetStatusName(organization.StatusTypeId)
+                    @GetStatusName(organization.ApprovalStatusId)
                 </MudChip>
             </MudStack>
         </MudPaper>
@@ -374,7 +375,7 @@
                 </div>
                 <div class="field-value">
                     <div class="field-label">Postal Code</div>
-                    <MudText Class="field-text">@(organization.Postcode == 0 ? "Not provided" : organization.Postcode.ToString())</MudText>
+                    <MudText Class="field-text">@(string.IsNullOrEmpty(organization.Postcode) ? "Not provided" : organization.Postcode)</MudText>
                 </div>
             </div>
         </MudPaper>
@@ -411,8 +412,9 @@
     [Parameter]
     public Guid OrganizationId { get; set; }
 
-    private OrganizationListDto? organization;
+    private OrganizationDto? organization;
     private bool _isLoading = true;
+    private string? _errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -422,18 +424,28 @@
     private async Task LoadOrganizationDetails()
     {
         _isLoading = true;
+        _errorMessage = null;
+
         try
         {
+            Console.WriteLine($"[ADMIN DETAILS] Loading organization {OrganizationId}");
             organization = await AdminService.GetOrganizationDetailsAsync(OrganizationId);
 
             if (organization == null)
             {
-                Snackbar.Add("Organization not found", Severity.Warning);
+                _errorMessage = "Organization not found";
+                Snackbar.Add(_errorMessage, Severity.Warning);
+            }
+            else
+            {
+                Console.WriteLine($"[ADMIN DETAILS] Loaded organization: {organization.FullName}");
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error loading organization: {ex.Message}", Severity.Error);
+            _errorMessage = $"Error loading organization: {ex.Message}";
+            Console.WriteLine($"[ADMIN DETAILS] ERROR: {ex.Message}");
+            Snackbar.Add(_errorMessage, Severity.Error);
         }
         finally
         {

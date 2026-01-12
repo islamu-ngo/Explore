@@ -16,10 +16,12 @@ namespace Explore.API.Controllers
     public class StorageObjectController : ControllerBase
     {
         private readonly IMediator _mediator;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public StorageObjectController(IMediator mediator)
+        public StorageObjectController(IMediator mediator, IHttpContextAccessor httpContextAccessor)
         {
             _mediator = mediator;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         // GET: api/v1/storageobject
@@ -47,10 +49,29 @@ namespace Explore.API.Controllers
             return Ok(storageObject);
         }
 
+        // POST: api/v1/storageobject/generate-upload-url
+        [HttpPost("generate-upload-url")]
+        [EndpointSummary("Generate Pre-signed Upload URL")]
+        [EndpointDescription("Generate a pre-signed URL for uploading a file directly to S3-compatible storage (Hetzner Object Storage)")]
+        [Authorize]
+        [ProducesResponseType(typeof(UploadUrlResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<UploadUrlResponseDto>> GenerateUploadUrl([FromBody] UploadRequestDto request)
+        {
+            var command = new GenerateUploadUrlCommand
+            {
+                FileName = request.FileName,
+                ContentType = request.ContentType
+            };
+            var response = await _mediator.Send(command);
+            return Ok(response);
+        }
+
         // POST: api/v1/storageobject
         [HttpPost]
-        [EndpointSummary("Upload Storage Object")]
-        [EndpointDescription("Upload a new storage object (file/image/document)")]
+        [EndpointSummary("Create Storage Object Record")]
+        [EndpointDescription("Create a storage object record after successful file upload to S3")]
         [Authorize]
         [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]

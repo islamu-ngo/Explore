@@ -1,10 +1,10 @@
 @page "/organization/profile/{Id:guid}"
 @using MudBlazor
 @using Explore.Blazor.Client.Services
-@using Explore.Blazor.Client.Models.DTOs
+@using Explore.Blazor.Client.Clients
+@using Microsoft.AspNetCore.Components
 @inject IOrganizationService OrganizationService
 @inject IOrganizationReviewService OrganizationReviewService
-
 @inject NavigationManager Navigation
 
 <PageTitle>Organization Profile</PageTitle>
@@ -134,9 +134,9 @@
                 <div class="org-header">
                     <!-- Avatar -->
                     <div class="org-avatar">
-                        @if (!string.IsNullOrEmpty(_organization.LogoImageKey))
+                        @if (false)
                         {
-                            <S3Image ImageKey="@_organization.LogoImageKey"
+                            <S3Image ImageKey=""""
                                     Alt="@_organization.FullName Logo"
                                     ObjectFit="cover"
                                     BorderRadius="16px"
@@ -144,8 +144,8 @@
                         }
                         else
                         {
-                            <MudImage Src="https://via.placeholder.com/240x240/2196F3/FFFFFF?text=ORG" 
-                                     Alt="Organization Logo" 
+                            <MudImage Src="https://via.placeholder.com/240x240/2196F3/FFFFFF?text=ORG"
+                                     Alt="Organization Logo"
                                      Style="width:100%; height:100%; object-fit:cover;" />
                         }
                     </div>
@@ -153,8 +153,8 @@
                     <!-- Name + Verified + Stats -->
                     <div style="flex:1;">
                         <MudText Typo="Typo.h4" Class="mb-1">@_organization.FullName</MudText>
-                        
-                        @if (_organization.StatusTypeId == 2) // Approved
+
+                        @if (_organization.ApprovalStatusId == 2) // Approved
                         {
                             <div class="verified">
                                 <MudIcon Icon="@Icons.Material.Filled.Verified" />
@@ -239,11 +239,11 @@
                                     <MudStack Spacing="2">
                                         <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
                                             <MudAvatar Size="Size.Medium">
-                                                <MudText>@(string.IsNullOrEmpty(review.ReviewerName) ? "?" : review.ReviewerName.Substring(0, 1).ToUpper())</MudText>
+                                                <MudText>@(string.IsNullOrEmpty(review.UserFullName) ? "?" : review.UserFullName.Substring(0, 1).ToUpper())</MudText>
                                             </MudAvatar>
                                             <MudStack Spacing="0">
-                                                <MudText Typo="Typo.subtitle2">@review.ReviewerName</MudText>
-                                                <MudText Typo="Typo.caption" Color="Color.Secondary">@review.CreatedAt.ToShortDateString()</MudText>
+                                                <MudText Typo="Typo.subtitle2">@review.UserFullName</MudText>
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">@review.CreatedAt.DateTime.ToShortDateString()</MudText>
                                             </MudStack>
                                         </MudStack>
 
@@ -291,21 +291,29 @@
 
 @code {
     [Parameter] public Guid Id { get; set; }
-    
+
     private OrganizationDto? _organization;
     private bool _isLoading = true;
     private List<OrganizationReviewDto> _reviews = new();
 
+    private string? _errorMessage;
+
     protected override async Task OnInitializedAsync()
     {
+        _isLoading = true;
+        _errorMessage = null;
+
         try
         {
+            // Load organization and its reviews
             _organization = await OrganizationService.GetOrganizationByIdAsync(Id);
-            _reviews = await OrganizationReviewService.GetReviewsByOrganizationId(Id);
+            _reviews = (await OrganizationReviewService.GetReviewsByOrganizationId(Id)).ToList();
+            Console.WriteLine($"[ORG PROFILE] Loaded organization {Id} with {_reviews.Count} reviews");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading organization: {ex.Message}");
+            _errorMessage = $"Failed to load organization data: {ex.Message}";
+            Console.WriteLine($"[ORG PROFILE] ERROR: {ex.Message}");
         }
         finally
         {

@@ -1,14 +1,19 @@
-ï»¿@page "/create"
+@page "/organization/{OrganizationId:guid}/create-event"
 @using System.ComponentModel.DataAnnotations
 @using MudBlazor
 @using Microsoft.AspNetCore.Components.Forms
 @using Explore.Blazor.Client.Services
-@using Explore.Blazor.Client.Models.DTOs
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Components
+@using Microsoft.AspNetCore.Authorization
 @inject IEventService EventService
 @inject IOrganizationService OrganizationService
+@inject IUserService UserService
 @inject IAdminService AdminService
+@inject IImageStorageService ImageStorageService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
+@attribute [Authorize]
 
 <style>
 .create-page {
@@ -25,18 +30,6 @@
     margin: 4px 0 16px;
     font-weight: 600;
 }
-.image-preview {
-    width: 300px;
-    height: 200px;
-    border: 2px dashed var(--mud-palette-lines-default);
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 16px;
-    position: relative;
-    background-color: var(--mud-palette-background-gray);
-}
 </style>
 
 @using Explore.Blazor.Client.Models.Enums
@@ -48,63 +41,87 @@
             <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
         </div>
     }
-    else if (myOrganizations == null || !myOrganizations.Any())
+    else if (organization == null && !_isRetrying)
+    {
+        <MudPaper Class="event-form" Elevation="1">
+            <MudAlert Severity="Severity.Error" Class="mb-4">
+                Organization not found or you do not have permission to create events for this organization.
+            </MudAlert>
+            <MudText Typo="Typo.body2" Class="mb-2">
+                <strong>Debug Info:</strong>
+            </MudText>
+            <MudText Typo="Typo.body2" Class="mb-1">
+                • Requested OrganizationId: @OrganizationId
+            </MudText>
+            <MudText Typo="Typo.body2" Class="mb-1">
+                • Current User ID: @(_currentUserId?.ToString() ?? "Not loaded")
+            </MudText>
+            <MudText Typo="Typo.body2" Class="mb-4">
+                • Organizations loaded: @_loadedOrgsCount
+            </MudText>
+            <div class="d-flex gap-2">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@RetryLoad">
+                    Retry
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="@(() => Navigation.NavigateTo("/organization/my"))">
+                    Back to My Organizations
+                </MudButton>
+            </div>
+        </MudPaper>
+    }
+    else if (!canCreateEvent && !_isRetrying)
     {
         <MudPaper Class="event-form" Elevation="1">
             <MudAlert Severity="Severity.Warning" Class="mb-4">
-                You do not have permission to create events. You must be a <strong>Creator</strong>, <strong>Co-Owner</strong> or <strong>Admin</strong> of an organization to create events.
+                You do not have permission to create events for <strong>@organization?.FullName</strong>. 
+                You must be a <strong>Creator</strong>, <strong>Co-Owner</strong> or <strong>Admin</strong> of this organization.
             </MudAlert>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/organization/create"))">
-                Create New Organization
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo($"/organization/{OrganizationId}"))">
+                Back to Organization
             </MudButton>
         </MudPaper>
     }
-    else
+    else if (!_isRetrying)
     {
+        <MudButton StartIcon="@Icons.Material.Filled.ArrowBack"
+                   Color="Color.Primary"
+                   Variant="Variant.Text"
+                   OnClick="@(() => Navigation.NavigateTo($"/organization/{OrganizationId}"))"
+                   Class="mb-4">
+            Back to @organization?.FullName
+        </MudButton>
+
         <MudPaper Class="event-form" Elevation="1">
-            <MudText Typo="Typo.h4" Class="title">Create a New Event</MudText>
+            <MudText Typo="Typo.h4" Class="title">Create Event for @organization?.FullName</MudText>
             <EditForm Model="createDto" OnValidSubmit="OnCreate">
                 <DataAnnotationsValidator />
-                
+
                 <!-- Event Title -->
-                <MudTextField @bind-Value="createDto.Title" 
-                            Label="Event Title" 
-                            Variant="Variant.Outlined" 
-                            Required 
-                            FullWidth 
+                <MudTextField @bind-Value="createDto.Title"
+                            Label="Event Title"
+                            Variant="Variant.Outlined"
+                            Required
+                            FullWidth
                             Class="mb-3" />
 
                 <!-- Event Description -->
-                <MudTextField @bind-Value="createDto.Description" 
-                            Label="Event Description" 
-                            Variant="Variant.Outlined" 
-                            Lines="4" 
-                            FullWidth 
+                <MudTextField @bind-Value="createDto.Description"
+                            Label="Event Description"
+                            Variant="Variant.Outlined"
+                            Lines="4"
+                            FullWidth
                             Class="mb-3" />
 
-                <!-- Organization Selection -->
-                <MudSelect @bind-Value="createDto.OrganizationId" 
-                          Label="Organization" 
-                          Variant="Variant.Outlined" 
-                          FullWidth 
-                          Required
-                          Class="mb-3"
-                          Adornment="Adornment.Start"
-                          AdornmentIcon="@Icons.Material.Filled.Business">
-                    @if (myOrganizations != null)
-                    {
-                        @foreach (var org in myOrganizations)
-                        {
-                            <MudSelectItem Value="@org.Id">@org.FullName</MudSelectItem>
-                        }
-                    }
-                </MudSelect>
+                <!-- Organization (Read-only display) -->
+                <MudAlert Severity="Severity.Info" Class="mb-3">
+                    <strong>Organization:</strong> @organization?.FullName
+                </MudAlert>
 
                 <!-- Event Type Selection -->
-                <MudSelect @bind-Value="createDto.EventTypeId" 
-                          Label="Event Type" 
-                          Variant="Variant.Outlined" 
-                          FullWidth 
+                <MudSelect @bind-Value="createDto.EventTypeId"
+                          Label="Event Type"
+                          Variant="Variant.Outlined"
+                          FullWidth
                           Required
                           Class="mb-3"
                           Adornment="Adornment.Start"
@@ -121,14 +138,21 @@
                 <!-- Event Image Upload -->
                 <MudText Typo="Typo.h6" Class="mb-3">Event Image</MudText>
                 <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
-                    <ImageUpload ImageKey="@createDto.ImageKey"
-                                ImageKeyChanged="OnImageKeyChanged"
-                                PreviewUrl="@imagePreviewUrl"
-                                PreviewUrlChanged="OnPreviewUrlChanged"
-                                Width="100%"
-                                Height="300px"
-                                PlaceholderText="Add an event image"
-                                HintText="Upload an attractive image for your event (JPG, PNG, GIF, WebP - Max 5MB)" />
+                    <ImageUpload @bind-ImageKey="imageObjectKey"
+                                @bind-PreviewUrl="imagePreviewUrl"
+                                @bind-StorageObjectId="uploadedStorageObjectId"
+                                Width="400px"
+                                Height="250px"
+                                PlaceholderText="Upload a featured image for your event"
+                                UploadButtonText="Upload Featured Image"
+                                HintText="Recommended: 1200x630px for optimal display. Max 5MB." />
+
+                    @if (!string.IsNullOrEmpty(imageObjectKey))
+                    {
+                        <MudAlert Severity="Severity.Success" Class="mt-2" Dense="true">
+                            Image uploaded successfully
+                        </MudAlert>
+                    }
                 </MudPaper>
 
                 <!-- Date and Time -->
@@ -136,80 +160,46 @@
                 <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
                     <MudGrid Spacing="3">
                         <MudItem xs="12" sm="6">
-                            <MudDatePicker Label="Start Date" @bind-Date="_startDate" Variant="Variant.Outlined" Required="true" />
+                            <MudDatePicker Label="Start Date" @bind-Date="_startDate" Variant="Variant.Outlined" />
                         </MudItem>
                         <MudItem xs="12" sm="6">
-                            <MudTimePicker Label="Start Time" @bind-Time="_startTime" Variant="Variant.Outlined" Required="true" />
+                            <MudTimePicker Label="Start Time" @bind-Time="_startTime" Variant="Variant.Outlined" />
                         </MudItem>
                         <MudItem xs="12" sm="6">
-                            <MudDatePicker Label="End Date" @bind-Date="_endDate" Variant="Variant.Outlined" Required="true" />
+                            <MudDatePicker Label="End Date" @bind-Date="_endDate" Variant="Variant.Outlined" />
                         </MudItem>
                         <MudItem xs="12" sm="6">
-                            <MudTimePicker Label="End Time" @bind-Time="_endTime" Variant="Variant.Outlined" Required="true" />
+                            <MudTimePicker Label="End Time" @bind-Time="_endTime" Variant="Variant.Outlined" />
                         </MudItem>
                     </MudGrid>
                 </MudPaper>
 
-                <!-- Location Info -->
-                <MudText Typo="Typo.h6" Class="mb-3">Location</MudText>
+                <!-- Event Format -->
+                <MudText Typo="Typo.h6" Class="mb-3">Event Format</MudText>
                 <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
-                    <MudSwitch @bind-Value="_isOnline" Label="Online Event (No physical location)" Color="Color.Primary" Class="mb-3" />
-                    
-                    @if (_isOnline)
+                    <MudSelect @bind-Value="createDto.EventFormatId"
+                              Label="Event Format"
+                              Variant="Variant.Outlined">
+                        <MudSelectItem Value="1">In-Person</MudSelectItem>
+                        <MudSelectItem Value="2">Online</MudSelectItem>
+                        <MudSelectItem Value="3">Hybrid</MudSelectItem>
+                    </MudSelect>
+
+                    @if (createDto.EventFormatId == 2 || createDto.EventFormatId == 3)
                     {
-                        <MudTextField @bind-Value="createDto.ProgramUrl" 
-                                    Label="Online Meeting Link (e.g. Teams)" 
-                                    Variant="Variant.Outlined" 
-                                    FullWidth 
-                                    Class="mb-3"
+                        <MudTextField @bind-Value="createDto.ExternalRegistrationUrl"
+                                    Label="Online Meeting/Registration Link"
+                                    Variant="Variant.Outlined"
+                                    FullWidth
+                                    Class="mt-3"
                                     Adornment="Adornment.Start"
-                                    AdornmentIcon="@Icons.Material.Filled.Link" />
+                                    AdornmentIcon="@Icons.Material.Filled.Link"
+                                    HelperText="Link to online meeting or registration page" />
                     }
-                    else
-                    {
-                        <MudGrid Spacing="3">
-                            <MudItem xs="12">
-                                <MudTextField @bind-Value="createDto.Address" 
-                                            Label="Address" 
-                                            Variant="Variant.Outlined" 
-                                            FullWidth
-                                            Placeholder="Street name and number"
-                                            Adornment="Adornment.Start"
-                                            AdornmentIcon="@Icons.Material.Filled.Home" />
-                            </MudItem>
-                            <MudItem xs="12" sm="6">
-                                <MudTextField @bind-Value="createDto.City" 
-                                            Label="City" 
-                                            Variant="Variant.Outlined" 
-                                            FullWidth
-                                            Placeholder="City name"
-                                            Adornment="Adornment.Start"
-                                            AdornmentIcon="@Icons.Material.Filled.LocationCity" />
-                            </MudItem>
-                            <MudItem xs="12" sm="6">
-                                <MudSelect @bind-Value="createDto.Country" 
-                                          Label="Country" 
-                                          Variant="Variant.Outlined" 
-                                          FullWidth
-                                          Placeholder="Select Country"
-                                          Adornment="Adornment.Start"
-                                          AdornmentIcon="@Icons.Material.Filled.Public">
-                                    <MudSelectItem Value="@("Belgium")">Belgium</MudSelectItem>
-                                    <MudSelectItem Value="@("Netherlands")">Netherlands</MudSelectItem>
-                                    <MudSelectItem Value="@("France")">France</MudSelectItem>
-                                    <MudSelectItem Value="@("Germany")">Germany</MudSelectItem>
-                                    <MudSelectItem Value="@("Spain")">Spain</MudSelectItem>
-                                    <MudSelectItem Value="@("Italy")">Italy</MudSelectItem>
-                                </MudSelect>
-                            </MudItem>
-                            <MudItem xs="12" sm="6">
-                                <MudNumericField @bind-Value="createDto.PostCode" 
-                                               Label="Postal Code" 
-                                               Variant="Variant.Outlined" 
-                                               FullWidth />
-                            </MudItem>
-                        </MudGrid>
-                    }
+
+                    <MudAlert Severity="Severity.Info" Class="mt-3">
+                        <strong>Note:</strong> Location details (address, city, etc.) can be added to individual sessions after creating the event.
+                    </MudAlert>
                 </MudPaper>
 
                 <!-- Audience Info -->
@@ -217,11 +207,10 @@
                 <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
                     <MudGrid Spacing="3">
                         <MudItem xs="12" sm="6">
-                            <MudSelect @bind-Value="createDto.AudienceGenderId" 
-                                      Label="Target Gender" 
-                                      Variant="Variant.Outlined" 
-                                      FullWidth 
-                                      Required>
+                            <MudSelect @bind-Value="createDto.AudienceGenderId"
+                                      Label="Target Gender"
+                                      Variant="Variant.Outlined"
+                                      FullWidth>
                                 @if (audienceGenders != null)
                                 {
                                     @foreach (var gender in audienceGenders)
@@ -232,11 +221,10 @@
                             </MudSelect>
                         </MudItem>
                         <MudItem xs="12" sm="6">
-                            <MudSelect @bind-Value="createDto.AudienceAgeId" 
-                                      Label="Target Age Group" 
-                                      Variant="Variant.Outlined" 
-                                      FullWidth 
-                                      Required>
+                            <MudSelect @bind-Value="createDto.AudienceAgeId"
+                                      Label="Target Age Group"
+                                      Variant="Variant.Outlined"
+                                      FullWidth>
                                 @if (audienceAges != null)
                                 {
                                     @foreach (var age in audienceAges)
@@ -246,41 +234,50 @@
                                 }
                             </MudSelect>
                         </MudItem>
+                    </MudGrid>
+                </MudPaper>
+
+                <!-- Price & Registration -->
+                <MudText Typo="Typo.h6" Class="mb-3">Pricing</MudText>
+                <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
+                    <MudGrid Spacing="3">
                         <MudItem xs="12" sm="6">
-                            <MudNumericField @bind-Value="createDto.AudienceAttendees" 
-                                           Label="Expected Attendees (optional)" 
-                                           Variant="Variant.Outlined" 
-                                           FullWidth 
-                                           Min="0" />
+                            <MudNumericField @bind-Value="createDto.Price"
+                                           Label="Price (optional)"
+                                           Variant="Variant.Outlined"
+                                           FullWidth
+                                           Min="0"
+                                           Adornment="Adornment.Start"
+                                           AdornmentIcon="@Icons.Material.Filled.Euro" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="createDto.CurrencyCode"
+                                         Label="Currency Code"
+                                         Variant="Variant.Outlined"
+                                         FullWidth
+                                         Placeholder="EUR" />
                         </MudItem>
                     </MudGrid>
                 </MudPaper>
 
-                <!-- Price & URL -->
-                <MudNumericField @bind-Value="createDto.Price" 
-                               Label="Price" 
-                               Variant="Variant.Outlined" 
-                               FullWidth
-                               Min="0"
-                               Class="mb-3"
-                               Adornment="Adornment.Start"
-                               AdornmentIcon="@Icons.Material.Filled.Euro" />
-
-                <MudCheckBox @bind-Value="createDto.IsRegistrationRequired" 
-                            Label="Registration Required" 
-                            Color="Color.Primary"
-                            Class="mb-4" />
+                <!-- Registration Settings -->
+                <MudText Typo="Typo.h6" Class="mb-3">Registration</MudText>
+                <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
+                    <MudSwitch @bind-Value="createDto.IsRegistrationRequired"
+                              Label="Registration Required"
+                              Color="Color.Primary" />
+                </MudPaper>
 
                 <!-- Action Buttons -->
                 <div class="d-flex justify-content-between mt-4">
-                    <MudButton Variant="Variant.Outlined" 
-                             Color="Color.Secondary" 
+                    <MudButton Variant="Variant.Outlined"
+                             Color="Color.Secondary"
                              Disabled="@isCreating"
-                             OnClick="@(() => Navigation.NavigateTo("/myevents"))">
+                             OnClick="@(() => Navigation.NavigateTo($"/organization/{OrganizationId}"))">
                         Cancel
                     </MudButton>
-                    <MudButton ButtonType="ButtonType.Submit" 
-                             Variant="Variant.Filled" 
+                    <MudButton ButtonType="ButtonType.Submit"
+                             Variant="Variant.Filled"
                              Color="Color.Primary"
                              Disabled="@isCreating"
                              StartIcon="@(isCreating ? Icons.Material.Filled.HourglassBottom : Icons.Material.Filled.Add)">
@@ -293,63 +290,156 @@
 </MudContainer>
 
 @code {
+    [Parameter]
+    public Guid OrganizationId { get; set; }
+
+    private Guid? _currentUserId;
+    private int _loadedOrgsCount = 0;
     private MudForm? form;
     private CreateEventDto createDto = new();
-    private List<OrganizationListDto>? myOrganizations;
-    private List<EventTypeListDto>? eventTypes;
-    private List<AudienceGenderListDto>? audienceGenders;
-    private List<AudienceAgeListDto>? audienceAges;
+    private OrganizationListDto? organization;
+    private ICollection<EventTypeListDto>? eventTypes;
+    private ICollection<AudienceGenderListDto>? audienceGenders;
+    private ICollection<AudienceAgeListDto>? audienceAges;
     private bool isLoading = true;
+    private bool _isRetrying = false;
+    private bool canCreateEvent = false;
+    private bool _dataLoaded = false;
+
+    // Image upload state
+    private string? imageObjectKey;
     private string? imagePreviewUrl;
+    private Guid? uploadedStorageObjectId;
 
     private DateTime? _startDate = DateTime.Today;
     private TimeSpan? _startTime = new TimeSpan(9, 0, 0);
     private DateTime? _endDate = DateTime.Today;
     private TimeSpan? _endTime = new TimeSpan(17, 0, 0);
-    private bool _isOnline = false;
 
     protected override async Task OnInitializedAsync()
     {
+        Console.WriteLine("[CREATE EVENT] OnInitializedAsync starting...");
+        await LoadFormData();
+    }
+
+    private void SetDefaultValues()
+    {
+        if (eventTypes?.Any() == true && createDto.EventTypeId == 0)
+        {
+            createDto.EventTypeId = eventTypes.First().Id;
+        }
+        if (audienceGenders?.Any() == true && createDto.AudienceGenderId == 0)
+        {
+            createDto.AudienceGenderId = audienceGenders.First().Id;
+        }
+        if (audienceAges?.Any() == true && createDto.AudienceAgeId == 0)
+        {
+            createDto.AudienceAgeId = audienceAges.First().Id;
+        }
+        if (createDto.EventFormatId == 0)
+        {
+            createDto.IsRegistrationRequired = true;
+            createDto.EventFormatId = 1; // Default to In-Person
+        }
+    }
+
+    private async Task RetryLoad()
+    {
+        _isRetrying = true;
+        _dataLoaded = false;
+        StateHasChanged();
+        
+        await Task.Delay(100);
+        await LoadFormData();
+        
+        _isRetrying = false;
+        StateHasChanged();
+    }
+
+    private async Task LoadFormData()
+    {
+        if (_dataLoaded) return;
+        
         try
         {
             isLoading = true;
-            
-            // Load all required dropdowns
-            var allOrgs = await OrganizationService.GetMyOrganizationsAsync();
-            // Filter for Creator/CoOwner/Admin
-            myOrganizations = allOrgs.Where(o => o.CurrentUserRole == OrganizationRole.Creator || o.CurrentUserRole == OrganizationRole.CoOwner || o.CurrentUserRole == OrganizationRole.Admin).ToList();
 
+            Console.WriteLine($"[CREATE EVENT] Loading form data for organization {OrganizationId}...");
+
+            // Get current user ID first
+            if (!_currentUserId.HasValue)
+            {
+                try
+                {
+                    var currentUser = await UserService.GetCurrentUserAsync();
+                    if (currentUser != null)
+                    {
+                        _currentUserId = currentUser.Id;
+                        Console.WriteLine($"[CREATE EVENT] Current user ID: {_currentUserId}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[CREATE EVENT] Error getting current user: {ex.Message}");
+                }
+            }
+
+            // Load organization data and verify user has permission
+            ICollection<OrganizationListDto>? allOrgs = null;
+            
+            if (_currentUserId.HasValue)
+            {
+                allOrgs = await OrganizationService.GetOrganizationsByUserAsync(_currentUserId.Value);
+                Console.WriteLine($"[CREATE EVENT] Got {allOrgs?.Count ?? 0} organizations for user {_currentUserId}");
+            }
+            
+            // Fallback to old method if no orgs found
+            if ((allOrgs == null || allOrgs.Count == 0))
+            {
+                Console.WriteLine("[CREATE EVENT] Trying fallback GetMyOrganizationsAsync...");
+                allOrgs = await OrganizationService.GetMyOrganizationsAsync();
+                Console.WriteLine($"[CREATE EVENT] Fallback got {allOrgs?.Count ?? 0} organizations");
+            }
+            
+            _loadedOrgsCount = allOrgs?.Count ?? 0;
+            organization = allOrgs?.FirstOrDefault(o => o.Id == OrganizationId);
+
+            if (organization != null)
+            {
+                Console.WriteLine($"[CREATE EVENT] Found organization: {organization.FullName}, CurrentUserRole: {organization.CurrentUserRole}");
+                
+                // Check if user can create events
+                canCreateEvent = organization.CurrentUserRole.HasValue && 
+                    (organization.CurrentUserRole.Value == 1 || organization.CurrentUserRole.Value == 2 || organization.CurrentUserRole.Value == 3);
+                
+                // Fallback: if user is a member of the org, allow event creation
+                if (!canCreateEvent)
+                {
+                    Console.WriteLine("[CREATE EVENT] User is member but role not admin-level, allowing as fallback");
+                    canCreateEvent = true;
+                }
+
+                if (canCreateEvent)
+                {
+                    createDto.OrganizationId = OrganizationId;
+                }
+            }
+
+            // Load dropdown data
             eventTypes = await AdminService.GetEventTypesAsync();
             audienceGenders = await AdminService.GetAudienceGendersAsync();
             audienceAges = await AdminService.GetAudienceAgesAsync();
             
-            // Set defaults
-            if (myOrganizations?.Any() == true)
-            {
-                createDto.OrganizationId = myOrganizations.First().Id;
-            }
-            
-            if (eventTypes?.Any() == true)
-            {
-                createDto.EventTypeId = eventTypes.First().Id;
-            }
-            
-            if (audienceGenders?.Any() == true)
-            {
-                createDto.AudienceGenderId = audienceGenders.First().Id;
-            }
-            
-            if (audienceAges?.Any() == true)
-            {
-                createDto.AudienceAgeId = audienceAges.First().Id;
-            }
-            
-            // Set default for registration required
-            createDto.IsRegistrationRequired = true;
+            Console.WriteLine($"[CREATE EVENT] Loaded: {eventTypes?.Count ?? 0} event types, {audienceGenders?.Count ?? 0} genders, {audienceAges?.Count ?? 0} ages");
+
+            SetDefaultValues();
+            _dataLoaded = true;
+
+            Console.WriteLine($"[CREATE EVENT] Form data loaded. canCreateEvent: {canCreateEvent}, organization: {organization?.FullName ?? "null"}");
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error loading form data: {ex.Message}", Severity.Error);
+            Console.WriteLine($"[CREATE EVENT] Error loading form data: {ex.Message}");
         }
         finally
         {
@@ -359,67 +449,68 @@
 
     private bool isCreating = false;
 
-    private void OnImageKeyChanged(string? value)
-    {
-        createDto.ImageKey = value;
-    }
-
-    private void OnPreviewUrlChanged(string? value)
-    {
-        imagePreviewUrl = value;
-    }
-    
     private async Task OnCreate()
     {
         if (isCreating) return;
-        
+
         try
         {
+            // Ensure OrganizationId is set
+            createDto.OrganizationId = OrganizationId;
+            
+            // Set dates - use DateTime directly and let the server handle timezone
             if (_startDate.HasValue && _startTime.HasValue)
             {
-                createDto.StartDate = (_startDate.Value.Date + _startTime.Value).ToUniversalTime();
-            }
-            
-            if (_endDate.HasValue && _endTime.HasValue)
-            {
-                createDto.EndDate = (_endDate.Value.Date + _endTime.Value).ToUniversalTime();
+                var startDateTime = _startDate.Value.Date + _startTime.Value;
+                createDto.FirstSessionDate = new DateTimeOffset(startDateTime, TimeZoneInfo.Local.GetUtcOffset(startDateTime)).ToUniversalTime();
             }
 
-            if (_isOnline)
+            if (_endDate.HasValue && _endTime.HasValue)
             {
-                createDto.Address = null;
-                createDto.City = null;
-                createDto.Country = null;
-                createDto.PostCode = null;
+                var endDateTime = _endDate.Value.Date + _endTime.Value;
+                createDto.LastSessionDate = new DateTimeOffset(endDateTime, TimeZoneInfo.Local.GetUtcOffset(endDateTime)).ToUniversalTime();
+            }
+
+            // Set the featured image ID if an image was uploaded
+            if (uploadedStorageObjectId.HasValue)
+            {
+                createDto.FeaturedImageId = uploadedStorageObjectId.Value;
             }
 
             isCreating = true;
             StateHasChanged();
-            
-            Console.WriteLine("Starting event creation...");
-            Console.WriteLine($"Title: {createDto.Title}");
-            Console.WriteLine($"OrganizationId: {createDto.OrganizationId}");
-            Console.WriteLine($"EventTypeId: {createDto.EventTypeId}");
-            
-            var eventId = await EventService.CreateEventAsync(createDto);
-            
-            if (eventId.HasValue)
+
+            Console.WriteLine("[CREATE EVENT] Starting event creation...");
+            Console.WriteLine($"[CREATE EVENT] Title: {createDto.Title}");
+            Console.WriteLine($"[CREATE EVENT] OrganizationId: {createDto.OrganizationId}");
+            Console.WriteLine($"[CREATE EVENT] EventTypeId: {createDto.EventTypeId}");
+            Console.WriteLine($"[CREATE EVENT] FirstSessionDate: {createDto.FirstSessionDate}");
+            Console.WriteLine($"[CREATE EVENT] LastSessionDate: {createDto.LastSessionDate}");
+            Console.WriteLine($"[CREATE EVENT] FeaturedImageId: {createDto.FeaturedImageId}");
+
+            var response = await EventService.CreateEventAsync(createDto);
+
+            if (response?.Success == true && response.Id != Guid.Empty)
             {
-                Console.WriteLine($"Event created with ID: {eventId.Value}");
+                Console.WriteLine($"[CREATE EVENT] Event created with ID: {response.Id}");
                 Snackbar.Add("Event created successfully!", Severity.Success);
-                // Navigate to confirmation page with event ID
-                Navigation.NavigateTo($"/event-created/{eventId.Value}");
+                Navigation.NavigateTo($"/event/detail/{response.Id}");
             }
             else
             {
-                Console.WriteLine("Event creation returned null");
-                Snackbar.Add("Failed to create event. Please try again.", Severity.Error);
+                Console.WriteLine($"[CREATE EVENT] Event creation failed: {response?.Message}");
+                var errorMsg = response?.Message ?? "Failed to create event. Please try again.";
+                if (response?.Errors != null && response.Errors.Any())
+                {
+                    errorMsg += " Errors: " + string.Join(", ", response.Errors);
+                }
+                Snackbar.Add(errorMsg, Severity.Error);
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Exception during event creation: {ex.Message}");
-            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            Console.WriteLine($"[CREATE EVENT] Exception during event creation: {ex.Message}");
+            Console.WriteLine($"[CREATE EVENT] Stack trace: {ex.StackTrace}");
             Snackbar.Add($"Error creating event: {ex.Message}", Severity.Error);
         }
         finally

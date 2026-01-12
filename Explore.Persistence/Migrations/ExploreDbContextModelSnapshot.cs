@@ -702,7 +702,7 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("external_registration_url");
 
-                    b.Property<Guid>("FeaturedImageId")
+                    b.Property<Guid?>("FeaturedImageId")
                         .HasColumnType("uuid")
                         .HasColumnName("featured_image_id");
 
@@ -1683,7 +1683,8 @@ namespace Explore.Persistence.Migrations
 
                     b.Property<string>("Address")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("address");
 
                     b.Property<int>("ApprovalStatusId")
@@ -1694,35 +1695,51 @@ namespace Explore.Persistence.Migrations
 
                     b.Property<string>("City")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("city");
 
                     b.Property<string>("Country")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("country");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("email");
 
                     b.Property<string>("FullName")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("full_name");
 
                     b.Property<string>("Postcode")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("postcode");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id");
 
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
                     b.Property<string>("WebsiteUrl")
-                        .HasColumnType("text")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("website_url");
 
                     b.HasKey("Id")
@@ -1748,6 +1765,7 @@ namespace Explore.Persistence.Migrations
                             ApprovalStatusId = 2,
                             City = "Brussels",
                             Country = "Belgium",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Email = "contact@openislamu.org",
                             FullName = "ISLAMU",
                             Postcode = "1070",
@@ -2589,7 +2607,7 @@ namespace Explore.Persistence.Migrations
                         .HasColumnName("id")
                         .HasDefaultValueSql("uuidv7()");
 
-                    b.Property<Guid>("ActorId")
+                    b.Property<Guid?>("ActorId")
                         .HasColumnType("uuid")
                         .HasColumnName("actor_id");
 
@@ -3038,7 +3056,6 @@ namespace Explore.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("FeaturedImageId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
                         .HasConstraintName("fk_events_storage_objects_featured_image_id");
 
                     b.HasOne("Explore.Domain.Madhab", "Madhab")
@@ -3330,19 +3347,20 @@ namespace Explore.Persistence.Migrations
                     b.HasOne("Explore.Domain.Actor", "Actor")
                         .WithMany()
                         .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_organizations_actors_actor_id");
 
                     b.HasOne("Explore.Domain.ApprovalStatus", "ApprovalStatus")
                         .WithMany()
                         .HasForeignKey("ApprovalStatusId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_organizations_approval_statuses_approval_status_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_organizations_tenants_tenant_id");
 
@@ -3554,7 +3572,6 @@ namespace Explore.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("ActorId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
                         .HasConstraintName("fk_users_actors_actor_id");
 
                     b.Navigation("Actor");

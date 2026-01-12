@@ -1,3 +1,4 @@
+using Explore.Application.DTOs.Organization;
 using Explore.Application.DTOs.User;
 using Explore.Application.Features.Users.Requests.Commands;
 using Explore.Application.Features.Users.Requests.Queries;
@@ -101,7 +102,56 @@ namespace Explore.API.Controllers
 
             var query = new GetUserRequest { UserId = guidUserId };
             var user = await _mediator.Send(query);
+            
+            // FIX: Return 404 if user doesn't exist
+            if (user == null)
+            {
+                Console.WriteLine($"[USER API] User not found in database: {guidUserId}");
+                return NotFound(new 
+                { 
+                    message = "User not found in database. Please refresh the page to sync your profile.",
+                    userId = guidUserId 
+                });
+            }
+            
+            Console.WriteLine($"[USER API] User found: {user.Email}");
             return Ok(user);
+        }
+
+        /// <summary>
+        /// Gets all organizations the specified user is a member of.
+        /// Returns the user's role in each organization.
+        /// </summary>
+        [HttpGet("{userId:guid}/organizations")]
+        [Authorize]
+        [EndpointSummary("Get user's organizations")]
+        [EndpointDescription("Gets all organizations the user is a member of, including their role in each organization.")]
+        public async Task<ActionResult<List<OrganizationListDto>>> GetUserOrganizations(Guid userId)
+        {
+            // Verify the user is requesting their own organizations
+            var currentUserId = User.FindFirst("sub")?.Value
+                         ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(currentUserId) || !Guid.TryParse(currentUserId, out var guidCurrentUserId))
+            {
+                return Unauthorized("Invalid User ID in token");
+            }
+
+            // For now, only allow users to get their own organizations
+            // TODO: Add admin check for viewing other users' organizations
+            if (userId != guidCurrentUserId)
+            {
+                return Forbid("You can only view your own organizations");
+            }
+
+            Console.WriteLine($"[USER API] Getting organizations for user: {userId}");
+            
+            var query = new GetUserOrganizationsRequest { UserId = userId };
+            var organizations = await _mediator.Send(query);
+            
+            Console.WriteLine($"[USER API] Found {organizations.Count} organizations for user {userId}");
+            
+            return Ok(organizations);
         }
 
         [HttpPut]

@@ -1,65 +1,81 @@
 using System.Net.Http.Json;
-using Explore.Blazor.Client.Models.DTOs;
+using Explore.Blazor.Client.Clients;
 
 namespace Explore.Blazor.Client.Services;
 
-// DTO class needed for status updates
-public class UpdateOrganizationStatusTypeDto
-{
-    public int ApprovalStatusId { get; set; }
-}
-
 public interface IAdminService
 {
-    Task<List<OrganizationListDto>> GetOrganizationRequestsAsync();
-    Task<OrganizationListDto?> GetOrganizationDetailsAsync(Guid id);
+    Task<ICollection<OrganizationListDto>> GetOrganizationRequestsAsync();
+    Task<OrganizationDto?> GetOrganizationDetailsAsync(Guid id);
     Task<bool> ApproveOrganizationAsync(Guid id);
     Task<bool> RejectOrganizationAsync(Guid id);
     Task<bool> RevertToPendingAsync(Guid id);
-    Task<List<EventTypeListDto>> GetEventTypesAsync();
-    Task<List<AudienceGenderListDto>> GetAudienceGendersAsync();
-    Task<List<AudienceAgeListDto>> GetAudienceAgesAsync();
+    Task<ICollection<EventTypeListDto>> GetEventTypesAsync();
+    Task<ICollection<AudienceGenderListDto>> GetAudienceGendersAsync();
+    Task<ICollection<AudienceAgeListDto>> GetAudienceAgesAsync();
 }
 
 public class AdminService : IAdminService
 {
-    private readonly HttpClient _httpClient;
+    private readonly IEventApiClient _apiClient;
 
-    public AdminService(HttpClient httpClient)
+    public AdminService(IEventApiClient apiClient)
     {
-        _httpClient = httpClient;
+        _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
     }
 
-    public async Task<List<OrganizationListDto>> GetOrganizationRequestsAsync()
+    public async Task<ICollection<OrganizationListDto>> GetOrganizationRequestsAsync()
     {
         try
         {
-            Console.WriteLine("Calling /bff/api/Organization");
-            var response = await _httpClient.GetFromJsonAsync<List<OrganizationListDto>>("/bff/api/Organization");
-            var organizations = response ?? new List<OrganizationListDto>();
-            Console.WriteLine($"AdminService: Received {organizations.Count} organizations from API");
-            return organizations;
+            if (_apiClient == null)
+            {
+                Console.WriteLine("[ADMIN SERVICE] ERROR: API client is null");
+                return new List<OrganizationListDto>();
+            }
+            
+            Console.WriteLine("[ADMIN SERVICE] Fetching all organizations via API client");
+            var response = await _apiClient.OrganizationAllAsync();
+            Console.WriteLine($"[ADMIN SERVICE] Received {response?.Count ?? 0} organizations from API");
+            return response ?? new List<OrganizationListDto>();
+        }
+        catch (ApiException ex)
+        {
+            Console.WriteLine($"[ADMIN SERVICE] API error fetching organizations: {ex.StatusCode} - {ex.Message}");
+            return new List<OrganizationListDto>();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"AdminService Error: {ex.Message}");
-            Console.WriteLine($"Fout bij ophalen organisatie aanvragen: {ex.Message}");
+            Console.WriteLine($"[ADMIN SERVICE] Error: {ex.Message}");
             return new List<OrganizationListDto>();
         }
     }
 
-    public async Task<OrganizationListDto?> GetOrganizationDetailsAsync(Guid id)
+    public async Task<OrganizationDto?> GetOrganizationDetailsAsync(Guid id)
     {
         try
         {
-            // We kunnen de organization details ophalen via de GetAll en dan filteren op ID
-            // Of als er een GetById is, kunnen we die gebruiken en de data mappen
-            var organizations = await GetOrganizationRequestsAsync();
-            return organizations.FirstOrDefault(o => o.Id == id);
+            if (_apiClient == null)
+            {
+                Console.WriteLine("[ADMIN SERVICE] ERROR: API client is null");
+                return null;
+            }
+            
+            return await _apiClient.OrganizationGETAsync(id);
+        }
+        catch (ApiException ex) when (ex.StatusCode == 404)
+        {
+            Console.WriteLine($"[ADMIN SERVICE] Organization not found: {id}");
+            return null;
+        }
+        catch (ApiException ex)
+        {
+            Console.WriteLine($"[ADMIN SERVICE] API error fetching organization details: {ex.StatusCode} - {ex.Message}");
+            return null;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Fout bij ophalen organisatie details: {ex.Message}");
+            Console.WriteLine($"[ADMIN SERVICE] Error fetching organization details: {ex.Message}");
             return null;
         }
     }
@@ -68,21 +84,32 @@ public class AdminService : IAdminService
     {
         try
         {
-            // Status 2 = Approved (volgens ERD status_type tabel)
-            var updateDto = new UpdateOrganizationStatusTypeDto { ApprovalStatusId = 2 };
-            Console.WriteLine($"Approving organization {id} with status 2");
-            var response = await _httpClient.PutAsJsonAsync($"/bff/api/admin/organizations/{id}/status", updateDto);
-            Console.WriteLine($"Approve response status: {response.StatusCode}");
-            if (!response.IsSuccessStatusCode)
+            if (_apiClient == null)
             {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                Console.WriteLine($"Approve error: {errorContent}");
+                Console.WriteLine("[ADMIN SERVICE] ERROR: API client is null");
+                return false;
             }
-            return response.IsSuccessStatusCode;
+            
+            // Status 2 = Approved
+            var updateDto = new UpdateOrganizationApprovalStatusDto { ApprovalStatusId = 2 };
+            Console.WriteLine($"[ADMIN SERVICE] Approving organization {id} with status 2");
+            await _apiClient.UpdatestatustypeAsync(id, updateDto);
+            Console.WriteLine("[ADMIN SERVICE] Organization approved successfully");
+            return true;
+        }
+        catch (ApiException ex) when (ex.StatusCode == 204 || ex.StatusCode == 200)
+        {
+            Console.WriteLine($"[ADMIN SERVICE] Organization approved successfully (HTTP {ex.StatusCode})");
+            return true;
+        }
+        catch (ApiException ex)
+        {
+            Console.WriteLine($"[ADMIN SERVICE] API error approving organization: {ex.StatusCode} - {ex.Message}");
+            return false;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Fout bij goedkeuren organisatie: {ex.Message}");
+            Console.WriteLine($"[ADMIN SERVICE] Error approving organization: {ex.Message}");
             return false;
         }
     }
@@ -91,21 +118,32 @@ public class AdminService : IAdminService
     {
         try
         {
-            // Status 3 = Rejected (volgens ERD status_type tabel)
-            var updateDto = new UpdateOrganizationStatusTypeDto { ApprovalStatusId = 3 };
-            Console.WriteLine($"Rejecting organization {id} with status 3");
-            var response = await _httpClient.PutAsJsonAsync($"/bff/api/admin/organizations/{id}/status", updateDto);
-            Console.WriteLine($"Reject response status: {response.StatusCode}");
-            if (!response.IsSuccessStatusCode)
+            if (_apiClient == null)
             {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                Console.WriteLine($"Reject error: {errorContent}");
+                Console.WriteLine("[ADMIN SERVICE] ERROR: API client is null");
+                return false;
             }
-            return response.IsSuccessStatusCode;
+            
+            // Status 3 = Rejected
+            var updateDto = new UpdateOrganizationApprovalStatusDto { ApprovalStatusId = 3 };
+            Console.WriteLine($"[ADMIN SERVICE] Rejecting organization {id} with status 3");
+            await _apiClient.UpdatestatustypeAsync(id, updateDto);
+            Console.WriteLine("[ADMIN SERVICE] Organization rejected successfully");
+            return true;
+        }
+        catch (ApiException ex) when (ex.StatusCode == 204 || ex.StatusCode == 200)
+        {
+            Console.WriteLine($"[ADMIN SERVICE] Organization rejected successfully (HTTP {ex.StatusCode})");
+            return true;
+        }
+        catch (ApiException ex)
+        {
+            Console.WriteLine($"[ADMIN SERVICE] API error rejecting organization: {ex.StatusCode} - {ex.Message}");
+            return false;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Fout bij afwijzen organisatie: {ex.Message}");
+            Console.WriteLine($"[ADMIN SERVICE] Error rejecting organization: {ex.Message}");
             return false;
         }
     }
@@ -114,63 +152,113 @@ public class AdminService : IAdminService
     {
         try
         {
-            // Status 1 = Pending (volgens ERD status_type tabel)
-            var updateDto = new UpdateOrganizationStatusTypeDto { ApprovalStatusId = 1 };
-            Console.WriteLine($"Reverting organization {id} to pending with status 1");
-            var response = await _httpClient.PutAsJsonAsync($"/bff/api/admin/organizations/{id}/status", updateDto);
-            Console.WriteLine($"Revert response status: {response.StatusCode}");
-            if (!response.IsSuccessStatusCode)
+            if (_apiClient == null)
             {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                Console.WriteLine($"Revert error: {errorContent}");
+                Console.WriteLine("[ADMIN SERVICE] ERROR: API client is null");
+                return false;
             }
-            return response.IsSuccessStatusCode;
+            
+            // Status 1 = Pending
+            var updateDto = new UpdateOrganizationApprovalStatusDto { ApprovalStatusId = 1 };
+            Console.WriteLine($"[ADMIN SERVICE] Reverting organization {id} to pending with status 1");
+            await _apiClient.UpdatestatustypeAsync(id, updateDto);
+            Console.WriteLine("[ADMIN SERVICE] Organization reverted to pending successfully");
+            return true;
+        }
+        catch (ApiException ex) when (ex.StatusCode == 204 || ex.StatusCode == 200)
+        {
+            Console.WriteLine($"[ADMIN SERVICE] Organization reverted to pending successfully (HTTP {ex.StatusCode})");
+            return true;
+        }
+        catch (ApiException ex)
+        {
+            Console.WriteLine($"[ADMIN SERVICE] API error reverting organization: {ex.StatusCode} - {ex.Message}");
+            return false;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Fout bij terugzetten naar pending: {ex.Message}");
+            Console.WriteLine($"[ADMIN SERVICE] Error reverting organization: {ex.Message}");
             return false;
         }
     }
 
-    public async Task<List<EventTypeListDto>> GetEventTypesAsync()
+    public async Task<ICollection<EventTypeListDto>> GetEventTypesAsync()
     {
         try
         {
-            var response = await _httpClient.GetFromJsonAsync<List<EventTypeListDto>>("/bff/api/EventType");
+            if (_apiClient == null)
+            {
+                Console.WriteLine("[ADMIN SERVICE] ERROR: API client is null");
+                return new List<EventTypeListDto>();
+            }
+            
+            Console.WriteLine("[ADMIN SERVICE] Fetching event types...");
+            var response = await _apiClient.EventTypeAllAsync();
+            Console.WriteLine($"[ADMIN SERVICE] Received {response?.Count ?? 0} event types");
             return response ?? new List<EventTypeListDto>();
+        }
+        catch (ApiException ex)
+        {
+            Console.WriteLine($"[ADMIN SERVICE] API error fetching event types: {ex.StatusCode} - {ex.Message}");
+            return new List<EventTypeListDto>();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error fetching event types: {ex.Message}");
+            Console.WriteLine($"[ADMIN SERVICE] Error fetching event types: {ex.Message}");
             return new List<EventTypeListDto>();
         }
     }
 
-    public async Task<List<AudienceGenderListDto>> GetAudienceGendersAsync()
+    public async Task<ICollection<AudienceGenderListDto>> GetAudienceGendersAsync()
     {
         try
         {
-            var response = await _httpClient.GetFromJsonAsync<List<AudienceGenderListDto>>("/bff/api/AudienceGender");
+            if (_apiClient == null)
+            {
+                Console.WriteLine("[ADMIN SERVICE] ERROR: API client is null");
+                return new List<AudienceGenderListDto>();
+            }
+            
+            Console.WriteLine("[ADMIN SERVICE] Fetching audience genders...");
+            var response = await _apiClient.AudienceGenderAllAsync();
+            Console.WriteLine($"[ADMIN SERVICE] Received {response?.Count ?? 0} audience genders");
             return response ?? new List<AudienceGenderListDto>();
+        }
+        catch (ApiException ex)
+        {
+            Console.WriteLine($"[ADMIN SERVICE] API error fetching audience genders: {ex.StatusCode} - {ex.Message}");
+            return new List<AudienceGenderListDto>();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error fetching audience genders: {ex.Message}");
+            Console.WriteLine($"[ADMIN SERVICE] Error fetching audience genders: {ex.Message}");
             return new List<AudienceGenderListDto>();
         }
     }
 
-    public async Task<List<AudienceAgeListDto>> GetAudienceAgesAsync()
+    public async Task<ICollection<AudienceAgeListDto>> GetAudienceAgesAsync()
     {
         try
         {
-            var response = await _httpClient.GetFromJsonAsync<List<AudienceAgeListDto>>("/bff/api/AudienceAge");
+            if (_apiClient == null)
+            {
+                Console.WriteLine("[ADMIN SERVICE] ERROR: API client is null");
+                return new List<AudienceAgeListDto>();
+            }
+            
+            Console.WriteLine("[ADMIN SERVICE] Fetching audience ages...");
+            var response = await _apiClient.AudienceAgeAllAsync();
+            Console.WriteLine($"[ADMIN SERVICE] Received {response?.Count ?? 0} audience ages");
             return response ?? new List<AudienceAgeListDto>();
+        }
+        catch (ApiException ex)
+        {
+            Console.WriteLine($"[ADMIN SERVICE] API error fetching audience ages: {ex.StatusCode} - {ex.Message}");
+            return new List<AudienceAgeListDto>();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error fetching audience ages: {ex.Message}");
+            Console.WriteLine($"[ADMIN SERVICE] Error fetching audience ages: {ex.Message}");
             return new List<AudienceAgeListDto>();
         }
     }

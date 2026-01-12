@@ -1,9 +1,12 @@
-Ôªø@page "/home"
+@page "/home"
 @using MudBlazor
 @using Explore.Blazor.Client.Services
-@using Explore.Blazor.Client.Models.DTOs
+@using Explore.Blazor.Client.Clients
+@using Microsoft.AspNetCore.Components
 @inject IJSRuntime JS
 @inject ILandingPageService LandingPageService
+@inject PersistentComponentState PersistentState
+@implements IDisposable
 
 <style>
 :root{
@@ -265,10 +268,10 @@
     <MudContainer MaxWidth="MaxWidth.Large">
         <MudGrid Spacing="3" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
             <MudItem xs="12" md="7">
-                <MudText Typo="Typo.overline" Class="kicker">Community ‚Ä¢ Events ‚Ä¢ Knowledge</MudText>
+                <MudText Typo="Typo.overline" Class="kicker">Community ï Events ï Knowledge</MudText>
                 <MudText Typo="Typo.h3" Class="mb-1">Never miss<br />knowledge again</MudText>
                 <MudText Typo="Typo.subtitle1" Class="hero-sub">
-                    ‚ÄúSeeking knowledge is an obligation upon every Muslim.‚Äù
+                    ìSeeking knowledge is an obligation upon every Muslim.î
                 </MudText>
 
                 <div class="cta-row">
@@ -295,7 +298,7 @@
     <!-- EXPLORE -->
     <section class="section" id="explore">
         <MudText Typo="Typo.h5" Class="mb-2">Explore</MudText>
-        <MudText Typo="Typo.subtitle2" Class="muted mb-3">Find what fits you best ‚Äî near you, online, or on-demand.</MudText>
+        <MudText Typo="Typo.subtitle2" Class="muted mb-3">Find what fits you best ó near you, online, or on-demand.</MudText>
 
         <MudGrid Spacing="3">
             <MudItem xs="12" sm="4">
@@ -372,21 +375,21 @@
                                         <MudCardContent Class="event-body">
                                             <div class="event-chips">
                                                 <MudChip T="string" Color="Color.Secondary" Variant="Variant.Filled" Size="Size.Small" Style="background: #8b5cf6; color: white;">
-                                                    Event
+                                                    @(evt.EventTypeFullName ?? "Event")
                                                 </MudChip>
                                                 <MudChip T="string" Color="Color.Info" Variant="Variant.Outlined" Size="Size.Small" Style="border-color: #3b82f6; color: #60a5fa;">
-                                                    @(evt.Country ?? "Online")
+                                                    @(evt.EventFormatFullName ?? "Online")
                                                 </MudChip>
                                                 <MudChip T="string" Color="Color.Success" Variant="Variant.Outlined" Size="Size.Small" Style="border-color: #10b981; color: #34d399;">
-                                                    @(evt.Price > 0 ? $"‚Ç¨{evt.Price:F2}" : "Free")
+                                                    @(evt.Price.HasValue && evt.Price > 0 ? $"{evt.CurrencyCode ?? "Ä"}{evt.Price:F2}" : "Free")
                                                 </MudChip>
                                             </div>
                                             <MudText Typo="Typo.h6" Class="mb-2" Style="color: #f8fafc; font-weight: 600;">@evt.Title</MudText>
                                             <MudText Typo="Typo.body2" Class="mb-3" Style="color: #cbd5e1; line-height: 1.5; flex: 1;">@(TruncateText(evt.Description, 150))</MudText>
                                             
                                             <div class="d-flex align-center mb-2" style="color: #f472b6; font-size: 0.875rem;">
-                                                <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Small" Class="mr-1" />
-                                                <span>@(evt.AudienceAttendees.HasValue && evt.AudienceAttendees > 0 ? $"{evt.AudienceAttendees} attendees" : "Join community event")</span>
+                                                <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Class="mr-1" />
+                                                <span>@(evt.TotalViews > 0 ? $"{evt.TotalViews} views" : "Join community event")</span>
                                             </div>
                                         </MudCardContent>
                                         <MudCardActions Style="padding: 16px 20px; margin-top: auto; border-top: 1px solid #2a2a3a;">
@@ -395,8 +398,8 @@
                                             </MudButton>
                                             <MudSpacer />
                                             <div class="d-flex align-center" style="color: #94a3b8; font-size: 0.875rem;">
-                                                <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Class="mr-1" />
-                                                <span>@(evt.Country ?? "Online")</span>
+                                                <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" Class="mr-1" />
+                                                <span>@(evt.ActorDisplayName ?? "Community")</span>
                                             </div>
                                         </MudCardActions>
                                     </MudCard>
@@ -421,12 +424,72 @@
 </MudContainer>
 
 @code {
-    private List<ProgramListDto> _events = new();
+    private ICollection<EventListDto> _events = new List<EventListDto>();
     private bool _isLoading = true;
+    
+    // For persisting state across prerender/hydration
+    private PersistingComponentStateSubscription _persistingSubscription;
+    private const string PersistenceKey = "LandingPageEvents";
+    private bool _hasInitialized = false;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadDataAsync();
+        _persistingSubscription = PersistentState.RegisterOnPersisting(PersistData);
+        
+        // Try to restore persisted data first (from server prerender)
+        if (PersistentState.TryTakeFromJson<List<EventListDto>>(PersistenceKey, out var restored) && restored != null)
+        {
+            Console.WriteLine($"[LANDING PAGE] Restored {restored.Count} events from persisted state");
+            _events = restored;
+            _isLoading = false;
+            _hasInitialized = true;
+        }
+        else
+        {
+            await LoadDataAsync();
+            _hasInitialized = true;
+        }
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Always refresh data from API after client is ready on first render
+        // This handles client-side navigation when PersistentComponentState is empty
+        if (firstRender && _hasInitialized)
+        {
+            await Task.Delay(100);
+            await LoadDataAsyncSilent();
+        }
+    }
+    
+    private async Task LoadDataAsyncSilent()
+    {
+        try
+        {
+            Console.WriteLine("[LANDING PAGE] Silent refresh - loading events");
+            var events = await LandingPageService.GetFeaturedEventsAsync(9);
+            if (events != null && events.Count > 0)
+            {
+                _events = events;
+                Console.WriteLine($"[LANDING PAGE] Silent refresh - {_events.Count} events loaded");
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[LANDING PAGE] Silent refresh error: {ex.Message}");
+        }
+    }
+    
+    private Task PersistData()
+    {
+        PersistentState.PersistAsJson(PersistenceKey, _events.ToList());
+        return Task.CompletedTask;
+    }
+    
+    public void Dispose()
+    {
+        _persistingSubscription.Dispose();
     }
 
     private async Task LoadDataAsync()
@@ -434,7 +497,7 @@
         _isLoading = true;
         try
         {
-            _events = await LandingPageService.GetFeaturedEventsAsync(9); // Load 9 events for 3x3 grid
+            _events = await LandingPageService.GetFeaturedEventsAsync(9);
         }
         catch (Exception ex)
         {
@@ -469,3 +532,4 @@
         return text.Substring(0, maxLength) + "...";
     }
 }
+

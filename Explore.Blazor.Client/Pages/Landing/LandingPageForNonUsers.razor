@@ -1,7 +1,8 @@
 @page "/welcome"
 @using MudBlazor
 @using Explore.Blazor.Client.Services
-@using Explore.Blazor.Client.Models.DTOs
+@using Explore.Blazor.Client.Clients
+@using Microsoft.AspNetCore.Components
 @inject IJSRuntime JS
 @inject ILandingPageService LandingPageService
 
@@ -125,8 +126,8 @@
     border-color: color-mix(in srgb, var(--mud-palette-primary) 40%, var(--mud-palette-lines-default));
 }
 .card-media{
-    position: relative; 
-    height: 200px; 
+    position: relative;
+    height: 200px;
     overflow: hidden;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     display: flex;
@@ -138,13 +139,13 @@
     text-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
 .card-media::after{
-    content:""; 
-    position:absolute; 
+    content:"";
+    position:absolute;
     inset:0;
     background: linear-gradient(180deg, rgba(0,0,0,0) 50%, rgba(0,0,0,.25) 100%);
 }
-.event-body{ 
-    padding: 14px 16px 18px 16px; 
+.event-body{
+    padding: 14px 16px 18px 16px;
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -152,18 +153,18 @@
 .event-chips{ display:flex; gap:8px; margin: 10px 0 8px 0; }
 
 /* Badges row */
-.badges{ 
-    display:flex; 
-    gap:8px; 
-    align-items:center; 
-    margin: 10px 0 6px 0; 
+.badges{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    margin: 10px 0 6px 0;
 }
 
 /* Location row */
 .loc{
-    display:flex; 
-    align-items:center; 
-    gap:6px; 
+    display:flex;
+    align-items:center;
+    gap:6px;
     opacity:.85;
 }
 
@@ -370,21 +371,21 @@
                                     <MudCardContent Class="event-body">
                                         <div class="event-chips">
                                             <MudChip T="string" Color="Color.Secondary" Variant="Variant.Filled" Size="Size.Small" Style="background: #8b5cf6; color: white;">
-                                                Event
+                                                @(evt.EventTypeFullName ?? "Event")
                                             </MudChip>
                                             <MudChip T="string" Color="Color.Info" Variant="Variant.Outlined" Size="Size.Small" Style="border-color: #3b82f6; color: #60a5fa;">
-                                                @(evt.Country ?? "Online")
+                                                @(evt.EventFormatFullName ?? "Online")
                                             </MudChip>
                                             <MudChip T="string" Color="Color.Success" Variant="Variant.Outlined" Size="Size.Small" Style="border-color: #10b981; color: #34d399;">
-                                                @(evt.Price > 0 ? $"€{evt.Price:F2}" : "Free")
+                                                @(evt.Price.HasValue && evt.Price > 0 ? $"{evt.CurrencyCode ?? "€"}{evt.Price:F2}" : "Free")
                                             </MudChip>
                                         </div>
                                         <MudText Typo="Typo.h6" Class="mb-2" Style="color: #f8fafc; font-weight: 600;">@evt.Title</MudText>
                                         <MudText Typo="Typo.body2" Class="mb-3" Style="color: #cbd5e1; line-height: 1.5; flex: 1;">@(TruncateText(evt.Description, 150))</MudText>
-                                        
+
                                         <div class="d-flex align-center mb-2" style="color: #f472b6; font-size: 0.875rem;">
-                                            <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Small" Class="mr-1" />
-                                            <span>@(evt.AudienceAttendees.HasValue && evt.AudienceAttendees > 0 ? $"{evt.AudienceAttendees} attendees" : "Join community event")</span>
+                                            <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Class="mr-1" />
+                                            <span>@(evt.TotalViews > 0 ? $"{evt.TotalViews} views" : "Join community event")</span>
                                         </div>
                                     </MudCardContent>
                                     <MudCardActions Style="padding: 16px 20px; margin-top: auto; border-top: 1px solid #2a2a3a;">
@@ -393,8 +394,8 @@
                                         </MudButton>
                                         <MudSpacer />
                                         <div class="d-flex align-center" style="color: #94a3b8; font-size: 0.875rem;">
-                                            <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Class="mr-1" />
-                                            <span>@(evt.Country ?? "Online")</span>
+                                            <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" Class="mr-1" />
+                                            <span>@(evt.ActorDisplayName ?? "Community")</span>
                                         </div>
                                     </MudCardActions>
                                 </MudCard>
@@ -459,10 +460,11 @@
 </MudContainer>
 
 @code {
-    private List<ProgramListDto> _events = new();
+    private ICollection<EventListDto> _events = new List<EventListDto>();
     private int _membersCount = 1200;
     private int _eventsCount = 0;
     private bool _isLoading = true;
+    private string? _errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -472,8 +474,12 @@
     private async Task LoadDataAsync()
     {
         _isLoading = true;
+        _errorMessage = null;
+
         try
         {
+            Console.WriteLine("[WELCOME PAGE] Loading landing page data from API");
+
             // Load events, members count, and events count in parallel
             var eventsTask = LandingPageService.GetFeaturedEventsAsync(12);
             var membersTask = LandingPageService.GetTotalMembersCountAsync();
@@ -484,10 +490,13 @@
             _events = await eventsTask;
             _membersCount = await membersTask;
             _eventsCount = await eventsCountTask;
+
+            Console.WriteLine($"[WELCOME PAGE] Loaded {_events.Count} events, {_membersCount} members, {_eventsCount} upcoming events");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading landing page data: {ex.Message}");
+            _errorMessage = $"Error loading landing page data: {ex.Message}";
+            Console.WriteLine($"[WELCOME PAGE] ERROR: {ex.Message}");
             // Keep default values on error
         }
         finally
@@ -500,7 +509,7 @@
     {
         if (string.IsNullOrEmpty(text) || text.Length <= maxLength)
             return text;
-        
+
         return text.Substring(0, maxLength) + "...";
     }
 

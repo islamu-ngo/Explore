@@ -1,5 +1,5 @@
 @page "/organization/{id:guid}"
-@using Explore.Blazor.Client.Models.DTOs
+@using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Models.Enums
 @using Microsoft.AspNetCore.Authorization
@@ -33,9 +33,9 @@ else if (organization == null)
 else
 {
     <MudContainer MaxWidth="MaxWidth.Large" Class="mt-8 mb-8">
-        <MudButton StartIcon="@Icons.Material.Filled.ArrowBack" 
-                   Color="Color.Primary" 
-                   Variant="Variant.Text" 
+        <MudButton StartIcon="@Icons.Material.Filled.ArrowBack"
+                   Color="Color.Primary"
+                   Variant="Variant.Text"
                    OnClick="@(() => NavigationManager.NavigateTo("/organization/my"))"
                    Class="mb-4">
             Back to List
@@ -51,33 +51,39 @@ else
                 <CardHeaderContent>
                     <div class="d-flex align-center gap-2 flex-wrap">
                         <MudText Typo="Typo.h4" Class="mr-2">@organization.FullName</MudText>
-                        <MudChip T="string" Color="@GetStatusColor(organization.StatusTypeId)" Size="Size.Small" Variant="Variant.Outlined">
-                            @organization.StatusTypeName
+                        <MudChip T="string" Color="@GetStatusColor(organization.ApprovalStatusId)" Size="Size.Small" Variant="Variant.Outlined">
+                            @(organization.ApprovalStatusFullName ?? "Pending")
                         </MudChip>
                     </div>
-                    <MudText Typo="Typo.body2" Class="mud-text-secondary mt-1">
-                        <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" Class="mr-1" Style="vertical-align: text-bottom;" />
-                        Created on @organization.CreatedAt.ToString("MMMM dd, yyyy")
-                    </MudText>
                 </CardHeaderContent>
                 <CardHeaderActions>
                     @if (canEdit && !isEditMode)
                     {
+                        <MudTooltip Text="Create Event">
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Success"
+                                       StartIcon="@Icons.Material.Filled.Event"
+                                       Size="Size.Small"
+                                       OnClick="@(() => NavigationManager.NavigateTo($"/organization/{Id}/create-event"))"
+                                       Class="mr-2">
+                                Create Event
+                            </MudButton>
+                        </MudTooltip>
                         <MudTooltip Text="Manage Members">
-                            <MudIconButton Icon="@Icons.Material.Filled.People" 
-                                           Color="Color.Secondary" 
+                            <MudIconButton Icon="@Icons.Material.Filled.People"
+                                           Color="Color.Secondary"
                                            OnClick="@(() => NavigationManager.NavigateTo($"/organization/{Id}/members"))" />
                         </MudTooltip>
                         <MudTooltip Text="Edit Organization">
-                            <MudIconButton Icon="@Icons.Material.Filled.Edit" 
-                                           Color="Color.Primary" 
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                           Color="Color.Primary"
                                            OnClick="ToggleEditMode" />
                         </MudTooltip>
                     }
                     else if (canEdit && isEditMode)
                     {
-                         <MudButton Variant="Variant.Outlined" 
-                                   Color="Color.Secondary" 
+                         <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Secondary"
                                    OnClick="ToggleEditMode"
                                    StartIcon="@Icons.Material.Filled.Cancel"
                                    Size="Size.Small">
@@ -86,7 +92,7 @@ else
                     }
                 </CardHeaderActions>
             </MudCardHeader>
-            
+
             <MudDivider Class="my-2" />
 
             <MudCardContent>
@@ -136,8 +142,8 @@ else
                     <MudForm @ref="form" @bind-IsValid="@formValid">
                         <MudGrid>
                             <MudItem xs="12">
-                                <MudTextField @bind-Value="editModel.FullName" 
-                                              Label="Organization Name" 
+                                <MudTextField @bind-Value="editModel.FullName"
+                                              Label="Organization Name"
                                               Variant="Variant.Outlined"
                                               Adornment="Adornment.Start"
                                               AdornmentIcon="@Icons.Material.Filled.Business"
@@ -146,8 +152,8 @@ else
                             </MudItem>
 
                             <MudItem xs="12" sm="6">
-                                <MudTextField @bind-Value="editModel.Email" 
-                                              Label="Email" 
+                                <MudTextField @bind-Value="editModel.Email"
+                                              Label="Email"
                                               Variant="Variant.Outlined"
                                               Adornment="Adornment.Start"
                                               AdornmentIcon="@Icons.Material.Filled.Email"
@@ -157,8 +163,8 @@ else
                             </MudItem>
 
                             <MudItem xs="12" sm="6">
-                                <MudTextField @bind-Value="editModel.WebsiteUrl" 
-                                              Label="Website (Optional)" 
+                                <MudTextField @bind-Value="editModel.WebsiteUrl"
+                                              Label="Website (Optional)"
                                               Variant="Variant.Outlined"
                                               Adornment="Adornment.Start"
                                               AdornmentIcon="@Icons.Material.Filled.Language" />
@@ -170,8 +176,8 @@ else
                             </MudItem>
 
                             <MudItem xs="12" sm="6">
-                                <MudTextField @bind-Value="editModel.Address" 
-                                              Label="Address" 
+                                <MudTextField @bind-Value="editModel.Address"
+                                              Label="Address"
                                               Variant="Variant.Outlined"
                                               Adornment="Adornment.Start"
                                               AdornmentIcon="@Icons.Material.Filled.Home"
@@ -180,8 +186,8 @@ else
                             </MudItem>
 
                             <MudItem xs="12" sm="6">
-                                <MudNumericField @bind-Value="editModel.Postcode" 
-                                                 Label="Postcode" 
+                                <MudNumericField @bind-Value="editModel.Postcode"
+                                                 Label="Postcode"
                                                  Variant="Variant.Outlined"
                                                  Adornment="Adornment.Start"
                                                  AdornmentIcon="@Icons.Material.Filled.MarkunreadMailbox"
@@ -192,8 +198,8 @@ else
                             </MudItem>
 
                             <MudItem xs="12" sm="6">
-                                <MudTextField @bind-Value="editModel.City" 
-                                              Label="City" 
+                                <MudTextField @bind-Value="editModel.City"
+                                              Label="City"
                                               Variant="Variant.Outlined"
                                               Adornment="Adornment.Start"
                                               AdornmentIcon="@Icons.Material.Filled.LocationCity"
@@ -202,8 +208,8 @@ else
                             </MudItem>
 
                             <MudItem xs="12" sm="6">
-                                <MudTextField @bind-Value="editModel.Country" 
-                                              Label="Country" 
+                                <MudTextField @bind-Value="editModel.Country"
+                                              Label="Country"
                                               Variant="Variant.Outlined"
                                               Adornment="Adornment.Start"
                                               AdornmentIcon="@Icons.Material.Filled.Public"
@@ -212,8 +218,8 @@ else
                             </MudItem>
 
                             <MudItem xs="12" Class="d-flex justify-end gap-2 mt-4">
-                                <MudButton Variant="Variant.Filled" 
-                                           Color="Color.Primary" 
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Primary"
                                            OnClick="SaveChanges"
                                            StartIcon="@Icons.Material.Filled.Save"
                                            Disabled="!formValid || isSaving">
@@ -255,7 +261,7 @@ else
     public Guid Id { get; set; }
 
     private OrganizationDto? organization;
-    private OrganizationCreateDto editModel = new();
+    private UpdateOrganizationDto editModel = new();
     private MudForm? form;
     private bool formValid;
     private bool isLoading = true;
@@ -265,92 +271,113 @@ else
     private string? errorMessage;
     private string? successMessage;
     private string? currentUserId;
-    private OrganizationRole? currentUserRole;
+    private int? currentUserRole;
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            // Get current user ID
             var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
             var user = authState.User;
             currentUserId = user.FindFirst("sub")?.Value;
-
-            // Load organization
             await LoadOrganization();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading organization: {ex.Message}");
+            Console.WriteLine($"[ORG DETAILS] Error loading organization: {ex.Message}");
             errorMessage = "Failed to load organization details.";
             isLoading = false;
         }
     }
 
-    private async Task LoadOrganization()
+    private void InitializeEditModel()
     {
-        isLoading = true;
-        organization = await OrganizationService.GetOrganizationByIdAsync(Id);
-        
         if (organization != null)
         {
-            // Check role
-            if (!string.IsNullOrEmpty(currentUserId))
-            {
-                try 
-                {
-                    var members = await MemberService.GetMembersAsync(Id);
-                    var me = members.FirstOrDefault(m => m.UserId.ToString() == currentUserId);
-                    if (me != null)
-                    {
-                        currentUserRole = me.Role;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error loading members: {ex.Message}");
-                }
-            }
-
-            // Check if current user is the creator OR has Creator/CoOwner/Admin role
-            canEdit = (!string.IsNullOrEmpty(currentUserId) && organization.CreatedByUserId == currentUserId) || 
-                      currentUserRole == OrganizationRole.Creator || 
-                      currentUserRole == OrganizationRole.CoOwner || 
-                      currentUserRole == OrganizationRole.Admin;
-            
-            // Initialize edit model
-            editModel = new OrganizationCreateDto
+            editModel = new UpdateOrganizationDto
             {
                 FullName = organization.FullName,
                 Email = organization.Email,
                 WebsiteUrl = organization.WebsiteUrl,
                 Country = organization.Country,
                 City = organization.City,
-                Postcode = organization.Postcode,
+                Postcode = int.TryParse(organization.Postcode, out var pc) ? pc : 0,
                 Address = organization.Address
             };
         }
-        
-        isLoading = false;
+    }
+
+    private async Task CheckEditPermissions()
+    {
+        if (organization != null && !string.IsNullOrEmpty(currentUserId))
+        {
+            try
+            {
+                var members = await MemberService.GetMembersAsync(Id);
+                var me = members.FirstOrDefault(m => m.UserId.ToString() == currentUserId);
+                if (me != null)
+                {
+                    currentUserRole = me.OrganizationRoleId;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading members: {ex.Message}");
+            }
+
+            canEdit = currentUserRole == 1 || currentUserRole == 2 || currentUserRole == 3;
+        }
+    }
+
+    private async Task LoadOrganization()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            Console.WriteLine($"[ORG DETAILS] Loading organization {Id}");
+            organization = await OrganizationService.GetOrganizationByIdAsync(Id);
+
+            if (organization != null)
+            {
+                Console.WriteLine($"[ORG DETAILS] Loaded organization: {organization.FullName}");
+                await CheckEditPermissions();
+                InitializeEditModel();
+            }
+            else
+            {
+                errorMessage = "Organization not found.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load organization: {ex.Message}";
+            Console.WriteLine($"[ORG DETAILS] ERROR: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 
     private void ToggleEditMode()
     {
-        if (isEditMode)
+        if (isEditMode && organization != null)
         {
             // Revert changes
-            editModel = new OrganizationCreateDto
+            editModel = new UpdateOrganizationDto
             {
-                FullName = organization!.FullName,
+                FullName = organization.FullName,
                 Email = organization.Email,
                 WebsiteUrl = organization.WebsiteUrl,
                 Country = organization.Country,
                 City = organization.City,
-                Postcode = organization.Postcode,
+                Postcode = int.TryParse(organization.Postcode, out var pc) ? pc : 0,
                 Address = organization.Address
             };
         }
-        
+
         isEditMode = !isEditMode;
         errorMessage = string.Empty;
         successMessage = string.Empty;
@@ -371,9 +398,9 @@ else
             errorMessage = string.Empty;
             successMessage = string.Empty;
 
-            var success = await OrganizationService.UpdateOrganizationAsync(Id, editModel);
+            var success = await OrganizationService.UpdateOrganizationAsync(Id, editModel!);
 
-            if (success)
+            if (success != null && success.Success)
             {
                 successMessage = "Organization updated successfully!";
                 isEditMode = false;

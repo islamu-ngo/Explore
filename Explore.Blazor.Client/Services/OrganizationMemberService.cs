@@ -1,182 +1,152 @@
-using System.Net.Http.Json;
-using Explore.Blazor.Client.Models.DTOs.OrganizationMember;
-using Explore.Blazor.Client.Models.Responses;
+using Explore.Blazor.Client.Clients;
 
-namespace Explore.Blazor.Client.Services
+namespace Explore.Blazor.Client.Services;
+
+public interface IOrganizationMemberService
 {
-    public class OrganizationMemberService : IOrganizationMemberService
+    Task<ICollection<OrganizationMemberDto>> GetMembersAsync(Guid organizationId);
+    Task<BaseCommandResponseOfGuid?> InviteMemberAsync(AddOrganizationMemberDto member);
+    Task<BaseCommandResponseOfGuid?> UpdateMemberRoleAsync(UpdateOrganizationMemberRoleDto updateDto);
+    Task<ICollection<OrganizationInvitationDto>> GetMyInvitationsAsync();
+    Task<BaseCommandResponseOfGuid?> AcceptInvitationAsync(Guid invitationId);
+    Task<BaseCommandResponseOfGuid?> DeclineInvitationAsync(Guid invitationId);
+    Task<BaseCommandResponseOfGuid?> DeleteMemberAsync(Guid memberId);
+}
+
+public class OrganizationMemberService : IOrganizationMemberService
+{
+    private readonly IEventApiClient _apiClient;
+
+    public OrganizationMemberService(IEventApiClient apiClient)
     {
-        private readonly HttpClient _httpClient;
+        _apiClient = apiClient;
+    }
 
-        public OrganizationMemberService(HttpClient httpClient)
+    public async Task<ICollection<OrganizationMemberDto>> GetMembersAsync(Guid organizationId)
+    {
+        try
         {
-            _httpClient = httpClient;
+            var response = await _apiClient.OrganizationMemberAllAsync(organizationId);
+            return response ?? new List<OrganizationMemberDto>();
         }
-
-        public async Task<List<OrganizationMemberDto>> GetMembersAsync(Guid organizationId)
+        catch (ApiException ex)
         {
-            try
-            {
-                var response = await _httpClient.GetFromJsonAsync<List<OrganizationMemberDto>>($"/bff/api/OrganizationMember/{organizationId}");
-                return response ?? new List<OrganizationMemberDto>();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error fetching organization members: {ex.Message}");
-                return new List<OrganizationMemberDto>();
-            }
+            Console.WriteLine($"API error fetching organization members: {ex.StatusCode} - {ex.Message}");
+            return new List<OrganizationMemberDto>();
         }
-
-        public async Task<OrganizationMemberDto> InviteMemberAsync(AddOrganizationMemberDto member)
+        catch (Exception ex)
         {
-            try
-            {
-                var response = await _httpClient.PostAsJsonAsync("/bff/api/OrganizationMember", member);
-                
-                if (response.IsSuccessStatusCode)
-                {
-                    var commandResponse = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
-                    
-                    if (commandResponse != null && commandResponse.Success)
-                    {
-                        // Return a placeholder DTO since the API only returns the ID
-                        // In a real app, we might want to fetch the created member or construct it
-                        return new OrganizationMemberDto
-                        {
-                            Id = commandResponse.Id,
-                            OrganizationId = member.OrganizationId,
-                            Email = member.Email,
-                            Role = member.Role,
-                            // Other fields will be empty until refreshed
-                        };
-                    }
-                    else
-                    {
-                        var errors = commandResponse?.Errors != null 
-                            ? string.Join(", ", commandResponse.Errors) 
-                            : commandResponse?.Message ?? "Unknown error";
-                        throw new Exception(errors);
-                    }
-                }
-                
-                var errorContent = await response.Content.ReadAsStringAsync();
-                throw new Exception($"HTTP {response.StatusCode}: {errorContent}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error inviting member: {ex.Message}");
-                throw;
-            }
+            Console.WriteLine($"Error fetching organization members: {ex.Message}");
+            return new List<OrganizationMemberDto>();
         }
+    }
 
-        public async Task UpdateMemberRoleAsync(UpdateOrganizationMemberRoleDto updateDto)
+    public async Task<BaseCommandResponseOfGuid?> InviteMemberAsync(AddOrganizationMemberDto member)
+    {
+        try
         {
-            try
-            {
-                var response = await _httpClient.PutAsJsonAsync("/bff/api/OrganizationMember/role", updateDto);
-                
-                if (response.IsSuccessStatusCode)
-                {
-                    return;
-                }
-                
-                var errorContent = await response.Content.ReadAsStringAsync();
-                throw new Exception($"HTTP {response.StatusCode}: {errorContent}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error updating member role: {ex.Message}");
-                throw;
-            }
+            return await _apiClient.OrganizationMemberPOSTAsync(member);
         }
-
-        public async Task<List<OrganizationInvitationDto>> GetMyInvitationsAsync()
+        catch (ApiException ex)
         {
-            try
-            {
-                var response = await _httpClient.GetFromJsonAsync<List<OrganizationInvitationDto>>("/bff/api/OrganizationMember/invitations");
-                return response ?? new List<OrganizationInvitationDto>();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error fetching invitations: {ex.Message}");
-                return new List<OrganizationInvitationDto>();
-            }
+            Console.WriteLine($"API error inviting member: {ex.StatusCode} - {ex.Message}");
+            throw;
         }
-
-        public async Task AcceptInvitationAsync(Guid invitationId)
+        catch (Exception ex)
         {
-            try
-            {
-                var response = await _httpClient.PostAsync($"/bff/api/OrganizationMember/invitations/{invitationId}/accept", null);
-                
-                if (!response.IsSuccessStatusCode)
-                {
-                    var errorContent = await response.Content.ReadAsStringAsync();
-                    throw new Exception($"HTTP {response.StatusCode}: {errorContent}");
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error accepting invitation: {ex.Message}");
-                throw;
-            }
+            Console.WriteLine($"Error inviting member: {ex.Message}");
+            throw;
         }
+    }
 
-        public async Task DeclineInvitationAsync(Guid invitationId)
+    public async Task<BaseCommandResponseOfGuid?> UpdateMemberRoleAsync(UpdateOrganizationMemberRoleDto updateDto)
+    {
+        try
         {
-            try
-            {
-                var response = await _httpClient.PostAsync($"/bff/api/OrganizationMember/invitations/{invitationId}/decline", null);
-                
-                if (!response.IsSuccessStatusCode)
-                {
-                    var errorContent = await response.Content.ReadAsStringAsync();
-                    throw new Exception($"HTTP {response.StatusCode}: {errorContent}");
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error declining invitation: {ex.Message}");
-                throw;
-            }
+            return await _apiClient.RoleAsync(updateDto);
         }
-
-        public async Task DeleteMemberAsync(Guid memberId)
+        catch (ApiException ex)
         {
-            try
-            {
-                var response = await _httpClient.DeleteAsync($"/bff/api/OrganizationMember/{memberId}");
-                
-                if (!response.IsSuccessStatusCode)
-                {
-                    var errorContent = await response.Content.ReadAsStringAsync();
-                    throw new Exception($"HTTP {response.StatusCode}: {errorContent}");
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error deleting member: {ex.Message}");
-                throw;
-            }
+            Console.WriteLine($"API error updating member role: {ex.StatusCode} - {ex.Message}");
+            throw;
         }
-
-        public async Task<bool> CheckUserExistsAsync(string email)
+        catch (Exception ex)
         {
-            try
-            {
-                var response = await _httpClient.GetAsync($"/bff/api/User/exists/{Uri.EscapeDataString(email)}");
-                if (response.IsSuccessStatusCode)
-                {
-                    return await response.Content.ReadFromJsonAsync<bool>();
-                }
-                return false;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error checking user existence: {ex.Message}");
-                return false;
-            }
+            Console.WriteLine($"Error updating member role: {ex.Message}");
+            throw;
+        }
+    }
+
+    public async Task<ICollection<OrganizationInvitationDto>> GetMyInvitationsAsync()
+    {
+        try
+        {
+            var response = await _apiClient.InvitationsAsync();
+            return response ?? new List<OrganizationInvitationDto>();
+        }
+        catch (ApiException ex)
+        {
+            Console.WriteLine($"API error fetching invitations: {ex.StatusCode} - {ex.Message}");
+            return new List<OrganizationInvitationDto>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching invitations: {ex.Message}");
+            return new List<OrganizationInvitationDto>();
+        }
+    }
+
+    public async Task<BaseCommandResponseOfGuid?> AcceptInvitationAsync(Guid invitationId)
+    {
+        try
+        {
+            return await _apiClient.AcceptAsync(invitationId);
+        }
+        catch (ApiException ex)
+        {
+            Console.WriteLine($"API error accepting invitation: {ex.StatusCode} - {ex.Message}");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error accepting invitation: {ex.Message}");
+            throw;
+        }
+    }
+
+    public async Task<BaseCommandResponseOfGuid?> DeclineInvitationAsync(Guid invitationId)
+    {
+        try
+        {
+            return await _apiClient.DeclineAsync(invitationId);
+        }
+        catch (ApiException ex)
+        {
+            Console.WriteLine($"API error declining invitation: {ex.StatusCode} - {ex.Message}");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error declining invitation: {ex.Message}");
+            throw;
+        }
+    }
+
+    public async Task<BaseCommandResponseOfGuid?> DeleteMemberAsync(Guid memberId)
+    {
+        try
+        {
+            return await _apiClient.OrganizationMemberDELETEAsync(memberId);
+        }
+        catch (ApiException ex)
+        {
+            Console.WriteLine($"API error deleting member: {ex.StatusCode} - {ex.Message}");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting member: {ex.Message}");
+            throw;
         }
     }
 }

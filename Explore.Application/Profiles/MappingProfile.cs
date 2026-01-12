@@ -161,7 +161,15 @@ namespace Explore.Application.Profiles
             CreateMap<CreateEventDto, Event>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.ActorId, opt => opt.Ignore()) // Resolved by handler
-                .ForMember(dest => dest.TotalViews, opt => opt.Ignore());
+                .ForMember(dest => dest.TotalViews, opt => opt.Ignore())
+                .ForMember(dest => dest.TenantId, opt => opt.Ignore()) // Set by handler
+                .ForMember(dest => dest.SessionCount, opt => opt.Ignore())
+                .ForMember(dest => dest.AtprotoRecordId, opt => opt.Ignore())
+                // Convert DateTimeOffset? to DateOnly? for session dates
+                .ForMember(dest => dest.FirstSessionDate, opt => opt.MapFrom(src => 
+                    src.FirstSessionDate.HasValue ? DateOnly.FromDateTime(src.FirstSessionDate.Value.DateTime) : (DateOnly?)null))
+                .ForMember(dest => dest.LastSessionDate, opt => opt.MapFrom(src => 
+                    src.LastSessionDate.HasValue ? DateOnly.FromDateTime(src.LastSessionDate.Value.DateTime) : (DateOnly?)null));
             CreateMap<UpdateEventDto, Event>();
 
             // ============================================
@@ -195,6 +203,13 @@ namespace Explore.Application.Profiles
                 .ForMember(dest => dest.OrganizationPositionFullName, opt => opt.MapFrom(src => src.OrganizationPosition != null ? src.OrganizationPosition.FullName : null));
             CreateMap<AddOrganizationMemberDto, OrganizationMember>();
             CreateMap<UpdateOrganizationMemberRoleDto, OrganizationMember>();
+
+            // Mapping for invitation DTO used by GetMyInvitations
+            CreateMap<OrganizationMember, OrganizationInvitationDto>()
+                .ForMember(dest => dest.OrganizationId, opt => opt.MapFrom(src => src.OrganizationId))
+                .ForMember(dest => dest.OrganizationName, opt => opt.MapFrom(src => src.Organization != null ? src.Organization.FullName : null))
+                .ForMember(dest => dest.Role, opt => opt.MapFrom(src => (Explore.Domain.Enums.OrganizationRoleEnum)src.OrganizationRoleId))
+                .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null));
 
             // ============================================
             // APPROVAL STATUS MAPPINGS

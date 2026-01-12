@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Category.Validators;
 using Explore.Application.Features.Categories.Requests.Commands;
@@ -15,13 +16,16 @@ namespace Explore.Application.Features.Categories.Handlers.Commands
     public class CreateCategoryCommandHandler : IRequestHandler<CreateCategoryCommand, BaseCommandResponse<Guid>>
     {
         private readonly ICategoryRepository _categoryRepository;
+        private readonly ITenantContext _tenantContext;
         private readonly IMapper _mapper;
 
         public CreateCategoryCommandHandler(
             ICategoryRepository categoryRepository,
+            ITenantContext tenantContext,
             IMapper mapper)
         {
             _categoryRepository = categoryRepository;
+            _tenantContext = tenantContext;
             _mapper = mapper;
         }
 
@@ -41,6 +45,9 @@ namespace Explore.Application.Features.Categories.Handlers.Commands
             }
 
             var category = _mapper.Map<Category>(request.CategoryDto);
+
+            // Set TenantId from the request context
+            category.TenantId = _tenantContext.TenantId;
 
             category = await _categoryRepository.Create(category);
 

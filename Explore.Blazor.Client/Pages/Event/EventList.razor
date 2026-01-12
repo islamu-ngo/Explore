@@ -1,8 +1,9 @@
-﻿@page "/event"
+@page "/event"
 @page "/events"
 @using MudBlazor
-@using Explore.Blazor.Client.Models.DTOs
+@using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Services
+@using Microsoft.AspNetCore.Components
 @inject NavigationManager Navigation
 @inject IProgramService ProgramService
 
@@ -99,7 +100,7 @@
 }
 
 /* Badges row */
-.badges{ display:flex; gap:8px; align-items:center; margin: 10px 0 6px 0; }
+.badges{ display:flex; gap:8px; align-items:center; margin: 10px 0 6px 0;}
 
 /* Location row */
 .loc{
@@ -137,40 +138,6 @@
 
         <!-- Filters -->
         <div class="filters-bar mb-4">
-            <!-- Country -->
-            <div class="filter-cell">
-                <MudPopover Open="@isCountryOpen" Fixed="true" Class="filter-popover px-4 py-3">
-                    <div class="d-flex flex-column gap-3" style="min-width:220px">
-                        <MudText Typo="Typo.subtitle2">Country</MudText>
-                        <div class="d-flex flex-column gap-1">
-                            <MudText Typo="Typo.body2"
-                                     Color="@(selectedCountry == "" ? Color.Primary : Color.Default)"
-                                     Class="filter-option"
-                                     @onclick="@(() => OnCountryChanged(""))">All Countries</MudText>
-                            <MudText Typo="Typo.body2"
-                                     Color="@(selectedCountry == "Netherlands" ? Color.Primary : Color.Default)"
-                                     Class="filter-option"
-                                     @onclick="@(() => OnCountryChanged("Netherlands"))">Netherlands</MudText>
-                            <MudText Typo="Typo.body2"
-                                     Color="@(selectedCountry == "Belgium" ? Color.Primary : Color.Default)"
-                                     Class="filter-option"
-                                     @onclick="@(() => OnCountryChanged("Belgium"))">Belgium</MudText>
-                            <MudText Typo="Typo.body2"
-                                     Color="@(selectedCountry == "Germany" ? Color.Primary : Color.Default)"
-                                     Class="filter-option"
-                                     @onclick="@(() => OnCountryChanged("Germany"))">Germany</MudText>
-                        </div>
-                    </div>
-                </MudPopover>
-                <MudPaper @onclick="@(() => isCountryOpen = !isCountryOpen)" 
-                          Class="filter-paper d-flex justify-space-between align-center">
-                    <MudText Class="ml-2">
-                        @(string.IsNullOrEmpty(selectedCountry) ? "All Countries" : selectedCountry)
-                    </MudText>
-                    <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" />
-                </MudPaper>
-            </div>
-
             <!-- Date -->
             <div class="filter-cell">
                 <MudPopover Open="@isDateOpen" Fixed="true" Class="filter-popover px-4 py-3">
@@ -306,12 +273,11 @@
                     <MudItem xs="12" sm="6" md="4">
                         <MudCard Elevation="0" Class="card">
                             <MudCardMedia Class="card-media">
-                                @if (!string.IsNullOrEmpty(evt.ImageKey))
+                                @if (!string.IsNullOrEmpty(evt.FeaturedImageUri))
                                 {
-                                    <S3Image ImageKey="@evt.ImageKey" 
-                                            Alt="@evt.Title"
-                                            ObjectFit="cover"
-                                            ContainerStyle="height: 200px;" />
+                                    <img src="@evt.FeaturedImageUri"
+                                         alt="@evt.Title"
+                                         style="width: 100%; height: 200px; object-fit: cover;" />
                                 }
                                 else
                                 {
@@ -326,10 +292,10 @@
                                     <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.LocationOn">
                                         @GetLocationText(evt)
                                     </MudChip>
-                                    @if (evt.Price > 0)
+                                    @if (evt.Price.HasValue && evt.Price > 0)
                                     {
                                         <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.EuroSymbol">
-                                            €@evt.Price.ToString("F2")
+                                            @evt.CurrencyCode @evt.Price.Value.ToString("F2")
                                         </MudChip>
                                     }
                                     else
@@ -343,10 +309,10 @@
                                 <MudText Typo="Typo.body2" Color="Color.Surface" Style="opacity:.85; min-height: 40px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4;">
                                     @GetTruncatedDescription(evt.Description)
                                 </MudText>
-                                @if (evt.AudienceAttendees.HasValue && evt.AudienceAttendees.Value > 0)
+                                @if (evt.TotalViews > 0)
                                 {
                                     <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
-                                        <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Small" /> @evt.AudienceAttendees attendees
+                                        <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" /> @evt.TotalViews views
                                     </MudText>
                                 }
                             </MudCardContent>
@@ -358,8 +324,8 @@
                                     View Details
                                 </MudButton>
                                 <div class="loc">
-                                    <MudIcon Icon="@Icons.Material.Filled.LocationOn" />
-                                    <MudText>@(evt.Country ?? "Online")</MudText>
+                                    <MudIcon Icon="@Icons.Material.Filled.Business" />
+                                    <MudText>@(evt.ActorDisplayName ?? "Community")</MudText>
                                 </div>
                             </MudCardActions>
                         </MudCard>
@@ -388,184 +354,99 @@
 
 @code {
     private string searchText = "";
-    private string selectedCountry = "";
     private string selectedDate = "";
     private string selectedCategory = "";
-    private bool isCountryOpen;
     private bool isDateOpen;
     private bool isCategoryOpen;
     private bool isLoading = true;
+    private bool _dataLoaded = false;
 
     // Pagination variables
     private int currentPage = 1;
     private int itemsPerPage = 6;
 
     // API Data
-    private List<ProgramListDto> allPrograms = new();
-    private List<EventTypeListDto> eventTypes = new();
-    private List<ProgramTypeListDto> programTypes = new();
+    private ICollection<EventListDto> allPrograms = new List<EventListDto>();
+    private ICollection<EventTypeListDto> eventTypes = new List<EventTypeListDto>();
+    private ICollection<EventFormatListDto> programTypes = new List<EventFormatListDto>();
     private Dictionary<int, string> eventTypeMap = new();
     private Dictionary<int, string> programTypeMap = new();
 
-    // Cache voor snellere loading
-    private static List<ProgramListDto>? cachedPrograms;
-    private static List<EventTypeListDto>? cachedEventTypes;
-    private static List<ProgramTypeListDto>? cachedProgramTypes;
-    private static DateTime? lastCacheTime;
-    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
-
     protected override async Task OnInitializedAsync()
     {
-        // Start met cached data als beschikbaar
-        if (HasValidCache())
-        {
-            LoadFromCache();
-            isLoading = false;
-            StateHasChanged(); // Toon direct cached data
-            
-            // Refresh in background
-            _ = Task.Run(async () =>
-            {
-                await Task.Delay(100); // Kleine delay
-                await RefreshDataInBackground();
-            });
-        }
-        else
-        {
-            await LoadDataAsync();
-        }
+        Console.WriteLine("[EVENT LIST] OnInitializedAsync starting...");
+        // Always load data - don't use any caching that can cause issues
+        await LoadDataAsync();
     }
 
-    private bool HasValidCache()
+    private void BuildLookupMaps()
     {
-        return cachedPrograms != null &&
-               cachedEventTypes != null &&
-               cachedProgramTypes != null &&
-               lastCacheTime.HasValue &&
-               (DateTime.UtcNow - lastCacheTime.Value) < CacheDuration;
+        eventTypeMap = eventTypes.Any()
+            ? eventTypes.ToDictionary(et => et.Id, et => et.FullName)
+            : new();
+        programTypeMap = programTypes.Any()
+            ? programTypes.ToDictionary(pt => pt.Id, pt => pt.FullName)
+            : new();
     }
 
-    private void LoadFromCache()
+    private async Task LoadDataAsync()
     {
-        allPrograms = cachedPrograms!;
-        eventTypes = cachedEventTypes!;
-        programTypes = cachedProgramTypes!;
-        eventTypeMap = eventTypes.ToDictionary(et => et.Id, et => et.FullName);
-        programTypeMap = programTypes.ToDictionary(pt => pt.Id, pt => pt.FullName);
-    }
+        // Prevent multiple loads
+        if (_dataLoaded) return;
+        
+        isLoading = true;
 
-    private async Task RefreshDataInBackground()
-    {
         try
         {
+            Console.WriteLine("[EVENT LIST] Loading data...");
+            
+            // Parallel loading
             var programsTask = ProgramService.GetAllProgramsAsync();
             var eventTypesTask = ProgramService.GetEventTypesAsync();
             var programTypesTask = ProgramService.GetProgramTypesAsync();
 
             await Task.WhenAll(programsTask, eventTypesTask, programTypesTask);
 
-            var newPrograms = await programsTask;
-            var newEventTypes = await eventTypesTask;
-            var newProgramTypes = await programTypesTask;
+            allPrograms = await programsTask;
+            eventTypes = await eventTypesTask;
+            programTypes = await programTypesTask;
 
-            // Update alleen als er echt nieuwe data is
-            if (newPrograms.Count != allPrograms.Count || 
-                newEventTypes.Count != eventTypes.Count)
-            {
-                allPrograms = newPrograms;
-                eventTypes = newEventTypes;
-                programTypes = newProgramTypes;
-                
-                UpdateCache(newPrograms, newEventTypes, newProgramTypes);
-                
-                eventTypeMap = eventTypes.ToDictionary(et => et.Id, et => et.FullName);
-                programTypeMap = programTypes.ToDictionary(pt => pt.Id, pt => pt.FullName);
-                
-                await InvokeAsync(StateHasChanged);
-            }
+            Console.WriteLine($"[EVENT LIST] Loaded {allPrograms.Count} events, {eventTypes.Count} types, {programTypes.Count} formats");
+
+            BuildLookupMaps();
+            _dataLoaded = true;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Silent fail - cached data blijft beschikbaar
-        }
-    }
-
-    private async Task LoadDataAsync()
-    {
-        isLoading = true;
-        StateHasChanged();
-        
-        try
-        {
-            // Optimized parallel loading met timeout
-            var programsTask = ProgramService.GetAllProgramsAsync();
-            var eventTypesTask = ProgramService.GetEventTypesAsync();
-            var programTypesTask = ProgramService.GetProgramTypesAsync();
-
-            // Wacht maximaal 10 seconden
-            var timeoutTask = Task.Delay(10000);
-            var completedTask = await Task.WhenAny(
-                Task.WhenAll(programsTask, eventTypesTask, programTypesTask),
-                timeoutTask
-            );
-
-            allPrograms = programsTask.IsCompleted ? await programsTask : new();
-            eventTypes = eventTypesTask.IsCompleted ? await eventTypesTask : new();
-            programTypes = programTypesTask.IsCompleted ? await programTypesTask : new();
-
-            // Update cache
-            UpdateCache(allPrograms, eventTypes, programTypes);
-
-            // Create lookup maps (zeer snel)
-            eventTypeMap = eventTypes.Any() 
-                ? eventTypes.ToDictionary(et => et.Id, et => et.FullName) 
-                : new();
-            programTypeMap = programTypes.Any() 
-                ? programTypes.ToDictionary(pt => pt.Id, pt => pt.FullName) 
-                : new();
-        }
-        catch (Exception)
-        {
-            // Probeer cache te gebruiken als fallback
-            if (HasValidCache())
-            {
-                LoadFromCache();
-            }
+            Console.WriteLine($"[EVENT LIST] LoadDataAsync error: {ex.Message}");
+            // Keep empty lists on error - don't throw
+            allPrograms = new List<EventListDto>();
+            eventTypes = new List<EventTypeListDto>();
+            programTypes = new List<EventFormatListDto>();
         }
         finally
         {
             isLoading = false;
-            StateHasChanged();
         }
     }
 
-    private static void UpdateCache(List<ProgramListDto> programs, List<EventTypeListDto> evtTypes, List<ProgramTypeListDto> prgTypes)
-    {
-        cachedPrograms = programs;
-        cachedEventTypes = evtTypes;
-        cachedProgramTypes = prgTypes;
-        lastCacheTime = DateTime.UtcNow;
-    }
-
-    private List<ProgramListDto> AllFilteredEvents
+    private List<EventListDto> AllFilteredEvents
     {
         get
         {
-            // Cache gefilterde resultaten
+            // Cache filtered results
             return allPrograms
                 .Where(e => string.IsNullOrEmpty(searchText) ||
                             e.Title.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
                             (e.Description?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false))
-                .Where(e => string.IsNullOrEmpty(selectedCountry) ||
-                            (e.Country?.Contains(selectedCountry, StringComparison.OrdinalIgnoreCase) ?? false))
                 .Where(e => string.IsNullOrEmpty(selectedCategory) ||
                             GetEventTypeName(e).Equals(selectedCategory, StringComparison.OrdinalIgnoreCase))
-                .Where(e => e.EndDate >= DateTime.Now)
+                .Where(e => e.LastSessionDate == null || e.LastSessionDate >= DateTimeOffset.Now)
                 .ToList();
         }
     }
 
-    private List<ProgramListDto> FilteredEvents
+    private List<EventListDto> FilteredEvents
     {
         get
         {
@@ -592,13 +473,6 @@
         currentPage = 1;
     }
 
-    private void OnCountryChanged(string value)
-    {
-        selectedCountry = value;
-        isCountryOpen = false;
-        currentPage = 1;
-    }
-
     private void OnDateChanged(string value)
     {
         selectedDate = value;
@@ -618,54 +492,57 @@
         currentPage = page;
     }
 
-    private string GetEventTypeName(ProgramListDto program)
+    private string GetEventTypeName(EventListDto program)
     {
-        // Optimized lookup met fallback
-        return programTypeMap.TryGetValue(program.ProgramTypeId, out var programTypeName) 
-            ? programTypeName 
+        // Use the FullName from the DTO directly if available
+        if (!string.IsNullOrEmpty(program.EventTypeFullName))
+            return program.EventTypeFullName;
+
+        // Fallback to lookup
+        return programTypeMap.TryGetValue(program.EventFormatId, out var programTypeName)
+            ? programTypeName
             : "Event";
     }
 
-    private string GetLocationText(ProgramListDto program)
+    private string GetLocationText(EventListDto program)
     {
-        if (!string.IsNullOrEmpty(program.ProgramUrl))
-            return "Online";
-        
-        if (!string.IsNullOrEmpty(program.City))
-            return program.City;
-            
-        if (!string.IsNullOrEmpty(program.Country))
-            return program.Country;
-            
-        return "Location TBD";
+        // EventListDto doesn't have location directly - use format
+        if (program.EventFormatId == 1 // Assuming 1 = Online
+            ) return "Online";
+
+        return program.EventFormatFullName ?? "Location TBD";
     }
 
-    private string GetEventImage(ProgramListDto program)
+    private string GetEventImage(EventListDto program)
     {
-        // Gebruik een placeholder service die sneller is
-        var encodedTitle = Uri.EscapeDataString(program.Title.Length > 30 
-            ? program.Title.Substring(0, 30) + "..." 
+        // Use FeaturedImageUri if available
+        if (!string.IsNullOrEmpty(program.FeaturedImageUri))
+            return program.FeaturedImageUri;
+
+        // Fallback to placeholder
+        var encodedTitle = Uri.EscapeDataString(program.Title.Length > 30
+            ? program.Title.Substring(0, 30) + "..."
             : program.Title);
         var color = GetEventColorForProgram(program);
         return $"https://placehold.co/600x400/{color}/ffffff?text={encodedTitle}";
     }
 
-    private string GetEventColorForProgram(ProgramListDto program)
+    private string GetEventColorForProgram(EventListDto program)
     {
-        // Snelle color hash gebaseerd op program type
+        // Quick color hash based on event type
         var typeColors = new Dictionary<int, string>
         {
-            { 1, "2196F3" }, // Lecture - Blauw
-            { 2, "FF9800" }, // Workshop - Oranje  
-            { 3, "4CAF50" }, // Social - Groen
-            { 4, "E91E63" }, // Charity - Roze
-            { 5, "9C27B0" }, // Education - Paars
+            { 1, "2196F3" }, // Lecture - Blue
+            { 2, "FF9800" }, // Workshop - Orange
+            { 3, "4CAF50" }, // Social - Green
+            { 4, "E91E63" }, // Charity - Pink
+            { 5, "9C27B0" }, // Education - Purple
         };
-        
-        if (typeColors.TryGetValue(program.ProgramTypeId, out var color))
+
+        if (typeColors.TryGetValue(program.EventTypeId, out var color))
             return color;
-            
-        // Fallback: hash van title
+
+        // Fallback: hash of title
         var hash = program.Title.GetHashCode();
         var colors = new[] { "2196F3", "FF9800", "4CAF50", "E91E63", "9C27B0", "607D8B" };
         return colors[Math.Abs(hash) % colors.Length];
@@ -678,18 +555,18 @@
 
         // Split op zinnen (. ! ?)
         var sentences = System.Text.RegularExpressions.Regex.Split(description, @"(?<=[.!?])\s+");
-        
+
         // Neem maximaal 2 zinnen
         var result = string.Join(" ", sentences.Take(2));
-        
+
         // Als er meer dan 2 zinnen zijn, voeg ... toe
         if (sentences.Length > 2)
             result += "...";
-            
+
         // Extra veiligheid: limiteer tot 150 karakters
         if (result.Length > 150)
             result = result.Substring(0, 147) + "...";
-            
+
         return result;
     }
 }

@@ -1,12 +1,14 @@
 @page "/my-registrations"
 @using MudBlazor
-@using Explore.Blazor.Client.Models.DTOs
+@using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Components
+@using Microsoft.AspNetCore.Components
 @inject NavigationManager Navigation
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject IProgramService ProgramService
-@inject IOrganizationReviewService OrganizationReviewService
+@inject IUserService UserService
+
 
 <PageTitle>My Registrations</PageTitle>
 
@@ -332,7 +334,7 @@
                           Immediate="true"
                           OnDebounceIntervalElapsed="FilterRegistrations"
                           DebounceInterval="300" />
-            
+
             <MudSelect @bind-Value="statusFilter"
                        Label="Status"
                        Variant="Variant.Outlined"
@@ -373,104 +375,36 @@
                 <div class="registration-card">
                     <div class="card-content">
                         <div class="event-image">
-                            @if (!string.IsNullOrEmpty(registration.ProgramImageKey))
-                            {
-                                <S3Image ImageKey="@registration.ProgramImageKey" 
-                                       Alt="@registration.ProgramTitle"
-                                       ObjectFit="cover"
-                                       PlaceholderIcon="@Icons.Material.Filled.Event" />
-                            }
-                            else
-                            {
-                                <img src="@GetEventImage(registration)" alt="@registration.ProgramTitle" />
-                            }
+                            <img src="@GetEventImage(registration)" alt="@registration.EventSessionTitle" />
                         </div>
 
                         <div class="event-details">
-                            <h3 class="event-title">@registration.ProgramTitle</h3>
-                            
+                            <h3 class="event-title">@registration.EventSessionTitle</h3>
+
                             <div class="event-meta">
                                 <div class="meta-item">
-                                    <MudIcon Icon="@Icons.Material.Filled.CalendarToday" />
-                                    <span>Registered on @registration.RegistrationDate.ToString("MMM dd, yyyy")</span>
-                                </div>
-                                @if (registration.EventStartDate.HasValue)
-                                {
-                                    <div class="meta-item">
-                                        <MudIcon Icon="@Icons.Material.Filled.Event" />
-                                        <span>Event: @registration.EventStartDate.Value.ToString("MMM dd, yyyy")</span>
-                                    </div>
-                                }
-                                <div class="meta-item">
-                                    <MudIcon Icon="@Icons.Material.Filled.LocationOn" />
-                                    <span>@(registration.ProgramCity ?? "")</span>
+                                    <MudIcon Icon="@Icons.Material.Filled.Person" />
+                                    <span>@(registration.UserFullName ?? "Unknown")</span>
                                 </div>
                             </div>
 
                             <div>
-                                <span class="status-badge @GetStatusClass(registration.Status)">
-                                    @registration.Status
+                                <span class="status-badge @GetStatusClass(registration.ApprovalStatusMasterCode)">
+                                    @(registration.ApprovalStatusFullName ?? "Pending")
                                 </span>
                             </div>
-
-                            <p class="event-description">@registration.ProgramDescription</p>
-
-                            @if (!string.IsNullOrWhiteSpace(registration.ProgramAddress))
-                            {
-                                <div class="meta-item">
-                                    <MudIcon Icon="@Icons.Material.Filled.Place" />
-                                    <span>@registration.ProgramAddress</span>
-                                </div>
-                            }
                         </div>
 
                         <div class="card-actions">
-                            @if (!string.IsNullOrEmpty(registration.ProgramUrl) && 
-                                 registration.EventStartDate.HasValue && 
-                                 registration.EventEndDate.HasValue &&
-                                 DateTime.UtcNow >= registration.EventStartDate.Value && 
-                                 DateTime.UtcNow <= registration.EventEndDate.Value &&
-                                 !registration.Status.Equals("cancelled", StringComparison.OrdinalIgnoreCase))
-                            {
-                                <MudButton Variant="Variant.Filled"
-                                           Color="Color.Success"
-                                           StartIcon="@Icons.Material.Filled.VideoCall"
-                                           OnClick="@(() => OpenOnlineEventDialog(registration))">
-                                    Join Online Event
-                                </MudButton>
-                            }
-
                             <MudButton Variant="Variant.Outlined"
                                        Color="Color.Primary"
                                        StartIcon="@Icons.Material.Filled.Visibility"
-                                       OnClick="@(() => ViewDetails(registration.ProgramId))">
-                                View Program
+                                       OnClick="@(() => ViewDetails(registration.EventSessionId))">
+                                View Session
                             </MudButton>
 
-                            @if (registration.EventEndDate.HasValue && registration.EventEndDate.Value < DateTime.Now)
-                            {
-                                @if (registration.HasReviewed)
-                                {
-                                    <MudButton Variant="Variant.Outlined"
-                                               Color="Color.Secondary"
-                                               StartIcon="@Icons.Material.Filled.Check"
-                                               Disabled="true">
-                                        Reviewed
-                                    </MudButton>
-                                }
-                                else
-                                {
-                                    <MudButton Variant="Variant.Outlined"
-                                               Color="Color.Secondary"
-                                               StartIcon="@Icons.Material.Filled.RateReview"
-                                               OnClick="@(() => OpenReviewDialog(registration))">
-                                        Leave Review
-                                    </MudButton>
-                                }
-                            }
-                            
-                            @if (!registration.Status.Equals("completed", StringComparison.OrdinalIgnoreCase) && 
-                                 (!registration.EventEndDate.HasValue || registration.EventEndDate.Value > DateTime.Now))
+                            @if (registration.ApprovalStatusMasterCode?.ToLower() != "completed" &&
+                                 registration.ApprovalStatusMasterCode?.ToLower() != "cancelled")
                             {
                                 <MudButton Variant="Variant.Outlined"
                                            Color="Color.Error"
@@ -513,13 +447,14 @@
 </MudContainer>
 
 @code {
-    private List<ProgramRegistrationListDto> registrations = new();
-    private List<ProgramRegistrationListDto> filteredRegistrations = new();
+    private ICollection<EventRegistrationListDto> registrations = new List<EventRegistrationListDto>();
+    private List<EventRegistrationListDto> filteredRegistrations = new();
     private string searchQuery = "";
     private string statusFilter = "all";
     private bool isLoading = true;
     private string? errorMessage;
 
+    // Simplified initialization: load data from API on client only (no prerender persistence)
     protected override async Task OnInitializedAsync()
     {
         await LoadRegistrationsAsync();
@@ -533,12 +468,16 @@
 
         try
         {
-            registrations = await ProgramService.GetMyRegistrationsAsync();
+            var user = await UserService.GetCurrentUserAsync();
+            if (user != null)
+            {
+                registrations = await ProgramService.GetRegistrationsByUserAsync(user.Id);
+            }
         }
         catch (Exception ex)
         {
             errorMessage = $"Unable to load your registrations: {ex.Message}";
-            registrations = new List<ProgramRegistrationListDto>();
+            Console.WriteLine($"Error loading registrations: {ex}");
         }
         finally
         {
@@ -548,24 +487,41 @@
 
     private void FilterRegistrations()
     {
-        var query = registrations.AsQueryable();
+        var filtered = registrations.AsEnumerable();
 
+        // Search filter
         if (!string.IsNullOrWhiteSpace(searchQuery))
         {
-            query = query.Where(r =>
-                r.ProgramTitle.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
-                r.ProgramDescription.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
-                (r.ProgramCity ?? "").Contains(searchQuery, StringComparison.OrdinalIgnoreCase));
+            filtered = filtered.Where(r =>
+                (r.EventSessionTitle?.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ?? false));
         }
 
+        // Status filter
         if (statusFilter != "all")
         {
-            query = query.Where(r => r.Status.Equals(statusFilter, StringComparison.OrdinalIgnoreCase));
+            filtered = filtered.Where(r =>
+                (r.ApprovalStatusMasterCode?.Equals(statusFilter, StringComparison.OrdinalIgnoreCase) ?? false));
         }
 
-        filteredRegistrations = query
-            .OrderBy(r => r.ProgramTitle)
-            .ToList();
+        filteredRegistrations = filtered.ToList();
+    }
+
+    private void OnSearchChanged(string value)
+    {
+        searchQuery = value;
+        FilterRegistrations();
+    }
+
+    private void OnStatusFilterChanged(string value)
+    {
+        statusFilter = value;
+        FilterRegistrations();
+    }
+
+    private async Task RefreshData()
+    {
+        await LoadRegistrationsAsync();
+        FilterRegistrations();
     }
 
     private void ResetFilters()
@@ -576,51 +532,64 @@
     }
 
     private int GetTotalRegistrations() => registrations.Count;
-    
-    private int GetUpcomingCount()
-    {
-        return registrations.Count(r => r.EventStartDate.HasValue && r.EventStartDate.Value > DateTime.Now);
-    }
-    
-    private int GetCompletedCount() => registrations.Count(r => r.EventEndDate.HasValue && r.EventEndDate.Value < DateTime.Now);
 
-    private string GetStatusClass(string status)
+    private int GetUpcomingCount() => registrations.Count(r =>
+        r.ApprovalStatusMasterCode?.Equals("pending", StringComparison.OrdinalIgnoreCase) == true ||
+        r.ApprovalStatusMasterCode?.Equals("approved", StringComparison.OrdinalIgnoreCase) == true);
+
+    private int GetCompletedCount() => registrations.Count(r =>
+        r.ApprovalStatusMasterCode?.Equals("completed", StringComparison.OrdinalIgnoreCase) == true);
+
+    private Color GetStatusColor(EventRegistrationListDto registration)
     {
-        return status.ToLower() switch
+        return registration.ApprovalStatusMasterCode?.ToLower() switch
         {
-            "active" => "upcoming",
-            "upcoming" => "upcoming",
-            "completed" => "completed",
-            "cancelled" => "cancelled",
+            "approved" => Color.Success,
+            "pending" => Color.Warning,
+            "rejected" => Color.Error,
+            "completed" => Color.Info,
+            _ => Color.Default
+        };
+    }
+
+    private string GetStatusClass(string? status)
+    {
+        return status?.ToLower() switch
+        {
+            "approved" => "status-approved",
+            "pending" => "status-pending",
+            "rejected" or "cancelled" => "status-cancelled",
+            "completed" => "status-completed",
             _ => ""
         };
     }
 
-    private string GetEventImage(ProgramRegistrationListDto registration)
+    private string GetEventImage(EventRegistrationListDto registration)
     {
-        var color = registration.Status switch
+        var color = registration.ApprovalStatusMasterCode?.ToLower() switch
         {
-            "upcoming" => "2196F3",
-            "completed" => "4CAF50",
-            "cancelled" => "F44336",
+            "approved" => "4CAF50",
+            "pending" => "FF9800",
+            "rejected" => "F44336",
+            "completed" => "2196F3",
             _ => "607D8B"
         };
-        var text = !string.IsNullOrWhiteSpace(registration.ProgramTitle)
-            ? registration.ProgramTitle.Split(' ').FirstOrDefault() ?? "Program"
-            : "Program";
-        return $"https://dummyimage.com/400x400/{color}/ffffff&text={Uri.EscapeDataString(text)}";
+        var text = !string.IsNullOrWhiteSpace(registration.EventSessionTitle)
+            ? registration.EventSessionTitle.Split(' ').FirstOrDefault() ?? "Event"
+            : "Event";
+        return $"https://dummyimage.com/400x200/{color}/ffffff&text={Uri.EscapeDataString(text)}";
     }
 
-    private void ViewDetails(Guid programId)
+    private void ViewDetails(Guid sessionId)
     {
-        Navigation.NavigateTo($"/event/detail/{programId}");
+        Navigation.NavigateTo($"/event/session/{sessionId}");
     }
 
-    private async Task CancelRegistration(ProgramRegistrationListDto registration)
+    private async Task CancelRegistration(EventRegistrationListDto registration)
     {
         var result = await DialogService.ShowMessageBox(
             "Cancel Registration",
-            $"Are you sure you want to unregister from '{registration.ProgramTitle}'?",
+            $"Are you sure you want to unregister from '{registration.EventSessionTitle}'?",
             yesText: "Yes, Unregister",
             cancelText: "No, Keep Registration");
 
@@ -631,67 +600,18 @@
                 var success = await ProgramService.UnregisterFromProgramAsync(registration.Id);
                 if (success)
                 {
-                    // Remove from list
-                    registrations.Remove(registration);
+                    await LoadRegistrationsAsync();
                     FilterRegistrations();
-                    Snackbar.Add($"Successfully unregistered from {registration.ProgramTitle}", Severity.Success);
+                    Snackbar.Add($"Successfully unregistered from {registration.EventSessionTitle}", Severity.Success);
                 }
                 else
                 {
-                    Snackbar.Add($"Failed to unregister from {registration.ProgramTitle}", Severity.Error);
+                    Snackbar.Add($"Failed to unregister", Severity.Error);
                 }
             }
             catch (Exception ex)
             {
                 Snackbar.Add($"Error: {ex.Message}", Severity.Error);
-            }
-        }
-    }
-
-    private void OpenOnlineEventDialog(ProgramRegistrationListDto registration)
-    {
-        var parameters = new DialogParameters
-        {
-            { "Title", registration.ProgramTitle },
-            { "Url", registration.ProgramUrl }
-        };
-
-        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        DialogService.Show<OnlineEventDialog>("Join Online Event", parameters, options);
-    }
-
-    private async Task OpenReviewDialog(ProgramRegistrationListDto registration)
-    {
-        var parameters = new DialogParameters
-        {
-            { "OrganizationName", registration.OrganizationName }
-        };
-
-        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = DialogService.Show<ReviewDialog>("Leave a Review", parameters, options);
-        var result = await dialog.Result;
-
-        if (!result.Canceled)
-        {
-            var data = (dynamic)result.Data;
-            var review = new CreateOrganizationReviewDto
-            {
-                OrganizationId = registration.OrganizationId,
-                ProgramId = registration.ProgramId,
-                UserId = registration.UserId,
-                ReviewerName = registration.UserName,
-                Rating = data.Rating,
-                Comment = data.Comment
-            };
-
-            var response = await OrganizationReviewService.CreateReview(review);
-            if (response.Success)
-            {
-                Snackbar.Add("Review submitted successfully!", Severity.Success);
-            }
-            else
-            {
-                Snackbar.Add($"Failed to submit review: {response.Message}", Severity.Error);
             }
         }
     }

@@ -1,9 +1,9 @@
 @page "/organization/{Id:guid}/members"
 @using MudBlazor
-@using Explore.Blazor.Client.Models.DTOs.OrganizationMember
-@using Explore.Blazor.Client.Models.Enums
+@using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Services
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components
 @inject IOrganizationMemberService MemberService
 @inject IOrganizationService OrganizationService
 @inject ISnackbar Snackbar
@@ -13,35 +13,35 @@
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
     <MudText Typo="Typo.h4" GutterBottom="true">Organization Members</MudText>
-    
+
     <div class="d-flex justify-space-between align-center mb-4 gap-4">
-        @if (currentUserRole.HasValue && currentUserRole.Value != OrganizationRole.Member)
+        @if (currentUserRole.HasValue && currentUserRole.Value != 4) @* 4 = Member *@
         {
             <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenInviteDialog" StartIcon="@Icons.Material.Filled.PersonAdd">
                 Invite Member
             </MudButton>
         }
-        else 
+        else
         {
             <MudSpacer />
         }
     </div>
 
     <div class="d-flex gap-4 mb-4">
-        <MudTextField @bind-Value="_searchString" 
-                      Placeholder="Search members..." 
-                      Adornment="Adornment.Start" 
-                      AdornmentIcon="@Icons.Material.Filled.Search" 
-                      Immediate="true" 
-                      Variant="Variant.Outlined" 
+        <MudTextField @bind-Value="_searchString"
+                      Placeholder="Search members..."
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      Immediate="true"
+                      Variant="Variant.Outlined"
                       Margin="Margin.Dense"
                       Class="flex-grow-1"/>
-        
-        <MudSelect T="OrganizationRole?" Label="Role" @bind-Value="_roleFilter" Variant="Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter" Class="flex-none" Style="min-width: 150px;" Clearable="true">
-            @foreach (OrganizationRole role in Enum.GetValues(typeof(OrganizationRole)))
-            {
-                <MudSelectItem Value="(OrganizationRole?)role">@role</MudSelectItem>
-            }
+
+        <MudSelect T="int?" Label="Role" @bind-Value="_roleFilter" Variant="Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter" Class="flex-none" Style="min-width: 150px;" Clearable="true">
+            <MudSelectItem Value="(int?)1">Creator</MudSelectItem>
+            <MudSelectItem Value="(int?)2">Co-Owner</MudSelectItem>
+            <MudSelectItem Value="(int?)3">Admin</MudSelectItem>
+            <MudSelectItem Value="(int?)4">Member</MudSelectItem>
         </MudSelect>
     </div>
 
@@ -50,7 +50,7 @@
             <MudTh>User</MudTh>
             <MudTh>Email</MudTh>
             <MudTh>Role</MudTh>
-            @if (currentUserRole.HasValue && currentUserRole.Value != OrganizationRole.Member)
+            @if (currentUserRole.HasValue && currentUserRole.Value != 4) @* 4 = Member *@
             {
                 <MudTh>Actions</MudTh>
             }
@@ -58,32 +58,25 @@
         <RowTemplate>
             <MudTd DataLabel="User">
                 <div class="d-flex align-center">
-                    @if (!string.IsNullOrEmpty(context.ProfilePictureUrl))
-                    {
-                        <MudAvatar Image="@context.ProfilePictureUrl" Size="Size.Small" Class="mr-2" />
-                    }
-                    else
-                    {
-                        <MudAvatar Color="Color.Secondary" Size="Size.Small" Class="mr-2">@context.Email.Substring(0, 1).ToUpper()</MudAvatar>
-                    }
-                    @if (context.UserId == null)
+                    <MudAvatar Color="Color.Secondary" Size="Size.Small" Class="mr-2">@(string.IsNullOrEmpty(context.UserEmail) ? "?" : context.UserEmail.Substring(0, 1).ToUpper())</MudAvatar>
+                    @if (context.UserId == Guid.Empty)
                     {
                         <MudText FontStyle="FontStyle.Italic">Pending Invite</MudText>
                     }
                     else
                     {
-                        <MudText>@(context.UserName ?? context.Email)</MudText>
+                        <MudText>@(context.UserFullName ?? context.UserEmail)</MudText>
                     }
                 </div>
             </MudTd>
-            <MudTd DataLabel="Email">@context.Email</MudTd>
+            <MudTd DataLabel="Email">@context.UserEmail</MudTd>
             <MudTd DataLabel="Role">
-                <MudChip T="string" Color="@GetRoleColor(context.Role)" Size="Size.Small">@context.Role</MudChip>
+                <MudChip T="string" Color="@GetRoleColor(context.OrganizationRoleId)" Size="Size.Small">@GetRoleName(context.OrganizationRoleId)</MudChip>
             </MudTd>
-            @if (currentUserRole.HasValue && currentUserRole.Value != OrganizationRole.Member)
+            @if (currentUserRole.HasValue && currentUserRole.Value != 4) @* 4 = Member *@
             {
                 <MudTd DataLabel="Actions">
-                    @if (context.Role != OrganizationRole.Creator)
+                    @if (context.OrganizationRoleId != 1) @* 1 = Creator *@
                     {
                         <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
                             <MudMenuItem OnClick="@(() => OpenEditRoleDialog(context))" Icon="@Icons.Material.Filled.Edit">Change Role</MudMenuItem>
@@ -104,99 +97,55 @@
     private List<OrganizationMemberDto> Members = new();
     private bool _loading = true;
     private string? currentUserId;
-    private OrganizationRole? currentUserRole;
-    
+    private int? currentUserRole;
+
     // New fields
     private string _searchString = "";
-    private OrganizationRole? _roleFilter;
+    private int? _roleFilter;
+
+
 
     private IEnumerable<OrganizationMemberDto> FilteredMembers =>
         Members
-            .Where(x => string.IsNullOrWhiteSpace(_searchString) || 
-                        (x.UserName?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false) || 
-                        x.Email.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
-            .Where(x => _roleFilter == null || x.Role == _roleFilter);
+            .Where(x => string.IsNullOrWhiteSpace(_searchString) ||
+                        (x.UserFullName?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                        (x.UserEmail?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false))
+            .Where(x => _roleFilter == null || x.OrganizationRoleId == _roleFilter);
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
-        currentUserId = user.FindFirst("sub")?.Value 
+        currentUserId = user.FindFirst("sub")?.Value
             ?? user.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
             ?? user.FindFirst("oid")?.Value;
+
         await LoadMembers();
     }
+
+    private void DetermineCurrentUserRole()
+    {
+        if (currentUserId != null)
+        {
+            var me = Members.FirstOrDefault(m => m.UserId.ToString().Equals(currentUserId, StringComparison.OrdinalIgnoreCase));
+            if (me != null)
+            {
+                currentUserRole = me.OrganizationRoleId;
+            }
+        }
+    }
+
+
+
+
 
     private async Task LoadMembers()
     {
         _loading = true;
         try
         {
-            var membersTask = MemberService.GetMembersAsync(Id);
-            var orgTask = OrganizationService.GetOrganizationByIdAsync(Id);
-
-            await Task.WhenAll(membersTask, orgTask);
-
-            Members = membersTask.Result;
-            var org = orgTask.Result;
-
-            if (org != null)
-            {
-                // Determine current user's role
-                bool isCreator = currentUserId != null && org.CreatedByUserId == currentUserId;
-
-                if (isCreator)
-                {
-                    currentUserRole = OrganizationRole.Creator;
-                }
-                else if (currentUserId != null)
-                {
-                    var me = Members.FirstOrDefault(m => m.UserId?.ToString().Equals(currentUserId, StringComparison.OrdinalIgnoreCase) == true);
-                    if (me != null)
-                    {
-                        currentUserRole = me.Role;
-                    }
-                }
-
-                // Ensure Creator is shown in the list
-                var creatorMember = Members.FirstOrDefault(m => m.UserId?.ToString() == org.CreatedByUserId);
-                if (creatorMember != null)
-                {
-                    // Visual fix: Ensure they show as Creator
-                    creatorMember.Role = OrganizationRole.Creator;
-                }
-                else if (!string.IsNullOrEmpty(org.CreatedByUserId))
-                {
-                    // Creator not in list, add them manually
-                    string creatorEmail = !string.IsNullOrEmpty(org.CreatorEmail) ? org.CreatorEmail : org.Email;
-                    string creatorName = !string.IsNullOrEmpty(org.CreatorUserName) ? org.CreatorUserName : "Organization Creator";
-
-                    // If I am the creator, use my details
-                    if (isCreator)
-                    {
-                        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-                        var user = authState.User;
-                        creatorEmail = user.FindFirst("email")?.Value 
-                            ?? user.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
-                            ?? user.FindFirst("preferred_username")?.Value 
-                            ?? creatorEmail;
-                        creatorName = user.Identity?.Name ?? creatorName;
-                    }
-
-                    if (Guid.TryParse(org.CreatedByUserId, out Guid creatorGuid))
-                    {
-                        Members.Insert(0, new OrganizationMemberDto
-                        {
-                            Id = Guid.NewGuid(), // Dummy ID
-                            OrganizationId = org.Id,
-                            UserId = creatorGuid,
-                            Role = OrganizationRole.Creator,
-                            Email = creatorEmail,
-                            UserName = creatorName
-                        });
-                    }
-                }
-            }
+            Members = (await MemberService.GetMembersAsync(Id))?.ToList() ?? new List<OrganizationMemberDto>();
+            DetermineCurrentUserRole();
         }
         catch (Exception ex)
         {
@@ -208,14 +157,26 @@
         }
     }
 
-    private Color GetRoleColor(OrganizationRole role)
+    private Color GetRoleColor(int role)
     {
         return role switch
         {
-            OrganizationRole.Creator => Color.Warning,
-            OrganizationRole.CoOwner => Color.Success,
-            OrganizationRole.Admin => Color.Info,
+            1 => Color.Warning, // Creator
+            2 => Color.Success, // Co-Owner
+            3 => Color.Info,    // Admin
             _ => Color.Default
+        };
+    }
+
+    private string GetRoleName(int role)
+    {
+        return role switch
+        {
+            1 => "Creator",
+            2 => "Co-Owner",
+            3 => "Admin",
+            4 => "Member",
+            _ => "Unknown"
         };
     }
 
@@ -246,8 +207,8 @@
     private async Task RemoveMember(OrganizationMemberDto member)
     {
         bool? result = await DialogService.ShowMessageBox(
-            "Remove Member", 
-            $"Are you sure you want to remove {member.Email} from the organization?", 
+            "Remove Member",
+            $"Are you sure you want to remove {member.UserEmail} from the organization?",
             yesText: "Remove", cancelText: "Cancel");
 
         if (result == true)

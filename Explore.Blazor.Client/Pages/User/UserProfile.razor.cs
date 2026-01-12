@@ -1,4 +1,4 @@
-using Explore.Blazor.Client.Models.DTOs;
+using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -14,41 +14,68 @@ public partial class UserProfile : ComponentBase
 
     private UserDto? UserData { get; set; }
     private bool IsLoading { get; set; } = true;
+    private bool _dataLoaded = false;
 
     private int EventsAttended { get; set; }
     private int ReviewsGiven { get; set; }
-    private List<OrganizationReviewDto> MyReviews { get; set; } = new();
+    private ICollection<OrganizationReviewDto> MyReviews { get; set; } = new List<OrganizationReviewDto>();
 
     protected override async Task OnInitializedAsync()
     {
+        Console.WriteLine("[USER PROFILE] OnInitializedAsync starting...");
         await LoadUserData();
     }
 
     private async Task LoadUserData()
     {
+        if (_dataLoaded) return;
+        
         IsLoading = true;
+        
         try
         {
-            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-            var user = authState.User;
+            Console.WriteLine("[USER PROFILE] Loading user data...");
+            
+            var userData = await UserService.GetCurrentUserAsync();
 
-            if (user.Identity?.IsAuthenticated == true)
+            if (userData != null)
             {
-                UserData = await UserService.GetCurrentUserAsync();
-
-                if (UserData != null)
+                UserData = userData;
+                Console.WriteLine($"[USER PROFILE] User data loaded: {UserData.Email}");
+                
+                try
                 {
-                    var registrations = await ProgramService.GetMyRegistrationsAsync();
-                    EventsAttended = registrations.Count; // Or filter by Status == "Completed"
+                    var registrations = await ProgramService.GetRegistrationsByUserAsync(UserData.Id);
+                    EventsAttended = registrations.Count;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[USER PROFILE] Error loading registrations: {ex.Message}");
+                    EventsAttended = 0;
+                }
 
+                try
+                {
                     MyReviews = await OrganizationReviewService.GetReviewsByUserId(UserData.Id);
                     ReviewsGiven = MyReviews.Count;
                 }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[USER PROFILE] Error loading reviews: {ex.Message}");
+                    MyReviews = new List<OrganizationReviewDto>();
+                    ReviewsGiven = 0;
+                }
+                
+                _dataLoaded = true;
+            }
+            else
+            {
+                Console.WriteLine("[USER PROFILE] WARNING: UserData is null");
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading user data: {ex.Message}");
+            Console.WriteLine($"[USER PROFILE] Error loading user data: {ex.Message}");
         }
         finally
         {
@@ -58,26 +85,18 @@ public partial class UserProfile : ComponentBase
 
     private string GetDisplayLocation()
     {
-        if (UserData == null) return "Location not set";
-        
-        if (!string.IsNullOrEmpty(UserData.City) && !string.IsNullOrEmpty(UserData.Country))
-            return $"{UserData.City}, {UserData.Country}";
-        if (!string.IsNullOrEmpty(UserData.City))
-            return UserData.City;
-        if (!string.IsNullOrEmpty(UserData.Country))
-            return UserData.Country;
-            
+        // Location not available in generated UserDto - return placeholder
         return "Location not set";
     }
 
     private string GetFullName()
     {
         if (UserData == null) return "User";
-        
+
         if (!string.IsNullOrEmpty(UserData.FirstName) || !string.IsNullOrEmpty(UserData.LastName))
             return $"{UserData.FirstName} {UserData.LastName}".Trim();
-            
-        return UserData.Username;
+
+        return UserData.Username ?? "User";
     }
 
     private string GetInitials()

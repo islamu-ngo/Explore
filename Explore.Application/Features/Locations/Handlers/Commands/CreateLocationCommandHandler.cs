@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Location.Validators;
 using Explore.Application.Features.Locations.Requests.Commands;
@@ -15,13 +16,16 @@ namespace Explore.Application.Features.Locations.Handlers.Commands
     public class CreateLocationCommandHandler : IRequestHandler<CreateLocationCommand, BaseCommandResponse<Guid>>
     {
         private readonly ILocationRepository _locationRepository;
+        private readonly ITenantContext _tenantContext;
         private readonly IMapper _mapper;
 
         public CreateLocationCommandHandler(
             ILocationRepository locationRepository,
+            ITenantContext tenantContext,
             IMapper mapper)
         {
             _locationRepository = locationRepository;
+            _tenantContext = tenantContext;
             _mapper = mapper;
         }
 
@@ -41,6 +45,9 @@ namespace Explore.Application.Features.Locations.Handlers.Commands
             }
 
             var location = _mapper.Map<Location>(request.LocationDto);
+
+            // Set TenantId from the request context
+            location.TenantId = _tenantContext.TenantId;
 
             location = await _locationRepository.Create(location);
 

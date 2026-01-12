@@ -1,9 +1,10 @@
 @page "/myevents"
 @using MudBlazor
 @using Explore.Blazor.Client.Models
-@using Explore.Blazor.Client.Models.DTOs
+@using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Models.Enums
+@using Microsoft.AspNetCore.Components
 @inject IEventService EventService
 @inject IProgramService ProgramService
 @inject IOrganizationService OrganizationService
@@ -173,40 +174,6 @@
         else
         {
         <div class="filters-bar mb-4">
-            <!-- Country -->
-            <div class="filter-cell">
-                <MudPopover Open="@isCountryOpen" Fixed="true" Class="filter-popover px-4 py-3">
-                    <div class="d-flex flex-column gap-3" style="min-width:220px">
-                        <MudText Typo="Typo.subtitle2">Country</MudText>
-                        <div class="d-flex flex-column gap-1">
-                            <MudText Typo="Typo.body2"
-                                     Color="@(selectedCountry == "" ? Color.Primary : Color.Default)"
-                                     Class="filter-option"
-                                     @onclick="@(() => OnCountryChanged(""))">All Countries</MudText>
-                            <MudText Typo="Typo.body2"
-                                     Color="@(selectedCountry == "Netherlands" ? Color.Primary : Color.Default)"
-                                     Class="filter-option"
-                                     @onclick="@(() => OnCountryChanged("Netherlands"))">Netherlands</MudText>
-                            <MudText Typo="Typo.body2"
-                                     Color="@(selectedCountry == "Belgium" ? Color.Primary : Color.Default)"
-                                     Class="filter-option"
-                                     @onclick="@(() => OnCountryChanged("Belgium"))">Belgium</MudText>
-                            <MudText Typo="Typo.body2"
-                                     Color="@(selectedCountry == "Germany" ? Color.Primary : Color.Default)"
-                                     Class="filter-option"
-                                     @onclick="@(() => OnCountryChanged("Germany"))">Germany</MudText>
-                        </div>
-                    </div>
-                </MudPopover>
-                <MudPaper @onclick="@(() => isCountryOpen = !isCountryOpen)" 
-                          Class="filter-paper d-flex justify-space-between align-center">
-                    <MudText Class="ml-2">
-                        @(string.IsNullOrEmpty(selectedCountry) ? "All Countries" : selectedCountry)
-                    </MudText>
-                    <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" />
-                </MudPaper>
-            </div>
-
             <!-- Organization -->
             <div class="filter-cell">
                 <MudPopover Open="@isOrganizationOpen" Fixed="true" Class="filter-popover px-4 py-3">
@@ -287,25 +254,24 @@
                 <MudItem xs="12" sm="6" md="4">
                     <MudCard Elevation="0" Class="card" Style="position: relative;">
                         <MudCardMedia Class="card-media">
-                            @if (!string.IsNullOrEmpty(evt.ImageKey))
+                            @if (!string.IsNullOrEmpty(evt.FeaturedImageUri))
                             {
-                                <S3Image ImageKey="@evt.ImageKey"
-                                        Alt="@evt.Title"
-                                        ObjectFit="cover"
-                                        ContainerStyle="height: 200px;" />
+                                <img src="@evt.FeaturedImageUri"
+                                     alt="@evt.Title"
+                                     style="width: 100%; height: 200px; object-fit: cover;" />
                             }
                             else
                             {
-                                <img src="@($"https://dummyimage.com/1200x800/{GetEventColor(evt)}/ffffff&text={Uri.EscapeDataString(evt.Title)}")" 
-                                     alt="@evt.Title" 
+                                <img src="@($"https://dummyimage.com/1200x800/{GetEventColor(evt)}/ffffff&text={Uri.EscapeDataString(evt.Title)}")"
+                                     alt="@evt.Title"
                                      style="width: 100%; height: 200px; object-fit: cover;" />
                             }
                         </MudCardMedia>
-                        
+
                         <!-- Actions Menu positioned on card -->
                         <div class="actions-menu">
-                            <MudMenu Icon="@Icons.Material.Filled.MoreVert" 
-                                     Dense="true" 
+                            <MudMenu Icon="@Icons.Material.Filled.MoreVert"
+                                     Dense="true"
                                      Color="Color.Primary"
                                      Variant="Variant.Filled"
                                      Size="Size.Small"
@@ -334,10 +300,10 @@
                         <MudCardContent>
                             <div class="badges">
                                 <MudChip T="string" Size="Size.Small" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Category">
-                                    @evt.EventTypeFullName
+                                    @(evt.EventTypeFullName ?? "Event")
                                 </MudChip>
                                 <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Business">
-                                    @evt.OrganizationFullName
+                                    @(evt.ActorDisplayName ?? "Unknown")
                                 </MudChip>
                             </div>
                             <MudText Typo="Typo.h6" Class="mb-1">@evt.Title</MudText>
@@ -366,7 +332,7 @@
                             }
                             <div class="loc">
                                 <MudIcon Icon="@Icons.Material.Filled.LocationOn" />
-                                <MudText>@(evt.City ?? evt.Country ?? "Online")</MudText>
+                                <MudText>@(evt.EventFormatFullName ?? "Online")</MudText>
                             </div>
                         </MudCardActions>
                     </MudCard>
@@ -408,12 +374,13 @@
     private string selectedCountry = "";
     private string selectedCategory = "";
     private Guid selectedOrganizationId = Guid.Empty;
-    private List<EventListDto> Events = new();
-    private List<OrganizationListDto> MyOrganizations = new();
+    private ICollection<EventListDto> Events = new List<EventListDto>();
+    private ICollection<OrganizationListDto> MyOrganizations = new List<OrganizationListDto>();
     private bool isCountryOpen;
     private bool isCategoryOpen;
     private bool isOrganizationOpen;
     private bool isLoading = true;
+    private string? errorMessage;
 
     // Pagination variables
     private int currentPage = 1;
@@ -426,55 +393,61 @@
 
     private async Task LoadDataAsync()
     {
+        isLoading = true;
+        errorMessage = null;
+
         try
         {
-            isLoading = true;
-            
+            Console.WriteLine("[MY EVENTS] Loading events and organizations from API");
+
             // Load both events and organizations in parallel
             var eventsTask = EventService.GetMyEventsAsync();
             var organizationsTask = OrganizationService.GetMyOrganizationsAsync();
-            
+
             await Task.WhenAll(eventsTask, organizationsTask);
-            
-            Events = eventsTask.Result;
-            MyOrganizations = organizationsTask.Result;
-            
-            isLoading = false;
-            StateHasChanged();
+
+            Events = await eventsTask;
+            MyOrganizations = await organizationsTask;
+
+            Console.WriteLine($"[MY EVENTS] Loaded {Events.Count} events and {MyOrganizations.Count} organizations");
         }
         catch (Exception ex)
         {
+            errorMessage = $"Error loading data: {ex.Message}";
+            Console.WriteLine($"[MY EVENTS] ERROR: {ex.Message}");
+            Snackbar.Add(errorMessage, Severity.Error);
+        }
+        finally
+        {
             isLoading = false;
-            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
         }
     }
-    
+
     private bool CanEditEvent(EventListDto evt)
     {
-        var org = MyOrganizations.FirstOrDefault(o => o.Id == evt.OrganizationId);
+        var org = MyOrganizations.FirstOrDefault(o => o.Id == evt.ActorId);
         if (org == null) return false;
-        
-        // Creator, CoOwner or Admin can edit
-        return org.CurrentUserRole == OrganizationRole.Creator || org.CurrentUserRole == OrganizationRole.CoOwner || org.CurrentUserRole == OrganizationRole.Admin;
+
+        // Creator, CoOwner or Admin can edit (role IDs: 1=Creator, 2=CoOwner, 3=Admin)
+        return org.CurrentUserRole.HasValue && (org.CurrentUserRole == 1 || org.CurrentUserRole == 2 || org.CurrentUserRole == 3);
     }
 
     private List<string> UniqueEventTypes => Events
         .Select(e => e.EventTypeFullName)
+        .Where(t => t != null)
         .Distinct()
         .OrderBy(t => t)
-        .ToList();
+        .ToList()!;
 
     // Filtered events logic for pagination
     private List<EventListDto> AllFilteredEvents => Events
         .Where(e => string.IsNullOrEmpty(searchString) ||
                     e.Title.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
                     (e.Description != null && e.Description.Contains(searchString, StringComparison.OrdinalIgnoreCase)))
-        .Where(e => string.IsNullOrEmpty(selectedCountry) ||
-                    (e.Country != null && e.Country.Contains(selectedCountry, StringComparison.OrdinalIgnoreCase)))
         .Where(e => string.IsNullOrEmpty(selectedCategory) ||
-                    e.EventTypeFullName.Contains(selectedCategory, StringComparison.OrdinalIgnoreCase))
+                    (e.EventTypeFullName != null && e.EventTypeFullName.Contains(selectedCategory, StringComparison.OrdinalIgnoreCase)))
         .Where(e => selectedOrganizationId == Guid.Empty ||
-                    e.OrganizationId == selectedOrganizationId)
+                    e.ActorId == selectedOrganizationId)
         .ToList();
 
     private List<EventListDto> FilteredEvents
@@ -540,7 +513,7 @@
             bool? result = await DialogService.ShowMessageBox(
                 "Delete Event",
                 $"Are you sure you want to delete the event '{evt.Title}'? This action cannot be undone.",
-                yesText: "Delete", 
+                yesText: "Delete",
                 cancelText: "Cancel",
                 options: new DialogOptions { MaxWidth = MaxWidth.Small });
 
@@ -551,20 +524,20 @@
                 Console.WriteLine("Attempting to delete event: " + evt.Id);
                 var success = await EventService.DeleteEventAsync(evt.Id);
                 Console.WriteLine("Delete result: " + success);
-                
+
                 if (success)
                 {
                     Snackbar.Add($"Event '{evt.Title}' has been deleted successfully.", Severity.Success);
-                    
+
                     // Remove from local list
                     Events.Remove(evt);
-                    
+
                     // Reset to first page if current page is now empty
                     if (!FilteredEvents.Any() && currentPage > 1)
                     {
                         currentPage = 1;
                     }
-                    
+
                     StateHasChanged();
                 }
                 else

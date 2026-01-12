@@ -1,39 +1,74 @@
 using System.Net.Http.Json;
-using Explore.Blazor.Client.Models.DTOs;
-using Explore.Blazor.Client.Models.Responses;
+using Explore.Blazor.Client.Clients;
 
 namespace Explore.Blazor.Client.Services;
 
 public interface IUserService
 {
-    Task SyncUserAsync();
+    Task<BaseCommandResponseOfGuid?> SyncUserAsync();
     Task<UserDto?> GetCurrentUserAsync();
-    Task<bool> UpdateUserAsync(UpdateUserDto userDto);
+    Task<BaseCommandResponseOfGuid?> UpdateUserAsync(UpdateUserDto userDto);
     Task<bool> DeleteUserAsync();
 }
 
 public class UserService : IUserService
 {
-    private readonly HttpClient _httpClient;
+    private readonly IEventApiClient _apiClient;
 
-    public UserService(HttpClient httpClient)
+    public UserService(IEventApiClient apiClient)
     {
-        _httpClient = httpClient;
+        _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
     }
 
-    public async Task SyncUserAsync()
+    public async Task<BaseCommandResponseOfGuid?> SyncUserAsync()
     {
         try
         {
-            var response = await _httpClient.PostAsync("/bff/api/User/sync", null);
-            if (!response.IsSuccessStatusCode)
+            if (_apiClient == null)
             {
-                Console.WriteLine($"Failed to sync user: {response.StatusCode}");
+                Console.WriteLine("[USER SERVICE] ERROR: API client is null");
+                return new BaseCommandResponseOfGuid
+                {
+                    Success = false,
+                    Message = "API client is null"
+                };
             }
+            
+            Console.WriteLine("[USER SERVICE] Syncing user...");
+            var response = await _apiClient.SyncAsync();
+            Console.WriteLine($"[USER SERVICE] Sync result: Success={response?.Success}, Id={response?.Id}");
+            return response;
+        }
+        catch (ApiException ex) when (ex.StatusCode == 200)
+        {
+            // NSwag sometimes throws when response body doesn't match expected schema
+            // but the operation was successful (status 200)
+            Console.WriteLine($"[USER SERVICE] Sync completed with status 200 but response parsing issue: {ex.Message}");
+            return new BaseCommandResponseOfGuid
+            {
+                Success = true,
+                Message = "User synced successfully"
+            };
+        }
+        catch (ApiException ex)
+        {
+            Console.WriteLine($"[USER SERVICE] API error syncing user: {ex.StatusCode} - {ex.Message}");
+            return new BaseCommandResponseOfGuid
+            {
+                Success = false,
+                Message = $"API error: {ex.Message}",
+                Errors = new List<string> { ex.Response ?? ex.Message }
+            };
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error syncing user: {ex.Message}");
+            Console.WriteLine($"[USER SERVICE] Error syncing user: {ex.Message}");
+            return new BaseCommandResponseOfGuid
+            {
+                Success = false,
+                Message = $"Error: {ex.Message}",
+                Errors = new List<string> { ex.Message }
+            };
         }
     }
 
@@ -41,26 +76,81 @@ public class UserService : IUserService
     {
         try
         {
-            return await _httpClient.GetFromJsonAsync<UserDto>("/bff/api/User");
+            if (_apiClient == null)
+            {
+                Console.WriteLine("[USER SERVICE] ERROR: API client is null");
+                return null;
+            }
+            
+            Console.WriteLine("[USER SERVICE] Fetching current user...");
+            var user = await _apiClient.UserGETAsync();
+            Console.WriteLine($"[USER SERVICE] User found: {user?.Email}");
+            return user;
+        }
+        catch (ApiException ex) when (ex.StatusCode == 404)
+        {
+            Console.WriteLine("[USER SERVICE] User not found (404) - attempting auto-sync");
+            
+            // Auto-sync user if not found
+            try
+            {
+                var syncResult = await SyncUserAsync();
+                if (syncResult?.Success == true)
+                {
+                    Console.WriteLine("[USER SERVICE] Auto-sync successful, retrying GetCurrentUser");
+                    await Task.Delay(100); // Wait for DB write to complete
+                    return await _apiClient.UserGETAsync();
+                }
+                else
+                {
+                    Console.WriteLine($"[USER SERVICE] Auto-sync failed: {syncResult?.Message}");
+                }
+            }
+            catch (Exception syncEx)
+            {
+                Console.WriteLine($"[USER SERVICE] Auto-sync exception: {syncEx.Message}");
+            }
+            
+            return null;
+        }
+        catch (ApiException ex) when (ex.StatusCode == 401)
+        {
+            Console.WriteLine("[USER SERVICE] User not authenticated (401)");
+            return null;
+        }
+        catch (ApiException ex)
+        {
+            Console.WriteLine($"[USER SERVICE] API error: {ex.StatusCode} - {ex.Message}");
+            return null;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error getting user: {ex.Message}");
+            Console.WriteLine($"[USER SERVICE] Error getting user: {ex.Message}");
             return null;
         }
     }
 
-    public async Task<bool> UpdateUserAsync(UpdateUserDto userDto)
+    public async Task<BaseCommandResponseOfGuid?> UpdateUserAsync(UpdateUserDto userDto)
     {
         try
         {
-            var response = await _httpClient.PutAsJsonAsync("/bff/api/User", userDto);
-            return response.IsSuccessStatusCode;
+            if (_apiClient == null)
+            {
+                Console.WriteLine("[USER SERVICE] ERROR: API client is null");
+                return null;
+            }
+            
+            return await _apiClient.UserPUTAsync(userDto);
+        }
+        catch (ApiException ex)
+        {
+            Console.WriteLine($"[USER SERVICE] API error updating user: {ex.StatusCode} - {ex.Message}");
+            return null;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error updating user: {ex.Message}");
-            return false;
+            Console.WriteLine($"[USER SERVICE] Error updating user: {ex.Message}");
+            return null;
         }
     }
 
@@ -68,12 +158,23 @@ public class UserService : IUserService
     {
         try
         {
-            var response = await _httpClient.DeleteAsync("/bff/api/User");
-            return response.IsSuccessStatusCode;
+            if (_apiClient == null)
+            {
+                Console.WriteLine("[USER SERVICE] ERROR: API client is null");
+                return false;
+            }
+            
+            await _apiClient.UserDELETEAsync();
+            return true;
+        }
+        catch (ApiException ex)
+        {
+            Console.WriteLine($"[USER SERVICE] API error deleting user: {ex.StatusCode} - {ex.Message}");
+            return false;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error deleting user: {ex.Message}");
+            Console.WriteLine($"[USER SERVICE] Error deleting user: {ex.Message}");
             return false;
         }
     }

@@ -1,4 +1,4 @@
-﻿using Explore.Application.DTOs.Organization;
+using Explore.Application.DTOs.Organization;
 using Explore.Application.Features.Organizations.Requests.Commands;
 using Explore.Application.Features.Organizations.Requests.Queries;
 using Explore.Application.Responses;
@@ -94,8 +94,8 @@ namespace Explore.API.Controllers
 
             Console.WriteLine($"Final UserId: {userId}");
 
-            var command = new CreateOrganizationCommand() 
-            { 
+            var command = new CreateOrganizationCommand()
+            {
                 OrganizationDto = organization,
                 UserId = userId
             };
@@ -110,7 +110,7 @@ namespace Explore.API.Controllers
         {
             // Get the user ID from the token
             var userId = User.FindFirst("sub")?.Value;
-            
+
             if (string.IsNullOrEmpty(userId))
             {
                 return Unauthorized("User ID not found in token");

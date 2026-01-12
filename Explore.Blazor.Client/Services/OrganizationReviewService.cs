@@ -1,34 +1,77 @@
 using System.Net.Http.Json;
-using Explore.Blazor.Client.Models.DTOs;
-using Explore.Blazor.Client.Models.Responses;
+using Explore.Blazor.Client.Clients;
 
-namespace Explore.Blazor.Client.Services
+namespace Explore.Blazor.Client.Services;
+
+public interface IOrganizationReviewService
 {
-    public class OrganizationReviewService : IOrganizationReviewService
+    Task<ICollection<OrganizationReviewDto>> GetReviewsByOrganizationId(Guid organizationId);
+    Task<ICollection<OrganizationReviewDto>> GetReviewsByUserId(Guid userId);
+    Task<BaseCommandResponseOfGuid?> CreateReview(CreateOrganizationReviewDto review);
+}
+
+public class OrganizationReviewService : IOrganizationReviewService
+{
+    private readonly IEventApiClient _apiClient;
+
+    public OrganizationReviewService(IEventApiClient apiClient)
     {
-        private readonly HttpClient _httpClient;
+        _apiClient = apiClient;
+    }
 
-        public OrganizationReviewService(HttpClient httpClient)
+    public async Task<ICollection<OrganizationReviewDto>> GetReviewsByOrganizationId(Guid organizationId)
+    {
+        try
         {
-            _httpClient = httpClient;
-        }
-
-        public async Task<List<OrganizationReviewDto>> GetReviewsByOrganizationId(Guid organizationId)
-        {
-            var response = await _httpClient.GetFromJsonAsync<List<OrganizationReviewDto>>($"/bff/api/OrganizationReview/{organizationId}");
+            var response = await _apiClient.OrganizationReviewAllAsync(organizationId);
             return response ?? new List<OrganizationReviewDto>();
         }
-
-        public async Task<List<OrganizationReviewDto>> GetReviewsByUserId(Guid userId)
+        catch (ApiException ex)
         {
-            var response = await _httpClient.GetFromJsonAsync<List<OrganizationReviewDto>>($"/bff/api/OrganizationReview/user/{userId}");
+            Console.WriteLine($"API error fetching reviews by organization: {ex.StatusCode} - {ex.Message}");
+            return new List<OrganizationReviewDto>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching reviews by organization: {ex.Message}");
+            return new List<OrganizationReviewDto>();
+        }
+    }
+
+    public async Task<ICollection<OrganizationReviewDto>> GetReviewsByUserId(Guid userId)
+    {
+        try
+        {
+            var response = await _apiClient.UserAsync(userId);
             return response ?? new List<OrganizationReviewDto>();
         }
-
-        public async Task<BaseCommandResponse<Guid>> CreateReview(CreateOrganizationReviewDto review)
+        catch (ApiException ex)
         {
-            var response = await _httpClient.PostAsJsonAsync("/bff/api/OrganizationReview", review);
-            return await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
+            Console.WriteLine($"API error fetching reviews by user: {ex.StatusCode} - {ex.Message}");
+            return new List<OrganizationReviewDto>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching reviews by user: {ex.Message}");
+            return new List<OrganizationReviewDto>();
+        }
+    }
+
+    public async Task<BaseCommandResponseOfGuid?> CreateReview(CreateOrganizationReviewDto review)
+    {
+        try
+        {
+            return await _apiClient.OrganizationReviewAsync(review);
+        }
+        catch (ApiException ex)
+        {
+            Console.WriteLine($"API error creating review: {ex.StatusCode} - {ex.Message}");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error creating review: {ex.Message}");
+            throw;
         }
     }
 }
