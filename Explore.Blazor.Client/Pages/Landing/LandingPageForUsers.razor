@@ -231,8 +231,13 @@
   .carousel-wrap .mud-carousel,
   .carousel-wrap .mud-carousel-item,
   .carousel-wrap .mud-carousel-content {
-    min-height: 280px;
+        min-height: auto;
+        height: auto;
   }
+    .carousel-wrap .mud-carousel-item { padding: 12px 0 !important; }
+    .carousel-wrap .mud-stack { flex-direction: column !important; align-items: stretch !important; gap: 12px !important; }
+    .carousel-wrap .card { width: 100% !important; max-width: none !important; }
+    .carousel-wrap .card-media { height: 150px; }
   .cta-row .mud-button-root {
     padding: 10px 16px;
   }

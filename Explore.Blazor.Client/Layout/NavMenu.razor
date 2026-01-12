@@ -8,22 +8,24 @@
         top: 0;
         z-index: 100;
         width: 100%;
-        height: 70px;
-        padding: 0 24px;
-        background: color-mix(in srgb, var(--mud-palette-surface) 85%, transparent);
+        min-height: 64px;
+        padding: calc(10px + env(safe-area-inset-top)) 20px 12px 20px;
+        background: color-mix(in srgb, var(--mud-palette-surface) 90%, transparent);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
         border-bottom: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 40%, transparent);
-        transition: all 0.3s ease;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+        transition: all 0.25s ease;
     }
 
     .nav-content {
         max-width: 1280px;
         margin: 0 auto;
-        height: 100%;
         display: flex;
         align-items: center;
         justify-content: space-between;
+        gap: 8px;
+        width: 100%;
     }
 
     /* Brand */
@@ -53,19 +55,21 @@
     /* Navigation Links */
     .nav-links {
         display: flex;
-        gap: 8px;
-        background: color-mix(in srgb, var(--mud-palette-text-primary) 4%, transparent);
-        padding: 4px;
-        border-radius: 999px;
-        border: 1px solid color-mix(in srgb, var(--mud-palette-text-primary) 5%, transparent);
+        gap: 6px;
+        background: transparent;
+        padding: 0;
+        border-radius: 0;
+        border: none;
+        box-shadow: none;
+        overflow: visible;
     }
 
     .nav-item {
-        padding: 6px 16px;
-        border-radius: 999px;
+        padding: 8px 18px;
+        border-radius: 12px;
         color: var(--mud-palette-text-secondary);
-        font-weight: 600;
-        font-size: 0.9rem;
+        font-weight: 700;
+        font-size: 0.95rem;
         text-decoration: none;
         transition: all 0.2s ease;
     }
@@ -85,8 +89,11 @@
     .nav-actions {
         display: flex;
         align-items: center;
-        gap: 16px;
+        gap: 14px;
     }
+
+    .nav-actions .mud-icon-button { padding: 8px; }
+    .nav-actions .mud-button-root { padding: 10px 16px; border-radius: 12px; font-weight: 700; }
 
     /* User Dropdown Styles (Used by JS) */
     .user-dropdown-container {
@@ -121,6 +128,21 @@
         justify-content: center;
         font-weight: 600;
         font-size: 14px;
+    }
+
+    @@media (max-width: 768px) {
+        .user-profile-btn {
+            padding: 4px 6px 4px 8px;
+            gap: 6px;
+        }
+        .user-profile-btn span:not(.nav-user-avatar) {
+            display: none;
+        }
+        .nav-user-avatar {
+            width: 28px;
+            height: 28px;
+            font-size: 12px;
+        }
     }
 
     .user-dropdown-menu {
@@ -188,15 +210,24 @@
     }
 
     @@media (max-width: 768px) {
-        .brand-text span { display: none; }
-        .nav-links { display: none; } /* Or move to mobile menu */
+        .navbar-glass { padding: calc(6px + env(safe-area-inset-top)) 12px 6px 12px; min-height: 56px; }
+        .nav-content { gap: 8px; }
+        .brand-logo { flex: 0 0 auto; gap: 6px; }
+        .brand-logo .mud-icon-root { font-size: 28px !important; width: 28px !important; height: 28px !important; }
+        .brand-text { font-size: 0.95rem; }
+        .brand-text span { display: inline; }
+        .nav-links { flex: 0 0 auto; padding: 2px 4px; }
+        .nav-item { padding: 4px 10px; font-size: 0.8rem; }
+        .nav-actions { flex: 0 0 auto; gap: 6px; }
+        .nav-actions .mud-icon-button { padding: 4px; font-size: 0.8rem; }
+        .nav-actions .mud-button-root { padding: 6px 12px; font-size: 0.8rem; }
     }
 </style>
 
 <div class="navbar-glass">
     <div class="nav-content">
         <!-- Brand -->
-        <a href="/" class="brand-logo">
+        <a href="/" class="brand-logo" aria-label="Home">
             <MudIcon Icon="@Icons.Material.Filled.Explore" Color="Color.Primary" Size="Size.Large" />
             <div class="brand-text">ISLAMU<span class="brand-highlight">Explore</span></div>
         </a>

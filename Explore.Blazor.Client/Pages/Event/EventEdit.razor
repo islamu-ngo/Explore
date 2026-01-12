@@ -45,14 +45,14 @@ else if (currentEvent != null && updateDto != null)
                         <div class="mb-4">
                             <MudText Typo="Typo.h6" Class="mb-3">Event Image</MudText>
                             <MudPaper Class="pa-4" Style="background-color: var(--mud-palette-background-grey);">
-                                @if (!string.IsNullOrEmpty(selectedImageUrl))
-                                {
-                                    <img src="@selectedImageUrl" alt="Event image" style="width: 100%; max-height: 300px; object-fit: cover;" />
-                                }
-                                else
-                                {
-                                    <MudText>No image uploaded</MudText>
-                                }
+                                <ImageUpload ImageKey="@updateDto.ImageKey"
+                                             ImageKeyChanged="@((value) => updateDto.ImageKey = value)"
+                                             PreviewUrl="@_previewImageUrl"
+                                             PreviewUrlChanged="@((value) => _previewImageUrl = value)"
+                                            Width="100%"
+                                            Height="300px"
+                                            PlaceholderText="Update event image"
+                                            HintText="Upload a new image or keep the existing one (JPG, PNG, GIF, WebP - Max 5MB)" />
                             </MudPaper>
                         </div>
 
