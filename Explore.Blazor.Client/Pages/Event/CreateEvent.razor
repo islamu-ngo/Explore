@@ -477,6 +477,14 @@
                 createDto.FeaturedImageId = uploadedStorageObjectId.Value;
             }
 
+            // If an image key exists but the StorageObject ID is not yet available, abort creation
+            if (!string.IsNullOrEmpty(imageObjectKey) && !uploadedStorageObjectId.HasValue)
+            {
+                Console.WriteLine("[CREATE EVENT] Image upload in progress or failed. Aborting event creation until upload completes.");
+                Snackbar.Add("Image upload is still in progress. Please wait until the upload completes before creating the event.", Severity.Warning);
+                return;
+            }
+            
             isCreating = true;
             StateHasChanged();
 

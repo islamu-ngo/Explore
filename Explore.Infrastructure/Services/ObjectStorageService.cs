@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.IO;
 using Amazon.S3;
 using Amazon.S3.Model;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.StorageObject;
+using FluentValidation;
 using Microsoft.Extensions.Options;
 
 namespace Explore.Infrastructure.Services;
@@ -23,6 +25,17 @@ public class ObjectStorageService : IObjectStorageService
 
     public Task<UploadUrlResponseDto> GeneratePresignedUploadUrl(string fileName, string contentType)
     {
+        if (string.IsNullOrWhiteSpace(fileName))
+            throw new ArgumentException("fileName must be provided", nameof(fileName));
+        if (string.IsNullOrWhiteSpace(contentType))
+            throw new ArgumentException("contentType must be provided", nameof(contentType));
+
+        if (_s3Settings == null)
+            throw new InvalidOperationException("S3 settings are not configured.");
+
+        if (string.IsNullOrWhiteSpace(_s3Settings.BucketName))
+            throw new InvalidOperationException("S3 bucket name is not configured (S3Settings:BucketName).");
+
         // Generate a unique object key with timestamp to prevent collisions
         var timestamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
         var uniqueId = Guid.NewGuid().ToString("N")[..8];
@@ -42,10 +55,22 @@ public class ObjectStorageService : IObjectStorageService
             ContentType = contentType
         };
 
-        var uploadUrl = _s3Client.GetPreSignedURL(request);
+        string? uploadUrl;
+        try
+        {
+            uploadUrl = _s3Client.GetPreSignedURL(request);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException("Failed to generate pre-signed upload URL. Verify S3 configuration and credentials.", ex);
+        }
+
+        if (string.IsNullOrWhiteSpace(uploadUrl))
+        {
+            throw new InvalidOperationException("Failed to generate pre-signed upload URL: the S3 client returned an empty URL. Verify bucket, endpoint and credentials.");
+        }
 
         // Construct the public view URL
-        // For Hetzner S3, the format is: https://{bucket}.{endpoint}/{key}
         var viewUrl = ConstructViewUrl(objectKey);
 
         var response = new UploadUrlResponseDto
@@ -63,22 +88,18 @@ public class ObjectStorageService : IObjectStorageService
     {
         // For Hetzner Object Storage, construct the public URL
         // Format: https://{bucket}.{endpoint}/{key}
-        // Example: https://mybucket.fsn1.your-objectstorage.com/uploads/file.jpg
 
         if (string.IsNullOrEmpty(_s3Settings.Endpoint))
         {
             throw new InvalidOperationException("S3 Endpoint must be configured for Hetzner Object Storage");
         }
 
-        // Parse the endpoint to construct the proper Hetzner URL
         var endpoint = _s3Settings.Endpoint.TrimEnd('/');
 
-        // Remove protocol if present
         var endpointHost = endpoint
             .Replace("https://", "")
             .Replace("http://", "");
 
-        // Hetzner format: https://{bucket}.{endpoint-host}/{key}
         return $"https://{_s3Settings.BucketName}.{endpointHost}/{objectKey}";
     }
 }

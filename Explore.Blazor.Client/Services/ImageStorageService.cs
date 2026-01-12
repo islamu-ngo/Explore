@@ -82,21 +82,28 @@ public class ImageStorageService : IImageStorageService
             };
             
             var response = await _apiClient.GenerateUploadUrlAsync(request);
-            
-            if (response != null)
+
+            // Defensive: server might return non-null DTO but with an empty UploadUrl.
+            if (response == null)
             {
-                Console.WriteLine($"[IMAGE STORAGE] Got upload URL: {response.UploadUrl?.Substring(0, Math.Min(50, response.UploadUrl?.Length ?? 0))}...");
-                return new ImageUploadResponse
-                {
-                    UploadUrl = response.UploadUrl ?? string.Empty,
-                    ObjectKey = response.ObjectKey ?? string.Empty,
-                    ViewUrl = response.ViewUrl ?? string.Empty,
-                    ExpiresInMinutes = response.ExpiresInMinutes
-                };
+                Console.WriteLine("[IMAGE STORAGE] GenerateUploadUrlAsync returned null response");
+                return null;
             }
 
-            Console.WriteLine("[IMAGE STORAGE] Response was null");
-            return null;
+            if (string.IsNullOrWhiteSpace(response.UploadUrl))
+            {
+                Console.WriteLine("[IMAGE STORAGE] UploadUrl is null or empty. Check server S3 configuration (bucket/endpoint/credentials)." );
+                return null;
+            }
+            
+            Console.WriteLine($"[IMAGE STORAGE] Got upload URL: {response.UploadUrl?.Substring(0, Math.Min(50, response.UploadUrl?.Length ?? 0))}...");
+            return new ImageUploadResponse
+            {
+                UploadUrl = response.UploadUrl ?? string.Empty,
+                ObjectKey = response.ObjectKey ?? string.Empty,
+                ViewUrl = response.ViewUrl ?? string.Empty,
+                ExpiresInMinutes = response.ExpiresInMinutes
+            };
         }
         catch (ApiException ex)
         {
@@ -112,6 +119,18 @@ public class ImageStorageService : IImageStorageService
 
     public async Task<bool> UploadImageAsync(string uploadUrl, IBrowserFile file)
     {
+        if (string.IsNullOrWhiteSpace(uploadUrl))
+        {
+            Console.WriteLine("[IMAGE STORAGE] Invalid upload URL (empty/null) - aborting upload.");
+            return false;
+        }
+
+        if (!Uri.TryCreate(uploadUrl, UriKind.Absolute, out var validatedUri))
+        {
+            Console.WriteLine("[IMAGE STORAGE] Invalid upload URL format - aborting upload.");
+            return false;
+        }
+
         try
         {
             Console.WriteLine($"[IMAGE STORAGE] Uploading to S3: {file.Name}");
@@ -125,7 +144,7 @@ public class ImageStorageService : IImageStorageService
             content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
 
             // PUT request to the pre-signed URL
-            var response = await s3Client.PutAsync(uploadUrl, content);
+            var response = await s3Client.PutAsync(validatedUri, content);
 
             if (!response.IsSuccessStatusCode)
             {
