@@ -502,4 +502,6 @@ $RECYCLE.BIN/
 /.vs
 
 # remove error logs except from last one
-.claude/hooks/.claude/build-cache/error*.txt
+.claude/hooks/.claude/build-cache/
+
+.mcp.json

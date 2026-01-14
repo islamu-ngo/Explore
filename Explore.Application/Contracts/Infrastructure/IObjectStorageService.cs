@@ -14,4 +14,11 @@ public interface IObjectStorageService
     /// <param name="contentType">The MIME content type of the file</param>
     /// <returns>Response containing upload URL, object key, and view URL</returns>
     Task<UploadUrlResponseDto> GeneratePresignedUploadUrl(string fileName, string contentType);
+
+    /// <summary>
+    /// Retrieves a file stream from S3-compatible storage
+    /// </summary>
+    /// <param name="fileKey">The key of the file to retrieve</param>
+    /// <returns>A tuple containing the file stream and content type</returns>
+    Task<(Stream FileStream, string ContentType)> GetFileStream(string fileKey);
 }

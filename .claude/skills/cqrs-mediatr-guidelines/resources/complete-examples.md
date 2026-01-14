@@ -57,8 +57,8 @@ public class Event
     public string? CurrencyCode { get; set; }
     
     [ForeignKey("FeaturedImage")]
-    public Guid FeaturedImageId { get; set; }
-    public StorageObject FeaturedImage { get; set; }
+    public Guid? FeaturedImageId { get; set; }
+    public StorageObject? FeaturedImage { get; set; }
     
     public int TotalViews { get; set; }
     public bool IsRegistrationRequired { get; set; }
@@ -95,10 +95,7 @@ public class Event
     public Guid? AtprotoRecordId { get; set; }
     public AtprotoRecord? AtprotoRecord { get; set; }
     
-    // Navigation collections
-    public virtual ICollection<EventSession> Sessions { get; set; } = new List<EventSession>();
-    public virtual ICollection<EventCategories> EventCategories { get; set; } = new List<EventCategories>();
-    public virtual ICollection<EventTags> EventTags { get; set; } = new List<EventTags>();
+    // Note: this Domain entity currently doesn't expose collection navigation properties.
 }
 ```
 
@@ -124,40 +121,39 @@ public class CreateEventDto
     public int AudienceGenderId { get; set; }
     public int AudienceAgeId { get; set; }
 
-    // Actor (Owner - User or Organization)
-    public Guid ActorId { get; set; }
+    // Optional: create under an organization (otherwise personal actor)
+    public Guid? OrganizationId { get; set; }
 
     // Pricing
     public decimal? Price { get; set; }
     public string? CurrencyCode { get; set; }
 
-    // Featured Image
-    public Guid FeaturedImageId { get; set; }
+    // Featured Image (optional)
+    public Guid? FeaturedImageId { get; set; }
 
     // Registration
     public bool IsRegistrationRequired { get; set; }
     public string? ExternalRegistrationUrl { get; set; }
 
-    // Status & Visibility
-    public int EventStatusId { get; set; }
-    public int VisibilityTypeId { get; set; }
+    // Status & Visibility (DTO defaults are OK; do not add defaults in Domain entities)
+    public int EventStatusId { get; set; } = 1;
+    public int VisibilityTypeId { get; set; } = 1;
 
     // Format
-    public int EventFormatId { get; set; }
+    public int EventFormatId { get; set; } = 1;
 
     // Islamic Context
     public int? MadhabId { get; set; }
 
     // Session Info (computed, but can be set initially)
-    public DateOnly? FirstSessionDate { get; set; }
-    public DateOnly? LastSessionDate { get; set; }
+    public DateTimeOffset? FirstSessionDate { get; set; }
+    public DateTimeOffset? LastSessionDate { get; set; }
     public string? Timezone { get; set; }
 
     // Metadata
     public string? EventUrl { get; set; }
 
-    // Tenant (set by system based on context)
-    public Guid TenantId { get; set; }
+    // TenantId and ActorId are set by the handler from the authenticated context.
 }
 ```
 
@@ -176,26 +172,26 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
     private readonly IAudienceAgeRepository _audienceAgeRepository;
     private readonly IAudienceGenderRepository _audienceGenderRepository;
     private readonly IEventTypeRepository _eventTypeRepository;
-    private readonly IActorRepository _actorRepository;
+    private readonly IOrganizationRepository _organizationRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
 
     public CreateEventDtoValidator(
         IAudienceAgeRepository audienceAgeRepository,
         IAudienceGenderRepository audienceGenderRepository,
         IEventTypeRepository eventTypeRepository,
-        IActorRepository actorRepository,
+        IOrganizationRepository organizationRepository,
         IStorageObjectRepository storageObjectRepository)
     {
         _audienceAgeRepository = audienceAgeRepository;
         _audienceGenderRepository = audienceGenderRepository;
         _eventTypeRepository = eventTypeRepository;
-        _actorRepository = actorRepository;
+        _organizationRepository = organizationRepository;
         _storageObjectRepository = storageObjectRepository;
 
         // Title validation
         RuleFor(x => x.Title)
             .NotEmpty().WithMessage("Title is required")
-            .MaximumLength(500).WithMessage("Title cannot exceed 500 characters");
+            .MaximumLength(200).WithMessage("Title cannot exceed 200 characters");
 
         // Event Type validation with async database check
         RuleFor(x => x.EventTypeId)
@@ -228,24 +224,23 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
             .WithMessage("Audience Age not found");
 
         // Actor validation
-        RuleFor(x => x.ActorId)
-            .NotEmpty().WithMessage("Actor is required")
+        RuleFor(x => x.OrganizationId)
             .MustAsync(async (id, cancellation) =>
             {
-                var exists = await _actorRepository.Exists(id);
-                return exists;
+                if (!id.HasValue) return true;
+                return await _organizationRepository.Exists(id.Value);
             })
-            .WithMessage("Actor not found");
+            .When(x => x.OrganizationId.HasValue)
+            .WithMessage("Organization does not exist.");
 
-        // Featured Image validation
         RuleFor(x => x.FeaturedImageId)
-            .NotEmpty().WithMessage("Featured Image is required")
             .MustAsync(async (id, cancellation) =>
             {
-                var exists = await _storageObjectRepository.Exists(id);
-                return exists;
+                if (!id.HasValue) return true;
+                return await _storageObjectRepository.Exists(id.Value);
             })
-            .WithMessage("Featured Image not found");
+            .When(x => x.FeaturedImageId.HasValue)
+            .WithMessage("FeaturedImageId does not exist.");
 
         // Price validation
         RuleFor(x => x.Price)
@@ -303,8 +298,9 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     private readonly IAudienceAgeRepository _audienceAgeRepository;
     private readonly IAudienceGenderRepository _audienceGenderRepository;
     private readonly IEventTypeRepository _eventTypeRepository;
-    private readonly IActorRepository _actorRepository;
+    private readonly IOrganizationRepository _organizationRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
+    private readonly ITenantContext _tenantContext;
     private readonly IMapper _mapper;
 
     public CreateEventCommandHandler(
@@ -312,16 +308,18 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         IAudienceAgeRepository audienceAgeRepository,
         IAudienceGenderRepository audienceGenderRepository,
         IEventTypeRepository eventTypeRepository,
-        IActorRepository actorRepository,
+        IOrganizationRepository organizationRepository,
         IStorageObjectRepository storageObjectRepository,
+        ITenantContext tenantContext,
         IMapper mapper)
     {
         _eventRepository = eventRepository;
         _audienceAgeRepository = audienceAgeRepository;
         _audienceGenderRepository = audienceGenderRepository;
         _eventTypeRepository = eventTypeRepository;
-        _actorRepository = actorRepository;
+        _organizationRepository = organizationRepository;
         _storageObjectRepository = storageObjectRepository;
+        _tenantContext = tenantContext;
         _mapper = mapper;
     }
 
@@ -334,10 +332,10 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             _audienceAgeRepository, 
             _audienceGenderRepository, 
             _eventTypeRepository, 
-            _actorRepository, 
+            _organizationRepository, 
             _storageObjectRepository);
         
-        var validationResult = await validator.ValidateAsync(request.EventDto);
+        var validationResult = await validator.ValidateAsync(request.EventDto, cancellationToken);
 
         if (!validationResult.IsValid)
         {
@@ -352,6 +350,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         
         // Set properties not in DTO (system-generated values)
         @event.TotalViews = 0;
+        @event.TenantId = _tenantContext.TenantId;
 
         // Save through repository
         @event = await _eventRepository.Create(@event);
@@ -382,6 +381,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using static Microsoft.AspNetCore.Http.StatusCodes;
 
 namespace Explore.API.Controllers;
 
@@ -405,7 +405,13 @@ public class EventController : ControllerBase
 
     // POST: api/v1/event
     [HttpPost]
+    [EndpointSummary("Create Event")]
+    [EndpointDescription("Creates a new event. Requires authentication.")]
     [Authorize]  // CRITICAL: Write operations require authentication
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), Status200OK)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), Status400BadRequest)]
+    [ProducesResponseType(Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventDto dto)
     {
         var command = new CreateEventCommand { EventDto = dto };
@@ -421,7 +427,10 @@ public class EventController : ControllerBase
 
     // GET: api/v1/event
     [HttpGet]
+    [EndpointSummary("List Events")]
+    [EndpointDescription("Returns a list of events.")]
     [AllowAnonymous]  // CRITICAL: Read operations are public
+    [ProducesResponseType(typeof(List<EventListDto>), Status200OK)]
     public async Task<ActionResult<List<EventListDto>>> GetAll()
     {
         var events = await _mediator.Send(new GetEventListRequest());
@@ -430,7 +439,11 @@ public class EventController : ControllerBase
 
     // GET: api/v1/event/{id}
     [HttpGet("{id}")]
+    [EndpointSummary("Get Event Details")]
+    [EndpointDescription("Returns event details.")]
     [AllowAnonymous]
+    [ProducesResponseType(typeof(EventDto), Status200OK)]
+    [ProducesResponseType(Status404NotFound)]
     public async Task<ActionResult<EventDto>> GetById(Guid id)
     {
         var @event = await _mediator.Send(new GetEventDetailsRequest { Id = id });
@@ -445,7 +458,11 @@ public class EventController : ControllerBase
 
     // GET: api/v1/event/my
     [HttpGet("my")]
+    [EndpointSummary("List My Events")]
+    [EndpointDescription("Returns events owned by the current user (direct actor ownership or organization membership).")]
     [Authorize]
+    [ProducesResponseType(typeof(List<EventListDto>), Status200OK)]
+    [ProducesResponseType(Status401Unauthorized)]
     public async Task<ActionResult<List<EventListDto>>> GetMyEvents()
     {
         // CRITICAL: UserId extraction with fallback pattern
@@ -678,24 +695,33 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
 
     public async Task<List<Event>> GetMyEventsWithDetails(string userId)
     {
-        return await _dbContext.Events
+        Guid userGuid;
+        var isGuid = Guid.TryParse(userId, out userGuid);
+
+        var query = _dbContext.Events
             .Include(e => e.EventType)
             .Include(e => e.AudienceGender)
             .Include(e => e.AudienceAge)
             .Include(e => e.Actor)
                 .ThenInclude(a => a.ActorType)
-            .Include(e => e.Actor)
-                .ThenInclude(a => a.Organization)
-                    .ThenInclude(o => o.Members)
             .Include(e => e.EventStatus)
             .Include(e => e.VisibilityType)
             .Include(e => e.EventFormat)
             .Include(e => e.Madhab)
             .Include(e => e.FeaturedImage)
             .Include(e => e.AtprotoRecord)
-            .Where(e => e.Actor.Organization != null && 
-                        e.Actor.Organization.Members.Any(m => m.UserId.ToString() == userId))
-            .ToListAsync();
+            .AsQueryable();
+
+        if (isGuid)
+        {
+            query = query.Where(e =>
+                _dbContext.Users.Any(u => u.Id == userGuid && u.ActorId == e.ActorId) ||
+                _dbContext.OrganizationMembers.Any(om =>
+                    om.UserId == userGuid &&
+                    _dbContext.Organizations.Any(o => o.Id == om.OrganizationId && o.ActorId == e.ActorId)));
+        }
+
+        return await query.ToListAsync();
     }
 }
 ```
@@ -741,7 +767,7 @@ var validator = new CreateEventDtoValidator(
     _audienceAgeRepository, 
     _audienceGenderRepository, 
     _eventTypeRepository, 
-    _actorRepository, 
+    _organizationRepository, 
     _storageObjectRepository);
 ```
 
@@ -783,9 +809,6 @@ var userId = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
 return await _dbContext.Events
     .Include(e => e.Actor)
         .ThenInclude(a => a.ActorType)
-    .Include(e => e.Actor)
-        .ThenInclude(a => a.Organization)
-            .ThenInclude(o => o.Members)
     .Include(e => e.FeaturedImage)
     .ToListAsync();
 ```

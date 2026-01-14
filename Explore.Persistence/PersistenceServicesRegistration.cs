@@ -19,21 +19,25 @@ namespace Explore.Persistence
         //    builder.AddNpgsqlDbContext<ExploreDbContext>("ExploreDB");
 
         public static IServiceCollection CongfigurePersistenceServices(this IServiceCollection services,
-            IConfiguration configuration)
+            IConfiguration configuration, bool skipDbContextRegistration = false)
         {
-            var connectionString = configuration["ConnectionStrings:DefaultConnection"];
-            if (string.IsNullOrEmpty(connectionString))
+            // Skip DbContext registration when running integration tests (they register their own)
+            if (!skipDbContextRegistration)
             {
-                throw new InvalidOperationException(
-                    "Connection string 'DefaultConnection' not found in configuration.");
+                var connectionString = configuration["ConnectionStrings:DefaultConnection"];
+                if (string.IsNullOrEmpty(connectionString))
+                {
+                    throw new InvalidOperationException(
+                        "Connection string 'DefaultConnection' not found in configuration.");
+                }
+                services.AddDbContext<ExploreDbContext>(options =>
+                {
+                    options.UseNpgsql(connectionString)
+                        .UseSnakeCaseNamingConvention()
+                        .EnableSensitiveDataLogging() //temporarly to resolve bug! TODO remove in prod
+                        .EnableDetailedErrors();
+                });
             }
-            services.AddDbContext<ExploreDbContext>(options =>
-            {
-                options.UseNpgsql(connectionString)
-                    .UseSnakeCaseNamingConvention()
-                    .EnableSensitiveDataLogging() //temporarly to resolve bug! TODO remove in prod
-                    .EnableDetailedErrors();
-            });
 
             // Generic Repository
             services.AddScoped(typeof(IGenericRepository<,>), typeof(GenericRepository<,>));

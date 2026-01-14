@@ -12,11 +12,13 @@ namespace Explore.Application.Features.Users.Handlers.Commands
     public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, BaseCommandResponse<Guid>>
     {
         private readonly IUserRepository _userRepository;
+        private readonly IActorRepository _actorRepository;
         private readonly IMapper _mapper;
 
-        public UpdateUserCommandHandler(IUserRepository userRepository, IMapper mapper)
+        public UpdateUserCommandHandler(IUserRepository userRepository, IActorRepository actorRepository, IMapper mapper)
         {
             _userRepository = userRepository;
+            _actorRepository = actorRepository;
             _mapper = mapper;
         }
 
@@ -34,6 +36,17 @@ namespace Explore.Application.Features.Users.Handlers.Commands
 
             _mapper.Map(request.UpdateUserDto, user);
             await _userRepository.Update(user);
+
+            // Handle profile picture update
+            if (request.UpdateUserDto.ProfilePictureId.HasValue && user.ActorId.HasValue)
+            {
+                var actor = await _actorRepository.GetById(user.ActorId.Value);
+                if (actor != null)
+                {
+                    actor.ProfilePictureId = request.UpdateUserDto.ProfilePictureId.Value;
+                    await _actorRepository.Update(actor);
+                }
+            }
 
             response.Success = true;
             response.Message = "User updated successfully";

@@ -270,7 +270,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     private readonly IAudienceAgeRepository _audienceAgeRepository;
     private readonly IAudienceGenderRepository _audienceGenderRepository;
     private readonly IEventTypeRepository _eventTypeRepository;
-    private readonly IActorRepository _actorRepository;
+    private readonly IOrganizationRepository _organizationRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly IMapper _mapper;
 
@@ -279,7 +279,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         IAudienceAgeRepository audienceAgeRepository,
         IAudienceGenderRepository audienceGenderRepository,
         IEventTypeRepository eventTypeRepository,
-        IActorRepository actorRepository,
+        IOrganizationRepository organizationRepository,
         IStorageObjectRepository storageObjectRepository, 
         IMapper mapper)
     {
@@ -287,7 +287,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         _audienceAgeRepository = audienceAgeRepository;
         _audienceGenderRepository = audienceGenderRepository;
         _eventTypeRepository = eventTypeRepository;
-        _actorRepository = actorRepository;
+        _organizationRepository = organizationRepository;
         _storageObjectRepository = storageObjectRepository;
         _mapper = mapper;
     }
@@ -301,10 +301,10 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             _audienceAgeRepository, 
             _audienceGenderRepository, 
             _eventTypeRepository, 
-            _actorRepository, 
+            _organizationRepository, 
             _storageObjectRepository);
         
-        var validationResult = await validator.ValidateAsync(request.EventDto);
+        var validationResult = await validator.ValidateAsync(request.EventDto, cancellationToken);
 
         if (!validationResult.IsValid)
         {
@@ -354,26 +354,30 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
     private readonly IAudienceAgeRepository _audienceAgeRepository;
     private readonly IAudienceGenderRepository _audienceGenderRepository;
     private readonly IEventTypeRepository _eventTypeRepository;
-    private readonly IActorRepository _actorRepository;
+    private readonly IOrganizationRepository _organizationRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
 
     public CreateEventDtoValidator(
         IAudienceAgeRepository audienceAgeRepository,
         IAudienceGenderRepository audienceGenderRepository,
         IEventTypeRepository eventTypeRepository,
-        IActorRepository actorRepository,
+        IOrganizationRepository organizationRepository,
         IStorageObjectRepository storageObjectRepository)
     {
         _audienceAgeRepository = audienceAgeRepository;
         _audienceGenderRepository = audienceGenderRepository;
         _eventTypeRepository = eventTypeRepository;
-        _actorRepository = actorRepository;
+        _organizationRepository = organizationRepository;
         _storageObjectRepository = storageObjectRepository;
 
         // Standard validation rules
         RuleFor(x => x.Title)
             .NotEmpty().WithMessage("Title is required")
-            .MaximumLength(500);
+            .MaximumLength(200);
+
+        RuleFor(x => x.Description)
+            .MaximumLength(5000)
+            .When(x => !string.IsNullOrEmpty(x.Description));
 
         // Foreign key validation with repository
         RuleFor(x => x.AudienceAgeId)
@@ -394,14 +398,14 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
             })
             .WithMessage("Event Type not found");
 
-        RuleFor(x => x.ActorId)
-            .NotEmpty().WithMessage("Actor is required")
+        RuleFor(x => x.OrganizationId)
             .MustAsync(async (id, cancellation) =>
             {
-                var exists = await _actorRepository.Exists(id);
-                return exists;
+                if (!id.HasValue) return true;
+                return await _organizationRepository.Exists(id.Value);
             })
-            .WithMessage("Actor not found");
+            .When(x => x.OrganizationId.HasValue)
+            .WithMessage("Organization does not exist.");
 
         // Optional FK validation
         RuleFor(x => x.FeaturedImageId)

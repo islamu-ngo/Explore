@@ -47,8 +47,10 @@ public interface IGenericRepository<T, TKey> where T : class
 
 ```csharp
 // File: Explore.Persistence/Repositories/GenericRepository.cs
-using Microsoft.EntityFrameworkCore;
+using System;
 using Explore.Application.Contracts.Persistence;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace Explore.Persistence.Repositories;
 
@@ -63,9 +65,20 @@ public class GenericRepository<T, TKey> : IGenericRepository<T, TKey> where T : 
 
     public async Task<T> Create(T entity)
     {
-        await _dbContext.AddAsync(entity);
-        await _dbContext.SaveChangesAsync();
-        return entity;
+        try
+        {
+            await _dbContext.AddAsync(entity);
+            await _dbContext.SaveChangesAsync();
+            return entity;
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException pgEx && pgEx.SqlState == "23505")
+        {
+            // Duplicate key violation - detach the entity and rethrow with more context
+            _dbContext.Entry(entity).State = EntityState.Detached;
+            throw new InvalidOperationException(
+                $"A record with the same unique key already exists. Constraint: {pgEx.ConstraintName}. Detail: {pgEx.Detail}",
+                ex);
+        }
     }
 
     public async Task<T?> GetById(TKey id)
@@ -108,7 +121,6 @@ Inherit from GenericRepository and add custom methods.
 
 ```csharp
 // File: Explore.Application/Contracts/Persistence/IEventRepository.cs
-using Explore.Application.DTOs.Event;
 using Explore.Domain;
 
 namespace Explore.Application.Contracts.Persistence;
@@ -118,7 +130,6 @@ public interface IEventRepository : IGenericRepository<Event, Guid>
     Task<List<Event>> GetEventsWithDetails();
     Task<Event?> GetEventWithDetails(Guid id);
     Task<List<Event>> GetMyEventsWithDetails(string userId);
-    Task<List<Event>> GetEventsByActor(Guid actorId);
 }
 ```
 
@@ -155,7 +166,6 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
             .Include(e => e.EventFormat)
             .Include(e => e.Madhab)
             .Include(e => e.FeaturedImage)
-            .Include(e => e.AtprotoRecord)
             .ToListAsync();
     }
 
@@ -175,23 +185,34 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
             .FirstOrDefaultAsync(e => e.Id == id);
     }
 
-    public async Task<List<Event>> GetEventsByActor(Guid actorId)
-    {
-        return await _dbContext.Events
-            .Where(e => e.ActorId == actorId)
-            .Include(e => e.EventType)
-            .Include(e => e.FeaturedImage)
-            .ToListAsync();
-    }
-
     public async Task<List<Event>> GetMyEventsWithDetails(string userId)
     {
-        // Returns entities; handler will map to DTOs
-        return await _dbContext.Events
-            .Where(e => e.Organization.Members.Any(m => m.UserId == userId))
+        Guid userGuid;
+        var isGuid = Guid.TryParse(userId, out userGuid);
+
+        var query = _dbContext.Events
             .Include(e => e.EventType)
+            .Include(e => e.AudienceGender)
+            .Include(e => e.AudienceAge)
+            .Include(e => e.Actor)
+                .ThenInclude(a => a.ActorType)
             .Include(e => e.FeaturedImage)
-            .ToListAsync();
+            .Include(e => e.EventStatus)
+            .Include(e => e.VisibilityType)
+            .Include(e => e.EventFormat)
+            .Include(e => e.Madhab)
+            .AsQueryable();
+
+        if (isGuid)
+        {
+            query = query.Where(e =>
+                _dbContext.Users.Any(u => u.Id == userGuid && u.ActorId == e.ActorId) ||
+                _dbContext.OrganizationMembers.Any(om =>
+                    om.UserId == userGuid &&
+                    _dbContext.Organizations.Any(o => o.Id == om.OrganizationId && o.ActorId == e.ActorId)));
+        }
+
+        return await query.ToListAsync();
     }
 
     // NOTE: In the Application layer handler, entities are mapped to DTOs:

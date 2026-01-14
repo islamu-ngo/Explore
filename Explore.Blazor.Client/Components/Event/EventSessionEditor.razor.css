@@ -1,0 +1,29 @@
+.session-card {
+    padding: 16px;
+    margin-bottom: 16px;
+    border-radius: 8px;
+    background-color: var(--mud-palette-surface);
+    border: 1px solid var(--mud-palette-lines-default);
+}
+
+.session-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.session-title {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    color: var(--mud-palette-text-primary);
+}
+
+::deep .mud-input-outlined {
+    border-radius: 8px;
+}
+
+::deep .mud-select {
+    border-radius: 8px;
+}

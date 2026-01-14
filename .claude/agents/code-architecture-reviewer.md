@@ -67,7 +67,7 @@ Reviews .NET 10 code for Clean Architecture compliance, CQRS patterns, and archi
 - [ ] Application layer references ONLY Domain and Persistence
 - [ ] Persistence layer has DbContext and repositories
 - [ ] API layer uses MediatR, not bypassing handlers
-- [ ] Infrastructure layer has external services (email, ActivityPub, file storage)
+- [ ] Infrastructure layer has external services (email, federation [planned], file storage)
 - [ ] NO circular dependencies between layers
 
 ### CQRS Pattern Compliance
@@ -182,7 +182,7 @@ API Layer (Explore.API/)
 └── Blazor Components
 
 Infrastructure Layer (Explore.Infrastructure/)
-├── External services (Email, ActivityPub, File Storage)
+├── External services (Email, Federation [planned], File Storage)
 └── Integration with external systems
 ```
 

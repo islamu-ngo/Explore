@@ -1,68 +1,6 @@
-@inject IProgramService ProgramService
+@inject IEventService EventService
 @inject IUserService UserService
 @inject ISnackbar Snackbar
-
-<style>
-/* ===== DIALOG STYLING ===== */
-.registration-shell {
-    padding: 24px;
-}
-
-/* ===== SUCCESS STATE ===== */
-.success-content {
-    text-align: center;
-    padding: 48px 24px;
-}
-
-.success-icon {
-    width: 80px;
-    height: 80px;
-    margin: 0 auto 24px;
-    background: var(--mud-palette-success);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    animation: scaleIn 0.4s ease-out;
-}
-
-@@keyframes scaleIn {
-    from {
-        transform: scale(0.5);
-        opacity: 0;
-    }
-    to {
-        transform: scale(1);
-        opacity: 1;
-    }
-}
-
-.success-icon .mud-icon-root {
-    font-size: 3rem;
-    color: white;
-}
-
-.success-title {
-    font-size: 1.5rem;
-    font-weight: 600;
-    margin-bottom: 12px;
-    color: var(--mud-palette-success);
-}
-
-.success-message {
-    color: var(--mud-palette-text-secondary);
-    line-height: 1.6;
-    margin-bottom: 24px;
-}
-
-.action-buttons {
-    display: flex;
-    gap: 12px;
-    justify-content: center;
-    margin-top: 24px;
-}
-</style>
-
 <MudDialog Class="registration-dialog">
     <DialogContent>
         @if (isLoading)
@@ -170,7 +108,7 @@
     private MudBlazor.IDialogReference? DialogReference { get; set; }
 
     [Parameter]
-    public Guid ProgramId { get; set; }
+    public Guid EventSessionId { get; set; }
 
     [Parameter]
     public string Title { get; set; } = "Register for Event";
@@ -188,10 +126,10 @@
         {
             // Get current user
             currentUser = await UserService.GetCurrentUserAsync();
-            
+
             if (currentUser != null)
             {
-                registrationModel.EventSessionId = ProgramId;
+                registrationModel.EventSessionId = EventSessionId;
                 registrationModel.UserId = currentUser.Id;
             }
         }
@@ -213,11 +151,17 @@
             return;
         }
 
+        if (EventSessionId == Guid.Empty)
+        {
+            Snackbar.Add("Registration is unavailable for this session.", Severity.Error);
+            return;
+        }
+
         isSubmitting = true;
 
         try
         {
-            var response = await ProgramService.RegisterForProgramAsync(registrationModel);
+            var response = await EventService.RegisterForEventSessionAsync(registrationModel);
 
             if (response?.Success == true)
             {

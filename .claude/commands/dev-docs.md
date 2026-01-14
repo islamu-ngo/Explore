@@ -64,13 +64,19 @@ Before planning, understand the stack:
 
 ## Context References
 - **CLAUDE.md** - Project overview and quick reference
+- **docs/PROJECT.md**
 - **docs/ARCHITECTURE.md** - Technical architecture and stack
 - **docs/DOMAIN.md** - Domain model and entities
 - **docs/SECURITY.md** - Authentication and authorization
-- **docs/CONVENTIONS.md** - Code conventions and standards
+- **docs/CONFIGURATION.md** - Deployment Modes & Customization
+- **docs/GOVERNANCE.md** - Code conventions and standards
+**docs/OPERATIONS.md** - Deployment and maintenance procedures
 - **docs/TROUBLESHOOTING.md** - Common issues to avoid
 - **dev/active/README.md** - Task management guidelines
 - **.claude/skills/** - Architectural guidelines and patterns
+- **docs/FEDERATION.md**
+- **docs/API.md**
+
 
 ## ISLAMU Event Specific Considerations
 

@@ -1,264 +1,12 @@
-@page "/admin/organization/{OrganizationId:guid}"
 @using MudBlazor
 @using Explore.Blazor.Client.Clients;
 @using Explore.Blazor.Client.Services
 @using Microsoft.AspNetCore.Components
+@using Blazouter.Services
 @inject IAdminService AdminService
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
-
-<style>
-    :root {
-        --details-radius-xl: 22px;
-        --details-radius-lg: 16px;
-        --details-radius-md: 12px;
-    }
-
-    .details-page {
-        max-width: 900px;
-        margin: 0 auto;
-        padding: 22px;
-    }
-
-    /* HERO HEADER */
-    .hero-header {
-        border-radius: var(--details-radius-xl);
-        padding: 24px;
-        position: relative;
-        overflow: hidden;
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        background:
-            radial-gradient(900px 300px at 20% 10%, rgba(124, 58, 237, 0.22), transparent 55%),
-            linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
-        box-shadow: 0 18px 45px rgba(0, 0, 0, 0.22);
-        margin-bottom: 20px;
-    }
-
-    .hero-badge {
-        width: 52px;
-        height: 52px;
-        border-radius: 16px;
-        display: grid;
-        place-items: center;
-        background: rgba(124, 58, 237, 0.18);
-        border: 1px solid rgba(124, 58, 237, 0.35);
-    }
-
-    .hero-title {
-        display: flex;
-        gap: 16px;
-        align-items: center;
-    }
-
-    .hero-meta {
-        opacity: 0.85;
-    }
-
-    /* SECTION PANEL */
-    .section-panel {
-        border-radius: var(--details-radius-lg);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        background: rgba(255, 255, 255, 0.02);
-        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
-        padding: 20px;
-        margin-bottom: 16px;
-        transition: transform 0.15s ease, box-shadow 0.15s ease;
-    }
-
-    .section-panel:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.16);
-    }
-
-    .section-header {
-        display: flex;
-        gap: 12px;
-        align-items: center;
-        margin-bottom: 16px;
-        padding-bottom: 12px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    }
-
-    .section-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 12px;
-        display: grid;
-        place-items: center;
-        background: rgba(124, 58, 237, 0.14);
-        border: 1px solid rgba(124, 58, 237, 0.25);
-    }
-
-    .section-title {
-        font-weight: 800;
-        letter-spacing: 0.2px;
-    }
-
-    .field-row {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 16px;
-        margin-bottom: 12px;
-    }
-
-    .field-row:last-child {
-        margin-bottom: 0;
-    }
-
-    .field-value {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-    }
-
-    .field-label {
-        opacity: 0.75;
-        font-size: 0.85rem;
-        font-weight: 600;
-        letter-spacing: 0.3px;
-        text-transform: uppercase;
-    }
-
-    .field-text {
-        font-weight: 500;
-        word-break: break-word;
-    }
-
-    .status-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 16px;
-        border-radius: 999px;
-        font-weight: 600;
-        letter-spacing: 0.2px;
-        width: fit-content;
-    }
-
-    .not-provided {
-        opacity: 0.6;
-        font-style: italic;
-    }
-
-    .footer-actions {
-        display: flex;
-        gap: 12px;
-        justify-content: flex-start;
-        margin-top: 24px;
-    }
-
-    .loading-state {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 60px 24px;
-        gap: 16px;
-    }
-
-    .error-state {
-        padding: 26px;
-        text-align: center;
-        opacity: 0.9;
-    }
-
-    /* Mobile responsiveness (phones) */
-    @@media (max-width: 480px) {
-        .details-page {
-            padding: 12px;
-        }
-
-        .hero {
-            padding: 16px;
-            border-radius: var(--details-radius-lg);
-            margin-bottom: 16px;
-            gap: 12px;
-        }
-
-        .hero-badge {
-            width: 36px;
-            height: 36px;
-            border-radius: 10px;
-        }
-
-        .hero-badge .mud-icon {
-            font-size: 1.2rem;
-        }
-
-        .hero-title {
-            gap: 8px;
-        }
-
-        .hero-title h1 {
-            font-size: 1.3rem !important;
-        }
-
-        .hero-subtitle {
-            font-size: 0.9rem;
-        }
-
-        .hero-status {
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        .section-panel {
-            border-radius: var(--details-radius-lg);
-            padding: 16px;
-            margin-bottom: 12px;
-        }
-
-        .section-header {
-            gap: 10px;
-            margin-bottom: 12px;
-        }
-
-        .section-header .mud-icon {
-            font-size: 1.2rem;
-        }
-
-        .section-title {
-            font-size: 1rem !important;
-        }
-
-        .field-row {
-            grid-template-columns: 1fr;
-            gap: 12px;
-            padding: 10px 0;
-            border-bottom: 1px solid var(--field-border);
-        }
-
-        .field-row:last-child {
-            border-bottom: none;
-        }
-
-        .field-label {
-            font-size: 0.85rem;
-            opacity: 0.8;
-        }
-
-        .field-value {
-            font-size: 0.95rem;
-        }
-
-        .action-footer {
-            gap: 10px;
-            flex-direction: column;
-        }
-
-        .action-footer button {
-            width: 100%;
-            padding: 8px 12px !important;
-            font-size: 0.9rem;
-        }
-
-        .error-state {
-            padding: 20px;
-            font-size: 0.9rem;
-        }
-    }
-</style>
-
+@inject RouterStateService RouterState
 <div class="details-page">
     @if (_isLoading)
     {
@@ -409,8 +157,7 @@
 </div>
 
 @code {
-    [Parameter]
-    public Guid OrganizationId { get; set; }
+    private Guid OrganizationId { get; set; }
 
     private OrganizationDto? organization;
     private bool _isLoading = true;
@@ -418,6 +165,12 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Get route parameter from Blazouter
+        var orgIdStr = RouterState.GetParam("OrganizationId");
+        if (Guid.TryParse(orgIdStr, out var id))
+        {
+            OrganizationId = id;
+        }
         await LoadOrganizationDetails();
     }
 
@@ -477,3 +230,4 @@
         _ => Color.Default
     };
 }
+

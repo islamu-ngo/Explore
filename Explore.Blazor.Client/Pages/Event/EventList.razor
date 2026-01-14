@@ -1,140 +1,15 @@
-@page "/event"
-@page "/events"
 @using MudBlazor
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Components.Event
 @using Microsoft.AspNetCore.Components
 @inject NavigationManager Navigation
-@inject IProgramService ProgramService
-
-<style>
-/* ===== TOKENS ===== */
-:root{
-    --fx-ring: color-mix(in srgb, var(--mud-palette-primary) 30%, transparent);
-}
-
-/* ===== WRAPPER ===== */
-.page-wrap{ padding-block: 20px 32px; }
-
-/* ===== BAR: filters ===== */
-.filters-bar{
-    display:grid; gap:12px;
-    grid-template-columns: repeat(12, 1fr);
-    align-items:stretch;
-}
-@@media (max-width: 960px){
-    .filters-bar{ grid-template-columns: 1fr; }
-}
-
-.filter-cell{ grid-column: span 3; }
-.filter-cell.search{ grid-column: span 3; }
-@@media (max-width: 960px){
-    .filter-cell, .filter-cell.search{ grid-column: 1/-1; }
-}
-
-    /* Phone layout */
-    @@media (max-width: 480px){
-        .page-wrap{ padding-block: 14px 20px; }
-        .section-head{ flex-direction: column; align-items: flex-start; gap: 10px; }
-        .filters-bar{ grid-template-columns: 1fr; gap: 10px; }
-        .filter-cell, .filter-cell.search{ grid-column: 1/-1; }
-        .filter-paper{ width: 100%; }
-        .card{ border-radius: 12px; }
-        .card-media{ height: 160px; }
-        .pager, .results{ padding-inline: 4px; }
-    }
-
-/* Pill trigger */
-.filter-paper{
-    background-color: var(--mud-palette-surface);
-    border: 1px solid var(--mud-palette-lines-default);
-    border-radius: 999px;
-    cursor: pointer;
-    transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease, background .12s ease;
-    color: var(--mud-palette-text-primary);
-    padding-inline: 12px;
-}
-.filter-paper:hover{
-    transform: translateY(-1px);
-    background-color: color-mix(in srgb, var(--mud-palette-primary) 6%, var(--mud-palette-surface));
-    border-color: var(--mud-palette-primary);
-    box-shadow: 0 0 0 3px var(--fx-ring);
-}
-
-/* Chevron */
-.filter-paper .mud-icon-root{ opacity:.85; }
-
-/* Popover styling */
-.filter-popover{
-    background-color: var(--mud-palette-surface) !important;
-    border: 1px solid var(--mud-palette-lines-default) !important;
-    box-shadow: var(--mud-elevation-8) !important;
-    border-radius: 12px !important;
-}
-.filter-popover .mud-text{ color: var(--mud-palette-text-primary) !important; }
-.filter-option{
-    padding: 6px 10px;
-    border-radius: 8px;
-    transition: background .12s ease, color .12s ease;
-    cursor: pointer;
-}
-.filter-option:hover{
-    background: color-mix(in srgb, var(--mud-palette-primary) 10%, transparent);
-}
-
-/* ===== SECTION HEADER ===== */
-.section-head{
-    display:flex; align-items:flex-end; justify-content:space-between;
-    gap:16px; margin-bottom: 16px;
-}
-.kicker{ letter-spacing:.18em; text-transform:uppercase; font-size:.82rem; opacity:.7; }
-
-/* ===== CARDS ===== */
-.card{
-    border-radius: 16px;
-    overflow:hidden;
-    border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
-    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
-}
-.card:hover{
-    transform: translateY(-3px);
-    box-shadow: 0 16px 36px rgba(0,0,0,.16);
-    border-color: color-mix(in srgb, var(--mud-palette-primary) 40%, var(--mud-palette-lines-default));
-}
-
-/* Media with subtle overlay */
-.card-media{
-    position: relative; height: 200px; overflow: hidden;
-}
-.card-media::after{
-    content:""; position:absolute; inset:0;
-    background: linear-gradient(180deg, rgba(0,0,0,0) 50%, rgba(0,0,0,.25) 100%);
-}
-
-/* Badges row */
-.badges{ display:flex; gap:8px; align-items:center; margin: 10px 0 6px 0;}
-
-/* Location row */
-.loc{
-    display:flex; align-items:center; gap:6px; opacity:.85;
-}
-
-/* ===== PAGINATION & INFO ===== */
-.pager{
-    display:flex; justify-content:center; margin-top: 24px;
-}
-.results{
-    display:flex; justify-content:center; margin-top: 8px; opacity:.8;
-}
-
-/* ===== SEARCH FIELD ===== */
-.search-input .mud-input-root{ border-radius: 999px !important; }
-.search-input .mud-input:not(.mud-input-disabled):focus-within{
-    box-shadow: 0 0 0 3px var(--fx-ring);
-    border-color: var(--mud-palette-primary);
-}
-</style>
-
+@inject IEventService EventService
+@inject ICategoryService CategoryService
+@inject ITagService TagService
+@inject IEventRegistrationService RegistrationService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
 <PageTitle>Explore Events</PageTitle>
 
 <MudContainer Class="page-wrap">
@@ -195,36 +70,62 @@
             <!-- Category -->
             <div class="filter-cell">
                 <MudPopover Open="@isCategoryOpen" Fixed="true" Class="filter-popover px-4 py-3">
-                    <div class="d-flex flex-column gap-3" style="min-width:220px">
+                    <div class="d-flex flex-column gap-3" style="min-width:220px; max-height: 300px; overflow-y: auto;">
                         <MudText Typo="Typo.subtitle2">Category</MudText>
                         <div class="d-flex flex-column gap-1">
                             <MudText Typo="Typo.body2"
-                                     Color="@(selectedCategory == "" ? Color.Primary : Color.Default)"
+                                     Color="@(selectedCategoryId == null ? Color.Primary : Color.Default)"
                                      Class="filter-option"
-                                     @onclick="@(() => OnCategoryChanged(""))">All Categories</MudText>
-                            <MudText Typo="Typo.body2"
-                                     Color="@(selectedCategory == "lecture" ? Color.Primary : Color.Default)"
-                                     Class="filter-option"
-                                     @onclick="@(() => OnCategoryChanged("lecture"))">Lecture</MudText>
-                            <MudText Typo="Typo.body2"
-                                     Color="@(selectedCategory == "workshop" ? Color.Primary : Color.Default)"
-                                     Class="filter-option"
-                                     @onclick="@(() => OnCategoryChanged("workshop"))">Workshop</MudText>
-                            <MudText Typo="Typo.body2"
-                                     Color="@(selectedCategory == "social" ? Color.Primary : Color.Default)"
-                                     Class="filter-option"
-                                     @onclick="@(() => OnCategoryChanged("social"))">Social</MudText>
-                            <MudText Typo="Typo.body2"
-                                     Color="@(selectedCategory == "charity" ? Color.Primary : Color.Default)"
-                                     Class="filter-option"
-                                     @onclick="@(() => OnCategoryChanged("charity"))">Charity</MudText>
+                                     @onclick="@(() => OnCategoryChanged(null))">All Categories</MudText>
+                            @if (categories != null && categories.Any())
+                            {
+                                @foreach (var category in categories)
+                                {
+                                    <MudText Typo="Typo.body2"
+                                             Color="@(selectedCategoryId == category.Id ? Color.Primary : Color.Default)"
+                                             Class="filter-option"
+                                             @onclick="@(() => OnCategoryChanged(category.Id))">@category.FullName</MudText>
+                                }
+                            }
                         </div>
                     </div>
                 </MudPopover>
                 <MudPaper @onclick="@(() => isCategoryOpen = !isCategoryOpen)"
                           Class="filter-paper d-flex justify-space-between align-center">
                     <MudText Class="ml-2">
-                        @(string.IsNullOrEmpty(selectedCategory) ? "All Categories" : selectedCategory)
+                        @(selectedCategoryId == null ? "All Categories" : GetSelectedCategoryName())
+                    </MudText>
+                    <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" />
+                </MudPaper>
+            </div>
+
+            <!-- Tags -->
+            <div class="filter-cell">
+                <MudPopover Open="@isTagOpen" Fixed="true" Class="filter-popover px-4 py-3">
+                    <div class="d-flex flex-column gap-3" style="min-width:220px; max-height: 300px; overflow-y: auto;">
+                        <MudText Typo="Typo.subtitle2">Tags</MudText>
+                        <div class="d-flex flex-column gap-1">
+                            <MudText Typo="Typo.body2"
+                                     Color="@(selectedTagId == null ? Color.Primary : Color.Default)"
+                                     Class="filter-option"
+                                     @onclick="@(() => OnTagChanged(null))">All Tags</MudText>
+                            @if (tags != null && tags.Any())
+                            {
+                                @foreach (var tag in tags)
+                                {
+                                    <MudText Typo="Typo.body2"
+                                             Color="@(selectedTagId == tag.Id ? Color.Primary : Color.Default)"
+                                             Class="filter-option"
+                                             @onclick="@(() => OnTagChanged(tag.Id))">@tag.FullName</MudText>
+                                }
+                            }
+                        </div>
+                    </div>
+                </MudPopover>
+                <MudPaper @onclick="@(() => isTagOpen = !isTagOpen)"
+                          Class="filter-paper d-flex justify-space-between align-center">
+                    <MudText Class="ml-2">
+                        @(selectedTagId == null ? "All Tags" : GetSelectedTagName())
                     </MudText>
                     <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" />
                 </MudPaper>
@@ -247,7 +148,7 @@
 
         <!-- Cards -->
         <MudGrid>
-            @if (isLoading && !allPrograms.Any())
+            @if (isLoading && !allEvents.Any())
             {
                 <!-- Skeleton loaders voor snelle feedback -->
                 @for (int i = 0; i < 6; i++)
@@ -328,18 +229,44 @@
                                     </MudText>
                                 }
                             </MudCardContent>
-                            <MudCardActions Class="justify-space-between pa-4 pt-0">
-                                <MudButton Variant="Variant.Text"
-                                           EndIcon="@Icons.Material.Filled.ArrowForward"
-                                           Color="Color.Primary"
-                                           OnClick="@(() => Navigation.NavigateTo($"/event/detail/{evt.Id}"))">
-                                    View Details
-                                </MudButton>
-                                <div class="loc">
-                                    <MudIcon Icon="@Icons.Material.Filled.Business" />
-                                    <MudText>@(evt.ActorDisplayName ?? "Community")</MudText>
+                            <MudCardActions Class="card-actions pa-4 pt-0">
+                                <div class="action-buttons">
+                                    <MudButton Variant="Variant.Text"
+                                               Size="Size.Small"
+                                               EndIcon="@Icons.Material.Filled.ArrowForward"
+                                               Color="Color.Primary"
+                                               OnClick="@(() => Navigation.NavigateTo($"/event/detail/{evt.Id}"))">
+                                        Details
+                                    </MudButton>
+                                    <MudButton Variant="Variant.Filled"
+                                               Size="Size.Small"
+                                               Color="Color.Primary"
+                                               StartIcon="@Icons.Material.Filled.EventAvailable"
+                                               OnClick="@(() => OpenQuickRegisterDialog(evt))">
+                                        Register
+                                    </MudButton>
                                 </div>
+                                <MudMenu Icon="@Icons.Material.Filled.MoreVert"
+                                         Size="Size.Small"
+                                         AnchorOrigin="Origin.BottomRight"
+                                         TransformOrigin="Origin.TopRight">
+                                    <MudMenuItem Icon="@Icons.Material.Filled.Edit"
+                                                 OnClick="@(() => Navigation.NavigateTo($"/event/edit/{evt.Id}"))">
+                                        Edit
+                                    </MudMenuItem>
+                                    <MudMenuItem Icon="@Icons.Material.Filled.Delete"
+                                                 IconColor="Color.Error"
+                                                 OnClick="@(() => OpenDeleteDialog(evt))">
+                                        Delete
+                                    </MudMenuItem>
+                                </MudMenu>
                             </MudCardActions>
+                            <div class="card-footer pa-4 pt-0">
+                                <div class="loc">
+                                    <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" />
+                                    <MudText Typo="Typo.caption">@(evt.ActorDisplayName ?? "Community")</MudText>
+                                </div>
+                            </div>
                         </MudCard>
                     </MudItem>
                 }
@@ -367,9 +294,11 @@
 @code {
     private string searchText = "";
     private string selectedDate = "";
-    private string selectedCategory = "";
+    private Guid? selectedCategoryId;
+    private Guid? selectedTagId;
     private bool isDateOpen;
     private bool isCategoryOpen;
+    private bool isTagOpen;
     private bool isLoading = true;
     private bool _dataLoaded = false;
 
@@ -378,11 +307,13 @@
     private int itemsPerPage = 6;
 
     // API Data
-    private ICollection<EventListDto> allPrograms = new List<EventListDto>();
+    private ICollection<EventListDto> allEvents = new List<EventListDto>();
     private ICollection<EventTypeListDto> eventTypes = new List<EventTypeListDto>();
-    private ICollection<EventFormatListDto> programTypes = new List<EventFormatListDto>();
+    private ICollection<EventFormatListDto> eventFormats = new List<EventFormatListDto>();
+    private ICollection<CategoryListDto> categories = new List<CategoryListDto>();
+    private ICollection<TagListDto> tags = new List<TagListDto>();
     private Dictionary<int, string> eventTypeMap = new();
-    private Dictionary<int, string> programTypeMap = new();
+    private Dictionary<int, string> eventFormatMap = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -396,8 +327,8 @@
         eventTypeMap = eventTypes.Any()
             ? eventTypes.ToDictionary(et => et.Id, et => et.FullName)
             : new();
-        programTypeMap = programTypes.Any()
-            ? programTypes.ToDictionary(pt => pt.Id, pt => pt.FullName)
+        eventFormatMap = eventFormats.Any()
+            ? eventFormats.ToDictionary(pt => pt.Id, pt => pt.FullName)
             : new();
     }
 
@@ -405,25 +336,29 @@
     {
         // Prevent multiple loads
         if (_dataLoaded) return;
-        
+
         isLoading = true;
 
         try
         {
             Console.WriteLine("[EVENT LIST] Loading data...");
-            
+
             // Parallel loading
-            var programsTask = ProgramService.GetAllProgramsAsync();
-            var eventTypesTask = ProgramService.GetEventTypesAsync();
-            var programTypesTask = ProgramService.GetProgramTypesAsync();
+            var eventsTask = EventService.GetAllEventsAsync();
+            var eventTypesTask = EventService.GetEventTypesAsync();
+            var eventFormatsTask = EventService.GetEventFormatsAsync();
+            var categoriesTask = CategoryService.GetAllCategoriesAsync();
+            var tagsTask = TagService.GetAllTagsAsync();
 
-            await Task.WhenAll(programsTask, eventTypesTask, programTypesTask);
+            await Task.WhenAll(eventsTask, eventTypesTask, eventFormatsTask, categoriesTask, tagsTask);
 
-            allPrograms = await programsTask;
+            allEvents = await eventsTask;
             eventTypes = await eventTypesTask;
-            programTypes = await programTypesTask;
+            eventFormats = await eventFormatsTask;
+            categories = await categoriesTask;
+            tags = await tagsTask;
 
-            Console.WriteLine($"[EVENT LIST] Loaded {allPrograms.Count} events, {eventTypes.Count} types, {programTypes.Count} formats");
+            Console.WriteLine($"[EVENT LIST] Loaded {allEvents.Count} events, {eventTypes.Count} types, {eventFormats.Count} formats, {categories.Count} categories, {tags.Count} tags");
 
             BuildLookupMaps();
             _dataLoaded = true;
@@ -432,9 +367,11 @@
         {
             Console.WriteLine($"[EVENT LIST] LoadDataAsync error: {ex.Message}");
             // Keep empty lists on error - don't throw
-            allPrograms = new List<EventListDto>();
+            allEvents = new List<EventListDto>();
             eventTypes = new List<EventTypeListDto>();
-            programTypes = new List<EventFormatListDto>();
+            eventFormats = new List<EventFormatListDto>();
+            categories = new List<CategoryListDto>();
+            tags = new List<TagListDto>();
         }
         finally
         {
@@ -446,17 +383,50 @@
     {
         get
         {
-            // Cache filtered results
-            return allPrograms
-                .Where(e => string.IsNullOrEmpty(searchText) ||
-                            e.Title.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
-                            (e.Description?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false))
-                .Where(e => string.IsNullOrEmpty(selectedCategory) ||
-                            GetEventTypeName(e).Equals(selectedCategory, StringComparison.OrdinalIgnoreCase))
-                .Where(e => e.LastSessionDate == null || e.LastSessionDate >= DateTimeOffset.Now)
-                .ToList();
+            var filteredEvents = allEvents.AsEnumerable();
+            
+            // Search filter
+            if (!string.IsNullOrEmpty(searchText))
+            {
+                filteredEvents = filteredEvents.Where(e => 
+                    e.Title.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+                    (e.Description?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false));
+            }
+
+            // Category filter - if we have events by category loaded
+            if (selectedCategoryId.HasValue && eventsByCategory != null && eventsByCategory.Any())
+            {
+                var categoryEventIds = eventsByCategory.Select(e => e.Id).ToHashSet();
+                filteredEvents = filteredEvents.Where(e => categoryEventIds.Contains(e.Id));
+            }
+
+            // Tag filter - if we have events by tag loaded
+            if (selectedTagId.HasValue && eventsByTag != null && eventsByTag.Any())
+            {
+                var tagEventIds = eventsByTag.Select(e => e.Id).ToHashSet();
+                filteredEvents = filteredEvents.Where(e => tagEventIds.Contains(e.Id));
+            }
+
+            // Date filter
+            if (!string.IsNullOrEmpty(selectedDate))
+            {
+                var today = DateTime.Today;
+                filteredEvents = selectedDate switch
+                {
+                    "today" => filteredEvents.Where(e => e.FirstSessionDate?.Date == today),
+                    "tomorrow" => filteredEvents.Where(e => e.FirstSessionDate?.Date == today.AddDays(1)),
+                    "thisweek" => filteredEvents.Where(e => e.FirstSessionDate?.Date >= today && e.FirstSessionDate?.Date <= today.AddDays(7)),
+                    "thismonth" => filteredEvents.Where(e => e.FirstSessionDate?.Date >= today && e.FirstSessionDate?.Date <= today.AddDays(30)),
+                    _ => filteredEvents
+                };
+            }
+
+            return filteredEvents.ToList();
         }
     }
+
+    private ICollection<EventListDto>? eventsByCategory;
+    private ICollection<EventListDto>? eventsByTag;
 
     private List<EventListDto> FilteredEvents
     {
@@ -492,11 +462,50 @@
         currentPage = 1;
     }
 
-    private void OnCategoryChanged(string value)
+    private async Task OnCategoryChanged(Guid? categoryId)
     {
-        selectedCategory = value;
+        selectedCategoryId = categoryId;
         isCategoryOpen = false;
         currentPage = 1;
+
+        if (categoryId.HasValue)
+        {
+            eventsByCategory = await CategoryService.GetEventsByCategoryAsync(categoryId.Value);
+        }
+        else
+        {
+            eventsByCategory = null;
+        }
+        StateHasChanged();
+    }
+
+    private async Task OnTagChanged(Guid? tagId)
+    {
+        selectedTagId = tagId;
+        isTagOpen = false;
+        currentPage = 1;
+
+        if (tagId.HasValue)
+        {
+            eventsByTag = await TagService.GetEventsByTagAsync(tagId.Value);
+        }
+        else
+        {
+            eventsByTag = null;
+        }
+        StateHasChanged();
+    }
+
+    private string GetSelectedCategoryName()
+    {
+        if (!selectedCategoryId.HasValue) return "All Categories";
+        return categories?.FirstOrDefault(c => c.Id == selectedCategoryId.Value)?.FullName ?? "Category";
+    }
+
+    private string GetSelectedTagName()
+    {
+        if (!selectedTagId.HasValue) return "All Tags";
+        return tags?.FirstOrDefault(t => t.Id == selectedTagId.Value)?.FullName ?? "Tag";
     }
 
     private void OnPageChanged(int page)
@@ -504,42 +513,113 @@
         currentPage = page;
     }
 
-    private string GetEventTypeName(EventListDto program)
+    private async Task OpenDeleteDialog(EventListDto evt)
+    {
+        var parameters = new DialogParameters
+        {
+            { "EventId", evt.Id },
+            { "EventTitle", evt.Title }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<DeleteEventDialog>("Delete Event", parameters, options);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+        {
+            // Refresh the list
+            allEvents = allEvents.Where(e => e.Id != evt.Id).ToList();
+            StateHasChanged();
+        }
+    }
+
+    private async Task OpenQuickRegisterDialog(EventListDto evt)
+    {
+        // First get the sessions for this event
+        var sessions = await EventService.GetSessionsByEventAsync(evt.Id);
+        
+        if (sessions == null || !sessions.Any())
+        {
+            Snackbar.Add("No sessions available for this event yet.", Severity.Warning);
+            return;
+        }
+
+        var primarySession = sessions.First();
+
+        var parameters = new DialogParameters
+        {
+            { "EventSessionId", primarySession.Id },
+            { "Title", $"Register for {evt.Title}" }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<Explore.Blazor.Client.Components.EventRegistration>(
+            "Register",
+            parameters,
+            options
+        );
+
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+        {
+            Snackbar.Add("Successfully registered for event!", Severity.Success);
+        }
+    }
+
+    private string GetEventTypeName(EventListDto eventItem)
     {
         // Use the FullName from the DTO directly if available
-        if (!string.IsNullOrEmpty(program.EventTypeFullName))
-            return program.EventTypeFullName;
+        if (!string.IsNullOrEmpty(eventItem.EventTypeFullName))
+            return eventItem.EventTypeFullName;
 
         // Fallback to lookup
-        return programTypeMap.TryGetValue(program.EventFormatId, out var programTypeName)
-            ? programTypeName
+        return eventTypeMap.TryGetValue(eventItem.EventTypeId, out var eventTypeName)
+            ? eventTypeName
             : "Event";
     }
 
-    private string GetLocationText(EventListDto program)
+    private string GetLocationText(EventListDto eventItem)
     {
         // EventListDto doesn't have location directly - use format
-        if (program.EventFormatId == 1 // Assuming 1 = Online
+        if (eventItem.EventFormatId == 1 // Assuming 1 = Online
             ) return "Online";
 
-        return program.EventFormatFullName ?? "Location TBD";
+        if (!string.IsNullOrEmpty(eventItem.EventFormatFullName))
+            return eventItem.EventFormatFullName;
+
+        return eventFormatMap.TryGetValue(eventItem.EventFormatId, out var formatName)
+            ? formatName
+            : "Location TBD";
     }
 
-    private string GetEventImage(EventListDto program)
+    private string GetEventImage(EventListDto eventItem)
     {
         // Use FeaturedImageUri if available
-        if (!string.IsNullOrEmpty(program.FeaturedImageUri))
-            return program.FeaturedImageUri;
+        if (!string.IsNullOrEmpty(eventItem.FeaturedImageUri))
+            return eventItem.FeaturedImageUri;
 
         // Fallback to placeholder
-        var encodedTitle = Uri.EscapeDataString(program.Title.Length > 30
-            ? program.Title.Substring(0, 30) + "..."
-            : program.Title);
-        var color = GetEventColorForProgram(program);
+        var encodedTitle = Uri.EscapeDataString(eventItem.Title.Length > 30
+            ? eventItem.Title.Substring(0, 30) + "..."
+            : eventItem.Title);
+        var color = GetEventColorForEvent(eventItem);
         return $"https://placehold.co/600x400/{color}/ffffff?text={encodedTitle}";
     }
 
-    private string GetEventColorForProgram(EventListDto program)
+    private string GetEventColorForEvent(EventListDto eventItem)
     {
         // Quick color hash based on event type
         var typeColors = new Dictionary<int, string>
@@ -551,11 +631,11 @@
             { 5, "9C27B0" }, // Education - Purple
         };
 
-        if (typeColors.TryGetValue(program.EventTypeId, out var color))
+        if (typeColors.TryGetValue(eventItem.EventTypeId, out var color))
             return color;
 
         // Fallback: hash of title
-        var hash = program.Title.GetHashCode();
+        var hash = eventItem.Title.GetHashCode();
         var colors = new[] { "2196F3", "FF9800", "4CAF50", "E91E63", "9C27B0", "607D8B" };
         return colors[Math.Abs(hash) % colors.Length];
     }

@@ -74,13 +74,13 @@ public class ImageStorageService : IImageStorageService
         try
         {
             Console.WriteLine($"[IMAGE STORAGE] Getting upload URL for: {fileName}, type: {contentType}");
-            
+
             var request = new UploadRequestDto
             {
                 FileName = fileName,
                 ContentType = contentType
             };
-            
+
             var response = await _apiClient.GenerateUploadUrlAsync(request);
 
             // Defensive: server might return non-null DTO but with an empty UploadUrl.
@@ -92,10 +92,10 @@ public class ImageStorageService : IImageStorageService
 
             if (string.IsNullOrWhiteSpace(response.UploadUrl))
             {
-                Console.WriteLine("[IMAGE STORAGE] UploadUrl is null or empty. Check server S3 configuration (bucket/endpoint/credentials)." );
+                Console.WriteLine("[IMAGE STORAGE] UploadUrl is null or empty. Check server S3 configuration (bucket/endpoint/credentials).");
                 return null;
             }
-            
+
             Console.WriteLine($"[IMAGE STORAGE] Got upload URL: {response.UploadUrl?.Substring(0, Math.Min(50, response.UploadUrl?.Length ?? 0))}...");
             return new ImageUploadResponse
             {
@@ -134,7 +134,7 @@ public class ImageStorageService : IImageStorageService
         try
         {
             Console.WriteLine($"[IMAGE STORAGE] Uploading to S3: {file.Name}");
-            
+
             // Create a new HttpClient for direct S3 upload (without auth headers)
             using var s3Client = new HttpClient();
 
@@ -170,7 +170,7 @@ public class ImageStorageService : IImageStorageService
         try
         {
             Console.WriteLine($"[IMAGE STORAGE] Starting upload process for: {file.Name}");
-            
+
             // Step 1: Get pre-signed upload URL
             var uploadResponse = await GetUploadUrlAsync(file.Name, file.ContentType);
             if (uploadResponse == null)
@@ -247,18 +247,33 @@ public class ImageStorageService : IImageStorageService
         }
     }
 
-    public async Task<string?> GetImageUrlAsync(string imageKey)
+    public Task<string?> GetImageUrlAsync(string imageKey)
     {
+        if (string.IsNullOrEmpty(imageKey))
+        {
+            return Task.FromResult<string?>(null);
+        }
+
         try
         {
-            // For now, construct the URL directly
-            // In production, you might want to call an API to get a fresh signed URL
-            return imageKey;
+            if (Uri.TryCreate(imageKey, UriKind.Absolute, out var uri))
+            {
+                // The object key is the path part of the URI, without the leading slash.
+                var objectKey = uri.AbsolutePath.TrimStart('/');
+
+                // Construct the relative URL to our proxy controller
+                var proxyUrl = $"/api/v1/ImageProxy/{objectKey}";
+                return Task.FromResult<string?>(proxyUrl);
+            }
+
+            // If it's not a full URI, it might already be just the key.
+            // This provides a fallback.
+            return Task.FromResult<string?>($"/api/v1/ImageProxy/{imageKey}");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[IMAGE STORAGE] Error getting image URL: {ex.Message}");
-            return null;
+            Console.WriteLine($"[IMAGE STORAGE] Error constructing image proxy URL: {ex.Message}");
+            return Task.FromResult<string?>(null);
         }
     }
 

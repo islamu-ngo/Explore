@@ -1,0 +1,101 @@
+@using Explore.Blazor.Client.Clients
+@using MudBlazor
+@inject IEventService EventService
+@inject ISnackbar Snackbar
+
+@using MudBlazor
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.People" Class="mr-3 mb-n1" />
+            Registration Manager
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+    <MudDataGrid T="EventRegistrationListDto" Items="@registrations" ReadOnly="true"
+                 Bordered="true" Dense="true" Hover="true">
+        <Columns>
+            <PropertyColumn Property="x => x.UserFullName" Title="Name" />
+            <PropertyColumn Property="x => x.UserId" Title="User Id" />
+            <PropertyColumn Property="x => x.ApprovalStatusFullName" Title="Status" />
+            <TemplateColumn StickyRight="true">
+                <CellTemplate Context="context">
+                    @if (context.Item.ApprovalStatusMasterCode == "PENDING")
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.Check" Size="Size.Small" OnClick="@(() => UpdateStatus(context.Item, 2))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" OnClick="@(() => UpdateStatus(context.Item, 3))" />
+                    }
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+    </MudDataGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IDialogReference? DialogReference { get; set; }
+
+    [Parameter] public Guid EventSessionId { get; set; }
+
+    private List<EventRegistrationListDto> registrations = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRegistrations();
+    }
+
+    private async Task LoadRegistrations()
+    {
+        try
+        {
+            var result = await EventService.GetRegistrationsForSessionAsync(EventSessionId);
+            registrations = result.ToList();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading registrations: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task UpdateStatus(EventRegistrationListDto registration, int newStatusId)
+    {
+        var dto = new UpdateEventRegistrationDto
+        {
+            Id = registration.Id,
+            UserId = registration.UserId,
+            EventSessionId = registration.EventSessionId,
+            ApprovalStatusId = newStatusId,
+            TenantId = registration.TenantId,
+            AtprotoRecordId = null
+        };
+
+        try
+        {
+            var response = await EventService.UpdateRegistrationAsync(dto);
+            if (response?.Success == true)
+            {
+                Snackbar.Add("Registration status updated.", Severity.Success);
+                await LoadRegistrations();
+            }
+            else
+            {
+                Snackbar.Add(response?.Message ?? "Failed to update registration.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error updating status: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void Close()
+    {
+        DialogReference?.Dismiss(DialogResult.Cancel());
+    }
+}

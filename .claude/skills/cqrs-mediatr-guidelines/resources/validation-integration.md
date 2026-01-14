@@ -19,29 +19,29 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
     private readonly IAudienceAgeRepository _audienceAgeRepository;
     private readonly IAudienceGenderRepository _audienceGenderRepository;
     private readonly IEventTypeRepository _eventTypeRepository;
-    private readonly IActorRepository _actorRepository;
+    private readonly IOrganizationRepository _organizationRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
 
     public CreateEventDtoValidator(
         IAudienceAgeRepository audienceAgeRepository,
         IAudienceGenderRepository audienceGenderRepository,
         IEventTypeRepository eventTypeRepository,
-        IActorRepository actorRepository,
+        IOrganizationRepository organizationRepository,
         IStorageObjectRepository storageObjectRepository)
     {
         _audienceAgeRepository = audienceAgeRepository;
         _audienceGenderRepository = audienceGenderRepository;
         _eventTypeRepository = eventTypeRepository;
-        _actorRepository = actorRepository;
+        _organizationRepository = organizationRepository;
         _storageObjectRepository = storageObjectRepository;
 
         RuleFor(x => x.Title)
             .NotEmpty().WithMessage("Title is required")
-            .MaximumLength(500).WithMessage("Title must not exceed 500 characters");
+            .MaximumLength(200).WithMessage("Title must not exceed 200 characters");
 
         RuleFor(x => x.Description)
-            .MaximumLength(500).When(x => !string.IsNullOrEmpty(x.Description))
-            .WithMessage("Description must not exceed 500 characters");
+            .MaximumLength(5000).When(x => !string.IsNullOrEmpty(x.Description))
+            .WithMessage("Description must not exceed 5000 characters");
 
         RuleFor(x => x.EventTypeId)
             .NotEmpty().WithMessage("Event type is required")
@@ -70,23 +70,23 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
             })
             .WithMessage("Audience age not found");
 
-        RuleFor(x => x.ActorId)
-            .NotEmpty().WithMessage("Actor is required")
+        RuleFor(x => x.OrganizationId)
             .MustAsync(async (id, cancellation) =>
             {
-                var exists = await _actorRepository.Exists(id);
-                return exists;
+                if (!id.HasValue) return true;
+                return await _organizationRepository.Exists(id.Value);
             })
-            .WithMessage("Actor not found");
+            .When(x => x.OrganizationId.HasValue)
+            .WithMessage("Organization does not exist.");
 
         RuleFor(x => x.FeaturedImageId)
-            .NotEmpty().WithMessage("Featured image is required")
             .MustAsync(async (id, cancellation) =>
             {
-                var exists = await _storageObjectRepository.Exists(id);
-                return exists;
+                if (!id.HasValue) return true;
+                return await _storageObjectRepository.Exists(id.Value);
             })
-            .WithMessage("Featured image not found");
+            .When(x => x.FeaturedImageId.HasValue)
+            .WithMessage("FeaturedImageId does not exist.");
     }
 }
 ```
@@ -111,11 +111,11 @@ public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, 
         _audienceAgeRepository,
         _audienceGenderRepository,
         _eventTypeRepository,
-        _actorRepository,
+        _organizationRepository,
         _storageObjectRepository);
 
     // 2. Validate DTO
-    var validationResult = await validator.ValidateAsync(request.EventDto);
+    var validationResult = await validator.ValidateAsync(request.EventDto, cancellationToken);
 
     // 3. Check result
     if (!validationResult.IsValid)
@@ -129,6 +129,7 @@ public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, 
     // 4. Proceed with business logic
     var @event = _mapper.Map<Event>(request.EventDto);
     @event.TotalViews = 0;
+    @event.TenantId = _tenantContext.TenantId;
     @event = await _eventRepository.Create(@event);
 
     response.Success = true;
@@ -157,11 +158,11 @@ RuleFor(x => x.Title)
 ### String Length
 ```csharp
 RuleFor(x => x.Title)
-    .MaximumLength(500).WithMessage("Title must not exceed 500 characters");
+    .MaximumLength(200).WithMessage("Title must not exceed 200 characters");
 
 RuleFor(x => x.Description)
     .MinimumLength(10).WithMessage("Description must be at least 10 characters")
-    .MaximumLength(1000);
+    .MaximumLength(5000);
 ```
 
 ### Numeric Range
@@ -209,9 +210,9 @@ RuleFor(x => x.Price)
 RuleFor(x => x.Slug)
     .MustAsync(async (dto, slug, cancellation) =>
     {
-        // Custom logic: slug must be unique
-        var existing = await _eventRepository.GetBySlug(slug);
-        return existing == null || existing.Id == dto.Id;
+        // Custom logic: slug must be unique.
+        // Implement using a repository method if/when one exists (e.g., GetBySlug).
+        return true;
     })
     .WithMessage("Slug must be unique");
 ```
@@ -239,13 +240,13 @@ public class UpdateEventDtoValidator : AbstractValidator<UpdateEventDto>
 
         // Title might be optional for partial updates
         RuleFor(x => x.Title)
-            .MaximumLength(500).When(x => !string.IsNullOrEmpty(x.Title))
-            .WithMessage("Title must not exceed 500 characters");
+            .MaximumLength(200).When(x => !string.IsNullOrEmpty(x.Title))
+            .WithMessage("Title must not exceed 200 characters");
 
         // Description optional
         RuleFor(x => x.Description)
-            .MaximumLength(500).When(x => !string.IsNullOrEmpty(x.Description))
-            .WithMessage("Description must not exceed 500 characters");
+            .MaximumLength(5000).When(x => !string.IsNullOrEmpty(x.Description))
+            .WithMessage("Description must not exceed 5000 characters");
     }
 }
 ```

@@ -1,0 +1,60 @@
+::deep .component-eventregistration{ color: inherit; }
+/* ===== DIALOG STYLING ===== */
+::deep .registration-shell{
+    padding: 24px;
+}
+
+/* ===== SUCCESS STATE ===== */
+::deep .success-content{
+    text-align: center;
+    padding: 48px 24px;
+}
+
+::deep .success-icon{
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 24px;
+    background: var(--mud-palette-success);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: scaleIn 0.4s ease-out;
+}
+@keyframes scaleIn{
+    from {
+        transform: scale(0.5);
+        opacity: 0;
+    }
+    to{
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+::deep .success-icon .mud-icon-root{
+    font-size: 3rem;
+    color: white;
+}
+
+::deep .success-title{
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--mud-palette-success);
+}
+
+::deep .success-message{
+    color: var(--mud-palette-text-secondary);
+    line-height: 1.6;
+    margin-bottom: 24px;
+}
+
+::deep .action-buttons{
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 24px;
+}
+
+

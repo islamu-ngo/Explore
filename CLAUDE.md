@@ -25,6 +25,14 @@ This file is the entrypoint. Detailed docs are imported from `docs/`.
 
 **Full Details**: [@docs/QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md)
 
+## API documentation standard (controllers)
+
+All API controller actions must include:
+
+- `[EndpointSummary]` and `[EndpointDescription]`
+- `[ProducesResponseType]` for success + common failures (use `typeof(...)` when applicable)
+- `[Consumes("application/json")]` for JSON body endpoints
+
 ## Project
 @docs/PROJECT.md
 
@@ -71,7 +79,7 @@ dotnet run --project Explore.AppHost/Explore.AppHost.csproj
 dotnet test
 
 # Run specific test project
-dotnet test tests/Explore.Application.Tests/
+dotnet test Event.Application.UnitTests
 ```
 
 ### Database Schema
@@ -99,6 +107,7 @@ Always use sequential-thinking MCP when I need to:
 ## Context, plans, and task management
 ALWAYS refer to this file and all the files in @dev/active/ that contain context, plan, tasks...
 @dev/active/README.md
+@dev/active/blazor-feature-parity/blazor-feature-parity-plan.md
 
 ## Rules
 - Only write inside this repo project folder, never in users folder, only edits and changes you can make are project specific (not in C:\Users\*\.claude\ for example or anywhere outside this project folder!)

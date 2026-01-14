@@ -246,11 +246,11 @@ Total: **11 pages** currently using PersistentComponentState
     {
         try
         {
-            var loadedProgram = await ProgramService.GetProgramByIdAsync(EventId);
+            var loadedProgram = await EventService.GetProgramByIdAsync(EventId);
             if (loadedProgram != null)
             {
                 program = loadedProgram;
-                eventSessions = await ProgramService.GetSessionsByEventAsync(EventId);
+                eventSessions = await EventService.GetSessionsByEventAsync(EventId);
                 primarySession = eventSessions?.FirstOrDefault();
                 if (program.ActorId != Guid.Empty)
                 {
@@ -318,12 +318,12 @@ Total: **11 pages** currently using PersistentComponentState
         try
         {
             // Load event details
-            program = await ProgramService.GetProgramByIdAsync(EventId);
+            program = await EventService.GetProgramByIdAsync(EventId);
 
             if (program != null)
             {
                 // Load related data
-                eventSessions = await ProgramService.GetSessionsByEventAsync(EventId) ?? new();
+                eventSessions = await EventService.GetSessionsByEventAsync(EventId) ?? new();
                 primarySession = eventSessions.FirstOrDefault();
                 
                 if (program.ActorId != Guid.Empty)

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Explore.Blazor.Client.Clients;
+using System.Text.Json;
 
 namespace Explore.Blazor.Extensions;
 
@@ -15,20 +16,21 @@ public static class BffApiExtensions
     public static async Task<IResult> ExecuteAsync<T>(
         Func<Task<T>> apiCall,
         ILogger logger,
-        string operationName)
+        string operationName,
+        HttpContext? ctx = null)
     {
         try
         {
             logger.LogInformation("BFF: Executing {Operation}", operationName);
             var result = await apiCall();
-            
+
             logger.LogInformation("BFF: {Operation} completed successfully", operationName);
             return Results.Ok(result);
         }
         catch (ApiException ex)
         {
             logger.LogError(ex, "BFF: {Operation} failed with status {StatusCode}", operationName, ex.StatusCode);
-            
+
             return ex.StatusCode switch
             {
                 401 => Results.Unauthorized(),
@@ -63,20 +65,21 @@ public static class BffApiExtensions
     public static async Task<IResult> ExecuteVoidAsync(
         Func<Task> apiCall,
         ILogger logger,
-        string operationName)
+        string operationName,
+        HttpContext? ctx = null)
     {
         try
         {
             logger.LogInformation("BFF: Executing {Operation}", operationName);
             await apiCall();
-            
+
             logger.LogInformation("BFF: {Operation} completed successfully", operationName);
             return Results.NoContent();
         }
         catch (ApiException ex)
         {
             logger.LogError(ex, "BFF: {Operation} failed with status {StatusCode}", operationName, ex.StatusCode);
-            
+
             return ex.StatusCode switch
             {
                 401 => Results.Unauthorized(),

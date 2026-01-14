@@ -1,0 +1,51 @@
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Validators
+@using FluentValidation
+@using MudBlazor
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Add" Class="mr-3 mb-n1" />
+            Create New Location
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="form" @bind-IsValid="success" Model="locationDto">
+            <MudTextField @bind-Value="locationDto.FullName" Label="Name" For="@(() => locationDto.FullName)" Required="true" RequiredError="Name is required." />
+            <MudTextField @bind-Value="locationDto.Address" Label="Address" For="@(() => locationDto.Address)" />
+            <MudTextField @bind-Value="locationDto.City" Label="City" For="@(() => locationDto.City)" />
+            <MudTextField @bind-Value="locationDto.Postcode" Label="Postcode" For="@(() => locationDto.Postcode)" />
+            <MudTextField @bind-Value="locationDto.Country" Label="Country" For="@(() => locationDto.Country)" />
+            <MudNumericField @bind-Value="locationDto.Latitude" Label="Latitude" For="@(() => locationDto.Latitude)" />
+            <MudNumericField @bind-Value="locationDto.Longitude" Label="Longitude" For="@(() => locationDto.Longitude)" />
+            <MudTextField @bind-Value="locationDto.Timezone" Label="Timezone" For="@(() => locationDto.Timezone)" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit">Create</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IDialogReference? DialogReference { get; set; }
+
+    private CreateLocationDtoValidator validator = new();
+    private MudForm form;
+    private bool success;
+
+    private CreateLocationDto locationDto = new();
+
+    private async Task Submit()
+    {
+        await form.Validate();
+        if (form.IsValid)
+        {
+            DialogReference?.Dismiss(DialogResult.Ok(locationDto));
+        }
+    }
+
+    void Cancel() => DialogReference?.Dismiss(DialogResult.Cancel());
+}

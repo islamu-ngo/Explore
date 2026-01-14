@@ -174,19 +174,19 @@ Configurable inside the **Instance Settings** panel in the webapp for instance a
 
 ## Tenant-Level Configuration (BYOK - Bring Your Own Keys)
 
-Each tenant (or the single instance) can configure their own integrations using a **Bring Your Own Key (BYOK)** system. This allows tenants to:
-- Use their own analytics providers
-- Configure their own payment processors
-- Integrate their own AI services
-- Integrate their own S3 storage services
-- Use their own email providers
+Tenant-level BYOK integrations are a **roadmap** capability.
+
+**Current state**:
+
+- Object storage integration exists (S3-compatible) via `Explore.Infrastructure`.
+- Other per-tenant integrations (analytics, payments, AI services, email/SMS routing) are not implemented yet.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    TENANT BYOK INTEGRATIONS                         │
+│               TENANT BYOK INTEGRATIONS (PLANNED)                    │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│  ANALYTICS                          PAYMENTS                        │
+│  ANALYTICS (planned)                 PAYMENTS (planned)              │
 │  ─────────                          ────────                        │
 │  • Google Analytics                 • Stripe                        │
 │  • Plausible Analytics                                              │
@@ -195,7 +195,7 @@ Each tenant (or the single instance) can configure their own integrations using 
 │                                                                     │
 │                                                                     │
 │                                                                     │
-│  AI SERVICES                                                        │
+│  AI SERVICES (planned)                                               │
 │  ───────────                                                        │
 │  • OpenAI                                                           │
 │  • Anthropic Claude                                                 │
@@ -203,7 +203,7 @@ Each tenant (or the single instance) can configure their own integrations using 
 │  • Ollama (self-hosted)                                             │
 │  • Custom LLM endpoint                                              │
 │                                                                     │
-│  EMAIL & SMS                        STORAGE                         │
+│  EMAIL & SMS (planned)               STORAGE                          │
 │  ───────────                        ───────                         │
 │  • SendGrid                         • AWS S3                        │
 │  • Mailgun                          • Azure Blob                    │

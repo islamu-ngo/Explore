@@ -18,5 +18,9 @@ namespace Explore.Application.DTOs.User
         // Auth
         public string? AuthProvider { get; set; }
         public bool? EmailVerified { get; set; }
+
+        // Profile image key (S3 object key) and URI for preview
+        public string? ProfileImageKey { get; set; }
+        public string? ProfileImageUri { get; set; }
     }
 }

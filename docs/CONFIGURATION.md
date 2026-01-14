@@ -10,10 +10,6 @@
     "ClientId": "explore-api",
     "ClientSecret": ""
   },
-  "Cerbos": {
-    "Address": "http://localhost:3593",
-    "TlsEnabled": false
-  },
   "ConnectionStrings": {
     "DefaultConnection": ""
   },
@@ -58,3 +54,9 @@ Sensitive configuration is stored in Infisical:
 - API keys
 - Encryption keys
 - and more!
+
+## Cerbos (Planned)
+
+Some older docs/templates mention a `Cerbos` configuration section.
+
+Cerbos is **not currently wired** into `Explore.API`, so there is no active Cerbos configuration required for the running system.

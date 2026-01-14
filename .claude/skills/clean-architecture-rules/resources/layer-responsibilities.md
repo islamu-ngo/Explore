@@ -402,7 +402,7 @@ public class EventRepository : IEventRepository
 **Contains**:
 - **Email Services**: SendGrid, SMTP implementations
 - **File Storage**: Azure Blob Storage, AWS S3, local file system
-- **External APIs**: ActivityPub federation, Keycloak integration
+- **External APIs**: Federation (planned), Keycloak integration
 - **Time Services**: System clock abstraction
 - **Caching**: Redis, in-memory cache
 
@@ -413,8 +413,8 @@ Explore.Infrastructure/
 │   └── SendGridEmailService.cs
 ├── Storage/
 │   └── AzureBlobStorageService.cs
-├── Federation/
-│   └── ActivityPubService.cs
+├── Federation/ (planned)
+│   └── (future federation integrations)
 ├── Time/
 │   └── SystemTimeProvider.cs
 └── DependencyInjection.cs

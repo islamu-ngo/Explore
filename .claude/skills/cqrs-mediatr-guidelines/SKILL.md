@@ -62,6 +62,7 @@ Provides best practices for implementing **CQRS** (Command Query Responsibility 
 6. **CancellationToken**: Always pass to async methods
 7. **Repository Returns Entities**: Handlers map entities to DTOs
 8. **Validators Use Manual Instantiation**: Validators are instantiated in handlers, NOT injected via DI
+9. **Namespaces**: Prefer file-scoped namespaces, but follow the surrounding file style when working in existing code
 
 ## 📚 Resources
 
@@ -93,7 +94,7 @@ public class CreateEventCommand : IRequest<BaseCommandResponse<Guid>>
 
 **Step 2: Command Validator**
 
-**Real Example from CreateEventDtoValidator.cs:**
+**Real Example (aligned to current `CreateEventDtoValidator.cs`):**
 ```csharp
 // File: Explore.Application/DTOs/Event/Validators/CreateEventDtoValidator.cs
 using FluentValidation;
@@ -104,26 +105,26 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
     private readonly IAudienceAgeRepository _audienceAgeRepository;
     private readonly IAudienceGenderRepository _audienceGenderRepository;
     private readonly IEventTypeRepository _eventTypeRepository;
-    private readonly IActorRepository _actorRepository;
+    private readonly IOrganizationRepository _organizationRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
 
     public CreateEventDtoValidator(
         IAudienceAgeRepository audienceAgeRepository,
         IAudienceGenderRepository audienceGenderRepository,
         IEventTypeRepository eventTypeRepository,
-        IActorRepository actorRepository,
+        IOrganizationRepository organizationRepository,
         IStorageObjectRepository storageObjectRepository)
     {
         _audienceAgeRepository = audienceAgeRepository;
         _audienceGenderRepository = audienceGenderRepository;
         _eventTypeRepository = eventTypeRepository;
-        _actorRepository = actorRepository;
+        _organizationRepository = organizationRepository;
         _storageObjectRepository = storageObjectRepository;
 
         // Standard validation rules
         RuleFor(x => x.Title)
             .NotEmpty().WithMessage("Title is required")
-            .MaximumLength(500);
+            .MaximumLength(200);
 
         RuleFor(x => x.Description)
             .MaximumLength(5000);
@@ -156,24 +157,23 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
             })
             .WithMessage("Event Type not found");
 
-        RuleFor(x => x.ActorId)
-            .NotEmpty().WithMessage("Actor is required")
-            .MustAsync(async (id, cancellation) =>
-            {
-                var exists = await _actorRepository.Exists(id);
-                return exists;
-            })
-            .WithMessage("Actor not found");
-
-        // Optional FK validation
-        RuleFor(x => x.FeaturedImage)
+        // OrganizationId is optional: validate only if provided
+        RuleFor(x => x.OrganizationId)
             .MustAsync(async (id, cancellation) =>
             {
                 if (!id.HasValue) return true;
-                var exists = await _storageObjectRepository.Exists(id.Value);
-                return exists;
+                return await _organizationRepository.Exists(id.Value);
             })
-            .WithMessage("Featured Image not found");
+            .WithMessage("Organization does not exist.");
+
+        // FeaturedImageId is optional: validate only if provided
+        RuleFor(x => x.FeaturedImageId)
+            .MustAsync(async (id, cancellation) =>
+            {
+                if (!id.HasValue) return true;
+                return await _storageObjectRepository.Exists(id.Value);
+            })
+            .WithMessage("FeaturedImageId does not exist.");
     }
 }
 ```
@@ -183,18 +183,17 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
 **Real Example from Explore.Application/Features/Events/Handlers/Commands/CreateEventCommandHandler.cs:**
 
 ```csharp
-namespace Explore.Application.Features.Events.Handlers.Commands;
-
 using System.Linq;
 using System.Threading;
-using System.Threading.Task;
+using System.Threading.Tasks;
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event.Validators;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Responses;
-using Explore.Domain;
 using MediatR;
+
+namespace Explore.Application.Features.Events.Handlers.Commands;
 
 public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<Guid>>
 {
@@ -202,7 +201,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     private readonly IAudienceAgeRepository _audienceAgeRepository;
     private readonly IAudienceGenderRepository _audienceGenderRepository;
     private readonly IEventTypeRepository _eventTypeRepository;
-    private readonly IActorRepository _actorRepository;
+    private readonly IOrganizationRepository _organizationRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly IMapper _mapper;
 
@@ -211,7 +210,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         IAudienceAgeRepository audienceAgeRepository,
         IAudienceGenderRepository audienceGenderRepository,
         IEventTypeRepository eventTypeRepository,
-        IActorRepository actorRepository,
+        IOrganizationRepository organizationRepository,
         IStorageObjectRepository storageObjectRepository, 
         IMapper mapper)
     {
@@ -219,7 +218,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         _audienceAgeRepository = audienceAgeRepository;
         _audienceGenderRepository = audienceGenderRepository;
         _eventTypeRepository = eventTypeRepository;
-        _actorRepository = actorRepository;
+        _organizationRepository = organizationRepository;
         _storageObjectRepository = storageObjectRepository;
         _mapper = mapper;
     }
@@ -233,10 +232,10 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             _audienceAgeRepository, 
             _audienceGenderRepository, 
             _eventTypeRepository, 
-            _actorRepository, 
+            _organizationRepository, 
             _storageObjectRepository);
         
-        var validationResult = await validator.ValidateAsync(request.EventDto);
+        var validationResult = await validator.ValidateAsync(request.EventDto, cancellationToken);
 
         if (!validationResult.IsValid)
         {

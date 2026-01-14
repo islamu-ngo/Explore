@@ -49,6 +49,34 @@ namespace Explore.API.Controllers
             return Ok(storageObject);
         }
 
+        // GET: api/v1/storageobject/file/{*fileKey}
+        [HttpGet("file/{*fileKey}")]
+        [EndpointSummary("Get File Content")]
+        [EndpointDescription("Retrieve the content of a file from storage by its key")]
+        [AllowAnonymous]
+        [ResponseCache(Duration = 86400, Location = ResponseCacheLocation.Any)] // Cache for 1 day
+        public async Task<IActionResult> GetFile(string fileKey)
+        {
+            if (string.IsNullOrEmpty(fileKey))
+            {
+                return BadRequest("File key cannot be empty.");
+            }
+
+            try
+            {
+                var result = await _mediator.Send(new GetStorageObjectFileRequest { FileKey = fileKey });
+                return File(result.FileStream, result.ContentType, enableRangeProcessing: true);
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound("File not found.");
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, "An internal error occurred.");
+            }
+        }
+
         // POST: api/v1/storageobject/generate-upload-url
         [HttpPost("generate-upload-url")]
         [EndpointSummary("Generate Pre-signed Upload URL")]

@@ -1,0 +1,48 @@
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Validators
+@using FluentValidation
+@using MudBlazor
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Add" Class="mr-3 mb-n1" />
+            Create New Category
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="form" @bind-IsValid="success" Model="categoryDto">
+            <MudTextField @bind-Value="categoryDto.FullName" Label="Name" For="@(() => categoryDto.FullName)" Required="true" RequiredError="Name is required." />
+            <MudTextField @bind-Value="categoryDto.MasterCode" Label="Master Code" For="@(() => categoryDto.MasterCode)" Required="true" RequiredError="Master Code is required." />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit">Create</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IDialogReference? DialogReference { get; set; }
+
+    private CreateCategoryDtoValidator validator = new();
+    private MudForm form;
+    private bool success;
+
+    private CreateCategoryDto categoryDto = new();
+
+    private async Task Submit()
+    {
+        await form.Validate();
+        if (form.IsValid)
+        {
+            DialogReference?.Dismiss(DialogResult.Ok(categoryDto));
+        }
+    }
+
+    void Cancel()
+    {
+        DialogReference?.Dismiss(DialogResult.Cancel());
+    }
+}

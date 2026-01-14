@@ -2563,6 +2563,27 @@ namespace Explore.Blazor.Client.Clients
         System.Threading.Tasks.Task StorageObjectDELETEAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
         /// <summary>
+        /// Get File Content
+        /// </summary>
+        /// <remarks>
+        /// Retrieve the content of a file from storage by its key
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task FileAsync(string fileKey);
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get File Content
+        /// </summary>
+        /// <remarks>
+        /// Retrieve the content of a file from storage by its key
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task FileAsync(string fileKey, System.Threading.CancellationToken cancellationToken);
+
+        /// <summary>
         /// Generate Pre-signed Upload URL
         /// </summary>
         /// <remarks>
@@ -16902,6 +16923,94 @@ namespace Explore.Blazor.Client.Clients
         }
 
         /// <summary>
+        /// Get File Content
+        /// </summary>
+        /// <remarks>
+        /// Retrieve the content of a file from storage by its key
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual System.Threading.Tasks.Task FileAsync(string fileKey)
+        {
+            return FileAsync(fileKey, System.Threading.CancellationToken.None);
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get File Content
+        /// </summary>
+        /// <remarks>
+        /// Retrieve the content of a file from storage by its key
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task FileAsync(string fileKey, System.Threading.CancellationToken cancellationToken)
+        {
+            if (fileKey == null)
+                throw new System.ArgumentNullException("fileKey");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+                
+                    // Operation Path: "api/v1/StorageObject/file/{fileKey}"
+                    urlBuilder_.Append("api/v1/StorageObject/file/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(fileKey, System.Globalization.CultureInfo.InvariantCulture)));
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            return;
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <summary>
         /// Generate Pre-signed Upload URL
         /// </summary>
         /// <remarks>
@@ -26670,6 +26779,9 @@ namespace Explore.Blazor.Client.Clients
         [Newtonsoft.Json.JsonProperty("country", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
         public string Country { get; set; }
 
+        [Newtonsoft.Json.JsonProperty("profilePictureId", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public System.Guid? ProfilePictureId { get; set; }
+
         private System.Collections.Generic.IDictionary<string, object> _additionalProperties;
 
         [Newtonsoft.Json.JsonExtensionData]
@@ -26876,6 +26988,12 @@ namespace Explore.Blazor.Client.Clients
 
         [Newtonsoft.Json.JsonProperty("emailVerified", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
         public bool? EmailVerified { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("profileImageKey", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public string ProfileImageKey { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("profileImageUri", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public string ProfileImageUri { get; set; }
 
         private System.Collections.Generic.IDictionary<string, object> _additionalProperties;
 

@@ -419,23 +419,29 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
     private readonly IAudienceAgeRepository _audienceAgeRepository;
     private readonly IAudienceGenderRepository _audienceGenderRepository;
     private readonly IEventTypeRepository _eventTypeRepository;
+    private readonly IOrganizationRepository _organizationRepository;
+    private readonly IStorageObjectRepository _storageObjectRepository;
 
     public CreateEventDtoValidator(
         IAudienceAgeRepository audienceAgeRepository,
         IAudienceGenderRepository audienceGenderRepository,
-        IEventTypeRepository eventTypeRepository)
+        IEventTypeRepository eventTypeRepository,
+        IOrganizationRepository organizationRepository,
+        IStorageObjectRepository storageObjectRepository)
     {
         _audienceAgeRepository = audienceAgeRepository;
         _audienceGenderRepository = audienceGenderRepository;
         _eventTypeRepository = eventTypeRepository;
+        _organizationRepository = organizationRepository;
+        _storageObjectRepository = storageObjectRepository;
 
         RuleFor(x => x.Title)
             .NotEmpty().WithMessage("Title is required")
-            .MaximumLength(500).WithMessage("Title must not exceed 500 characters");
+            .MaximumLength(200).WithMessage("Title must not exceed 200 characters");
 
         RuleFor(x => x.Description)
-            .MaximumLength(500).When(x => !string.IsNullOrEmpty(x.Description))
-            .WithMessage("Description must not exceed 500 characters");
+            .MaximumLength(5000).When(x => !string.IsNullOrEmpty(x.Description))
+            .WithMessage("Description must not exceed 5000 characters");
 
         RuleFor(x => x.EventTypeId)
             .NotEmpty().WithMessage("Event type is required")
@@ -454,6 +460,24 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
                 return exists;
             })
             .WithMessage("Audience gender not found");
+
+        RuleFor(x => x.OrganizationId)
+            .MustAsync(async (id, cancellation) =>
+            {
+                if (!id.HasValue) return true;
+                return await _organizationRepository.Exists(id.Value);
+            })
+            .When(x => x.OrganizationId.HasValue)
+            .WithMessage("Organization does not exist.");
+
+        RuleFor(x => x.FeaturedImageId)
+            .MustAsync(async (id, cancellation) =>
+            {
+                if (!id.HasValue) return true;
+                return await _storageObjectRepository.Exists(id.Value);
+            })
+            .When(x => x.FeaturedImageId.HasValue)
+            .WithMessage("FeaturedImageId does not exist.");
     }
 }
 ```

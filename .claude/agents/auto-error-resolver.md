@@ -209,7 +209,7 @@ services.AddScoped<IEventRepository, EventRepository>();
 
 - Check Keycloak configuration in appsettings.json
 - Verify [Authorize] attributes
-- Check Cerbos policies
+- Check handler/controller authorization logic (ownership/roles)
 - Verify Swagger annotations
 
 ### 5. Fix Actions

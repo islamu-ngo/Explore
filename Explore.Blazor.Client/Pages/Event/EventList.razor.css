@@ -1,0 +1,129 @@
+::deep .component-eventlist{ color: inherit; }
+/* ===== TOKENS ===== */
+::deep :root{
+    --fx-ring: color-mix(in srgb, var(--mud-palette-primary) 30%, transparent);
+}
+
+/* ===== WRAPPER ===== */
+::deep .page-wrap{ padding-block: 20px 32px; }
+
+/* ===== BAR: filters ===== */
+::deep .filters-bar{
+    display:grid; gap:12px;
+    grid-template-columns: repeat(12, 1fr);
+    align-items:stretch;
+}
+@media (max-width: 960px){
+    ::deep .filters-bar{ grid-template-columns: 1fr; }
+}
+
+::deep .filter-cell{ grid-column: span 3; }
+::deep .filter-cell.search{ grid-column: span 3; }
+@media (max-width: 960px){
+    ::deep .filter-cell, ::deep .filter-cell.search{ grid-column: 1/-1; }
+}
+
+    /* Phone layout */
+    @media (max-width: 480px){
+        ::deep .page-wrap{ padding-block: 14px 20px; }
+        ::deep .section-head{ flex-direction: column; align-items: flex-start; gap: 10px; }
+        ::deep .filters-bar{ grid-template-columns: 1fr; gap: 10px; }
+        ::deep .filter-cell, ::deep .filter-cell.search{ grid-column: 1/-1; }
+        ::deep .filter-paper{ width: 100%; }
+        ::deep .card{ border-radius: 12px; }
+        ::deep .card-media{ height: 160px; }
+        ::deep .pager, ::deep .results{ padding-inline: 4px; }
+    }
+
+/* Pill trigger */
+::deep .filter-paper{
+    background-color: var(--mud-palette-surface);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease, background .12s ease;
+    color: var(--mud-palette-text-primary);
+    padding-inline: 12px;
+}
+::deep .filter-paper:hover{
+    transform: translateY(-1px);
+    background-color: color-mix(in srgb, var(--mud-palette-primary) 6%, var(--mud-palette-surface));
+    border-color: var(--mud-palette-primary);
+    box-shadow: 0 0 0 3px var(--fx-ring);
+}
+
+/* Chevron */
+::deep .filter-paper .mud-icon-root{ opacity:.85; }
+
+/* Popover styling */
+::deep .filter-popover{
+    background-color: var(--mud-palette-surface) !important;
+    border: 1px solid var(--mud-palette-lines-default) !important;
+    box-shadow: var(--mud-elevation-8) !important;
+    border-radius: 12px !important;
+}
+::deep .filter-popover .mud-text{ color: var(--mud-palette-text-primary) !important; }
+::deep .filter-option{
+    padding: 6px 10px;
+    border-radius: 8px;
+    transition: background .12s ease, color .12s ease;
+    cursor: pointer;
+}
+::deep .filter-option:hover{
+    background: color-mix(in srgb, var(--mud-palette-primary) 10%, transparent);
+}
+
+/* ===== SECTION HEADER ===== */
+::deep .section-head{
+    display:flex; align-items:flex-end; justify-content:space-between;
+    gap:16px; margin-bottom: 16px;
+}
+::deep .kicker{ letter-spacing:.18em; text-transform:uppercase; font-size:.82rem; opacity:.7; }
+
+/* ===== CARDS ===== */
+::deep .card{
+    border-radius: 16px;
+    overflow:hidden;
+    border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+::deep .card:hover{
+    transform: translateY(-3px);
+    box-shadow: 0 16px 36px rgba(0,0,0,.16);
+    border-color: color-mix(in srgb, var(--mud-palette-primary) 40%, var(--mud-palette-lines-default));
+}
+
+/* Media with subtle overlay */
+::deep .card-media{
+    position: relative; height: 200px; overflow: hidden;
+}
+::deep .card-media::after{
+    content:""; position:absolute; inset:0;
+    background: linear-gradient(180deg, rgba(0,0,0,0) 50%, rgba(0,0,0,.25) 100%);
+}
+
+/* Badges row */
+::deep .badges{ display:flex; gap:8px; align-items:center; margin: 10px 0 6px 0;}
+
+/* Location row */
+::deep .loc{
+    display:flex; align-items:center; gap:6px; opacity:.85;
+}
+
+/* ===== PAGINATION & INFO ===== */
+::deep .pager{
+    display:flex; justify-content:center; margin-top: 24px;
+}
+::deep .results{
+    display:flex; justify-content:center; margin-top: 8px; opacity:.8;
+}
+
+/* ===== SEARCH FIELD ===== */
+::deep .search-input .mud-input-root{ border-radius: 999px !important; }
+::deep .search-input .mud-input:not(.mud-input-disabled):focus-within{
+    box-shadow: 0 0 0 3px var(--fx-ring);
+    border-color: var(--mud-palette-primary);
+}
+
+
+

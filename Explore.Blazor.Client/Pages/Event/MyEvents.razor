@@ -1,156 +1,16 @@
-@page "/myevents"
 @using MudBlazor
 @using Explore.Blazor.Client.Models
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Models.Enums
 @using Microsoft.AspNetCore.Components
+@using Explore.Blazor.Client.Components.Event
 @inject IEventService EventService
-@inject IProgramService ProgramService
 @inject IOrganizationService OrganizationService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
-
-<style>
-/* ... existing styles ... */
-/* ===== TOKENS ===== */
-:root{
-    --fx-ring: color-mix(in srgb, var(--mud-palette-primary) 30%, transparent);
-}
-
-/* ===== WRAPPER ===== */
-.page-wrap{ padding-block: 20px 32px; }
-
-/* ===== BAR: filters ===== */
-.filters-bar{
-    display:grid; gap:12px;
-    grid-template-columns: repeat(12, 1fr);
-    align-items:stretch;
-}
-@@media (max-width: 960px){
-    .filters-bar{ grid-template-columns: 1fr; }
-}
-
-.filter-cell{ grid-column: span 3; }
-.filter-cell.search{ grid-column: span 3; }
-@@media (max-width: 960px){
-    .filter-cell, .filter-cell.search{ grid-column: 1/-1; }
-}
-
-    /* Phone layout */
-    @@media (max-width: 480px){
-        .page-wrap{ padding-block: 14px 20px; }
-        .section-head{ flex-direction: column; align-items: flex-start; gap: 10px; }
-        .filters-bar{ grid-template-columns: 1fr; gap: 10px; }
-        .filter-cell, .filter-cell.search{ grid-column: 1/-1; }
-        .filter-paper{ width: 100%; }
-        .card{ border-radius: 12px; }
-        .card-media{ height: 160px; }
-        .pager, .results{ padding-inline: 4px; }
-    }
-
-/* Pill trigger */
-.filter-paper{
-    background-color: var(--mud-palette-surface);
-    border: 1px solid var(--mud-palette-lines-default);
-    border-radius: 999px;
-    cursor: pointer;
-    transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease, background .12s ease;
-    color: var(--mud-palette-text-primary);
-    padding-inline: 12px;
-}
-.filter-paper:hover{
-    transform: translateY(-1px);
-    background-color: color-mix(in srgb, var(--mud-palette-primary) 6%, var(--mud-palette-surface));
-    border-color: var(--mud-palette-primary);
-    box-shadow: 0 0 0 3px var(--fx-ring);
-}
-
-/* Chevron */
-.filter-paper .mud-icon-root{ opacity:.85; }
-
-/* Popover styling */
-.filter-popover{
-    background-color: var(--mud-palette-surface) !important;
-    border: 1px solid var(--mud-palette-lines-default) !important;
-    box-shadow: var(--mud-elevation-8) !important;
-    border-radius: 12px !important;
-}
-.filter-popover .mud-text{ color: var(--mud-palette-text-primary) !important; }
-.filter-option{
-    padding: 6px 10px;
-    border-radius: 8px;
-    transition: background .12s ease, color .12s ease;
-    cursor: pointer;
-}
-.filter-option:hover{
-    background: color-mix(in srgb, var(--mud-palette-primary) 10%, transparent);
-}
-
-/* ===== SECTION HEADER ===== */
-.section-head{
-    display:flex; align-items:flex-end; justify-content:space-between;
-    gap:16px; margin-bottom: 16px;
-}
-.kicker{ letter-spacing:.18em; text-transform:uppercase; font-size:.82rem; opacity:.7; }
-
-/* ===== CARDS ===== */
-.card{
-    border-radius: 16px;
-    overflow:hidden;
-    border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
-    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
-}
-.card:hover{
-    transform: translateY(-3px);
-    box-shadow: 0 16px 36px rgba(0,0,0,.16);
-    border-color: color-mix(in srgb, var(--mud-palette-primary) 40%, var(--mud-palette-lines-default));
-}
-
-/* Media with subtle overlay */
-.card-media{
-    position: relative; height: 200px; overflow: hidden;
-}
-.card-media::after{
-    content:""; position:absolute; inset:0;
-    background: linear-gradient(180deg, rgba(0,0,0,0) 50%, rgba(0,0,0,.25) 100%);
-}
-
-/* Badges row */
-.badges{ display:flex; gap:8px; align-items:center; margin: 10px 0 6px 0; }
-
-/* Location row */
-.loc{
-    display:flex; align-items:center; gap:6px; opacity:.85;
-}
-
-/* ===== PAGINATION & INFO ===== */
-.pager{
-    display:flex; justify-content:center; margin-top: 24px;
-}
-.results{
-    display:flex; justify-content:center; margin-top: 8px; opacity:.8;
-}
-
-/* ===== SEARCH FIELD ===== */
-.search-input .mud-input-root{ border-radius: 999px !important; }
-.search-input .mud-input:not(.mud-input-disabled):focus-within{
-    box-shadow: 0 0 0 3px var(--fx-ring);
-    border-color: var(--mud-palette-primary);
-}
-
-/* ===== MENU ACTIONS ===== */
-.actions-menu{
-    position: absolute; top: 12px; right: 12px;
-    z-index: 10;
-}
-.actions-menu .mud-menu{
-    background: rgba(255,255,255,0.9);
-    backdrop-filter: blur(8px);
-    border-radius: 8px;
-}
-</style><PageTitle>My Events</PageTitle>
+<PageTitle>My Events</PageTitle>
 
 <MudContainer Class="page-wrap">
     <div class="pa-4">
@@ -324,24 +184,19 @@
                             </MudText>
                         </MudCardContent>
                         <MudCardActions Class="justify-space-between pa-4 pt-0">
-                            @if (CanEditEvent(evt))
-                            {
-                                <MudButton Variant="Variant.Text"
-                                           EndIcon="@Icons.Material.Filled.Edit"
-                                           Color="Color.Primary"
-                                           OnClick="@(() => EditEvent(evt))">
-                                    Edit Event
-                                </MudButton>
-                            }
-                            else
-                            {
-                                <MudButton Variant="Variant.Text"
-                                           EndIcon="@Icons.Material.Filled.Visibility"
-                                           Color="Color.Primary"
-                                           OnClick="@(() => ViewEventDetails(evt))">
-                                    View Details
-                                </MudButton>
-                            }
+                            <MudButton Variant="Variant.Text"
+                                       EndIcon="@Icons.Material.Filled.Edit"
+                                       Color="Color.Primary"
+                                       OnClick="@(() => EditEvent(evt))"
+                                       Disabled="@(!CanEditEvent(evt))">
+                                Edit Event
+                            </MudButton>
+                            <MudButton Variant="Variant.Text"
+                                       EndIcon="@Icons.Material.Filled.Visibility"
+                                       Color="Color.Primary"
+                                       OnClick="@(() => ViewEventDetails(evt))">
+                                View Details
+                            </MudButton>
                             <div class="loc">
                                 <MudIcon Icon="@Icons.Material.Filled.LocationOn" />
                                 <MudText>@(evt.EventFormatFullName ?? "Online")</MudText>
@@ -502,14 +357,17 @@
 
     private async Task ViewRegistrations(EventListDto evt)
     {
-        var parameters = new DialogParameters
-        {
-            { "EventId", evt.Id }
-        };
+        var sessionParameters = new DialogParameters { ["EventId"] = evt.Id };
+        var sessionDialog = await DialogService.Show<SelectSessionDialog>($"Select a session for {evt.Title}", sessionParameters).Result;
 
-        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true };
-        var dialog = DialogService.Show<EventRegistrationsDialog>($"Registrations for {evt.Title}", parameters, options);
-        await dialog.Result;
+        if (!sessionDialog.Canceled)
+        {
+            var selectedSessionId = (Guid)sessionDialog.Data;
+            var parameters = new DialogParameters { ["EventSessionId"] = selectedSessionId };
+            var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true };
+            var dialog = DialogService.Show<RegistrationManagerDialog>($"Registrations for session", parameters, options);
+            await dialog.Result;
+        }
     }
 
     private async Task DeleteEvent(EventListDto evt)
@@ -608,7 +466,8 @@
 
     private void NavigateToCreate()
     {
-        Navigation.NavigateTo("/create");
+        // Navigate to the organizations page so user can pick an organization to create an event for
+        Navigation.NavigateTo("/organization/my");
     }
 
     private void NavigateToCreateOrganization()

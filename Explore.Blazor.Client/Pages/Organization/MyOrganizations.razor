@@ -1,14 +1,14 @@
-@page "/organization/my"
-@page "/users/{UserId:guid}/organizations"
 @using MudBlazor
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Clients
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components
+@using Blazouter.Services
 @inject IOrganizationService OrganizationService
 @inject IUserService UserService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
+@inject RouterStateService RouterState
 @attribute [Authorize]
 
 <PageTitle>My Organizations</PageTitle>
@@ -77,83 +77,52 @@
                     @foreach (var org in FilteredOrganizations)
                     {
                         <MudItem xs="12" sm="6" md="4">
-                            <MudCard Elevation="3" Class="h-100 d-flex flex-column">
-                                <MudCardHeader>
-                                    <CardHeaderAvatar>
-                                        <MudAvatar Color="@GetRandomColor(org.FullName)" Variant="Variant.Filled">
-                                            @org.FullName.Substring(0, 1).ToUpper()
-                                        </MudAvatar>
-                                    </CardHeaderAvatar>
-                                    <CardHeaderContent>
-                                        <MudText Typo="Typo.h6" Class="text-truncate">@org.FullName</MudText>
-                                        <MudText Typo="Typo.caption">
-                                            @if (org.CurrentUserRole.HasValue)
-                                            {
-                                                <MudChip T="string" Size="Size.Small" Color="@GetRoleColor(org.CurrentUserRole.Value)" Class="mr-1">
-                                                    @GetRoleName(org.CurrentUserRole.Value)
-                                                </MudChip>
-                                            }
-                                            @org.City, @org.Country
-                                        </MudText>
-                                    </CardHeaderContent>
-                                    <CardHeaderActions>
-                                        @{
-                                            var statusInfo = GetStatusInfo(org.ApprovalStatusId);
+                            <MudCard Elevation="0" Class="card h-100">
+                                <MudCardMedia Class="card-media">
+                                    <img src="@($"https://dummyimage.com/600x400/{GetRandomColor(org.FullName).ToString().Substring(1)}/ffffff&text={Uri.EscapeDataString(org.FullName)}")"
+                                         alt="@org.FullName"
+                                         style="width: 100%; height: 200px; object-fit: cover;" />
+                                </MudCardMedia>
+                                <MudCardContent>
+                                    <div class="badges">
+                                        @if (org.CurrentUserRole.HasValue)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="@GetRoleColor(org.CurrentUserRole.Value)">
+                                                @GetRoleName(org.CurrentUserRole.Value)
+                                            </MudChip>
                                         }
-                                        <MudTooltip Text="@org.ApprovalStatusFullName">
-                                            <MudIcon Icon="@statusInfo.Icon" Color="@statusInfo.Color" />
-                                        </MudTooltip>
-                                    </CardHeaderActions>
-                                </MudCardHeader>
-                                <MudCardContent Class="grow">
-                                    <div class="d-flex align-center mb-2">
-                                        <MudIcon Icon="@Icons.Material.Filled.Email" Size="Size.Small" Class="mr-2 text-secondary" />
-                                        <MudText Typo="Typo.body2" Class="text-truncate">@org.Email</MudText>
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.LocationOn">
+                                            @org.City, @org.Country
+                                        </MudChip>
                                     </div>
-                                    @if (!string.IsNullOrEmpty(org.WebsiteUrl))
-                                    {
-                                        <div class="d-flex align-center">
-                                            <MudIcon Icon="@Icons.Material.Filled.Language" Size="Size.Small" Class="mr-2 text-secondary" />
-                                            <MudLink Href="@org.WebsiteUrl" Target="_blank" Typo="Typo.body2" Class="text-truncate">Website</MudLink>
-                                        </div>
-                                    }
+                                    <MudText Typo="Typo.h6" Class="mb-1">@org.FullName</MudText>
+                                    <MudText Typo="Typo.body2" Color="Color.Surface" Style="opacity:.85; min-height: 40px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4;">
+                                        @org.Email
+                                    </MudText>
                                 </MudCardContent>
-                                <MudDivider />
-                                <MudCardActions Class="d-flex justify-space-between pa-2">
-                                    <MudButton Variant="Variant.Text" 
-                                               Color="Color.Primary" 
-                                               StartIcon="@Icons.Material.Filled.Visibility" 
+                                <MudCardActions Class="justify-space-between pa-4 pt-0">
+                                    <MudButton Variant="Variant.Text"
+                                               Color="Color.Primary"
                                                Href="@($"/organization/{org.Id}")"
                                                Size="Size.Small">
-                                        View
+                                        View Dashboard
                                     </MudButton>
-                                    
                                     @if (CanCreateEvents(org))
                                     {
-                                        <MudButton Variant="Variant.Filled" 
-                                                   Color="Color.Success" 
-                                                   StartIcon="@Icons.Material.Filled.Event" 
+                                        <MudButton Variant="Variant.Filled"
+                                                   Color="Color.Success"
+                                                   StartIcon="@Icons.Material.Filled.Event"
                                                    Href="@($"/organization/{org.Id}/create-event")"
                                                    Size="Size.Small">
                                             Create Event
                                         </MudButton>
-                                    }
-                                    
-                                    @if (CanManageOrganization(org))
-                                    {
-                                        <MudTooltip Text="Manage Members">
-                                            <MudIconButton Icon="@Icons.Material.Filled.People" 
-                                                           Color="Color.Secondary" 
-                                                           Href="@($"/organization/{org.Id}/members")"
-                                                           Size="Size.Small" />
-                                        </MudTooltip>
                                     }
                                 </MudCardActions>
                             </MudCard>
                         </MudItem>
                     }
                 </MudGrid>
-                
+
                 <MudText Typo="Typo.caption" Class="d-block mt-4 text-center mud-text-secondary">
                     Showing @FilteredOrganizations.Count() organization(s)
                 </MudText>
@@ -163,8 +132,7 @@
 </MudContainer>
 
 @code {
-    [Parameter]
-    public Guid? UserId { get; set; }
+    private Guid? UserId { get; set; }
 
     private Guid? _currentUserId;
     private ICollection<OrganizationListDto>? _organizations;
@@ -182,6 +150,13 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Get optional route parameter from Blazouter
+        var userIdStr = RouterState.GetParam("UserId");
+        if (Guid.TryParse(userIdStr, out var id))
+        {
+            UserId = id;
+        }
+        
         Console.WriteLine("[MY ORGS] OnInitializedAsync starting...");
         await LoadData();
     }
@@ -196,7 +171,7 @@
     private async Task LoadData()
     {
         if (_dataLoaded) return;
-        
+
         try
         {
             _loading = true;
@@ -227,13 +202,13 @@
             Console.WriteLine($"[MY ORGS] Loading organizations for user: {_currentUserId}");
 
             ICollection<OrganizationListDto>? orgs = null;
-            
+
             if (_currentUserId.HasValue)
             {
                 orgs = await OrganizationService.GetOrganizationsByUserAsync(_currentUserId.Value);
                 Console.WriteLine($"[MY ORGS] Got {orgs?.Count ?? 0} organizations via GetOrganizationsByUserAsync");
             }
-            
+
             // Fallback if no orgs
             if (orgs == null || orgs.Count == 0)
             {
@@ -263,7 +238,7 @@
     private bool CanCreateEvents(OrganizationListDto org)
     {
         // Creator = 1, CoOwner = 2, Admin = 3 - or any role if org is in list
-        return org.CurrentUserRole.HasValue && 
+        return org.CurrentUserRole.HasValue &&
                (org.CurrentUserRole.Value == 1 || org.CurrentUserRole.Value == 2 || org.CurrentUserRole.Value == 3);
     }
 
@@ -273,7 +248,7 @@
     private bool CanManageOrganization(OrganizationListDto org)
     {
         // Creator = 1, CoOwner = 2, Admin = 3
-        return org.CurrentUserRole.HasValue && 
+        return org.CurrentUserRole.HasValue &&
                (org.CurrentUserRole.Value == 1 || org.CurrentUserRole.Value == 2 || org.CurrentUserRole.Value == 3);
     }
 

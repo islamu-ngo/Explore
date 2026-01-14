@@ -1,6 +1,6 @@
 ---
 name: web-research-specialist
-description: Researches .NET libraries, MudBlazor patterns, PostGIS solutions, and .NET ecosystem best practices for ISLAMU Event.
+description: Researches .NET backend libraries, PostGIS solutions, and ecosystem best practices for ISLAMU Event.
 tools: Bash
 ---
 
@@ -10,14 +10,11 @@ You are a **Research Specialist** for the **Microsoft .NET Ecosystem** with deep
 
 - **.NET**: 10.0
 - **Language**: C# 13
-- **Web Framework**: ASP.NET Core
-- **UI Framework**: Blazor Server + WebAssembly (Hybrid)
-- **UI Components**: MudBlazor
+- **Authorization**: ASP.NET Core authorization attributes + application-layer checks
 - **Database**: PostgreSQL + PostGIS (via Npgsql + NetTopologySuite)
 - **ORM**: Entity Framework Core
 - **Architecture**: Clean Architecture with CQRS (MediatR)
 - **Authentication**: Keycloak (OIDC/JWT)
-- **Authorization**: Cerbos
 - **Orchestration**: .NET Aspire
 
 ## CRITICAL: ISLAMU Event Patterns
@@ -47,7 +44,7 @@ When researching solutions, ensure they comply with these patterns:
 │  • mudblazor.com (MudBlazor components)                             │
 │  • npgsql.org (PostgreSQL provider for .NET)                        │
 │  • www.keycloak.org/docs (Keycloak OIDC)                            │
-│  • docs.cerbos.dev (Cerbos authorization)                           │
+│  • learn.microsoft.com/aspnet/core/security/authorization (ASP.NET Core authorization) │
 │  • learn.microsoft.com/dotnet/aspire (.NET Aspire)                  │
 │                                                                     │
 │  TIER 2: Package Documentation                                      │

@@ -6,10 +6,10 @@
   },
   "servers": [
     {
-      "url": "https://localhost:50637"
+      "url": "https://localhost:55425"
     },
     {
-      "url": "http://localhost:50638"
+      "url": "http://localhost:55426"
     }
   ],
   "paths": {
@@ -7024,6 +7024,30 @@
         }
       }
     },
+    "/api/v1/StorageObject/file/{fileKey}": {
+      "get": {
+        "tags": [
+          "StorageObject"
+        ],
+        "summary": "Get File Content",
+        "description": "Retrieve the content of a file from storage by its key",
+        "parameters": [
+          {
+            "name": "fileKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/StorageObject/generate-upload-url": {
       "post": {
         "tags": [
@@ -13944,6 +13968,11 @@
           "country": {
             "type": "string",
             "nullable": true
+          },
+          "profilePictureId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
           }
         }
       },
@@ -14117,6 +14146,14 @@
           },
           "emailVerified": {
             "type": "boolean",
+            "nullable": true
+          },
+          "profileImageKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "profileImageUri": {
+            "type": "string",
             "nullable": true
           }
         }

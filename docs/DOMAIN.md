@@ -155,7 +155,7 @@ The domain layer contains all business entities, enums, and value objects. Locat
 - **FK**: `EventTypeId` → EventType, `AudienceGenderId` → AudienceGender, `AudienceAgeId` → AudienceAge, `ActorId` → Actor, `EventStatusId` → EventStatus, `VisibilityTypeId` → VisibilityType, `EventFormatId` → EventFormat, `MadhabId` → Madhab, `FeaturedImageId` → StorageObject, `AtprotoRecordId` → AtprotoRecord
 - **Properties**: `Title`, `Description`, `Price`, `CurrencyCode`, `TotalViews`, `IsRegistrationRequired`, `EventUrl`, `ExternalRegistrationUrl`, `SessionCount`, `FirstSessionDate`, `LastSessionDate`, `Timezone`, `Slug`
 - **Purpose**: Core event entity with all metadata
-- **Key**: ATProto-first with ActivityPub gateway
+- **Key**: Federation-ready domain model (ATProto/ActivityPub concepts). HTTP federation endpoints are not implemented in `Explore.API` yet.
 - **Computed**: `FirstSessionDate`/`LastSessionDate` from sessions
 
 #### EventSession
@@ -292,7 +292,7 @@ The domain layer contains all business entities, enums, and value objects. Locat
 - **FK**: `FileTypeId` → FileType, `ActorId` → Actor (owner)
 - **Properties**: `Uri`, `FullName`, `Extension`, `Size`
 - **Purpose**: File storage (images, documents, etc.)
-- **Key**: BYOK integration (AWS S3, Azure Blob, MinIO, etc.)
+- **Key**: Current implementation targets S3-compatible object storage via `Explore.Infrastructure` (multi-provider BYOK is a future capability).
 
 #### FileType
 - **PK**: `Id` (int)
@@ -381,7 +381,7 @@ All link tables are explicit entities (not implicit many-to-many):
 1. **Decentralization**: Users own their identity (DID), not tied to platform
 2. **Portability**: Move between platforms without losing identity
 3. **Interoperability**: Works with Blusky, other ATProto services
-4. **ActivityPub Gateway**: Bridge to Fediverse (Mastodon, Mobilizon)
+4. **ActivityPub Gateway**: Planned bridge to the Fediverse (not implemented in `Explore.API` today)
 
 ### Why Hybrid Auth?
 

@@ -1,37 +1,14 @@
-@page "/organization/reviews/{Id:guid}"
 @using MudBlazor
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Clients
 @using Microsoft.AspNetCore.Components
+@using Blazouter.Services
 @inject IOrganizationService OrganizationService
 @inject IOrganizationReviewService OrganizationReviewService
 @inject NavigationManager Navigation
+@inject RouterStateService RouterState
 
 <PageTitle>Organization Reviews</PageTitle>
-
-<style>
-    .star-rating {
-        display: inline-flex;
-        gap: 2px;
-        color: #FFC107;
-    }
-    .star-rating .mud-icon-root {
-        font-size: 1.25rem;
-    }
-    .review-card {
-        height: 100%;
-        border-radius: 14px;
-        border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
-        background: color-mix(in srgb, var(--mud-palette-background) 85%, var(--mud-palette-surface));
-        transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
-    }
-    .review-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 12px 28px rgba(0,0,0,.12);
-        border-color: color-mix(in srgb, var(--mud-palette-primary) 35%, var(--mud-palette-lines-default));
-    }
-</style>
-
 <MudContainer Class="py-6">
     <MudButton StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="GoBack" Class="mb-4">Back to Profile</MudButton>
 
@@ -103,7 +80,7 @@
 </MudContainer>
 
 @code {
-    [Parameter] public Guid Id { get; set; }
+    private Guid Id { get; set; }
 
     private OrganizationDto? _organization;
     private List<OrganizationReviewDto> _reviews = new();
@@ -114,6 +91,13 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Get route parameter from Blazouter
+        var idStr = RouterState.GetParam("Id");
+        if (Guid.TryParse(idStr, out var id))
+        {
+            Id = id;
+        }
+        
         _isLoading = true;
         _errorMessage = null;
 
@@ -144,3 +128,4 @@
         Navigation.NavigateTo($"/organization/profile/{Id}");
     }
 }
+

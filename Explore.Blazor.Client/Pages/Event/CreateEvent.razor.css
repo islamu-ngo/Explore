@@ -1,0 +1,16 @@
+::deep .component-createevent{ color: inherit; }
+::deep .create-page{
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 16px;
+}
+::deep .event-form{
+    padding: 20px;
+    border-radius: 12px;
+    background: var(--mud-palette-background-paper);
+}
+::deep .title{
+    margin: 4px 0 16px;
+    font-weight: 600;
+}
+

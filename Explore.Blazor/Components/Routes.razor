@@ -1,0 +1,88 @@
+@using Blazouter.Models
+@using Blazouter.Enums
+@using Blazouter.Interfaces
+@using Explore.Blazor.Client.Layout
+@using Explore.Blazor.Client.Pages
+@using Explore.Blazor.Client.Pages.Event
+@using Explore.Blazor.Client.Pages.User
+@using Explore.Blazor.Client.Pages.Organization
+@using Explore.Blazor.Client.Pages.Admin
+@using Explore.Blazor.Client.Pages.Landing
+@using Microsoft.AspNetCore.Components.Authorization
+@using Explore.Blazor.Services
+@inject AuthenticationStateProvider AuthStateProvider
+@inject ICircuitAccessTokenService TokenService
+
+<Blazouter.Components.Router Routes="@_routes" DefaultLayout="typeof(MainLayout)">
+    <NotFound>
+        <LayoutView Layout="typeof(MainLayout)">
+            <MudContainer MaxWidth="MaxWidth.Medium" Class="mt-8">
+                <MudText Typo="Typo.h3">404 - Page Not Found</MudText>
+                <MudText Typo="Typo.body1" Class="mt-4">The page you requested could not be found.</MudText>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/" Class="mt-4">
+                    Return to Home
+                </MudButton>
+            </MudContainer>
+        </LayoutView>
+    </NotFound>
+</Blazouter.Components.Router>
+
+@code {
+    [CascadingParameter(Name = "AccessToken")]
+    private string? AccessToken { get; set; }
+    
+    private List<RouteConfig> _routes = new();
+
+    protected override void OnInitialized()
+    {
+        // Store the access token for use in HTTP requests during SignalR calls
+        if (!string.IsNullOrEmpty(AccessToken))
+        {
+            TokenService.SetToken(AccessToken);
+        }
+        
+        _routes = new List<RouteConfig>
+        {
+            // Public routes - accessible to everyone (no guards)
+            new RouteConfig { Path = "/", Component = typeof(EventList), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/event/detail/:eventId", Component = typeof(EventDetail), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/welcome", Component = typeof(LandingPageForNonUsers), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/home", Component = typeof(Home), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/loading", Component = typeof(Loading), Transition = RouteTransition.None },
+            new RouteConfig { Path = "/counter", Component = typeof(Counter), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/weather", Component = typeof(Weather), Transition = RouteTransition.Fade },
+            
+            // Organization public routes
+            new RouteConfig { Path = "/organization/:id", Component = typeof(OrganizationDetails), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/organization/profile/:Id", Component = typeof(OrganizationProfile), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/organization/reviews/:Id", Component = typeof(OrganizationReviews), Transition = RouteTransition.Fade },
+            
+            // User authenticated routes
+            new RouteConfig { Path = "/dashboard", Component = typeof(UsersHome), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/user/profile", Component = typeof(UserProfile), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/user/reviews", Component = typeof(MyReviews), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/settings", Component = typeof(Settings), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/my-registrations", Component = typeof(MyRegistrations), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/myevents", Component = typeof(MyEvents), Transition = RouteTransition.Fade },
+            
+            // Organization management routes
+            new RouteConfig { Path = "/organization/my", Component = typeof(MyOrganizations), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/users/:UserId/organizations", Component = typeof(MyOrganizations), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/organization/create", Component = typeof(CreateOrganization), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/organization/success", Component = typeof(OrganizationSuccess), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/organization/:Id/members", Component = typeof(OrganizationMembers), Transition = RouteTransition.Fade },
+            
+            // Event management routes
+            new RouteConfig { Path = "/organization/:OrganizationId/create-event", Component = typeof(CreateEvent), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/eventedit/:eventId", Component = typeof(EventEdit), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/event-created/:EventId", Component = typeof(EventCreated), Transition = RouteTransition.Fade },
+            
+            // Admin routes (TODO: Add admin guard when implementing auth)
+            new RouteConfig { Path = "/admin", Component = typeof(AdminList), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/admin/organization/:OrganizationId", Component = typeof(AdminListDetails), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/admin/categories", Component = typeof(Categories), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/admin/locations", Component = typeof(Locations), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/admin/tags", Component = typeof(Tags), Transition = RouteTransition.Fade },
+        };
+    }
+}

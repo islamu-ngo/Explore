@@ -121,25 +121,37 @@ public async Task<ActionResult<List<EventListDto>>> GetMyEvents()
 }
 ```
 
-## Authorization (Cerbos)
+## Authorization (Current State)
 
-**Pattern**: Policy Decision Point (PDP) with attribute-based access control (ABAC)
+### Endpoint-level authorization
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                      Authorization Flow                             │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  1. Request arrives at API                                          │
-│  2. Extract user claims from JWT                                    │
-│  3. Build Cerbos request:                                           │
-│     - Principal (user ID, roles, attributes)                        │
-│     - Resource (event ID, owner, visibility)                        │
-│     - Action (create, read, update, delete)                         │
-│  4. Send to Cerbos PDP                                              │
-│  5. Cerbos evaluates policies                                       │
-│  6. Return allow/deny decision                                      │
-│  7. API enforces decision                                           │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
-```
+This codebase currently relies on ASP.NET Core attributes:
+
+- `GET` endpoints: `[AllowAnonymous]`
+- write endpoints (`POST/PUT/DELETE`): `[Authorize]`
+
+### Resource ownership / permission checks
+
+Ownership checks are implemented inconsistently today.
+
+- Some controllers/handlers accept `UserId` and attempt to enforce ownership.
+- Other handlers (e.g., some delete handlers) currently delete as long as the user is authenticated.
+
+When adding/refactoring endpoints, document the intended authorization rule in:
+
+- `[EndpointDescription("...")]`
+- XML docs (if present)
+- and ensure the handler enforces it.
+
+## Cerbos (Planned)
+
+Some documentation and agent templates reference Cerbos as a future PDP.
+
+**Cerbos is not currently integrated in `Explore.API`** (no Cerbos client/service registration in `Explore.API/Program.cs`).
+
+If/when Cerbos is introduced, update this document with the concrete integration approach, configuration keys, and policy model.
+
+## Logging & PII (Development vs Production)
+
+- `Microsoft.IdentityModel.Logging.IdentityModelEventSource.ShowPII = true;` is enabled in Development in `Explore.API/Program.cs`. Do not enable this in Production.
+- Avoid logging full claim sets or tokens in Production (some controllers currently log all claims for debugging).

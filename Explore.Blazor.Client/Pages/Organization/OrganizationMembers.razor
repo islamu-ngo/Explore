@@ -1,15 +1,16 @@
-@page "/organization/{Id:guid}/members"
 @using MudBlazor
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Services
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components
+@using Blazouter.Services
 @inject IOrganizationMemberService MemberService
 @inject IOrganizationService OrganizationService
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject RouterStateService RouterState
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
     <MudText Typo="Typo.h4" GutterBottom="true">Organization Members</MudText>
@@ -93,7 +94,7 @@
 </MudContainer>
 
 @code {
-    [Parameter] public Guid Id { get; set; }
+    private Guid Id { get; set; }
     private List<OrganizationMemberDto> Members = new();
     private bool _loading = true;
     private string? currentUserId;
@@ -114,6 +115,13 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Get route parameter from Blazouter
+        var idStr = RouterState.GetParam("Id");
+        if (Guid.TryParse(idStr, out var id))
+        {
+            Id = id;
+        }
+        
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
         currentUserId = user.FindFirst("sub")?.Value

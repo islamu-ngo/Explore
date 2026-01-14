@@ -1,0 +1,34 @@
+::deep .component-usershome{ color: inherit; }
+::deep .user-dashboard{
+    padding: 32px 0;
+}
+::deep .welcome-section{
+    background: linear-gradient(135deg, #1976D2 0%, #42A5F5 100%);
+    color: white;
+    padding: 48px 32px;
+    border-radius: 16px;
+    margin-bottom: 32px;
+    text-align: center;
+}
+::deep .quick-actions{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 24px;
+    margin-bottom: 32px;
+}
+::deep .action-card{
+    padding: 24px;
+    background: var(--mud-palette-background-paper);
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    text-align: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+::deep .action-card:hover{
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+}
+::deep .recent-events{
+    margin-top: 32px;
+}
+

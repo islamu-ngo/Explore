@@ -266,7 +266,7 @@ API Layer (Explore.API/)
 └── Blazor Components
 
 Infrastructure Layer (Explore.Infrastructure/)
-├── External services (Email, ActivityPub, File Storage)
+├── External services (Email, Federation [planned], File Storage)
 └── Integration with external systems
 ```
 

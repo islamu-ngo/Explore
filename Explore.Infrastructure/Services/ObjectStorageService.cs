@@ -84,6 +84,31 @@ public class ObjectStorageService : IObjectStorageService
         return Task.FromResult(response);
     }
 
+    public async Task<(Stream FileStream, string ContentType)> GetFileStream(string fileKey)
+    {
+        if (string.IsNullOrWhiteSpace(fileKey))
+            throw new ArgumentException("fileKey must be provided", nameof(fileKey));
+
+        try
+        {
+            var request = new GetObjectRequest
+            {
+                BucketName = _s3Settings.BucketName,
+                Key = fileKey
+            };
+
+            var response = await _s3Client.GetObjectAsync(request);
+            return (response.ResponseStream, response.Headers.ContentType);
+        }
+        catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            throw new KeyNotFoundException($"S3 object not found. Key: {fileKey}", ex);
+        }
+    }
+
+    Task<(Stream FileStream, string ContentType)> IObjectStorageService.GetFileStream(string fileKey)
+        => GetFileStream(fileKey);
+
     private string ConstructViewUrl(string objectKey)
     {
         // For Hetzner Object Storage, construct the public URL

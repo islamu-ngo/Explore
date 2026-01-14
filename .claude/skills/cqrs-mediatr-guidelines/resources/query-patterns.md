@@ -150,7 +150,7 @@ using Explore.Application.DTOs.Event;
 using Explore.Application.Features.Events.Requests.Queries;
 using MediatR;
 
-public class GetEventDetailsRequestHandler : IRequestHandler<GetEventDetailsRequest, EventDto>
+public class GetEventDetailsRequestHandler : IRequestHandler<GetEventDetailsRequest, EventDto?>
 {
     private readonly IEventRepository _eventRepository;
     private readonly IMapper _mapper;
@@ -161,14 +161,16 @@ public class GetEventDetailsRequestHandler : IRequestHandler<GetEventDetailsRequ
         _mapper = mapper;
     }
 
-    public async Task<EventDto> Handle(GetEventDetailsRequest request, CancellationToken cancellationToken)
+    public async Task<EventDto?> Handle(GetEventDetailsRequest request, CancellationToken cancellationToken)
     {
         // ✅ Repository returns Event? (nullable entity)
         var @event = await _eventRepository.GetEventWithDetails(request.Id);
 
         // ✅ Return null if not found (controller handles NotFound)
         if (@event == null)
+        {
             return null;
+        }
 
         // ✅ Map entity → DTO
         return _mapper.Map<EventDto>(@event);
@@ -186,42 +188,72 @@ namespace Explore.Application.DTOs.Event;
 using System;
 using Explore.Application.DTOs.Common;
 
-public class EventDto : IEventDto
+public class EventDto
 {
     public Guid Id { get; set; }
+    public string Title { get; set; }
+    public string? Description { get; set; }
+    public string? Slug { get; set; }
+
     public int EventTypeId { get; set; }
-    public string EventTypeName { get; set; } = string.Empty;
-    public string Title { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
+    public string EventTypeFullName { get; set; }
+    public string EventTypeMasterCode { get; set; }
+
     public int AudienceGenderId { get; set; }
-    public string AudienceGenderName { get; set; } = string.Empty;
+    public string AudienceGenderFullName { get; set; }
+    public string AudienceGenderMasterCode { get; set; }
     public int AudienceAgeId { get; set; }
-    public string AudienceAgeName { get; set; } = string.Empty;
+    public string AudienceAgeFullName { get; set; }
+    public string AudienceAgeMasterCode { get; set; }
+    public int? AudienceAgeMinAge { get; set; }
+    public int? AudienceAgeMaxAge { get; set; }
+
     public Guid ActorId { get; set; }
-    public string ActorDisplayName { get; set; } = string.Empty;
+    public string ActorDisplayName { get; set; }
+    public string? ActorHandle { get; set; }
+    public string? ActorDid { get; set; }
+    public int ActorTypeId { get; set; }
+    public string ActorTypeFullName { get; set; }
+    public Guid? ActorProfilePictureId { get; set; }
+    public string? ActorProfilePictureUri { get; set; }
+
     public decimal? Price { get; set; }
-    public string CurrencyCode { get; set; } = string.Empty;
+    public string? CurrencyCode { get; set; }
+
     public Guid FeaturedImageId { get; set; }
-    public string FeaturedImageUri { get; set; } = string.Empty;
-    public int TotalViews { get; set; }
+    public string? FeaturedImageUri { get; set; }
+
     public bool IsRegistrationRequired { get; set; }
-    public string EventUrl { get; set; } = string.Empty;
-    public int? MadhabId { get; set; }
-    public string MadhabName { get; set; } = string.Empty;
-    public Guid TenantId { get; set; }
-    public string Slug { get; set; } = string.Empty;
-    public int VisibilityTypeId { get; set; }
-    public string VisibilityTypeName { get; set; } = string.Empty;
-    public int? SessionCount { get; set; }
+    public string? ExternalRegistrationUrl { get; set; }
+
     public int EventStatusId { get; set; }
-    public string EventStatusName { get; set; } = string.Empty;
-    public string ExternalRegistrationUrl { get; set; } = string.Empty;
-    public DateTime? FirstSessionDate { get; set; }
-    public DateTime? LastSessionDate { get; set; }
-    public string Timezone { get; set; } = string.Empty;
+    public string EventStatusFullName { get; set; }
+    public string EventStatusMasterCode { get; set; }
+    public int VisibilityTypeId { get; set; }
+    public string VisibilityTypeFullName { get; set; }
+    public string VisibilityTypeMasterCode { get; set; }
+
     public int EventFormatId { get; set; }
-    public string EventFormatName { get; set; } = string.Empty;
+    public string EventFormatFullName { get; set; }
+    public string EventFormatMasterCode { get; set; }
+
+    public int? MadhabId { get; set; }
+    public string? MadhabFullName { get; set; }
+    public string? MadhabMasterCode { get; set; }
+
+    public int? SessionCount { get; set; }
+    public DateOnly? FirstSessionDate { get; set; }
+    public DateOnly? LastSessionDate { get; set; }
+    public string? Timezone { get; set; }
+
+    public int TotalViews { get; set; }
+    public string? EventUrl { get; set; }
+
+    public Guid TenantId { get; set; }
+
     public Guid? AtprotoRecordId { get; set; }
+    public string? AtprotoRecordUri { get; set; }
+    public string? AtprotoRecordCid { get; set; }
 }
 ```
 
@@ -349,28 +381,40 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
             .Include(e => e.EventFormat)
             .Include(e => e.Madhab)
             .Include(e => e.FeaturedImage)
-            .Include(e => e.AtprotoRecord)
             .ToListAsync();
     }
 
     public async Task<List<Event>> GetMyEventsWithDetails(string userId)
     {
-        return await _dbContext.Events
+        // Current implementation supports GUID user ids and checks both:
+        // - direct user actor ownership
+        // - organization membership ownership
+        Guid userGuid;
+        var isGuid = Guid.TryParse(userId, out userGuid);
+
+        var query = _dbContext.Events
             .Include(e => e.EventType)
             .Include(e => e.AudienceGender)
             .Include(e => e.AudienceAge)
             .Include(e => e.Actor)
                 .ThenInclude(a => a.ActorType)
-                .ThenInclude(at => at.Organization)
-                .ThenInclude(o => o.Members.Where(m => m.UserId.ToString() == userId))
+            .Include(e => e.FeaturedImage)
             .Include(e => e.EventStatus)
             .Include(e => e.VisibilityType)
             .Include(e => e.EventFormat)
             .Include(e => e.Madhab)
-            .Include(e => e.FeaturedImage)
-            .Include(e => e.AtprotoRecord)
-            .Where(e => e.Actor.Organization.Members.Any(m => m.UserId.ToString() == userId))
-            .ToListAsync();
+            .AsQueryable();
+
+        if (isGuid)
+        {
+            query = query.Where(e =>
+                _dbContext.Users.Any(u => u.Id == userGuid && u.ActorId == e.ActorId) ||
+                _dbContext.OrganizationMembers.Any(om =>
+                    om.UserId == userGuid &&
+                    _dbContext.Organizations.Any(o => o.Id == om.OrganizationId && o.ActorId == e.ActorId)));
+        }
+
+        return await query.ToListAsync();
     }
 }
 ```
@@ -411,10 +455,9 @@ public class MappingProfile : Profile
 }
 ```
 
-**AutoMapper Magic**:
-- ✅ `EventTypeName` automatically mapped from `Event.EventType.FullName`
-- ✅ `AudienceGenderName` automatically mapped from `Event.AudienceGender.FullName`
-- ✅ No manual `.ForMember()` needed for matching names
+**AutoMapper Note**:
+
+This codebase uses explicit `.ForMember(...)` mappings for many "*FullName" / "*MasterCode" / actor fields.
 
 ## Naming Conventions
 

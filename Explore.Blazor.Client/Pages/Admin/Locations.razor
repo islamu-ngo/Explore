@@ -1,0 +1,143 @@
+@using MudBlazor
+@using Explore.Blazor.Client.Components.Admin
+@using Microsoft.AspNetCore.Authorization
+@inject IDialogService DialogService
+@inject IAdminService AdminService
+@inject ISnackbar Snackbar
+@attribute [Authorize(Roles = "Admin")]
+
+@using MudBlazor
+
+<MudText Typo="Typo.h4" Class="mb-4">Location Management</MudText>
+
+<MudDataGrid T="LocationListDto" Items="@locations" ReadOnly="false" EditMode="DataGridEditMode.Cell"
+             Bordered="true" Dense="true" Hover="true">
+    <Columns>
+        <Column T="LocationListDto" Property="FullName" />
+        <Column T="LocationListDto" Property="City" />
+        <Column T="LocationListDto" Property="Country" />
+        <TemplateColumn StickyRight="true">
+            <CellTemplate Context="context">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => OpenEditDialog(context.Item))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="@(() => DeleteLocation(context.Item))" />
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+</MudDataGrid>
+
+<MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog" Class="mt-4">
+    Create Location
+</MudButton>
+
+@code {
+    private List<LocationListDto> locations = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLocations();
+    }
+
+    private async Task LoadLocations()
+    {
+        try
+        {
+            var result = await AdminService.GetLocationsAsync();
+            locations = result.ToList();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading locations: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var dialogRef = await DialogService.ShowAsync<CreateLocationDialog>("Create New Location");
+        var dialogResult = await dialogRef.Result;
+
+        if (!dialogResult.Canceled)
+        {
+            if (dialogResult.Data is CreateLocationDto newLocation)
+            {
+                try
+                {
+                    if (await AdminService.CreateLocationAsync(newLocation))
+                    {
+                        Snackbar.Add("Location created successfully.", Severity.Success);
+                        await LoadLocations();
+                    }
+                    else
+                    {
+                        Snackbar.Add("Failed to create location.", Severity.Error);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Snackbar.Add($"Error creating location: {ex.Message}", Severity.Error);
+                }
+            }
+        }
+    }
+
+    private async Task OpenEditDialog(LocationListDto location)
+    {
+        var parameters = new DialogParameters { ["ExistingLocation"] = location };
+        var dialogRef = await DialogService.ShowAsync<EditLocationDialog>("Edit Location", parameters);
+        var dialogResult = await dialogRef.Result;
+
+        if (!dialogResult.Canceled)
+        {
+            if (dialogResult.Data is UpdateLocationDto updatedLocation)
+            {
+                try
+                {
+                    if (await AdminService.UpdateLocationAsync(updatedLocation))
+                    {
+                        Snackbar.Add("Location updated successfully.", Severity.Success);
+                        await LoadLocations();
+                    }
+                    else
+                    {
+                        Snackbar.Add("Failed to update location.", Severity.Error);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Snackbar.Add($"Error updating location: {ex.Message}", Severity.Error);
+                }
+            }
+        }
+    }
+
+    private async Task DeleteLocation(LocationListDto location)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Delete Location",
+            $"Do you really want to delete the location '{location.FullName}'?",
+            yesText: "Delete",
+            cancelText: "Cancel",
+            options: new DialogOptions { FullWidth = false, MaxWidth = MaxWidth.ExtraSmall }
+        );
+
+        if (confirmed == true)
+        {
+            try
+            {
+                if (await AdminService.DeleteLocationAsync(location.Id))
+                {
+                    Snackbar.Add("Location deleted successfully.", Severity.Success);
+                    await LoadLocations();
+                }
+                else
+                {
+                    Snackbar.Add("Failed to delete location.", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting location: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}

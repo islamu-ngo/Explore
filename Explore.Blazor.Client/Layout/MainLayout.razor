@@ -1,6 +1,6 @@
 @inherits LayoutComponentBase
 
-<MudThemeProvider Theme="@_theme" IsDarkMode="_isDarkMode" />
+<MudThemeProvider Theme="@_theme" IsDarkMode="@_isDarkMode" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
@@ -11,18 +11,20 @@
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IJSRuntime JSRuntime
 
-<MudLayout Style="min-height: 100vh; display: flex; flex-direction: column;">
+<MudLayout class="component-mainlayout">
 
-    <!-- Announcement Bar (Development Notice) -->
-    <AnnouncementBar />
+    <!-- Sticky header container wrapping AnnouncementBar and AppBar -->
+    <div class="sticky-header-container">
+        <!-- Announcement Bar -->
+        <AnnouncementBar />
 
-    <!-- Top App Bar -->
-    <MudAppBar Fixed="true" Elevation="0" Dense="true" Color="Color.Surface">
-        <!-- Left: org icon -->
-        <NavMenu OnToggleTheme="DarkModeToggle" />
-    </MudAppBar>
+        <!-- Top App Bar (Fixed attribute removed since we use sticky container) -->
+        <MudAppBar Elevation="0" Dense="true" Color="Color.Surface" Class="py-2">
+            <NavMenu OnToggleTheme="DarkModeToggle" />
+        </MudAppBar>
+    </div>
 
-    <MudMainContent Style="flex: 1;">
+    <MudMainContent>
         @Body
     </MudMainContent>
 
@@ -30,7 +32,6 @@
     <Footer/>
 
 </MudLayout>
-
 @code {
     private bool _isDarkMode = false;
     private bool _isInitialized = false;
@@ -78,7 +79,7 @@
             // Read theme from localStorage (client-side source of truth)
             try
             {
-                var storedTheme = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "theme");
+                var storedTheme = await JSRuntime.InvokeAsync<string>("ExploreTheme.getStoredTheme");
                 if (!string.IsNullOrEmpty(storedTheme))
                 {
                     var isDarkStorage = storedTheme == "dark";
@@ -105,8 +106,8 @@
 
         try
         {
-            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "theme", themeValue);
-            await JSRuntime.InvokeVoidAsync("eval", $"document.cookie = 'theme={themeValue}; path=/; max-age=31536000'");
+            await JSRuntime.InvokeVoidAsync("ExploreTheme.setStoredTheme", themeValue);
+            await JSRuntime.InvokeVoidAsync("ExploreTheme.setThemeCookie", themeValue);
         }
         catch (Exception ex)
         {

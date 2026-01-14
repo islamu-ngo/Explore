@@ -387,6 +387,34 @@ public class EventController : ControllerBase
 
 ---
 
+## 🧾 API Endpoint Metadata (Required)
+
+All controller actions must be OpenAPI-friendly.
+
+**Required per action**:
+
+- `[EndpointSummary("...")]`
+- `[EndpointDescription("...")]`
+- `[ProducesResponseType(...)]` for success + common failures
+- `[Consumes("application/json")]` for body endpoints (`POST/PUT`)
+
+**Example**:
+
+```csharp
+using static Microsoft.AspNetCore.Http.StatusCodes;
+
+[HttpGet("{id}")]
+[EndpointSummary("Get Event Details")]
+[EndpointDescription("Returns full event details.")]
+[AllowAnonymous]
+[ProducesResponseType(typeof(EventDto), Status200OK)]
+[ProducesResponseType(Status404NotFound)]
+public async Task<ActionResult<EventDto>> GetById(Guid id)
+    => Ok(await _mediator.Send(new GetEventDetailsRequest { Id = id }));
+```
+
+---
+
 ## 🔍 Common Mistakes & Fixes
 
 | Mistake | Fix |

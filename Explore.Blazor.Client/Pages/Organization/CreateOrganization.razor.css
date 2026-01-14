@@ -1,0 +1,74 @@
+::deep .component-createorganization{ color: inherit; }
+::deep .stepper{
+        margin-bottom: 2rem;
+    }
+
+    ::deep .step-container{
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: relative;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    ::deep .step{
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        z-index: 1;
+    }
+
+    ::deep .step-circle{
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 8px;
+        transition: all 0.3s ease;
+    }
+
+    ::deep .step-title{
+        font-size: 0.875rem;
+        color: var(--mud-palette-text-secondary);
+        transition: all 0.3s ease;
+        text-align: center;
+        max-width: 140px;
+    }
+
+    ::deep .step-line{
+        position: absolute;
+        height: 2px;
+        background-color: var(--mud-palette-lines-default);
+        top: 20px;
+        left: 70px;
+        right: 70px;
+        z-index: 0;
+    }
+
+    ::deep .step-line-progress{
+        position: absolute;
+        height: 2px;
+        background-color: var(--mud-palette-primary);
+        top: 0;
+        left: 0;
+        transition: width 0.3s ease;
+    }
+
+    ::deep .active .step-circle{
+        background-color: var(--mud-palette-primary);
+        color: white;
+    }
+
+    ::deep .active .step-title{
+        color: var(--mud-palette-primary);
+        font-weight: 500;
+    }
+
+    ::deep .completed .step-circle{
+        background-color: var(--mud-palette-success);
+        color: white;
+    }
+

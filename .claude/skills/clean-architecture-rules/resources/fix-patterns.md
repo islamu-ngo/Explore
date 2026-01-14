@@ -59,19 +59,29 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
     private readonly IAudienceAgeRepository _audienceAgeRepository;
     private readonly IAudienceGenderRepository _audienceGenderRepository;
     private readonly IEventTypeRepository _eventTypeRepository;
+    private readonly IOrganizationRepository _organizationRepository;
+    private readonly IStorageObjectRepository _storageObjectRepository;
 
     public CreateEventDtoValidator(
         IAudienceAgeRepository audienceAgeRepository,
         IAudienceGenderRepository audienceGenderRepository,
-        IEventTypeRepository eventTypeRepository)
+        IEventTypeRepository eventTypeRepository,
+        IOrganizationRepository organizationRepository,
+        IStorageObjectRepository storageObjectRepository)
     {
         _audienceAgeRepository = audienceAgeRepository;
         _audienceGenderRepository = audienceGenderRepository;
         _eventTypeRepository = eventTypeRepository;
+        _organizationRepository = organizationRepository;
+        _storageObjectRepository = storageObjectRepository;
 
         RuleFor(x => x.Title)
             .NotEmpty().WithMessage("Title is required")
-            .MaximumLength(500);
+            .MaximumLength(200);
+
+        RuleFor(x => x.Description)
+            .MaximumLength(5000)
+            .When(x => !string.IsNullOrEmpty(x.Description));
 
         RuleFor(x => x.EventTypeId)
             .NotEmpty().WithMessage("Event type is required")
@@ -90,6 +100,24 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
                 return exists;
             })
             .WithMessage("Audience gender not found");
+
+        RuleFor(x => x.OrganizationId)
+            .MustAsync(async (id, cancellation) =>
+            {
+                if (!id.HasValue) return true;
+                return await _organizationRepository.Exists(id.Value);
+            })
+            .When(x => x.OrganizationId.HasValue)
+            .WithMessage("Organization does not exist.");
+
+        RuleFor(x => x.FeaturedImageId)
+            .MustAsync(async (id, cancellation) =>
+            {
+                if (!id.HasValue) return true;
+                return await _storageObjectRepository.Exists(id.Value);
+            })
+            .When(x => x.FeaturedImageId.HasValue)
+            .WithMessage("FeaturedImageId does not exist.");
     }
 }
 
@@ -115,7 +143,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     private readonly IAudienceAgeRepository _audienceAgeRepository;
     private readonly IAudienceGenderRepository _audienceGenderRepository;
     private readonly IEventTypeRepository _eventTypeRepository;
-    private readonly IActorRepository _actorRepository;
+    private readonly IOrganizationRepository _organizationRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly IMapper _mapper;
 
@@ -124,7 +152,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         IAudienceAgeRepository audienceAgeRepository,
         IAudienceGenderRepository audienceGenderRepository,
         IEventTypeRepository eventTypeRepository,
-        IActorRepository actorRepository,
+        IOrganizationRepository organizationRepository,
         IStorageObjectRepository storageObjectRepository,
         IMapper mapper)
     {
@@ -132,7 +160,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         _audienceAgeRepository = audienceAgeRepository;
         _audienceGenderRepository = audienceGenderRepository;
         _eventTypeRepository = eventTypeRepository;
-        _actorRepository = actorRepository;
+        _organizationRepository = organizationRepository;
         _storageObjectRepository = storageObjectRepository;
         _mapper = mapper;
     }
@@ -145,9 +173,11 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         var validator = new CreateEventDtoValidator(
             _audienceAgeRepository,
             _audienceGenderRepository,
-            _eventTypeRepository);
+            _eventTypeRepository,
+            _organizationRepository,
+            _storageObjectRepository);
 
-        var validationResult = await validator.ValidateAsync(request.EventDto);
+        var validationResult = await validator.ValidateAsync(request.EventDto, cancellationToken);
 
         if (!validationResult.IsValid)
         {
@@ -501,22 +531,33 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
 
     public async Task<List<Event>> GetMyEventsWithDetails(string userId)
     {
-        return await _dbContext.Events
+        Guid userGuid;
+        var isGuid = Guid.TryParse(userId, out userGuid);
+
+        var query = _dbContext.Events
             .Include(e => e.EventType)
             .Include(e => e.AudienceGender)
             .Include(e => e.AudienceAge)
             .Include(e => e.Actor)
                 .ThenInclude(a => a.ActorType)
-                .ThenInclude(at => at.Organization)
-                .ThenInclude(o => o.Members.Where(m => m.UserId.ToString() == userId))
             .Include(e => e.EventStatus)
             .Include(e => e.VisibilityType)
             .Include(e => e.EventFormat)
             .Include(e => e.Madhab)
             .Include(e => e.FeaturedImage)
             .Include(e => e.AtprotoRecord)
-            .Where(e => e.Actor.Organization.Members.Any(m => m.UserId.ToString() == userId))
-            .ToListAsync();
+            .AsQueryable();
+
+        if (isGuid)
+        {
+            query = query.Where(e =>
+                _dbContext.Users.Any(u => u.Id == userGuid && u.ActorId == e.ActorId) ||
+                _dbContext.OrganizationMembers.Any(om =>
+                    om.UserId == userGuid &&
+                    _dbContext.Organizations.Any(o => o.Id == om.OrganizationId && o.ActorId == e.ActorId)));
+        }
+
+        return await query.ToListAsync();
     }
 }
 
@@ -609,11 +650,11 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
 
         RuleFor(x => x.Title)
             .NotEmpty().WithMessage("Title is required")
-            .MaximumLength(500).WithMessage("Title must not exceed 500 characters");
+            .MaximumLength(200).WithMessage("Title must not exceed 200 characters");
 
         RuleFor(x => x.Description)
-            .MaximumLength(500).When(x => !string.IsNullOrEmpty(x.Description))
-            .WithMessage("Description must not exceed 500 characters");
+            .MaximumLength(5000).When(x => !string.IsNullOrEmpty(x.Description))
+            .WithMessage("Description must not exceed 5000 characters");
 
         RuleFor(x => x.EventTypeId)
             .NotEmpty().WithMessage("Event type is required")
@@ -637,8 +678,8 @@ public class UpdateEventDtoValidator : AbstractValidator<UpdateEventDto>
 
         // Maybe title is optional when updating
         RuleFor(x => x.Title)
-            .MaximumLength(500).When(x => !string.IsNullOrEmpty(x.Title))
-            .WithMessage("Title must not exceed 500 characters");
+            .MaximumLength(200).When(x => !string.IsNullOrEmpty(x.Title))
+            .WithMessage("Title must not exceed 200 characters");
     }
 }
 ```

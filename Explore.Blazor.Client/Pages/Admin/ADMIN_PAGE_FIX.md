@@ -297,7 +297,7 @@ Matches the pattern used across the codebase:
 - `OrganizationService.cs` - Same pattern ?
 - `EventService.cs` - Same pattern ?
 - `UserService.cs` - Same pattern ?
-- `ProgramService.cs` - Same pattern ?
+- `EventService.Operations.cs` - Same pattern ?
 
 All services:
 - Use `IEventApiClient` from NSwag

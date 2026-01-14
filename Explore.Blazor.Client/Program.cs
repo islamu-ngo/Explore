@@ -1,3 +1,4 @@
+using Blazouter.Extensions;
 using Microsoft.AspNetCore.Components.WebAssembly.Authentication;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MudBlazor.Services;
@@ -12,6 +13,7 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
 
 builder.Services.AddMudServices();
+builder.Services.AddBlazouter();
 
 // Register the message handler that adds credentials to requests
 builder.Services.AddTransient<BrowserCredentialsMessageHandler>();
@@ -48,7 +50,6 @@ builder.Services.AddHttpClient<IEventApiClient, EventApiClient>(client =>
 .AddHttpMessageHandler<BffUnauthorizedHandler>();
 
 builder.Services.AddScoped<IEventService, EventService>();
-builder.Services.AddScoped<IProgramService, ProgramService>();
 builder.Services.AddScoped<IOrganizationService, OrganizationService>();
 builder.Services.AddScoped<IOrganizationMemberService, OrganizationMemberService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
@@ -57,14 +58,16 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IOrganizationReviewService, OrganizationReviewService>();
 builder.Services.AddScoped<IMapsService, MapsService>();
 builder.Services.AddScoped<IImageStorageService, ImageStorageService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<ITagService, TagService>();
+builder.Services.AddScoped<IEventRegistrationService, EventRegistrationService>();
+builder.Services.AddScoped<ILocationService, LocationService>();
 
 builder.Services.AddScoped<BffClient>();
 
 builder.Services.AddAuthorizationCore();
-
-// Use PersistentAuthenticationStateProvider that reads auth state from PersistentComponentState
-// This enables seamless auth state transfer from server to WASM during InteractiveAuto hydration
-builder.Services.AddScoped<AuthenticationStateProvider, PersistentAuthenticationStateProvider>();
+builder.Services.AddCascadingAuthenticationState();
+builder.Services.AddAuthenticationStateDeserialization();
 
 // Add logging for debugging in WASM
 builder.Logging.SetMinimumLevel(LogLevel.Information);

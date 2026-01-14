@@ -1,131 +1,14 @@
-@page "/organization/profile/{Id:guid}"
 @using MudBlazor
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Clients
 @using Microsoft.AspNetCore.Components
+@using Blazouter.Services
 @inject IOrganizationService OrganizationService
 @inject IOrganizationReviewService OrganizationReviewService
 @inject NavigationManager Navigation
+@inject RouterStateService RouterState
 
 <PageTitle>Organization Profile</PageTitle>
-
-<style>
-/* ===== Star Rating Display ===== */
-.star-rating {
-    display: inline-flex;
-    gap: 2px;
-    color: #FFC107; /* gold color for stars */
-}
-
-.star-rating .mud-icon-root {
-    font-size: 1.25rem;
-}
-
-/* ===== TOKENS ===== */
-:root{
-  --ring: color-mix(in srgb, var(--mud-palette-primary) 30%, transparent);
-}
-
-/* ===== HERO / HEADER ===== */
-.org-hero{
-  position: relative;
-  border-radius: 16px;
-  overflow: hidden;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--mud-palette-primary) 18%, #0000), color-mix(in srgb, var(--mud-palette-secondary) 14%, #0000));
-  min-height: 140px;
-}
-.org-hero::after{
-  content:""; position:absolute; inset:0;
-  background: linear-gradient(180deg, rgba(0,0,0,.05), rgba(0,0,0,.12));
-}
-.org-header{
-  display:flex; gap:18px; align-items:flex-end; padding: 18px; position: relative; z-index: 1;
-}
-.org-avatar{
-  width:120px; height:120px; border-radius: 16px; overflow:hidden;
-  border: 2px solid var(--mud-palette-surface);
-  box-shadow: 0 10px 26px rgba(0,0,0,.18);
-  background: var(--mud-palette-surface);
-}
-
-/* ===== NAME + VERIFIED ===== */
-.verified{
-  display:inline-flex; align-items:center; gap:6px;
-  padding:4px 10px; border-radius:999px;
-  background: color-mix(in srgb, var(--mud-palette-success) 14%, transparent);
-  color: var(--mud-palette-success);
-  font-weight:600; font-size:.9rem;
-}
-
-.not-verified{
-  display:inline-flex; align-items:center; gap:6px;
-  padding:4px 10px; border-radius:999px;
-  background: color-mix(in srgb, var(--mud-palette-text-secondary) 14%, transparent);
-  color: var(--mud-palette-text-secondary);
-  font-weight:600; font-size:.9rem;
-}
-
-/* ===== STATS ===== */
-.stat-grid{ display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-top: 10px; }
-.stat{
-  text-align:center; padding:10px 8px; border-radius: 12px;
-  background: color-mix(in srgb, var(--mud-palette-primary) 6%, var(--mud-palette-surface));
-  border: 1px solid color-mix(in srgb, var(--mud-palette-primary) 18%, var(--mud-palette-lines-default));
-}
-.stat .num{ color: var(--mud-palette-primary); font-weight: 800; }
-
-/* ===== CARDS ===== */
-.section-card{
-  border-radius: 16px;
-  border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
-  overflow: hidden;
-}
-.section-body{ padding: 18px; }
-.section-body + .section-body{ border-top: 1px solid var(--mud-palette-lines-default); }
-
-/* Info list */
-.info-list{ display:grid; gap:10px; }
-.info-row{ display:flex; align-items:center; gap:10px; }
-
-/* ===== REVIEWS ===== */
-.review{
-  border-radius: 14px;
-  border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
-  background: color-mix(in srgb, var(--mud-palette-background) 85%, var(--mud-palette-surface));
-  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
-}
-.review:hover{
-  transform: translateY(-2px);
-  box-shadow: 0 12px 28px rgba(0,0,0,.12);
-  border-color: color-mix(in srgb, var(--mud-palette-primary) 35%, var(--mud-palette-lines-default));
-}
-
-/* Buttons */
-.btn-outline .mud-button-root{
-  border-radius: 10px;
-}
-.btn-outline .mud-button-root:focus-visible{
-  box-shadow: 0 0 0 3px var(--ring);
-}
-
-/* Responsive */
-@@media (max-width: 960px){
-  .org-header{ align-items: center; }
-  .stat-grid{ grid-template-columns: repeat(3, 1fr); }
-}
-
-/* Phone layout */
-@@media (max-width: 480px){
-    .org-header{ flex-direction: column; align-items: flex-start; gap: 12px; padding: 14px; }
-    .org-avatar{ width: 92px; height: 92px; border-radius: 12px; }
-    .section-card{ border-radius: 12px; }
-    .section-body{ padding: 14px; }
-    .stat-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-    .info-row{ flex-direction: column; align-items: flex-start; gap: 8px; }
-    .btn-outline .mud-button-root{ width: 100%; }
-}
-</style>
-
 <MudContainer Class="py-6">
     @if (_isLoading)
     {
@@ -301,7 +184,7 @@
 </MudContainer>
 
 @code {
-    [Parameter] public Guid Id { get; set; }
+    private Guid Id { get; set; }
 
     private OrganizationDto? _organization;
     private bool _isLoading = true;
@@ -311,6 +194,13 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Get route parameter from Blazouter
+        var idStr = RouterState.GetParam("Id");
+        if (Guid.TryParse(idStr, out var id))
+        {
+            Id = id;
+        }
+        
         _isLoading = true;
         _errorMessage = null;
 
@@ -337,3 +227,4 @@
         Navigation.NavigateTo($"/organization/reviews/{Id}");
     }
 }
+

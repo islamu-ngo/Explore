@@ -1,0 +1,270 @@
+@using MudBlazor
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Services
+
+<MudPaper Class="session-card" Elevation="1">
+    <div class="session-header">
+        <MudText Typo="Typo.subtitle1" Class="session-title">
+            <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Class="mr-2" />
+            Session @(Index + 1)
+        </MudText>
+        @if (ShowRemoveButton)
+        {
+            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                           Color="Color.Error"
+                           Size="Size.Small"
+                           OnClick="@OnRemoveClicked"
+                           aria-label="Remove session" />
+        }
+    </div>
+
+    <MudDivider Class="mb-3" />
+
+    <MudGrid Spacing="2">
+        <MudItem xs="12">
+            <MudTextField @bind-Value="Session.Title"
+                          Label="Session Title"
+                          Variant="Variant.Outlined"
+                          FullWidth
+                          Placeholder="e.g., Opening Ceremony, Workshop Part 1" />
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudTextField @bind-Value="Session.Description"
+                          Label="Session Description"
+                          Variant="Variant.Outlined"
+                          Lines="2"
+                          FullWidth
+                          Placeholder="Brief description of this session" />
+        </MudItem>
+
+        <MudItem xs="12" sm="6">
+            <MudDatePicker Date="StartDate"
+                           DateChanged="OnStartDateChanged"
+                           Label="Start Date"
+                           Variant="Variant.Outlined" />
+        </MudItem>
+
+        <MudItem xs="12" sm="6">
+            <MudTimePicker Time="StartTime"
+                           TimeChanged="OnStartTimeChanged"
+                           Label="Start Time"
+                           Variant="Variant.Outlined" />
+        </MudItem>
+
+        <MudItem xs="12" sm="6">
+            <MudDatePicker Date="EndDate"
+                           DateChanged="OnEndDateChanged"
+                           Label="End Date"
+                           Variant="Variant.Outlined" />
+        </MudItem>
+
+        <MudItem xs="12" sm="6">
+            <MudTimePicker Time="EndTime"
+                           TimeChanged="OnEndTimeChanged"
+                           Label="End Time"
+                           Variant="Variant.Outlined" />
+        </MudItem>
+
+        @if (ShowLocationSelector && Locations != null && Locations.Any())
+        {
+            <MudItem xs="12">
+                <MudSelect T="Guid?"
+                           @bind-Value="Session.LocationId"
+                           Label="Location"
+                           Variant="Variant.Outlined"
+                           FullWidth
+                           Clearable>
+                    @foreach (var location in Locations)
+                    {
+                        <MudSelectItem Value="@((Guid?)location.Id)">
+                            @location.FullName @(!string.IsNullOrEmpty(location.City) ? $" - {location.City}" : "")
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+        }
+
+        <MudItem xs="12" sm="6">
+            <MudNumericField @bind-Value="Session.MaxAudienceAttendees"
+                             Label="Max Attendees (optional)"
+                             Variant="Variant.Outlined"
+                             FullWidth
+                             Min="0"
+                             Placeholder="Leave empty for unlimited" />
+        </MudItem>
+
+        <MudItem xs="12" sm="6">
+            <MudSelect T="int?"
+                       @bind-Value="Session.RegistrationModeId"
+                       Label="Registration Mode"
+                       Variant="Variant.Outlined"
+                       FullWidth>
+                <MudSelectItem Value="@((int?)1)">Open (Auto-approve)</MudSelectItem>
+                <MudSelectItem Value="@((int?)2)">Approval Required</MudSelectItem>
+                <MudSelectItem Value="@((int?)3)">Invite Only</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public SessionEditorModel Session { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<SessionEditorModel> SessionChanged { get; set; }
+
+    [Parameter]
+    public int Index { get; set; }
+
+    [Parameter]
+    public bool ShowRemoveButton { get; set; } = true;
+
+    [Parameter]
+    public EventCallback OnRemove { get; set; }
+
+    [Parameter]
+    public bool ShowLocationSelector { get; set; } = false;
+
+    [Parameter]
+    public ICollection<LocationListDto>? Locations { get; set; }
+
+    private DateTime? StartDate
+    {
+        get => Session.StartTime.Date;
+        set
+        {
+            if (value.HasValue)
+            {
+                var time = Session.StartTime.TimeOfDay;
+                Session.StartTime = value.Value.Date + time;
+            }
+        }
+    }
+
+    private TimeSpan? StartTime
+    {
+        get => Session.StartTime.TimeOfDay;
+        set
+        {
+            if (value.HasValue)
+            {
+                Session.StartTime = Session.StartTime.Date + value.Value;
+            }
+        }
+    }
+
+    private DateTime? EndDate
+    {
+        get => Session.EndTime.Date;
+        set
+        {
+            if (value.HasValue)
+            {
+                var time = Session.EndTime.TimeOfDay;
+                Session.EndTime = value.Value.Date + time;
+            }
+        }
+    }
+
+    private TimeSpan? EndTime
+    {
+        get => Session.EndTime.TimeOfDay;
+        set
+        {
+            if (value.HasValue)
+            {
+                Session.EndTime = Session.EndTime.Date + value.Value;
+            }
+        }
+    }
+
+    private async Task OnStartDateChanged(DateTime? value)
+    {
+        StartDate = value;
+        await SessionChanged.InvokeAsync(Session);
+    }
+
+    private async Task OnStartTimeChanged(TimeSpan? value)
+    {
+        StartTime = value;
+        await SessionChanged.InvokeAsync(Session);
+    }
+
+    private async Task OnEndDateChanged(DateTime? value)
+    {
+        EndDate = value;
+        await SessionChanged.InvokeAsync(Session);
+    }
+
+    private async Task OnEndTimeChanged(TimeSpan? value)
+    {
+        EndTime = value;
+        await SessionChanged.InvokeAsync(Session);
+    }
+
+    private async Task OnRemoveClicked()
+    {
+        await OnRemove.InvokeAsync();
+    }
+
+    public class SessionEditorModel
+    {
+        public Guid? Id { get; set; }
+        public string? Title { get; set; }
+        public string? Description { get; set; }
+        public DateTime StartTime { get; set; } = DateTime.Today.AddHours(9);
+        public DateTime EndTime { get; set; } = DateTime.Today.AddHours(17);
+        public Guid? LocationId { get; set; }
+        public int? MaxAudienceAttendees { get; set; }
+        public int? RegistrationModeId { get; set; } = 1;
+
+        public CreateEventSessionDto ToCreateDto(Guid eventId, Guid tenantId)
+        {
+            return new CreateEventSessionDto
+            {
+                EventId = eventId,
+                Title = Title ?? "Session",
+                Description = Description,
+                StartTime = new DateTimeOffset(StartTime, TimeZoneInfo.Local.GetUtcOffset(StartTime)),
+                EndTime = new DateTimeOffset(EndTime, TimeZoneInfo.Local.GetUtcOffset(EndTime)),
+                LocationId = LocationId,
+                MaxAudienceAttendees = MaxAudienceAttendees,
+                RegistrationModeId = RegistrationModeId,
+                TenantId = tenantId
+            };
+        }
+
+        public UpdateEventSessionDto ToUpdateDto(Guid eventId)
+        {
+            return new UpdateEventSessionDto
+            {
+                Id = Id ?? Guid.Empty,
+                EventId = eventId,
+                Title = Title ?? "Session",
+                Description = Description,
+                StartTime = new DateTimeOffset(StartTime, TimeZoneInfo.Local.GetUtcOffset(StartTime)),
+                EndTime = new DateTimeOffset(EndTime, TimeZoneInfo.Local.GetUtcOffset(EndTime)),
+                LocationId = LocationId,
+                MaxAudienceAttendees = MaxAudienceAttendees,
+                RegistrationModeId = RegistrationModeId
+            };
+        }
+
+        public static SessionEditorModel FromDto(EventSessionListDto dto)
+        {
+            return new SessionEditorModel
+            {
+                Id = dto.Id,
+                Title = dto.Title ?? dto.EventTitle,
+                Description = null,
+                StartTime = dto.StartTime.LocalDateTime,
+                EndTime = dto.EndTime.LocalDateTime,
+                LocationId = dto.LocationId,
+                MaxAudienceAttendees = dto.MaxAudienceAttendees,
+                RegistrationModeId = dto.RegistrationModeId
+            };
+        }
+    }
+}

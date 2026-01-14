@@ -1,0 +1,22 @@
+::deep .component-organizationreviews{ color: inherit; }
+::deep .star-rating{
+        display: inline-flex;
+        gap: 2px;
+        color: #FFC107;
+    }
+    ::deep .star-rating .mud-icon-root{
+        font-size: 1.25rem;
+    }
+    ::deep .review-card{
+        height: 100%;
+        border-radius: 14px;
+        border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
+        background: color-mix(in srgb, var(--mud-palette-background) 85%, var(--mud-palette-surface));
+        transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+    }
+    ::deep .review-card:hover{
+        transform: translateY(-2px);
+        box-shadow: 0 12px 28px rgba(0,0,0,.12);
+        border-color: color-mix(in srgb, var(--mud-palette-primary) 35%, var(--mud-palette-lines-default));
+    }
+

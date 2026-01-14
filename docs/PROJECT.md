@@ -2,7 +2,9 @@
 
 ## What is ISLAMU Event?
 
-**ISLAMU Event** (also known as ISLAMU Explore or Event Explorer) is an **open-source, federated event discovery platform**  built **ATProto-first** with an ActivityPub gateway for interoperability with the existing Fediverse (Mastodon, Mobilizon, etc.).
+**ISLAMU Event** (also known as ISLAMU Explore or Event Explorer) is an **open-source event discovery platform**.
+
+The long-term vision includes **ATProto-first federation** with an **ActivityPub gateway**, but HTTP federation endpoints are **not currently implemented** in `Explore.API`.
 
 ## Core Value Proposition
 
@@ -75,16 +77,16 @@
 │   │  • Indexes ngo.islamu.event.* records                               │   │
 │   │  • Provides search/discovery APIs                                    │   │
 │   │  • Manages cultural/audience filtering                               │   │
-│   │  • Hosts ActivityPub Gateway                                         │   │
+│   │  • Hosts ActivityPub Gateway (planned)                                │   │
 │   └─────────────────────────────────────────────────────────────────────┘   │
 │                                        │                                    │
 │                                        ▼                                    │
 │   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │               ActivityPub Gateway (Bridge)                           │   │
+│   │               ActivityPub Gateway (Bridge, planned)                  │   │
 │   │  • Exposes ATProto events as ActivityPub Event objects              │   │
 │   │  • Translates ActivityPub Follow → ATProto follow records           │   │
 │   │  • Translates ActivityPub RSVP → ATProto participation records      │   │
-│   │  • Provides WebFinger, Actor endpoints, Inbox/Outbox                │   │
+│   │  • Would provide WebFinger, Actor endpoints, Inbox/Outbox (planned) │   │
 │   └─────────────────────────────────────────────────────────────────────┘   │
 │                                        │                                    │
 │                                        ▼                                    │
@@ -154,7 +156,7 @@ Still todo
 Export formats supported:
 - **iCal/ICS**: Standard calendar format for events
 - **CSV**: Attendee lists, organizations, bulk data
-- **ActivityPub-native**: Federation-compatible JSON-LD
+- **ActivityPub-native** (planned): Federation-compatible JSON-LD
 - **Full database dump**: Complete data export for self-hosters
 
 ---

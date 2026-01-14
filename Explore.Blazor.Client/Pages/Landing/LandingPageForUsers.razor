@@ -1,282 +1,18 @@
-@page "/home"
 @using MudBlazor
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Clients
 @using Microsoft.AspNetCore.Components
 @inject IJSRuntime JS
 @inject ILandingPageService LandingPageService
-@inject PersistentComponentState PersistentState
-@implements IDisposable
-
-<style>
-:root{
-    --hero-grad-1:#5b7cfa;
-    --hero-grad-2:#7f56d9;
-}
-
-/* ---------- LAYOUT WIDTH ---------- */
-.content { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
-
-/* ---------- HERO ---------- */
-.hero {
-    position: relative; isolation:isolate;
-    padding: 86px 0 60px 0; text-align:center; color:var(--mud-palette-text-primary);
-    background: radial-gradient(1200px 600px at 50% -10%, color-mix(in srgb, var(--mud-palette-primary) 20%, transparent), transparent 60%),
-                linear-gradient(180deg, var(--mud-palette-background) 0%, var(--mud-palette-surface) 100%);
-    overflow:hidden;
-}
-.hero::before{
-    content:""; position:absolute; inset:-20% -20% auto -20%; height:120%;
-    background: conic-gradient(from 180deg at 50% 50%, var(--hero-grad-1), var(--hero-grad-2), var(--hero-grad-1));
-    filter: blur(120px) saturate(140%) opacity(.35);
-    animation: swirl 14s linear infinite; z-index:-1;
-    opacity: 0.5;
-}
-@@keyframes swirl { to { transform: rotate(360deg);} }
-.kicker { letter-spacing:.18em; text-transform:uppercase; font-size:.82rem; opacity:.85; }
-.hero h1 { letter-spacing:.2px; }
-.hero-sub { opacity:.92; max-width: 820px; margin: 10px auto 0; }
-
-/* Logo */
-.logoBox{ display:flex; align-items:center; justify-content:center; background:transparent; }
-.landing-image { width:100%; height:auto; max-width: 170px; object-fit:contain; filter: drop-shadow(0 6px 22px rgba(0,0,0,.35)); }
-
-/* CTA cluster */
-.cta-row{ display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-top:18px; }
-.cta-primary .mud-button-label{ font-size:1.02rem; font-weight:600; }
-
-/* ---------- GLASS UTIL ---------- */
-.glass{
-    background: color-mix(in srgb, var(--mud-palette-surface) 70%, transparent);
-    border: 1px solid var(--mud-palette-lines-default);
-    border-radius: 18px; backdrop-filter: blur(10px);
-    box-shadow: 0 10px 40px rgba(0,0,0,.15);
-    color: var(--mud-palette-text-primary);
-}
-
-/* ---------- SECTION UTILS ---------- */
-.section { margin: 56px 0; }
-.section h2 { margin-bottom: 6px; }
-.muted { color: var(--mud-palette-text-secondary); }
-.text-right { text-align:right; }
-.mt-6 { margin-top: 1.5rem; }
-
-/* ---------- EXPLORE TILES ---------- */
-.tile {
-    position: relative; height: 180px; padding: 14px 16px;
-    border-radius: 16px; border: 1px solid var(--mud-palette-lines-default);
-    background: var(--mud-palette-surface); box-shadow: 0 1px 0 rgba(0,0,0,.1) inset;
-    overflow:hidden; transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
-    color: var(--mud-palette-text-primary);
-}
-.tile:hover { transform: translateY(-3px); box-shadow: 0 12px 26px rgba(0,0,0,.15); border-color: var(--mud-palette-primary); }
-.tile-content {
-    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-    display:flex; flex-direction:column; align-items:center; text-align:center; gap:6px; max-width: calc(100% - 32px);
-}
-.tile .mud-icon-root { font-size: 42px !important; line-height:1; margin:0 0 6px 0; opacity:.9; }
-.tile .mud-typography-h6 { font-weight: 600; line-height:1.25; }
-.tile .mud-typography-caption { margin-top:2px; line-height:1.35; opacity:.78; }
-
-/* Clickable tile link */
-.tile-link{ display:block; text-decoration:none; color:inherit; }
-
-/* ---------- EVENT CARDS ---------- */
-.card {
-    background-color: var(--mud-palette-surface);
-    border-radius: 16px;
-    overflow:hidden;
-    border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
-    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
-    height: 100%; display: flex; flex-direction: column; cursor: pointer;
-}
-.card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 16px 36px rgba(0,0,0,.16);
-    border-color: color-mix(in srgb, var(--mud-palette-primary) 40%, var(--mud-palette-lines-default));
-}
-.card-media {
-    position: relative; 
-    height: 200px; 
-    overflow: hidden;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 1.2rem;
-    font-weight: 600;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-}
-.card-media::after {
-    content:""; 
-    position:absolute; 
-    inset:0;
-    background: linear-gradient(180deg, rgba(0,0,0,0) 50%, rgba(0,0,0,.25) 100%);
-}
-.event-body { padding: 20px; flex: 1; display: flex; flex-direction: column; color: #e2e8f0; }
-.event-chips { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
-
-/* Badges row */
-.badges{ 
-    display:flex; 
-    gap:8px; 
-    align-items:center; 
-    margin: 10px 0 6px 0; 
-}
-
-/* Location row */
-.loc{
-    display:flex; 
-    align-items:center; 
-    gap:6px; 
-    opacity:.85;
-}
-    background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: #fff; font-weight: 600;
-    font-size: 1.1rem; text-align: center; padding: 20px;
-}
-.event-body { padding: 20px; flex: 1; display: flex; flex-direction: column; color: #e2e8f0; }
-.event-chips { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
-
-/* ---------- CAROUSEL ---------- */
-.carousel-wrap{
-    margin: 36px 0 8px 0;
-}
-
-/* Force carousel to show full height */
-.carousel-wrap .mud-carousel,
-.carousel-wrap .mud-carousel-item,
-.carousel-wrap .mud-carousel-content {
-    height: auto !important;
-    min-height: 400px;
-}
-
-.featured-events-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 16px;
-    margin-bottom: 24px;
-}
-
-/* ---------- THIS WEEK CARDS ---------- */
-.eventCard { 
-    border-radius: 14px; overflow:hidden; transition: transform .18s ease, box-shadow .18s ease; 
-    height: 100%; display: flex; flex-direction: column;
-}
-.eventCard:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(0,0,0,.3); }
-.eventThumb {
-    height: 180px; display:flex; align-items:center; justify-content:center;
-    background: linear-gradient(135deg, #6b5cff, #a855f7); color:#fff; letter-spacing:.3px; font-weight:600;
-}
-.eventMeta{ display:flex; justify-content:center; gap:8px; margin-top:8px; }
-
-/* Responsive tweaks */
-@@media (max-width: 900px){
-    .text-right{ text-align:left; }
-}
-@@media (prefers-reduced-motion: reduce){
-    .hero::before{ animation:none; }
-}
-
-/* Mobile responsiveness (phones) */
-@@media (max-width: 480px) {
-  .hero {
-    padding: 56px 0 40px 0;
-  }
-  .kicker {
-    font-size: 0.7rem;
-    letter-spacing: 0.12em;
-  }
-  .hero h1 {
-    font-size: 1.8rem !important;
-    line-height: 1.2;
-  }
-  .hero-sub {
-    font-size: 0.95rem;
-    margin: 8px auto 0;
-  }
-  .cta-row {
-    gap: 8px;
-    margin-top: 12px;
-  }
-  .landing-image {
-    max-width: 120px;
-  }
-  .tile {
-    height: 140px;
-    padding: 12px 10px;
-    border-radius: 12px;
-  }
-  .tile .mud-icon-root {
-    font-size: 32px !important;
-    margin: 0 0 4px 0;
-  }
-  .tile .mud-typography-h6 {
-    font-size: 0.9rem;
-  }
-  .section {
-    margin: 40px 0;
-  }
-  .card-media {
-    height: 140px;
-  }
-  .event-body {
-    padding: 14px;
-  }
-  .carousel-wrap {
-    margin: 24px 0 16px 0;
-  }
-  .carousel-wrap .mud-carousel,
-  .carousel-wrap .mud-carousel-item,
-  .carousel-wrap .mud-carousel-content {
-        min-height: auto;
-        height: auto;
-  }
-    .carousel-wrap .mud-carousel-item { padding: 12px 0 !important; }
-    .carousel-wrap .mud-stack { flex-direction: column !important; align-items: stretch !important; gap: 12px !important; }
-    .carousel-wrap .card { width: 100% !important; max-width: none !important; }
-    .carousel-wrap .card-media { height: 150px; }
-  .cta-row .mud-button-root {
-    padding: 10px 16px;
-  }
-  .cta-primary .mud-button-label {
-    font-size: 0.9rem;
-    font-weight: 600;
-  }
-  .featured-events-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-    margin-bottom: 16px;
-  }
-  .featured-events-header > div:first-child {
-    order: 1;
-  }
-  .featured-events-header .mud-button-root {
-    order: 2;
-    width: 100%;
-  }
-  .eventCard {
-    border-radius: 12px;
-  }
-  .eventThumb {
-    height: 120px;
-    font-size: 0.9rem;
-  }
-}
-</style>
-
 <!-- HERO - Full width -->
 <section class="hero">
     <MudContainer MaxWidth="MaxWidth.Large">
         <MudGrid Spacing="3" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
             <MudItem xs="12" md="7">
-                <MudText Typo="Typo.overline" Class="kicker">Community • Events • Knowledge</MudText>
+                <MudText Typo="Typo.overline" Class="kicker">Community ï¿½ Events ï¿½ Knowledge</MudText>
                 <MudText Typo="Typo.h3" Class="mb-1">Never miss<br />knowledge again</MudText>
                 <MudText Typo="Typo.subtitle1" Class="hero-sub">
-                    “Seeking knowledge is an obligation upon every Muslim.”
+                    ï¿½Seeking knowledge is an obligation upon every Muslim.ï¿½
                 </MudText>
 
                 <div class="cta-row">
@@ -303,7 +39,7 @@
     <!-- EXPLORE -->
     <section class="section" id="explore">
         <MudText Typo="Typo.h5" Class="mb-2">Explore</MudText>
-        <MudText Typo="Typo.subtitle2" Class="muted mb-3">Find what fits you best — near you, online, or on-demand.</MudText>
+        <MudText Typo="Typo.subtitle2" Class="muted mb-3">Find what fits you best ï¿½ near you, online, or on-demand.</MudText>
 
         <MudGrid Spacing="3">
             <MudItem xs="12" sm="4">
@@ -349,7 +85,7 @@
         <div class="featured-events-header">
             <div>
                 <MudText Typo="Typo.h5">Featured Events</MudText>
-                <MudText Typo="Typo.subtitle2" Class="muted">Discover upcoming programs and events from our community.</MudText>
+                <MudText Typo="Typo.subtitle2" Class="muted">Discover upcoming events from our community.</MudText>
             </div>
             <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/events" StartIcon="@Icons.Material.Filled.PlaylistAddCheck">
                 View All Events
@@ -386,12 +122,12 @@
                                                     @(evt.EventFormatFullName ?? "Online")
                                                 </MudChip>
                                                 <MudChip T="string" Color="Color.Success" Variant="Variant.Outlined" Size="Size.Small" Style="border-color: #10b981; color: #34d399;">
-                                                    @(evt.Price.HasValue && evt.Price > 0 ? $"{evt.CurrencyCode ?? "€"}{evt.Price:F2}" : "Free")
+                                                    @(evt.Price.HasValue && evt.Price > 0 ? $"{evt.CurrencyCode ?? "ï¿½"}{evt.Price:F2}" : "Free")
                                                 </MudChip>
                                             </div>
                                             <MudText Typo="Typo.h6" Class="mb-2" Style="color: #f8fafc; font-weight: 600;">@evt.Title</MudText>
                                             <MudText Typo="Typo.body2" Class="mb-3" Style="color: #cbd5e1; line-height: 1.5; flex: 1;">@(TruncateText(evt.Description, 150))</MudText>
-                                            
+
                                             <div class="d-flex align-center mb-2" style="color: #f472b6; font-size: 0.875rem;">
                                                 <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Class="mr-1" />
                                                 <span>@(evt.TotalViews > 0 ? $"{evt.TotalViews} views" : "Join community event")</span>
@@ -431,70 +167,10 @@
 @code {
     private ICollection<EventListDto> _events = new List<EventListDto>();
     private bool _isLoading = true;
-    
-    // For persisting state across prerender/hydration
-    private PersistingComponentStateSubscription _persistingSubscription;
-    private const string PersistenceKey = "LandingPageEvents";
-    private bool _hasInitialized = false;
 
     protected override async Task OnInitializedAsync()
     {
-        _persistingSubscription = PersistentState.RegisterOnPersisting(PersistData);
-        
-        // Try to restore persisted data first (from server prerender)
-        if (PersistentState.TryTakeFromJson<List<EventListDto>>(PersistenceKey, out var restored) && restored != null)
-        {
-            Console.WriteLine($"[LANDING PAGE] Restored {restored.Count} events from persisted state");
-            _events = restored;
-            _isLoading = false;
-            _hasInitialized = true;
-        }
-        else
-        {
-            await LoadDataAsync();
-            _hasInitialized = true;
-        }
-    }
-    
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        // Always refresh data from API after client is ready on first render
-        // This handles client-side navigation when PersistentComponentState is empty
-        if (firstRender && _hasInitialized)
-        {
-            await Task.Delay(100);
-            await LoadDataAsyncSilent();
-        }
-    }
-    
-    private async Task LoadDataAsyncSilent()
-    {
-        try
-        {
-            Console.WriteLine("[LANDING PAGE] Silent refresh - loading events");
-            var events = await LandingPageService.GetFeaturedEventsAsync(9);
-            if (events != null && events.Count > 0)
-            {
-                _events = events;
-                Console.WriteLine($"[LANDING PAGE] Silent refresh - {_events.Count} events loaded");
-                await InvokeAsync(StateHasChanged);
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[LANDING PAGE] Silent refresh error: {ex.Message}");
-        }
-    }
-    
-    private Task PersistData()
-    {
-        PersistentState.PersistAsJson(PersistenceKey, _events.ToList());
-        return Task.CompletedTask;
-    }
-    
-    public void Dispose()
-    {
-        _persistingSubscription.Dispose();
+        await LoadDataAsync();
     }
 
     private async Task LoadDataAsync()
@@ -533,8 +209,7 @@
     {
         if (string.IsNullOrEmpty(text) || text.Length <= maxLength)
             return text ?? "";
-        
+
         return text.Substring(0, maxLength) + "...";
     }
 }
-

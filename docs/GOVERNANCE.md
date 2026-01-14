@@ -575,6 +575,19 @@ public class CreateCategoryDtoValidator : AbstractValidator<CreateCategoryDto>
 
 ## Controller Pattern
 
+### API Endpoint Metadata (Required)
+
+All controller actions MUST be documented for OpenAPI/Scalar:
+
+- `[EndpointSummary("...")]`
+- `[EndpointDescription("...")]`
+- `[ProducesResponseType(...)]` for:
+  - success response
+  - `400` (validation), `401` (unauthorized), `404` (not found) as applicable
+- `[Consumes("application/json")]` for `POST/PUT` with JSON bodies
+
+Prefer `typeof(...)` in `[ProducesResponseType]` and `StatusCodes` constants.
+
 ### Standard Controller Structure
 
 ```csharp

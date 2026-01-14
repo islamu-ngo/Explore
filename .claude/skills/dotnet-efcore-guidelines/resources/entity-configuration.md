@@ -21,24 +21,26 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
 {
     public void Configure(EntityTypeBuilder<Event> builder)
     {
-        // Table name
-        builder.ToTable("Events");
+        // Project standard: TPT + UUIDv7
+        builder.UseTptMappingStrategy();
+        builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
 
-        // Primary key
-        builder.HasKey(e => e.Id);
+        // DB-level defaults are OK here (do not add defaults in Domain entities)
+        builder.Property(e => e.TotalViews).HasDefaultValue(0);
 
-        // Properties
-        builder.Property(e => e.Title)
-               .IsRequired()
-               .HasMaxLength(200);
+        builder.Property(e => e.Title).HasMaxLength(200).IsRequired();
+        builder.Property(e => e.Description).HasMaxLength(5000);
+        builder.Property(e => e.Slug).HasMaxLength(500);
+        builder.Property(e => e.CurrencyCode).HasMaxLength(3);
+        builder.Property(e => e.EventUrl).HasMaxLength(500);
+        builder.Property(e => e.ExternalRegistrationUrl).HasMaxLength(500);
+        builder.Property(e => e.Timezone).HasMaxLength(100);
 
-        builder.Property(e => e.Description)
-               .HasMaxLength(2000);
-
-        // Relationships
-        builder.HasOne(e => e.Organization)
-               .WithMany(o => o.Events)
-               .HasForeignKey(e => e.OrganizationId);
+        // Relationships (current codebase uses Restrict for most FK deletes)
+        builder.HasOne(e => e.Actor)
+            .WithMany()
+            .HasForeignKey(e => e.ActorId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
 ```
@@ -102,13 +104,8 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         builder.Property(e => e.TotalViews)
                .HasDefaultValue(0);
 
-        // Default value using SQL
-        builder.Property(e => e.CreatedAt)
-               .HasDefaultValueSql("NOW()");
-
-        // Computed column
-        builder.Property(e => e.FullAddress)
-               .HasComputedColumnSql("[Address] + ', ' + [City]", stored: false);
+        // Use DB defaults only for stable, cross-cutting values.
+        // Prefer setting business defaults in Application handlers.
     }
 }
 ```
@@ -158,8 +155,9 @@ builder.Property(e => e.Description)
        .HasColumnType("text");
 
 // Timestamp
-builder.Property(e => e.CreatedAt)
-       .HasColumnType("timestamp with time zone");
+// If your entity uses DateTimeOffset/DateTime columns:
+// builder.Property(e => e.CreatedAt)
+//        .HasColumnType("timestamp with time zone");
 
 // JSON
 builder.Property(e => e.Metadata)
@@ -181,55 +179,45 @@ builder.Property(e => e.Location)
 ### One-to-Many
 
 ```csharp
-// Organization has many Events
-public class OrganizationConfiguration : IEntityTypeConfiguration<Organization>
-{
-    public void Configure(EntityTypeBuilder<Organization> builder)
-    {
-        builder.HasMany(o => o.Events)
-               .WithOne(e => e.Organization)
-               .HasForeignKey(e => e.OrganizationId)
-               .OnDelete(DeleteBehavior.Cascade);  // Delete events when organization deleted
-    }
-}
+// Actor has many Events (current model: Event references Actor, but Actor doesn't expose a collection navigation)
+builder.HasOne(e => e.Actor)
+       .WithMany()
+       .HasForeignKey(e => e.ActorId)
+       .OnDelete(DeleteBehavior.Restrict);
 ```
 
 ### Many-to-One
 
 ```csharp
-// Event belongs to one Organization
-public class EventConfiguration : IEntityTypeConfiguration<Event>
-{
-    public void Configure(EntityTypeBuilder<Event> builder)
-    {
-        builder.HasOne(e => e.Organization)
-               .WithMany(o => o.Events)
-               .HasForeignKey(e => e.OrganizationId)
-               .IsRequired();  // Every event must have an organization
-    }
-}
+// Event belongs to one Tenant
+builder.HasOne(e => e.Tenant)
+       .WithMany()
+       .HasForeignKey(e => e.TenantId)
+       .OnDelete(DeleteBehavior.Restrict);
 ```
 
 ### Many-to-Many
 
 ```csharp
-// Event <-> Category (through EventCategories)
+// Event <-> Category uses a mapping entity with its own Id (current codebase)
 public class EventCategoriesConfiguration : IEntityTypeConfiguration<EventCategories>
 {
     public void Configure(EntityTypeBuilder<EventCategories> builder)
     {
-        // Composite primary key
-        builder.HasKey(ec => new { ec.EventId, ec.CategoryId });
+        builder.HasOne(e => e.Event)
+            .WithMany()
+            .HasForeignKey(e => e.EventId)
+            .OnDelete(DeleteBehavior.Cascade);
 
-        // Event side
-        builder.HasOne(ec => ec.Event)
-               .WithMany(e => e.EventCategories)
-               .HasForeignKey(ec => ec.EventId);
+        builder.HasOne(e => e.Category)
+            .WithMany()
+            .HasForeignKey(e => e.CategoryId)
+            .OnDelete(DeleteBehavior.Cascade);
 
-        // Category side
-        builder.HasOne(ec => ec.Category)
-               .WithMany(c => c.EventCategories)
-               .HasForeignKey(ec => ec.CategoryId);
+        builder.HasOne(e => e.Tenant)
+            .WithMany()
+            .HasForeignKey(e => e.TenantId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
 ```
@@ -254,10 +242,10 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 ## Delete Behavior
 
 ```csharp
-builder.HasOne(e => e.Organization)
-       .WithMany(o => o.Events)
-       .HasForeignKey(e => e.OrganizationId)
-       .OnDelete(DeleteBehavior.Cascade);  // Delete events when org deleted
+builder.HasOne(e => e.Actor)
+       .WithMany()
+       .HasForeignKey(e => e.ActorId)
+       .OnDelete(DeleteBehavior.Restrict);
 ```
 
 | Behavior | Description |
@@ -274,14 +262,14 @@ builder.HasOne(e => e.Organization)
 ### Simple Index
 
 ```csharp
-builder.HasIndex(e => e.StartDate);
-builder.HasIndex(e => e.OrganizationId);
+builder.HasIndex(e => e.ActorId);
+builder.HasIndex(e => e.TenantId);
 ```
 
 ### Composite Index
 
 ```csharp
-builder.HasIndex(e => new { e.OrganizationId, e.StartDate });
+builder.HasIndex(e => new { e.TenantId, e.ActorId });
 ```
 
 ### Unique Index
@@ -302,7 +290,7 @@ builder.HasIndex(e => e.Title)
 ```csharp
 builder.HasIndex(e => e.Email)
        .IsUnique()
-       .HasFilter("[Email] IS NOT NULL");
+       .HasFilter("\"Email\" IS NOT NULL");
 ```
 
 ---

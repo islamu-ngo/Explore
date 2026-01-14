@@ -46,13 +46,21 @@ var s3SettingsDict = new Dictionary<string, string?>
     ["S3Settings:Endpoint"] = s3Endpoint
 };
 
+builder.Configuration.AddInMemoryCollection(
+    s3SettingsDict.Where(kv => !string.IsNullOrEmpty(kv.Value))
+        .ToDictionary(kv => kv.Key, kv => kv.Value)!
+);
+
 //AddSwaggerDoc(builder.Services); moved to AddSwaggerGenWithAuth extension method
 
 // Add services to the container.
 
 builder.Services.ConfigureApplicationServices();
 builder.Services.ConfigureInfrastructureServices(builder.Configuration);
-builder.Services.CongfigurePersistenceServices(builder.Configuration);
+
+// Skip DbContext registration if running in Testing environment (Integration tests register their own)
+var skipDbContext = builder.Environment.IsEnvironment("Testing");
+builder.Services.CongfigurePersistenceServices(builder.Configuration, skipDbContextRegistration: skipDbContext);
 
 // Register tenant context for single-tenant mode
 builder.Services.AddScoped<ITenantContext, TenantContext>();
@@ -105,8 +113,9 @@ builder.Host.UseSerilog((ctx, lc) =>
     lc.WriteTo.Console().ReadFrom.Configuration(ctx.Configuration));
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddKeycloakJwtBearer(JwtBearerDefaults.AuthenticationScheme, realm: realm, options => {
-    //.AddJwtBearer(options => {
+    .AddKeycloakJwtBearer(JwtBearerDefaults.AuthenticationScheme, realm: realm, options =>
+    {
+        //.AddJwtBearer(options => {
         // will require when in prod... needs to fix this hardcoded value later...
         //options.RequireHttpsMetadata = false;
 
@@ -230,7 +239,7 @@ app.Run();
 //    {
 //        c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
 //        {
-//            Description = @"JWT Authorization header using the Bearer scheme. 
+//            Description = @"JWT Authorization header using the Bearer scheme.
 //                            Enter 'Bearer' [space] and then your token in the text input below.
 //                            Example: 'Bearer 12345abcdef'",
 //            Name = "Authorization",

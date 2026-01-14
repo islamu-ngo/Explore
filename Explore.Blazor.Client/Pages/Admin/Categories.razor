@@ -1,0 +1,141 @@
+@using Explore.Blazor.Client.Clients
+@using MudBlazor
+@using Explore.Blazor.Client.Components.Admin
+@using Microsoft.AspNetCore.Authorization
+@inject IDialogService DialogService
+@inject IAdminService AdminService
+@inject ISnackbar Snackbar
+@attribute [Authorize(Roles = "Admin")]
+
+@using MudBlazor
+
+<MudText Typo="Typo.h4" Class="mb-4">Category Management</MudText>
+
+<MudDataGrid T="CategoryListDto" Items="@categories" ReadOnly="false" EditMode="DataGridEditMode.Cell"
+             Bordered="true" Dense="true" Hover="true">
+    <Columns>
+        <PropertyColumn Property="x => x.FullName" />
+        <PropertyColumn Property="x => x.MasterCode" />
+        <PropertyColumn Property="x => x.ParentFullName" Title="Parent" />
+        <TemplateColumn StickyRight="true">
+            <CellTemplate Context="context">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => OpenEditDialog(context.Item))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="@(() => DeleteCategory(context.Item))" />
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+</MudDataGrid>
+
+<MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog" Class="mt-4">
+    Create Category
+</MudButton>
+
+@code {
+    private List<CategoryListDto> categories = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCategories();
+    }
+
+    private async Task LoadCategories()
+    {
+        try
+        {
+            var result = await AdminService.GetCategoriesAsync();
+            categories = result.ToList();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading categories: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var dialog = await DialogService.Show<CreateCategoryDialog>("Create New Category").Result;
+
+        if (!dialog.Canceled)
+        {
+            var newCategory = (CreateCategoryDto)dialog.Data;
+            try
+            {
+                var created = await AdminService.CreateCategoryAsync(newCategory);
+                if (created)
+                {
+                    Snackbar.Add("Category created successfully.", Severity.Success);
+                    await LoadCategories();
+                }
+                else
+                {
+                    Snackbar.Add("Failed to create category.", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error creating category: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task OpenEditDialog(CategoryListDto category)
+    {
+        var parameters = new DialogParameters { ["ExistingCategory"] = category };
+        var dialog = await DialogService.Show<EditCategoryDialog>("Edit Category", parameters).Result;
+
+        if (!dialog.Canceled)
+        {
+            var updatedCategory = (UpdateCategoryDto)dialog.Data;
+            try
+            {
+                var updated = await AdminService.UpdateCategoryAsync(updatedCategory);
+                if (updated)
+                {
+                    Snackbar.Add("Category updated successfully.", Severity.Success);
+                    await LoadCategories();
+                }
+                else
+                {
+                    Snackbar.Add("Failed to update category.", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error updating category: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task DeleteCategory(CategoryListDto category)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Delete Category",
+            $"Do you really want to delete the category '{category.FullName}'?",
+            yesText: "Delete",
+            cancelText: "Cancel",
+            options: new DialogOptions { FullWidth = false, MaxWidth = MaxWidth.ExtraSmall }
+        );
+
+        if (confirmed == true)
+        {
+            try
+            {
+                var deleted = await AdminService.DeleteCategoryAsync(category.Id);
+                if (deleted)
+                {
+                    Snackbar.Add("Category deleted successfully.", Severity.Success);
+                    await LoadCategories();
+                }
+                else
+                {
+                    Snackbar.Add("Failed to delete category.", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting category: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}

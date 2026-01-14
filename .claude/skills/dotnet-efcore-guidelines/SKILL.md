@@ -109,22 +109,22 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
 {
     public void Configure(EntityTypeBuilder<Event> builder)
     {
-        // TPT (Table Per Type) strategy
         builder.UseTptMappingStrategy();
 
-        // PostgreSQL function for UUIDv7
+        // PostgreSQL: UUIDv7 primary keys
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
 
-        // Default values
+        // DB-level defaults are OK in EF configuration (do not add defaults in entity property initializers)
         builder.Property(e => e.TotalViews).HasDefaultValue(0);
 
-        // Required fields
-        builder.Property(e => e.Title).IsRequired().HasMaxLength(200);
+        builder.Property(e => e.Title).HasMaxLength(200).IsRequired();
+        builder.Property(e => e.Description).HasMaxLength(5000);
+        builder.Property(e => e.Slug).HasMaxLength(500);
 
-        // Relationships
-        builder.HasOne(e => e.Organization)
-               .WithMany(o => o.Events)
-               .HasForeignKey(e => e.OrganizationId);
+        builder.HasOne(e => e.Actor)
+            .WithMany()
+            .HasForeignKey(e => e.ActorId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
 ```
@@ -138,10 +138,11 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
 ```csharp
 namespace Explore.Persistence.Repositories;
 
+using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using Explore.Application.Contracts.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 public class GenericRepository<T, TKey> : IGenericRepository<T, TKey> where T : class
 {
@@ -154,9 +155,20 @@ public class GenericRepository<T, TKey> : IGenericRepository<T, TKey> where T : 
 
     public async Task<T> Create(T entity)
     {
-        await _dbContext.AddAsync(entity);
-        await _dbContext.SaveChangesAsync();
-        return entity;
+        try
+        {
+            await _dbContext.AddAsync(entity);
+            await _dbContext.SaveChangesAsync();
+            return entity;
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException pgEx && pgEx.SqlState == "23505")
+        {
+            // Duplicate key violation: detach and rethrow with more context
+            _dbContext.Entry(entity).State = EntityState.Detached;
+            throw new InvalidOperationException(
+                $"A record with the same unique key already exists. Constraint: {pgEx.ConstraintName}. Detail: {pgEx.Detail}",
+                ex);
+        }
     }
 
     public async Task<T?> GetById(TKey id) =>

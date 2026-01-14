@@ -1,4 +1,3 @@
-@page "/my-registrations"
 @using MudBlazor
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Components
@@ -6,300 +5,11 @@
 @inject NavigationManager Navigation
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
-@inject IProgramService ProgramService
+@inject IEventService EventService
 @inject IUserService UserService
 
 
 <PageTitle>My Registrations</PageTitle>
-
-<style>
-/* ===== PAGE WRAPPER ===== */
-.registrations-page {
-    padding: 24px 0 40px;
-    min-height: 100vh;
-}
-
-/* ===== HEADER ===== */
-.page-header {
-    margin-bottom: 32px;
-    padding-bottom: 20px;
-    border-bottom: 2px solid var(--mud-palette-divider);
-}
-
-.page-title {
-    font-size: 2rem;
-    font-weight: 700;
-    margin-bottom: 8px;
-    background: linear-gradient(135deg, var(--mud-palette-primary), var(--mud-palette-primary-darken));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-.page-subtitle {
-    color: var(--mud-palette-text-secondary);
-    font-size: 1rem;
-}
-
-/* ===== STATS CARDS ===== */
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 16px;
-    margin-bottom: 32px;
-}
-
-.stat-card {
-    padding: 20px;
-    border-radius: 12px;
-    border: 1px solid var(--mud-palette-lines-default);
-    background: var(--mud-palette-surface);
-    transition: all 0.3s ease;
-}
-
-.stat-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-}
-
-.stat-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 12px;
-}
-
-.stat-icon.primary {
-    background: linear-gradient(135deg, var(--mud-palette-primary), var(--mud-palette-primary-darken));
-    color: white;
-}
-
-.stat-icon.success {
-    background: linear-gradient(135deg, var(--mud-palette-success), var(--mud-palette-success-darken));
-    color: white;
-}
-
-.stat-icon.warning {
-    background: linear-gradient(135deg, var(--mud-palette-warning), var(--mud-palette-warning-darken));
-    color: white;
-}
-
-.stat-value {
-    font-size: 2rem;
-    font-weight: 700;
-    color: var(--mud-palette-text-primary);
-    line-height: 1;
-    margin-bottom: 4px;
-}
-
-.stat-label {
-    font-size: 0.875rem;
-    color: var(--mud-palette-text-secondary);
-}
-
-/* ===== FILTERS ===== */
-.filters-section {
-    margin-bottom: 24px;
-    padding: 16px;
-    border-radius: 12px;
-    background: var(--mud-palette-surface);
-    border: 1px solid var(--mud-palette-lines-default);
-}
-
-.filters-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr auto;
-    gap: 16px;
-    align-items: end;
-}
-
-@@media (max-width: 960px) {
-    .filters-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-/* ===== REGISTRATION CARDS ===== */
-.registrations-grid {
-    display: grid;
-    gap: 20px;
-}
-
-.registration-card {
-    border-radius: 16px;
-    border: 1px solid var(--mud-palette-lines-default);
-    overflow: hidden;
-    transition: all 0.3s ease;
-    background: var(--mud-palette-surface);
-}
-
-.registration-card:hover {
-    box-shadow: 0 12px 24px rgba(0,0,0,0.12);
-    transform: translateY(-2px);
-}
-
-.card-content {
-    display: grid;
-    grid-template-columns: 140px 1fr auto;
-    gap: 20px;
-    padding: 20px;
-}
-
-@@media (max-width: 768px) {
-    .card-content {
-        grid-template-columns: 1fr;
-    }
-}
-
-.event-image {
-    width: 140px;
-    height: 140px;
-    border-radius: 12px;
-    overflow: hidden;
-    background: linear-gradient(135deg, var(--mud-palette-primary), var(--mud-palette-primary-darken));
-    position: relative;
-}
-
-@@media (max-width: 768px) {
-    .event-image {
-        width: 100%;
-        height: 200px;
-    }
-}
-
-    @@media (max-width: 480px) {
-        .filters-section { padding: 12px; border-radius: 10px; }
-        .filters-grid { grid-template-columns: 1fr; gap: 12px; }
-        .card-content { padding: 14px; gap: 12px; }
-        .registration-card { border-radius: 12px; }
-        .event-image { height: 160px; }
-        .card-actions { flex-direction: column; gap: 10px; }
-    }
-
-.event-image img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.event-details {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.event-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--mud-palette-text-primary);
-    margin: 0;
-}
-
-.event-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-    align-items: center;
-}
-
-.meta-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: var(--mud-palette-text-secondary);
-    font-size: 0.875rem;
-}
-
-.meta-item .mud-icon-root {
-    font-size: 1.125rem;
-}
-
-.status-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.status-badge.upcoming {
-    background: rgba(33, 150, 243, 0.1);
-    color: var(--mud-palette-primary);
-}
-
-.status-badge.completed {
-    background: rgba(76, 175, 80, 0.1);
-    color: var(--mud-palette-success);
-}
-
-.status-badge.cancelled {
-    background: rgba(244, 67, 54, 0.1);
-    color: var(--mud-palette-error);
-}
-
-.event-description {
-    color: var(--mud-palette-text-secondary);
-    line-height: 1.6;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
-.card-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    justify-content: center;
-}
-
-@@media (max-width: 768px) {
-    .card-actions {
-        flex-direction: row;
-    }
-}
-
-/* ===== EMPTY STATE ===== */
-.empty-state {
-    text-align: center;
-    padding: 60px 20px;
-}
-
-.empty-icon {
-    width: 80px;
-    height: 80px;
-    margin: 0 auto 20px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--mud-palette-primary), var(--mud-palette-primary-darken));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-}
-
-.empty-icon .mud-icon-root {
-    font-size: 2.5rem;
-}
-
-.empty-title {
-    font-size: 1.5rem;
-    font-weight: 600;
-    margin-bottom: 8px;
-}
-
-.empty-description {
-    color: var(--mud-palette-text-secondary);
-    margin-bottom: 24px;
-}
-</style>
-
 <MudContainer MaxWidth="MaxWidth.Large" Class="registrations-page">
     <!-- Header -->
     <div class="page-header">
@@ -442,7 +152,7 @@
                 }
                 else
                 {
-                    <span>You haven't registered for any events yet. Discover amazing programs and register now!</span>
+                    <span>You haven't registered for any events yet. Discover upcoming events and register now!</span>
                 }
             </p>
             <MudButton Variant="Variant.Filled"
@@ -480,7 +190,7 @@
             var user = await UserService.GetCurrentUserAsync();
             if (user != null)
             {
-                registrations = await ProgramService.GetRegistrationsByUserAsync(user.Id);
+                registrations = await EventService.GetRegistrationsByUserAsync(user.Id);
             }
         }
         catch (Exception ex)
@@ -606,7 +316,7 @@
         {
             try
             {
-                var success = await ProgramService.UnregisterFromProgramAsync(registration.Id);
+                var success = await EventService.CancelEventRegistrationAsync(registration.Id);
                 if (success)
                 {
                     await LoadRegistrationsAsync();

@@ -1,13 +1,20 @@
 # Federation
 
+## Status
+
+Federation (ATProto / ActivityPub) is a **roadmap feature**.
+
+- The domain contains federation-related entities (e.g., `Actor`, `AtprotoRecord`, `SyncState`).
+- `Explore.API` does **not** currently expose federation HTTP endpoints (e.g., WebFinger, Inbox/Outbox).
+
 ## Protocol Overview
 
-ISLAMU Event built **ATProto-first** with an ActivityPub gateway for interoperability with the existing Fediverse (Mastodon, Mobilizon, etc.).
+This section describes the intended federation model for ISLAMU Event.
 
-- **Server-to-Server (S2S)**: Instances exchange activities via inbox/outbox
-- **HTTP Signatures**: Cryptographic verification of federated messages
-- **WebFinger**: Actor discovery via `/.well-known/webfinger`
-- **Collections**: Followers, Following, Liked as ordered collections
+- **Server-to-Server (S2S)** (planned): Instances exchange activities via inbox/outbox
+- **HTTP Signatures** (planned): Cryptographic verification of federated messages
+- **WebFinger** (planned): Actor discovery via `/.well-known/webfinger`
+- **Collections** (planned): Followers, Following, Liked as ordered collections
 
 ## Architecture Philosophy
 
@@ -37,7 +44,7 @@ ISLAMU Event built **ATProto-first** with an ActivityPub gateway for interoperab
 │   │  • Exposes ATProto events as ActivityPub Event objects              │   │
 │   │  • Translates ActivityPub Follow → ATProto follow records           │   │
 │   │  • Translates ActivityPub RSVP → ATProto participation records      │   │
-│   │  • Provides WebFinger, Actor endpoints, Inbox/Outbox                │   │
+│   │  • Would provide WebFinger, Actor endpoints, Inbox/Outbox (planned) │   │
 │   └─────────────────────────────────────────────────────────────────────┘   │
 │                                        │                                    │
 │                                        ▼                                    │

@@ -1,16 +1,21 @@
-@page "/eventedit/{eventId:guid}"
 @using MudBlazor
 @using Explore.Blazor.Client.Models
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Components.Event
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components
 @using System.IO
+@using Blazouter.Services
+@using static Explore.Blazor.Client.Components.Event.EventSessionEditor
 @inject IEventService EventService
 @inject IOrganizationService OrganizationService
 @inject IAdminService AdminService
+@inject ICategoryService CategoryService
+@inject ITagService TagService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
+@inject RouterStateService RouterState
 
 <PageTitle>Edit Event</PageTitle>
 
@@ -45,10 +50,12 @@ else if (currentEvent != null && updateDto != null)
                         <div class="mb-4">
                             <MudText Typo="Typo.h6" Class="mb-3">Event Image</MudText>
                             <MudPaper Class="pa-4" Style="background-color: var(--mud-palette-background-grey);">
-                                <ImageUpload ImageKey="@updateDto.ImageKey"
-                                             ImageKeyChanged="@((value) => updateDto.ImageKey = value)"
+                                <ImageUpload ImageKey="@_imageObjectKey"
+                                             ImageKeyChanged="OnImageKeyChanged"
                                              PreviewUrl="@_previewImageUrl"
-                                             PreviewUrlChanged="@((value) => _previewImageUrl = value)"
+                                             PreviewUrlChanged="OnPreviewUrlChanged"
+                                             StorageObjectId="@_uploadedStorageObjectId"
+                                             StorageObjectIdChanged="OnStorageObjectIdChanged"
                                             Width="100%"
                                             Height="300px"
                                             PlaceholderText="Update event image"
@@ -101,25 +108,79 @@ else if (currentEvent != null && updateDto != null)
                                       Label="Event Format"
                                       Variant="Variant.Outlined"
                                       Required>
-                                <MudSelectItem Value="1">In-Person</MudSelectItem>
-                                <MudSelectItem Value="2">Online</MudSelectItem>
-                                <MudSelectItem Value="3">Hybrid</MudSelectItem>
+                                @if (eventFormats != null)
+                                {
+                                    @foreach (var format in eventFormats)
+                                    {
+                                        <MudSelectItem Value="@format.Id">@format.FullName</MudSelectItem>
+                                    }
+                                }
                             </MudSelect>
                             
-                            @if (updateDto?.EventFormatId == 2 || updateDto?.EventFormatId == 3)
-                            {
-                                <MudTextField @bind-Value="updateDto.ExternalRegistrationUrl" 
-                                            Label="Online Meeting/Registration Link" 
-                                            Variant="Variant.Outlined" 
-                                            FullWidth 
-                                            Class="mt-3"
-                                            Adornment="Adornment.Start"
-                                            AdornmentIcon="@Icons.Material.Filled.Link" />
-                            }
 
                             <MudAlert Severity="Severity.Info" Class="mt-3">
                                 Location details are managed at the session level after creating the event.
                             </MudAlert>
+                        </MudPaper>
+
+                        <!-- Visibility & Madhab -->
+                        <MudText Typo="Typo.h6" Class="mb-3">Visibility & Religious Settings</MudText>
+                        <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
+                            <MudGrid Spacing="3">
+                                <MudItem xs="12" sm="6">
+                                    <MudSelect @bind-Value="updateDto.VisibilityTypeId"
+                                              Label="Visibility"
+                                              Variant="Variant.Outlined"
+                                              FullWidth
+                                              Required>
+                                        @if (visibilityTypes != null)
+                                        {
+                                            @foreach (var visibility in visibilityTypes)
+                                            {
+                                                <MudSelectItem Value="@visibility.Id">@visibility.FullName</MudSelectItem>
+                                            }
+                                        }
+                                    </MudSelect>
+                                </MudItem>
+                                <MudItem xs="12" sm="6">
+                                    <MudSelect @bind-Value="selectedMadhabId"
+                                              Label="Madhab (Optional)"
+                                              Variant="Variant.Outlined"
+                                              FullWidth
+                                              Clearable="true">
+                                        @if (madhabs != null)
+                                        {
+                                            @foreach (var madhab in madhabs)
+                                            {
+                                                <MudSelectItem Value="@madhab.Id">@madhab.FullName</MudSelectItem>
+                                            }
+                                        }
+                                    </MudSelect>
+                                </MudItem>
+                                <MudItem xs="12" sm="6">
+                                    <MudSelect @bind-Value="updateDto.EventStatusId"
+                                              Label="Event Status"
+                                              Variant="Variant.Outlined"
+                                              FullWidth
+                                              Required>
+                                        @if (eventStatuses != null)
+                                        {
+                                            @foreach (var status in eventStatuses)
+                                            {
+                                                <MudSelectItem Value="@status.Id">@status.FullName</MudSelectItem>
+                                            }
+                                        }
+                                    </MudSelect>
+                                </MudItem>
+                                <MudItem xs="12" sm="6">
+                                    <MudTextField @bind-Value="selectedTimezone"
+                                                 Label="Timezone (Optional)"
+                                                 Variant="Variant.Outlined"
+                                                 FullWidth
+                                                 Placeholder="e.g., Europe/Paris, America/New_York"
+                                                 HelperText="Enter IANA timezone identifier" />
+                                </MudItem>
+                            </MudGrid>
                         </MudPaper>
 
                         <!-- Price -->
@@ -172,6 +233,85 @@ else if (currentEvent != null && updateDto != null)
                             </MudText>
                         </MudAlert>
 
+                        <!-- Categories -->
+                        <MudText Typo="Typo.h6" Class="mb-3">Categories</MudText>
+                        <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
+                            @if (allCategories != null && allCategories.Any())
+                            {
+                                <MudSelect T="Guid"
+                                           MultiSelection="true"
+                                           @bind-SelectedValues="selectedCategoryIds"
+                                           Label="Select Categories"
+                                           Variant="Variant.Outlined"
+                                           FullWidth
+                                           MultiSelectionTextFunc="@(new Func<List<string>, string>(GetCategorySelectionText))">
+                                    @foreach (var category in allCategories)
+                                    {
+                                        <MudSelectItem Value="@category.Id">@category.FullName</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">No categories available</MudText>
+                            }
+                        </MudPaper>
+
+                        <!-- Tags -->
+                        <MudText Typo="Typo.h6" Class="mb-3">Tags</MudText>
+                        <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
+                            @if (allTags != null && allTags.Any())
+                            {
+                                <MudSelect T="Guid"
+                                           MultiSelection="true"
+                                           @bind-SelectedValues="selectedTagIds"
+                                           Label="Select Tags"
+                                           Variant="Variant.Outlined"
+                                           FullWidth
+                                           MultiSelectionTextFunc="@(new Func<List<string>, string>(GetTagSelectionText))">
+                                    @foreach (var tag in allTags)
+                                    {
+                                        <MudSelectItem Value="@tag.Id">@tag.FullName</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">No tags available</MudText>
+                            }
+                        </MudPaper>
+
+                        <!-- Sessions Management -->
+                        <MudText Typo="Typo.h6" Class="mb-3">Sessions</MudText>
+                        <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
+                            @if (sessions.Count == 0)
+                            {
+                                <MudAlert Severity="Severity.Info" Class="mb-3">
+                                    No sessions. Sessions can be managed from the event detail page.
+                                </MudAlert>
+                            }
+                            else
+                            {
+                                @for (int i = 0; i < sessions.Count; i++)
+                                {
+                                    var index = i;
+                                    <EventSessionEditor Session="sessions[index]"
+                                                        SessionChanged="@((s) => OnSessionChanged(index, s))"
+                                                        Index="index"
+                                                        ShowRemoveButton="@(sessions.Count > 1)"
+                                                        OnRemove="@(() => RemoveSession(index))" />
+                                }
+                            }
+
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.Add"
+                                       OnClick="AddSession"
+                                       Class="mt-2">
+                                Add Session
+                            </MudButton>
+                        </MudPaper>
+
                         <!-- Action Buttons -->
                         <div class="d-flex justify-content-between mt-4">
                             <MudButton Variant="Variant.Outlined" 
@@ -199,7 +339,7 @@ else
 }
 
 @code {
-    [Parameter] public Guid EventId { get; set; }
+    private Guid EventId { get; set; }
     
     private EventDto? currentEvent;
     private UpdateEventDto? updateDto;
@@ -211,15 +351,58 @@ else
     private string selectedImageUrl = string.Empty;
     private bool isLoading = true;
     private ICollection<EventTypeListDto>? eventTypes;
+    private ICollection<EventFormatListDto>? eventFormats;
+    private ICollection<EventStatusListDto>? eventStatuses;
+    private ICollection<VisibilityTypeListDto>? visibilityTypes;
+    private ICollection<MadhabListDto>? madhabs;
+    private ICollection<CategoryListDto>? allCategories;
+    private ICollection<TagListDto>? allTags;
+
+    // Nullable Event properties
+    private int? selectedMadhabId;
+    private string? selectedTimezone;
+
+    // Categories and Tags
+    private IEnumerable<Guid> selectedCategoryIds = new HashSet<Guid>();
+    private IEnumerable<Guid> selectedTagIds = new HashSet<Guid>();
+    private ICollection<CategoryListDto>? existingCategories;
+    private ICollection<TagListDto>? existingTags;
+
+    // Sessions
+    private List<SessionEditorModel> sessions = new();
+
+    // Local image upload state
+    private string? _imageObjectKey;
+    private string? _previewImageUrl;
+    private Guid? _uploadedStorageObjectId;
 
     protected override async Task OnInitializedAsync()
     {
+        // Get route parameter from Blazouter
+        var eventIdStr = RouterState.GetParam("eventId");
+        if (Guid.TryParse(eventIdStr, out var id))
+        {
+            EventId = id;
+        }
+        
         try
         {
             isLoading = true;
             
-            // Load event types
-            eventTypes = await AdminService.GetEventTypesAsync();
+            // Load lookups in parallel
+            var eventTypesTask = AdminService.GetEventTypesAsync();
+            var eventFormatsTask = AdminService.GetEventFormatsAsync();
+            var eventStatusesTask = AdminService.GetEventStatusesAsync();
+            var visibilityTypesTask = AdminService.GetVisibilityTypesAsync();
+            var madhabsTask = AdminService.GetMadhabsAsync();
+            
+            await Task.WhenAll(eventTypesTask, eventFormatsTask, eventStatusesTask, visibilityTypesTask, madhabsTask);
+            
+            eventTypes = await eventTypesTask;
+            eventFormats = await eventFormatsTask;
+            eventStatuses = await eventStatusesTask;
+            visibilityTypes = await visibilityTypesTask;
+            madhabs = await madhabsTask;
             
             currentEvent = await EventService.GetEventByIdAsync(EventId);
             
@@ -264,7 +447,34 @@ else
                 // Determine if online based on format
                 _isOnline = currentEvent.EventFormatId == 2; // Assuming 2 = Online
                 
-                selectedImageUrl = currentEvent.FeaturedImageUri ?? GeneratePlaceholderImage();
+                // Set preview to existing featured image if available
+                _previewImageUrl = currentEvent.FeaturedImageUri ?? GeneratePlaceholderImage();
+                
+                // Set nullable properties
+                selectedMadhabId = currentEvent.MadhabId;
+                selectedTimezone = currentEvent.Timezone;
+
+                // Load categories and tags in parallel
+                var allCategoriesTask = CategoryService.GetAllCategoriesAsync();
+                var allTagsTask = TagService.GetAllTagsAsync();
+                var eventCategoriesTask = CategoryService.GetCategoriesByEventAsync(EventId);
+                var eventTagsTask = TagService.GetTagsByEventAsync(EventId);
+                var sessionsTask = EventService.GetSessionsByEventAsync(EventId);
+
+                await Task.WhenAll(allCategoriesTask, allTagsTask, eventCategoriesTask, eventTagsTask, sessionsTask);
+
+                allCategories = await allCategoriesTask;
+                allTags = await allTagsTask;
+                existingCategories = await eventCategoriesTask;
+                existingTags = await eventTagsTask;
+                var eventSessions = await sessionsTask;
+
+                // Set selected categories and tags
+                selectedCategoryIds = existingCategories?.Select(c => c.Id).ToHashSet() ?? new HashSet<Guid>();
+                selectedTagIds = existingTags?.Select(t => t.Id).ToHashSet() ?? new HashSet<Guid>();
+
+                // Convert sessions to editor models
+                sessions = eventSessions?.Select(s => SessionEditorModel.FromDto(s)).ToList() ?? new List<SessionEditorModel>();
             }
             else
             {
@@ -339,7 +549,7 @@ else
                 var buffer = new byte[file.Size];
                 await stream.ReadAsync(buffer, 0, (int)file.Size);
                 
-                selectedImageUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(buffer)}";
+                _previewImageUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(buffer)}";
                 
                 // TODO: Upload to server and get FeaturedImageId
                 // For now, keep existing image
@@ -368,6 +578,12 @@ else
             {
                 updateDto.LastSessionDate = new DateTimeOffset(_endDate.Value.Date + _endTime.Value, TimeSpan.Zero);
             }
+
+            // If a new image was uploaded and a storage object id exists, update featured image id
+            if (_uploadedStorageObjectId.HasValue)
+            {
+                updateDto.FeaturedImageId = _uploadedStorageObjectId.Value;
+            }
             
             var response = await EventService.UpdateEventAsync(updateDto.Id, updateDto);
             
@@ -390,6 +606,67 @@ else
     private void NavigateBack()
     {
         Navigation.NavigateTo("/myevents");
+    }
+
+    private async Task OnImageKeyChanged(string? value)
+    {
+        _imageObjectKey = value;
+        await Task.CompletedTask;
+    }
+
+    private async Task OnPreviewUrlChanged(string? value)
+    {
+        _previewImageUrl = value;
+        await Task.CompletedTask;
+    }
+
+    private async Task OnStorageObjectIdChanged(Guid? value)
+    {
+        _uploadedStorageObjectId = value;
+        await Task.CompletedTask;
+    }
+
+    // Session management methods
+    private void AddSession()
+    {
+        sessions.Add(new SessionEditorModel
+        {
+            StartTime = _startDate?.Date.Add(_startTime ?? TimeSpan.Zero) ?? DateTime.Today.AddHours(9),
+            EndTime = _endDate?.Date.Add(_endTime ?? TimeSpan.Zero) ?? DateTime.Today.AddHours(17)
+        });
+    }
+
+    private void RemoveSession(int index)
+    {
+        if (sessions.Count > 0 && index >= 0 && index < sessions.Count)
+        {
+            sessions.RemoveAt(index);
+        }
+    }
+
+    private void OnSessionChanged(int index, SessionEditorModel session)
+    {
+        if (index >= 0 && index < sessions.Count)
+        {
+            sessions[index] = session;
+        }
+    }
+
+    // Category/Tag selection text helpers
+    private string GetCategorySelectionText(List<string> selectedValues)
+    {
+        if (selectedValues == null || !selectedValues.Any())
+            return "Select categories";
+        
+        return $"{selectedValues.Count} categor{(selectedValues.Count == 1 ? "y" : "ies")} selected";
+    }
+
+    private string GetTagSelectionText(List<string> selectedValues)
+    {
+        if (selectedValues == null || !selectedValues.Any())
+            return "Select tags";
+        
+        return $"{selectedValues.Count} tag{(selectedValues.Count == 1 ? "" : "s")} selected";
     }
 }
 

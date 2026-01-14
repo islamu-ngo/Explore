@@ -1,4 +1,5 @@
 using Explore.Blazor.Client.Clients;
+using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;
 
@@ -10,15 +11,29 @@ public interface IEventService
     Task<bool> DeleteEventAsync(Guid eventId);
     Task<BaseCommandResponseOfGuid?> UpdateEventAsync(Guid eventId, UpdateEventDto eventDto);
     Task<BaseCommandResponseOfGuid?> CreateEventAsync(CreateEventDto createDto);
+    Task<ICollection<EventTypeListDto>> GetEventTypesAsync();
+    Task<ICollection<EventFormatListDto>> GetEventFormatsAsync();
+    Task<ICollection<EventSessionListDto>> GetAllSessionsAsync();
+    Task<ICollection<EventSessionListDto>> GetSessionsByEventAsync(Guid eventId);
+    Task<BaseCommandResponseOfGuid?> CreateSessionAsync(CreateEventSessionDto session);
+    Task<BaseCommandResponseOfGuid?> UpdateSessionAsync(UpdateEventSessionDto session);
+    Task<bool> DeleteSessionAsync(Guid sessionId);
+    Task<BaseCommandResponseOfGuid?> RegisterForEventSessionAsync(CreateEventRegistrationDto registration);
+    Task<ICollection<EventRegistrationListDto>> GetRegistrationsForSessionAsync(Guid sessionId);
+    Task<ICollection<EventRegistrationListDto>> GetRegistrationsByUserAsync(Guid userId);
+    Task<BaseCommandResponseOfGuid?> UpdateRegistrationAsync(UpdateEventRegistrationDto registration);
+    Task<bool> CancelEventRegistrationAsync(Guid registrationId);
 }
 
-public class EventService : IEventService
+public partial class EventService : IEventService
 {
     private readonly IEventApiClient _apiClient;
+    private readonly ILogger<EventService> _logger;
 
-    public EventService(IEventApiClient apiClient)
+    public EventService(IEventApiClient apiClient, ILogger<EventService> logger)
     {
         _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public async Task<ICollection<EventListDto>> GetMyEventsAsync()
@@ -27,23 +42,23 @@ public class EventService : IEventService
         {
             if (_apiClient == null)
             {
-                Console.WriteLine("[EVENT SERVICE] ERROR: API client is null");
+                _logger.LogWarning("[EVENT SERVICE] API client is null");
                 return new List<EventListDto>();
             }
-            
-            Console.WriteLine("[EVENT SERVICE] Fetching my events...");
+
+            _logger.LogInformation("[EVENT SERVICE] Fetching my events...");
             var response = await _apiClient.MyAsync();
-            Console.WriteLine($"[EVENT SERVICE] Received {response?.Count ?? 0} events");
+            _logger.LogInformation("[EVENT SERVICE] Received {Count} events", response?.Count ?? 0);
             return response ?? new List<EventListDto>();
         }
         catch (ApiException ex)
         {
-            Console.WriteLine($"[EVENT SERVICE] API error fetching my events: {ex.StatusCode} - {ex.Message}");
+            _logger.LogError(ex, "[EVENT SERVICE] API error fetching my events: {StatusCode}", ex.StatusCode);
             return new List<EventListDto>();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[EVENT SERVICE] Error fetching my events: {ex.Message}");
+            _logger.LogError(ex, "[EVENT SERVICE] Error fetching my events");
             return new List<EventListDto>();
         }
     }
@@ -54,23 +69,23 @@ public class EventService : IEventService
         {
             if (_apiClient == null)
             {
-                Console.WriteLine("[EVENT SERVICE] ERROR: API client is null");
+                _logger.LogWarning("[EVENT SERVICE] API client is null");
                 return new List<EventListDto>();
             }
-            
-            Console.WriteLine("[EVENT SERVICE] Fetching all events...");
+
+            _logger.LogInformation("[EVENT SERVICE] Fetching all events...");
             var response = await _apiClient.EventAllAsync();
-            Console.WriteLine($"[EVENT SERVICE] Received {response?.Count ?? 0} events");
+            _logger.LogInformation("[EVENT SERVICE] Received {Count} events", response?.Count ?? 0);
             return response ?? new List<EventListDto>();
         }
         catch (ApiException ex)
         {
-            Console.WriteLine($"[EVENT SERVICE] API error fetching events: {ex.StatusCode} - {ex.Message}");
+            _logger.LogError(ex, "[EVENT SERVICE] API error fetching events: {StatusCode}", ex.StatusCode);
             return new List<EventListDto>();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[EVENT SERVICE] Error fetching events: {ex.Message}");
+            _logger.LogError(ex, "[EVENT SERVICE] Error fetching events");
             return new List<EventListDto>();
         }
     }
@@ -81,25 +96,25 @@ public class EventService : IEventService
         {
             if (_apiClient == null)
             {
-                Console.WriteLine("[EVENT SERVICE] ERROR: API client is null");
+                _logger.LogWarning("[EVENT SERVICE] API client is null");
                 return null;
             }
-            
+
             return await _apiClient.EventGETAsync(eventId);
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
         {
-            Console.WriteLine($"[EVENT SERVICE] Event not found: {eventId}");
+            _logger.LogWarning("[EVENT SERVICE] Event not found: {EventId}", eventId);
             return null;
         }
         catch (ApiException ex)
         {
-            Console.WriteLine($"[EVENT SERVICE] API error fetching event {eventId}: {ex.StatusCode} - {ex.Message}");
+            _logger.LogError(ex, "[EVENT SERVICE] API error fetching event {EventId}: {StatusCode}", eventId, ex.StatusCode);
             return null;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[EVENT SERVICE] Error fetching event {eventId}: {ex.Message}");
+            _logger.LogError(ex, "[EVENT SERVICE] Error fetching event {EventId}", eventId);
             return null;
         }
     }
@@ -110,28 +125,28 @@ public class EventService : IEventService
         {
             if (_apiClient == null)
             {
-                Console.WriteLine("[EVENT SERVICE] ERROR: API client is null");
+                _logger.LogWarning("[EVENT SERVICE] API client is null");
                 return new BaseCommandResponseOfGuid { Success = false, Message = "API client not available" };
             }
-            
+
             return await _apiClient.EventPUTAsync(eventId, eventDto);
         }
         catch (ApiException ex)
         {
-            Console.WriteLine($"[EVENT SERVICE] API error updating event {eventId}: {ex.StatusCode} - {ex.Message}");
-            return new BaseCommandResponseOfGuid 
-            { 
-                Success = false, 
+            _logger.LogError(ex, "[EVENT SERVICE] API error updating event {EventId}: {StatusCode}", eventId, ex.StatusCode);
+            return new BaseCommandResponseOfGuid
+            {
+                Success = false,
                 Message = $"API error: {ex.Message}",
                 Errors = new List<string> { ex.Response ?? ex.Message }
             };
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[EVENT SERVICE] Error updating event {eventId}: {ex.Message}");
-            return new BaseCommandResponseOfGuid 
-            { 
-                Success = false, 
+            _logger.LogError(ex, "[EVENT SERVICE] Error updating event {EventId}", eventId);
+            return new BaseCommandResponseOfGuid
+            {
+                Success = false,
                 Message = ex.Message,
                 Errors = new List<string> { ex.Message }
             };
@@ -144,21 +159,21 @@ public class EventService : IEventService
         {
             if (_apiClient == null)
             {
-                Console.WriteLine("[EVENT SERVICE] ERROR: API client is null");
+                _logger.LogWarning("[EVENT SERVICE] API client is null");
                 return false;
             }
-            
+
             await _apiClient.EventDELETEAsync(eventId);
             return true;
         }
         catch (ApiException ex)
         {
-            Console.WriteLine($"[EVENT SERVICE] API error deleting event {eventId}: {ex.StatusCode} - {ex.Message}");
+            _logger.LogError(ex, "[EVENT SERVICE] API error deleting event {EventId}: {StatusCode}", eventId, ex.StatusCode);
             return false;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[EVENT SERVICE] Error deleting event {eventId}: {ex.Message}");
+            _logger.LogError(ex, "[EVENT SERVICE] Error deleting event {EventId}", eventId);
             return false;
         }
     }
@@ -169,50 +184,49 @@ public class EventService : IEventService
         {
             if (_apiClient == null)
             {
-                Console.WriteLine("[EVENT SERVICE] ERROR: API client is null");
+                _logger.LogWarning("[EVENT SERVICE] API client is null");
                 return new BaseCommandResponseOfGuid { Success = false, Message = "API client not available" };
             }
-            
-            Console.WriteLine($"[EVENT SERVICE] Creating event: {createDto.Title}");
-            Console.WriteLine($"[EVENT SERVICE] OrganizationId: {createDto.OrganizationId}");
-            Console.WriteLine($"[EVENT SERVICE] EventTypeId: {createDto.EventTypeId}");
-            Console.WriteLine($"[EVENT SERVICE] FirstSessionDate: {createDto.FirstSessionDate}");
-            Console.WriteLine($"[EVENT SERVICE] LastSessionDate: {createDto.LastSessionDate}");
-            Console.WriteLine($"[EVENT SERVICE] FeaturedImageId: {createDto.FeaturedImageId}");
-            
+
+            _logger.LogInformation("[EVENT SERVICE] Creating event: {Title}", createDto.Title);
+            _logger.LogInformation("[EVENT SERVICE] OrganizationId: {OrganizationId}", createDto.OrganizationId);
+            _logger.LogInformation("[EVENT SERVICE] EventTypeId: {EventTypeId}", createDto.EventTypeId);
+            _logger.LogInformation("[EVENT SERVICE] FirstSessionDate: {FirstSessionDate}", createDto.FirstSessionDate);
+            _logger.LogInformation("[EVENT SERVICE] LastSessionDate: {LastSessionDate}", createDto.LastSessionDate);
+            _logger.LogInformation("[EVENT SERVICE] FeaturedImageId: {FeaturedImageId}", createDto.FeaturedImageId);
+
             var response = await _apiClient.EventPOSTAsync(createDto);
-            
-            Console.WriteLine($"[EVENT SERVICE] Create response: Success={response?.Success}, Id={response?.Id}");
+
+            _logger.LogInformation("[EVENT SERVICE] Create response: Success={Success}, Id={Id}", response?.Success, response?.Id);
             return response;
         }
         catch (ApiException ex) when (ex.StatusCode == 200 || ex.StatusCode == 201)
         {
             // Sometimes NSwag throws when response is successful but body doesn't match expected schema
-            Console.WriteLine($"[EVENT SERVICE] Event created but response parsing had issue (status {ex.StatusCode}): {ex.Message}");
-            return new BaseCommandResponseOfGuid 
-            { 
-                Success = true, 
+            _logger.LogWarning(ex, "[EVENT SERVICE] Event created but response parsing had issue (status {StatusCode})", ex.StatusCode);
+            return new BaseCommandResponseOfGuid
+            {
+                Success = true,
                 Message = "Event created successfully"
             };
         }
         catch (ApiException ex)
         {
-            Console.WriteLine($"[EVENT SERVICE] API error creating event: {ex.StatusCode} - {ex.Message}");
-            Console.WriteLine($"[EVENT SERVICE] Response: {ex.Response}");
-            return new BaseCommandResponseOfGuid 
-            { 
-                Success = false, 
+            _logger.LogError(ex, "[EVENT SERVICE] API error creating event: {StatusCode}", ex.StatusCode);
+            _logger.LogError("[EVENT SERVICE] Response: {Response}", ex.Response);
+            return new BaseCommandResponseOfGuid
+            {
+                Success = false,
                 Message = $"API error ({ex.StatusCode}): {ex.Message}",
                 Errors = new List<string> { ex.Response ?? ex.Message }
             };
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[EVENT SERVICE] Error creating event: {ex.Message}");
-            Console.WriteLine($"[EVENT SERVICE] Stack trace: {ex.StackTrace}");
-            return new BaseCommandResponseOfGuid 
-            { 
-                Success = false, 
+            _logger.LogError(ex, "[EVENT SERVICE] Error creating event");
+            return new BaseCommandResponseOfGuid
+            {
+                Success = false,
                 Message = ex.Message,
                 Errors = new List<string> { ex.Message }
             };

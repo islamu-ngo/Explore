@@ -11,12 +11,12 @@
 | **Database** | PostgreSQL + PostGIS | Primary datastore with spatial queries |
 | **ORM** | Entity Framework Core | Data access layer |
 | **Authentication** | Keycloak | OIDC/JWT identity provider |
-| **Authorization** | Cerbos | Policy Decision Point (PDP) |
+| **Authorization** | ASP.NET Core Authorization | `[Authorize]` / policies (Cerbos is planned but not integrated yet) |
 | **Secrets** | Infisical | Secrets management |
 | **Logging** | Serilog | Structured logging |
 | **Telemetry** | OpenTelemetry | Distributed tracing and metrics |
 | **API Docs** | Scalar + Swagger | OpenAPI documentation |
-| **Federation** | ActivityPub | Decentralized social networking protocol |
+| **Federation** | ATProto / ActivityPub (Planned) | Domain model exists; HTTP federation endpoints are not implemented in `Explore.API` yet |
 
 ## Architectural Pattern: Clean Architecture with CQRS
 
@@ -62,7 +62,7 @@
 │  │   Explore.Persistence    │  │    Explore.Infrastructure      │  │
 │  │  ┌────────────────────┐  │  │  ┌────────────────────────┐    │  │
 │  │  │   DbContext        │  │  │  │   EmailService         │    │  │
-│  │  │   Repositories     │  │  │  │   ActivityPubService   │    │  │
+│  │  │   Repositories     │  │  │  │   Federation (planned) │    │  │
 │  │  │   Migrations       │  │  │  │   FileStorageService   │    │  │
 │  │  └────────────────────┘  │  │  └────────────────────────┘    │  │
 │  └──────────────────────────┘  └────────────────────────────────┘  │
@@ -132,8 +132,8 @@ Explore.sln
 │   │           ├── {Entity}Dto.cs
 │   │           └── Validators/      # {Entity}DtoValidator.cs
 │   ├── Explore.Persistence/         # Data access layer EF Core DbContext, repositories, migrations
-│   ├── Explore.Infrastructure/      # External services: email, ActivityPub, file storage
-│   ├── Explore.API/                 # REST API with JWT/Keycloak auth, Cerbos authz
+│   ├── Explore.Infrastructure/      # External services: email, federation (planned), file storage
+│   ├── Explore.API/                 # REST API with JWT/Keycloak authentication
 │   ├── Explore.Blazor/              # Server-side Blazor (BFF pattern with OIDC)
 │   ├── Explore.Blazor.Client/       # WebAssembly client components
 │   ├── Explore.AppHost/             # Aspire orchestrator
@@ -146,7 +146,7 @@ Explore.sln
 ├── docs/
 │   ├── api/                         # API documentation
 │   ├── architecture/                # Architecture decisions
-│   └── federation/                  # ActivityPub specs
+│   └── federation/                  # Federation notes/specs (roadmap)
 └── scripts/
     ├── migrations/                  # Database scripts
     └── deployment/                  # CI/CD scripts

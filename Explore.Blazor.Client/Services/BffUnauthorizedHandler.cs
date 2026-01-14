@@ -33,18 +33,32 @@ public sealed class BffUnauthorizedHandler : DelegatingHandler
 
         if (response.StatusCode == HttpStatusCode.Unauthorized)
         {
-            // Avoid redirecting when already navigating to login endpoints
             var path = request.RequestUri?.AbsolutePath ?? string.Empty;
-            if (!path.StartsWith("/login", System.StringComparison.OrdinalIgnoreCase) && !path.StartsWith("/auth", System.StringComparison.OrdinalIgnoreCase))
+
+            // If this appears to be an API call (starts with /api) or the Accept header does not include text/html,
+            // do not force a full-page redirect to /login. Let the app handle 401 responses for API calls.
+            var isApiCall = path.StartsWith("/api", System.StringComparison.OrdinalIgnoreCase);
+            var acceptHtml = request.Headers.Accept?.Any(h => h.MediaType?.Equals("text/html", System.StringComparison.OrdinalIgnoreCase) == true) == true;
+
+            if (!isApiCall && acceptHtml)
             {
-                _logger.LogWarning("BFF handler: received 401 for {Method} {Uri} - redirecting to /login", request.Method, request.RequestUri);
+                // Avoid redirecting when already navigating to login endpoints
+                if (!path.StartsWith("/login", System.StringComparison.OrdinalIgnoreCase) && !path.StartsWith("/auth", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogWarning("BFF handler: received 401 for {Method} {Uri} - redirecting to /login", request.Method, request.RequestUri);
 
-                // Force full page load to hit server login endpoint which triggers the BFF/OIDC challenge
-                var returnUrl = Uri.EscapeDataString(_nav.ToBaseRelativePath(_nav.Uri));
-                var loginUrl = $"/login?returnUrl={returnUrl}";
+                    // Force full page load to hit server login endpoint which triggers the BFF/OIDC challenge
+                    var returnUrl = Uri.EscapeDataString(_nav.ToBaseRelativePath(_nav.Uri));
+                    var loginUrl = $"/login?returnUrl={returnUrl}";
 
-                // Navigate with full page load so the server can start auth flow
-                _nav.NavigateTo(loginUrl, forceLoad: true);
+                    // Navigate with full page load so the server can start auth flow
+                    _nav.NavigateTo(loginUrl, forceLoad: true);
+                }
+            }
+            else
+            {
+                _logger.LogInformation("BFF handler: received 401 for API or non-HTML request {Method} {Uri} - returning 401 response to client", request.Method, request.RequestUri);
+                // Do not redirect for API calls; return response so application code can handle 401 gracefully
             }
         }
 

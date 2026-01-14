@@ -3,86 +3,11 @@
 @inject IImageStorageService ImageStorageService
 @inject ISnackbar Snackbar
 
-<style>
-.image-upload-container {
-    width: 100%;
-}
-
-.image-preview-box {
-    width: 100%;
-    max-width: @(Width ?? "300px");
-    height: @(Height ?? "200px");
-    border: 2px dashed var(--mud-palette-lines-default);
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 16px;
-    position: relative;
-    background-color: var(--mud-palette-background-gray);
-    overflow: hidden;
-    transition: border-color .2s ease, background-color .2s ease;
-}
-
-.image-preview-box:hover {
-    border-color: var(--mud-palette-primary);
-    background-color: color-mix(in srgb, var(--mud-palette-primary) 5%, var(--mud-palette-background-gray));
-}
-
-.image-preview-box.has-image {
-    border-style: solid;
-    border-color: var(--mud-palette-lines-default);
-}
-
-.image-preview-box img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.image-placeholder {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    color: var(--mud-palette-text-secondary);
-}
-
-.image-actions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-.upload-hint {
-    font-size: 0.875rem;
-    color: var(--mud-palette-text-secondary);
-    margin-top: 8px;
-}
-
-.loading-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.6);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10;
-}
-</style>
-
 <div class="image-upload-container">
-    <div class="image-preview-box @(HasImage ? "has-image" : "")">
-        @if (IsUploading)
-        {
-            <div class="loading-overlay">
-                <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
-            </div>
-        }
-
+    <div class="image-preview-box @(HasImage ? "has-image" : "")" style="@($"width: {Width}; height: {Height};")">
         @if (!string.IsNullOrEmpty(PreviewUrl))
         {
-            <img src="@PreviewUrl" alt="@(Alt ?? "Image preview")" />
+            <img src="@PreviewUrl" alt="@(Alt ?? "Image preview")" style="object-fit: cover; width: 100%; height: 100%;" />
         }
         else
         {
@@ -97,18 +22,19 @@
         <MudFileUpload T="IBrowserFile"
                        FilesChanged="OnFileSelected"
                        Accept="@AcceptedFormats"
-                       Disabled="@IsUploading">
-            <ActivatorContent>
-                <MudButton Variant="Variant.Outlined"
-                          StartIcon="@Icons.Material.Filled.CloudUpload"
-                          Color="Color.Primary"
-                          Disabled="@IsUploading">
-                    @(UploadButtonText ?? "Upload Image")
-                </MudButton>
-            </ActivatorContent>
-        </MudFileUpload>
+                       Hidden="false"
+                       Class="d-none"
+                       InputId="imageUploadInput"/>
 
-        @if (HasImage && !IsUploading)
+        <MudButton HtmlTag="label"
+                   for="imageUploadInput"
+                   Variant="Variant.Outlined"
+                   StartIcon="@Icons.Material.Filled.CloudUpload"
+                   Color="Color.Primary">
+            @(UploadButtonText ?? "Select Image")
+        </MudButton>
+
+        @if (HasImage)
         {
             <MudButton Variant="Variant.Text"
                       Color="Color.Error"
@@ -126,16 +52,13 @@
 </div>
 
 @code {
-    [Parameter] public string? ImageKey { get; set; }
-    [Parameter] public EventCallback<string?> ImageKeyChanged { get; set; }
     [Parameter] public string? PreviewUrl { get; set; }
     [Parameter] public EventCallback<string?> PreviewUrlChanged { get; set; }
-    [Parameter] public Guid? StorageObjectId { get; set; }
-    [Parameter] public EventCallback<Guid?> StorageObjectIdChanged { get; set; }
+    [Parameter] public EventCallback<IBrowserFile?> FileSelected { get; set; }
 
     // Customization parameters
-    [Parameter] public string? Width { get; set; }
-    [Parameter] public string? Height { get; set; }
+    [Parameter] public string Width { get; set; } = "100%";
+    [Parameter] public string Height { get; set; } = "250px";
     [Parameter] public string? PlaceholderText { get; set; }
     [Parameter] public string? UploadButtonText { get; set; }
     [Parameter] public string? HintText { get; set; } = "Supported formats: JPG, PNG, GIF, WebP (Max 5MB)";
@@ -143,13 +66,8 @@
     [Parameter] public string? Alt { get; set; }
     [Parameter] public string AcceptedFormats { get; set; } = ".jpg,.jpeg,.png,.gif,.webp";
     [Parameter] public long MaxFileSize { get; set; } = 5 * 1024 * 1024; // 5MB default
-    /// <summary>
-    /// When true, creates a StorageObject record after upload and returns the ID via StorageObjectIdChanged
-    /// </summary>
-    [Parameter] public bool CreateStorageRecord { get; set; } = true;
 
-    private bool IsUploading { get; set; }
-    private bool HasImage => !string.IsNullOrEmpty(ImageKey) || !string.IsNullOrEmpty(PreviewUrl);
+    private bool HasImage => !string.IsNullOrEmpty(PreviewUrl);
 
     private async Task OnFileSelected(IBrowserFile? file)
     {
@@ -171,117 +89,36 @@
             return;
         }
 
-        IsUploading = true;
-        StateHasChanged();
-
         try
         {
-            // Generate local preview first
+            // Generate local preview
             var localPreview = await ImageStorageService.GenerateLocalPreviewAsync(file, MaxFileSize);
             PreviewUrl = localPreview;
             await PreviewUrlChanged.InvokeAsync(localPreview);
-            StateHasChanged();
 
-            if (CreateStorageRecord)
-            {
-                // Upload and create StorageObject record in one step
-                var result = await ImageStorageService.UploadImageAndCreateRecordAsync(file);
-
-                if (result?.Success == true)
-                {
-                    // Update with S3 URLs and StorageObject ID
-                    ImageKey = result.ObjectKey;
-                    PreviewUrl = result.ViewUrl;
-                    StorageObjectId = result.StorageObjectId;
-
-                    await ImageKeyChanged.InvokeAsync(result.ObjectKey);
-                    await PreviewUrlChanged.InvokeAsync(result.ViewUrl);
-                    await StorageObjectIdChanged.InvokeAsync(result.StorageObjectId);
-
-                    Snackbar.Add("Image uploaded successfully", Severity.Success);
-                }
-                else
-                {
-                    Snackbar.Add(result?.ErrorMessage ?? "Failed to upload image. Please try again.", Severity.Error);
-                    PreviewUrl = null;
-                    await PreviewUrlChanged.InvokeAsync(null);
-                }
-            }
-            else
-            {
-                // Just upload to S3 without creating a record
-                var uploadResponse = await ImageStorageService.GetUploadUrlAsync(file.Name, file.ContentType);
-
-                if (uploadResponse == null)
-                {
-                    Snackbar.Add("Failed to get upload URL. Please try again.", Severity.Error);
-                    return;
-                }
-
-                var uploadSuccess = await ImageStorageService.UploadImageAsync(uploadResponse.UploadUrl, file);
-
-                if (uploadSuccess)
-                {
-                    ImageKey = uploadResponse.ObjectKey;
-                    PreviewUrl = uploadResponse.ViewUrl;
-
-                    await ImageKeyChanged.InvokeAsync(uploadResponse.ObjectKey);
-                    await PreviewUrlChanged.InvokeAsync(uploadResponse.ViewUrl);
-
-                    Snackbar.Add("Image uploaded successfully", Severity.Success);
-                }
-                else
-                {
-                    Snackbar.Add("Failed to upload image. Please try again.", Severity.Error);
-                    PreviewUrl = null;
-                    await PreviewUrlChanged.InvokeAsync(null);
-                }
-            }
+            // Pass the selected file to the parent
+            await FileSelected.InvokeAsync(file);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Upload error: {ex.Message}");
-            Snackbar.Add("An error occurred while uploading the image", Severity.Error);
-            PreviewUrl = null;
-            await PreviewUrlChanged.InvokeAsync(null);
-        }
-        finally
-        {
-            IsUploading = false;
-            StateHasChanged();
+            Console.WriteLine($"Preview generation error: {ex.Message}");
+            Snackbar.Add("An error occurred while generating the image preview", Severity.Error);
+            await RemoveImage();
         }
     }
 
-    private async Task RemoveImage()
+    public async Task RemoveImage()
     {
-        if (!string.IsNullOrEmpty(ImageKey))
-        {
-            // Optionally delete from S3
-            await ImageStorageService.DeleteImageAsync(ImageKey);
-        }
-
-        ImageKey = null;
         PreviewUrl = null;
-        StorageObjectId = null;
-
-        await ImageKeyChanged.InvokeAsync(null);
         await PreviewUrlChanged.InvokeAsync(null);
-        await StorageObjectIdChanged.InvokeAsync(null);
-
-        Snackbar.Add("Image removed", Severity.Info);
+        await FileSelected.InvokeAsync(null);
     }
 
     protected override async Task OnParametersSetAsync()
     {
-        // If we have an ImageKey but no PreviewUrl, fetch it
-        if (!string.IsNullOrEmpty(ImageKey) && string.IsNullOrEmpty(PreviewUrl))
+        if (!string.IsNullOrEmpty(PreviewUrl))
         {
-            var url = await ImageStorageService.GetImageUrlAsync(ImageKey);
-            if (!string.IsNullOrEmpty(url))
-            {
-                PreviewUrl = url;
-                await PreviewUrlChanged.InvokeAsync(url);
-            }
+            await PreviewUrlChanged.InvokeAsync(PreviewUrl);
         }
     }
 }

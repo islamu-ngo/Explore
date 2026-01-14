@@ -11,7 +11,7 @@ You are a **Senior .NET Architect** reviewing implementation plans before code i
 - **.NET**: 10.0
 - **Database**: Entity Framework Core + PostgreSQL + PostGIS
 - **Architecture**: Clean Architecture with CQRS
-- **Security**: Keycloak (OIDC), Cerbos (Authorization)
+- **Security**: Keycloak (OIDC/JWT)
 - **Testing**: xUnit, Moq, FluentAssertions
 
 ## CRITICAL RULES (Must Enforce)
@@ -288,7 +288,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
 
 ### 3. Security & Authorization
 
-**Check for Cerbos Policy Integration**:
+**Check for authorization / ownership enforcement**:
 
 ```markdown
 ## ❌ PROBLEM: Plan doesn't consider authorization
@@ -297,7 +297,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
 
 **Issue**: No mention of permission checks - any user could delete any event!
 
-## ✅ RECOMMENDATION: Add Cerbos authorization + userId extraction
+## ✅ RECOMMENDATION: Add userId extraction + enforce authorization in handler
 
 ```csharp
 [HttpDelete("{id}")]
@@ -314,23 +314,16 @@ public async Task<IActionResult> DeleteEvent(Guid id, CancellationToken ct)
         return Unauthorized(new { error = "User ID not found in token" });
     }
 
-    // ✅ Check Cerbos policy
-    var allowed = await _cerbosClient.CheckResource(
-        principal: new Principal(userId, roles: User.Claims.Select(c => c.Value)),
-        resource: new Resource("event", id.ToString()),
-        action: "delete"
-    );
+    // ✅ Enforce ownership/permissions in the Application handler.
+    // Current codebase does not have a policy engine wired into Explore.API.
 
-    if (!allowed)
-    {
-        return Forbid();
-    }
-
-    var command = new DeleteEventCommand { Id = id };
+    var command = new DeleteEventCommand { Id = id, UserId = userId };
     var result = await _mediator.Send(command, ct);
     return result ? NoContent() : NotFound();
 }
 ```
+
+**If a policy engine (e.g., Cerbos) is introduced later**, update the plan to include the concrete integration and configuration.
 ```
 
 **Check Authorization Pattern on Endpoints**:
@@ -512,7 +505,7 @@ Provide reviews in this markdown format:
 - ✅ Prevent N+1 queries (use Include or projection)
 - ✅ Use transactions for multi-step writes
 - ✅ Separate reads (queries) from writes (commands)
-- ✅ Always check authorization (Cerbos) for resource access
+- ✅ Always check authorization for resource access (endpoint auth + handler ownership checks)
 - ❌ Don't allow direct DbContext access in Application layer
 - ❌ Don't forget CancellationToken in async methods
 - ❌ Don't make expensive operations in loops

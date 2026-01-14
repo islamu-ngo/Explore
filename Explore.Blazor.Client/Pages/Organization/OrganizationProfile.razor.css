@@ -1,0 +1,118 @@
+::deep .component-organizationprofile{ color: inherit; }
+/* ===== Star Rating Display ===== */
+::deep .star-rating{
+    display: inline-flex;
+    gap: 2px;
+    color: #FFC107; /* gold color for stars */
+}
+
+::deep .star-rating .mud-icon-root{
+    font-size: 1.25rem;
+}
+
+/* ===== TOKENS ===== */
+::deep :root{
+  --ring: color-mix(in srgb, var(--mud-palette-primary) 30%, transparent);
+}
+
+/* ===== HERO / HEADER ===== */
+::deep .org-hero{
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--mud-palette-primary) 18%, #0000), color-mix(in srgb, var(--mud-palette-secondary) 14%, #0000));
+  min-height: 140px;
+}
+::deep .org-hero::after{
+  content:""; position:absolute; inset:0;
+  background: linear-gradient(180deg, rgba(0,0,0,.05), rgba(0,0,0,.12));
+}
+::deep .org-header{
+  display:flex; gap:18px; align-items:flex-end; padding: 18px; position: relative; z-index: 1;
+}
+::deep .org-avatar{
+  width:120px; height:120px; border-radius: 16px; overflow:hidden;
+  border: 2px solid var(--mud-palette-surface);
+  box-shadow: 0 10px 26px rgba(0,0,0,.18);
+  background: var(--mud-palette-surface);
+}
+
+/* ===== NAME + VERIFIED ===== */
+::deep .verified{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:4px 10px; border-radius:999px;
+  background: color-mix(in srgb, var(--mud-palette-success) 14%, transparent);
+  color: var(--mud-palette-success);
+  font-weight:600; font-size:.9rem;
+}
+
+::deep .not-verified{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:4px 10px; border-radius:999px;
+  background: color-mix(in srgb, var(--mud-palette-text-secondary) 14%, transparent);
+  color: var(--mud-palette-text-secondary);
+  font-weight:600; font-size:.9rem;
+}
+
+/* ===== STATS ===== */
+::deep .stat-grid{ display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-top: 10px; }
+::deep .stat{
+  text-align:center; padding:10px 8px; border-radius: 12px;
+  background: color-mix(in srgb, var(--mud-palette-primary) 6%, var(--mud-palette-surface));
+  border: 1px solid color-mix(in srgb, var(--mud-palette-primary) 18%, var(--mud-palette-lines-default));
+}
+::deep .stat .num{ color: var(--mud-palette-primary); font-weight: 800; }
+
+/* ===== CARDS ===== */
+::deep .section-card{
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
+  overflow: hidden;
+}
+::deep .section-body{ padding: 18px; }
+::deep .section-body + .section-body{ border-top: 1px solid var(--mud-palette-lines-default); }
+
+/* Info list */
+::deep .info-list{ display:grid; gap:10px; }
+::deep .info-row{ display:flex; align-items:center; gap:10px; }
+
+/* ===== REVIEWS ===== */
+::deep .review{
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
+  background: color-mix(in srgb, var(--mud-palette-background) 85%, var(--mud-palette-surface));
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+}
+::deep .review:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(0,0,0,.12);
+  border-color: color-mix(in srgb, var(--mud-palette-primary) 35%, var(--mud-palette-lines-default));
+}
+
+/* Buttons */
+::deep .btn-outline .mud-button-root{
+  border-radius: 10px;
+}
+::deep .btn-outline .mud-button-root:focus-visible{
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+/* Responsive */
+@media (max-width: 960px){
+  ::deep .org-header{ align-items: center; }
+  ::deep .stat-grid{ grid-template-columns: repeat(3, 1fr); }
+}
+
+/* Phone layout */
+@media (max-width: 480px){
+    ::deep .org-header{ flex-direction: column; align-items: flex-start; gap: 12px; padding: 14px; }
+    ::deep .org-avatar{ width: 92px; height: 92px; border-radius: 12px; }
+    ::deep .section-card{ border-radius: 12px; }
+    ::deep .section-body{ padding: 14px; }
+    ::deep .stat-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    ::deep .info-row{ flex-direction: column; align-items: flex-start; gap: 8px; }
+    ::deep .btn-outline .mud-button-root{ width: 100%; }
+}
+
+
+

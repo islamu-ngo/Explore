@@ -1,0 +1,88 @@
+::deep .component-footer{ color: inherit; }
+::deep .site-footer{
+        background-color: var(--mud-palette-surface);
+        border-top: 1px solid var(--mud-palette-lines-default);
+        padding: 64px 0 32px;
+        margin-top: auto;
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Decorative top gradient line */
+    ::deep .site-footer::before{
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--mud-palette-primary), transparent);
+        opacity: 0.5;
+    }
+
+    ::deep .footer-brand{
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    ::deep .footer-brand-text{
+        font-size: 1.5rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        color: var(--mud-palette-text-primary);
+    }
+
+    ::deep .footer-brand-highlight{
+        color: var(--mud-palette-primary);
+    }
+
+    ::deep .footer-desc{
+        color: var(--mud-palette-text-secondary);
+        line-height: 1.6;
+        max-width: 300px;
+    }
+
+    ::deep .footer-heading{
+        font-size: 0.875rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--mud-palette-text-primary);
+        margin-bottom: 20px;
+    }
+
+    ::deep .footer-link{
+        color: var(--mud-palette-text-secondary);
+        text-decoration: none;
+        font-size: 0.95rem;
+        transition: all 0.2s ease;
+        display: block;
+        margin-bottom: 12px;
+        width: fit-content;
+    }
+
+    ::deep .footer-link:hover{
+        color: var(--mud-palette-primary);
+        transform: translateX(4px);
+    }
+
+    ::deep .social-btn{
+        color: var(--mud-palette-text-secondary);
+        transition: all 0.2s ease;
+        border: 1px solid var(--mud-palette-lines-default);
+    }
+
+    ::deep .social-btn:hover{
+        color: var(--mud-palette-primary);
+        border-color: var(--mud-palette-primary);
+        background-color: color-mix(in srgb, var(--mud-palette-primary) 10%, transparent);
+        transform: translateY(-2px);
+    }
+
+    ::deep .copyright-text{
+        color: var(--mud-palette-text-disabled);
+        font-size: 0.875rem;
+    }
+

@@ -1,0 +1,158 @@
+@using Explore.Blazor.Client.Clients
+@using MudBlazor
+@using Explore.Blazor.Client.Components.Admin
+@using Microsoft.AspNetCore.Authorization
+@inject IDialogService DialogService
+@inject IAdminService AdminService
+@inject ISnackbar Snackbar
+@attribute [Authorize(Roles = "Admin")]
+
+@using MudBlazor
+
+<MudText Typo="Typo.h4" Class="mb-4">Tag Management</MudText>
+
+<MudDataGrid T="TagListDto" Items="@tags" ReadOnly="false" EditMode="DataGridEditMode.Cell"
+             Bordered="true" Dense="true" Hover="true">
+    <Columns>
+        <PropertyColumn Property="x => x.FullName" />
+        <PropertyColumn Property="x => x.MasterCode" />
+        <TemplateColumn StickyRight="true">
+            <CellTemplate Context="context">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => OpenEditDialog(context.Item))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="@(() => DeleteTag(context.Item))" />
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+</MudDataGrid>
+
+<MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog" Class="mt-4">
+    Create Tag
+</MudButton>
+
+@code {
+    private List<TagListDto> tags = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTags();
+    }
+
+    private async Task LoadTags()
+    {
+        try
+        {
+            var result = await AdminService.GetTagsAsync();
+            tags = result.ToList();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading tags: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var dialog = await DialogService.Show<CreateTagDialog>("Create New Tag").Result;
+
+        if (!dialog.Canceled)
+        {
+            var newTag = (CreateTagDto)dialog.Data;
+            try
+            {
+                var created = await AdminService.CreateTagAsync(newTag);
+                if (created)
+                {
+                    Snackbar.Add("Tag created successfully.", Severity.Success);
+                    await LoadTags();
+                }
+                else
+                {
+                    Snackbar.Add("Failed to create tag.", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error creating tag: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task OpenEditDialog(TagListDto tag)
+    {
+        TagDto? tagDetails;
+        try
+        {
+            tagDetails = await AdminService.GetTagByIdAsync(tag.Id);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading tag details: {ex.Message}", Severity.Error);
+            return;
+        }
+
+        if (tagDetails == null)
+        {
+            Snackbar.Add("Tag details not found.", Severity.Error);
+            return;
+        }
+
+        var parameters = new DialogParameters { ["ExistingTag"] = tagDetails };
+        var dialog = await DialogService.Show<EditTagDialog>("Edit Tag", parameters).Result;
+
+        if (!dialog.Canceled)
+        {
+            var updatedTag = (UpdateTagDto)dialog.Data;
+            try
+            {
+                var updated = await AdminService.UpdateTagAsync(updatedTag);
+                if (updated)
+                {
+                    Snackbar.Add("Tag updated successfully.", Severity.Success);
+                    await LoadTags();
+                }
+                else
+                {
+                    Snackbar.Add("Failed to update tag.", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error updating tag: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task DeleteTag(TagListDto tag)
+    {
+        // Use ShowMessageBox from MudBlazor core instead of Templates.DeleteConfirmation
+        var confirmed = await DialogService.ShowMessageBox(
+            "Delete Tag",
+            $"Do you really want to delete the tag '{tag.FullName}'?",
+            yesText: "Delete",
+            cancelText: "Cancel",
+            options: new DialogOptions { FullWidth = false, MaxWidth = MaxWidth.ExtraSmall }
+        );
+
+        if (confirmed == true)
+        {
+            try
+            {
+                var deleted = await AdminService.DeleteTagAsync(tag.Id);
+                if (deleted)
+                {
+                    Snackbar.Add("Tag deleted successfully.", Severity.Success);
+                    await LoadTags();
+                }
+                else
+                {
+                    Snackbar.Add("Failed to delete tag.", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting tag: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}

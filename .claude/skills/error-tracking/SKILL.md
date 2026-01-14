@@ -20,172 +20,104 @@ This skill enforces comprehensive Sentry error tracking and performance monitori
 
 ## 🚨 CRITICAL RULE
 
-**ALL ERRORS MUST BE CAPTURED TO SENTRY** - No exceptions. Never use `Console.WriteLine` alone for errors.
+**Do not swallow exceptions.** Use structured logging (`ILogger`) and centralized exception handling that returns RFC 7807 `ProblemDetails`. 
+
+> Note: Sentry isn't currently integrated in this repo (as of this skill update). If/when Sentry is added, capture exceptions *in addition to* logging.
 
 ## Current Integration Status
 
-### Explore.API ✅ (To be implemented)
-- Sentry SDK integration
-- Controller error handling
-- MediatR pipeline instrumentation
-- Database performance monitoring
+### Explore.API
+- ✅ Centralized error responses should be implemented via `UseExceptionHandler` + `AddProblemDetails`.
+- 🟡 Sentry integration: **planned** (not currently present in codebase).
 
-### Explore.Blazor 🟡 (To be implemented)
-- Blazor error boundary
-- Component lifecycle errors
-- SignalR connection errors
+### Explore.Blazor
+- 🟡 UI error boundary patterns are optional.
+- 🟡 Sentry integration: **planned** (not currently present in codebase).
 
-## Sentry Integration Patterns
+## Error Handling & Observability Patterns
 
-### 1. API Controller Error Handling
+### 1. Centralized API Exception Handling (preferred)
 
-**Pattern**: Use try-catch with Sentry capture in all controller actions.
+**Pattern**: Keep controllers/handlers free of repetitive try/catch. Use `UseExceptionHandler` + `AddProblemDetails` to return RFC 7807 responses and log exceptions once.
 
 ```csharp
-// Explore.API/Controllers/EventController.cs
-using Sentry;
+// Explore.API/Program.cs
+using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Mvc;
 
-[Route("api/v1/[controller]")]
-[ApiController]
-public class EventController : ControllerBase
+builder.Services.AddProblemDetails();
+
+app.UseExceptionHandler(exceptionHandlerApp =>
 {
-    private readonly IMediator _mediator;
-    private readonly ILogger<EventController> _logger;
-
-    [HttpPost]
-    [Authorize]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventDto dto)
+    exceptionHandlerApp.Run(async context =>
     {
-        try
-        {
-            var command = new CreateEventCommand { EventDto = dto };
-            var response = await _mediator.Send(command);
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        context.Response.ContentType = "application/problem+json";
 
-            if (!response.Success)
+        var feature = context.Features.Get<IExceptionHandlerFeature>();
+        var problemDetailsService = context.RequestServices.GetRequiredService<IProblemDetailsService>();
+
+        await problemDetailsService.WriteAsync(new ProblemDetailsContext
+        {
+            HttpContext = context,
+            ProblemDetails = new ProblemDetails
             {
-                // Business validation failures
-                return BadRequest(response);
+                Title = "An unexpected error occurred.",
+                Detail = feature?.Error.Message,
+                Status = StatusCodes.Status500InternalServerError
             }
-
-            return Ok(response);
-        }
-        catch (Exception ex)
-        {
-            // Capture exception to Sentry
-            SentrySdk.CaptureException(ex, scope =>
-            {
-                scope.SetTag("controller", "EventController");
-                scope.SetTag("action", "Create");
-                scope.SetTag("userId", User.FindFirst("sub")?.Value ?? "anonymous");
-                scope.SetExtra("dto", dto);
-            });
-
-            _logger.LogError(ex, "Error creating event");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
-    }
-}
+        });
+    });
+});
 ```
 
 ### 2. MediatR Handler Error Handling
 
-**Pattern**: Wrap handler logic in try-catch, capture to Sentry.
+**Pattern**: Prefer *pipeline behaviors* for cross-cutting concerns (logging, timing, tracing). Let unexpected exceptions bubble to the centralized exception handler.
 
 ```csharp
-// Explore.Application/Features/Events/Handlers/Commands/CreateEventCommandHandler.cs
-using Sentry;
+// Explore.Application/Behaviors/LoggingBehavior.cs
+using MediatR;
+using Microsoft.Extensions.Logging;
 
-public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<Guid>>
+public sealed class LoggingBehavior<TRequest, TResponse>(ILogger<LoggingBehavior<TRequest, TResponse>> logger)
+    : IPipelineBehavior<TRequest, TResponse>
 {
-    public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
+    public async Task<TResponse> Handle(
+        TRequest request,
+        RequestHandlerDelegate<TResponse> next,
+        CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
-
-        try
-        {
-            // Validation
-            var validator = new CreateEventDtoValidator(...);
-            var validationResult = await validator.ValidateAsync(request.EventDto);
-
-            if (!validationResult.IsValid)
-            {
-                response.Success = false;
-                response.Message = "Event creation failed.";
-                response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-                return response;
-            }
-
-            // Business logic
-            var @event = _mapper.Map<Event>(request.EventDto);
-            @event.TotalViews = 0;
-            @event = await _eventRepository.Create(@event);
-
-            response.Success = true;
-            response.Id = @event.Id;
-            response.Message = "Event created successfully.";
-
-            return response;
-        }
-        catch (Exception ex)
-        {
-            SentrySdk.CaptureException(ex, scope =>
-            {
-                scope.SetTag("handler", "CreateEventCommandHandler");
-                scope.SetTag("command", "CreateEventCommand");
-                scope.SetExtra("eventDto", request.EventDto);
-            });
-
-            response.Success = false;
-            response.Message = "An error occurred while creating the event.";
-            response.Errors = new List<string> { ex.Message };
-            return response;
-        }
+        logger.LogInformation("Handling {RequestName}", typeof(TRequest).Name);
+        var response = await next();
+        logger.LogInformation("Handled {RequestName}", typeof(TRequest).Name);
+        return response;
     }
 }
 ```
 
 ### 3. Database Performance Monitoring
 
-**Pattern**: Wrap database operations with Sentry spans.
+**Pattern**: Prefer OpenTelemetry tracing (Aspire-friendly). If you need manual spans, use `ActivitySource` (works with OTEL exporters and Aspire dashboard).
 
 ```csharp
 // Explore.Persistence/Repositories/EventRepository.cs
-using Sentry;
+using System.Diagnostics;
 
 public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
 {
     public async Task<List<Event>> GetEventsWithDetails()
     {
-        var transaction = SentrySdk.StartTransaction("repository.get-events-with-details", "db.query");
-        var span = transaction.StartChild("db.query", "GetEventsWithDetails");
+        using var activity = new ActivitySource("Explore.Persistence")
+            .StartActivity("EventRepository.GetEventsWithDetails");
 
-        try
-        {
-            var events = await _dbContext.Events
-                .Include(e => e.EventType)
-                .Include(e => e.AudienceGender)
-                .Include(e => e.AudienceAge)
-                .Include(e => e.Actor)
-                .Include(e => e.EventStatus)
-                .ToListAsync();
-
-            span.Finish(SpanStatus.Ok);
-            return events;
-        }
-        catch (Exception ex)
-        {
-            span.Finish(SpanStatus.InternalError);
-            SentrySdk.CaptureException(ex, scope =>
-            {
-                scope.SetTag("repository", "EventRepository");
-                scope.SetTag("method", "GetEventsWithDetails");
-            });
-            throw;
-        }
-        finally
-        {
-            transaction.Finish();
-        }
+        return await _dbContext.Events
+            .Include(e => e.EventType)
+            .Include(e => e.AudienceGender)
+            .Include(e => e.AudienceAge)
+            .Include(e => e.Actor)
+            .Include(e => e.EventStatus)
+            .ToListAsync();
     }
 }
 ```
@@ -212,11 +144,7 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
             An error occurred while loading events.
         </MudAlert>
         @code {
-            SentrySdk.CaptureException(ex, scope =>
-            {
-                scope.SetTag("component", "Events");
-                scope.SetTag("error-boundary", "true");
-            });
+            // Capture/log via your configured provider (ILogger, OpenTelemetry, or Sentry when integrated).
         }
     </ErrorContent>
 </ErrorBoundary>
@@ -232,11 +160,7 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
         }
         catch (Exception ex)
         {
-            SentrySdk.CaptureException(ex, scope =>
-            {
-                scope.SetTag("component", "Events");
-                scope.SetTag("lifecycle", "OnInitializedAsync");
-            });
+            // Capture/log via your configured provider (ILogger, OpenTelemetry, or Sentry when integrated).
             throw; // Let ErrorBoundary handle it
         }
     }
@@ -244,6 +168,8 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
 ```
 
 ### 5. ASP.NET Core Middleware Integration
+
+> **Optional (planned)**: only apply this section after adding the Sentry packages and DSN configuration.
 
 **Pattern**: Use Sentry middleware for automatic request tracking.
 
@@ -290,7 +216,9 @@ app.UseAuthentication();
 app.UseAuthorization();
 ```
 
-## Error Levels
+## Optional: Sentry-specific Guidance (planned)
+
+### Error Levels
 
 Use appropriate severity levels:
 
@@ -307,7 +235,7 @@ SentrySdk.CaptureMessage("Database query slow", SentryLevel.Warning);
 SentrySdk.CaptureException(ex, scope => { scope.Level = SentryLevel.Fatal; });
 ```
 
-## Required Context
+### Required Context
 
 ```csharp
 SentrySdk.CaptureException(ex, scope =>
@@ -339,7 +267,7 @@ SentrySdk.CaptureException(ex, scope =>
 });
 ```
 
-## Configuration (appsettings.json)
+### Configuration (appsettings.json)
 
 ```json
 {
@@ -354,7 +282,7 @@ SentrySdk.CaptureException(ex, scope =>
 }
 ```
 
-## Performance Monitoring
+### Performance Monitoring
 
 ### Requirements
 
@@ -396,13 +324,13 @@ finally
 ❌ **NEVER** skip error handling in async operations
 ❌ **NEVER** forget to configure Sentry DSN in appsettings
 
-## Implementation Checklist
+## Implementation Checklist (when integrating Sentry)
 
-When adding Sentry to new code:
+When adding Sentry to this repo:
 
 - [ ] Added Sentry NuGet package reference
 - [ ] Configured Sentry in Program.cs
-- [ ] All try/catch blocks capture to Sentry
+- [ ] Prefer centralized exception handling; avoid duplicating try/catch in every controller
 - [ ] Added meaningful context to errors
 - [ ] Used appropriate error level
 - [ ] No sensitive data in error messages
@@ -428,7 +356,7 @@ When adding Sentry to new code:
 <PackageReference Include="Sentry" Version="4.0.0" />
 ```
 
-## Testing Sentry Integration
+## Testing Sentry Integration (optional)
 
 ### API Test Endpoint
 

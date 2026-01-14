@@ -1,9 +1,10 @@
-@page "/event-created/{EventId:guid}"
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Clients
+@using Blazouter.Services
 @inject IEventService EventService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
+@inject RouterStateService RouterState
 
 <PageTitle>Event Created - Explore</PageTitle>
 
@@ -126,14 +127,20 @@
 </MudContainer>
 
 @code {
-    [Parameter]
-    public Guid EventId { get; set; }
+    private Guid EventId { get; set; }
 
     private EventDto? eventDetails;
     private bool isLoading = true;
 
     protected override async Task OnInitializedAsync()
     {
+        // Get route parameter from Blazouter
+        var eventIdStr = RouterState.GetParam("EventId");
+        if (Guid.TryParse(eventIdStr, out var id))
+        {
+            EventId = id;
+        }
+        
         try
         {
             isLoading = true;

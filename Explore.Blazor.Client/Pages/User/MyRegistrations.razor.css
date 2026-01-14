@@ -1,0 +1,284 @@
+::deep .component-myregistrations{ color: inherit; }
+/* ===== PAGE WRAPPER ===== */
+::deep .registrations-page{
+    padding: 24px 0 40px;
+    min-height: 100vh;
+}
+
+/* ===== HEADER ===== */
+::deep .page-header{
+    margin-bottom: 32px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid var(--mud-palette-divider);
+}
+
+::deep .page-title{
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, var(--mud-palette-primary), var(--mud-palette-primary-darken));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+::deep .page-subtitle{
+    color: var(--mud-palette-text-secondary);
+    font-size: 1rem;
+}
+
+/* ===== STATS CARDS ===== */
+::deep .stats-grid{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+}
+
+::deep .stat-card{
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid var(--mud-palette-lines-default);
+    background: var(--mud-palette-surface);
+    transition: all 0.3s ease;
+}
+
+::deep .stat-card:hover{
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+}
+
+::deep .stat-icon{
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+}
+
+::deep .stat-icon.primary{
+    background: linear-gradient(135deg, var(--mud-palette-primary), var(--mud-palette-primary-darken));
+    color: white;
+}
+
+::deep .stat-icon.success{
+    background: linear-gradient(135deg, var(--mud-palette-success), var(--mud-palette-success-darken));
+    color: white;
+}
+
+::deep .stat-icon.warning{
+    background: linear-gradient(135deg, var(--mud-palette-warning), var(--mud-palette-warning-darken));
+    color: white;
+}
+
+::deep .stat-value{
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--mud-palette-text-primary);
+    line-height: 1;
+    margin-bottom: 4px;
+}
+
+::deep .stat-label{
+    font-size: 0.875rem;
+    color: var(--mud-palette-text-secondary);
+}
+
+/* ===== FILTERS ===== */
+::deep .filters-section{
+    margin-bottom: 24px;
+    padding: 16px;
+    border-radius: 12px;
+    background: var(--mud-palette-surface);
+    border: 1px solid var(--mud-palette-lines-default);
+}
+
+::deep .filters-grid{
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 16px;
+    align-items: end;
+}
+@media (max-width: 960px){
+    ::deep .filters-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ===== REGISTRATION CARDS ===== */
+::deep .registrations-grid{
+    display: grid;
+    gap: 20px;
+}
+
+::deep .registration-card{
+    border-radius: 16px;
+    border: 1px solid var(--mud-palette-lines-default);
+    overflow: hidden;
+    transition: all 0.3s ease;
+    background: var(--mud-palette-surface);
+}
+
+::deep .registration-card:hover{
+    box-shadow: 0 12px 24px rgba(0,0,0,0.12);
+    transform: translateY(-2px);
+}
+
+::deep .card-content{
+    display: grid;
+    grid-template-columns: 140px 1fr auto;
+    gap: 20px;
+    padding: 20px;
+}
+@media (max-width: 768px){
+    ::deep .card-content {
+        grid-template-columns: 1fr;
+    }
+}
+
+::deep .event-image{
+    width: 140px;
+    height: 140px;
+    border-radius: 12px;
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--mud-palette-primary), var(--mud-palette-primary-darken));
+    position: relative;
+}
+@media (max-width: 768px){
+    ::deep .event-image {
+        width: 100%;
+        height: 200px;
+    }
+}
+
+   @media (max-width: 480px){
+        ::deep .filters-section { padding: 12px; border-radius: 10px; }
+        ::deep .filters-grid{ grid-template-columns: 1fr; gap: 12px; }
+        ::deep .card-content{ padding: 14px; gap: 12px; }
+        ::deep .registration-card{ border-radius: 12px; }
+        ::deep .event-image{ height: 160px; }
+        ::deep .card-actions{ flex-direction: column; gap: 10px; }
+    }
+
+::deep .event-image img{
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+::deep .event-details{
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+::deep .event-title{
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--mud-palette-text-primary);
+    margin: 0;
+}
+
+::deep .event-meta{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+}
+
+::deep .meta-item{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--mud-palette-text-secondary);
+    font-size: 0.875rem;
+}
+
+::deep .meta-item .mud-icon-root{
+    font-size: 1.125rem;
+}
+
+::deep .status-badge{
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+::deep .status-badge.upcoming{
+    background: rgba(33, 150, 243, 0.1);
+    color: var(--mud-palette-primary);
+}
+
+::deep .status-badge.completed{
+    background: rgba(76, 175, 80, 0.1);
+    color: var(--mud-palette-success);
+}
+
+::deep .status-badge.cancelled{
+    background: rgba(244, 67, 54, 0.1);
+    color: var(--mud-palette-error);
+}
+
+::deep .event-description{
+    color: var(--mud-palette-text-secondary);
+    line-height: 1.6;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+::deep .card-actions{
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    justify-content: center;
+}
+@media (max-width: 768px){
+    ::deep .card-actions {
+        flex-direction: row;
+    }
+}
+
+/* ===== EMPTY STATE ===== */
+::deep .empty-state{
+    text-align: center;
+    padding: 60px 20px;
+}
+
+::deep .empty-icon{
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 20px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--mud-palette-primary), var(--mud-palette-primary-darken));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+::deep .empty-icon .mud-icon-root{
+    font-size: 2.5rem;
+}
+
+::deep .empty-title{
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+::deep .empty-description{
+    color: var(--mud-palette-text-secondary);
+    margin-bottom: 24px;
+}
+
+

@@ -1,15 +1,92 @@
 # API Reference
 
+## Scope
+
+This document describes the **current** REST API implemented in `Explore.API` (ASP.NET Core controllers) and the conventions to follow when adding/refactoring endpoints.
+
 ## REST API Conventions
 
 - **Base Path**: `/api/v1`
 - **Content-Type**: `application/json`
-- **Authentication**: Bearer token (JWT) in `Authorization` header
-- **Authorization Pattern**:
-  - **GET endpoints**: `[AllowAnonymous]` - public read access
-  - **POST/PUT/DELETE**: `[Authorize]` - authenticated write access
-- **Routing**: `api/v1/[controller]` - controller name in plural
-- **User ID Extraction**: Fallback order: `sub` → `nameidentifier` → `sid`
+- **Controllers**: Attribute-routed controllers using `[Route("api/v1/[controller]")]`.
+- **Authentication**: Bearer token (JWT) via `Authorization: Bearer <token>`.
+- **Auth Rule (Project Standard)**:
+  - `GET` (read): `[AllowAnonymous]`
+  - write (`POST/PUT/DELETE`): `[Authorize]`
+- **User ID Extraction** (when required): `sub` → `nameidentifier` → `sid`
+
+## Endpoint Documentation Standard (Required)
+
+Every controller action MUST include OpenAPI-friendly metadata.
+
+### Required attributes per action
+
+1. **Summary + Description**
+
+```csharp
+[EndpointSummary("Short, user-facing title")]
+[EndpointDescription("More detailed description of the behavior, constraints, and notes")]
+```
+
+2. **Response metadata** (use `typeof(...)` whenever applicable)
+
+```csharp
+using static Microsoft.AspNetCore.Http.StatusCodes;
+
+[ProducesResponseType(typeof(SomeDto), Status200OK)]
+[ProducesResponseType(Status400BadRequest)]
+[ProducesResponseType(Status401Unauthorized)]
+[ProducesResponseType(Status404NotFound)]
+```
+
+3. **Body endpoints** SHOULD declare `Consumes`
+
+```csharp
+[Consumes("application/json")]
+```
+
+### Preferred controller action shape
+
+- Use `ActionResult<T>` for typed responses.
+- Return explicit results: `Ok(...)`, `BadRequest(...)`, `NoContent()`, `NotFound(...)`, `Unauthorized(...)`.
+- Prefer `StatusCodes` constants over magic numbers.
+
+**Example (Command / write endpoint):**
+
+```csharp
+[HttpPost]
+[EndpointSummary("Create Event")]
+[EndpointDescription("Creates a new event.")]
+[Authorize]
+[Consumes("application/json")]
+[ProducesResponseType(typeof(BaseCommandResponse<Guid>), Status200OK)]
+[ProducesResponseType(typeof(BaseCommandResponse<Guid>), Status400BadRequest)]
+[ProducesResponseType(Status401Unauthorized)]
+public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventDto dto)
+{
+    var response = await _mediator.Send(new CreateEventCommand { EventDto = dto });
+    return response.Success ? Ok(response) : BadRequest(response);
+}
+```
+
+**Example (Delete endpoint):**
+
+```csharp
+[HttpDelete("{id}")]
+[EndpointSummary("Delete Event")]
+[EndpointDescription("Deletes an event.")]
+[Authorize]
+[ProducesResponseType(Status204NoContent)]
+[ProducesResponseType(Status401Unauthorized)]
+[ProducesResponseType(Status404NotFound)]
+public async Task<ActionResult> Delete(Guid id)
+{
+    var ok = await _mediator.Send(new DeleteEventCommand { Id = id, UserId = GetUserIdOrThrow() });
+    return ok ? NoContent() : NotFound();
+}
+```
+
+> Note: returning `201 Created` for creates is generally preferred in REST, but this codebase currently returns `200 OK` for create/update commands. Follow existing behavior unless explicitly changing the API contract.
 
 ## User ID Extraction Pattern
 
@@ -233,20 +310,13 @@ var userId = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
 | `PUT` | `/api/v1/storageobject/{id}` | Authorize | Update storage object |
 | `DELETE` | `/api/v1/storageobject/{id}` | Authorize | Delete storage object |
 
-**Note**: StorageObjects use BYOK (Bring Your Own Keys) for AWS S3, Azure Blob, MinIO, etc.
+**Note**: `Explore.Infrastructure` currently integrates with S3-compatible storage (see `Explore.Infrastructure/Services/ObjectStorageService.cs`). Tenant BYOK for multiple providers is a **future** capability and is not fully implemented in the current API.
 
-### ActivityPub (Federation)
+### Federation (Status)
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `GET` | `/.well-known/webfinger` | AllowAnonymous | Actor discovery |
-| `GET` | `/actors/{username}` | AllowAnonymous | Get actor profile |
-| `POST` | `/actors/{username}/inbox` | AllowAnonymous | Receive activity |
-| `GET` | `/actors/{username}/outbox` | AllowAnonymous | Get outgoing activities |
-| `GET` | `/actors/{username}/followers` | AllowAnonymous | Get followers |
-| `GET` | `/actors/{username}/following` | AllowAnonymous | Get following |
+The domain model contains ATProto/federation-related entities (e.g., `Actor`, `AtprotoRecord`, `SyncState`).
 
-**Note**: ActivityPub endpoints follow the ActivityPub specification for federation with Mastodon, Mobilizon, etc.
+**However**, ActivityPub/ATProto HTTP endpoints (e.g., WebFinger, Inbox/Outbox) are **not currently implemented** in `Explore.API`.
 
 ## Response Types
 
@@ -361,6 +431,14 @@ Used for all Create/Update/Delete operations:
   "error": "Internal server error",
   "stackTrace": "..."
 }
+
+## OpenAPI / Swagger / Scalar
+
+- **Swagger UI**: `https://localhost:7001/swagger`
+- **Scalar**: `https://localhost:7001/scalar/v1`
+- **OpenAPI JSON**:
+  - runtime: `https://localhost:7001/openapi/v1.json` (via `app.MapOpenApi()`)
+  - exported file: `Explore.API/swagger.json` (generated by `OpenApiExportService` during Development)
 ```
 
 ## API Documentation

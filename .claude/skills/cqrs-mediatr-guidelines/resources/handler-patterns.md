@@ -28,8 +28,10 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     private readonly IAudienceAgeRepository _audienceAgeRepository;
     private readonly IAudienceGenderRepository _audienceGenderRepository;
     private readonly IEventTypeRepository _eventTypeRepository;
-    private readonly IActorRepository _actorRepository;
+    private readonly IOrganizationRepository _organizationRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
+    private readonly IUserContext _userContext;
+    private readonly ITenantContext _tenantContext;
     private readonly IMapper _mapper;
     
     // ✅ Inject repositories, not DbContext
@@ -38,16 +40,20 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         IAudienceAgeRepository audienceAgeRepository,
         IAudienceGenderRepository audienceGenderRepository,
         IEventTypeRepository eventTypeRepository,
-        IActorRepository actorRepository,
+        IOrganizationRepository organizationRepository,
         IStorageObjectRepository storageObjectRepository,
+        IUserContext userContext,
+        ITenantContext tenantContext,
         IMapper mapper)
     {
         _eventRepository = eventRepository;
         _audienceAgeRepository = audienceAgeRepository;
         _audienceGenderRepository = audienceGenderRepository;
         _eventTypeRepository = eventTypeRepository;
-        _actorRepository = actorRepository;
+        _organizationRepository = organizationRepository;
         _storageObjectRepository = storageObjectRepository;
+        _userContext = userContext;
+        _tenantContext = tenantContext;
         _mapper = mapper;
     }
 
@@ -139,7 +145,8 @@ public async Task<BaseCommandResponse<Guid>> Handle(
     CreateEventCommand request,
     CancellationToken cancellationToken)  // ✅ Always include
 {
-    // Repository methods automatically handle cancellation token
+    // Pass cancellationToken to all async operations that accept it (e.g., validator, EF Core queries).
+    // Note: some repository methods in this codebase don't currently accept a CancellationToken.
     await _eventRepository.Create(@event);
 }
 ```
@@ -164,10 +171,10 @@ public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, 
         _audienceAgeRepository,
         _audienceGenderRepository,
         _eventTypeRepository,
-        _actorRepository,
+            _organizationRepository,
         _storageObjectRepository);
 
-    var validationResult = await validator.ValidateAsync(request.EventDto);
+        var validationResult = await validator.ValidateAsync(request.EventDto, cancellationToken);
 
     if (!validationResult.IsValid)
     {
@@ -211,7 +218,8 @@ public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, 
     var @event = _mapper.Map<Event>(request.EventDto);
 
     // 3. Set default values (not in DTO)
-    @event.TotalViews = 0;
+        @event.TotalViews = 0;
+        @event.TenantId = _tenantContext.TenantId;
 
     // 4. Save through repository
     @event = await _eventRepository.Create(@event);

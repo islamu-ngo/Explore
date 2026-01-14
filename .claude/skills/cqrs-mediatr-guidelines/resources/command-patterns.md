@@ -60,24 +60,39 @@ using System;
 
 public class CreateEventDto
 {
-    public string Title { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
+    public string Title { get; set; }
+    public string? Description { get; set; }
+    public string? Slug { get; set; }
+
     public int EventTypeId { get; set; }
     public int AudienceGenderId { get; set; }
     public int AudienceAgeId { get; set; }
-    public Guid ActorId { get; set; }
-    public Guid FeaturedImageId { get; set; }
-    public Guid TenantId { get; set; }
+
+    /// <summary>
+    /// Optional: the organization that owns this event.
+    /// If provided, the handler enforces admin membership.
+    /// </summary>
+    public Guid? OrganizationId { get; set; }
+
     public decimal? Price { get; set; }
-    public string CurrencyCode { get; set; } = string.Empty;
+    public string? CurrencyCode { get; set; }
+
+    // Featured Image (optional)
+    public Guid? FeaturedImageId { get; set; }
+
     public bool IsRegistrationRequired { get; set; }
-    public string EventUrl { get; set; } = string.Empty;
+    public string? ExternalRegistrationUrl { get; set; }
+
+    // Defaults (DTO-level defaults are OK; do NOT add defaults in Domain entities)
+    public int EventStatusId { get; set; } = 1;
+    public int VisibilityTypeId { get; set; } = 1;
+    public int EventFormatId { get; set; } = 1;
+
     public int? MadhabId { get; set; }
-    public int VisibilityTypeId { get; set; }
-    public int EventStatusId { get; set; }
-    public string ExternalRegistrationUrl { get; set; } = string.Empty;
-    public int EventFormatId { get; set; }
-    public Guid? AtprotoRecordId { get; set; }
+    public DateTimeOffset? FirstSessionDate { get; set; }
+    public DateTimeOffset? LastSessionDate { get; set; }
+    public string? Timezone { get; set; }
+    public string? EventUrl { get; set; }
 }
 ```
 
@@ -101,28 +116,28 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
     private readonly IAudienceAgeRepository _audienceAgeRepository;
     private readonly IAudienceGenderRepository _audienceGenderRepository;
     private readonly IEventTypeRepository _eventTypeRepository;
-    private readonly IActorRepository _actorRepository;
+    private readonly IOrganizationRepository _organizationRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
 
     public CreateEventDtoValidator(
         IAudienceAgeRepository audienceAgeRepository,
         IAudienceGenderRepository audienceGenderRepository,
         IEventTypeRepository eventTypeRepository,
-        IActorRepository actorRepository,
+        IOrganizationRepository organizationRepository,
         IStorageObjectRepository storageObjectRepository)
     {
         _audienceAgeRepository = audienceAgeRepository;
         _audienceGenderRepository = audienceGenderRepository;
         _eventTypeRepository = eventTypeRepository;
-        _actorRepository = actorRepository;
+        _organizationRepository = organizationRepository;
         _storageObjectRepository = storageObjectRepository;
 
         RuleFor(x => x.Title)
             .NotEmpty().WithMessage("Title is required")
-            .MaximumLength(500);
+            .MaximumLength(200);
 
         RuleFor(x => x.Description)
-            .MaximumLength(500).When(x => !string.IsNullOrEmpty(x.Description));
+            .MaximumLength(5000).When(x => !string.IsNullOrEmpty(x.Description));
 
         RuleFor(x => x.EventTypeId)
             .NotEmpty().WithMessage("Event type is required")
@@ -151,23 +166,25 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
             })
             .WithMessage("Audience age not found");
 
-        RuleFor(x => x.ActorId)
-            .NotEmpty().WithMessage("Actor is required")
+        // OrganizationId is optional: validate only if provided
+        RuleFor(x => x.OrganizationId)
             .MustAsync(async (id, cancellation) =>
             {
-                var exists = await _actorRepository.Exists(id);
-                return exists;
+                if (!id.HasValue) return true;
+                return await _organizationRepository.Exists(id.Value);
             })
-            .WithMessage("Actor not found");
+            .When(x => x.OrganizationId.HasValue)
+            .WithMessage("Organization does not exist.");
 
+        // FeaturedImageId is optional: validate only if provided
         RuleFor(x => x.FeaturedImageId)
-            .NotEmpty().WithMessage("Featured image is required")
             .MustAsync(async (id, cancellation) =>
             {
-                var exists = await _storageObjectRepository.Exists(id);
-                return exists;
+                if (!id.HasValue) return true;
+                return await _storageObjectRepository.Exists(id.Value);
             })
-            .WithMessage("Featured image not found");
+            .When(x => x.FeaturedImageId.HasValue)
+            .WithMessage("FeaturedImageId does not exist.");
     }
 }
 ```
@@ -200,28 +217,43 @@ using MediatR;
 public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<Guid>>
 {
     private readonly IEventRepository _eventRepository;
+    private readonly IEventSessionRepository _eventSessionRepository;
+    private readonly IActorRepository _actorRepository;
+    private readonly IOrganizationRepository _organizationRepository;
+    private readonly IOrganizationMemberRepository _organizationMemberRepository;
     private readonly IAudienceAgeRepository _audienceAgeRepository;
     private readonly IAudienceGenderRepository _audienceGenderRepository;
     private readonly IEventTypeRepository _eventTypeRepository;
-    private readonly IActorRepository _actorRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
+    private readonly IUserContext _userContext;
+    private readonly ITenantContext _tenantContext;
     private readonly IMapper _mapper;
 
     public CreateEventCommandHandler(
         IEventRepository eventRepository,
+        IEventSessionRepository eventSessionRepository,
         IAudienceAgeRepository audienceAgeRepository,
         IAudienceGenderRepository audienceGenderRepository,
         IEventTypeRepository eventTypeRepository,
         IActorRepository actorRepository,
+        IOrganizationRepository organizationRepository,
+        IOrganizationMemberRepository organizationMemberRepository,
         IStorageObjectRepository storageObjectRepository,
+        IUserContext userContext,
+        ITenantContext tenantContext,
         IMapper mapper)
     {
         _eventRepository = eventRepository;
+        _eventSessionRepository = eventSessionRepository;
         _audienceAgeRepository = audienceAgeRepository;
         _audienceGenderRepository = audienceGenderRepository;
         _eventTypeRepository = eventTypeRepository;
         _actorRepository = actorRepository;
+        _organizationRepository = organizationRepository;
+        _organizationMemberRepository = organizationMemberRepository;
         _storageObjectRepository = storageObjectRepository;
+        _userContext = userContext;
+        _tenantContext = tenantContext;
         _mapper = mapper;
     }
 
@@ -234,10 +266,10 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             _audienceAgeRepository,
             _audienceGenderRepository,
             _eventTypeRepository,
-            _actorRepository,
+            _organizationRepository,
             _storageObjectRepository);
 
-        var validationResult = await validator.ValidateAsync(request.EventDto);
+        var validationResult = await validator.ValidateAsync(request.EventDto, cancellationToken);
 
         if (!validationResult.IsValid)
         {
@@ -250,8 +282,12 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         // ✅ Map DTO to entity using AutoMapper
         var @event = _mapper.Map<Event>(request.EventDto);
         
-        // ✅ Set properties not in DTO
+        // ✅ Set server-side values (never from client)
         @event.TotalViews = 0;
+        @event.TenantId = _tenantContext.TenantId;
+
+        // NOTE: Ownership is enforced by resolving ActorId based on the current user
+        // (organization context requires admin membership).
 
         // ✅ Save through repository
         @event = await _eventRepository.Create(@event);

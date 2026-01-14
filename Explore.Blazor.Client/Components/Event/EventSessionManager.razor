@@ -1,0 +1,145 @@
+@using Explore.Blazor.Client.Clients
+@using MudBlazor
+@inject IDialogService DialogService
+@inject IEventService EventService
+@inject ISnackbar Snackbar
+
+@using MudBlazor
+
+<MudPaper Class="pa-4 mt-4">
+    <MudText Typo="Typo.h5">Event Sessions</MudText>
+
+    <MudDataGrid T="EventSessionListDto" Items="@sessions" ReadOnly="false" EditMode="DataGridEditMode.Cell"
+                 Bordered="true" Dense="true" Hover="true">
+        <Columns>
+            <PropertyColumn Property="x => x.Title" />
+            <PropertyColumn Property="x => x.StartTime" Format="s" />
+            <PropertyColumn Property="x => x.EndTime" Format="s" />
+            <PropertyColumn Property="x => x.LocationFullName" />
+            <PropertyColumn Property="x => x.MaxAudienceAttendees" Title="Max Audience" />
+            <TemplateColumn StickyRight="true">
+                <CellTemplate Context="context">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => OpenEditDialog(context.Item))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="@(() => DeleteSession(context.Item))" />
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+    </MudDataGrid>
+
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog" Class="mt-4">
+        Create Session
+    </MudButton>
+</MudPaper>
+
+@code {
+    [Parameter] public Guid EventId { get; set; }
+
+    private List<EventSessionListDto> sessions = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSessions();
+    }
+
+    private async Task LoadSessions()
+    {
+        try
+        {
+            var result = await EventService.GetSessionsByEventAsync(EventId);
+            sessions = result.ToList();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading sessions: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var parameters = new DialogParameters { ["EventId"] = EventId };
+        var dialog = await DialogService.Show<CreateSessionDialog>("Create New Session", parameters).Result;
+
+        if (!dialog.Canceled)
+        {
+            var newSession = (CreateEventSessionDto)dialog.Data;
+            try
+            {
+                var response = await EventService.CreateSessionAsync(newSession);
+                if (response?.Success == true)
+                {
+                    Snackbar.Add("Session created successfully.", Severity.Success);
+                    await LoadSessions();
+                }
+                else
+                {
+                    Snackbar.Add(response?.Message ?? "Failed to create session.", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error creating session: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task OpenEditDialog(EventSessionListDto session)
+    {
+        var parameters = new DialogParameters { ["ExistingSession"] = session };
+        var dialog = await DialogService.Show<EditSessionDialog>("Edit Session", parameters).Result;
+
+        if (!dialog.Canceled)
+        {
+            var updatedSession = (UpdateEventSessionDto)dialog.Data;
+            try
+            {
+                var response = await EventService.UpdateSessionAsync(updatedSession);
+                if (response?.Success == true)
+                {
+                    Snackbar.Add("Session updated successfully.", Severity.Success);
+                    await LoadSessions();
+                }
+                else
+                {
+                    Snackbar.Add(response?.Message ?? "Failed to update session.", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error updating session: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task DeleteSession(EventSessionListDto session)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Delete Session",
+            $"Do you really want to delete the session '{session.Title}'?",
+            yesText: "Delete",
+            cancelText: "Cancel",
+            options: new DialogOptions { FullWidth = false, MaxWidth = MaxWidth.ExtraSmall }
+        );
+
+        if (confirmed == true)
+        {
+            try
+            {
+                var deleted = await EventService.DeleteSessionAsync(session.Id);
+                if (deleted)
+                {
+                    Snackbar.Add("Session deleted successfully.", Severity.Success);
+                    await LoadSessions();
+                }
+                else
+                {
+                    Snackbar.Add("Failed to delete session.", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting session: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}

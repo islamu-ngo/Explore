@@ -9,7 +9,7 @@ public partial class UserProfile : ComponentBase
 {
     [Inject] private IUserService UserService { get; set; } = default!;
     [Inject] private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
-    [Inject] private IProgramService ProgramService { get; set; } = default!;
+    [Inject] private IEventService EventService { get; set; } = default!;
     [Inject] private IOrganizationReviewService OrganizationReviewService { get; set; } = default!;
 
     private UserDto? UserData { get; set; }
@@ -29,23 +29,23 @@ public partial class UserProfile : ComponentBase
     private async Task LoadUserData()
     {
         if (_dataLoaded) return;
-        
+
         IsLoading = true;
-        
+
         try
         {
             Console.WriteLine("[USER PROFILE] Loading user data...");
-            
+
             var userData = await UserService.GetCurrentUserAsync();
 
             if (userData != null)
             {
                 UserData = userData;
                 Console.WriteLine($"[USER PROFILE] User data loaded: {UserData.Email}");
-                
+
                 try
                 {
-                    var registrations = await ProgramService.GetRegistrationsByUserAsync(UserData.Id);
+                    var registrations = await EventService.GetRegistrationsByUserAsync(UserData.Id);
                     EventsAttended = registrations.Count;
                 }
                 catch (Exception ex)
@@ -65,7 +65,7 @@ public partial class UserProfile : ComponentBase
                     MyReviews = new List<OrganizationReviewDto>();
                     ReviewsGiven = 0;
                 }
-                
+
                 _dataLoaded = true;
             }
             else
@@ -102,13 +102,13 @@ public partial class UserProfile : ComponentBase
     private string GetInitials()
     {
         if (UserData == null) return "?";
-        
+
         var firstInitial = !string.IsNullOrEmpty(UserData.FirstName) ? UserData.FirstName[0].ToString().ToUpper() : "";
         var lastInitial = !string.IsNullOrEmpty(UserData.LastName) ? UserData.LastName[0].ToString().ToUpper() : "";
-        
+
         if (!string.IsNullOrEmpty(firstInitial) || !string.IsNullOrEmpty(lastInitial))
             return $"{firstInitial}{lastInitial}";
-            
+
         return !string.IsNullOrEmpty(UserData.Username) ? UserData.Username[0].ToString().ToUpper() : "?";
     }
 }

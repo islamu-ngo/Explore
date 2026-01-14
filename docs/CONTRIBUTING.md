@@ -3,13 +3,10 @@
 ## Branch Strategy
 
 ```
-main                    # Production-ready code
-├── develop             # Integration branch
-│   ├── feature/xxx     # New features
-│   ├── bugfix/xxx      # Bug fixes
-│   └── refactor/xxx    # Code improvements
-├── release/x.x.x       # Release preparation
-└── hotfix/x.x.x        # Critical bug fixes
+main                    # Default branch
+├── feature/xxx         # New features
+├── bugfix/xxx          # Bug fixes
+└── refactor/xxx        # Code improvements
 ```
 
 ## Commit Convention
@@ -33,7 +30,7 @@ docs(api): update endpoint documentation
 
 ## Pull Request Process
 
-1. Create feature branch from `develop`
+1. Create a branch from `main`
 2. Implement changes with tests
 3. Ensure all tests pass: `dotnet test`
 4. Ensure code formatting: `dotnet format`
