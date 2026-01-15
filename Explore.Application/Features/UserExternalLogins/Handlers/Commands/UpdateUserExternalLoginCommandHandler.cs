@@ -13,24 +13,28 @@ namespace Explore.Application.Features.UserExternalLogins.Handlers.Commands
     public class UpdateUserExternalLoginCommandHandler : IRequestHandler<UpdateUserExternalLoginCommand, BaseCommandResponse<Guid>>
     {
         private readonly IUserExternalLoginRepository _userExternalLoginRepository;
+        private readonly IUserRepository _userRepository;
+        private readonly ITenantRepository _tenantRepository;
         private readonly IMapper _mapper;
-        private readonly IValidator<UpdateUserExternalLoginDto> _validator;
 
         public UpdateUserExternalLoginCommandHandler(
             IUserExternalLoginRepository userExternalLoginRepository,
-            IMapper mapper,
-            IValidator<UpdateUserExternalLoginDto> validator)
+            IUserRepository userRepository,
+            ITenantRepository tenantRepository,
+            IMapper mapper)
         {
             _userExternalLoginRepository = userExternalLoginRepository;
+            _userRepository = userRepository;
+            _tenantRepository = tenantRepository;
             _mapper = mapper;
-            _validator = validator;
         }
 
         public async Task<BaseCommandResponse<Guid>> Handle(UpdateUserExternalLoginCommand request, CancellationToken cancellationToken)
         {
             var response = new BaseCommandResponse<Guid>();
 
-            var validationResult = await _validator.ValidateAsync(request.UserExternalLoginDto);
+            var validator = new UpdateUserExternalLoginDtoValidator(_userRepository, _tenantRepository);
+            var validationResult = await validator.ValidateAsync(request.UserExternalLoginDto);
 
             if (!validationResult.IsValid)
             {

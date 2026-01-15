@@ -28,10 +28,17 @@ public class ActorController : ControllerBase
 
     // GET: api/v1/actor
     [HttpGet]
+    [EndpointSummary("Get all Actors")]
+    [EndpointDescription("Retrieve a paginated list of all actors. Default page size is 20, max is 100.")]
     [AllowAnonymous]
-    public async Task<ActionResult<List<ActorListDto>>> GetAll()
+    [ProducesResponseType(typeof(PaginatedResult<ActorListDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PaginatedResult<ActorListDto>>> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
     {
-        var actors = await _mediator.Send(new GetActorListRequest());
+        var actors = await _mediator.Send(new GetActorListRequest
+        {
+            PageNumber = pageNumber,
+            PageSize = pageSize
+        });
         return Ok(actors);
     }
 

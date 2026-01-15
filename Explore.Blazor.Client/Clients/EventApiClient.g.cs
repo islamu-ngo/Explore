@@ -2176,7 +2176,7 @@ namespace Explore.Blazor.Client.Clients
         /// Get my Organizations
         /// </summary>
         /// <remarks>
-        /// Get a list of organizations created by the current user
+        /// Get a list of organizations where the current user is a member
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -2187,7 +2187,7 @@ namespace Explore.Blazor.Client.Clients
         /// Get my Organizations
         /// </summary>
         /// <remarks>
-        /// Get a list of organizations created by the current user
+        /// Get a list of organizations where the current user is a member
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -14533,7 +14533,7 @@ namespace Explore.Blazor.Client.Clients
         /// Get my Organizations
         /// </summary>
         /// <remarks>
-        /// Get a list of organizations created by the current user
+        /// Get a list of organizations where the current user is a member
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -14547,7 +14547,7 @@ namespace Explore.Blazor.Client.Clients
         /// Get my Organizations
         /// </summary>
         /// <remarks>
-        /// Get a list of organizations created by the current user
+        /// Get a list of organizations where the current user is a member
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>

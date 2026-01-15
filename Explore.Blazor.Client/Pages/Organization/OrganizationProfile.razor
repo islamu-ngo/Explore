@@ -3,13 +3,15 @@
 @using Explore.Blazor.Client.Clients
 @using Microsoft.AspNetCore.Components
 @using Blazouter.Services
+@using Microsoft.Extensions.Logging
 @inject IOrganizationService OrganizationService
 @inject IOrganizationReviewService OrganizationReviewService
 @inject NavigationManager Navigation
 @inject RouterStateService RouterState
+@inject ILogger<OrganizationProfile> Logger
 
 <PageTitle>Organization Profile</PageTitle>
-<MudContainer Class="py-6">
+<MudContainer Class="organization-profile">
     @if (_isLoading)
     {
         <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
@@ -21,13 +23,13 @@
     else
     {
         <!-- Organization Info (Hero + Header + Stats) -->
-        <MudCard Class="mb-6 section-card" Elevation="0">
-            <div class="org-hero"></div>
+        <MudCard Class="mb-6 organization-profile__card" Elevation="0">
+            <div class="organization-profile__hero"></div>
 
-            <MudCardContent Class="section-body" Style="padding-top:0;">
-                <div class="org-header">
+            <MudCardContent Class="organization-profile__content" Style="padding-top:0;">
+                <div class="organization-profile__header">
                     <!-- Avatar -->
-                    <div class="org-avatar">
+                    <div class="organization-profile__avatar">
                         @if (false)
                         {
                             <S3Image ImageKey=""""
@@ -50,26 +52,26 @@
 
                         @if (_organization.ApprovalStatusId == 2) // Approved
                         {
-                            <div class="verified">
+                            <div class="organization-profile__badge organization-profile__badge--verified">
                                 <MudIcon Icon="@Icons.Material.Filled.Verified" />
                                 <span>Verified Organization</span>
                             </div>
                         }
                         else
                         {
-                            <div class="not-verified">
+                            <div class="organization-profile__badge organization-profile__badge--unverified">
                                 <MudIcon Icon="@Icons.Material.Filled.NewReleases" />
                                 <span>Unverified Organization</span>
                             </div>
                         }
 
-                        <div class="stat-grid">
-                            <div class="stat">
-                                <MudText Typo="Typo.h5" Class="num">@_reviews.Count</MudText>
+                        <div class="organization-profile__stats">
+                            <div class="organization-profile__stat">
+                                <MudText Typo="Typo.h5" Class="organization-profile__stat-value">@_reviews.Count</MudText>
                                 <MudText Typo="Typo.caption" Color="Color.Secondary">reviews</MudText>
                             </div>
-                            <div class="stat">
-                                <MudText Typo="Typo.h5" Class="num">@(_reviews.Any() ? _reviews.Average(r => r.Rating).ToString("0.0") : "0.0")★</MudText>
+                            <div class="organization-profile__stat">
+                                <MudText Typo="Typo.h5" Class="organization-profile__stat-value">@(_reviews.Any() ? _reviews.Average(r => r.Rating).ToString("0.0") : "0.0")★</MudText>
                                 <MudText Typo="Typo.caption" Color="Color.Secondary">overall rating</MudText>
                             </div>
                         </div>
@@ -79,31 +81,31 @@
         </MudCard>
 
         <!-- About Section -->
-        <MudCard Class="mb-6 section-card" Elevation="0">
+        <MudCard Class="mb-6 organization-profile__card" Elevation="0">
             <MudCardHeader>
                 <CardHeaderContent>
                     <MudText Typo="Typo.h6">About the Organization</MudText>
                 </CardHeaderContent>
             </MudCardHeader>
 
-            <MudCardContent Class="section-body">
-                <div class="info-list">
-                    <div class="info-row">
+            <MudCardContent Class="organization-profile__content">
+                <div class="organization-profile__info-list">
+                    <div class="organization-profile__info-row">
                         <MudIcon Icon="@Icons.Material.Filled.Work" Color="Color.Primary" />
                         <MudText Typo="Typo.body1">Organization type: Religious organization</MudText>
                     </div>
-                    <div class="info-row">
+                    <div class="organization-profile__info-row">
                         <MudIcon Icon="@Icons.Material.Filled.LocationOn" Color="Color.Primary" />
                         <MudText Typo="Typo.body1">Location: @_organization.City, @_organization.Country</MudText>
                     </div>
                     @if (!string.IsNullOrEmpty(_organization.WebsiteUrl))
                     {
-                        <div class="info-row">
+                        <div class="organization-profile__info-row">
                             <MudIcon Icon="@Icons.Material.Filled.Language" Color="Color.Primary" />
                             <MudLink Href="@_organization.WebsiteUrl" Target="_blank" Typo="Typo.body1">@_organization.WebsiteUrl</MudLink>
                         </div>
                     }
-                    <div class="info-row">
+                    <div class="organization-profile__info-row">
                         <MudIcon Icon="@Icons.Material.Filled.Email" Color="Color.Primary" />
                         <MudLink Href="@($"mailto:{_organization.Email}")" Typo="Typo.body1">@_organization.Email</MudLink>
                     </div>
@@ -112,7 +114,7 @@
         </MudCard>
 
         <!-- Reviews Section -->
-        <MudCard Class="section-card" Elevation="0">
+        <MudCard Class="organization-profile__card" Elevation="0">
             <MudCardHeader>
                 <CardHeaderContent>
                     <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Style="width:100%;">
@@ -122,14 +124,14 @@
                 </CardHeaderContent>
             </MudCardHeader>
 
-            <MudCardContent Class="section-body">
+            <MudCardContent Class="organization-profile__content">
                 <MudGrid>
                     @if (_reviews.Any())
                     {
                         @foreach (var review in _reviews.Take(3))
                         {
                             <MudItem xs="12" md="4">
-                                <MudPaper Class="pa-4 review" Elevation="0">
+                                <MudPaper Class="pa-4 organization-profile__review" Elevation="0">
                                     <MudStack Spacing="2">
                                         <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
                                             <MudAvatar Size="Size.Medium">
@@ -142,7 +144,7 @@
                                         </MudStack>
 
                                         <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
-                                            <div class="star-rating">
+                                            <div class="organization-profile__rating">
                                                 @for (int i = 1; i <= 5; i++)
                                                 {
                                                     if (i <= review.Rating)
@@ -195,12 +197,12 @@
     protected override async Task OnInitializedAsync()
     {
         // Get route parameter from Blazouter
-        var idStr = RouterState.GetParam("Id");
+        var idStr = RouterState.GetParam("id");
         if (Guid.TryParse(idStr, out var id))
         {
             Id = id;
         }
-        
+
         _isLoading = true;
         _errorMessage = null;
 
@@ -209,12 +211,12 @@
             // Load organization and its reviews
             _organization = await OrganizationService.GetOrganizationByIdAsync(Id);
             _reviews = (await OrganizationReviewService.GetReviewsByOrganizationId(Id)).ToList();
-            Console.WriteLine($"[ORG PROFILE] Loaded organization {Id} with {_reviews.Count} reviews");
+            Logger.LogDebug("Loaded organization {OrganizationId} with {ReviewCount} reviews", Id, _reviews.Count);
         }
         catch (Exception ex)
         {
             _errorMessage = $"Failed to load organization data: {ex.Message}";
-            Console.WriteLine($"[ORG PROFILE] ERROR: {ex.Message}");
+            Logger.LogError(ex, "Error loading organization {OrganizationId}", Id);
         }
         finally
         {
@@ -227,4 +229,3 @@
         Navigation.NavigateTo($"/organization/reviews/{Id}");
     }
 }
-

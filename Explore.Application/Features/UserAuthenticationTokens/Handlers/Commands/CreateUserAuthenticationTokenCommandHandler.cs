@@ -1,5 +1,6 @@
 using MediatR;
 using AutoMapper;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.UserAuthenticationToken;
 using Explore.Application.Features.UserAuthenticationTokens.Requests.Commands;
@@ -13,24 +14,31 @@ namespace Explore.Application.Features.UserAuthenticationTokens.Handlers.Command
     public class CreateUserAuthenticationTokenCommandHandler : IRequestHandler<CreateUserAuthenticationTokenCommand, BaseCommandResponse<Guid>>
     {
         private readonly IUserAuthenticationTokenRepository _userAuthenticationTokenRepository;
+        private readonly IUserRepository _userRepository;
+        private readonly ITenantRepository _tenantRepository;
+        private readonly ITenantContext _tenantContext;
         private readonly IMapper _mapper;
-        private readonly IValidator<CreateUserAuthenticationTokenDto> _validator;
 
         public CreateUserAuthenticationTokenCommandHandler(
             IUserAuthenticationTokenRepository userAuthenticationTokenRepository,
-            IMapper mapper,
-            IValidator<CreateUserAuthenticationTokenDto> validator)
+            IUserRepository userRepository,
+            ITenantRepository tenantRepository,
+            ITenantContext tenantContext,
+            IMapper mapper)
         {
             _userAuthenticationTokenRepository = userAuthenticationTokenRepository;
+            _userRepository = userRepository;
+            _tenantRepository = tenantRepository;
+            _tenantContext = tenantContext;
             _mapper = mapper;
-            _validator = validator;
         }
 
         public async Task<BaseCommandResponse<Guid>> Handle(CreateUserAuthenticationTokenCommand request, CancellationToken cancellationToken)
         {
             var response = new BaseCommandResponse<Guid>();
 
-            var validationResult = await _validator.ValidateAsync(request.UserAuthenticationTokenDto);
+            var validator = new CreateUserAuthenticationTokenDtoValidator(_userRepository, _tenantRepository);
+            var validationResult = await validator.ValidateAsync(request.UserAuthenticationTokenDto);
 
             if (!validationResult.IsValid)
             {
@@ -41,6 +49,10 @@ namespace Explore.Application.Features.UserAuthenticationTokens.Handlers.Command
             }
 
             var token = _mapper.Map<UserAuthenticationToken>(request.UserAuthenticationTokenDto);
+
+            // Set TenantId from the request context
+            token.TenantId = _tenantContext.TenantId;
+
             token = await _userAuthenticationTokenRepository.Create(token);
 
             response.Success = true;

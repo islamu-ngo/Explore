@@ -22,167 +22,104 @@ Provides best practices for implementing **CQRS** (Command Query Responsibility 
 
 ## 📐 CQRS Pattern Overview
 
-```
-┌─────────────────────────────────────────────────────┐
-│                    CQRS with MediatR                        │
-├─────────────────────────────────────────────────────┤
-│                                                             │
-│  WRITE OPERATIONS (Commands)                                │
-│  ────────────────────────────                               │
-│  ┌─────────────┐   ┌─────────────────┐   ┌──────────────┐  │
-│  │  Controller │──▶│ CreateEvent     │──▶│  Event       │  │
-│  │  or Page    │   │ Command         │   │  Created ✓   │  │
-│  └─────────────┘   │                 │   └──────────────┘  │
-│                    │ • Mutates state │                     │
-│                    │ • Returns ID    │                     │
-│                    │ • Validated     │                     │
-│                    └─────────────────┘                     │
-│                                                             │
-│  READ OPERATIONS (Queries)                                  │
-│  ─────────────────────────                                   │
-│  ┌─────────────┐   ┌─────────────────┐   ┌──────────────┐  │
-│  │  Controller │──▶│ GetEventList    │──▶│  EventDto[]  │  │
-│  │  or Page    │   │ Query           │   │  (Read-only) │  │
-│  └─────────────┘   │                 │   └──────────────┘  │
-│                    │ • Read-only     │                     │
-│                    │ • Returns DTOs  │                     │
-│                    │ • No mutations  │                     │
-│                    └─────────────────┘                     │
-│                                                             │
-└─────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph Presentation Layer
+        Controller -- "Sends IRequest" --> MediatR[MediatR]
+    end
+
+    subgraph Application Layer
+        MediatR --> Handler[Handler]
+        Handler --> Validator[Validator]
+        Handler --> Mapper[AutoMapper]
+        Handler --> Repository[Repository]
+        Repository --> Domain[Domain Entities]
+    end
+
+    subgraph Infrastructure Layer
+        Repository --> DB[Database]
+    end
+
+    style MediatR fill:#fbe5c5,stroke:#333
+    style Handler fill:#e5c5fb,stroke:#333
+    style Validator fill:#e5fbe5,stroke:#333
+    style Mapper fill:#fbe5e5,stroke:#333
+    style Repository fill:#c5fbe5,stroke:#333
+    style Domain fill:#c5fbc5,stroke:#333
+    style DB fill:#c5c5fb,stroke:#333
 ```
 
 ## 🔑 Key Principles
 
-1. **Separation**: Commands (write) and Queries (read) are separate
-2. **Single Responsibility**: One handler per request
-3. **Class Requests**: Commands/Queries are classes (not records)
-4. **Validation**: FluentValidation at Application boundary
-5. **Thin Controllers**: Controllers just send requests to MediatR
-6. **CancellationToken**: Always pass to async methods
-7. **Repository Returns Entities**: Handlers map entities to DTOs
-8. **Validators Use Manual Instantiation**: Validators are instantiated in handlers, NOT injected via DI
-9. **Namespaces**: Prefer file-scoped namespaces, but follow the surrounding file style when working in existing code
+1.  **Separation**: Commands (write operations) and Queries (read operations) are distinct.
+2.  **Single Responsibility**: Each handler processes one specific request (command or query).
+3.  **Class Requests**: Commands and Queries are defined as classes.
+4.  **Validation**: FluentValidation is used at the Application boundary for input validation.
+5.  **Thin Controllers**: Controllers should be minimal, primarily responsible for receiving HTTP requests, sending them to MediatR, and returning HTTP responses.
+6.  **CancellationToken**: Always pass `CancellationToken` to all asynchronous methods to enable cancellation.
+7.  **Repository Returns Entities**: Repositories must return domain entities, and handlers are responsible for mapping these entities to DTOs.
+8.  **Validators Use Manual Instantiation**: Validators are instantiated manually within handlers, **NOT** injected via Dependency Injection.
 
 ## 📚 Resources
+
+*For more detailed examples, refer to the `resources/` folder within this skill.*
 
 | Resource | Description |
 |----------|-------------|
 | [command-patterns.md](resources/command-patterns.md) | Command structure, naming, handlers |
 | [query-patterns.md](resources/query-patterns.md) | Query structure, pagination, projections |
 | [handler-patterns.md](resources/handler-patterns.md) | Handler implementation, DI, error handling |
-| [validation-integration.md](resources/validation-integration.md) | FluentValidation pipeline integration |
-| [complete-examples.md](resources/complete-examples.md) | End-to-end feature examples |
+| [validation-integration.md](resources/validation-integration.md) | FluentValidation patterns and manual integration |
+| [complete-examples.md](resources/complete-examples.md) | End-to-end feature examples for CQRS |
 
 ## ⚡ Quick Reference
 
-### Create a New Feature (Command + Query)
+### 1. Command (Write Operation)
 
-**Step 1: Command (Write Operation)**
+Commands represent actions that modify the application's state.
+
 ```csharp
 // File: Explore.Application/Features/Events/Requests/Commands/CreateEventCommand.cs
 namespace Explore.Application.Features.Events.Requests.Commands;
 
 using MediatR;
 using Explore.Application.DTOs.Event;
+using Explore.Application.Responses;
 
 public class CreateEventCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public CreateEventDto EventDto { get; set; }
+    public CreateEventDto EventDto { get; set; } // Command wraps a DTO
 }
 ```
+*For more details, see [command-patterns.md](resources/command-patterns.md).*
 
-**Step 2: Command Validator**
+### 2. Query (Read Operation)
 
-**Real Example (aligned to current `CreateEventDtoValidator.cs`):**
+Queries represent requests for data and should not alter the application's state.
+
 ```csharp
-// File: Explore.Application/DTOs/Event/Validators/CreateEventDtoValidator.cs
-using FluentValidation;
-using Explore.Application.Contracts.Persistence;
+// File: Explore.Application/Features/Events/Requests/Queries/GetEventListRequest.cs
+namespace Explore.Application.Features.Events.Requests.Queries;
 
-public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
+using System.Collections.Generic;
+using Explore.Application.DTOs.Event;
+using MediatR;
+
+public class GetEventListRequest : IRequest<List<EventListDto>>
 {
-    private readonly IAudienceAgeRepository _audienceAgeRepository;
-    private readonly IAudienceGenderRepository _audienceGenderRepository;
-    private readonly IEventTypeRepository _eventTypeRepository;
-    private readonly IOrganizationRepository _organizationRepository;
-    private readonly IStorageObjectRepository _storageObjectRepository;
-
-    public CreateEventDtoValidator(
-        IAudienceAgeRepository audienceAgeRepository,
-        IAudienceGenderRepository audienceGenderRepository,
-        IEventTypeRepository eventTypeRepository,
-        IOrganizationRepository organizationRepository,
-        IStorageObjectRepository storageObjectRepository)
-    {
-        _audienceAgeRepository = audienceAgeRepository;
-        _audienceGenderRepository = audienceGenderRepository;
-        _eventTypeRepository = eventTypeRepository;
-        _organizationRepository = organizationRepository;
-        _storageObjectRepository = storageObjectRepository;
-
-        // Standard validation rules
-        RuleFor(x => x.Title)
-            .NotEmpty().WithMessage("Title is required")
-            .MaximumLength(200);
-
-        RuleFor(x => x.Description)
-            .MaximumLength(5000);
-
-        // Foreign key validation with repository
-        RuleFor(x => x.AudienceAgeId)
-            .NotEmpty().WithMessage("Audience Age is required")
-            .MustAsync(async (id, cancellation) =>
-            {
-                var exists = await _audienceAgeRepository.Exists(id);
-                return exists;
-            })
-            .WithMessage("Audience Age not found");
-
-        RuleFor(x => x.AudienceGenderId)
-            .NotEmpty().WithMessage("Audience Gender is required")
-            .MustAsync(async (id, cancellation) =>
-            {
-                var exists = await _audienceGenderRepository.Exists(id);
-                return exists;
-            })
-            .WithMessage("Audience Gender not found");
-
-        RuleFor(x => x.EventTypeId)
-            .NotEmpty().WithMessage("Event Type is required")
-            .MustAsync(async (id, cancellation) =>
-            {
-                var exists = await _eventTypeRepository.Exists(id);
-                return exists;
-            })
-            .WithMessage("Event Type not found");
-
-        // OrganizationId is optional: validate only if provided
-        RuleFor(x => x.OrganizationId)
-            .MustAsync(async (id, cancellation) =>
-            {
-                if (!id.HasValue) return true;
-                return await _organizationRepository.Exists(id.Value);
-            })
-            .WithMessage("Organization does not exist.");
-
-        // FeaturedImageId is optional: validate only if provided
-        RuleFor(x => x.FeaturedImageId)
-            .MustAsync(async (id, cancellation) =>
-            {
-                if (!id.HasValue) return true;
-                return await _storageObjectRepository.Exists(id.Value);
-            })
-            .WithMessage("FeaturedImageId does not exist.");
-    }
+    // Can include filter properties if needed
 }
 ```
+*For more details, see [query-patterns.md](resources/query-patterns.md).*
 
-**Step 3: Command Handler**
+### 3. Handler (Processing Logic)
 
-**Real Example from Explore.Application/Features/Events/Handlers/Commands/CreateEventCommandHandler.cs:**
+Handlers contain the business logic to execute a command or query.
 
 ```csharp
+// File: Explore.Application/Features/Events/Handlers/Commands/CreateEventCommandHandler.cs
+namespace Explore.Application.Features.Events.Handlers.Commands;
+
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -193,33 +130,15 @@ using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Responses;
 using MediatR;
 
-namespace Explore.Application.Features.Events.Handlers.Commands;
-
 public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<Guid>>
 {
     private readonly IEventRepository _eventRepository;
-    private readonly IAudienceAgeRepository _audienceAgeRepository;
-    private readonly IAudienceGenderRepository _audienceGenderRepository;
-    private readonly IEventTypeRepository _eventTypeRepository;
-    private readonly IOrganizationRepository _organizationRepository;
-    private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly IMapper _mapper;
+    // ... other dependencies needed for validation or business logic
 
-    public CreateEventCommandHandler(
-        IEventRepository eventRepository, 
-        IAudienceAgeRepository audienceAgeRepository,
-        IAudienceGenderRepository audienceGenderRepository,
-        IEventTypeRepository eventTypeRepository,
-        IOrganizationRepository organizationRepository,
-        IStorageObjectRepository storageObjectRepository, 
-        IMapper mapper)
+    public CreateEventCommandHandler(IEventRepository eventRepository, IMapper mapper /* ... */)
     {
         _eventRepository = eventRepository;
-        _audienceAgeRepository = audienceAgeRepository;
-        _audienceGenderRepository = audienceGenderRepository;
-        _eventTypeRepository = eventTypeRepository;
-        _organizationRepository = organizationRepository;
-        _storageObjectRepository = storageObjectRepository;
         _mapper = mapper;
     }
 
@@ -227,14 +146,8 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     {
         var response = new BaseCommandResponse<Guid>();
 
-        // CRITICAL: Validate using FluentValidation - Validator instantiated manually with dependencies
-        var validator = new CreateEventDtoValidator(
-            _audienceAgeRepository, 
-            _audienceGenderRepository, 
-            _eventTypeRepository, 
-            _organizationRepository, 
-            _storageObjectRepository);
-        
+        // ✅ CRITICAL: Manual validator instantiation with dependencies
+        var validator = new CreateEventDtoValidator(/* repositories */);
         var validationResult = await validator.ValidateAsync(request.EventDto, cancellationToken);
 
         if (!validationResult.IsValid)
@@ -245,264 +158,72 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             return response;
         }
 
-        // Map DTO to Entity
         var @event = _mapper.Map<Event>(request.EventDto);
-        @event.TotalViews = 0;  // Set non-mapped properties
-
-        // Save through repository
+        @event.TotalViews = 0; // Set properties not coming from DTO
         @event = await _eventRepository.Create(@event);
 
         response.Success = true;
         response.Id = @event.Id;
         response.Message = "Event created successfully.";
-
         return response;
     }
 }
 ```
+*For more details, see [handler-patterns.md](resources/handler-patterns.md).*
 
-**Step 4: Query (Read Operation)**
-```csharp
-// File: Explore.Application/Features/Events/Requests/Queries/GetEventListRequest.cs
-namespace Explore.Application.Features.Events.Requests.Queries;
+### 4. Validation (Manual Integration)
 
-using MediatR;
-
-public class GetEventListRequest : IRequest<List<EventListDto>>
-{
-}
-```
-
-**Step 5: Query Handler**
-
-**Real Example from Explore.Application/Features/Events/Handlers/Queries/GetEventListRequestHandler.cs:**
+FluentValidation is used for input validation, with validators instantiated manually within handlers.
 
 ```csharp
-namespace Explore.Application.Features.Events.Handlers.Queries;
+// File: Explore.Application/DTOs/Event/Validators/CreateEventDtoValidator.cs
+namespace Explore.Application.DTOs.Event.Validators;
 
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using AutoMapper;
+using FluentValidation;
 using Explore.Application.Contracts.Persistence;
-using Explore.Application.DTOs.Event;
-using Explore.Application.Features.Events.Requests.Queries;
-using MediatR;
 
-public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, List<EventListDto>>
+public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
 {
-    private readonly IEventRepository _eventRepository;
-    private readonly IMapper _mapper;
-
-    public GetEventListRequestHandler(IEventRepository eventRepository, IMapper mapper)
+    public CreateEventDtoValidator(IAudienceAgeRepository audienceAgeRepository /* ... */)
     {
-        _eventRepository = eventRepository;
-        _mapper = mapper;
-    }
+        // ... inject repositories needed for FK validation
 
-    public async Task<List<EventListDto>> Handle(GetEventListRequest request, CancellationToken cancellationToken)
-    {
-        // Repository returns ENTITIES
-        var events = await _eventRepository.GetEventsWithDetails();
-
-        // AutoMapper maps ENTITIES to DTOs
-        return _mapper.Map<List<EventListDto>>(events);
+        RuleFor(x => x.Title)
+            .NotEmpty().WithMessage("Title is required")
+            .MaximumLength(200);
+        
+        RuleFor(x => x.AudienceAgeId)
+            .NotEmpty().WithMessage("Audience Age is required")
+            .MustAsync(async (id, cancellation) => await audienceAgeRepository.Exists(id))
+            .WithMessage("Audience Age not found");
     }
 }
 ```
-
-**Step 6: Controller (Thin)**
-
-**Real Example from Explore.API/Controllers/EventController.cs:**
-
-```csharp
-namespace Explore.API.Controllers;
-
-using Explore.Application.DTOs.Event;
-using Explore.Application.Features.Events.Requests.Commands;
-using Explore.Application.Features.Events.Requests.Queries;
-using Explore.Application.Responses;
-using MediatR;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-
-[Route("api/v1/[controller]")]
-[ApiController]
-public class EventController : ControllerBase
-{
-    private readonly IMediator _mediator;
-    private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly ILogger<EventController> _logger;
-
-    public EventController(
-        IMediator mediator, 
-        IHttpContextAccessor httpContextAccessor, 
-        ILogger<EventController> logger)
-    {
-        _mediator = mediator;
-        _httpContextAccessor = httpContextAccessor;
-        _logger = logger;
-    }
-
-    // GET: api/v1/event
-    [HttpGet]
-    [EndpointSummary("Get all Events (Conference, Webinar, Workshop ...)")]
-    [EndpointDescription("Get A List of all the Events")]
-    [AllowAnonymous]
-    public async Task<ActionResult<List<EventListDto>>> GetAll()
-    {
-        var events = await _mediator.Send(new GetEventListRequest());
-        return Ok(events);
-    }
-
-    // GET: api/v1/event/{id}
-    [HttpGet("{id}")]
-    [EndpointSummary("Get Event Details")]
-    [EndpointDescription("Get Details of the Event")]
-    [AllowAnonymous]
-    public async Task<ActionResult<EventDto>> GetById(Guid id)
-    {
-        var @event = await _mediator.Send(new GetEventDetailsRequest { Id = id });
-        return Ok(@event);
-    }
-
-    // POST: api/v1/event
-    [HttpPost]
-    [EndpointSummary("Create an Event")]
-    [EndpointDescription("Create a new event")]
-    [Authorize]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventDto @event)
-    {
-        var command = new CreateEventCommand { EventDto = @event };
-        var response = await _mediator.Send(command);
-        return Ok(response);
-    }
-
-    // PUT: api/v1/event/{id}
-    [HttpPut("{id}")]
-    [EndpointSummary("Update an Event")]
-    [EndpointDescription("Update an existing event")]
-    [Authorize]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventDto @event)
-    {
-        if (id != @event.Id)
-        {
-            return BadRequest(new { error = "Event ID mismatch" });
-        }
-
-        var command = new UpdateEventCommand { EventDto = @event };
-        var response = await _mediator.Send(command);
-        
-        if (!response.Success)
-        {
-            return BadRequest(response);
-        }
-        
-        return Ok(response);
-    }
-
-    // DELETE: api/v1/event/{id}
-    [HttpDelete("{id}")]
-    [EndpointSummary("Delete an Event")]
-    [EndpointDescription("Delete an event (only if user owns the organization)")]
-    [Authorize]
-    public async Task<ActionResult> Delete(Guid id)
-    {
-        try
-        {
-            var userId = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
-                ?? _httpContextAccessor.HttpContext?.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
-                ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sid")?.Value;
-
-            if (string.IsNullOrEmpty(userId))
-            {
-                return Unauthorized(new { error = "User ID not found in token" });
-            }
-
-            var command = new DeleteEventCommand { Id = id, UserId = userId };
-            var result = await _mediator.Send(command);
-
-            if (!result)
-            {
-                return NotFound(new { error = "Event not found or you don't have permission to delete it" });
-            }
-
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error deleting event {EventId}", id);
-            return StatusCode(500, new { error = ex.Message });
-        }
-    }
-}
-```
+*For more details, see [validation-integration.md](resources/validation-integration.md).*
 
 ## ✅ Do's
 
-- ✅ **DO** use classes (not records) for Commands/Queries
-- ✅ **DO** suffix with `Command` or `Query`
-- ✅ **DO** suffix handlers with `Handler`
-- ✅ **DO** pass `CancellationToken` to all async methods
-- ✅ **DO** use repositories that return entities (not DTOs)
-- ✅ **DO** validate inputs with FluentValidation
-- ✅ **DO** keep handlers focused (Single Responsibility)
-- ✅ **DO** use AutoMapper for entity → DTO mapping
-- ✅ **DO** use `[AllowAnonymous]` for GET endpoints
-- ✅ **DO** use `[Authorize]` for POST/PUT/DELETE
-- ✅ **DO** instantiate validators manually with dependencies (NOT DI inject)
-- ✅ **DO** implement `IDisposable` for event cleanup
+-   ✅ **DO** separate Commands (write) and Queries (read).
+-   ✅ **DO** use classes for Commands/Queries (not records).
+-   ✅ **DO** pass `CancellationToken` to all asynchronous methods.
+-   ✅ **DO** use repositories that return domain entities (not DTOs).
+-   ✅ **DO** perform DTO mapping in handlers using AutoMapper.
+-   ✅ **DO** instantiate validators manually within handlers.
+-   ✅ **DO** keep controllers thin, delegating to MediatR.
+-   ✅ **DO** use `BaseCommandResponse<Guid>` for command responses (except `bool` for Delete).
 
 ## ❌ Don'ts
 
-- ❌ **DON'T** use records (use classes instead)
-- ❌ **DON'T** return entities from queries (use DTOs)
-- ❌ **DON'T** put business logic in controllers
-- ❌ **DON'T** use `IRequest` without a response type
-- ❌ **DON'T** forget `CancellationToken`
-- ❌ **DON'T** use `.Result` or `.Wait()` (use `await`)
-- ❌ **DON'T** query in commands (use repositories)
-- ❌ **DON'T** mutate state in queries
-- ❌ **DON'T** throw exceptions for validation (use FluentValidation)
-- ❌ **DON'T** extract userId without fallback pattern (sub → nameidentifier → sid)
-- ❌ **DON'T** inject validators via DI (instantiate manually with dependencies)
-
-## 🔄 MediatR Pipeline
-
-```
-Request
-   │
-   ▼
-[Pre-Processors]     ← Audit logging
-   │
-   ▼
-[Pipeline Behaviors] ← Validation (FluentValidation)
-   │                  ← Logging
-   ▼                  ← Performance monitoring
-[Handler]            ← Your business logic
-   │
-   ▼
-[Post-Processors]    ← Caching
-   │
-   ▼
-Response
-```
-
-## 📖 Deep Dive
-
-For comprehensive guidance:
-- **Command Patterns**: [command-patterns.md](resources/command-patterns.md)
-- **Query Patterns**: [query-patterns.md](resources/query-patterns.md)
-- **Handler Patterns**: [handler-patterns.md](resources/handler-patterns.md)
-- **Validation**: [validation-integration.md](resources/validation-integration.md)
-- **Complete Examples**: [complete-examples.md](resources/complete-examples.md)
+-   ❌ **DON'T** return entities directly from query handlers.
+-   ❌ **DON'T** put business logic in controllers.
+-   ❌ **DON'T** use `IRequest` without a response type.
+-   ❌ **DON'T** use `.Result` or `.Wait()` in asynchronous code.
+-   ❌ **DON'T** mutate state in query handlers.
+-   ❌ **DON'T** throw exceptions for business validation failures; return them in the `BaseCommandResponse`.
+-   ❌ **DON'T** inject validators via Dependency Injection.
 
 ---
 
-**Related Skills**:
-- `clean-architecture-rules` - Ensures handlers are in correct layer
-- `dotnet-efcore-guidelines` - Database access patterns for handlers
-- `backend-dev-guidelines` - Overall backend architecture
-- `blazor-mudblazor-guidelines` - Blazor component patterns
-
-**Enforcement Level**: 💡 SUGGEST (Provides guidance, doesn't block)
+**Related Documentation**:
+- [`docs/ARCHITECTURE.md`](../../../docs/ARCHITECTURE.md) - Overall system architecture.
+- [`clean-architecture-rules`](../../clean-architecture-rules/SKILL.md) - Dependency enforcement.

@@ -3,13 +3,15 @@
 @using Explore.Blazor.Client.Clients
 @using Microsoft.AspNetCore.Components
 @using Blazouter.Services
+@using Microsoft.Extensions.Logging
 @inject IOrganizationService OrganizationService
 @inject IOrganizationReviewService OrganizationReviewService
 @inject NavigationManager Navigation
 @inject RouterStateService RouterState
+@inject ILogger<OrganizationReviews> Logger
 
 <PageTitle>Organization Reviews</PageTitle>
-<MudContainer Class="py-6">
+<MudContainer Class="organization-reviews">
     <MudButton StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="GoBack" Class="mb-4">Back to Profile</MudButton>
 
     @if (_isLoading)
@@ -33,7 +35,7 @@
                 @foreach (var review in _reviews)
                 {
                     <MudItem xs="12" md="6">
-                        <MudPaper Class="pa-4 review-card" Elevation="0">
+                        <MudPaper Class="pa-4 organization-reviews__card" Elevation="0">
                             <MudStack Spacing="2">
                                 <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
                                     <MudAvatar Size="Size.Medium" Color="Color.Primary">
@@ -46,7 +48,7 @@
                                 </MudStack>
 
                                 <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
-                                    <div class="star-rating">
+                                    <div class="organization-reviews__rating">
                                         @for (int i = 1; i <= 5; i++)
                                         {
                                             if (i <= review.Rating)
@@ -92,12 +94,12 @@
     protected override async Task OnInitializedAsync()
     {
         // Get route parameter from Blazouter
-        var idStr = RouterState.GetParam("Id");
+        var idStr = RouterState.GetParam("id");
         if (Guid.TryParse(idStr, out var id))
         {
             Id = id;
         }
-        
+
         _isLoading = true;
         _errorMessage = null;
 
@@ -106,12 +108,12 @@
             // Load organization and its reviews from API (client-side)
             _organization = await OrganizationService.GetOrganizationByIdAsync(Id);
             _reviews = (await OrganizationReviewService.GetReviewsByOrganizationId(Id)).ToList();
-            Console.WriteLine($"[ORG REVIEWS] Loaded organization {Id} with {_reviews.Count} reviews");
+            Logger.LogDebug("Loaded organization {OrganizationId} with {ReviewCount} reviews", Id, _reviews.Count);
         }
         catch (Exception ex)
         {
             _errorMessage = $"Failed to load reviews: {ex.Message}";
-            Console.WriteLine($"[ORG REVIEWS] ERROR: {ex.Message}");
+            Logger.LogError(ex, "Failed to load organization reviews for {OrganizationId}", Id);
         }
         finally
         {
@@ -128,4 +130,3 @@
         Navigation.NavigateTo($"/organization/profile/{Id}");
     }
 }
-

@@ -134,9 +134,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = true,
             ValidateIssuer = true,
             ValidIssuer = authority,
-            // it only checks if envirement variable isnullorempty... I need audience to contain identity-api !!
-            //ValidateAudience = !string.IsNullOrEmpty(builder.Configuration["Keycloak:Audience"]),
-            ValidAudiences = new[] { "explore-api" },
+            // Accept tokens from both the API client and the Blazor client
+            // explore-api: Direct API access (Swagger, external clients)
+            // explore-blazor-server: Blazor Server BFF pattern (forwards tokens from Keycloak OIDC)
+            // account: Keycloak account service (common audience in Keycloak tokens)
+            ValidAudiences = new[] { "explore-api", "explore-blazor-server", "account" },
             ValidateLifetime = true,
             NameClaimType = "preferred_username",
             RoleClaimType = "roles"
@@ -146,6 +148,44 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             ServerCertificateCustomValidationCallback =
                 HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+        };
+
+        // Add JWT events for debugging authentication issues
+        options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
+        {
+            OnAuthenticationFailed = context =>
+            {
+                var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+                logger.LogWarning("[JWT] Authentication failed: {Error}", context.Exception?.Message);
+                if (context.Exception?.InnerException != null)
+                {
+                    logger.LogWarning("[JWT] Inner exception: {Inner}", context.Exception.InnerException.Message);
+                }
+                return Task.CompletedTask;
+            },
+            OnTokenValidated = context =>
+            {
+                var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+                var claims = context.Principal?.Claims.Select(c => $"{c.Type}={c.Value}");
+                logger.LogInformation("[JWT] Token validated successfully. Claims: {Claims}", string.Join(", ", claims ?? Array.Empty<string>()));
+                return Task.CompletedTask;
+            },
+            OnChallenge = context =>
+            {
+                var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+                logger.LogWarning("[JWT] Challenge issued. Error: {Error}, ErrorDescription: {Desc}",
+                    context.Error, context.ErrorDescription);
+                return Task.CompletedTask;
+            },
+            OnMessageReceived = context =>
+            {
+                var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+                var hasToken = !string.IsNullOrEmpty(context.Token) ||
+                               context.Request.Headers.ContainsKey("Authorization");
+                logger.LogInformation("[JWT] Message received. Has token: {HasToken}, Path: {Path}",
+                    hasToken, context.Request.Path);
+                return Task.CompletedTask;
+            }
         };
     });
 

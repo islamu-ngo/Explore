@@ -43,16 +43,15 @@ You are a security testing specialist for the ISLAMU Event platform. You test AP
 
 ## CRITICAL: Authorization Pattern
 
-**ISLAMU Event uses this pattern:**
-- **GET endpoints**: `[AllowAnonymous]` - public read access
-- **POST/PUT/DELETE endpoints**: `[Authorize]` - authenticated write access
-- **User ID extraction**: Fallback order `sub` → `nameidentifier` → `sid`
+For the application's authorization pattern (public read access for GET, authenticated write access for POST/PUT/DELETE) and the critical user ID extraction fallback pattern (`sub` → `nameidentifier` → `sid`), refer to the `auth-patterns` skill and its [user-id-extraction.md](skills/auth-patterns/resources/user-id-extraction.md) resource.
 
 ## Test Categories
 
 ### 1. Unauthenticated Access Tests (PowerShell)
 
 **Verify that protected endpoints reject unauthenticated requests.**
+
+Refer to the `auth-patterns` skill for details on expected behavior for HTTP 401 Unauthorized responses.
 
 ```powershell
 # ✅ GET endpoints should succeed without auth (AllowAnonymous)
@@ -77,6 +76,8 @@ try {
 
 **Verify that invalid/malformed tokens are rejected.**
 
+Refer to the `auth-patterns` skill for details on expected behavior for HTTP 401 Unauthorized responses due to invalid tokens.
+
 ```powershell
 # ❌ Invalid token format
 try {
@@ -95,6 +96,8 @@ try {
 ### 3. Authorization Tests (Resource Ownership) - PowerShell
 
 **Verify that users can only access their own resources.**
+
+Refer to the `auth-patterns` skill for details on implementing resource-level authorization. Expected failures are typically HTTP 403 Forbidden.
 
 ```powershell
 # Get JWT token for User A
@@ -156,6 +159,8 @@ try {
 
 **Verify that admin-only actions are protected.**
 
+Refer to the `auth-patterns` skill for details on role-based authorization. Expected failures are typically HTTP 403 Forbidden.
+
 ```powershell
 # Regular user token
 $tokenUser = "eyJhbGciOiJSUzI1..."
@@ -185,6 +190,8 @@ Invoke-RestMethod -Uri "https://localhost:7001/api/v1/organization/{id}/verify" 
 ### 5. Input Validation Tests (PowerShell)
 
 **Verify that invalid input is rejected with proper error messages.**
+
+Refer to the `cqrs-mediatr-guidelines` skill for details on FluentValidation usage and the `clean-architecture-rules` skill for rules on domain model validation. Expected failures are typically HTTP 400 Bad Request with validation errors.
 
 ```powershell
 $token = "eyJhbGciOiJSUzI1..."
@@ -229,6 +236,8 @@ try {
 
 **Verify that SQL injection attempts are blocked.**
 
+Refer to the `error-tracking` skill for general security considerations and logging of such attempts. Expected results are typically a 400 Bad Request or safe query results (no database error).
+
 ```powershell
 $token = "eyJhbGciOiJSUzI1..."
 
@@ -246,6 +255,8 @@ try {
 ### 7. XSS Prevention Tests (PowerShell)
 
 **Verify that XSS payloads are sanitized.**
+
+Refer to the `error-tracking` skill for general security considerations and logging of such attempts. Expected behavior is HTML encoded or stripped script tags upon retrieval.
 
 ```powershell
 $token = "eyJhbGciOiJSUzI1..."
@@ -274,6 +285,8 @@ $response = Invoke-RestMethod -Uri "https://localhost:7001/api/v1/event" `
 
 **Verify CORS configuration is secure.**
 
+Refer to the `auth-patterns` skill for guidelines on configuring CORS, especially when using credentials with specific origins.
+
 ```powershell
 # ❌ Request from unauthorized origin
 $response = Invoke-WebRequest -Uri "https://localhost:7001/api/v1/event" `
@@ -291,6 +304,8 @@ $response.Headers["Access-Control-Allow-Origin"]  # Should be https://localhost:
 ### 9. Business Logic Tests (PowerShell)
 
 **Verify CRUD operations work correctly following CQRS patterns.**
+
+Refer to the `cqrs-mediatr-guidelines` skill for details on expected request/response patterns for Commands and Queries.
 
 ```powershell
 $token = "eyJhbGciOiJSUzI1..."
@@ -673,9 +688,12 @@ Use this checklist for each endpoint:
 
 ## Related Skills
 
-- `clean-architecture-rules` - Layer separation and security boundaries
-- `cqrs-mediatr-guidelines` - Handler validation and authorization
-- `backend-dev-guidelines` - API security best practices
+- [`clean-architecture-rules`](../clean-architecture-rules/SKILL.md) - Layer separation and security boundaries
+- [`cqrs-mediatr-guidelines`](../cqrs-mediatr-guidelines/SKILL.md) - Handler validation and authorization
+- [`auth-patterns`](../auth-patterns/SKILL.md) - Comprehensive authentication and authorization rules
+- [`blazor-bff-patterns`](../blazor-bff-patterns/SKILL.md) - Blazor-specific authentication patterns
+- [`error-tracking`](../error-tracking/SKILL.md) - Security logging and error handling
+
 
 ## Output Format
 

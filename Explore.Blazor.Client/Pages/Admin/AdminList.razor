@@ -2,26 +2,28 @@
 @using Explore.Blazor.Client.Clients;
 @using Explore.Blazor.Client.Services
 @using Microsoft.AspNetCore.Components
+@using Microsoft.Extensions.Logging
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
 @inject IAdminService AdminService
 @inject IUserService UserService
-<div class="admin-page">
+@inject ILogger<AdminList> Logger
+<div class="admin-list">
 
     <!-- HERO -->
-    <MudPaper Class="hero" Elevation="0">
-        <div class="hero-top">
+    <MudPaper Class="admin-list__hero" Elevation="0">
+        <div class="admin-list__hero-top">
             <div>
-                <div class="hero-title">
-                    <div class="hero-badge">
+                <div class="admin-list__hero-title">
+                    <div class="admin-list__hero-badge">
                         <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Color="Color.Primary" />
                     </div>
                     <div>
                         <MudText Typo="Typo.h4" Style="font-weight:800; letter-spacing:.2px;">
                             Admin Dashboard
                         </MudText>
-                        <MudText Typo="Typo.body2" Class="hero-sub">
+                        <MudText Typo="Typo.body2" Class="admin-list__hero-subtitle">
                             Review and action incoming organization requests
                         </MudText>
                     </div>
@@ -40,39 +42,39 @@
         </div>
 
         <!-- STATS -->
-        <div class="stats">
-            <div class="stat-card">
-                <div class="stat-row">
-                    <div class="stat-icon i-pending">
+        <div class="admin-list__stats">
+            <div class="admin-list__stat">
+                <div class="admin-list__stat-row">
+                    <div class="admin-list__stat-icon admin-list__stat-icon--pending">
                         <MudIcon Icon="@Icons.Material.Filled.HourglassBottom" Color="Color.Info" />
                     </div>
                     <div>
-                        <div class="stat-label">Pending</div>
-                        <div class="stat-value">@PendingCount</div>
+                        <div class="admin-list__stat-label">Pending</div>
+                        <div class="admin-list__stat-value">@PendingCount</div>
                     </div>
                 </div>
             </div>
 
-            <div class="stat-card">
-                <div class="stat-row">
-                    <div class="stat-icon i-approved">
+            <div class="admin-list__stat">
+                <div class="admin-list__stat-row">
+                    <div class="admin-list__stat-icon admin-list__stat-icon--approved">
                         <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" />
                     </div>
                     <div>
-                        <div class="stat-label">Approved</div>
-                        <div class="stat-value">@ApprovedCount</div>
+                        <div class="admin-list__stat-label">Approved</div>
+                        <div class="admin-list__stat-value">@ApprovedCount</div>
                     </div>
                 </div>
             </div>
 
-            <div class="stat-card">
-                <div class="stat-row">
-                    <div class="stat-icon i-rejected">
+            <div class="admin-list__stat">
+                <div class="admin-list__stat-row">
+                    <div class="admin-list__stat-icon admin-list__stat-icon--rejected">
                         <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Error" />
                     </div>
                     <div>
-                        <div class="stat-label">Rejected</div>
-                        <div class="stat-value">@RejectedCount</div>
+                        <div class="admin-list__stat-label">Rejected</div>
+                        <div class="admin-list__stat-value">@RejectedCount</div>
                     </div>
                 </div>
             </div>
@@ -81,29 +83,29 @@
 
     @if (_isLoading)
     {
-        <MudPaper Class="panel" Elevation="0" Style="margin-top:14px;">
+        <MudPaper Class="admin-list__panel" Elevation="0" Style="margin-top:14px;">
             <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="py-4">
                 <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
                 <MudText Typo="Typo.body1">Loading organization requests…</MudText>
-                <MudText Typo="Typo.caption" Class="muted">Please wait a moment.</MudText>
+                <MudText Typo="Typo.caption" Class="admin-list__muted">Please wait a moment.</MudText>
             </MudStack>
         </MudPaper>
     }
     else
     {
-        <div class="section">
-            <div class="section-head">
+        <div class="admin-list__section">
+            <div class="admin-list__section-head">
                 <div>
                     <MudText Typo="Typo.h5" Style="font-weight:800;">Admin Management</MudText>
-                    <MudText Typo="Typo.body2" Class="muted">
+                    <MudText Typo="Typo.body2" Class="admin-list__muted">
                         Showing oldest first • @_organizationRequests.Count requests
                     </MudText>
                 </div>
             </div>
 
             <!-- TOOLBAR -->
-            <MudPaper Class="panel" Elevation="0">
-                <div class="toolbar">
+            <MudPaper Class="admin-list__panel" Elevation="0">
+                <div class="admin-list__toolbar">
                     <MudTextField @bind-Value="_search"
                                   Placeholder="Search by name, email, city, country…"
                                   Adornment="Adornment.Start"
@@ -116,7 +118,7 @@
 
                     <MudDivider Vertical="true" Class="mx-2" />
 
-                    <div class="chip-row">
+                    <div class="admin-list__chip-row">
                         <MudChip T="bool"
                                  Selected="@IsStatusSelected(RequestStatus.Pending)"
                                  OnClick="@(() => ToggleStatus(RequestStatus.Pending))"
@@ -165,7 +167,7 @@
             </MudPaper>
 
             <!-- TABS -->
-            <MudPaper Class="tabs-wrap" Elevation="0" Style="margin-top:12px;">
+            <MudPaper Class="admin-list__tabs" Elevation="0" Style="margin-top:12px;">
                 <MudTabs @bind-ActivePanelIndex="_activeTab"
                          Rounded="true"
                          Border="true"
@@ -214,13 +216,13 @@
 
         try
         {
-            Console.WriteLine("[ADMIN] Loading organizations from API");
+            Logger.LogDebug("Loading organizations from API");
             var tempOrgs = await AdminService.GetOrganizationRequestsAsync();
 
             if (tempOrgs != null)
             {
                 _organizationRequests = tempOrgs;
-                Console.WriteLine($"[ADMIN] Loaded {_organizationRequests.Count} organizations");
+                Logger.LogDebug("Loaded {OrganizationCount} organizations", _organizationRequests.Count);
             }
             else
             {
@@ -230,7 +232,7 @@
         catch (Exception ex)
         {
             _errorMessage = $"Failed to load organizations: {ex.Message}";
-            Console.WriteLine($"[ADMIN] ERROR: {ex.Message}");
+            Logger.LogError(ex, "Failed to load organizations");
             Snackbar.Add(_errorMessage, Severity.Error);
             _organizationRequests = new List<OrganizationListDto>();
         }
@@ -284,7 +286,7 @@
 
     // ====== TABLE (UI modernisée, logique identique) ======
     private RenderFragment TableMarkup(IEnumerable<OrganizationListDto> items) => @<div>
-        <MudPaper Class="table-wrap" Elevation="0" Style="margin-top:12px;">
+        <MudPaper Class="admin-list__table" Elevation="0" Style="margin-top:12px;">
             <MudTable Items="items" Hover="true" Breakpoint="Breakpoint.Sm" Dense="true">
                 <HeaderContent>
                     <MudTh style="width:190px">Submitted</MudTh>
@@ -304,20 +306,20 @@
                     </MudTd>
 
                     <MudTd DataLabel="ID">
-                        <MudText Class="id-mono">@context.Id.ToString()[..8]…</MudText>
+                        <MudText Class="admin-list__id">@context.Id.ToString()[..8]…</MudText>
                     </MudTd>
 
                     <MudTd DataLabel="Organization">
-                        <div class="row-org">
+                        <div class="admin-list__org-row">
                             <MudAvatar Size="Size.Medium" Variant="Variant.Filled" Style="border-radius:14px;">
                                 <MudIcon Icon="@Icons.Material.Filled.Business" />
                             </MudAvatar>
 
-                            <div class="org-meta">
+                            <div class="admin-list__org-meta">
                                 <MudText Typo="Typo.subtitle2" Style="font-weight:750;">
                                     @context.FullName
                                 </MudText>
-                                <MudText Typo="Typo.caption" Class="muted">
+                                <MudText Typo="Typo.caption" Class="admin-list__muted">
                                     @(context.City ?? "Unknown"), @(context.Country ?? "Unknown") • @context.Email
                                 </MudText>
                             </div>
@@ -328,13 +330,13 @@
                         <MudChip T="string"
                                  Color="@StatusColor((RequestStatus)context.ApprovalStatusId)"
                                  Variant="Variant.Filled"
-                                 Class="status-pill">
+                                 Class="admin-list__status-pill">
                             @context.StatusTypeFullName
                         </MudChip>
                     </MudTd>
 
                     <MudTd DataLabel="Actions" Style="text-align:center">
-                        <div class="table-actions">
+                        <div class="admin-list__actions">
                             @if (context.ApprovalStatusId == (int)RequestStatus.Pending)
                             {
                                 <MudTooltip Text="Approve">
@@ -379,7 +381,7 @@
                         <MudButton Variant="Variant.Filled"
                                    Color="Color.Primary"
                                    Size="Size.Small"
-                                   Class="details-btn"
+                                   Class="admin-list__details-btn"
                                    StartIcon="@Icons.Material.Filled.Visibility"
                                    OnClick="@(() => Nav.NavigateTo($"/admin/organization/{context.Id}"))">
                             Details
@@ -388,10 +390,10 @@
                 </RowTemplate>
 
                 <NoRecordsContent>
-                    <div class="empty-state">
+                    <div class="admin-list__empty">
                         <MudIcon Icon="@Icons.Material.Filled.Inbox" Size="Size.Large" />
                         <MudText Typo="Typo.h6" Style="margin-top:10px; font-weight:800;">No matching requests</MudText>
-                        <MudText Typo="Typo.body2" Class="muted">Try clearing filters or changing your search.</MudText>
+                        <MudText Typo="Typo.body2" Class="admin-list__muted">Try clearing filters or changing your search.</MudText>
                         <MudButton Variant="Variant.Outlined"
                                    Color="Color.Primary"
                                    OnClick="ClearFilters"
@@ -404,23 +406,23 @@
         </MudPaper>
 
         <!-- Mobile cards view -->
-        <div class="mobile-cards" style="margin-top:12px;">
+        <div class="admin-list__mobile" style="margin-top:12px;">
             @foreach (var org in items)
             {
-                <div class="org-card">
-                    <div class="card-header">
-                        <div class="card-title">
+                <div class="admin-list__card">
+                    <div class="admin-list__card-header">
+                        <div class="admin-list__card-title">
                             <MudAvatar Size="Size.Small" Variant="Variant.Filled" Style="border-radius:10px;">
                                 <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" />
                             </MudAvatar>
                             <div>
                                 <MudText Typo="Typo.body2" Style="font-weight:700;">@org.FullName</MudText>
-                                <div class="card-meta">
+                                <div class="admin-list__card-meta">
                                     @(org.City ?? "Unknown"), @(org.Country ?? "Unknown")
                                 </div>
                             </div>
                         </div>
-                        <div class="card-status">
+                        <div class="admin-list__card-status">
                             <MudChip T="string"
                                      Color="@StatusColor((RequestStatus)org.ApprovalStatusId)"
                                      Variant="Variant.Filled"
@@ -430,22 +432,22 @@
                         </div>
                     </div>
 
-                    <div class="card-body">
-                        <div class="card-row">
-                            <span class="card-label">Email:</span>
-                            <span class="card-value">@org.Email</span>
+                    <div class="admin-list__card-body">
+                        <div class="admin-list__card-row">
+                            <span class="admin-list__card-label">Email:</span>
+                            <span class="admin-list__card-value">@org.Email</span>
                         </div>
-                        <div class="card-row">
-                            <span class="card-label">ID:</span>
-                            <span class="card-value">@org.Id.ToString()[..8]…</span>
+                        <div class="admin-list__card-row">
+                            <span class="admin-list__card-label">ID:</span>
+                            <span class="admin-list__card-value">@org.Id.ToString()[..8]…</span>
                         </div>
-                        <div class="card-row">
-                            <span class="card-label">Submitted:</span>
-                            <span class="card-value">@GetRelative(org.CreatedAt)</span>
+                        <div class="admin-list__card-row">
+                            <span class="admin-list__card-label">Submitted:</span>
+                            <span class="admin-list__card-value">@GetRelative(org.CreatedAt)</span>
                         </div>
                     </div>
 
-                    <div class="card-actions">
+                    <div class="admin-list__card-actions">
                         @if (org.ApprovalStatusId == (int)RequestStatus.Pending)
                         {
                             <MudButton Variant="Variant.Filled"
@@ -495,10 +497,10 @@
             }
             @if (!items.Any())
             {
-                <div class="empty-state">
+                <div class="admin-list__empty">
                     <MudIcon Icon="@Icons.Material.Filled.Inbox" Size="Size.Large" />
                     <MudText Typo="Typo.h6" Style="margin-top:10px; font-weight:800;">No matching requests</MudText>
-                    <MudText Typo="Typo.body2" Class="muted">Try clearing filters or changing your search.</MudText>
+                    <MudText Typo="Typo.body2" Class="admin-list__muted">Try clearing filters or changing your search.</MudText>
                     <MudButton Variant="Variant.Outlined"
                                Color="Color.Primary"
                                OnClick="ClearFilters"
@@ -605,4 +607,3 @@
         }
     }
 }
-

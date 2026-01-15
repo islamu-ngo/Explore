@@ -5,11 +5,12 @@ using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Organization;
 using Explore.Application.Features.Organizations.Requests.Queries;
+using Explore.Application.Responses;
 using MediatR;
 
 namespace Explore.Application.Features.Organizations.Handlers.Queries
 {
-    public class GetOrganizationListRequestHandler : IRequestHandler<GetOrganizationListRequest, List<OrganizationListDto>>
+    public class GetOrganizationListRequestHandler : IRequestHandler<GetOrganizationListRequest, PaginatedResult<OrganizationListDto>>
     {
         private readonly IOrganizationRepository _organizationRepository;
         private readonly IMapper _mapper;
@@ -20,11 +21,13 @@ namespace Explore.Application.Features.Organizations.Handlers.Queries
             _mapper = mapper;
         }
 
-        public async Task<List<OrganizationListDto>> Handle(GetOrganizationListRequest request, CancellationToken cancellationToken)
+        public async Task<PaginatedResult<OrganizationListDto>> Handle(GetOrganizationListRequest request, CancellationToken cancellationToken)
         {
             // Get organizations with ApprovalStatus for admin purposes
-            var organizations = await _organizationRepository.GetOrganizationsWithDetails();
-            return _mapper.Map<List<OrganizationListDto>>(organizations);
+            var (organizations, totalCount) = await _organizationRepository.GetOrganizationsWithDetailsPaged(request.PageNumber, request.PageSize);
+            var organizationDtos = _mapper.Map<List<OrganizationListDto>>(organizations);
+
+            return PaginatedResult<OrganizationListDto>.Create(organizationDtos, totalCount, request.PageNumber, request.PageSize);
         }
     }
 }

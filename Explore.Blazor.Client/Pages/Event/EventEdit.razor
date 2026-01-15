@@ -8,6 +8,7 @@
 @using System.IO
 @using Blazouter.Services
 @using static Explore.Blazor.Client.Components.Event.EventSessionEditor
+@using Explore.Blazor.Client.Helpers
 @inject IEventService EventService
 @inject IOrganizationService OrganizationService
 @inject IAdminService AdminService
@@ -34,9 +35,9 @@ else if (currentEvent != null && updateDto != null)
                 <MudCardHeader>
                     <CardHeaderContent>
                         <div class="d-flex align-items-center">
-                            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" 
-                                         Color="Color.Primary" 
-                                         OnClick="NavigateBack" 
+                            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                                         Color="Color.Primary"
+                                         OnClick="NavigateBack"
                                          Class="me-3" />
                             <MudText Typo="Typo.h5">Edit Event</MudText>
                         </div>
@@ -45,7 +46,7 @@ else if (currentEvent != null && updateDto != null)
                 <MudCardContent>
                     <EditForm Model="updateDto" OnValidSubmit="HandleValidSubmit">
                         <DataAnnotationsValidator />
-                        
+
                         <!-- Image Display -->
                         <div class="mb-4">
                             <MudText Typo="Typo.h6" Class="mb-3">Event Image</MudText>
@@ -65,9 +66,9 @@ else if (currentEvent != null && updateDto != null)
 
                         <!-- Event Title -->
                         <div class="mb-3">
-                            <MudTextField @bind-Value="updateDto.Title" 
-                                        Label="Event Title" 
-                                        Variant="Variant.Outlined" 
+                            <MudTextField @bind-Value="updateDto.Title"
+                                        Label="Event Title"
+                                        Variant="Variant.Outlined"
                                         Required
                                         FullWidth />
                             <ValidationMessage For="@(() => updateDto.Title)" />
@@ -75,9 +76,9 @@ else if (currentEvent != null && updateDto != null)
 
                         <!-- Event Description -->
                         <div class="mb-3">
-                            <MudTextField @bind-Value="updateDto.Description" 
-                                        Label="Event Description" 
-                                        Variant="Variant.Outlined" 
+                            <MudTextField @bind-Value="updateDto.Description"
+                                        Label="Event Description"
+                                        Variant="Variant.Outlined"
                                         Lines="4"
                                         FullWidth />
                         </div>
@@ -116,7 +117,7 @@ else if (currentEvent != null && updateDto != null)
                                     }
                                 }
                             </MudSelect>
-                            
+
 
                             <MudAlert Severity="Severity.Info" Class="mt-3">
                                 Location details are managed at the session level after creating the event.
@@ -143,7 +144,8 @@ else if (currentEvent != null && updateDto != null)
                                     </MudSelect>
                                 </MudItem>
                                 <MudItem xs="12" sm="6">
-                                    <MudSelect @bind-Value="selectedMadhabId"
+                                    <MudSelect T="int?"
+                                              @bind-Value="selectedMadhabId"
                                               Label="Madhab (Optional)"
                                               Variant="Variant.Outlined"
                                               FullWidth
@@ -152,7 +154,7 @@ else if (currentEvent != null && updateDto != null)
                                         {
                                             @foreach (var madhab in madhabs)
                                             {
-                                                <MudSelectItem Value="@madhab.Id">@madhab.FullName</MudSelectItem>
+                                                <MudSelectItem T="int?" Value="@((int?)madhab.Id)">@madhab.FullName</MudSelectItem>
                                             }
                                         }
                                     </MudSelect>
@@ -188,17 +190,17 @@ else if (currentEvent != null && updateDto != null)
                         <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
                             <MudGrid Spacing="3">
                                 <MudItem xs="12" sm="6">
-                                    <MudNumericField @bind-Value="updateDto.Price" 
-                                                   Label="Price" 
-                                                   Variant="Variant.Outlined" 
+                                    <MudNumericField @bind-Value="updateDto.Price"
+                                                   Label="Price"
+                                                   Variant="Variant.Outlined"
                                                    FullWidth
                                                    Min="0"
                                                    Adornment="Adornment.Start"
                                                    AdornmentIcon="@Icons.Material.Filled.Euro" />
                                 </MudItem>
                                 <MudItem xs="12" sm="6">
-                                    <MudTextField @bind-Value="updateDto.CurrencyCode" 
-                                                 Label="Currency Code" 
+                                    <MudTextField @bind-Value="updateDto.CurrencyCode"
+                                                 Label="Currency Code"
                                                  Variant="Variant.Outlined"
                                                  FullWidth
                                                  Placeholder="EUR" />
@@ -208,9 +210,9 @@ else if (currentEvent != null && updateDto != null)
 
                         <!-- Event Type -->
                         <div class="mb-3">
-                            <MudSelect @bind-Value="updateDto.EventTypeId" 
-                                       Label="Event Type" 
-                                       Variant="Variant.Outlined" 
+                            <MudSelect @bind-Value="updateDto.EventTypeId"
+                                       Label="Event Type"
+                                       Variant="Variant.Outlined"
                                        FullWidth
                                        Required
                                        Adornment="Adornment.Start"
@@ -314,13 +316,13 @@ else if (currentEvent != null && updateDto != null)
 
                         <!-- Action Buttons -->
                         <div class="d-flex justify-content-between mt-4">
-                            <MudButton Variant="Variant.Outlined" 
-                                     Color="Color.Secondary" 
+                            <MudButton Variant="Variant.Outlined"
+                                     Color="Color.Secondary"
                                      OnClick="NavigateBack">
                                 Cancel
                             </MudButton>
-                            <MudButton ButtonType="ButtonType.Submit" 
-                                     Variant="Variant.Filled" 
+                            <MudButton ButtonType="ButtonType.Submit"
+                                     Variant="Variant.Filled"
                                      Color="Color.Primary"
                                      StartIcon="@Icons.Material.Filled.Save">
                                 Save Changes
@@ -340,7 +342,7 @@ else
 
 @code {
     private Guid EventId { get; set; }
-    
+
     private EventDto? currentEvent;
     private UpdateEventDto? updateDto;
     private DateTime? _startDate;
@@ -384,28 +386,28 @@ else
         {
             EventId = id;
         }
-        
+
         try
         {
             isLoading = true;
-            
+
             // Load lookups in parallel
             var eventTypesTask = AdminService.GetEventTypesAsync();
             var eventFormatsTask = AdminService.GetEventFormatsAsync();
             var eventStatusesTask = AdminService.GetEventStatusesAsync();
             var visibilityTypesTask = AdminService.GetVisibilityTypesAsync();
             var madhabsTask = AdminService.GetMadhabsAsync();
-            
+
             await Task.WhenAll(eventTypesTask, eventFormatsTask, eventStatusesTask, visibilityTypesTask, madhabsTask);
-            
+
             eventTypes = await eventTypesTask;
             eventFormats = await eventFormatsTask;
             eventStatuses = await eventStatusesTask;
             visibilityTypes = await visibilityTypesTask;
             madhabs = await madhabsTask;
-            
+
             currentEvent = await EventService.GetEventByIdAsync(EventId);
-            
+
             if (currentEvent != null)
             {
                 // Initialize updateDto from currentEvent
@@ -428,7 +430,7 @@ else
                     FirstSessionDate = currentEvent.FirstSessionDate,
                     LastSessionDate = currentEvent.LastSessionDate
                 };
-                
+
                 // Initialize date/time pickers
                 if (currentEvent.FirstSessionDate.HasValue)
                 {
@@ -436,20 +438,20 @@ else
                     _startDate = localStart.Date;
                     _startTime = localStart.TimeOfDay;
                 }
-                
+
                 if (currentEvent.LastSessionDate.HasValue)
                 {
                     var localEnd = currentEvent.LastSessionDate.Value.LocalDateTime;
                     _endDate = localEnd.Date;
                     _endTime = localEnd.TimeOfDay;
                 }
-                
+
                 // Determine if online based on format
                 _isOnline = currentEvent.EventFormatId == 2; // Assuming 2 = Online
-                
+
                 // Set preview to existing featured image if available
                 _previewImageUrl = currentEvent.FeaturedImageUri ?? GeneratePlaceholderImage();
-                
+
                 // Set nullable properties
                 selectedMadhabId = currentEvent.MadhabId;
                 selectedTimezone = currentEvent.Timezone;
@@ -506,12 +508,12 @@ else
     private string GeneratePlaceholderImage()
     {
         if (currentEvent == null) return string.Empty;
-        
+
         var eventTitle = Uri.EscapeDataString(currentEvent.Title ?? "Event");
         var backgroundColor = GetCategoryColor();
         return $"https://via.placeholder.com/400x250/{backgroundColor}/ffffff?text={eventTitle}";
     }
-    
+
     private string GetCategoryColor()
     {
         return currentEvent?.EventTypeFullName?.ToLower() switch
@@ -524,7 +526,7 @@ else
             _ => "607D8B"
         };
     }
-    
+
     private async Task OnImageSelected(InputFileChangeEventArgs e)
     {
         var file = e.File;
@@ -535,22 +537,22 @@ else
                 Snackbar.Add("File size must be less than 10MB", Severity.Error);
                 return;
             }
-            
+
             var allowedTypes = new[] { "image/jpeg", "image/png", "image/gif", "image/webp" };
             if (!allowedTypes.Contains(file.ContentType.ToLower()))
             {
                 Snackbar.Add("Only image files are allowed", Severity.Error);
                 return;
             }
-            
+
             try
             {
                 using var stream = file.OpenReadStream(10 * 1024 * 1024);
                 var buffer = new byte[file.Size];
                 await stream.ReadAsync(buffer, 0, (int)file.Size);
-                
+
                 _previewImageUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(buffer)}";
-                
+
                 // TODO: Upload to server and get FeaturedImageId
                 // For now, keep existing image
                 StateHasChanged();
@@ -561,32 +563,25 @@ else
             }
         }
     }
-    
+
     private async Task HandleValidSubmit()
     {
         if (updateDto == null) return;
-        
+
         try
         {
-            // Update dates
-            if (_startDate.HasValue && _startTime.HasValue)
-            {
-                updateDto.FirstSessionDate = new DateTimeOffset(_startDate.Value.Date + _startTime.Value, TimeSpan.Zero);
-            }
-            
-            if (_endDate.HasValue && _endTime.HasValue)
-            {
-                updateDto.LastSessionDate = new DateTimeOffset(_endDate.Value.Date + _endTime.Value, TimeSpan.Zero);
-            }
+            // Update dates - use DateTimeHelper for consistent UTC conversion
+            updateDto.FirstSessionDate = DateTimeHelper.CombineDateTimeToUtc(_startDate, _startTime);
+            updateDto.LastSessionDate = DateTimeHelper.CombineDateTimeToUtc(_endDate, _endTime);
 
             // If a new image was uploaded and a storage object id exists, update featured image id
             if (_uploadedStorageObjectId.HasValue)
             {
                 updateDto.FeaturedImageId = _uploadedStorageObjectId.Value;
             }
-            
+
             var response = await EventService.UpdateEventAsync(updateDto.Id, updateDto);
-            
+
             if (response?.Success == true)
             {
                 Snackbar.Add("Event updated successfully!", Severity.Success);
@@ -602,7 +597,7 @@ else
             Snackbar.Add($"Error updating event: {ex.Message}", Severity.Error);
         }
     }
-    
+
     private void NavigateBack()
     {
         Navigation.NavigateTo("/myevents");
@@ -657,7 +652,7 @@ else
     {
         if (selectedValues == null || !selectedValues.Any())
             return "Select categories";
-        
+
         return $"{selectedValues.Count} categor{(selectedValues.Count == 1 ? "y" : "ies")} selected";
     }
 
@@ -665,8 +660,7 @@ else
     {
         if (selectedValues == null || !selectedValues.Any())
             return "Select tags";
-        
+
         return $"{selectedValues.Count} tag{(selectedValues.Count == 1 ? "" : "s")} selected";
     }
 }
-

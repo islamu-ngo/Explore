@@ -1,45 +1,69 @@
-::deep .component-mainlayout {
+/* ==========================================================================
+   MainLayout Component - BEM Methodology
+   Block: main-layout
+   ========================================================================== */
+
+/* Block: main-layout
+   The root layout component with CSS custom properties
+   -------------------------------------------------------------------------- */
+.main-layout {
     color: inherit;
+    --announcement-bar-height: 0px;
+    --nav-height: 64px;
 }
 
-/* ============================================================================
-   Sticky Header Container
-   ============================================================================ */
-::deep .sticky-header-container {
-    position: sticky;
+/* Element: main-layout__header
+   The sticky header container for navbar and announcements
+   -------------------------------------------------------------------------- */
+.main-layout__header {
+    position: fixed;
     top: 0;
-    z-index: 1000;
+    left: 0;
+    right: 0;
+    z-index: 1300;
     width: 100%;
+    display: flex;
+    flex-direction: column;
 }
 
-/* ============================================================================
-   MudAppBar - Ensure it's visible and properly positioned
-   ============================================================================ */
-::deep .sticky-header-container .mud-appbar {
+/* Ensure MudAppBar within header is properly positioned */
+::deep .main-layout__header .mud-appbar {
+    position: static;
 }
 
-/* ============================================================================
-   MudLayout Container
-   ============================================================================ */
+/* Element: main-layout__container
+   The MudLayout container
+   -------------------------------------------------------------------------- */
 ::deep .mud-layout {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
 }
 
-/* ============================================================================
-   MudMainContent
-   ============================================================================ */
+/* Element: main-layout__content
+   The main content area
+   -------------------------------------------------------------------------- */
 ::deep .mud-main-content {
     flex: 1;
     display: flex;
     flex-direction: column;
+    padding-top: calc(var(--announcement-bar-height) + var(--nav-height));
 }
 
-/* ============================================================================
-   Footer
-   ============================================================================ */
-::deep .site-footer {
+/* Element: main-layout__footer
+   The site footer
+   -------------------------------------------------------------------------- */
+::deep .main-layout__footer {
     margin-top: auto;
     flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Responsive Adjustments
+   ========================================================================== */
+
+@media (max-width: 768px) {
+    .main-layout {
+        --nav-height: 56px;
+    }
 }

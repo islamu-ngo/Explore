@@ -9,12 +9,13 @@ namespace Explore.Application.Contracts.Persistence
         Task<Actor?> GetActorByHandle(string handle);
         Task<List<Actor>> GetActorsByTenant(Guid tenantId);
         Task<bool> DidExists(string did);
-        
+        Task<(List<Actor> Items, int TotalCount)> GetActorsWithDetailsPaged(int pageNumber, int pageSize);
+
         /// <summary>
         /// Gets the Actor associated with a specific User (personal actor).
         /// </summary>
         Task<Actor?> GetActorByUserId(Guid userId);
-        
+
         /// <summary>
         /// Gets the Actor associated with a specific Organization.
         /// </summary>

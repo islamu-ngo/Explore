@@ -22,10 +22,8 @@ namespace Explore.Application.DTOs.TenantUser.Validators
                 .MustAsync(UserExists)
                 .WithMessage("User does not exist");
 
-            RuleFor(x => x.TenantId)
-                .NotEmpty().WithMessage("Tenant ID is required")
-                .MustAsync(TenantExists)
-                .WithMessage("Tenant does not exist");
+            // TenantId is set by the handler from context, not by the client
+            // No validation needed here
 
             RuleFor(x => x.UserRoleId)
                 .NotEmpty().WithMessage("User Role ID is required")
@@ -36,11 +34,6 @@ namespace Explore.Application.DTOs.TenantUser.Validators
         private async Task<bool> UserExists(Guid userId, CancellationToken cancellationToken)
         {
             return await _userRepository.Exists(userId);
-        }
-
-        private async Task<bool> TenantExists(Guid tenantId, CancellationToken cancellationToken)
-        {
-            return await _tenantRepository.Exists(tenantId);
         }
 
         private async Task<bool> UserRoleExists(int userRoleId, CancellationToken cancellationToken)

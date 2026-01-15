@@ -1,2 +1,4 @@
-::deep .component-settings{ color: inherit; }
-
+/* ===== Block: settings ===== */
+::deep .settings {
+    padding-block: 24px 32px;
+}

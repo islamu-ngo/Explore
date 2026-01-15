@@ -24,11 +24,16 @@ namespace Explore.API.Controllers
         // GET: api/v1/location
         [HttpGet]
         [EndpointSummary("Get all Locations")]
-        [EndpointDescription("Get a list of all locations")]
+        [EndpointDescription("Retrieve a paginated list of all locations. Default page size is 20, max is 100.")]
         [AllowAnonymous]
-        public async Task<ActionResult<List<LocationListDto>>> GetAll()
+        [ProducesResponseType(typeof(PaginatedResult<LocationListDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PaginatedResult<LocationListDto>>> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
         {
-            var locations = await _mediator.Send(new GetLocationListRequest());
+            var locations = await _mediator.Send(new GetLocationListRequest
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            });
             return Ok(locations);
         }
 

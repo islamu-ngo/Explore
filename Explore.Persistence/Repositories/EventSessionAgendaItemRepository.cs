@@ -21,5 +21,23 @@ namespace Explore.Persistence.Repositories
                 .OrderBy(a => a.StartTime)
                 .ToListAsync();
         }
+
+        public async Task<(List<EventSessionAgendaItem> Items, int TotalCount)> GetAgendaItemsWithDetailsPaged(int pageNumber, int pageSize)
+        {
+            var query = _dbContext.EventSessionAgendaItems
+                .AsNoTracking()
+                .Include(a => a.EventSession)
+                    .ThenInclude(s => s.Event)
+                .Include(a => a.Location)
+                .OrderByDescending(a => a.StartTime);
+
+            var totalCount = await query.CountAsync();
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (items, totalCount);
+        }
     }
 }

@@ -22,7 +22,28 @@ Agents are autonomous Claude instances that handle specific complex tasks. Unlik
 
 ---
 
-## Available Agents (10)
+## Available Agents (11)
+
+### blazor-component-architect
+**Purpose:** Design and review Blazor Server + WASM components for ISLAMU Event
+
+**When to use:**
+- Designing new Blazor components
+- Reviewing component architecture
+- Refactoring Blazor pages
+- Validating MudBlazor usage
+- Checking BFF pattern compliance
+
+**Key Features:**
+- Blazor hybrid rendering patterns (Server + WASM)
+- MudBlazor component best practices
+- BFF architecture validation
+- Service layer patterns
+- Authentication state management
+
+**Integration:** ✅ Copy as-is
+
+---
 
 ### code-architecture-reviewer
 **Purpose:** Review code for architectural consistency and best practices
@@ -72,12 +93,13 @@ Agents are autonomous Claude instances that handle specific complex tasks. Unlik
 ---
 
 ### frontend-error-fixer
-**Purpose:** Debug and fix frontend errors
+**Purpose:** Debug and fix Blazor frontend errors
 
 **When to use:**
+- Blazor compilation errors
 - Browser console errors
-- TypeScript compilation errors in frontend
-- React errors
+- MudBlazor component errors
+- Render mode issues
 - Build failures
 
 **Integration:** ⚠️ May reference screenshot paths - update if needed
@@ -220,6 +242,7 @@ That's it! Agents work immediately.
 
 | Agent | Complexity | Customization | Auth Required |
 |-------|-----------|---------------|---------------|
+| blazor-component-architect | Medium | ✅ None | No |
 | code-architecture-reviewer | Medium | ✅ None | No |
 | code-refactor-master | High | ✅ None | No |
 | documentation-architect | Medium | ✅ None | No |
@@ -300,3 +323,92 @@ Select-String -Path ".claude\agents\agent-name.md" -Pattern "~/|/root/|/Users/"
 ```powershell
 (Get-Content ".claude\agents\agent-name.md") -replace '~/git/.*project', '$CLAUDE_PROJECT_DIR' | Set-Content ".claude\agents\agent-name.md"
 ```
+
+## Troubleshooting
+
+### Agent not found
+
+**Check:**
+```powershell
+# Is agent file present?
+Get-ChildItem .claude\agents\agent-name.md
+```
+
+### Agent fails with path errors
+
+**Check for hardcoded paths:**
+```powershell
+Select-String -Path ".claude\agents\agent-name.md" -Pattern "~/|/root/|/Users/"
+```
+
+**Fix:**
+```powershell
+(Get-Content ".claude\agents\agent-name.md") -replace '~/git/.*project', '$CLAUDE_PROJECT_DIR' | Set-Content ".claude\agents\agent-name.md"
+```
+
+
+### Agent not found
+
+**Check:**
+```powershell
+# Is agent file present?
+Get-ChildItem .claude\agents\agent-name.md
+```
+
+### Agent fails with path errors
+
+**Check for hardcoded paths:**
+```powershell
+Select-String -Path ".claude\agents\agent-name.md" -Pattern "~/|/root/|/Users/"
+```
+
+**Fix:**
+```powershell
+(Get-Content ".claude\agents\agent-name.md") -replace '~/git/.*project', '$CLAUDE_PROJECT_DIR' | Set-Content ".claude\agents\agent-name.md"
+```
+
+
+## Troubleshooting
+
+### Agent not found
+
+**Check:**
+```powershell
+# Is agent file present?
+Get-ChildItem .claude\agents\agent-name.md
+```
+
+### Agent fails with path errors
+
+**Check for hardcoded paths:**
+```powershell
+Select-String -Path ".claude\agents\agent-name.md" -Pattern "~/|/root/|/Users/"
+```
+
+**Fix:**
+```powershell
+(Get-Content ".claude\agents\agent-name.md") -replace '~/git/.*project', '$CLAUDE_PROJECT_DIR' | Set-Content ".claude\agents\agent-name.md"
+```
+## Troubleshooting
+
+### Agent not found
+
+**Check:**
+```powershell
+# Is agent file present?
+Get-ChildItem .claude\agents\agent-name.md
+```
+
+### Agent fails with path errors
+
+**Check for hardcoded paths:**
+```powershell
+Select-String -Path ".claude\agents\agent-name.md" -Pattern "~/|/root/|/Users/"
+```
+
+**Fix:**
+```powershell
+(Get-Content ".claude\agents\agent-name.md") -replace '~/git/.*project', '$CLAUDE_PROJECT_DIR' | Set-Content ".claude\agents\agent-name.md"
+```
+
+

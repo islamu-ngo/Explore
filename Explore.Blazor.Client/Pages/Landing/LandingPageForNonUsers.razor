@@ -2,8 +2,10 @@
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Clients
 @using Microsoft.AspNetCore.Components
+@using Microsoft.Extensions.Logging
 @inject IJSRuntime JS
 @inject ILandingPageService LandingPageService
+@inject ILogger<LandingPageForNonUsers> Logger
 <!-- HERO - Full width -->
 <section class="hero">
     <MudContainer MaxWidth="MaxWidth.Large">
@@ -219,7 +221,7 @@
 
         try
         {
-            Console.WriteLine("[WELCOME PAGE] Loading landing page data from API");
+            Logger.LogDebug("Loading landing page data from API");
 
             // Load events, members count, and events count in parallel
             var eventsTask = LandingPageService.GetFeaturedEventsAsync(12);
@@ -232,12 +234,12 @@
             _membersCount = await membersTask;
             _eventsCount = await eventsCountTask;
 
-            Console.WriteLine($"[WELCOME PAGE] Loaded {_events.Count} events, {_membersCount} members, {_eventsCount} upcoming events");
+            Logger.LogDebug("Loaded {EventCount} events, {MembersCount} members, {UpcomingCount} upcoming events", _events.Count, _membersCount, _eventsCount);
         }
         catch (Exception ex)
         {
             _errorMessage = $"Error loading landing page data: {ex.Message}";
-            Console.WriteLine($"[WELCOME PAGE] ERROR: {ex.Message}");
+            Logger.LogError(ex, "Error loading landing page data");
             // Keep default values on error
         }
         finally
@@ -272,4 +274,3 @@
     private async Task ScrollToRegister()
         => await JS.InvokeVoidAsync("eval", "document.getElementById('register').scrollIntoView({behavior:'smooth',block:'start'});");
 }
-

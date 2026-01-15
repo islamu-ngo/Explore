@@ -1,9 +1,10 @@
 using System;
 using System.ComponentModel.DataAnnotations.Schema;
+using Explore.Domain.Interfaces;
 
 namespace Explore.Domain
 {
-    public class Tag
+    public class Tag : ITenantEntity
     {
         public Guid Id { get; set; }
         public string MasterCode { get; set; }

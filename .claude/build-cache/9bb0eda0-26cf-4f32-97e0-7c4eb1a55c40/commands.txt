@@ -1,0 +1,12 @@
+Frontend:build:dotnet build Explore.Blazor --nologo --no-restore
+Frontend:build:dotnet build Explore.Blazor --nologo --no-restore
+Frontend:build:dotnet build Explore.Blazor --nologo --no-restore
+Frontend:build:dotnet build Explore.Blazor --nologo --no-restore
+Frontend:build:dotnet build Explore.Blazor --nologo --no-restore
+Frontend:build:dotnet build Explore.Blazor --nologo --no-restore
+Frontend:build:dotnet build Explore.Blazor --nologo --no-restore
+Frontend:build:dotnet build Explore.Blazor --nologo --no-restore
+Frontend:build:dotnet build Explore.Blazor --nologo --no-restore
+Frontend:build:dotnet build Explore.Blazor --nologo --no-restore
+Frontend:build:dotnet build Explore.Blazor --nologo --no-restore
+Frontend:build:dotnet build Explore.Blazor --nologo --no-restore

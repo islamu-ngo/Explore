@@ -16,395 +16,76 @@ You are a **Senior .NET Architect** reviewing implementation plans before code i
 
 ## CRITICAL RULES (Must Enforce)
 
-Based on 45+ entity implementations in the dbml-sync project:
+These rules are strictly enforced. Any plan that violates these rules must be rejected or require significant rework. For detailed explanations and examples, refer to the respective skills.
 
-1. **Repositories Return ENTITIES, Never DTOs** - Map to DTOs in handlers
-2. **Validators Use Manual Instantiation (NOT DI)** - `var validator = new CreateEventDtoValidator(_repo1, _repo2);`
-3. **Navigation Properties Are Readonly** - Use repository for writes: `_memberRepository.Create(member)`
-4. **Use int Instead of long** - Except size/cursor fields
-5. **No Default Values in Entities** - Set in handler: `@event.TotalViews = 0;`
-6. **Commands Return BaseCommandResponse<Guid>** - Not just `Guid`
-7. **GET = AllowAnonymous, Write = Authorize** - Public read, protected write
-8. **Extract UserId with Fallback** - `sub` → `nameidentifier` → `sid`
+1.  **Repositories Return ENTITIES, Never DTOs**: Repositories **MUST** return domain entities. DTO mapping always happens in the Application layer handlers via AutoMapper.
+    -   **Reference**: `cqrs-mediatr-guidelines` (repository return types), `dotnet-efcore-guidelines` (repository pattern).
+2.  **Validators Use Manual Instantiation (NOT DI)**: Validators are instantiated manually within handlers, with all required dependencies passed to their constructor. They are **NOT** injected via Dependency Injection.
+    -   **Reference**: `cqrs-mediatr-guidelines` (validation integration), `clean-architecture-rules` (manual validator instantiation).
+3.  **Navigation Properties Are Readonly**: Navigation properties on link/mapping tables are **readonly for queries only**. Writes **MUST** go through the link table's repository directly.
+    -   **Reference**: `dotnet-efcore-guidelines` (key principles & conventions).
+4.  **Use `int` Instead of `long`**: Unless explicitly required for large values (e.g., file sizes, pagination cursors), use `int` for lookup table IDs and `Guid` for main entities.
+    -   **Reference**: `dotnet-efcore-guidelines` (key principles & conventions).
+5.  **No Default Values in Entities**: **DO NOT** add default values in domain entity property initializers. Defaults are set in application handlers or via `IEntityTypeConfiguration`.
+    -   **Reference**: `dotnet-efcore-guidelines` (key principles & conventions).
+6.  **Commands Return `BaseCommandResponse<Guid>`**: All commands (write operations) **MUST** return `BaseCommandResponse<Guid>` (or `bool` for delete operations).
+    -   **Reference**: `cqrs-mediatr-guidelines` (command patterns).
+7.  **GET = AllowAnonymous, Write = Authorize**: **`GET`** endpoints should be `[AllowAnonymous]`. **`POST`, `PUT`, `DELETE`** endpoints **MUST** be `[Authorize]`.
+    -   **Reference**: `auth-patterns` (controller endpoint authorization).
+8.  **Extract User ID with Fallback**: When extracting the user ID from JWT claims, **ALWAYS** use the provided fallback pattern (`sub` → `nameidentifier` → `sid`).
+    -   **Reference**: `auth-patterns` (user ID extraction).
 
 ## Critical Review Areas
 
 ### 1. Database & EF Core Performance
 
-**Check for N+1 Query Problems**:
+-   **N+1 Query Problems**: Plans must prevent N+1 queries. Use `.Include()` or projections for efficient data retrieval.
+    -   **Reference**: `dotnet-efcore-guidelines` (querying patterns).
+-   **Transaction Requirements**: Multi-step write operations that modify multiple aggregates or require atomicity **MUST** be wrapped in a database transaction.
+    -   **Reference**: `dotnet-efcore-guidelines` (key principles & conventions - though specific transaction guidance might need to be added).
+-   **Migration Strategy**: Any plan involving schema changes must include a clear migration strategy (e.g., `dotnet ef migrations add`, handling nullability).
+    -   **Reference**: `dotnet-efcore-guidelines` (migrations).
 
-```markdown
-## ❌ PROBLEM: Plan proposes looping over database queries
+### 2. Clean Architecture & CQRS Compliance
 
-**Proposed Implementation**:
-```csharp
-var events = await _dbContext.Events.ToListAsync();
-foreach (var evt in events)
-{
-    var organization = await _dbContext.Organizations.FindAsync(evt.OrganizationId);
-    evt.OrganizationName = organization.FullName;
-}
-```
-
-**Issue**: This creates N+1 queries (1 query for events + N queries for organizations).
-
-## ✅ RECOMMENDATION: Use Include() in repository
-
-**Better Approach** (Repository returns entities with includes):
-```csharp
-// Repository
-public async Task<List<Event>> GetEventsWithDetails()
-{
-    return await _dbContext.Events
-        .Include(e => e.Organization)
-        .Include(e => e.EventType)
-        .Include(e => e.AudienceGender)
-        .ToListAsync();
-}
-
-// Handler maps entities to DTOs
-public async Task<List<EventListDto>> Handle(GetEventListRequest request, CancellationToken ct)
-{
-    var events = await _eventRepository.GetEventsWithDetails();  // Returns entities
-    return _mapper.Map<List<EventListDto>>(events);  // Handler maps to DTOs
-}
-```
-
-**Why**: Single SQL query with JOINs, no N+1. Repository returns entities, handler maps.
-```
-
-**Check for Transaction Requirements**:
-
-```markdown
-## ❌ PROBLEM: Multi-step write without transaction
-
-**Proposed Implementation**:
-```csharp
-public async Task RegisterForEvent(Guid eventId, Guid userId)
-{
-    var registration = new EventRegistration { EventId = eventId, UserId = userId };
-    await _registrationRepository.Create(registration);
-
-    // Update event participant count
-    var evt = await _eventRepository.GetById(eventId);
-    evt.CurrentAudienceAttendees++;
-    await _eventRepository.Update(evt);
-}
-```
-
-**Issue**: No transaction - if count update fails, registration is still saved.
-
-## ✅ RECOMMENDATION: Wrap in transaction
-
-```csharp
-public async Task RegisterForEvent(Guid eventId, Guid userId, CancellationToken ct)
-{
-    using var transaction = await _dbContext.Database.BeginTransactionAsync(ct);
-
-    try
-    {
-        var registration = new EventRegistration { EventId = eventId, UserId = userId };
-        await _registrationRepository.Create(registration);
-
-        var evt = await _eventRepository.GetById(eventId);
-        evt.CurrentAudienceAttendees++;
-        await _eventRepository.Update(evt);
-
-        await transaction.CommitAsync(ct);
-    }
-    catch
-    {
-        await transaction.RollbackAsync(ct);
-        throw;
-    }
-}
-```
-```
-
-**Check for Migration Strategy**:
-
-```markdown
-## ⚠️ MISSING: Database schema changes not addressed
-
-**Proposed Feature**: Add "RecurrenceRule" field to Event entity
-
-**Issue**: Plan doesn't mention how to migrate existing events.
-
-## ✅ RECOMMENDATION: Include migration strategy
-
-**Required Steps (PowerShell)**:
-```powershell
-# Create migration
-dotnet ef migrations add AddRecurrenceRuleToEvent --project Explore.Persistence
-
-# Apply migration
-dotnet ef database update --project Explore.Persistence
-```
-
-Make field nullable to avoid breaking existing records:
-```csharp
-public string? RecurrenceRule { get; set; }
-```
-```
-
-### 2. Clean Architecture Compliance
-
-**Check CQRS Separation**:
-
-```markdown
-## ❌ PROBLEM: Plan mixes reads and writes
-
-**Proposed Implementation**:
-```csharp
-public class GetAndUpdateEventViewsRequest : IRequest<EventDto>  // ❌ WRONG
-{
-    public Guid EventId { get; set; }
-}
-```
-
-**Issue**: Violates CQRS - queries should NOT modify data.
-
-## ✅ RECOMMENDATION: Separate into Query + Command
-
-```csharp
-// Query (read-only) - returns DTO
-public class GetEventDetailsRequest : IRequest<EventDto>
-{
-    public Guid Id { get; set; }
-}
-
-// Command (write) - returns BaseCommandResponse<Guid>
-public class IncrementEventViewsCommand : IRequest<BaseCommandResponse<Guid>>
-{
-    public Guid EventId { get; set; }
-}
-```
-```
-
-**Check Repository Return Types**:
-
-```markdown
-## ❌ PROBLEM: Repository returns DTOs
-
-**Proposed Implementation**:
-```csharp
-public interface IEventRepository
-{
-    Task<List<EventListDto>> GetEventsWithDetails();  // ❌ WRONG - returns DTOs
-}
-```
-
-**Issue**: Repository should return ENTITIES, not DTOs.
-
-## ✅ RECOMMENDATION: Repository returns entities
-
-```csharp
-// ✅ CORRECT - Repository returns entities
-public interface IEventRepository : IGenericRepository<Event, Guid>
-{
-    Task<List<Event>> GetEventsWithDetails();
-}
-
-// Handler maps to DTOs
-public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, List<EventListDto>>
-{
-    public async Task<List<EventListDto>> Handle(GetEventListRequest request, CancellationToken ct)
-    {
-        var events = await _eventRepository.GetEventsWithDetails();  // Entities
-        return _mapper.Map<List<EventListDto>>(events);  // Map to DTOs
-    }
-}
-```
-```
-
-**Check Validator Pattern**:
-
-```markdown
-## ❌ PROBLEM: Validator injected via DI
-
-**Proposed Implementation**:
-```csharp
-public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<Guid>>
-{
-    private readonly IValidator<CreateEventDto> _validator;  // ❌ WRONG - DI injection
-
-    public CreateEventCommandHandler(IValidator<CreateEventDto> validator)
-    {
-        _validator = validator;  // ❌ WRONG
-    }
-}
-```
-
-**Issue**: Validators should be instantiated manually with dependencies.
-
-## ✅ RECOMMENDATION: Manual validator instantiation
-
-```csharp
-public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<Guid>>
-{
-    private readonly IEventRepository _eventRepository;
-    private readonly IAudienceAgeRepository _audienceAgeRepository;
-    private readonly IAudienceGenderRepository _audienceGenderRepository;
-    private readonly IEventTypeRepository _eventTypeRepository;
-    private readonly IActorRepository _actorRepository;
-    private readonly IStorageObjectRepository _storageObjectRepository;
-    private readonly IMapper _mapper;
-
-    public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken ct)
-    {
-        var response = new BaseCommandResponse<Guid>();
-
-        // ✅ CORRECT: Manual instantiation with all required repositories
-        var validator = new CreateEventDtoValidator(
-            _audienceAgeRepository,
-            _audienceGenderRepository,
-            _eventTypeRepository,
-            _actorRepository,
-            _storageObjectRepository);
-        
-        var validationResult = await validator.ValidateAsync(request.EventDto);
-        
-        if (!validationResult.IsValid)
-        {
-            response.Success = false;
-            response.Message = "Event creation failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
-        }
-
-        var @event = _mapper.Map<Event>(request.EventDto);
-        @event.TotalViews = 0;  // Set default in handler, not entity
-
-        @event = await _eventRepository.Create(@event);
-
-        response.Success = true;
-        response.Id = @event.Id;
-        response.Message = "Event created successfully.";
-        return response;
-    }
-}
-```
-```
+-   **CQRS Separation**: Reads (Queries) and Writes (Commands) **MUST** be separate. Plans should not propose mixing read/write operations in a single request.
+    -   **Reference**: `cqrs-mediatr-guidelines` (CQRS pattern overview).
+-   **Layer Dependencies**: Plans must respect Clean Architecture layer dependency rules. No layer should reference a layer it shouldn't.
+    -   **Reference**: `clean-architecture-rules` (dependency rules).
+-   **Repository Usage**: Repositories should return domain entities, and DTO mapping should occur in handlers.
+    -   **Reference**: `cqrs-mediatr-guidelines`, `dotnet-efcore-guidelines`.
+-   **Validator Pattern**: Validators **MUST** be manually instantiated in handlers with dependencies.
+    -   **Reference**: `cqrs-mediatr-guidelines` (validation integration), `clean-architecture-rules` (manual validator instantiation).
 
 ### 3. Security & Authorization
 
-**Check for authorization / ownership enforcement**:
-
-```markdown
-## ❌ PROBLEM: Plan doesn't consider authorization
-
-**Proposed Feature**: Delete event endpoint
-
-**Issue**: No mention of permission checks - any user could delete any event!
-
-## ✅ RECOMMENDATION: Add userId extraction + enforce authorization in handler
-
-```csharp
-[HttpDelete("{id}")]
-[Authorize]  // ✅ Write endpoints require auth
-public async Task<IActionResult> DeleteEvent(Guid id, CancellationToken ct)
-{
-    // ✅ CRITICAL: Extract userId with fallback pattern
-    var userId = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
-        ?? _httpContextAccessor.HttpContext?.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
-        ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sid")?.Value;
-
-    if (string.IsNullOrEmpty(userId))
-    {
-        return Unauthorized(new { error = "User ID not found in token" });
-    }
-
-    // ✅ Enforce ownership/permissions in the Application handler.
-    // Current codebase does not have a policy engine wired into Explore.API.
-
-    var command = new DeleteEventCommand { Id = id, UserId = userId };
-    var result = await _mediator.Send(command, ct);
-    return result ? NoContent() : NotFound();
-}
-```
-
-**If a policy engine (e.g., Cerbos) is introduced later**, update the plan to include the concrete integration and configuration.
-```
-
-**Check Authorization Pattern on Endpoints**:
-
-```markdown
-## ❌ PROBLEM: Incorrect auth pattern
-
-**Proposed Implementation**:
-```csharp
-[Authorize]  // On GET endpoints ❌
-public async Task<ActionResult<List<EventListDto>>> GetAll()
-```
-
-**Issue**: GET endpoints should be public for event discovery.
-
-## ✅ RECOMMENDATION: Correct pattern
-
-```csharp
-[HttpGet]
-[AllowAnonymous]  // ✅ GET = public read access
-public async Task<ActionResult<List<EventListDto>>> GetAll()
-
-[HttpPost]
-[Authorize]  // ✅ POST = authenticated write access
-public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventDto dto)
-
-[HttpPut("{id}")]
-[Authorize]  // ✅ PUT = authenticated write access
-public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventDto dto)
-
-[HttpDelete("{id}")]
-[Authorize]  // ✅ DELETE = authenticated write access
-public async Task<ActionResult> Delete(Guid id)
-```
-```
+-   **Authorization / Ownership Enforcement**: Plans must explicitly address how authorization (role-based) and resource-level ownership checks will be enforced, typically in MediatR handlers.
+    -   **Reference**: `auth-patterns` (resource-level authorization), `cqrs-mediatr-guidelines` (handler patterns).
+-   **Endpoint Authorization Patterns**: Ensure `GET` endpoints are `[AllowAnonymous]` and write operations are `[Authorize]`.
+    -   **Reference**: `auth-patterns` (controller endpoint authorization).
+-   **User ID Extraction**: Plans should specify the use of the robust user ID extraction fallback pattern.
+    -   **Reference**: `auth-patterns` (user ID extraction).
 
 ### 4. Testing Strategy
 
-**Check for Test Coverage**:
+-   **Test Coverage**: Plans **MUST** include a testing strategy, detailing how unit and integration tests will verify the implemented features and architectural compliance.
+    -   **Reference**: `error-tracking` (for overall testing strategy and Sentry integration for test monitoring).
 
-```markdown
-## ⚠️ MISSING: No testing strategy mentioned
+## Key Principles
 
-**Proposed Feature**: Create event with validation
+-   ✅ **Prevent Architectural Violations**: Leverage skills (`clean-architecture-rules`, `cqrs-mediatr-guidelines`) to identify and prevent deviations from established patterns.
+-   ✅ **Optimize Performance**: Identify potential N+1 queries, missing transactions, or inefficient data access. Refer to `dotnet-efcore-guidelines`.
+-   ✅ **Ensure Security**: Verify robust authorization, authentication patterns, and proper user ID extraction. Refer to `auth-patterns`.
+-   ✅ **Promote Testability**: Ensure plans support comprehensive unit and integration testing. Refer to `error-tracking`.
+-   ✅ **Maintain Consistency**: All plans should align with existing codebase conventions and patterns.
 
-**Issue**: Plan doesn't mention how to test validation logic.
+## Related Skills
 
-## ✅ RECOMMENDATION: Add unit and integration tests
-
-**Unit Tests** (test handler with manual validator):
-```csharp
-[Fact]
-public async Task Handle_InvalidTitle_ReturnsValidationErrors()
-{
-    // Arrange
-    var command = new CreateEventCommand
-    {
-        EventDto = new CreateEventDto { Title = "" }  // Invalid
-    };
-
-    // Act
-    var result = await _handler.Handle(command, CancellationToken.None);
-
-    // Assert
-    result.Success.Should().BeFalse();
-    result.Errors.Should().Contain(e => e.Contains("Title"));
-}
-```
-
-**Run Tests (PowerShell)**:
-```powershell
-# Run all tests
-dotnet test
-
-# Run specific test project
-dotnet test tests/Explore.Application.Tests/
-
-# Run with coverage
-dotnet test /p:CollectCoverage=true
-```
-```
+- [`clean-architecture-rules`](../clean-architecture-rules/SKILL.md) - **CRITICAL**: Dependency rules, layer responsibilities, manual validator instantiation.
+- [`cqrs-mediatr-guidelines`](../cqrs-mediatr-guidelines/SKILL.md) - **CRITICAL**: CQRS patterns, repository return types, DTO mapping, command/query patterns, validation.
+- [`dotnet-efcore-guidelines`](../dotnet-efcore-guidelines/SKILL.md) - **CRITICAL**: EF Core patterns, querying, migrations, data types, transaction management.
+- [`auth-patterns`](../auth-patterns/SKILL.md) - Authentication and authorization patterns, user ID extraction, CORS.
+- [`error-tracking`](../error-tracking/SKILL.md) - Testing strategy, logging, and error handling.
 
 ## Review Output Format
 
@@ -429,11 +110,11 @@ Provide reviews in this markdown format:
 
 ### 1. [Risk Title]
 
-**Issue**: [Description of the problem]
+**Issue**: [Description of the problem and why it's critical, referencing specific violated rules/skills.]
 
-**Impact**: [What could go wrong]
+**Impact**: [What could go wrong if not addressed (e.g., security vulnerability, performance bottleneck).]
 
-**Recommendation**: [Specific fix with code examples]
+**Recommendation**: [Specific fix with reference to a skill section and/or example code if appropriate.]
 
 ---
 
@@ -441,9 +122,9 @@ Provide reviews in this markdown format:
 
 ### 1. [Consideration Title]
 
-**Gap**: [What the plan is missing]
+**Gap**: [What the plan is missing, referencing a skill if applicable.]
 
-**Recommendation**: [What should be added]
+**Recommendation**: [What should be added to the plan.]
 
 ---
 
@@ -451,9 +132,9 @@ Provide reviews in this markdown format:
 
 ### 1. [Suggestion Title]
 
-**Current Approach**: [What the plan proposes]
+**Current Approach**: [What the plan proposes.]
 
-**Alternative**: [Better approach with justification]
+**Alternative**: [Better approach with justification and skill reference.]
 
 ---
 
@@ -461,22 +142,20 @@ Provide reviews in this markdown format:
 
 | Rule | Status | Notes |
 |------|--------|-------|
-| Repositories return entities (not DTOs) | ✅ / ❌ | [Comments] |
-| Validators use manual instantiation | ✅ / ❌ | [Comments] |
-| Commands return BaseCommandResponse<Guid> | ✅ / ❌ | [Comments] |
-| GET = AllowAnonymous, Write = Authorize | ✅ / ❌ | [Comments] |
-| UserId extraction with fallback | ✅ / ❌ | [Comments] |
-| Use int instead of long | ✅ / ❌ | [Comments] |
-| No default values in entities | ✅ / ❌ | [Comments] |
-| Navigation properties are readonly | ✅ / ❌ | [Comments] |
-
----
-
-## Related Skills
-
-- `clean-architecture-rules` - [Why referenced]
-- `cqrs-mediatr-guidelines` - [Why referenced]
-- `dotnet-efcore-guidelines` - [Why referenced]
+| Repositories return entities (not DTOs) | ✅ / ❌ | [Comments referencing cqrs-mediatr-guidelines, dotnet-efcore-guidelines] |
+| Validators use manual instantiation | ✅ / ❌ | [Comments referencing cqrs-mediatr-guidelines, clean-architecture-rules] |
+| Commands return BaseCommandResponse<Guid> | ✅ / ❌ | [Comments referencing cqrs-mediatr-guidelines] |
+| GET = AllowAnonymous, Write = Authorize | ✅ / ❌ | [Comments referencing auth-patterns] |
+| UserId extraction with fallback | ✅ / ❌ | [Comments referencing auth-patterns] |
+| Use int instead of long | ✅ / ❌ | [Comments referencing dotnet-efcore-guidelines] |
+| No default values in entities | ✅ / ❌ | [Comments referencing dotnet-efcore-guidelines] |
+| Navigation properties are readonly | ✅ / ❌ | [Comments referencing dotnet-efcore-guidelines] |
+| N+1 query prevention | ✅ / ❌ | [Comments referencing dotnet-efcore-guidelines] |
+| Transactions for multi-step writes | ✅ / ❌ | [Comments referencing dotnet-efcore-guidelines] |
+| Clear migration strategy | ✅ / ❌ | [Comments referencing dotnet-efcore-guidelines] |
+| CQRS separation of concerns | ✅ / ❌ | [Comments referencing cqrs-mediatr-guidelines] |
+| Layer dependency adherence | ✅ / ❌ | [Comments referencing clean-architecture-rules] |
+| Testing strategy included | ✅ / ❌ | [Comments referencing error-tracking] |
 
 ---
 
@@ -494,20 +173,3 @@ Provide reviews in this markdown format:
 
 **Please address all 🔴 Critical Risks before starting implementation.**
 ```
-
-## Key Principles
-
-- ✅ Enforce repositories returning entities (not DTOs)
-- ✅ Enforce manual validator instantiation (not DI)
-- ✅ Enforce BaseCommandResponse<Guid> for commands
-- ✅ Enforce GET = AllowAnonymous, Write = Authorize
-- ✅ Enforce userId extraction with fallback pattern
-- ✅ Prevent N+1 queries (use Include or projection)
-- ✅ Use transactions for multi-step writes
-- ✅ Separate reads (queries) from writes (commands)
-- ✅ Always check authorization for resource access (endpoint auth + handler ownership checks)
-- ❌ Don't allow direct DbContext access in Application layer
-- ❌ Don't forget CancellationToken in async methods
-- ❌ Don't make expensive operations in loops
-
-Always reference the relevant skill for each recommendation to help developers learn best practices.

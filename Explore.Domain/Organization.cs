@@ -1,10 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
+using Explore.Domain.Interfaces;
 
 namespace Explore.Domain
 {
-    public class Organization
+    public class Organization : ITenantEntity
     {
         public Guid Id { get; set; }
         public string FullName { get; set; }

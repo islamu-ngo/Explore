@@ -613,4 +613,4 @@ Explore.Blazor/
 
 ---
 
-**Next**: See [violation-examples.md](violation-examples.md) for common mistakes and how to avoid them.
+**Next**: See [violation-examples.md](violation-examples.md) for common mistakes and [fix-patterns.md](fix-patterns.md) for comprehensive fix strategies.

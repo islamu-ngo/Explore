@@ -1,6 +1,6 @@
 # Handler Patterns - ISLAMU Event Conventions
 
-## Repository Usage in Handlers
+<h2>Repository Usage in Handlers</h2>
 
 **CRITICAL RULE**: Handlers use repositories (not DbContext directly).
 
@@ -83,7 +83,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
 - ✅ Encapsulates complex queries
 - ✅ Consistent data access patterns
 
-## AutoMapper Usage
+<h2>AutoMapper Usage</h2>
 
 **Real Example from GetEventListRequestHandler**:
 ```csharp
@@ -136,7 +136,7 @@ var dto = _mapper.Map<EventDto>(entity);
 var dtos = _mapper.Map<List<EventListDto>>(entities);
 ```
 
-## CancellationToken Pattern
+<h2>CancellationToken Pattern</h2>
 
 **Always include `CancellationToken` parameter in Handle method**:
 
@@ -156,7 +156,7 @@ public async Task<BaseCommandResponse<Guid>> Handle(
 - ✅ Prevents wasted work when client disconnects
 - ✅ Required by MediatR `IRequestHandler<TRequest, TResponse>`
 
-## Manual Validator Instantiation Pattern
+<h2>Manual Validator Instantiation Pattern</h2>
 
 **CRITICAL PATTERN**: Validators are instantiated manually with dependencies, NOT injected via DI.
 
@@ -194,7 +194,7 @@ public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, 
 - ✅ No need to register validators in DI container
 - ✅ Clear and explicit
 
-## Command Handler Pattern (Create)
+<h2>Command Handler Pattern (Create)</h2>
 
 **Full Pattern**:
 ```csharp
@@ -233,7 +233,7 @@ public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, 
 }
 ```
 
-## Command Handler Pattern (Update)
+<h2>Command Handler Pattern (Update)</h2>
 
 **Full Pattern**:
 ```csharp
@@ -278,7 +278,7 @@ public async Task<BaseCommandResponse<Guid>> Handle(UpdateEventCommand request, 
 }
 ```
 
-## Command Handler Pattern (Delete)
+<h2>Command Handler Pattern (Delete)</h2>
 
 **Full Pattern**:
 ```csharp
@@ -301,7 +301,7 @@ public async Task<bool> Handle(DeleteEventCommand request, CancellationToken can
 
 **Note**: Delete returns `bool`, not `BaseCommandResponse<Guid>`.
 
-## Query Handler Pattern (List)
+<h2>Query Handler Pattern (List)</h2>
 
 **Full Pattern**:
 ```csharp
@@ -321,7 +321,7 @@ public async Task<List<EventListDto>> Handle(GetEventListRequest request, Cancel
 - ✅ Return DTOs directly
 - ✅ Repository returns entities, handler maps to DTOs
 
-## Query Handler Pattern (Details)
+<h2>Query Handler Pattern (Details)</h2>
 
 **Full Pattern**:
 ```csharp
@@ -344,7 +344,7 @@ public async Task<EventDto> Handle(GetEventDetailsRequest request, CancellationT
 - ✅ Controller checks for null and returns `NotFound()`
 - ✅ Simple and straightforward
 
-## Error Handling Pattern
+<h2>Error Handling Pattern</h2>
 
 **Commands**:
 ```csharp
@@ -382,7 +382,7 @@ if (entity == null)
 return _mapper.Map<EventDto>(entity);
 ```
 
-## Dependency Injection Registration
+<h2>Dependency Injection Registration</h2>
 
 **Handlers are auto-registered by MediatR**:
 ```csharp
@@ -399,7 +399,7 @@ builder.Services.AddAutoMapper(typeof(MappingProfile));
 
 **No need to manually register each handler!**
 
-## Common Patterns Summary
+<h2>Common Patterns Summary</h2>
 
 | Pattern | Command | Query |
 |---------|---------|-------|

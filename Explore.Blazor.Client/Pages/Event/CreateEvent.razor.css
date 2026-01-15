@@ -1,16 +1,49 @@
-::deep .component-createevent{ color: inherit; }
-::deep .create-page{
+/* ==========================================================================
+   CreateEvent Page - BEM Methodology
+   Block: create-event
+   ========================================================================== */
+
+/* Block: create-event
+   The main container for the create event page
+   -------------------------------------------------------------------------- */
+.create-event {
     max-width: 960px;
     margin: 0 auto;
     padding: 0 16px;
 }
-::deep .event-form{
-    padding: 20px;
-    border-radius: 12px;
-    background: var(--mud-palette-background-paper);
-}
-::deep .title{
-    margin: 4px 0 16px;
-    font-weight: 600;
+
+
+
+
+
+
+
+
+
+
+
+/* Element: create-event__back-button
+   The back navigation button
+   -------------------------------------------------------------------------- */
+.create-event__back-button {
+    margin-bottom: 16px;
 }
 
+
+
+/* Element: create-event__debug
+   Debug information container
+   -------------------------------------------------------------------------- */
+.create-event__debug {
+    margin-bottom: 16px;
+}
+
+/* Element: create-event__loading
+   Loading state container
+   -------------------------------------------------------------------------- */
+.create-event__loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+}

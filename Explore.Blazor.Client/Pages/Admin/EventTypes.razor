@@ -1,0 +1,60 @@
+@page "/admin/event-types"
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Services.Contracts
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin")]
+@inject IEventTypeService EventTypeService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<MudText Typo="Typo.h4" GutterBottom="true">Event Types</MudText>
+
+<MudTable ServerData="@(new Func<TableState, Task<TableData<EventTypeListDto>>>(ServerReload))"
+          Dense="true" Hover="true" Striped="true" @ref="_table">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">Manage Event Types</MudText>
+        <MudSpacer />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="(() => OpenDialog(null))">Create Event Type</MudButton>
+    </ToolBarContent>
+    <HeaderContent>
+        <MudTh>Name</MudTh>
+        <MudTh>Description</MudTh>
+        <MudTh>Actions</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Name">@context.FullName</MudTd>
+        <MudTd DataLabel="Description">@context.Description</MudTd>
+        <MudTd DataLabel="Actions">
+            <MudIconButton Icon="@Icons.Material.Filled.Edit" OnClick="@(() => OpenDialog(context.Id))" />
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="@(() => DeleteEventType(context.Id))" />
+        </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager />
+    </PagerContent>
+</MudTable>
+
+@code {
+    private MudTable<EventTypeListDto> _table;
+    private IEnumerable<EventTypeListDto> _eventTypes;
+
+    private async Task<TableData<EventTypeListDto>> ServerReload(TableState state)
+    {
+        _eventTypes = await EventTypeService.GetEventTypesAsync();
+        return new TableData<EventTypeListDto>() { TotalItems = _eventTypes.Count(), Items = _eventTypes };
+    }
+
+    private async Task OpenDialog(int? id)
+    {
+        // For now, this is a placeholder. I will implement the dialog later.
+        Snackbar.Add("Create/Edit functionality not yet implemented.", Severity.Info);
+        await Task.CompletedTask;
+    }
+
+    private async Task DeleteEventType(int id)
+    {
+        // For now, this is a placeholder. I will implement the delete functionality later.
+        Snackbar.Add("Delete functionality not yet implemented.", Severity.Info);
+        await Task.CompletedTask;
+    }
+}

@@ -2,41 +2,42 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Explore.Blazor.Client.Clients;
 using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;
 
 /// <summary>
-/// Service for handling image storage operations with S3 pre-signed URLs
+/// Service for handling image storage operations with S3 pre-signed URLs.
 /// </summary>
 public interface IImageStorageService
 {
     /// <summary>
-    /// Get a pre-signed URL for uploading an image
+    /// Get a pre-signed URL for uploading an image.
     /// </summary>
     Task<ImageUploadResponse?> GetUploadUrlAsync(string fileName, string contentType);
 
     /// <summary>
-    /// Upload an image file using a pre-signed URL
+    /// Upload an image file using a pre-signed URL.
     /// </summary>
     Task<bool> UploadImageAsync(string uploadUrl, IBrowserFile file);
 
     /// <summary>
-    /// Upload an image and create a StorageObject record, returning the storage object ID
+    /// Upload an image and create a StorageObject record, returning the storage object ID.
     /// </summary>
     Task<ImageUploadResult?> UploadImageAndCreateRecordAsync(IBrowserFile file);
 
     /// <summary>
-    /// Get a pre-signed URL for viewing an image
+    /// Get a pre-signed URL for viewing an image.
     /// </summary>
     Task<string?> GetImageUrlAsync(string imageKey);
 
     /// <summary>
-    /// Delete an image from storage
+    /// Delete an image from storage.
     /// </summary>
     Task<bool> DeleteImageAsync(string imageKey);
 
     /// <summary>
-    /// Generate a preview URL from a browser file (local preview before upload)
+    /// Generate a preview URL from a browser file (local preview before upload).
     /// </summary>
     Task<string> GenerateLocalPreviewAsync(IBrowserFile file, long maxFileSize = 5 * 1024 * 1024);
 }
@@ -58,22 +59,28 @@ public class ImageUploadResult
     public string? ErrorMessage { get; set; }
 }
 
+/// <summary>
+/// Implementation of image storage service using S3 pre-signed URLs.
+/// </summary>
 public class ImageStorageService : IImageStorageService
 {
     private readonly IEventApiClient _apiClient;
     private readonly HttpClient _httpClient;
+    private readonly ILogger<ImageStorageService> _logger;
 
-    public ImageStorageService(IEventApiClient apiClient, HttpClient httpClient)
+    public ImageStorageService(IEventApiClient apiClient, HttpClient httpClient, ILogger<ImageStorageService> logger)
     {
         _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
+    /// <inheritdoc />
     public async Task<ImageUploadResponse?> GetUploadUrlAsync(string fileName, string contentType)
     {
         try
         {
-            Console.WriteLine($"[IMAGE STORAGE] Getting upload URL for: {fileName}, type: {contentType}");
+            _logger.LogInformation("Getting upload URL for: {FileName}, type: {ContentType}", fileName, contentType);
 
             var request = new UploadRequestDto
             {
@@ -86,17 +93,17 @@ public class ImageStorageService : IImageStorageService
             // Defensive: server might return non-null DTO but with an empty UploadUrl.
             if (response == null)
             {
-                Console.WriteLine("[IMAGE STORAGE] GenerateUploadUrlAsync returned null response");
+                _logger.LogWarning("GenerateUploadUrlAsync returned null response");
                 return null;
             }
 
             if (string.IsNullOrWhiteSpace(response.UploadUrl))
             {
-                Console.WriteLine("[IMAGE STORAGE] UploadUrl is null or empty. Check server S3 configuration (bucket/endpoint/credentials).");
+                _logger.LogWarning("UploadUrl is null or empty. Check server S3 configuration (bucket/endpoint/credentials)");
                 return null;
             }
 
-            Console.WriteLine($"[IMAGE STORAGE] Got upload URL: {response.UploadUrl?.Substring(0, Math.Min(50, response.UploadUrl?.Length ?? 0))}...");
+            _logger.LogDebug("Got upload URL: {UploadUrlPreview}...", response.UploadUrl?.Substring(0, Math.Min(50, response.UploadUrl?.Length ?? 0)));
             return new ImageUploadResponse
             {
                 UploadUrl = response.UploadUrl ?? string.Empty,
@@ -107,33 +114,34 @@ public class ImageStorageService : IImageStorageService
         }
         catch (ApiException ex)
         {
-            Console.WriteLine($"[IMAGE STORAGE] API error getting upload URL: {ex.StatusCode} - {ex.Message}");
+            _logger.LogError(ex, "API error getting upload URL: {StatusCode}", ex.StatusCode);
             return null;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[IMAGE STORAGE] Error getting upload URL: {ex.Message}");
+            _logger.LogError(ex, "Error getting upload URL");
             return null;
         }
     }
 
+    /// <inheritdoc />
     public async Task<bool> UploadImageAsync(string uploadUrl, IBrowserFile file)
     {
         if (string.IsNullOrWhiteSpace(uploadUrl))
         {
-            Console.WriteLine("[IMAGE STORAGE] Invalid upload URL (empty/null) - aborting upload.");
+            _logger.LogWarning("Invalid upload URL (empty/null) - aborting upload");
             return false;
         }
 
         if (!Uri.TryCreate(uploadUrl, UriKind.Absolute, out var validatedUri))
         {
-            Console.WriteLine("[IMAGE STORAGE] Invalid upload URL format - aborting upload.");
+            _logger.LogWarning("Invalid upload URL format - aborting upload");
             return false;
         }
 
         try
         {
-            Console.WriteLine($"[IMAGE STORAGE] Uploading to S3: {file.Name}");
+            _logger.LogInformation("Uploading to S3: {FileName}", file.Name);
 
             // Create a new HttpClient for direct S3 upload (without auth headers)
             using var s3Client = new HttpClient();
@@ -149,27 +157,28 @@ public class ImageStorageService : IImageStorageService
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
-                Console.WriteLine($"[IMAGE STORAGE] S3 upload failed: {response.StatusCode} - {errorContent}");
+                _logger.LogError("S3 upload failed: {StatusCode} - {ErrorContent}", response.StatusCode, errorContent);
             }
             else
             {
-                Console.WriteLine("[IMAGE STORAGE] S3 upload successful");
+                _logger.LogInformation("S3 upload successful");
             }
 
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[IMAGE STORAGE] Error uploading image: {ex.Message}");
+            _logger.LogError(ex, "Error uploading image");
             return false;
         }
     }
 
+    /// <inheritdoc />
     public async Task<ImageUploadResult?> UploadImageAndCreateRecordAsync(IBrowserFile file)
     {
         try
         {
-            Console.WriteLine($"[IMAGE STORAGE] Starting upload process for: {file.Name}");
+            _logger.LogInformation("Starting upload process for: {FileName}", file.Name);
 
             // Step 1: Get pre-signed upload URL
             var uploadResponse = await GetUploadUrlAsync(file.Name, file.ContentType);
@@ -203,12 +212,12 @@ public class ImageStorageService : IImageStorageService
                 Size = file.Size
             };
 
-            Console.WriteLine($"[IMAGE STORAGE] Creating StorageObject record...");
+            _logger.LogInformation("Creating StorageObject record");
             var createResponse = await _apiClient.StorageObjectPOSTAsync(createDto);
 
             if (createResponse?.Success == true)
             {
-                Console.WriteLine($"[IMAGE STORAGE] StorageObject created with ID: {createResponse.Id}");
+                _logger.LogInformation("StorageObject created with ID: {StorageObjectId}", createResponse.Id);
                 return new ImageUploadResult
                 {
                     Success = true,
@@ -219,7 +228,7 @@ public class ImageStorageService : IImageStorageService
             }
             else
             {
-                Console.WriteLine($"[IMAGE STORAGE] StorageObject creation failed: {createResponse?.Message}");
+                _logger.LogWarning("StorageObject creation failed: {Message}", createResponse?.Message);
                 return new ImageUploadResult
                 {
                     Success = false,
@@ -229,7 +238,7 @@ public class ImageStorageService : IImageStorageService
         }
         catch (ApiException ex)
         {
-            Console.WriteLine($"[IMAGE STORAGE] API error: {ex.StatusCode} - {ex.Message}");
+            _logger.LogError(ex, "API error: {StatusCode}", ex.StatusCode);
             return new ImageUploadResult
             {
                 Success = false,
@@ -238,7 +247,7 @@ public class ImageStorageService : IImageStorageService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[IMAGE STORAGE] Error in upload process: {ex.Message}");
+            _logger.LogError(ex, "Error in upload process");
             return new ImageUploadResult
             {
                 Success = false,
@@ -247,6 +256,7 @@ public class ImageStorageService : IImageStorageService
         }
     }
 
+    /// <inheritdoc />
     public Task<string?> GetImageUrlAsync(string imageKey)
     {
         if (string.IsNullOrEmpty(imageKey))
@@ -272,26 +282,28 @@ public class ImageStorageService : IImageStorageService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[IMAGE STORAGE] Error constructing image proxy URL: {ex.Message}");
+            _logger.LogError(ex, "Error constructing image proxy URL");
             return Task.FromResult<string?>(null);
         }
     }
 
+    /// <inheritdoc />
     public async Task<bool> DeleteImageAsync(string imageKey)
     {
         try
         {
             // TODO: Implement delete via API
-            Console.WriteLine($"[IMAGE STORAGE] Delete not implemented for: {imageKey}");
+            _logger.LogWarning("Delete not implemented for: {ImageKey}", imageKey);
             return false;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[IMAGE STORAGE] Error deleting image: {ex.Message}");
+            _logger.LogError(ex, "Error deleting image");
             return false;
         }
     }
 
+    /// <inheritdoc />
     public async Task<string> GenerateLocalPreviewAsync(IBrowserFile file, long maxFileSize = 5 * 1024 * 1024)
     {
         try
@@ -305,7 +317,7 @@ public class ImageStorageService : IImageStorageService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[IMAGE STORAGE] Error generating preview: {ex.Message}");
+            _logger.LogError(ex, "Error generating preview");
             return string.Empty;
         }
     }

@@ -1,300 +1,149 @@
+@page "/organizations/my"
 @using MudBlazor
+@using Microsoft.AspNetCore.Authorization
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Clients
-@using Microsoft.AspNetCore.Authorization
-@using Microsoft.AspNetCore.Components
-@using Blazouter.Services
-@inject IOrganizationService OrganizationService
-@inject IUserService UserService
-@inject NavigationManager Navigation
-@inject ISnackbar Snackbar
-@inject RouterStateService RouterState
 @attribute [Authorize]
 
 <PageTitle>My Organizations</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-8 mb-8">
-
-    <div class="d-flex justify-space-between align-center mb-6">
+<MudContainer MaxWidth="MaxWidth.Large" Class="my-organizations">
+    <!-- Header -->
+    <div class="my-organizations__header">
         <div>
-            <MudText Typo="Typo.h3" Color="Color.Primary" Style="font-weight: 500;">My Organizations</MudText>
-            <MudText Typo="Typo.subtitle1" Class="mud-text-secondary">Manage your organizations and create events</MudText>
+            <MudText Typo="Typo.h4" Class="mb-1">My Organizations</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Manage your organizations and create events
+            </MudText>
         </div>
         <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
                    StartIcon="@Icons.Material.Filled.Add"
                    Href="/organization/create"
-                   Size="Size.Large"
-                   Class="rounded-pill px-6">
+                   Class="my-organizations__create-btn">
             Create Organization
         </MudButton>
     </div>
 
-    @if (_loading)
+    @if (_isLoading)
     {
-        <div class="d-flex justify-center align-center my-16">
+        <div class="my-organizations__loading">
             <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+            <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mt-4">
+                Loading your organizations...
+            </MudText>
         </div>
     }
     else if (!string.IsNullOrEmpty(_errorMessage))
     {
         <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="my-4">
             @_errorMessage
-            <MudButton Variant="Variant.Text" Color="Color.Inherit" OnClick="RetryLoad" Class="ml-4">Retry</MudButton>
+            <MudButton Variant="Variant.Text" Color="Color.Inherit" OnClick="RetryLoadAsync" Class="ml-4">
+                Retry
+            </MudButton>
         </MudAlert>
+    }
+    else if (_organizations == null || !_organizations.Any())
+    {
+        <div class="my-organizations__empty">
+            <MudIcon Icon="@Icons.Material.Outlined.Business" Class="my-organizations__empty-icon" />
+            <MudText Typo="Typo.h5" Class="mt-4">No organizations yet</MudText>
+            <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-6">
+                Create an organization to start hosting events
+            </MudText>
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       Href="/organization/create"
+                       StartIcon="@Icons.Material.Filled.Add">
+                Create your first organization
+            </MudButton>
+        </div>
     }
     else
     {
-        @if (_organizations == null || !_organizations.Any())
+        <!-- Search -->
+        <MudTextField @bind-Value="_searchString"
+                      Placeholder="Search by name or email..."
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      Immediate="true"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Class="my-organizations__search mb-6" />
+
+        @if (!FilteredOrganizations.Any())
         {
-            <MudPaper Class="d-flex flex-column align-center justify-center py-16 px-4" Elevation="0" Style="background-color: transparent;">
-                <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Large" Style="width: 120px; height: 120px; opacity: 0.2;" />
-                <MudText Typo="Typo.h5" Class="mt-4 text-secondary">No organizations found</MudText>
-                <MudText Typo="Typo.body1" Class="mb-6 text-secondary">Create an organization to start organizing events.</MudText>
-                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="/organization/create">Create your first organization</MudButton>
-            </MudPaper>
+            <MudText Typo="Typo.body1" Align="Align.Center" Color="Color.Secondary" Class="mt-8">
+                No organizations match your search.
+            </MudText>
         }
         else
         {
-            <div class="d-flex gap-4 mb-6">
-                <MudTextField @bind-Value="_searchString"
-                              Placeholder="Search by name or email..."
-                              Adornment="Adornment.Start"
-                              AdornmentIcon="@Icons.Material.Filled.Search"
-                              Immediate="true"
-                              Variant="Variant.Outlined"
-                              Margin="Margin.Dense"
-                              Class="flex-grow-1"/>
-            </div>
+            <MudGrid Spacing="4">
+                @foreach (var org in FilteredOrganizations)
+                {
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudCard Class="my-organizations__card" Elevation="0">
+                            <!-- Card Header with Avatar -->
+                            <div class="my-organizations__card-header">
+                                <MudAvatar Size="Size.Large"
+                                           Color="@GetOrganizationColor(org.FullName)"
+                                           Class="my-organizations__avatar">
+                                    @GetInitials(org.FullName)
+                                </MudAvatar>
+                                @if (org.CurrentUserRole.HasValue)
+                                {
+                                    <MudChip T="string"
+                                             Size="Size.Small"
+                                             Color="@GetRoleColor(org.CurrentUserRole.Value)"
+                                             Class="my-organizations__role-chip">
+                                        @GetRoleName(org.CurrentUserRole.Value)
+                                    </MudChip>
+                                }
+                            </div>
 
-            @if (!FilteredOrganizations.Any())
-            {
-                 <MudText Typo="Typo.body1" Align="Align.Center" Class="mt-8 text-secondary">No organizations match your search.</MudText>
-            }
-            else
-            {
-                <MudGrid>
-                    @foreach (var org in FilteredOrganizations)
-                    {
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudCard Elevation="0" Class="card h-100">
-                                <MudCardMedia Class="card-media">
-                                    <img src="@($"https://dummyimage.com/600x400/{GetRandomColor(org.FullName).ToString().Substring(1)}/ffffff&text={Uri.EscapeDataString(org.FullName)}")"
-                                         alt="@org.FullName"
-                                         style="width: 100%; height: 200px; object-fit: cover;" />
-                                </MudCardMedia>
-                                <MudCardContent>
-                                    <div class="badges">
-                                        @if (org.CurrentUserRole.HasValue)
-                                        {
-                                            <MudChip T="string" Size="Size.Small" Color="@GetRoleColor(org.CurrentUserRole.Value)">
-                                                @GetRoleName(org.CurrentUserRole.Value)
-                                            </MudChip>
-                                        }
-                                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.LocationOn">
-                                            @org.City, @org.Country
-                                        </MudChip>
-                                    </div>
-                                    <MudText Typo="Typo.h6" Class="mb-1">@org.FullName</MudText>
-                                    <MudText Typo="Typo.body2" Color="Color.Surface" Style="opacity:.85; min-height: 40px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4;">
-                                        @org.Email
+                            <MudCardContent>
+                                <MudText Typo="Typo.h6" Class="my-organizations__name">@org.FullName</MudText>
+
+                                <div class="my-organizations__info">
+                                    <MudIcon Icon="@Icons.Material.Filled.Email" Size="Size.Small" />
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">@org.Email</MudText>
+                                </div>
+
+                                <div class="my-organizations__info">
+                                    <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" />
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                        @org.City, @org.Country
                                     </MudText>
-                                </MudCardContent>
-                                <MudCardActions Class="justify-space-between pa-4 pt-0">
-                                    <MudButton Variant="Variant.Text"
-                                               Color="Color.Primary"
-                                               Href="@($"/organization/{org.Id}")"
-                                               Size="Size.Small">
-                                        View Dashboard
-                                    </MudButton>
-                                    @if (CanCreateEvents(org))
-                                    {
-                                        <MudButton Variant="Variant.Filled"
-                                                   Color="Color.Success"
-                                                   StartIcon="@Icons.Material.Filled.Event"
-                                                   Href="@($"/organization/{org.Id}/create-event")"
-                                                   Size="Size.Small">
-                                            Create Event
-                                        </MudButton>
-                                    }
-                                </MudCardActions>
-                            </MudCard>
-                        </MudItem>
-                    }
-                </MudGrid>
+                                </div>
+                            </MudCardContent>
 
-                <MudText Typo="Typo.caption" Class="d-block mt-4 text-center mud-text-secondary">
-                    Showing @FilteredOrganizations.Count() organization(s)
-                </MudText>
-            }
+                            <MudCardActions Class="my-organizations__actions">
+                                <MudButton Variant="Variant.Text"
+                                           Color="Color.Primary"
+                                           Href="@($"/organization/{org.Id}")"
+                                           Size="Size.Small">
+                                    View Details
+                                </MudButton>
+                                @if (CanCreateEvents(org))
+                                {
+                                    <MudButton Variant="Variant.Filled"
+                                               Color="Color.Success"
+                                               StartIcon="@Icons.Material.Filled.Event"
+                                               Href="@($"/organization/{org.Id}/create-event")"
+                                               Size="Size.Small">
+                                        Create Event
+                                    </MudButton>
+                                }
+                            </MudCardActions>
+                        </MudCard>
+                    </MudItem>
+                }
+            </MudGrid>
+
+            <MudText Typo="Typo.caption" Align="Align.Center" Color="Color.Secondary" Class="mt-6">
+                Showing @FilteredOrganizations.Count() of @_organizations.Count organization(s)
+            </MudText>
         }
     }
 </MudContainer>
-
-@code {
-    private Guid? UserId { get; set; }
-
-    private Guid? _currentUserId;
-    private ICollection<OrganizationListDto>? _organizations;
-    private bool _loading = true;
-    private string? _errorMessage;
-    private string _searchString = "";
-    private bool _dataLoaded = false;
-
-    private IEnumerable<OrganizationListDto> FilteredOrganizations =>
-        _organizations?
-            .Where(x => string.IsNullOrWhiteSpace(_searchString) ||
-                        x.FullName.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ||
-                        x.Email.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
-        ?? Enumerable.Empty<OrganizationListDto>();
-
-    protected override async Task OnInitializedAsync()
-    {
-        // Get optional route parameter from Blazouter
-        var userIdStr = RouterState.GetParam("UserId");
-        if (Guid.TryParse(userIdStr, out var id))
-        {
-            UserId = id;
-        }
-        
-        Console.WriteLine("[MY ORGS] OnInitializedAsync starting...");
-        await LoadData();
-    }
-
-    private async Task RetryLoad()
-    {
-        _errorMessage = null;
-        _dataLoaded = false;
-        await LoadData();
-    }
-
-    private async Task LoadData()
-    {
-        if (_dataLoaded) return;
-
-        try
-        {
-            _loading = true;
-            _errorMessage = null;
-
-            // Get current user ID if not provided via route
-            if (!_currentUserId.HasValue)
-            {
-                try
-                {
-                    var currentUser = await UserService.GetCurrentUserAsync();
-                    if (currentUser != null)
-                    {
-                        _currentUserId = currentUser.Id;
-                        if (!UserId.HasValue)
-                        {
-                            UserId = currentUser.Id;
-                        }
-                        Console.WriteLine($"[MY ORGS] Current user ID: {_currentUserId}");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[MY ORGS] Error getting current user: {ex.Message}");
-                }
-            }
-
-            Console.WriteLine($"[MY ORGS] Loading organizations for user: {_currentUserId}");
-
-            ICollection<OrganizationListDto>? orgs = null;
-
-            if (_currentUserId.HasValue)
-            {
-                orgs = await OrganizationService.GetOrganizationsByUserAsync(_currentUserId.Value);
-                Console.WriteLine($"[MY ORGS] Got {orgs?.Count ?? 0} organizations via GetOrganizationsByUserAsync");
-            }
-
-            // Fallback if no orgs
-            if (orgs == null || orgs.Count == 0)
-            {
-                Console.WriteLine("[MY ORGS] Trying fallback GetMyOrganizationsAsync...");
-                orgs = await OrganizationService.GetMyOrganizationsAsync();
-                Console.WriteLine($"[MY ORGS] Fallback got {orgs?.Count ?? 0} organizations");
-            }
-
-            _organizations = orgs ?? new List<OrganizationListDto>();
-            _dataLoaded = true;
-            Console.WriteLine($"[MY ORGS] Loaded {_organizations.Count} organizations");
-        }
-        catch (Exception ex)
-        {
-            _errorMessage = $"An error occurred while loading your organizations: {ex.Message}";
-            Console.WriteLine($"[MY ORGS] ERROR: {ex.Message}");
-        }
-        finally
-        {
-            _loading = false;
-        }
-    }
-
-    /// <summary>
-    /// Check if user can create events for this organization (Creator, CoOwner, Admin)
-    /// </summary>
-    private bool CanCreateEvents(OrganizationListDto org)
-    {
-        // Creator = 1, CoOwner = 2, Admin = 3 - or any role if org is in list
-        return org.CurrentUserRole.HasValue &&
-               (org.CurrentUserRole.Value == 1 || org.CurrentUserRole.Value == 2 || org.CurrentUserRole.Value == 3);
-    }
-
-    /// <summary>
-    /// Check if user can manage organization settings (Creator, CoOwner, Admin)
-    /// </summary>
-    private bool CanManageOrganization(OrganizationListDto org)
-    {
-        // Creator = 1, CoOwner = 2, Admin = 3
-        return org.CurrentUserRole.HasValue &&
-               (org.CurrentUserRole.Value == 1 || org.CurrentUserRole.Value == 2 || org.CurrentUserRole.Value == 3);
-    }
-
-    private Color GetRandomColor(string name)
-    {
-        if (string.IsNullOrEmpty(name)) return Color.Primary;
-        var colors = new[] { Color.Primary, Color.Secondary, Color.Tertiary, Color.Info, Color.Success, Color.Warning, Color.Error };
-        return colors[Math.Abs(name.GetHashCode()) % colors.Length];
-    }
-
-    private Color GetRoleColor(int roleId)
-    {
-        return roleId switch
-        {
-            1 => Color.Warning,  // Creator
-            2 => Color.Success,  // CoOwner
-            3 => Color.Info,     // Admin
-            4 => Color.Default,  // Moderator
-            5 => Color.Default,  // Member
-            6 => Color.Default,  // Viewer
-            _ => Color.Default
-        };
-    }
-
-    private string GetRoleName(int roleId)
-    {
-        return roleId switch
-        {
-            1 => "Creator",
-            2 => "Co-Owner",
-            3 => "Admin",
-            4 => "Moderator",
-            5 => "Member",
-            6 => "Viewer",
-            _ => "Unknown"
-        };
-    }
-
-    private (Color Color, string Icon) GetStatusInfo(int statusId)
-    {
-        return statusId switch
-        {
-            1 => (Color.Warning, Icons.Material.Filled.HourglassEmpty), // Pending
-            2 => (Color.Success, Icons.Material.Filled.CheckCircle),    // Approved
-            3 => (Color.Error, Icons.Material.Filled.Cancel),           // Rejected
-            _ => (Color.Default, Icons.Material.Filled.Help)
-        };
-    }
-}

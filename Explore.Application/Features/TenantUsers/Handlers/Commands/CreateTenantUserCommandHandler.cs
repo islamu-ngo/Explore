@@ -1,5 +1,6 @@
 using MediatR;
 using AutoMapper;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.TenantUser;
 using Explore.Application.Features.TenantUsers.Requests.Commands;
@@ -13,24 +14,34 @@ namespace Explore.Application.Features.TenantUsers.Handlers.Commands
     public class CreateTenantUserCommandHandler : IRequestHandler<CreateTenantUserCommand, BaseCommandResponse<Guid>>
     {
         private readonly ITenantUserRepository _tenantUserRepository;
+        private readonly IUserRepository _userRepository;
+        private readonly ITenantRepository _tenantRepository;
+        private readonly IUserRoleRepository _userRoleRepository;
+        private readonly ITenantContext _tenantContext;
         private readonly IMapper _mapper;
-        private readonly IValidator<CreateTenantUserDto> _validator;
 
         public CreateTenantUserCommandHandler(
             ITenantUserRepository tenantUserRepository,
-            IMapper mapper,
-            IValidator<CreateTenantUserDto> validator)
+            IUserRepository userRepository,
+            ITenantRepository tenantRepository,
+            IUserRoleRepository userRoleRepository,
+            ITenantContext tenantContext,
+            IMapper mapper)
         {
             _tenantUserRepository = tenantUserRepository;
+            _userRepository = userRepository;
+            _tenantRepository = tenantRepository;
+            _userRoleRepository = userRoleRepository;
+            _tenantContext = tenantContext;
             _mapper = mapper;
-            _validator = validator;
         }
 
         public async Task<BaseCommandResponse<Guid>> Handle(CreateTenantUserCommand request, CancellationToken cancellationToken)
         {
             var response = new BaseCommandResponse<Guid>();
 
-            var validationResult = await _validator.ValidateAsync(request.TenantUserDto);
+            var validator = new CreateTenantUserDtoValidator(_userRepository, _tenantRepository, _userRoleRepository);
+            var validationResult = await validator.ValidateAsync(request.TenantUserDto);
 
             if (!validationResult.IsValid)
             {
@@ -41,6 +52,10 @@ namespace Explore.Application.Features.TenantUsers.Handlers.Commands
             }
 
             var tenantUser = _mapper.Map<TenantUser>(request.TenantUserDto);
+
+            // Set TenantId from the request context
+            tenantUser.TenantId = _tenantContext.TenantId;
+
             tenantUser = await _tenantUserRepository.Create(tenantUser);
 
             response.Success = true;

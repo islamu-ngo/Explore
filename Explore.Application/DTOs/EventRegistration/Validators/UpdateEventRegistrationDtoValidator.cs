@@ -39,8 +39,8 @@ namespace Explore.Application.DTOs.EventRegistration.Validators
                 .When(x => x.ApprovalStatusId.HasValue)
                 .WithMessage("{PropertyName} not found");
 
-            RuleFor(x => x.TenantId)
-                .NotEmpty().WithMessage("{PropertyName} is required");
+            // TenantId is set by the handler from context, not by the client
+            // No validation needed here
         }
 
         private async Task<bool> UserExists(Guid userId, CancellationToken cancellationToken)

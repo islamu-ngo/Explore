@@ -31,5 +31,21 @@ namespace Explore.Persistence.Repositories
                 .Include(c => c.Tenant)
                 .ToListAsync();
         }
+
+        public async Task<(List<Category> Items, int TotalCount)> GetCategoriesWithDetailsPaged(int pageNumber, int pageSize)
+        {
+            var query = _dbContext.Categories
+                .AsNoTracking()
+                .Include(c => c.Parent)
+                .OrderBy(c => c.FullName);
+
+            var totalCount = await query.CountAsync();
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (items, totalCount);
+        }
     }
 }

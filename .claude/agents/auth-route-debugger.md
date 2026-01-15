@@ -15,326 +15,35 @@ You are a security specialist for the ISLAMU Event platform. You diagnose and fi
 - **Framework**: ASP.NET Core (.NET 10)
 - **Logging**: Serilog (structured logs in `Explore.API/logs/`)
 
-## Authentication Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    AUTHENTICATION FLOW                              │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  Blazor (Cookie-based OIDC)          API (JWT Bearer)               │
-│  ─────────────────────────          ───────────────                 │
-│  1. User clicks login                1. Client sends JWT            │
-│  2. Redirect to Keycloak             2. API validates with Keycloak │
-│  3. User authenticates               3. Extract claims              │
-│  4. Redirect with auth code          4. Enforce endpoint auth/ownership rules │
-│  5. Exchange code for tokens         5. Process request             │
-│  6. Store in HttpOnly cookie                                        │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-## CRITICAL: User ID Extraction Pattern
-
-**ALWAYS use this fallback pattern when extracting userId from JWT claims:**
-
-```csharp
-var userId = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
-    ?? _httpContextAccessor.HttpContext?.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
-    ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sid")?.Value;
-
-if (string.IsNullOrEmpty(userId))
-{
-    return Unauthorized(new { error = "User ID not found in token" });
-}
-```
-
-**Claim Priority**:
-1. `sub` - Standard OIDC subject claim (preferred)
-2. `nameidentifier` - Legacy JWT claim (fallback)
-3. `sid` - Session ID (last resort)
+For the foundational authentication architecture and critical user ID extraction patterns, including the fallback mechanism for claims, refer to the `auth-patterns` skill and specifically its [user-id-extraction.md](skills/auth-patterns/resources/user-id-extraction.md) resource.
 
 ## Common Authentication Issues
 
 ### 1. HTTP 401 Unauthorized
 
-**Causes**:
-- Missing or invalid JWT token
-- Expired token
-- Token not signed by Keycloak
-- Missing `Authorization` header
-
-**Debugging (PowerShell)**:
-
-```powershell
-# Check API logs for authentication errors
-$today = Get-Date -Format "yyyyMMdd"
-Get-Content "Explore.API/logs/log-$today.txt" | Select-String -Pattern "unauthorized|401" -CaseSensitive:$false
-
-# Test endpoint with curl (PowerShell)
-$token = "YOUR_TOKEN"
-Invoke-RestMethod -Uri "https://localhost:7001/api/v1/event" -Headers @{ Authorization = "Bearer $token" } -Verbose
-
-# Decode JWT to check claims and expiration (use jwt.io or PowerShell module)
-# Install-Module -Name JWT
-# $decoded = ConvertFrom-Jwt -Token $token
-```
-
-**Common Fixes**:
-
-```csharp
-// ❌ Missing [Authorize] attribute
-public class EventController : ControllerBase
-{
-    [HttpGet]
-    public async Task<IActionResult> GetEvents()  // Anyone can access!
-    {
-        // ...
-    }
-}
-
-// ✅ Add [Authorize] attribute for write operations
-// ✅ Add [AllowAnonymous] for read operations
-using Explore.Application.DTOs.Event;
-using Explore.Application.Features.Events.Requests.Commands;
-using Explore.Application.Features.Events.Requests.Queries;
-using Explore.Application.Responses;
-using MediatR;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-
-// For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
-
-namespace Explore.API.Controllers
-{
-    [Route("api/v1/[controller]")]
-    [ApiController]
-    public class EventController : ControllerBase
-    {
-        private readonly IMediator _mediator;
-        private readonly IHttpContextAccessor _httpContextAccessor;
-        private readonly ILogger<EventController> _logger;
-
-        public EventController(IMediator mediator, IHttpContextAccessor httpContextAccessor, ILogger<EventController> logger)
-        {
-            _mediator = mediator;
-            _httpContextAccessor = httpContextAccessor;
-            _logger = logger;
-        }
-
-        // GET: api/<EventController>
-        [HttpGet]
-        [EndpointSummary("Get all Events (Conference, Webinar, Workshop ...)")]
-        [EndpointDescription("Get A List of all the Events (pagination!)")]
-        [AllowAnonymous]
-        public async Task<ActionResult<List<EventListDto>>> GetAll()
-        {
-            var events = await _mediator.Send(new GetEventListRequest());
-            return Ok(events);
-        }
-
-        // GET api/<EventController>/5
-        [HttpGet("{id}")]
-        [EndpointSummary("Get Event (Conference, Webinar, Workshop ...) Details")]
-        [EndpointDescription("Get Details of the Event!")]
-        [AllowAnonymous]
-        public async Task<ActionResult<EventDto>> GetById(Guid id)
-        {
-            var @event = await _mediator.Send(new GetEventDetailsRequest{Id = id});
-            return Ok(@event);
-        }
-
-        // POST api/<EventController>
-        [HttpPost]
-        [EndpointSummary("")]
-        [EndpointDescription("")]
-        [Authorize]
-        public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventDto @event)
-        {
-            var command = new CreateEventCommand { EventDto = @event };
-            var response = await _mediator.Send(command);
-            return Ok(response);
-        }
-    }
-}
+For details on common causes, debugging steps, and fixes for HTTP 401 Unauthorized issues, refer to the `auth-patterns` skill. Specifically, check sections on JWT validation, missing `[Authorize]` attributes, and token expiration.
 
 ```
 
 ### 2. HTTP 403 Forbidden
 
-**Causes**:
-- User authenticated but lacks required permissions
-- Application-layer ownership/permission check denies access (if implemented)
-- Missing claims in JWT
-
-**Debugging (PowerShell)**:
-
-```powershell
-# Check user claims in token (PowerShell)
-# Decode JWT and examine role/claim fields
-```
-
-**Common Fixes**:
-
-```csharp
-// ❌ User doesn't have required role
-[Authorize(Roles = "Admin")]
-public async Task<IActionResult> DeleteEvent(Guid id)
-{
-    // Only admins can delete
-}
-
-// ✅ Enforce ownership/permissions in the Application handler (current codebase)
-[HttpDelete("{id}")]
-[Authorize]
-public async Task<IActionResult> DeleteEvent(Guid id)
-{
-    // ✅ CRITICAL: Use fallback pattern for userId extraction
-    var userId = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
-        ?? _httpContextAccessor.HttpContext?.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
-        ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sid")?.Value;
-
-    if (string.IsNullOrEmpty(userId))
-    {
-        return Unauthorized(new { error = "User ID not found in token" });
-    }
-
-    // Delete event via MediatR
-    var command = new DeleteEventCommand { Id = id, UserId = userId };
-    var result = await _mediator.Send(command);
-    return result ? NoContent() : NotFound();
-}
-```
+For details on common causes, debugging steps, and fixes for HTTP 403 Forbidden issues, including role-based authorization and application-layer permission checks, refer to the `auth-patterns` skill.
 
 ### 3. Middleware Order Issues
 
-**Symptom**: Authentication/authorization not working despite correct configuration
-
-```csharp
-// ❌ WRONG ORDER: Authorization before Authentication
-var app = builder.Build();
-
-app.UseRouting();
-app.UseAuthorization();  // ❌ Will fail - user not authenticated yet!
-app.UseAuthentication();
-app.MapControllers();
-
-// ✅ CORRECT ORDER
-var app = builder.Build();
-
-app.UseRouting();
-app.UseAuthentication();  // ✅ Must come FIRST
-app.UseAuthorization();   // ✅ Then authorization
-app.MapControllers();
-```
+For correct middleware pipeline order, especially regarding authentication and authorization, refer to the `clean-architecture-rules` skill (for general ASP.NET Core middleware pipeline) and the `auth-patterns` skill (for authentication-specific middleware order).
 
 ### 4. Keycloak Configuration Errors
 
-**Check `appsettings.json`**:
-
-```json
-{
-  "Keycloak": {
-    "Authority": "https://keycloak.openislamu.org/realms/{realm}",
-    "Realm": "islamu-dev",
-    "ClientId": "explore-api",
-    "ClientSecret": "*** from Infisical ***",
-    "RequireHttpsMetadata": true
-  }
-}
-```
-
-**Common Issues**:
-
-```csharp
-// ❌ Missing JWT Bearer configuration
-builder.Services.AddAuthentication();
-
-// ✅ Configure JWT Bearer with Keycloak
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.Authority = builder.Configuration["Keycloak:Authority"];
-        options.Audience = builder.Configuration["Keycloak:ClientId"];
-        options.RequireHttpsMetadata = builder.Configuration.GetValue<bool>("Keycloak:RequireHttpsMetadata");
-
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ClockSkew = TimeSpan.Zero  // No tolerance for expired tokens
-        };
-    });
-```
+For guidelines on configuring JWT Bearer authentication with Keycloak and troubleshooting common configuration issues, refer to the `auth-patterns` skill.
 
 ### 5. Cookie Authentication Issues (Blazor)
 
-**Symptoms**:
-- User logged in but redirected to login again
-- Cookies not persisted across requests
-- CORS errors with cookies
-
-**Debugging (PowerShell)**:
-
-```powershell
-# Check browser cookies (use browser DevTools F12 → Application → Cookies)
-# Look for: .AspNetCore.Cookies or similar
-
-# Check SameSite policy in browser console
-# Chrome: strict SameSite=Lax/Strict can block cookies
-```
-
-**Common Fixes**:
-
-```csharp
-// ❌ Insecure cookie settings
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-    .AddCookie();
-
-// ✅ Secure cookie configuration
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-    .AddCookie(options =>
-    {
-        options.Cookie.HttpOnly = true;
-        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;  // HTTPS only
-        options.Cookie.SameSite = SameSiteMode.Lax;
-        options.ExpireTimeSpan = TimeSpan.FromHours(12);
-        options.SlidingExpiration = true;
-        options.LoginPath = "/login";
-        options.LogoutPath = "/logout";
-    });
-```
+For details on troubleshooting cookie-based authentication issues in Blazor, including secure cookie configuration and `SameSite` policies, refer to the `blazor-bff-patterns` skill (for Blazor-specific authentication) and the `auth-patterns` skill (for general cookie authentication best practices).
 
 ### 6. CORS Issues with Authentication
 
-**Symptom**: Requests fail with CORS error when using credentials
-
-```csharp
-// ❌ CORS not allowing credentials
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowAll", builder =>
-    {
-        builder.AllowAnyOrigin()  // ❌ Can't use with credentials!
-               .AllowAnyMethod()
-               .AllowAnyHeader();
-    });
-});
-
-// ✅ CORS with specific origins and credentials
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowBlazor", builder =>
-    {
-        builder.WithOrigins("https://localhost:7002")  // Blazor app
-               .AllowAnyMethod()
-               .AllowAnyHeader()
-               .AllowCredentials();  // ✅ Required for cookies
-    });
-});
-```
+For guidelines on configuring CORS, especially when using credentials with specific origins, refer to the `auth-patterns` skill.
 
 ## Debugging Workflow
 
@@ -345,17 +54,13 @@ builder.Services.AddCors(options =>
 $today = Get-Date -Format "yyyyMMdd"
 Get-Content "Explore.API/logs/log-$today.txt" -Tail 50
 
-# Look for:
-# - "401 Unauthorized" → Authentication issue
-# - "403 Forbidden" → Authorization issue
-# - "Keycloak" → Identity provider issue
-# - "claims" / "roles" → missing role/claim mapping
+# Look for patterns: "401 Unauthorized", "403 Forbidden", "Keycloak", "claims", "roles"
 ```
 
 ### Step 2: Test Authentication (PowerShell)
 
 ```powershell
-# Get JWT token from Keycloak
+# Get JWT token from Keycloak (example client_credentials flow)
 $body = @{
     client_id = "explore-api"
     client_secret = "YOUR_SECRET"
@@ -369,7 +74,7 @@ $response = Invoke-RestMethod -Uri "https://keycloak.openislamu.org/realms/islam
 
 $token = $response.access_token
 
-# Test API endpoint
+# Test API endpoint with obtained token
 Invoke-RestMethod -Uri "https://localhost:7001/api/v1/event" `
     -Headers @{ Authorization = "Bearer $token" } `
     -Verbose
@@ -383,88 +88,25 @@ $tokenParts = $token.Split('.')
 $payload = [System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($tokenParts[1] + "=="))
 $payload | ConvertFrom-Json
 
-# Check for required claims:
-# - "sub" (subject/user ID)
-# - "roles" (user roles)
-# - "exp" (expiration time)
-# - "aud" (audience - should match ClientId)
+# Check for essential claims: "sub", "roles", "exp", "aud"
 ```
 
 ### Step 4: Verify Authorization Rules in Code
 
-Checklist:
-
-- read endpoints: `[AllowAnonymous]`
-- write endpoints: `[Authorize]`
-- if access is resource-scoped (owner/org), enforce it in the Application handler (there is no policy engine wired into the API today)
+Review `[Authorize]` and `[AllowAnonymous]` attributes on controllers and actions. For application-layer ownership/permission checks, examine the relevant MediatR handlers. Refer to the `auth-patterns` and `cqrs-mediatr-guidelines` skills for best practices.
 
 ### Step 5: Verify Middleware Pipeline
 
-```csharp
-// Check Program.cs for correct order
-app.UseRouting();           // 1. Routing
-app.UseCors("AllowBlazor"); // 2. CORS (before auth)
-app.UseAuthentication();    // 3. Authentication
-app.UseAuthorization();     // 4. Authorization
-app.MapControllers();       // 5. Endpoints
-```
+Check `Program.cs` for correct order of `UseRouting()`, `UseCors()`, `UseAuthentication()`, `UseAuthorization()`, and `MapControllers()`. Refer to the `clean-architecture-rules` skill for the recommended middleware order.
 
 ## Common Patterns
 
-### Allow Anonymous on Specific Actions
+For detailed examples on how to:
+- Apply `[Authorize]` and `[AllowAnonymous]` attributes correctly.
+- Extract user ID claims with the fallback pattern.
+- Implement application-layer authorization checks within MediatR handlers.
 
-
-
-### Extract User Claims with Fallback
-
-```csharp
-[Authorize]
-[HttpPost]
-public async Task<ActionResult<BaseCommandResponse<Guid>>> CreateEvent([FromBody] CreateEventDto dto)
-{
-    // ✅ CRITICAL: Get user ID from JWT claims with fallback pattern
-    var userId = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
-        ?? _httpContextAccessor.HttpContext?.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
-        ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sid")?.Value;
-
-    var email = _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.Email)?.Value;
-    var roles = _httpContextAccessor.HttpContext?.User?.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value);
-
-    if (string.IsNullOrEmpty(userId))
-    {
-        return Unauthorized(new { error = "User ID not found in token" });
-    }
-
-    // Use MediatR for CQRS pattern
-    var command = new CreateEventCommand { EventDto = dto };
-    var response = await _mediator.Send(command);
-    return Ok(response);
-}
-```
-
-### Check Application-Layer Authorization
-
-```csharp
-[HttpPut("{id}")]
-[Authorize]
-public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateEvent(Guid id, [FromBody] UpdateEventDto dto)
-{
-    // ✅ Extract userId with fallback
-    var userId = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
-        ?? _httpContextAccessor.HttpContext?.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
-        ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sid")?.Value;
-
-    if (string.IsNullOrEmpty(userId))
-    {
-        return Unauthorized(new { error = "User ID not found in token" });
-    }
-
-    // Proceed with update via MediatR
-    var command = new UpdateEventCommand { EventDto = dto /*, UserId = userId */ };
-    var response = await _mediator.Send(command);
-    return Ok(response);
-}
-```
+Refer to the `auth-patterns` skill and the `cqrs-mediatr-guidelines` skill.
 
 ## Troubleshooting Commands (PowerShell)
 
@@ -480,37 +122,19 @@ Get-Content "Explore.API/logs/log-$today.txt" -Wait -Tail 50
 $today = Get-Date -Format "yyyyMMdd"
 Get-Content "Explore.API/logs/log-$today.txt" | Select-String -Pattern "401|403|Unauthorized|Forbidden"
 
-# Check middleware pipeline registration
+# Check middleware pipeline registration (conceptual - actual output depends on logging)
 dotnet run --project Explore.API 2>&1 | Select-String -Pattern "middleware"
 ```
 
 ## Key Principles
 
-- ✅ Always use `[Authorize]` by default, `[AllowAnonymous]` for public GET endpoints
-- ✅ Use the userId fallback pattern: `sub` → `nameidentifier` → `sid`
-- ✅ Validate tokens on every request (JWT Bearer for API)
-- ✅ Enforce ownership/permissions in Application handlers when needed
-- ✅ Log authentication failures for security auditing
-- ✅ Use HTTPS in production (Keycloak requires it)
-- ✅ Set short token lifetimes with refresh tokens
-- ❌ Don't trust client-side claims without server validation
-- ❌ Don't expose sensitive claims in logs
-- ❌ Don't use `AllowAnyOrigin()` with credentials in CORS
+For a complete list of key principles and best practices for authentication and authorization, refer to the `auth-patterns` skill.
 
 ## Related Skills
 
-- `clean-architecture-rules` - Layer separation and dependency rules
-- `cqrs-mediatr-guidelines` - Handler patterns with authentication
-- `backend-dev-guidelines` - API controller best practices
+- [`clean-architecture-rules`](../clean-architecture-rules/SKILL.md) - Layer separation and dependency rules
+- [`cqrs-mediatr-guidelines`](../cqrs-mediatr-guidelines/SKILL.md) - Handler patterns with authentication
+- [`blazor-bff-patterns`](../blazor-bff-patterns/SKILL.md) - Blazor-specific authentication (cookie-based OIDC) and YARP
+- [`error-tracking`](../error-tracking/SKILL.md) - Logging and error handling patterns
 
-## Output Format
 
-When debugging authentication issues, provide:
-
-1. **Root Cause**: Specific authentication/authorization failure (401, 403, middleware order, etc.)
-2. **Evidence**: Log excerpts, JWT claims (roles/claims), handler/controller authorization logic
-3. **Fix**: Exact code changes with before/after examples
-4. **Verification**: PowerShell commands to test the fix
-5. **Prevention**: How to avoid this issue in the future
-
-Always verify fixes by testing with actual JWT tokens and checking API logs.

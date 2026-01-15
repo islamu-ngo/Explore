@@ -1,45 +1,46 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using Explore.Blazor.Client.Services
+@using Microsoft.Extensions.Logging
 @inject IImageStorageService ImageStorageService
 @inject ISnackbar Snackbar
+@inject ILogger<ImageUpload> Logger
 
-<div class="image-upload-container">
-    <div class="image-preview-box @(HasImage ? "has-image" : "")" style="@($"width: {Width}; height: {Height};")">
+<div class="image-upload">
+    <div class="image-upload__preview @(HasImage ? "image-upload__preview--has-image" : "")" style="@($"width: {Width}; height: {Height};")">
         @if (!string.IsNullOrEmpty(PreviewUrl))
         {
-            <img src="@PreviewUrl" alt="@(Alt ?? "Image preview")" style="object-fit: cover; width: 100%; height: 100%;" />
+            <img class="image-upload__image" src="@PreviewUrl" alt="@(Alt ?? "Image preview")" />
         }
         else
         {
-            <div class="image-placeholder">
+            <div class="image-upload__placeholder">
                 <MudIcon Icon="@(Icon ?? Icons.Material.Filled.Image)" Size="Size.Large" Color="Color.Secondary" />
                 <MudText Typo="Typo.body2">@(PlaceholderText ?? "No image selected")</MudText>
             </div>
         }
     </div>
 
-    <div class="image-actions">
+    <div class="image-upload__actions">
         <MudFileUpload T="IBrowserFile"
+                       @ref="_fileUpload"
                        FilesChanged="OnFileSelected"
                        Accept="@AcceptedFormats"
-                       Hidden="false"
-                       Class="d-none"
-                       InputId="imageUploadInput"/>
-
-        <MudButton HtmlTag="label"
-                   for="imageUploadInput"
-                   Variant="Variant.Outlined"
-                   StartIcon="@Icons.Material.Filled.CloudUpload"
-                   Color="Color.Primary">
-            @(UploadButtonText ?? "Select Image")
-        </MudButton>
+                       MaximumFileCount="1">
+            <ActivatorContent>
+                <MudButton Variant="Variant.Outlined"
+                           StartIcon="@Icons.Material.Filled.CloudUpload"
+                           Color="Color.Primary">
+                    @(UploadButtonText ?? "Select Image")
+                </MudButton>
+            </ActivatorContent>
+        </MudFileUpload>
 
         @if (HasImage)
         {
             <MudButton Variant="Variant.Text"
-                      Color="Color.Error"
-                      StartIcon="@Icons.Material.Filled.Delete"
-                      OnClick="RemoveImage">
+                       Color="Color.Error"
+                       StartIcon="@Icons.Material.Filled.Delete"
+                       OnClick="RemoveImage">
                 Remove
             </MudButton>
         }
@@ -47,7 +48,7 @@
 
     @if (!string.IsNullOrEmpty(HintText))
     {
-        <MudText Class="upload-hint">@HintText</MudText>
+        <MudText Class="image-upload__hint">@HintText</MudText>
     }
 </div>
 
@@ -67,6 +68,7 @@
     [Parameter] public string AcceptedFormats { get; set; } = ".jpg,.jpeg,.png,.gif,.webp";
     [Parameter] public long MaxFileSize { get; set; } = 5 * 1024 * 1024; // 5MB default
 
+    private MudFileUpload<IBrowserFile>? _fileUpload;
     private bool HasImage => !string.IsNullOrEmpty(PreviewUrl);
 
     private async Task OnFileSelected(IBrowserFile? file)
@@ -101,7 +103,7 @@
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Preview generation error: {ex.Message}");
+            Logger.LogError(ex, "Preview generation error");
             Snackbar.Add("An error occurred while generating the image preview", Severity.Error);
             await RemoveImage();
         }
@@ -112,6 +114,12 @@
         PreviewUrl = null;
         await PreviewUrlChanged.InvokeAsync(null);
         await FileSelected.InvokeAsync(null);
+
+        // Clear the file upload component
+        if (_fileUpload != null)
+        {
+            await _fileUpload.ClearAsync();
+        }
     }
 
     protected override async Task OnParametersSetAsync()

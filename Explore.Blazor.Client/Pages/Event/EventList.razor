@@ -3,59 +3,63 @@
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Components.Event
 @using Microsoft.AspNetCore.Components
+@using Microsoft.Extensions.Logging
 @inject NavigationManager Navigation
 @inject IEventService EventService
 @inject ICategoryService CategoryService
 @inject ITagService TagService
+@inject IAdminService AdminService
+@inject ILocationService LocationService
 @inject IEventRegistrationService RegistrationService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
+@inject ILogger<EventList> Logger
 <PageTitle>Explore Events</PageTitle>
 
-<MudContainer Class="page-wrap">
+<MudContainer Class="event-list__wrapper">
     <div class="pa-4">
 
         <!-- Header -->
-        <div class="section-head">
+        <div class="event-list__header">
             <div>
-                <MudText Typo="Typo.overline" Class="kicker">Discover</MudText>
-                <MudText Typo="Typo.h5">Explore Events</MudText>
+                <MudText Typo="Typo.overline" Class="event-list__kicker">Discover</MudText>
+                <MudText Class="isl-typo-h5">Explore Events</MudText>
             </div>
         </div>
 
         <!-- Filters -->
-        <div class="filters-bar mb-4">
+        <div class="event-list__filters mb-4">
             <!-- Date -->
-            <div class="filter-cell">
-                <MudPopover Open="@isDateOpen" Fixed="true" Class="filter-popover px-4 py-3">
+            <div class="event-list__filter-cell">
+                <MudPopover Open="@isDateOpen" Fixed="true" Class="isl-popover-menu px-4 py-3">
                     <div class="d-flex flex-column gap-3" style="min-width:220px">
                         <MudText Typo="Typo.subtitle2">Date</MudText>
                         <div class="d-flex flex-column gap-1">
                             <MudText Typo="Typo.body2"
                                      Color="@(selectedDate == "" ? Color.Primary : Color.Default)"
-                                     Class="filter-option"
+                                     Class="isl-popover-menu__option"
                                      @onclick="@(() => OnDateChanged(""))">Any Time</MudText>
                             <MudText Typo="Typo.body2"
                                      Color="@(selectedDate == "today" ? Color.Primary : Color.Default)"
-                                     Class="filter-option"
+                                     Class="isl-popover-menu__option"
                                      @onclick="@(() => OnDateChanged("today"))">Today</MudText>
                             <MudText Typo="Typo.body2"
                                      Color="@(selectedDate == "tomorrow" ? Color.Primary : Color.Default)"
-                                     Class="filter-option"
+                                     Class="isl-popover-menu__option"
                                      @onclick="@(() => OnDateChanged("tomorrow"))">Tomorrow</MudText>
                             <MudText Typo="Typo.body2"
                                      Color="@(selectedDate == "thisweek" ? Color.Primary : Color.Default)"
-                                     Class="filter-option"
+                                     Class="isl-popover-menu__option"
                                      @onclick="@(() => OnDateChanged("thisweek"))">This Week</MudText>
                             <MudText Typo="Typo.body2"
                                      Color="@(selectedDate == "thismonth" ? Color.Primary : Color.Default)"
-                                     Class="filter-option"
+                                     Class="isl-popover-menu__option"
                                      @onclick="@(() => OnDateChanged("thismonth"))">This Month</MudText>
                         </div>
                     </div>
                 </MudPopover>
                 <MudPaper @onclick="@(() => isDateOpen = !isDateOpen)"
-                          Class="filter-paper d-flex justify-space-between align-center">
+                          Class="isl-button-pill d-flex justify-space-between align-center">
                     <MudText Class="ml-2">
                         @(string.IsNullOrEmpty(selectedDate) ? "Any Time" :
                             (selectedDate == "today" ? "Today" :
@@ -68,14 +72,14 @@
             </div>
 
             <!-- Category -->
-            <div class="filter-cell">
-                <MudPopover Open="@isCategoryOpen" Fixed="true" Class="filter-popover px-4 py-3">
+            <div class="event-list__filter-cell">
+                <MudPopover Open="@isCategoryOpen" Fixed="true" Class="isl-popover-menu px-4 py-3">
                     <div class="d-flex flex-column gap-3" style="min-width:220px; max-height: 300px; overflow-y: auto;">
                         <MudText Typo="Typo.subtitle2">Category</MudText>
                         <div class="d-flex flex-column gap-1">
                             <MudText Typo="Typo.body2"
                                      Color="@(selectedCategoryId == null ? Color.Primary : Color.Default)"
-                                     Class="filter-option"
+                                     Class="isl-popover-menu__option"
                                      @onclick="@(() => OnCategoryChanged(null))">All Categories</MudText>
                             @if (categories != null && categories.Any())
                             {
@@ -83,7 +87,7 @@
                                 {
                                     <MudText Typo="Typo.body2"
                                              Color="@(selectedCategoryId == category.Id ? Color.Primary : Color.Default)"
-                                             Class="filter-option"
+                                             Class="isl-popover-menu__option"
                                              @onclick="@(() => OnCategoryChanged(category.Id))">@category.FullName</MudText>
                                 }
                             }
@@ -91,7 +95,7 @@
                     </div>
                 </MudPopover>
                 <MudPaper @onclick="@(() => isCategoryOpen = !isCategoryOpen)"
-                          Class="filter-paper d-flex justify-space-between align-center">
+                          Class="isl-button-pill d-flex justify-space-between align-center">
                     <MudText Class="ml-2">
                         @(selectedCategoryId == null ? "All Categories" : GetSelectedCategoryName())
                     </MudText>
@@ -100,14 +104,14 @@
             </div>
 
             <!-- Tags -->
-            <div class="filter-cell">
-                <MudPopover Open="@isTagOpen" Fixed="true" Class="filter-popover px-4 py-3">
+            <div class="event-list__filter-cell">
+                <MudPopover Open="@isTagOpen" Fixed="true" Class="isl-popover-menu px-4 py-3">
                     <div class="d-flex flex-column gap-3" style="min-width:220px; max-height: 300px; overflow-y: auto;">
                         <MudText Typo="Typo.subtitle2">Tags</MudText>
                         <div class="d-flex flex-column gap-1">
                             <MudText Typo="Typo.body2"
                                      Color="@(selectedTagId == null ? Color.Primary : Color.Default)"
-                                     Class="filter-option"
+                                     Class="isl-popover-menu__option"
                                      @onclick="@(() => OnTagChanged(null))">All Tags</MudText>
                             @if (tags != null && tags.Any())
                             {
@@ -115,7 +119,7 @@
                                 {
                                     <MudText Typo="Typo.body2"
                                              Color="@(selectedTagId == tag.Id ? Color.Primary : Color.Default)"
-                                             Class="filter-option"
+                                             Class="isl-popover-menu__option"
                                              @onclick="@(() => OnTagChanged(tag.Id))">@tag.FullName</MudText>
                                 }
                             }
@@ -123,7 +127,7 @@
                     </div>
                 </MudPopover>
                 <MudPaper @onclick="@(() => isTagOpen = !isTagOpen)"
-                          Class="filter-paper d-flex justify-space-between align-center">
+                          Class="isl-button-pill d-flex justify-space-between align-center">
                     <MudText Class="ml-2">
                         @(selectedTagId == null ? "All Tags" : GetSelectedTagName())
                     </MudText>
@@ -131,10 +135,172 @@
                 </MudPaper>
             </div>
 
+            <!-- Format -->
+            <div class="event-list__filter-cell">
+                <MudPopover Open="@isFormatOpen" Fixed="true" Class="isl-popover-menu px-4 py-3">
+                    <div class="d-flex flex-column gap-3" style="min-width:220px; max-height: 300px; overflow-y: auto;">
+                        <MudText Typo="Typo.subtitle2">Format</MudText>
+                        <div class="d-flex flex-column gap-1">
+                            <MudText Typo="Typo.body2"
+                                     Color="@(selectedFormatId == null ? Color.Primary : Color.Default)"
+                                     Class="isl-popover-menu__option"
+                                     @onclick="@(() => OnFormatChanged(null))">All Formats</MudText>
+                            @if (eventFormats != null && eventFormats.Any())
+                            {
+                                @foreach (var format in eventFormats)
+                                {
+                                    <MudText Typo="Typo.body2"
+                                             Color="@(selectedFormatId == format.Id ? Color.Primary : Color.Default)"
+                                             Class="isl-popover-menu__option"
+                                             @onclick="@(() => OnFormatChanged(format.Id))">@format.FullName</MudText>
+                                }
+                            }
+                        </div>
+                    </div>
+                </MudPopover>
+                <MudPaper @onclick="@(() => isFormatOpen = !isFormatOpen)"
+                          Class="isl-button-pill d-flex justify-space-between align-center">
+                    <MudText Class="ml-2">
+                        @(selectedFormatId == null ? "All Formats" : GetSelectedFormatName())
+                    </MudText>
+                    <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" />
+                </MudPaper>
+            </div>
+
+            <!-- Madhab -->
+            <div class="event-list__filter-cell">
+                <MudPopover Open="@isMadhabOpen" Fixed="true" Class="isl-popover-menu px-4 py-3">
+                    <div class="d-flex flex-column gap-3" style="min-width:220px; max-height: 300px; overflow-y: auto;">
+                        <MudText Typo="Typo.subtitle2">Madhab</MudText>
+                        <div class="d-flex flex-column gap-1">
+                            <MudText Typo="Typo.body2"
+                                     Color="@(selectedMadhabId == null ? Color.Primary : Color.Default)"
+                                     Class="isl-popover-menu__option"
+                                     @onclick="@(() => OnMadhabChanged(null))">All Madhabs</MudText>
+                            @if (madhabs != null && madhabs.Any())
+                            {
+                                @foreach (var madhab in madhabs)
+                                {
+                                    <MudText Typo="Typo.body2"
+                                             Color="@(selectedMadhabId == madhab.Id ? Color.Primary : Color.Default)"
+                                             Class="isl-popover-menu__option"
+                                             @onclick="@(() => OnMadhabChanged(madhab.Id))">@madhab.FullName</MudText>
+                                }
+                            }
+                        </div>
+                    </div>
+                </MudPopover>
+                <MudPaper @onclick="@(() => isMadhabOpen = !isMadhabOpen)"
+                          Class="isl-button-pill d-flex justify-space-between align-center">
+                    <MudText Class="ml-2">
+                        @(selectedMadhabId == null ? "All Madhabs" : GetSelectedMadhabName())
+                    </MudText>
+                    <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" />
+                </MudPaper>
+            </div>
+
+            <!-- Location -->
+            <div class="event-list__filter-cell">
+                <MudPopover Open="@isLocationOpen" Fixed="true" Class="isl-popover-menu px-4 py-3">
+                    <div class="d-flex flex-column gap-3" style="min-width:220px; max-height: 300px; overflow-y: auto;">
+                        <MudText Typo="Typo.subtitle2">Location</MudText>
+                        <div class="d-flex flex-column gap-1">
+                            <MudText Typo="Typo.body2"
+                                     Color="@(selectedLocationId == null ? Color.Primary : Color.Default)"
+                                     Class="isl-popover-menu__option"
+                                     @onclick="@(() => OnLocationChanged(null))">All Locations</MudText>
+                            @if (locations != null && locations.Any())
+                            {
+                                @foreach (var location in locations)
+                                {
+                                    <MudText Typo="Typo.body2"
+                                             Color="@(selectedLocationId == location.Id ? Color.Primary : Color.Default)"
+                                             Class="isl-popover-menu__option"
+                                             @onclick="@(() => OnLocationChanged(location.Id))">
+                                        @location.FullName @(!string.IsNullOrEmpty(location.City) ? $" - {location.City}" : "")
+                                    </MudText>
+                                }
+                            }
+                        </div>
+                    </div>
+                </MudPopover>
+                <MudPaper @onclick="@(() => isLocationOpen = !isLocationOpen)"
+                          Class="isl-button-pill d-flex justify-space-between align-center">
+                    <MudText Class="ml-2">
+                        @(selectedLocationId == null ? "All Locations" : GetSelectedLocationName())
+                    </MudText>
+                    <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" />
+                </MudPaper>
+            </div>
+
+            <!-- Registration Mode -->
+            <div class="event-list__filter-cell">
+                <MudPopover Open="@isRegistrationModeOpen" Fixed="true" Class="isl-popover-menu px-4 py-3">
+                    <div class="d-flex flex-column gap-3" style="min-width:220px; max-height: 300px; overflow-y: auto;">
+                        <MudText Typo="Typo.subtitle2">Registration Mode</MudText>
+                        <div class="d-flex flex-column gap-1">
+                            <MudText Typo="Typo.body2"
+                                     Color="@(selectedRegistrationModeId == null ? Color.Primary : Color.Default)"
+                                     Class="isl-popover-menu__option"
+                                     @onclick="@(() => OnRegistrationModeChanged(null))">All Modes</MudText>
+                            @if (registrationModes != null && registrationModes.Any())
+                            {
+                                @foreach (var mode in registrationModes)
+                                {
+                                    <MudText Typo="Typo.body2"
+                                             Color="@(selectedRegistrationModeId == mode.Id ? Color.Primary : Color.Default)"
+                                             Class="isl-popover-menu__option"
+                                             @onclick="@(() => OnRegistrationModeChanged(mode.Id))">@mode.FullName</MudText>
+                                }
+                            }
+                        </div>
+                    </div>
+                </MudPopover>
+                <MudPaper @onclick="@(() => isRegistrationModeOpen = !isRegistrationModeOpen)"
+                          Class="isl-button-pill d-flex justify-space-between align-center">
+                    <MudText Class="ml-2">
+                        @(selectedRegistrationModeId == null ? "All Modes" : GetSelectedRegistrationModeName())
+                    </MudText>
+                    <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" />
+                </MudPaper>
+            </div>
+
+            <!-- Language -->
+            <div class="event-list__filter-cell">
+                <MudPopover Open="@isLanguageOpen" Fixed="true" Class="isl-popover-menu px-4 py-3">
+                    <div class="d-flex flex-column gap-3" style="min-width:220px; max-height: 300px; overflow-y: auto;">
+                        <MudText Typo="Typo.subtitle2">Language</MudText>
+                        <div class="d-flex flex-column gap-1">
+                            <MudText Typo="Typo.body2"
+                                     Color="@(selectedLanguageId == null ? Color.Primary : Color.Default)"
+                                     Class="isl-popover-menu__option"
+                                     @onclick="@(() => OnLanguageChanged(null))">All Languages</MudText>
+                            @if (languages != null && languages.Any())
+                            {
+                                @foreach (var language in languages)
+                                {
+                                    <MudText Typo="Typo.body2"
+                                             Color="@(selectedLanguageId == language.Id ? Color.Primary : Color.Default)"
+                                             Class="isl-popover-menu__option"
+                                             @onclick="@(() => OnLanguageChanged(language.Id))">@language.FullName</MudText>
+                                }
+                            }
+                        </div>
+                    </div>
+                </MudPopover>
+                <MudPaper @onclick="@(() => isLanguageOpen = !isLanguageOpen)"
+                          Class="isl-button-pill d-flex justify-space-between align-center">
+                    <MudText Class="ml-2">
+                        @(selectedLanguageId == null ? "All Languages" : GetSelectedLanguageName())
+                    </MudText>
+                    <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" />
+                </MudPaper>
+            </div>
+
             <!-- Search -->
-            <div class="filter-cell search">
+            <div class="event-list__filter-cell event-list__filter-cell--search">
                 <MudTextField @bind-Value="searchText"
-                              Class="search-input"
+                              Class="event-list__search-input"
                               Placeholder="Search"
                               Adornment="Adornment.Start"
                               AdornmentIcon="@Icons.Material.Filled.Search"
@@ -148,13 +314,13 @@
 
         <!-- Cards -->
         <MudGrid>
-            @if (isLoading && !allEvents.Any())
+            @if (isLoading && !allEvents.Any() || isLoadingCategory || isLoadingTag)
             {
-                <!-- Skeleton loaders voor snelle feedback -->
+                <!-- Skeleton loaders for loading feedback -->
                 @for (int i = 0; i < 6; i++)
                 {
                     <MudItem xs="12" sm="6" md="4">
-                        <MudCard Elevation="0" Class="card">
+                        <MudCard Elevation="0" Class="event-list__card">
                             <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
                             <MudCardContent>
                                 <MudSkeleton Width="60%" Height="20px" Class="mb-2" />
@@ -184,8 +350,8 @@
                 @foreach (var evt in FilteredEvents)
                 {
                     <MudItem xs="12" sm="6" md="4">
-                        <MudCard Elevation="0" Class="card">
-                            <MudCardMedia Class="card-media">
+                        <MudCard Elevation="0" Class="event-list__card">
+                            <MudCardMedia Class="event-list__card-media">
                                 @if (!string.IsNullOrEmpty(evt.FeaturedImageUri))
                                 {
                                     <img src="@evt.FeaturedImageUri"
@@ -198,7 +364,7 @@
                                 }
                             </MudCardMedia>
                             <MudCardContent>
-                                <div class="badges">
+                                <div class="event-list__card-badges">
                                     <MudChip T="string" Size="Size.Small" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Category">
                                         @GetEventTypeName(evt)
                                     </MudChip>
@@ -261,8 +427,8 @@
                                     </MudMenuItem>
                                 </MudMenu>
                             </MudCardActions>
-                            <div class="card-footer pa-4 pt-0">
-                                <div class="loc">
+                            <div class="event-list__card-footer pa-4 pt-0">
+                                <div class="event-list__card-location">
                                     <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" />
                                     <MudText Typo="Typo.caption">@(evt.ActorDisplayName ?? "Community")</MudText>
                                 </div>
@@ -274,7 +440,7 @@
         </MudGrid>
 
         <!-- Pagination + info -->
-        <div class="pager">
+        <div class="event-list__pagination">
             <MudPagination Count="@TotalPages"
                            Selected="@currentPage"
                            SelectedChanged="@((int page) => OnPageChanged(page))"
@@ -282,7 +448,7 @@
                            ShowFirstButton="true"
                            ShowLastButton="true" />
         </div>
-        <div class="results">
+        <div class="event-list__results">
             <MudText Typo="Typo.body2" Color="Color.Surface">
                 Showing @((currentPage - 1) * itemsPerPage + 1) - @(Math.Min(currentPage * itemsPerPage, AllFilteredEvents.Count)) of @AllFilteredEvents.Count events (Page @currentPage of @TotalPages)
             </MudText>
@@ -296,10 +462,22 @@
     private string selectedDate = "";
     private Guid? selectedCategoryId;
     private Guid? selectedTagId;
+    private int? selectedFormatId;
+    private int? selectedMadhabId;
+    private Guid? selectedLocationId;
+    private int? selectedRegistrationModeId;
+    private int? selectedLanguageId;
     private bool isDateOpen;
     private bool isCategoryOpen;
     private bool isTagOpen;
+    private bool isFormatOpen;
+    private bool isMadhabOpen;
+    private bool isLocationOpen;
+    private bool isRegistrationModeOpen;
+    private bool isLanguageOpen;
     private bool isLoading = true;
+    private bool isLoadingCategory = false;
+    private bool isLoadingTag = false;
     private bool _dataLoaded = false;
 
     // Pagination variables
@@ -312,12 +490,18 @@
     private ICollection<EventFormatListDto> eventFormats = new List<EventFormatListDto>();
     private ICollection<CategoryListDto> categories = new List<CategoryListDto>();
     private ICollection<TagListDto> tags = new List<TagListDto>();
+    private ICollection<MadhabListDto> madhabs = new List<MadhabListDto>();
+    private ICollection<LocationListDto> locations = new List<LocationListDto>();
+    private ICollection<RegistrationModeListDto> registrationModes = new List<RegistrationModeListDto>();
+    private ICollection<LanguageListDto> languages = new List<LanguageListDto>();
+    private ICollection<EventSessionListDto> allSessions = new List<EventSessionListDto>();
+    private ICollection<EventSessionLanguageListDto> sessionLanguages = new List<EventSessionLanguageListDto>();
     private Dictionary<int, string> eventTypeMap = new();
     private Dictionary<int, string> eventFormatMap = new();
 
     protected override async Task OnInitializedAsync()
     {
-        Console.WriteLine("[EVENT LIST] OnInitializedAsync starting...");
+        Logger.LogDebug("OnInitializedAsync starting");
         // Always load data - don't use any caching that can cause issues
         await LoadDataAsync();
     }
@@ -341,7 +525,7 @@
 
         try
         {
-            Console.WriteLine("[EVENT LIST] Loading data...");
+            Logger.LogDebug("Loading data");
 
             // Parallel loading
             var eventsTask = EventService.GetAllEventsAsync();
@@ -349,29 +533,48 @@
             var eventFormatsTask = EventService.GetEventFormatsAsync();
             var categoriesTask = CategoryService.GetAllCategoriesAsync();
             var tagsTask = TagService.GetAllTagsAsync();
+            var madhabsTask = AdminService.GetMadhabsAsync();
+            var locationsTask = LocationService.GetAllLocationsAsync();
+            var registrationModesTask = AdminService.GetRegistrationModesAsync();
+            var languagesTask = AdminService.GetLanguagesAsync();
+            var sessionsTask = EventService.GetAllSessionsAsync();
+            var sessionLanguagesTask = EventService.GetAllSessionLanguagesAsync();
 
-            await Task.WhenAll(eventsTask, eventTypesTask, eventFormatsTask, categoriesTask, tagsTask);
+            await Task.WhenAll(eventsTask, eventTypesTask, eventFormatsTask, categoriesTask, tagsTask, madhabsTask, locationsTask, registrationModesTask, languagesTask, sessionsTask, sessionLanguagesTask);
 
             allEvents = await eventsTask;
             eventTypes = await eventTypesTask;
             eventFormats = await eventFormatsTask;
             categories = await categoriesTask;
             tags = await tagsTask;
+            madhabs = await madhabsTask;
+            locations = await locationsTask;
+            registrationModes = await registrationModesTask;
+            languages = await languagesTask;
+            allSessions = await sessionsTask;
+            sessionLanguages = await sessionLanguagesTask;
 
-            Console.WriteLine($"[EVENT LIST] Loaded {allEvents.Count} events, {eventTypes.Count} types, {eventFormats.Count} formats, {categories.Count} categories, {tags.Count} tags");
+            Logger.LogDebug("Loaded {EventCount} events, {TypeCount} types, {FormatCount} formats, {CategoryCount} categories, {TagCount} tags, {MadhabCount} madhabs, {LocationCount} locations, {ModeCount} registration modes, {LanguageCount} languages, {SessionCount} sessions, {SessionLanguageCount} session languages",
+                allEvents.Count, eventTypes.Count, eventFormats.Count, categories.Count, tags.Count, madhabs.Count, locations.Count, registrationModes.Count, languages.Count, allSessions.Count, sessionLanguages.Count);
 
             BuildLookupMaps();
             _dataLoaded = true;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[EVENT LIST] LoadDataAsync error: {ex.Message}");
+            Logger.LogError(ex, "LoadDataAsync error");
             // Keep empty lists on error - don't throw
             allEvents = new List<EventListDto>();
             eventTypes = new List<EventTypeListDto>();
             eventFormats = new List<EventFormatListDto>();
             categories = new List<CategoryListDto>();
             tags = new List<TagListDto>();
+            madhabs = new List<MadhabListDto>();
+            locations = new List<LocationListDto>();
+            registrationModes = new List<RegistrationModeListDto>();
+            languages = new List<LanguageListDto>();
+            allSessions = new List<EventSessionListDto>();
+            sessionLanguages = new List<EventSessionLanguageListDto>();
         }
         finally
         {
@@ -384,39 +587,101 @@
         get
         {
             var filteredEvents = allEvents.AsEnumerable();
-            
+
             // Search filter
             if (!string.IsNullOrEmpty(searchText))
             {
-                filteredEvents = filteredEvents.Where(e => 
+                filteredEvents = filteredEvents.Where(e =>
                     e.Title.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
                     (e.Description?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false));
             }
 
             // Category filter - if we have events by category loaded
-            if (selectedCategoryId.HasValue && eventsByCategory != null && eventsByCategory.Any())
+            if (selectedCategoryId.HasValue)
             {
-                var categoryEventIds = eventsByCategory.Select(e => e.Id).ToHashSet();
-                filteredEvents = filteredEvents.Where(e => categoryEventIds.Contains(e.Id));
+                if (eventsByCategory != null && eventsByCategory.Any())
+                {
+                    var categoryEventIds = eventsByCategory.Select(e => e.Id).ToHashSet();
+                    filteredEvents = filteredEvents.Where(e => categoryEventIds.Contains(e.Id));
+                }
+                else if (!isLoadingCategory)
+                {
+                    // Category selected but no events found - show empty
+                    filteredEvents = Enumerable.Empty<EventListDto>();
+                }
             }
 
             // Tag filter - if we have events by tag loaded
-            if (selectedTagId.HasValue && eventsByTag != null && eventsByTag.Any())
+            if (selectedTagId.HasValue)
             {
-                var tagEventIds = eventsByTag.Select(e => e.Id).ToHashSet();
-                filteredEvents = filteredEvents.Where(e => tagEventIds.Contains(e.Id));
+                if (eventsByTag != null && eventsByTag.Any())
+                {
+                    var tagEventIds = eventsByTag.Select(e => e.Id).ToHashSet();
+                    filteredEvents = filteredEvents.Where(e => tagEventIds.Contains(e.Id));
+                }
+                else if (!isLoadingTag)
+                {
+                    // Tag selected but no events found - show empty
+                    filteredEvents = Enumerable.Empty<EventListDto>();
+                }
             }
 
-            // Date filter
+            // Format filter
+            if (selectedFormatId.HasValue)
+            {
+                filteredEvents = filteredEvents.Where(e => e.EventFormatId == selectedFormatId.Value);
+            }
+
+            // Madhab filter
+            if (selectedMadhabId.HasValue)
+            {
+                filteredEvents = filteredEvents.Where(e => e.MadhabId == selectedMadhabId.Value);
+            }
+
+            // Location filter
+            if (selectedLocationId.HasValue && allSessions != null && allSessions.Any())
+            {
+                var locationEventIds = allSessions
+                    .Where(s => s.LocationId == selectedLocationId.Value)
+                    .Select(s => s.EventId)
+                    .ToHashSet();
+                filteredEvents = filteredEvents.Where(e => locationEventIds.Contains(e.Id));
+            }
+
+            // Registration mode filter
+            if (selectedRegistrationModeId.HasValue && allSessions != null && allSessions.Any())
+            {
+                var registrationEventIds = allSessions
+                    .Where(s => s.RegistrationModeId == selectedRegistrationModeId.Value)
+                    .Select(s => s.EventId)
+                    .ToHashSet();
+                filteredEvents = filteredEvents.Where(e => registrationEventIds.Contains(e.Id));
+            }
+
+            // Language filter
+            if (selectedLanguageId.HasValue && allSessions != null && allSessions.Any() && sessionLanguages != null && sessionLanguages.Any())
+            {
+                var languageSessionIds = sessionLanguages
+                    .Where(l => l.LanguageId == selectedLanguageId.Value)
+                    .Select(l => l.EventSessionId)
+                    .ToHashSet();
+                var languageEventIds = allSessions
+                    .Where(s => languageSessionIds.Contains(s.Id))
+                    .Select(s => s.EventId)
+                    .ToHashSet();
+                filteredEvents = filteredEvents.Where(e => languageEventIds.Contains(e.Id));
+            }
+
+            // Date filter - use DateTimeOffset for proper timezone handling
             if (!string.IsNullOrEmpty(selectedDate))
             {
-                var today = DateTime.Today;
+                var today = DateTimeOffset.Now.Date;
                 filteredEvents = selectedDate switch
                 {
-                    "today" => filteredEvents.Where(e => e.FirstSessionDate?.Date == today),
-                    "tomorrow" => filteredEvents.Where(e => e.FirstSessionDate?.Date == today.AddDays(1)),
-                    "thisweek" => filteredEvents.Where(e => e.FirstSessionDate?.Date >= today && e.FirstSessionDate?.Date <= today.AddDays(7)),
-                    "thismonth" => filteredEvents.Where(e => e.FirstSessionDate?.Date >= today && e.FirstSessionDate?.Date <= today.AddDays(30)),
+                    "today" => filteredEvents.Where(e => e.FirstSessionDate.HasValue && e.FirstSessionDate.Value.LocalDateTime.Date == today),
+                    "tomorrow" => filteredEvents.Where(e => e.FirstSessionDate.HasValue && e.FirstSessionDate.Value.LocalDateTime.Date == today.AddDays(1)),
+                    "thisweek" => filteredEvents.Where(e => e.FirstSessionDate.HasValue && e.FirstSessionDate.Value.LocalDateTime.Date >= today && e.FirstSessionDate.Value.LocalDateTime.Date <= today.AddDays(7)),
+                    "thismonth" => filteredEvents.Where(e => e.FirstSessionDate.HasValue && e.FirstSessionDate.Value.LocalDateTime.Date >= today && e.FirstSessionDate.Value.LocalDateTime.Date <= today.AddDays(30)),
                     _ => filteredEvents
                 };
             }
@@ -470,7 +735,22 @@
 
         if (categoryId.HasValue)
         {
-            eventsByCategory = await CategoryService.GetEventsByCategoryAsync(categoryId.Value);
+            isLoadingCategory = true;
+            StateHasChanged();
+            try
+            {
+                eventsByCategory = await CategoryService.GetEventsByCategoryAsync(categoryId.Value);
+                Logger.LogDebug("Category filter: loaded {Count} events for category {CategoryId}", eventsByCategory?.Count ?? 0, categoryId);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error loading events for category {CategoryId}", categoryId);
+                eventsByCategory = new List<EventListDto>();
+            }
+            finally
+            {
+                isLoadingCategory = false;
+            }
         }
         else
         {
@@ -487,13 +767,63 @@
 
         if (tagId.HasValue)
         {
-            eventsByTag = await TagService.GetEventsByTagAsync(tagId.Value);
+            isLoadingTag = true;
+            StateHasChanged();
+            try
+            {
+                eventsByTag = await TagService.GetEventsByTagAsync(tagId.Value);
+                Logger.LogDebug("Tag filter: loaded {Count} events for tag {TagId}", eventsByTag?.Count ?? 0, tagId);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error loading events for tag {TagId}", tagId);
+                eventsByTag = new List<EventListDto>();
+            }
+            finally
+            {
+                isLoadingTag = false;
+            }
         }
         else
         {
             eventsByTag = null;
         }
         StateHasChanged();
+    }
+
+    private void OnFormatChanged(int? formatId)
+    {
+        selectedFormatId = formatId;
+        isFormatOpen = false;
+        currentPage = 1;
+    }
+
+    private void OnMadhabChanged(int? madhabId)
+    {
+        selectedMadhabId = madhabId;
+        isMadhabOpen = false;
+        currentPage = 1;
+    }
+
+    private void OnLocationChanged(Guid? locationId)
+    {
+        selectedLocationId = locationId;
+        isLocationOpen = false;
+        currentPage = 1;
+    }
+
+    private void OnRegistrationModeChanged(int? modeId)
+    {
+        selectedRegistrationModeId = modeId;
+        isRegistrationModeOpen = false;
+        currentPage = 1;
+    }
+
+    private void OnLanguageChanged(int? languageId)
+    {
+        selectedLanguageId = languageId;
+        isLanguageOpen = false;
+        currentPage = 1;
     }
 
     private string GetSelectedCategoryName()
@@ -506,6 +836,40 @@
     {
         if (!selectedTagId.HasValue) return "All Tags";
         return tags?.FirstOrDefault(t => t.Id == selectedTagId.Value)?.FullName ?? "Tag";
+    }
+
+    private string GetSelectedFormatName()
+    {
+        if (!selectedFormatId.HasValue) return "All Formats";
+        return eventFormats?.FirstOrDefault(f => f.Id == selectedFormatId.Value)?.FullName ?? "Format";
+    }
+
+    private string GetSelectedMadhabName()
+    {
+        if (!selectedMadhabId.HasValue) return "All Madhabs";
+        return madhabs?.FirstOrDefault(m => m.Id == selectedMadhabId.Value)?.FullName ?? "Madhab";
+    }
+
+    private string GetSelectedLocationName()
+    {
+        if (!selectedLocationId.HasValue) return "All Locations";
+        var location = locations?.FirstOrDefault(l => l.Id == selectedLocationId.Value);
+        if (location == null) return "Location";
+        return !string.IsNullOrEmpty(location.City)
+            ? $"{location.FullName} - {location.City}"
+            : location.FullName;
+    }
+
+    private string GetSelectedRegistrationModeName()
+    {
+        if (!selectedRegistrationModeId.HasValue) return "All Modes";
+        return registrationModes?.FirstOrDefault(m => m.Id == selectedRegistrationModeId.Value)?.FullName ?? "Mode";
+    }
+
+    private string GetSelectedLanguageName()
+    {
+        if (!selectedLanguageId.HasValue) return "All Languages";
+        return languages?.FirstOrDefault(l => l.Id == selectedLanguageId.Value)?.FullName ?? "Language";
     }
 
     private void OnPageChanged(int page)
@@ -543,7 +907,7 @@
     {
         // First get the sessions for this event
         var sessions = await EventService.GetSessionsByEventAsync(evt.Id);
-        
+
         if (sessions == null || !sessions.Any())
         {
             Snackbar.Add("No sessions available for this event yet.", Severity.Warning);

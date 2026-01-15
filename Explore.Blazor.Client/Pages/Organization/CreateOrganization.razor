@@ -1,11 +1,13 @@
 @using MudBlazor
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Services
+@using Microsoft.Extensions.Logging
 @inject NavigationManager NavigationManager
 @inject IOrganizationService OrganizationService
+@inject ILogger<CreateOrganization> Logger
 
 <PageTitle>Create Organization</PageTitle>
-<MudContainer Class="py-6">
+<MudContainer Class="create-organization">
     <MudCard Class="mx-auto" Style="max-width: 900px;">
         <MudCardHeader>
             <CardHeaderContent>
@@ -21,16 +23,16 @@
             </CardHeaderContent>
         </MudCardHeader>
 
-        <div class="stepper">
-            <div class="step-container">
-                <div class="step-line">
-                    <div class="step-line-progress" style="width: @GetProgressWidth()"></div>
+        <div class="create-organization__stepper">
+            <div class="create-organization__step-container">
+                <div class="create-organization__step-line">
+                    <div class="create-organization__step-progress" style="width: @GetProgressWidth()"></div>
                 </div>
 
                 @foreach (var stepInfo in steps)
                 {
-                    <div class="step @GetStepClass(stepInfo.Step)">
-                        <div class="step-circle">
+                    <div class="create-organization__step @GetStepClass(stepInfo.Step)">
+                        <div class="create-organization__step-circle">
                             @if (IsStepCompleted(stepInfo.Step))
                             {
                                 <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" />
@@ -40,7 +42,7 @@
                                 @(stepInfo.Step + 1)
                             }
                         </div>
-                        <div class="step-title">@stepInfo.Title</div>
+                        <div class="create-organization__step-title">@stepInfo.Title</div>
                     </div>
                 }
             </div>
@@ -284,10 +286,10 @@
     private bool isSubmitting = false;
     private string logoPreview = string.Empty;
     private int currentStep = 0;
-    
+
     // Extra velden die niet in de API zitten maar wel in de UI
     // (Geen extra velden nodig - alle velden komen uit de database)
-    
+
     // API response handling
     private bool submitSuccess = false;
     private string errorMessage = string.Empty;
@@ -376,17 +378,17 @@
 
         isSubmitting = true;
         errorMessage = string.Empty;
-        
+
         try
         {
             // Roep de API aan om de organisatie te maken
             var createdOrganization = await OrganizationService.CreateOrganizationAsync(organization);
-            
+
             if (createdOrganization != null)
             {
                 submitSuccess = true;
-                Console.WriteLine($"Organisatie succesvol aangemaakt met ID: {createdOrganization.Id}");
-                
+                Logger.LogInformation("Organization successfully created with ID: {OrganizationId}", createdOrganization.Id);
+
                 // Wacht een moment en navigeer naar een succespagina
                 await Task.Delay(1500);
                 NavigationManager.NavigateTo("/organization/success");
@@ -394,13 +396,13 @@
             else
             {
                 errorMessage = "Er is een fout opgetreden bij het aanmaken van de organisatie. Probeer het opnieuw.";
-                Console.WriteLine("API retourneerde null voor organisatie aanmaak");
+                Logger.LogWarning("API returned null for organization creation");
             }
         }
         catch (Exception ex)
         {
             errorMessage = $"Fout bij het aanmaken van de organisatie: {ex.Message}";
-            Console.WriteLine($"Exception bij organisatie aanmaak: {ex.Message}");
+            Logger.LogError(ex, "Exception during organization creation");
         }
         finally
         {
@@ -455,4 +457,3 @@
         logoPreview = value ?? string.Empty;
     }
 }
-

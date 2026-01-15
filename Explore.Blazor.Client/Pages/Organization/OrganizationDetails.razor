@@ -6,25 +6,27 @@
 @using MudBlazor
 @using Microsoft.AspNetCore.Components
 @using Blazouter.Services
+@using Microsoft.Extensions.Logging
 @inject IOrganizationService OrganizationService
 @inject IOrganizationMemberService MemberService
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject RouterStateService RouterState
+@inject ILogger<OrganizationDetails> Logger
 @attribute [Authorize]
 
 <PageTitle>Organization Details</PageTitle>
 
 @if (isLoading)
 {
-    <MudContainer MaxWidth="MaxWidth.Large" Class="mt-8">
+    <MudContainer MaxWidth="MaxWidth.Large" Class="organization-details organization-details--loading">
         <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
         <MudText Typo="Typo.h6" Class="mt-4">Loading organization...</MudText>
     </MudContainer>
 }
 else if (organization == null)
 {
-    <MudContainer MaxWidth="MaxWidth.Large" Class="mt-8">
+    <MudContainer MaxWidth="MaxWidth.Large" Class="organization-details organization-details--error">
         <MudAlert Severity="Severity.Error">Organization not found.</MudAlert>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => NavigationManager.NavigateTo("/organization/my"))" Class="mt-4">
             Back to My Organizations
@@ -33,7 +35,7 @@ else if (organization == null)
 }
 else
 {
-    <MudContainer MaxWidth="MaxWidth.Large" Class="mt-8 mb-8">
+    <MudContainer MaxWidth="MaxWidth.Large" Class="organization-details">
         <MudButton StartIcon="@Icons.Material.Filled.ArrowBack"
                    Color="Color.Primary"
                    Variant="Variant.Text"
@@ -281,7 +283,7 @@ else
         {
             Id = id;
         }
-        
+
         try
         {
             var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
@@ -291,7 +293,7 @@ else
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[ORG DETAILS] Error loading organization: {ex.Message}");
+            Logger.LogError(ex, "Error loading organization");
             errorMessage = "Failed to load organization details.";
             isLoading = false;
         }
@@ -329,7 +331,7 @@ else
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error loading members: {ex.Message}");
+                Logger.LogWarning(ex, "Error loading members for permission check");
             }
 
             canEdit = currentUserRole == 1 || currentUserRole == 2 || currentUserRole == 3;
@@ -343,12 +345,12 @@ else
 
         try
         {
-            Console.WriteLine($"[ORG DETAILS] Loading organization {Id}");
+            Logger.LogDebug("Loading organization {OrganizationId}", Id);
             organization = await OrganizationService.GetOrganizationByIdAsync(Id);
 
             if (organization != null)
             {
-                Console.WriteLine($"[ORG DETAILS] Loaded organization: {organization.FullName}");
+                Logger.LogDebug("Loaded organization: {OrganizationName}", organization.FullName);
                 await CheckEditPermissions();
                 InitializeEditModel();
             }
@@ -360,7 +362,7 @@ else
         catch (Exception ex)
         {
             errorMessage = $"Failed to load organization: {ex.Message}";
-            Console.WriteLine($"[ORG DETAILS] ERROR: {ex.Message}");
+            Logger.LogError(ex, "Failed to load organization {OrganizationId}", Id);
         }
         finally
         {
@@ -416,7 +418,7 @@ else
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error updating organization: {ex.Message}");
+            Logger.LogError(ex, "Error updating organization {OrganizationId}", Id);
             errorMessage = $"Failed to update organization: {ex.Message}";
         }
         finally

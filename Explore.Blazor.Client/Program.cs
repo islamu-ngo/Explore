@@ -62,6 +62,15 @@ builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<ITagService, TagService>();
 builder.Services.AddScoped<IEventRegistrationService, EventRegistrationService>();
 builder.Services.AddScoped<ILocationService, LocationService>();
+builder.Services.AddScoped<IAudienceAgeService, AudienceAgeService>();
+builder.Services.AddScoped<IAudienceGenderService, AudienceGenderService>();
+builder.Services.AddScoped<IEventFormatService, EventFormatService>();
+builder.Services.AddScoped<IEventStatusService, EventStatusService>();
+builder.Services.AddScoped<IEventTypeService, EventTypeService>();
+builder.Services.AddScoped<ILanguageService, LanguageService>();
+builder.Services.AddScoped<IMadhabService, MadhabService>();
+builder.Services.AddScoped<IEventSessionSpeakerService, EventSessionSpeakerService>();
+builder.Services.AddScoped<IActorService, ActorService>();
 
 builder.Services.AddScoped<BffClient>();
 

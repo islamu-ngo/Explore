@@ -1,9 +1,10 @@
 using System;
 using System.ComponentModel.DataAnnotations.Schema;
+using Explore.Domain.Interfaces;
 
 namespace Explore.Domain
 {
-    public class EventCategories
+    public class EventCategories : ITenantEntity
     {
         public Guid Id { get; set; }
 

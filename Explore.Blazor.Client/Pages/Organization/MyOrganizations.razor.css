@@ -1,2 +1,220 @@
-::deep .component-myorganizations{ color: inherit; }
+/* ===== CSS Custom Properties ===== */
+::deep :root {
+    --my-organizations-ring: color-mix(
+        in srgb,
+        var(--mud-palette-primary) 30%,
+        transparent
+    );
+}
 
+/* ===== Block: my-organizations ===== */
+::deep .my-organizations {
+    padding-block: 20px 32px;
+}
+
+/* ===== Element: my-organizations__header ===== */
+::deep .my-organizations__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    gap: 16px;
+}
+
+/* ===== Element: my-organizations__create-btn ===== */
+::deep .my-organizations__create-btn {
+    white-space: nowrap;
+}
+
+/* ===== Element: my-organizations__loading ===== */
+::deep .my-organizations__loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 300px;
+}
+
+/* ===== Element: my-organizations__empty ===== */
+::deep .my-organizations__empty {
+    text-align: center;
+    padding: 48px 24px;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+/* ===== Element: my-organizations__empty-icon ===== */
+::deep .my-organizations__empty-icon {
+    font-size: 72px;
+    margin-bottom: 16px;
+    opacity: 0.3;
+}
+
+/* ===== Element: my-organizations__search ===== */
+::deep .my-organizations__search {
+    margin-bottom: 24px;
+}
+
+::deep .my-organizations__search .mud-input-root {
+    border-radius: 12px;
+}
+
+/* ===== Element: my-organizations__card ===== */
+::deep .my-organizations__card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid
+        color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
+    transition:
+        transform 0.15s ease,
+        box-shadow 0.15s ease,
+        border-color 0.15s ease;
+}
+
+::deep .my-organizations__card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.16);
+    border-color: var(--my-organizations-ring);
+}
+
+::deep .my-organizations__card:focus-within {
+    outline: 2px solid var(--my-organizations-ring);
+    outline-offset: 2px;
+}
+
+/* ===== Element: my-organizations__card-header ===== */
+::deep .my-organizations__card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    border-bottom: 1px solid
+        color-mix(in srgb, var(--mud-palette-lines-default) 50%, transparent);
+}
+
+/* ===== Element: my-organizations__avatar ===== */
+::deep .my-organizations__avatar {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+}
+
+/* ===== Element: my-organizations__role-chip ===== */
+::deep .my-organizations__role-chip {
+    margin-left: auto;
+    font-size: 0.75rem;
+    height: 24px;
+}
+
+/* ===== Element: my-organizations__name ===== */
+::deep .my-organizations__name {
+    font-weight: 600;
+    font-size: 1.125rem;
+    margin: 0;
+    line-height: 1.4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+}
+
+/* ===== Element: my-organizations__info ===== */
+::deep .my-organizations__info {
+    padding: 16px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+::deep .my-organizations__info .mud-typography {
+    color: var(--mud-palette-text-secondary);
+    font-size: 0.875rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+/* ===== Element: my-organizations__actions ===== */
+::deep .my-organizations__actions {
+    padding: 8px 16px 16px;
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    border-top: 1px solid
+        color-mix(in srgb, var(--mud-palette-lines-default) 50%, transparent);
+}
+
+::deep .my-organizations__actions .mud-button {
+    min-width: auto;
+}
+
+/* ===== Responsive: Tablet ===== */
+@media (max-width: 960px) {
+    ::deep .my-organizations__header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    ::deep .my-organizations__create-btn {
+        width: 100%;
+    }
+}
+
+/* ===== Responsive: Mobile ===== */
+@media (max-width: 600px) {
+    ::deep .my-organizations {
+        padding-block: 16px 24px;
+    }
+
+    ::deep .my-organizations__header {
+        margin-bottom: 16px;
+    }
+
+    ::deep .my-organizations__card-header {
+        padding: 12px;
+    }
+
+    ::deep .my-organizations__avatar {
+        width: 40px;
+        height: 40px;
+    }
+
+    ::deep .my-organizations__name {
+        font-size: 1rem;
+    }
+
+    ::deep .my-organizations__info {
+        padding: 12px;
+    }
+
+    ::deep .my-organizations__actions {
+        padding: 8px 12px 12px;
+        flex-wrap: wrap;
+    }
+
+    ::deep .my-organizations__empty {
+        padding: 32px 16px;
+    }
+
+    ::deep .my-organizations__empty-icon {
+        font-size: 56px;
+    }
+}
+
+/* ===== Responsive: Mobile Small ===== */
+@media (max-width: 480px) {
+    ::deep .my-organizations__card:hover {
+        transform: translateY(-2px);
+    }
+
+    ::deep .my-organizations__actions .mud-button {
+        flex: 1;
+    }
+}

@@ -6,414 +6,127 @@ enforcement: suggest
 priority: high
 ---
 
-# ISLAMU Event Sentry Integration Skill
+# ISLAMU Event Error Tracking & Observability Guidelines
 
-## Purpose
-This skill enforces comprehensive Sentry error tracking and performance monitoring across ISLAMU Event .NET services (API, Blazor).
+## 🎯 Purpose
 
-## When to Use This Skill
-- Adding error handling to controllers or pages
-- Creating new API endpoints
-- Tracking performance of database operations
-- Handling exceptions in command/query handlers
-- Monitoring Blazor component errors
+This skill provides guidelines for implementing robust error tracking and performance monitoring across ISLAMU Event .NET services (API, Blazor). It outlines patterns for centralized exception handling, logging, tracing, and Sentry integration.
 
-## 🚨 CRITICAL RULE
+## ⚡ When This Skill Activates
 
-**Do not swallow exceptions.** Use structured logging (`ILogger`) and centralized exception handling that returns RFC 7807 `ProblemDetails`. 
+**Triggered by**:
+- Keywords: "error handling", "exception", "sentry", "logging", "performance", "tracing", "problem details", "observability"
+- Intent patterns: "add error logging", "implement try-catch", "monitor API performance", "handle UI errors"
+- File patterns: `**/Program.cs`, `**/*Controller.cs`, `**/*Handler.cs`, `**/*Repository.cs`, `**/*.razor`
 
-> Note: Sentry isn't currently integrated in this repo (as of this skill update). If/when Sentry is added, capture exceptions *in addition to* logging.
+## 🚨 CRITICAL RULE: Do Not Swallow Exceptions!
 
-## Current Integration Status
+All errors **MUST** be handled gracefully. Use structured logging (`ILogger`) and centralized exception handling. When Sentry is integrated, capture all exceptions.
 
-### Explore.API
-- ✅ Centralized error responses should be implemented via `UseExceptionHandler` + `AddProblemDetails`.
-- 🟡 Sentry integration: **planned** (not currently present in codebase).
+## 📚 Resources
 
-### Explore.Blazor
-- 🟡 UI error boundary patterns are optional.
-- 🟡 Sentry integration: **planned** (not currently present in codebase).
+*For detailed implementation examples, refer to the `resources/` folder within this skill.*
 
-## Error Handling & Observability Patterns
+| Resource | Description |
+|----------|-------------|
+| [api-exception-handling.md](resources/api-exception-handling.md) | Centralized API exception handling using `UseExceptionHandler` and `ProblemDetails` (RFC 7807). |
+| [mediatr-logging-behavior.md](resources/mediatr-logging-behavior.md) | MediatR pipeline behavior for centralized logging and error capturing in handlers. |
+| [db-performance-monitoring.md](resources/db-performance-monitoring.md) | Database performance tracing using `ActivitySource` for OpenTelemetry compatibility. |
+| [blazor-error-boundary.md](resources/blazor-error-boundary.md) | Implementing graceful UI error handling in Blazor with the `ErrorBoundary` component. |
+| [sentry-middleware-config.md](resources/sentry-middleware-config.md) | Conceptual guidance for Sentry SDK and middleware integration in ASP.NET Core. |
+| [sentry-testing-endpoints.md](resources/sentry-testing-endpoints.md) | Example API endpoints for testing Sentry integration (error capture, performance). |
 
-### 1. Centralized API Exception Handling (preferred)
+## ⚡ Quick Reference
 
-**Pattern**: Keep controllers/handlers free of repetitive try/catch. Use `UseExceptionHandler` + `AddProblemDetails` to return RFC 7807 responses and log exceptions once.
+### 1. Centralized API Exception Handling
+
+API unhandled exceptions are caught and transformed into RFC 7807 `ProblemDetails` responses.
 
 ```csharp
-// Explore.API/Program.cs
-using Microsoft.AspNetCore.Diagnostics;
-using Microsoft.AspNetCore.Mvc;
-
-builder.Services.AddProblemDetails();
-
-app.UseExceptionHandler(exceptionHandlerApp =>
-{
-    exceptionHandlerApp.Run(async context =>
-    {
-        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-        context.Response.ContentType = "application/problem+json";
-
-        var feature = context.Features.Get<IExceptionHandlerFeature>();
-        var problemDetailsService = context.RequestServices.GetRequiredService<IProblemDetailsService>();
-
-        await problemDetailsService.WriteAsync(new ProblemDetailsContext
-        {
-            HttpContext = context,
-            ProblemDetails = new ProblemDetails
-            {
-                Title = "An unexpected error occurred.",
-                Detail = feature?.Error.Message,
-                Status = StatusCodes.Status500InternalServerError
-            }
-        });
-    });
-});
+// Explore.API/Program.cs (Simplified)
+app.UseExceptionHandler(exceptionHandlerApp => { /* ... */ });
 ```
+*For complete code, see [api-exception-handling.md](resources/api-exception-handling.md).*
 
-### 2. MediatR Handler Error Handling
+### 2. MediatR Handler Logging & Error Capturing
 
-**Pattern**: Prefer *pipeline behaviors* for cross-cutting concerns (logging, timing, tracing). Let unexpected exceptions bubble to the centralized exception handler.
+A `LoggingBehavior` in the MediatR pipeline ensures all requests are logged and exceptions are captured.
 
 ```csharp
-// Explore.Application/Behaviors/LoggingBehavior.cs
-using MediatR;
-using Microsoft.Extensions.Logging;
-
+// Explore.Application/Behaviors/LoggingBehavior.cs (Simplified)
 public sealed class LoggingBehavior<TRequest, TResponse>(ILogger<LoggingBehavior<TRequest, TResponse>> logger)
     : IPipelineBehavior<TRequest, TResponse>
-{
-    public async Task<TResponse> Handle(
-        TRequest request,
-        RequestHandlerDelegate<TResponse> next,
-        CancellationToken cancellationToken)
-    {
-        logger.LogInformation("Handling {RequestName}", typeof(TRequest).Name);
-        var response = await next();
-        logger.LogInformation("Handled {RequestName}", typeof(TRequest).Name);
-        return response;
-    }
-}
+{ /* ... */ }
 ```
+*For complete code, see [mediatr-logging-behavior.md](resources/mediatr-logging-behavior.md).*
 
 ### 3. Database Performance Monitoring
 
-**Pattern**: Prefer OpenTelemetry tracing (Aspire-friendly). If you need manual spans, use `ActivitySource` (works with OTEL exporters and Aspire dashboard).
+Use `ActivitySource` for custom spans to trace database operations, integrating with OpenTelemetry.
 
 ```csharp
-// Explore.Persistence/Repositories/EventRepository.cs
+// Explore.Persistence/Repositories/EventRepository.cs (Simplified)
 using System.Diagnostics;
-
-public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
+public class EventRepository : IEventRepository
 {
     public async Task<List<Event>> GetEventsWithDetails()
     {
-        using var activity = new ActivitySource("Explore.Persistence")
-            .StartActivity("EventRepository.GetEventsWithDetails");
-
-        return await _dbContext.Events
-            .Include(e => e.EventType)
-            .Include(e => e.AudienceGender)
-            .Include(e => e.AudienceAge)
-            .Include(e => e.Actor)
-            .Include(e => e.EventStatus)
-            .ToListAsync();
+        using var activity = ActivitySourceProvider.PersistenceActivitySource.StartActivity("...");
+        // ... EF Core query ...
     }
 }
 ```
+*For complete code, see [db-performance-monitoring.md](resources/db-performance-monitoring.md).*
 
-### 4. Blazor Error Boundary
+### 4. Blazor UI Error Boundary
 
-**Pattern**: Use ErrorBoundary component for UI errors.
+Gracefully handle unhandled UI errors in Blazor components, displaying a fallback UI and logging the error.
 
 ```razor
-<!-- Explore.Blazor/Components/Pages/Events.razor -->
+<!-- Explore.Blazor/Components/Pages/Events.razor (Simplified) -->
 <ErrorBoundary>
-    <ChildContent>
-        @if (_events == null)
-        {
-            <MudProgressCircular Indeterminate="true" />
-        }
-        else
-        {
-            <!-- Event list -->
-        }
-    </ChildContent>
-    <ErrorContent Context="ex">
-        <MudAlert Severity="Severity.Error">
-            An error occurred while loading events.
-        </MudAlert>
-        @code {
-            // Capture/log via your configured provider (ILogger, OpenTelemetry, or Sentry when integrated).
-        }
-    </ErrorContent>
+    <ChildContent> <!-- Potentially error-prone content --> </ChildContent>
+    <ErrorContent Context="ex"> <!-- Fallback UI --> </ErrorContent>
 </ErrorBoundary>
-
-@code {
-    private List<EventListDto>? _events;
-
-    protected override async Task OnInitializedAsync()
-    {
-        try
-        {
-            _events = await Http.GetFromJsonAsync<List<EventListDto>>("api/v1/event");
-        }
-        catch (Exception ex)
-        {
-            // Capture/log via your configured provider (ILogger, OpenTelemetry, or Sentry when integrated).
-            throw; // Let ErrorBoundary handle it
-        }
-    }
-}
 ```
+*For complete code, see [blazor-error-boundary.md](resources/blazor-error-boundary.md).*
 
-### 5. ASP.NET Core Middleware Integration
+### 5. Sentry Integration (Conceptual)
 
-> **Optional (planned)**: only apply this section after adding the Sentry packages and DSN configuration.
-
-**Pattern**: Use Sentry middleware for automatic request tracking.
+When Sentry is integrated, `UseSentry` and `app.UseSentryTracing()` provide automatic error and performance tracking.
 
 ```csharp
-// Explore.API/Program.cs or Explore.AppHost/Program.cs
-using Sentry;
-using Sentry.AspNetCore;
-
-var builder = WebApplication.CreateBuilder(args);
-
-// Add Sentry
-builder.WebHost.UseSentry(options =>
-{
-    options.Dsn = builder.Configuration["Sentry:Dsn"];
-    options.Environment = builder.Environment.EnvironmentName;
-    options.TracesSampleRate = 0.1; // 10% of transactions
-    options.AutoSessionTracking = true;
-    options.IsGlobalModeEnabled = true;
-    
-    // Performance monitoring
-    options.EnableTracing = true;
-    options.ProfilesSampleRate = 0.1;
-    
-    // Filter out sensitive data
-    options.BeforeSend = (sentryEvent) =>
-    {
-        // Remove sensitive headers
-        if (sentryEvent.Request?.Headers != null)
-        {
-            sentryEvent.Request.Headers.Remove("Authorization");
-            sentryEvent.Request.Headers.Remove("Cookie");
-        }
-        return sentryEvent;
-    };
-});
-
-var app = builder.Build();
-
-// Use Sentry middleware (must be FIRST)
+// Explore.API/Program.cs (Simplified)
+builder.WebHost.UseSentry(options => { /* ... */ });
 app.UseSentryTracing();
-
-// ... other middleware
-app.UseAuthentication();
-app.UseAuthorization();
 ```
+*For complete conceptual configuration and usage, see [sentry-middleware-config.md](resources/sentry-middleware-config.md).*
 
-## Optional: Sentry-specific Guidance (planned)
+### 6. Testing Sentry Integration (Conceptual)
 
-### Error Levels
-
-Use appropriate severity levels:
-
-- **Fatal**: System is unusable (database down, critical service failure)
-- **Error**: Operation failed, needs immediate attention
-- **Warning**: Recoverable issues, degraded performance
-- **Info**: Informational messages, successful operations
-- **Debug**: Detailed debugging information (dev only)
+Dedicated endpoints can be used to verify Sentry's error and performance capturing capabilities.
 
 ```csharp
-// Example usage
-SentrySdk.CaptureMessage("Event created successfully", SentryLevel.Info);
-SentrySdk.CaptureMessage("Database query slow", SentryLevel.Warning);
-SentrySdk.CaptureException(ex, scope => { scope.Level = SentryLevel.Fatal; });
-```
-
-### Required Context
-
-```csharp
-SentrySdk.CaptureException(ex, scope =>
-{
-    // User context
-    scope.User = new User
-    {
-        Id = userId,
-        Email = userEmail,
-        Username = username
-    };
-
-    // Tags for filtering
-    scope.SetTag("service", "explore-api");
-    scope.SetTag("environment", "production");
-    scope.SetTag("tenant", tenantId);
-    scope.SetTag("feature", "event-management");
-
-    // Additional context
-    scope.SetContext("operation", new
-    {
-        Type = "event.create",
-        EventId = eventId,
-        OrganizationId = orgId
-    });
-
-    // Extra data
-    scope.SetExtra("request", requestDto);
-});
-```
-
-### Configuration (appsettings.json)
-
-```json
-{
-  "Sentry": {
-    "Dsn": "https://your-sentry-dsn@sentry.io/project-id",
-    "Environment": "Production",
-    "TracesSampleRate": 0.1,
-    "ProfilesSampleRate": 0.1,
-    "Debug": false,
-    "DiagnosticLevel": "Error"
-  }
-}
-```
-
-### Performance Monitoring
-
-### Requirements
-
-1. **All API endpoints** must have automatic transaction tracking (via middleware)
-2. **Database queries > 100ms** should be flagged
-3. **Command/Query handlers** should track execution time
-4. **External API calls** must be tracked
-
-### Transaction Tracking
-
-```csharp
-// Automatic via middleware for HTTP requests
-// Manual for background jobs or custom operations
-
-var transaction = SentrySdk.StartTransaction("job.sync-events", "background");
-try
-{
-    // Your operation
-    transaction.Status = SpanStatus.Ok;
-}
-catch (Exception ex)
-{
-    transaction.Status = SpanStatus.InternalError;
-    SentrySdk.CaptureException(ex);
-    throw;
-}
-finally
-{
-    transaction.Finish();
-}
-```
-
-## Common Mistakes to Avoid
-
-❌ **NEVER** use Console.WriteLine for errors in production
-❌ **NEVER** swallow exceptions silently
-❌ **NEVER** expose sensitive data (passwords, tokens, PII) in error context
-❌ **NEVER** use generic error messages without context
-❌ **NEVER** skip error handling in async operations
-❌ **NEVER** forget to configure Sentry DSN in appsettings
-
-## Implementation Checklist (when integrating Sentry)
-
-When adding Sentry to this repo:
-
-- [ ] Added Sentry NuGet package reference
-- [ ] Configured Sentry in Program.cs
-- [ ] Prefer centralized exception handling; avoid duplicating try/catch in every controller
-- [ ] Added meaningful context to errors
-- [ ] Used appropriate error level
-- [ ] No sensitive data in error messages
-- [ ] Added performance tracking for slow operations
-- [ ] Tested error handling paths
-- [ ] Verified Sentry dashboard receives events
-
-## NuGet Packages
-
-### Explore.API
-```xml
-<PackageReference Include="Sentry.AspNetCore" Version="4.0.0" />
-<PackageReference Include="Sentry.Serilog" Version="4.0.0" />
-```
-
-### Explore.Blazor
-```xml
-<PackageReference Include="Sentry.AspNetCore" Version="4.0.0" />
-```
-
-### Explore.Application (Optional)
-```xml
-<PackageReference Include="Sentry" Version="4.0.0" />
-```
-
-## Testing Sentry Integration (optional)
-
-### API Test Endpoint
-
-```csharp
+// Explore.API/Controllers/EventController.cs (Simplified)
 [HttpGet("sentry/test-error")]
-[AllowAnonymous]
-public IActionResult TestSentryError()
-{
-    try
-    {
-        throw new InvalidOperationException("Test Sentry exception from API");
-    }
-    catch (Exception ex)
-    {
-        SentrySdk.CaptureException(ex, scope =>
-        {
-            scope.SetTag("test", "true");
-            scope.SetTag("endpoint", "test-error");
-        });
-        throw;
-    }
-}
-
+public IActionResult TestSentryError() { /* ... */ }
 [HttpGet("sentry/test-performance")]
-[AllowAnonymous]
-public async Task<IActionResult> TestPerformance()
-{
-    var transaction = SentrySdk.StartTransaction("test.performance", "test");
-    try
-    {
-        await Task.Delay(1000); // Simulate slow operation
-        transaction.Status = SpanStatus.Ok;
-        return Ok(new { message = "Performance test completed" });
-    }
-    finally
-    {
-        transaction.Finish();
-    }
-}
+public async Task<IActionResult> TestPerformance() { /* ... */ }
 ```
+*For complete test endpoint examples, see [sentry-testing-endpoints.md](resources/sentry-testing-endpoints.md).*
 
-### Test Commands
+## 🔑 Key Principles
 
-```bash
-# Test error capture
-curl https://localhost:7001/api/v1/sentry/test-error
-
-# Test performance tracking
-curl https://localhost:7001/api/v1/sentry/test-performance
-```
-
-## Related Skills
-
-- Use **clean-architecture-rules** for proper error handling layer placement
-- Use **cqrs-mediatr-guidelines** for handler error patterns
-- Use **dotnet-efcore-guidelines** for database error handling
+*   **No Uncaught Exceptions**: All exceptions, whether from API, MediatR handlers, or Blazor UI, should be caught and logged.
+*   **Structured Logging**: Use `ILogger` for all logging, leveraging structured logging capabilities.
+*   **Contextual Information**: When reporting errors, always include relevant context (user ID, tenant ID, request data, tags) to aid in debugging.
+*   **Performance First**: Monitor critical paths (database, external API calls) for performance bottlenecks.
+*   **RFC 7807 Compliance**: Ensure API error responses are standardized using `ProblemDetails`.
 
 ---
 
-**Enforcement Level**: 💡 SUGGEST (Provides guidance, encourages adoption)
+**Related Skills**:
+- [`clean-architecture-rules`](../clean-architecture-rules/SKILL.md) - For proper error handling layer placement.
+- [`cqrs-mediatr-guidelines`](../cqrs-mediatr-guidelines/SKILL.md) - For error handling patterns within MediatR handlers.
+- [`dotnet-efcore-guidelines`](../dotnet-efcore-guidelines/SKILL.md) - For database error handling and performance considerations.
+- [`blazor-ui-conventions`](../blazor-ui-conventions/SKILL.md) - For UI error handling patterns.

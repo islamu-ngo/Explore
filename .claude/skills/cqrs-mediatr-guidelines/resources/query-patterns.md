@@ -470,7 +470,7 @@ This codebase uses explicit `.ForMember(...)` mappings for many "*FullName" / "*
 
 **Note**: Most queries use `Request` suffix. Some newer ones use `Query` suffix (both patterns exist).
 
-## Controller Usage
+<h2>Controller Usage</h2>
 
 **Real Example from EventController**:
 ```csharp

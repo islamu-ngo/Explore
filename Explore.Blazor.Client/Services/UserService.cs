@@ -1,49 +1,64 @@
 using System.Net.Http.Json;
 using Explore.Blazor.Client.Clients;
+using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;
 
+/// <summary>
+/// Service for managing user-related operations.
+/// </summary>
 public interface IUserService
 {
+    /// <summary>
+    /// Synchronizes the current authenticated user with the backend.
+    /// </summary>
     Task<BaseCommandResponseOfGuid?> SyncUserAsync();
+
+    /// <summary>
+    /// Gets the current authenticated user's details.
+    /// </summary>
     Task<UserDto?> GetCurrentUserAsync();
+
+    /// <summary>
+    /// Updates the current user's profile.
+    /// </summary>
     Task<BaseCommandResponseOfGuid?> UpdateUserAsync(UpdateUserDto userDto);
+
+    /// <summary>
+    /// Deletes the current user's account.
+    /// </summary>
     Task<bool> DeleteUserAsync();
 }
 
+/// <summary>
+/// Implementation of user service using the Event API client.
+/// </summary>
 public class UserService : IUserService
 {
     private readonly IEventApiClient _apiClient;
+    private readonly ILogger<UserService> _logger;
 
-    public UserService(IEventApiClient apiClient)
+    public UserService(IEventApiClient apiClient, ILogger<UserService> logger)
     {
         _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
+    /// <inheritdoc />
     public async Task<BaseCommandResponseOfGuid?> SyncUserAsync()
     {
         try
         {
-            if (_apiClient == null)
-            {
-                Console.WriteLine("[USER SERVICE] ERROR: API client is null");
-                return new BaseCommandResponseOfGuid
-                {
-                    Success = false,
-                    Message = "API client is null"
-                };
-            }
-            
-            Console.WriteLine("[USER SERVICE] Syncing user...");
+            _logger.LogInformation("Syncing user");
             var response = await _apiClient.SyncAsync();
-            Console.WriteLine($"[USER SERVICE] Sync result: Success={response?.Success}, Id={response?.Id}");
+            _logger.LogInformation("Sync result: Success={Success}, Id={Id}", response?.Success, response?.Id);
             return response;
         }
         catch (ApiException ex) when (ex.StatusCode == 200)
         {
             // NSwag sometimes throws when response body doesn't match expected schema
             // but the operation was successful (status 200)
-            Console.WriteLine($"[USER SERVICE] Sync completed with status 200 but response parsing issue: {ex.Message}");
+            _logger.LogWarning(ex, "Sync completed with status 200 but response parsing issue");
             return new BaseCommandResponseOfGuid
             {
                 Success = true,
@@ -52,7 +67,7 @@ public class UserService : IUserService
         }
         catch (ApiException ex)
         {
-            Console.WriteLine($"[USER SERVICE] API error syncing user: {ex.StatusCode} - {ex.Message}");
+            _logger.LogError(ex, "API error syncing user: {StatusCode}", ex.StatusCode);
             return new BaseCommandResponseOfGuid
             {
                 Success = false,
@@ -62,7 +77,7 @@ public class UserService : IUserService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[USER SERVICE] Error syncing user: {ex.Message}");
+            _logger.LogError(ex, "Error syncing user");
             return new BaseCommandResponseOfGuid
             {
                 Success = false,
@@ -72,111 +87,97 @@ public class UserService : IUserService
         }
     }
 
+    /// <inheritdoc />
     public async Task<UserDto?> GetCurrentUserAsync()
     {
         try
         {
-            if (_apiClient == null)
-            {
-                Console.WriteLine("[USER SERVICE] ERROR: API client is null");
-                return null;
-            }
-            
-            Console.WriteLine("[USER SERVICE] Fetching current user...");
+            _logger.LogInformation("Fetching current user");
             var user = await _apiClient.UserGETAsync();
-            Console.WriteLine($"[USER SERVICE] User found: {user?.Email}");
+            _logger.LogInformation("User found: {Email}", user?.Email);
             return user;
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
         {
-            Console.WriteLine("[USER SERVICE] User not found (404) - attempting auto-sync");
-            
+            _logger.LogWarning("User not found (404) - attempting auto-sync");
+
             // Auto-sync user if not found
             try
             {
                 var syncResult = await SyncUserAsync();
                 if (syncResult?.Success == true)
                 {
-                    Console.WriteLine("[USER SERVICE] Auto-sync successful, retrying GetCurrentUser");
+                    _logger.LogInformation("Auto-sync successful, retrying GetCurrentUser");
                     await Task.Delay(100); // Wait for DB write to complete
                     return await _apiClient.UserGETAsync();
                 }
                 else
                 {
-                    Console.WriteLine($"[USER SERVICE] Auto-sync failed: {syncResult?.Message}");
+                    _logger.LogWarning("Auto-sync failed: {Message}", syncResult?.Message);
                 }
             }
             catch (Exception syncEx)
             {
-                Console.WriteLine($"[USER SERVICE] Auto-sync exception: {syncEx.Message}");
+                _logger.LogError(syncEx, "Auto-sync exception");
             }
-            
+
             return null;
         }
         catch (ApiException ex) when (ex.StatusCode == 401)
         {
-            Console.WriteLine("[USER SERVICE] User not authenticated (401)");
+            _logger.LogWarning("User not authenticated (401)");
             return null;
         }
         catch (ApiException ex)
         {
-            Console.WriteLine($"[USER SERVICE] API error: {ex.StatusCode} - {ex.Message}");
+            _logger.LogError(ex, "API error: {StatusCode}", ex.StatusCode);
             return null;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[USER SERVICE] Error getting user: {ex.Message}");
+            _logger.LogError(ex, "Error getting user");
             return null;
         }
     }
 
+    /// <inheritdoc />
     public async Task<BaseCommandResponseOfGuid?> UpdateUserAsync(UpdateUserDto userDto)
     {
         try
         {
-            if (_apiClient == null)
-            {
-                Console.WriteLine("[USER SERVICE] ERROR: API client is null");
-                return null;
-            }
-            
+            _logger.LogInformation("Updating user");
             return await _apiClient.UserPUTAsync(userDto);
         }
         catch (ApiException ex)
         {
-            Console.WriteLine($"[USER SERVICE] API error updating user: {ex.StatusCode} - {ex.Message}");
+            _logger.LogError(ex, "API error updating user: {StatusCode}", ex.StatusCode);
             return null;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[USER SERVICE] Error updating user: {ex.Message}");
+            _logger.LogError(ex, "Error updating user");
             return null;
         }
     }
 
+    /// <inheritdoc />
     public async Task<bool> DeleteUserAsync()
     {
         try
         {
-            if (_apiClient == null)
-            {
-                Console.WriteLine("[USER SERVICE] ERROR: API client is null");
-                return false;
-            }
-            
+            _logger.LogInformation("Deleting user");
             await _apiClient.UserDELETEAsync();
             return true;
         }
         catch (ApiException ex)
         {
-            Console.WriteLine($"[USER SERVICE] API error deleting user: {ex.StatusCode} - {ex.Message}");
+            _logger.LogError(ex, "API error deleting user: {StatusCode}", ex.StatusCode);
             return false;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[USER SERVICE] Error deleting user: {ex.Message}");
+            _logger.LogError(ex, "Error deleting user");
             return false;
         }
     }
 }
-

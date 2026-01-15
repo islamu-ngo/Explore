@@ -65,5 +65,23 @@ namespace Explore.Persistence.Repositories
                 .Include(a => a.ActorType)
                 .FirstOrDefaultAsync(a => a.OrganizationId == organizationId);
         }
+
+        public async Task<(List<Actor> Items, int TotalCount)> GetActorsWithDetailsPaged(int pageNumber, int pageSize)
+        {
+            var query = _dbContext.Actors
+                .AsNoTracking()
+                .Include(a => a.ActorType)
+                .Include(a => a.DidCustodyType)
+                .Include(a => a.ProfilePicture)
+                .OrderByDescending(a => a.IndexedAt ?? DateTime.MinValue);
+
+            var totalCount = await query.CountAsync();
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (items, totalCount);
+        }
     }
 }

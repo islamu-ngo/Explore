@@ -1,2 +1,4 @@
-::deep .component-createcategorydialog{ color: inherit; }
-
+/* ===== Block: create-category-dialog ===== */
+::deep .create-category-dialog {
+    color: inherit;
+}

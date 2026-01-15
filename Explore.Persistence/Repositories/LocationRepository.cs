@@ -33,5 +33,20 @@ namespace Explore.Persistence.Repositories
                 .Where(l => l.Country == country)
                 .ToListAsync();
         }
+
+        public async Task<(List<Location> Items, int TotalCount)> GetLocationsWithDetailsPaged(int pageNumber, int pageSize)
+        {
+            var query = _dbContext.Locations
+                .AsNoTracking()
+                .OrderBy(l => l.FullName);
+
+            var totalCount = await query.CountAsync();
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (items, totalCount);
+        }
     }
 }

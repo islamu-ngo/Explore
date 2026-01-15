@@ -4,11 +4,12 @@ using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.StorageObject;
 using Explore.Application.Features.StorageObjects.Requests.Queries;
+using Explore.Application.Responses;
 using MediatR;
 
 namespace Explore.Application.Features.StorageObjects.Handlers.Queries
 {
-    public class GetStorageObjectListRequestHandler : IRequestHandler<GetStorageObjectListRequest, List<StorageObjectListDto>>
+    public class GetStorageObjectListRequestHandler : IRequestHandler<GetStorageObjectListRequest, PaginatedResult<StorageObjectListDto>>
     {
         private readonly IStorageObjectRepository _storageObjectRepository;
         private readonly IMapper _mapper;
@@ -19,10 +20,12 @@ namespace Explore.Application.Features.StorageObjects.Handlers.Queries
             _mapper = mapper;
         }
 
-        public async Task<List<StorageObjectListDto>> Handle(GetStorageObjectListRequest request, CancellationToken cancellationToken)
+        public async Task<PaginatedResult<StorageObjectListDto>> Handle(GetStorageObjectListRequest request, CancellationToken cancellationToken)
         {
-            var storageObjects = await _storageObjectRepository.GetAll();
-            return _mapper.Map<List<StorageObjectListDto>>(storageObjects);
+            var (pageNumber, pageSize) = PaginatedResult<StorageObjectListDto>.NormalizeParameters(request.PageNumber, request.PageSize);
+            var (storageObjects, totalCount) = await _storageObjectRepository.GetFilesWithDetailsPaged(pageNumber, pageSize);
+            var dtos = _mapper.Map<List<StorageObjectListDto>>(storageObjects);
+            return PaginatedResult<StorageObjectListDto>.Create(dtos, totalCount, pageNumber, pageSize);
         }
     }
 }

@@ -20,5 +20,23 @@ namespace Explore.Persistence.Repositories
                 .Where(l => l.EventSessionId == eventSessionId)
                 .ToListAsync();
         }
+
+        public async Task<(List<EventSessionLanguage> Items, int TotalCount)> GetLanguagesWithDetailsPaged(int pageNumber, int pageSize)
+        {
+            var query = _dbContext.EventSessionLanguages
+                .AsNoTracking()
+                .Include(l => l.Language)
+                .Include(l => l.EventSession)
+                    .ThenInclude(s => s.Event)
+                .OrderByDescending(l => l.Id);
+
+            var totalCount = await query.CountAsync();
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (items, totalCount);
+        }
     }
 }

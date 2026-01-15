@@ -41,5 +41,23 @@ namespace Explore.Persistence.Repositories
                 .OrderBy(s => s.StartTime)
                 .ToListAsync();
         }
+
+        public async Task<(List<EventSession> Items, int TotalCount)> GetSessionsWithDetailsPaged(int pageNumber, int pageSize)
+        {
+            var query = _dbContext.EventSessions
+                .AsNoTracking()
+                .Include(s => s.Event)
+                .Include(s => s.Location)
+                .Include(s => s.RegistrationMode)
+                .OrderByDescending(s => s.StartTime);
+
+            var totalCount = await query.CountAsync();
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (items, totalCount);
+        }
     }
 }

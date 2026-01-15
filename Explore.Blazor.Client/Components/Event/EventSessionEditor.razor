@@ -1,10 +1,11 @@
 @using MudBlazor
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Helpers
 
-<MudPaper Class="session-card" Elevation="1">
-    <div class="session-header">
-        <MudText Typo="Typo.subtitle1" Class="session-title">
+<MudPaper Class="event-session-editor" Elevation="1">
+    <div class="event-session-editor__header">
+        <MudText Typo="Typo.subtitle1" Class="event-session-editor__title">
             <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Class="mr-2" />
             Session @(Index + 1)
         </MudText>
@@ -18,7 +19,7 @@
         }
     </div>
 
-    <MudDivider Class="mb-3" />
+    <MudDivider Class="event-session-editor__divider" />
 
     <MudGrid Spacing="2">
         <MudItem xs="12">
@@ -100,11 +101,39 @@
                        Label="Registration Mode"
                        Variant="Variant.Outlined"
                        FullWidth>
-                <MudSelectItem Value="@((int?)1)">Open (Auto-approve)</MudSelectItem>
-                <MudSelectItem Value="@((int?)2)">Approval Required</MudSelectItem>
-                <MudSelectItem Value="@((int?)3)">Invite Only</MudSelectItem>
+                @if (RegistrationModes != null && RegistrationModes.Any())
+                {
+                    @foreach (var mode in RegistrationModes)
+                    {
+                        <MudSelectItem T="int?" Value="@((int?)mode.Id)">@mode.FullName</MudSelectItem>
+                    }
+                }
+                else
+                {
+                    <MudSelectItem T="int?" Value="@((int?)1)">Open (Auto-approve)</MudSelectItem>
+                    <MudSelectItem T="int?" Value="@((int?)2)">Approval Required</MudSelectItem>
+                    <MudSelectItem T="int?" Value="@((int?)3)">Invite Only</MudSelectItem>
+                }
             </MudSelect>
         </MudItem>
+
+        @if (ShowLanguageSelector && Languages != null && Languages.Any())
+        {
+            <MudItem xs="12">
+                <MudSelect T="int"
+                           MultiSelection="true"
+                           SelectedValues="Session.LanguageIds"
+                           SelectedValuesChanged="OnLanguageValuesChanged"
+                           Label="Languages"
+                           Variant="Variant.Outlined"
+                           FullWidth>
+                    @foreach (var language in Languages)
+                    {
+                        <MudSelectItem Value="@language.Id">@language.FullName</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+        }
     </MudGrid>
 </MudPaper>
 
@@ -129,6 +158,15 @@
 
     [Parameter]
     public ICollection<LocationListDto>? Locations { get; set; }
+
+    [Parameter]
+    public ICollection<RegistrationModeListDto>? RegistrationModes { get; set; }
+
+    [Parameter]
+    public bool ShowLanguageSelector { get; set; } = false;
+
+    [Parameter]
+    public ICollection<LanguageListDto>? Languages { get; set; }
 
     private DateTime? StartDate
     {
@@ -204,6 +242,24 @@
         await SessionChanged.InvokeAsync(Session);
     }
 
+    private async Task OnLanguageValuesChanged(object? values)
+    {
+        if (values is IEnumerable<int> languageIds)
+        {
+            Session.LanguageIds = languageIds.ToHashSet();
+        }
+        else if (values is IEnumerable<object> rawValues)
+        {
+            Session.LanguageIds = rawValues.OfType<int>().ToHashSet();
+        }
+        else
+        {
+            Session.LanguageIds = new HashSet<int>();
+        }
+
+        await SessionChanged.InvokeAsync(Session);
+    }
+
     private async Task OnRemoveClicked()
     {
         await OnRemove.InvokeAsync();
@@ -219,6 +275,7 @@
         public Guid? LocationId { get; set; }
         public int? MaxAudienceAttendees { get; set; }
         public int? RegistrationModeId { get; set; } = 1;
+        public IEnumerable<int> LanguageIds { get; set; } = new HashSet<int>();
 
         public CreateEventSessionDto ToCreateDto(Guid eventId, Guid tenantId)
         {
@@ -227,8 +284,8 @@
                 EventId = eventId,
                 Title = Title ?? "Session",
                 Description = Description,
-                StartTime = new DateTimeOffset(StartTime, TimeZoneInfo.Local.GetUtcOffset(StartTime)),
-                EndTime = new DateTimeOffset(EndTime, TimeZoneInfo.Local.GetUtcOffset(EndTime)),
+                StartTime = DateTimeHelper.ConvertLocalToUtc(StartTime),
+                EndTime = DateTimeHelper.ConvertLocalToUtc(EndTime),
                 LocationId = LocationId,
                 MaxAudienceAttendees = MaxAudienceAttendees,
                 RegistrationModeId = RegistrationModeId,
@@ -244,8 +301,8 @@
                 EventId = eventId,
                 Title = Title ?? "Session",
                 Description = Description,
-                StartTime = new DateTimeOffset(StartTime, TimeZoneInfo.Local.GetUtcOffset(StartTime)),
-                EndTime = new DateTimeOffset(EndTime, TimeZoneInfo.Local.GetUtcOffset(EndTime)),
+                StartTime = DateTimeHelper.ConvertLocalToUtc(StartTime),
+                EndTime = DateTimeHelper.ConvertLocalToUtc(EndTime),
                 LocationId = LocationId,
                 MaxAudienceAttendees = MaxAudienceAttendees,
                 RegistrationModeId = RegistrationModeId

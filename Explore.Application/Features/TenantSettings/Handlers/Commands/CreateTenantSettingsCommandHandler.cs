@@ -1,5 +1,6 @@
 using MediatR;
 using AutoMapper;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.TenantSettings;
 using Explore.Application.Features.TenantSettings.Requests.Commands;
@@ -12,24 +13,28 @@ namespace Explore.Application.Features.TenantSettings.Handlers.Commands
     public class CreateTenantSettingsCommandHandler : IRequestHandler<CreateTenantSettingsCommand, BaseCommandResponse<Guid>>
     {
         private readonly ITenantSettingsRepository _tenantSettingsRepository;
+        private readonly ITenantRepository _tenantRepository;
+        private readonly ITenantContext _tenantContext;
         private readonly IMapper _mapper;
-        private readonly IValidator<CreateTenantSettingsDto> _validator;
 
         public CreateTenantSettingsCommandHandler(
             ITenantSettingsRepository tenantSettingsRepository,
-            IMapper mapper,
-            IValidator<CreateTenantSettingsDto> validator)
+            ITenantRepository tenantRepository,
+            ITenantContext tenantContext,
+            IMapper mapper)
         {
             _tenantSettingsRepository = tenantSettingsRepository;
+            _tenantRepository = tenantRepository;
+            _tenantContext = tenantContext;
             _mapper = mapper;
-            _validator = validator;
         }
 
         public async Task<BaseCommandResponse<Guid>> Handle(CreateTenantSettingsCommand request, CancellationToken cancellationToken)
         {
             var response = new BaseCommandResponse<Guid>();
 
-            var validationResult = await _validator.ValidateAsync(request.TenantSettingsDto);
+            var validator = new CreateTenantSettingsDtoValidator(_tenantRepository);
+            var validationResult = await validator.ValidateAsync(request.TenantSettingsDto);
 
             if (!validationResult.IsValid)
             {
@@ -40,6 +45,10 @@ namespace Explore.Application.Features.TenantSettings.Handlers.Commands
             }
 
             var tenantSettings = _mapper.Map<Domain.TenantSettings>(request.TenantSettingsDto);
+
+            // Set TenantId from the request context
+            tenantSettings.TenantId = _tenantContext.TenantId;
+
             tenantSettings = await _tenantSettingsRepository.Create(tenantSettings);
 
             response.Success = true;

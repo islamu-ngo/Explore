@@ -52,6 +52,17 @@ namespace Explore.Persistence.Repositories
             return await _dbContext.Set<T>().ToListAsync();
         }
 
+        public async Task<(IReadOnlyList<T> Items, int TotalCount)> GetAllPaged(int pageNumber, int pageSize)
+        {
+            var query = _dbContext.Set<T>();
+            var totalCount = await query.CountAsync();
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+            return (items, totalCount);
+        }
+
         public async Task<T?> GetById(TKey id)
         {
             return await _dbContext.Set<T>().FindAsync(id);

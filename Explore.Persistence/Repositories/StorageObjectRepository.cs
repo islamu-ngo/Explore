@@ -31,5 +31,21 @@ namespace Explore.Persistence.Repositories
                 .Include(f => f.Tenant)
                 .FirstOrDefaultAsync(f => f.Id == id);
         }
+
+        public async Task<(List<StorageObject> Items, int TotalCount)> GetFilesWithDetailsPaged(int pageNumber, int pageSize)
+        {
+            var query = _dbContext.StorageObjects
+                .AsNoTracking()
+                .Include(f => f.FileType)
+                .OrderByDescending(f => f.Id);
+
+            var totalCount = await query.CountAsync();
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (items, totalCount);
+        }
     }
 }

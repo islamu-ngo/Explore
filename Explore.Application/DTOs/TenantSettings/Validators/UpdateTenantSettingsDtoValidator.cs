@@ -8,6 +8,7 @@ namespace Explore.Application.DTOs.TenantSettings.Validators
     public class UpdateTenantSettingsDtoValidator : AbstractValidator<UpdateTenantSettingsDto>
     {
         private readonly ITenantRepository _tenantRepository;
+
         public UpdateTenantSettingsDtoValidator(ITenantRepository tenantRepository)
         {
             _tenantRepository = tenantRepository;
@@ -15,15 +16,8 @@ namespace Explore.Application.DTOs.TenantSettings.Validators
             RuleFor(x => x.Id)
                 .NotEmpty().WithMessage("Tenant Settings ID is required");
 
-            RuleFor(x => x.TenantId)
-                .NotEmpty().WithMessage("Tenant ID is required")
-                .MustAsync(TenantExists)
-                .WithMessage("Tenant does not exist");
-        }
-
-        private async Task<bool> TenantExists(Guid tenantId, CancellationToken cancellationToken)
-        {
-            return await _tenantRepository.Exists(tenantId);
+            // TenantId is set by the handler from context, not by the client
+            // No validation needed here
         }
     }
 }

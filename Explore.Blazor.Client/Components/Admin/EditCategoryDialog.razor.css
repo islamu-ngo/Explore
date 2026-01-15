@@ -1,2 +1,4 @@
-::deep .component-editcategorydialog{ color: inherit; }
-
+/* ===== Block: edit-category-dialog ===== */
+::deep .edit-category-dialog {
+    color: inherit;
+}

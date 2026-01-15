@@ -1,2 +1,51 @@
-::deep .component-locations{ color: inherit; }
+/* ===== CSS Custom Properties ===== */
+::deep :root {
+    --admin-locations-radius: 12px;
+    --admin-locations-spacing: 24px;
+}
 
+/* ===== Block: admin-locations ===== */
+::deep .admin-locations {
+    padding: 22px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* ===== Element: admin-locations__title ===== */
+::deep .admin-locations__title {
+    margin-bottom: var(--admin-locations-spacing);
+    font-weight: 800;
+    letter-spacing: 0.3px;
+}
+
+/* ===== Element: admin-locations__grid ===== */
+::deep .admin-locations__grid {
+    border-radius: var(--admin-locations-radius);
+    overflow: hidden;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* ===== Element: admin-locations__create-btn ===== */
+::deep .admin-locations__create-btn {
+    margin-top: var(--admin-locations-spacing);
+    border-radius: 999px;
+    padding: 10px 24px;
+    font-weight: 600;
+    box-shadow: 0 6px 16px rgba(124, 58, 237, 0.3);
+}
+
+/* ===== Responsive: Mobile (600px) ===== */
+@media (max-width: 600px) {
+    ::deep .admin-locations {
+        padding: 16px;
+    }
+
+    ::deep .admin-locations__title {
+        font-size: 1.5rem;
+    }
+
+    ::deep .admin-locations__create-btn {
+        width: 100%;
+    }
+}

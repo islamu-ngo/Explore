@@ -1,4 +1,6 @@
 @using MudBlazor
+@using Microsoft.Extensions.Logging
+@inject ILogger<DeleteEventDialog> Logger
 
 <MudDialog>
     <DialogContent>
@@ -21,21 +23,19 @@
     [CascadingParameter]
     private IDialogReference? DialogReference { get; set; }
 
-    [Parameter] 
+    [Parameter]
     public string EventTitle { get; set; } = string.Empty;
 
-    void Submit() 
+    void Submit()
     {
-        Console.WriteLine("Delete button clicked - Submit called");
-        Console.WriteLine($"DialogReference is null: {DialogReference == null}");
+        Logger.LogDebug("Delete button clicked - Submit called. DialogReference is null: {IsNull}", DialogReference == null);
         DialogReference?.Close(DialogResult.Ok(true));
-        Console.WriteLine("Dialog closed with OK result");
+        Logger.LogDebug("Dialog closed with OK result");
     }
-    
-    void Cancel() 
+
+    void Cancel()
     {
-        Console.WriteLine("Cancel button clicked");
+        Logger.LogDebug("Cancel button clicked");
         DialogReference?.Close(DialogResult.Cancel());
     }
 }
-

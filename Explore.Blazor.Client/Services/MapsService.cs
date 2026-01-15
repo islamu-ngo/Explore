@@ -1,19 +1,28 @@
 using System.Net.Http.Json;
+using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;
 
+/// <summary>
+/// Service for maps-related operations.
+/// </summary>
 public interface IMapsService
 {
     Task<string> GetEmbedUrlAsync(string query);
 }
 
+/// <summary>
+/// Implementation of maps service.
+/// </summary>
 public class MapsService : IMapsService
 {
     private readonly HttpClient _httpClient;
+    private readonly ILogger<MapsService> _logger;
 
-    public MapsService(HttpClient httpClient)
+    public MapsService(HttpClient httpClient, ILogger<MapsService> logger)
     {
-        _httpClient = httpClient;
+        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public async Task<string> GetEmbedUrlAsync(string query)
@@ -35,12 +44,12 @@ public class MapsService : IMapsService
                 return embedUrl?.Trim('"') ?? string.Empty;
             }
 
-            Console.WriteLine($"Error getting map embed URL: {response.StatusCode}");
+            _logger.LogWarning("Error getting map embed URL: {StatusCode}", response.StatusCode);
             return string.Empty;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error in GetEmbedUrlAsync: {ex.Message}");
+            _logger.LogError(ex, "Error in GetEmbedUrlAsync");
             return string.Empty;
         }
     }

@@ -101,6 +101,15 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
             })
             .WithMessage("Audience gender not found");
 
+        RuleFor(x => x.AudienceAgeId)
+            .NotEmpty().WithMessage("Audience age is required")
+            .MustAsync(async (id, cancellation) =>
+            {
+                var exists = await _audienceAgeRepository.Exists(id);
+                return exists;
+            })
+            .WithMessage("Audience age not found");
+
         RuleFor(x => x.OrganizationId)
             .MustAsync(async (id, cancellation) =>
             {
@@ -324,8 +333,6 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             request.EventDto.OrganizerEmail,
             cancellationToken);
 
-        response.Success = true;
-        response.Id = @event.Id;
         return response;
     }
 }
@@ -407,19 +414,9 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, L
 
     public async Task<List<EventListDto>> Handle(GetEventListRequest request, CancellationToken cancellationToken)
     {
-        // ❌ Complex EF Core query in Application layer
-        return await _context.Events
+        return await _context.Events  // ❌ Direct DbSet access
             .Include(e => e.EventType)
-            .Include(e => e.AudienceGender)
-            .Include(e => e.Actor)
-            .Where(e => e.EventStatusId == 2) // Published
-            .OrderBy(e => e.FirstSessionDate)
-            .Select(e => new EventListDto
-            {
-                Id = e.Id,
-                Title = e.Title,
-                EventTypeName = e.EventType.FullName
-            })
+            .Where(e => e.EventStatusId == 2)
             .ToListAsync(cancellationToken);
     }
 }
@@ -458,7 +455,7 @@ using MediatR;
 
 public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, List<EventListDto>>
 {
-    private readonly IEventRepository _eventRepository;  // ✅ Interface
+    private readonly IEventRepository _eventRepository;  // ✅ Abstraction
     private readonly IMapper _mapper;
 
     public GetEventListRequestHandler(IEventRepository eventRepository, IMapper mapper)
@@ -540,12 +537,11 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
             .Include(e => e.AudienceAge)
             .Include(e => e.Actor)
                 .ThenInclude(a => a.ActorType)
+            .Include(e => e.FeaturedImage)
             .Include(e => e.EventStatus)
             .Include(e => e.VisibilityType)
             .Include(e => e.EventFormat)
             .Include(e => e.Madhab)
-            .Include(e => e.FeaturedImage)
-            .Include(e => e.AtprotoRecord)
             .AsQueryable();
 
         if (isGuid)
@@ -589,7 +585,7 @@ using System.ComponentModel.DataAnnotations;  // ❌ VIOLATION!
 
 public class Event
 {
-    [Required]  // ❌ This is validation, not an invariant
+    [Required]  // ❌ Presentation concern
     [MaxLength(500)]  // ❌ Database concern
     public string Title { get; set; } = string.Empty;
 
@@ -635,9 +631,9 @@ using Explore.Application.Contracts.Persistence;
 // ✅ INPUT VALIDATION: Can vary by use case
 public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
 {
-    private readonly IEventTypeRepository _eventTypeRepository;
-    private readonly IAudienceGenderRepository _audienceGenderRepository;
     private readonly IAudienceAgeRepository _audienceAgeRepository;
+    private readonly IAudienceGenderRepository _audienceGenderRepository;
+    private readonly IEventTypeRepository _eventTypeRepository;
 
     public CreateEventDtoValidator(
         IAudienceAgeRepository audienceAgeRepository,
@@ -680,6 +676,11 @@ public class UpdateEventDtoValidator : AbstractValidator<UpdateEventDto>
         RuleFor(x => x.Title)
             .MaximumLength(200).When(x => !string.IsNullOrEmpty(x.Title))
             .WithMessage("Title must not exceed 200 characters");
+
+        // Description optional
+        RuleFor(x => x.Description)
+            .MaximumLength(5000).When(x => !string.IsNullOrEmpty(x.Description))
+            .WithMessage("Description must not exceed 5000 characters");
     }
 }
 ```
@@ -836,7 +837,7 @@ app.Run();
 ```
 Violation detected. What should I do?
 
-1. Is it a business rule?
+1. Is it a business rule or domain concept?
    YES → Move to Domain entity method
    NO → Continue
 

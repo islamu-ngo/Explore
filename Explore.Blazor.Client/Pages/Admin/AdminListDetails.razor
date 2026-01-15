@@ -3,15 +3,17 @@
 @using Explore.Blazor.Client.Services
 @using Microsoft.AspNetCore.Components
 @using Blazouter.Services
+@using Microsoft.Extensions.Logging
 @inject IAdminService AdminService
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
 @inject RouterStateService RouterState
-<div class="details-page">
+@inject ILogger<AdminListDetails> Logger
+<div class="admin-list-details">
     @if (_isLoading)
     {
-        <MudPaper Class="hero-header" Elevation="0">
-            <div class="loading-state">
+        <MudPaper Class="admin-list-details__hero" Elevation="0">
+            <div class="admin-list-details__loading">
                 <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
                 <MudText Typo="Typo.body1">Loading organization details…</MudText>
                 <MudText Typo="Typo.caption" style="opacity:0.7;">Please wait a moment.</MudText>
@@ -21,16 +23,16 @@
     else if (organization != null)
     {
         <!-- HERO HEADER -->
-        <MudPaper Class="hero-header" Elevation="0">
-            <div class="hero-title">
-                <div class="hero-badge">
+        <MudPaper Class="admin-list-details__hero" Elevation="0">
+            <div class="admin-list-details__hero-title">
+                <div class="admin-list-details__hero-badge">
                     <MudIcon Icon="@Icons.Material.Filled.Business" Color="Color.Primary" Size="Size.Large" />
                 </div>
                 <div>
                     <MudText Typo="Typo.h4" Style="font-weight:800; letter-spacing:.2px;">
                         @organization.FullName
                     </MudText>
-                    <MudText Typo="Typo.body2" Class="hero-meta">
+                    <MudText Typo="Typo.body2" Class="admin-list-details__hero-meta">
                         Organization ID: @organization.Id.ToString()[..8]…
                     </MudText>
                 </div>
@@ -48,40 +50,40 @@
         </MudPaper>
 
         <!-- BASIC INFORMATION -->
-        <MudPaper Class="section-panel" Elevation="0">
-            <div class="section-header">
-                <div class="section-icon">
+        <MudPaper Class="admin-list-details__panel" Elevation="0">
+            <div class="admin-list-details__section-header">
+                <div class="admin-list-details__section-icon">
                     <MudIcon Icon="@Icons.Material.Filled.Info" Color="Color.Primary" />
                 </div>
-                <MudText Typo="Typo.h6" Class="section-title">Basic Information</MudText>
+                <MudText Typo="Typo.h6" Class="admin-list-details__section-title">Basic Information</MudText>
             </div>
 
-            <div class="field-row">
-                <div class="field-value">
-                    <div class="field-label">Organization Name</div>
-                    <MudText Class="field-text">@organization.FullName</MudText>
+            <div class="admin-list-details__field-row">
+                <div class="admin-list-details__field-value">
+                    <div class="admin-list-details__field-label">Organization Name</div>
+                    <MudText Class="admin-list-details__field-text">@organization.FullName</MudText>
                 </div>
             </div>
         </MudPaper>
 
         <!-- CONTACT INFORMATION -->
-        <MudPaper Class="section-panel" Elevation="0">
-            <div class="section-header">
-                <div class="section-icon">
+        <MudPaper Class="admin-list-details__panel" Elevation="0">
+            <div class="admin-list-details__section-header">
+                <div class="admin-list-details__section-icon">
                     <MudIcon Icon="@Icons.Material.Filled.ContactMail" Color="Color.Primary" />
                 </div>
-                <MudText Typo="Typo.h6" Class="section-title">Contact Information</MudText>
+                <MudText Typo="Typo.h6" Class="admin-list-details__section-title">Contact Information</MudText>
             </div>
 
-            <div class="field-row">
-                <div class="field-value">
-                    <div class="field-label">Email</div>
+            <div class="admin-list-details__field-row">
+                <div class="admin-list-details__field-value">
+                    <div class="admin-list-details__field-label">Email</div>
                     <MudLink Href="@($"mailto:{organization.Email}")" Target="_blank">
                         @organization.Email
                     </MudLink>
                 </div>
-                <div class="field-value">
-                    <div class="field-label">Website</div>
+                <div class="admin-list-details__field-value">
+                    <div class="admin-list-details__field-label">Website</div>
                     @if (!string.IsNullOrWhiteSpace(organization.WebsiteUrl))
                     {
                         <MudLink Href="@organization.WebsiteUrl" Target="_blank">
@@ -90,46 +92,46 @@
                     }
                     else
                     {
-                        <MudText Class="not-provided">Not provided</MudText>
+                        <MudText Class="admin-list-details__not-provided">Not provided</MudText>
                     }
                 </div>
             </div>
         </MudPaper>
 
         <!-- ADDRESS INFORMATION -->
-        <MudPaper Class="section-panel" Elevation="0">
-            <div class="section-header">
-                <div class="section-icon">
+        <MudPaper Class="admin-list-details__panel" Elevation="0">
+            <div class="admin-list-details__section-header">
+                <div class="admin-list-details__section-icon">
                     <MudIcon Icon="@Icons.Material.Filled.LocationOn" Color="Color.Primary" />
                 </div>
-                <MudText Typo="Typo.h6" Class="section-title">Address Information</MudText>
+                <MudText Typo="Typo.h6" Class="admin-list-details__section-title">Address Information</MudText>
             </div>
 
-            <div class="field-row">
-                <div class="field-value" style="grid-column: 1 / -1;">
-                    <div class="field-label">Street Address</div>
-                    <MudText Class="field-text">@(organization.Address ?? "Not provided")</MudText>
+            <div class="admin-list-details__field-row">
+                <div class="admin-list-details__field-value" style="grid-column: 1 / -1;">
+                    <div class="admin-list-details__field-label">Street Address</div>
+                    <MudText Class="admin-list-details__field-text">@(organization.Address ?? "Not provided")</MudText>
                 </div>
             </div>
 
-            <div class="field-row">
-                <div class="field-value">
-                    <div class="field-label">City</div>
-                    <MudText Class="field-text">@(organization.City ?? "Not provided")</MudText>
+            <div class="admin-list-details__field-row">
+                <div class="admin-list-details__field-value">
+                    <div class="admin-list-details__field-label">City</div>
+                    <MudText Class="admin-list-details__field-text">@(organization.City ?? "Not provided")</MudText>
                 </div>
-                <div class="field-value">
-                    <div class="field-label">Country</div>
-                    <MudText Class="field-text">@(organization.Country ?? "Not provided")</MudText>
+                <div class="admin-list-details__field-value">
+                    <div class="admin-list-details__field-label">Country</div>
+                    <MudText Class="admin-list-details__field-text">@(organization.Country ?? "Not provided")</MudText>
                 </div>
-                <div class="field-value">
-                    <div class="field-label">Postal Code</div>
-                    <MudText Class="field-text">@(string.IsNullOrEmpty(organization.Postcode) ? "Not provided" : organization.Postcode)</MudText>
+                <div class="admin-list-details__field-value">
+                    <div class="admin-list-details__field-label">Postal Code</div>
+                    <MudText Class="admin-list-details__field-text">@(string.IsNullOrEmpty(organization.Postcode) ? "Not provided" : organization.Postcode)</MudText>
                 </div>
             </div>
         </MudPaper>
 
         <!-- FOOTER ACTIONS -->
-        <div class="footer-actions">
+        <div class="admin-list-details__footer">
             <MudButton Variant="Variant.Outlined"
                        Color="Color.Default"
                        StartIcon="@Icons.Material.Filled.ArrowBack"
@@ -141,7 +143,7 @@
     }
     else
     {
-        <MudPaper Class="error-state" Elevation="0">
+        <MudPaper Class="admin-list-details__error" Elevation="0">
             <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Large" Color="Color.Warning" />
             <MudText Typo="Typo.h6" Style="font-weight:800;">Organization not found</MudText>
             <MudText Typo="Typo.body2">The organization you're looking for doesn't exist or has been deleted.</MudText>
@@ -166,7 +168,7 @@
     protected override async Task OnInitializedAsync()
     {
         // Get route parameter from Blazouter
-        var orgIdStr = RouterState.GetParam("OrganizationId");
+        var orgIdStr = RouterState.GetParam("organizationId");
         if (Guid.TryParse(orgIdStr, out var id))
         {
             OrganizationId = id;
@@ -181,7 +183,7 @@
 
         try
         {
-            Console.WriteLine($"[ADMIN DETAILS] Loading organization {OrganizationId}");
+            Logger.LogDebug("Loading organization {OrganizationId}", OrganizationId);
             organization = await AdminService.GetOrganizationDetailsAsync(OrganizationId);
 
             if (organization == null)
@@ -191,13 +193,13 @@
             }
             else
             {
-                Console.WriteLine($"[ADMIN DETAILS] Loaded organization: {organization.FullName}");
+                Logger.LogDebug("Loaded organization: {OrganizationName}", organization.FullName);
             }
         }
         catch (Exception ex)
         {
             _errorMessage = $"Error loading organization: {ex.Message}";
-            Console.WriteLine($"[ADMIN DETAILS] ERROR: {ex.Message}");
+            Logger.LogError(ex, "Failed to load organization {OrganizationId}", OrganizationId);
             Snackbar.Add(_errorMessage, Severity.Error);
         }
         finally
@@ -230,4 +232,3 @@
         _ => Color.Default
     };
 }
-

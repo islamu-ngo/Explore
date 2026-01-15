@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using Explore.Application.DTOs.EventSessionAgendaItem;
 using Explore.Application.Features.EventSessionAgendaItems.Requests.Commands;
 using Explore.Application.Features.EventSessionAgendaItems.Requests.Queries;
@@ -24,11 +27,16 @@ namespace Explore.API.Controllers
         // GET: api/v1/eventsessionagendaitem
         [HttpGet]
         [EndpointSummary("Get all Agenda Items")]
-        [EndpointDescription("Get a list of all event session agenda items")]
+        [EndpointDescription("Retrieve a paginated list of all event session agenda items. Default page size is 20, max is 100.")]
         [AllowAnonymous]
-        public async Task<ActionResult<List<EventSessionAgendaItemListDto>>> GetAll()
+        [ProducesResponseType(typeof(PaginatedResult<EventSessionAgendaItemListDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PaginatedResult<EventSessionAgendaItemListDto>>> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
         {
-            var agendaItems = await _mediator.Send(new GetEventSessionAgendaItemListRequest());
+            var agendaItems = await _mediator.Send(new GetEventSessionAgendaItemListRequest
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            });
             return Ok(agendaItems);
         }
 

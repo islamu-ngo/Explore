@@ -28,27 +28,31 @@ namespace Explore.API.Controllers
         // GET: api/<EventController>
         [HttpGet]
         [EndpointSummary("Get all Events (Conference, Webinar, Workshop ...)")]
-        [EndpointDescription("Get A List of all the Events (pagination!)")]
+        [EndpointDescription("Get a paginated list of all Events. Default page size is 20, max is 100.")]
         [AllowAnonymous]
-        public async Task<ActionResult<List<EventListDto>>> GetAll()
+        public async Task<ActionResult<PaginatedResult<EventListDto>>> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
         {
-            var events = await _mediator.Send(new GetEventListRequest());
+            var events = await _mediator.Send(new GetEventListRequest
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            });
             return Ok(events);
         }
 
         // GET: api/<EventController>/my
         [HttpGet("my")]
         [EndpointSummary("Get My Events")]
-        [EndpointDescription("Get a list of events created by the current user's organizations")]
+        [EndpointDescription("Get a paginated list of events created by the current user's organizations. Default page size is 20, max is 100.")]
         [Authorize]
-        public async Task<ActionResult<List<EventListDto>>> GetMyEvents()
+        public async Task<ActionResult<PaginatedResult<EventListDto>>> GetMyEvents([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
         {
             try
             {
                 _logger.LogInformation("=== GetMyEvents API Request ===");
                 _logger.LogInformation($"User authenticated: {User?.Identity?.IsAuthenticated}");
                 _logger.LogInformation($"User name: {User?.Identity?.Name}");
-                
+
                 // Log all claims for debugging
                 var claims = _httpContextAccessor.HttpContext?.User?.Claims;
                 if (claims != null)
@@ -59,7 +63,7 @@ namespace Explore.API.Controllers
                         _logger.LogInformation($"  {claim.Type}: {claim.Value}");
                     }
                 }
-                
+
                 var userId = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
                     ?? _httpContextAccessor.HttpContext?.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
                     ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sid")?.Value;
@@ -73,9 +77,14 @@ namespace Explore.API.Controllers
                 }
 
                 _logger.LogInformation($"Sending GetMyEventsRequest for userId: {userId}");
-                var events = await _mediator.Send(new GetMyEventsRequest { UserId = userId });
-                
-                _logger.LogInformation($"Retrieved {events?.Count ?? 0} events");
+                var events = await _mediator.Send(new GetMyEventsRequest
+                {
+                    UserId = userId,
+                    PageNumber = pageNumber,
+                    PageSize = pageSize
+                });
+
+                _logger.LogInformation($"Retrieved {events?.Items?.Count ?? 0} events");
                 return Ok(events);
             }
             catch (Exception ex)

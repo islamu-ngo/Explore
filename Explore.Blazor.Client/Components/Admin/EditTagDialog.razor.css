@@ -1,2 +1,4 @@
-::deep .component-edittagdialog{ color: inherit; }
-
+/* ===== Block: edit-tag-dialog ===== */
+::deep .edit-tag-dialog {
+    color: inherit;
+}

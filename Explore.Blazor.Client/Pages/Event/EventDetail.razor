@@ -1,33 +1,25 @@
 @using MudBlazor
-@using Explore.Blazor.Client.Clients;
+@using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Services
 @using Microsoft.AspNetCore.Components
 @using Explore.Blazor.Client.Components.Event
-@using Blazouter.Services
-@inject NavigationManager Navigation
-@inject IEventService EventService
-@inject IDialogService DialogService
-@inject IOrganizationService OrganizationService
-@inject IMapsService MapsService
-@inject RouterStateService RouterState
-@inject ISnackbar Snackbar
 
 <PageTitle>Event Detail</PageTitle>
-<MudContainer Class="page-wrap">
+<MudContainer Class="event-detail">
     <MudGrid>
 
         <!-- Back and Actions -->
         <MudItem xs="12" Class="mb-2">
-            <div class="d-flex justify-space-between align-center">
+            <div class="event-detail__header">
                 <MudButton StartIcon="@Icons.Material.Filled.ArrowBack"
                            Variant="Variant.Text"
                            Color="Color.Primary"
                            OnClick="@(() => Navigation.NavigateTo("/"))">
                     Back to Events
                 </MudButton>
-                @if (eventDetails != null)
+                @if (_eventDetails != null)
                 {
-                    <div class="d-flex gap-2">
+                    <div class="event-detail__actions">
                         <MudButton StartIcon="@Icons.Material.Filled.Edit"
                                    Variant="Variant.Outlined"
                                    Color="Color.Primary"
@@ -47,45 +39,45 @@
             </div>
         </MudItem>
 
-        @if (eventDetails != null)
+        @if (_eventDetails != null)
         {
             <!-- HERO -->
             <MudItem xs="12">
-                <div class="hero">
-                    @if (!string.IsNullOrEmpty(eventDetails.FeaturedImageUri))
+                <div class="event-detail__hero">
+                    @if (!string.IsNullOrEmpty(_eventDetails.FeaturedImageUri))
                     {
-                        <img src="@eventDetails.FeaturedImageUri"
-                             alt="@eventDetails.Title"
+                        <img src="@_eventDetails.FeaturedImageUri"
+                             alt="@_eventDetails.Title"
                              style="width: 100%; height: 320px; object-fit: cover;" />
                     }
                     else
                     {
-                        <img src="@($"https://dummyimage.com/1600x900/{GetEventColor()}/ffffff&text={Uri.EscapeDataString(eventDetails.Title)}")" alt="@eventDetails.Title" />
+                        <img src="@($"https://dummyimage.com/1600x900/{GetEventColor()}/ffffff&text={Uri.EscapeDataString(_eventDetails.Title)}")" alt="@_eventDetails.Title" />
                     }
-                    <div class="hero-content">
-                        <div class="hero-chips">
+                    <div class="event-detail__hero-content">
+                        <div class="event-detail__hero-badges">
                             <MudChip T="string"
                                      Color="Color.Primary"
                                      StartIcon="@Icons.Material.Filled.Category"
                                      Size="Size.Small"
                                      Style="background-color: rgba(33, 150, 243, 0.9); color: white; font-weight: 500;">
-                                @(eventDetails.EventTypeFullName ?? "Event")
+                                @(_eventDetails.EventTypeFullName ?? "Event")
                             </MudChip>
                             <MudChip T="string"
                                      Color="Color.Secondary"
                                      StartIcon="@Icons.Material.Filled.Place"
                                      Size="Size.Small"
                                      Style="background-color: rgba(255, 255, 255, 0.9); color: #333; font-weight: 500;">
-                                @(eventDetails.EventFormatFullName ?? "Online")
+                                @(_eventDetails.EventFormatFullName ?? "Online")
                             </MudChip>
-                            @if (eventDetails.Price.HasValue && eventDetails.Price > 0)
+                            @if (_eventDetails.Price.HasValue && _eventDetails.Price > 0)
                             {
                                 <MudChip T="string"
                                          Color="Color.Success"
                                          StartIcon="@Icons.Material.Filled.Euro"
                                          Size="Size.Small"
                                          Style="background-color: rgba(76, 175, 80, 0.9); color: white; font-weight: 500;">
-                                    @($"{eventDetails.CurrencyCode ?? "€"}{eventDetails.Price:F2}")
+                                    @($"{_eventDetails.CurrencyCode ?? "€"}{_eventDetails.Price:F2}")
                                 </MudChip>
                             }
                             else
@@ -99,63 +91,63 @@
                                 </MudChip>
                             }
                         </div>
-                        <MudText Typo="Typo.h4" Class="hero-title">@eventDetails.Title</MudText>
+                        <MudText Typo="Typo.h4" Class="event-detail__hero-title">@_eventDetails.Title</MudText>
                     </div>
                 </div>
             </MudItem>
 
             <!-- CONTENT -->
             <MudItem xs="12">
-                <div class="info-grid">
+                <div class="event-detail__content">
 
                     <!-- LEFT: description & details -->
-                    <div>
-                        <MudPaper Elevation="0" Class="body-card">
-                            <div class="body-section">
+                    <div class="event-detail__main">
+                        <MudPaper Elevation="0" Class="event-detail__card">
+                            <div class="event-detail__section">
                                 <MudText Typo="Typo.h6" Class="mb-1">About this event</MudText>
                                 <MudText Typo="Typo.body1">
-                                    @eventDetails.Description
+                                    @_eventDetails.Description
                                 </MudText>
                             </div>
 
-                            <div class="body-section">
+                            <div class="event-detail__section">
                                 <MudText Typo="Typo.h6" Class="mb-2">Details</MudText>
-                                <div class="detail-list">
-                                    <div class="detail-row">
+                                <div class="event-detail__details">
+                                    <div class="event-detail__detail-row">
                                         <MudIcon Icon="@Icons.Material.Filled.Category" />
                                         <MudText>@GetEventTypeName()</MudText>
                                     </div>
-                                    <div class="detail-row">
+                                    <div class="event-detail__detail-row">
                                         <MudIcon Icon="@Icons.Material.Filled.CalendarToday" />
                                         <MudText>@GetDateDisplay()</MudText>
                                     </div>
-                                    <div class="detail-row">
+                                    <div class="event-detail__detail-row">
                                         <MudIcon Icon="@Icons.Material.Filled.LocationOn" />
                                         <MudText>@GetFullLocation()</MudText>
                                     </div>
-                                    <div class="detail-row">
+                                    <div class="event-detail__detail-row">
                                         <MudIcon Icon="@Icons.Material.Filled.Euro" />
-                                        <MudText>@(eventDetails.Price.HasValue && eventDetails.Price > 0 ? $"{eventDetails.CurrencyCode ?? "€"}{eventDetails.Price:F2}" : "Free")</MudText>
+                                        <MudText>@(_eventDetails.Price.HasValue && _eventDetails.Price > 0 ? $"{_eventDetails.CurrencyCode ?? "€"}{_eventDetails.Price:F2}" : "Free")</MudText>
                                     </div>
-                                    <div class="detail-row">
-                                        <MudIcon Icon="@(eventDetails.IsRegistrationRequired ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Info)" />
-                                        <MudText>@(eventDetails.IsRegistrationRequired ? "Registration required" : "No registration required")</MudText>
+                                    <div class="event-detail__detail-row">
+                                        <MudIcon Icon="@(_eventDetails.IsRegistrationRequired ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Info)" />
+                                        <MudText>@(_eventDetails.IsRegistrationRequired ? "Registration required" : "No registration required")</MudText>
                                     </div>
-                                    <div class="detail-row">
+                                    <div class="event-detail__detail-row">
                                         <MudIcon Icon="@Icons.Material.Filled.Visibility" />
-                                        <MudText>@eventDetails.TotalViews views</MudText>
+                                        <MudText>@_eventDetails.TotalViews views</MudText>
                                     </div>
-                                    @if (!string.IsNullOrWhiteSpace(eventDetails.EventUrl))
+                                    @if (!string.IsNullOrWhiteSpace(_eventDetails.EventUrl))
                                     {
-                                        <div class="detail-row">
+                                        <div class="event-detail__detail-row">
                                             <MudIcon Icon="@Icons.Material.Filled.Link" />
-                                            <MudLink Href="@eventDetails.EventUrl" Target="_blank">Event website</MudLink>
+                                            <MudLink Href="@_eventDetails.EventUrl" Target="_blank">Event website</MudLink>
                                         </div>
                                     }
                                 </div>
                             </div>
 
-                            <div class="body-section">
+                            <div class="event-detail__section">
                                 <MudText Typo="Typo.h6" Class="mb-2">Share</MudText>
                                 <MudStack Row="true" Spacing="1">
                                     <MudIconButton Icon="@Icons.Custom.Brands.Facebook" Color="Color.Default" Size="Size.Small" aria-label="Share on Facebook" />
@@ -166,62 +158,62 @@
                             </div>
                         </MudPaper>
 
-                        <div class="body-section">
+                        <div class="event-detail__section">
                             <EventSessionManager EventId="EventId" />
                         </div>
                     </div>
 
                     <!-- RIGHT: sticky actions -->
-                    <div>
-                        <MudPaper Elevation="0" Class="sticky">
+                    <div class="event-detail__sidebar">
+                        <MudPaper Elevation="0" Class="event-detail__sidebar-card">
                             <MudStack Spacing="2">
                                 <MudText Typo="Typo.subtitle1">Attend this event</MudText>
 
-                                <div class="aside-row">
+                                <div class="event-detail__sidebar-row">
                                     <MudIcon Icon="@Icons.Material.Filled.Place" />
                                     <MudText>@GetLocationDisplay()</MudText>
                                 </div>
-                                <div class="aside-row">
+                                <div class="event-detail__sidebar-row">
                                     <MudIcon Icon="@Icons.Material.Filled.Euro" />
-                                    <MudText>@(eventDetails.Price > 0 ? $"€{eventDetails.Price:F2}" : "Free")</MudText>
+                                    <MudText>@(_eventDetails.Price > 0 ? $"€{_eventDetails.Price:F2}" : "Free")</MudText>
                                 </div>
 
-                                <MudDivider Class="aside-divider" />
+                                <MudDivider Class="event-detail__divider" />
 
-                                @if (organization != null)
-                                {
-                                    <div class="d-flex align-center gap-2 cursor-pointer" style="cursor: pointer;" @onclick="@(() => Navigation.NavigateTo($"/organization/profile/{organization.Id}"))">
-                                        <MudAvatar Size="Size.Medium">
-                                             <MudImage Src="https://via.placeholder.com/150" />
-                                        </MudAvatar>
-                                        <div>
-                                            <MudText Typo="Typo.caption">Organized by</MudText>
-                                            <MudText Typo="Typo.subtitle2">@organization.FullName</MudText>
-                                        </div>
+                                @* Display organizer info from Actor data in EventDto *@
+                                <div class="event-detail__organizer">
+                                    <MudAvatar Size="Size.Medium">
+                                        <MudImage Src="@GetOrganizerProfilePicture()" />
+                                    </MudAvatar>
+                                    <div>
+                                        <MudText Typo="Typo.caption">
+                                            @(IsOrganizedByOrganization() ? "Organized by" : "Created by")
+                                        </MudText>
+                                        <MudText Typo="Typo.subtitle2">@GetOrganizerName()</MudText>
                                     </div>
+                                </div>
 
-                                    <MudDivider Class="aside-divider" />
-                                }
+                                <MudDivider Class="event-detail__divider" />
 
-                                <div class="cta">
+                                <div class="event-detail__cta">
                                     <MudButton Variant="Variant.Filled"
                                                Color="GetButtonColor()"
                                                Size="Size.Large"
                                                FullWidth="true"
                                                Disabled="IsButtonDisabled()"
-                                               StartIcon="@(isUserRegistered ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Event)"
+                                               StartIcon="@(_isUserRegistered ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Event)"
                                                OnClick="OpenRegistrationDialog">
                                         @GetButtonText()
                                     </MudButton>
-                                    @if (isUserRegistered)
+                                    @if (_isUserRegistered)
                                     {
                                         <MudText Typo="Typo.caption" Align="Align.Center" Style="margin-top: 8px; color: var(--mud-palette-success);">
-                                            You're all set for this event! 🎉
+                                            You're all set for this event!
                                         </MudText>
                                     }
                                 </div>
 
-                                <MudDivider Class="aside-divider" />
+                                <MudDivider Class="event-detail__divider" />
 
                                 <div>
                                     <MudMenu Icon="@Icons.Material.Filled.CalendarMonth"
@@ -244,15 +236,15 @@
                                     </MudMenu>
                                 </div>
 
-                                <MudDivider Class="aside-divider" />
+                                <MudDivider Class="event-detail__divider" />
 
-                                @if (eventDetails.EventFormatId == 1) @* In-Person *@
+                                @if (_eventDetails.EventFormatId == 1) @* In-Person *@
                                 {
                                     <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true">
                                         Location details will be provided by the organizer.
                                     </MudAlert>
                                 }
-                                else if (eventDetails.EventFormatId == 2) @* Online *@
+                                else if (_eventDetails.EventFormatId == 2) @* Online *@
                                 {
                                     <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true">
                                         This is an online event. Details will be provided by the organizer.
@@ -265,7 +257,7 @@
                 </div>
             </MudItem>
         }
-        else if (isLoading)
+        else if (_isLoading)
         {
             <MudItem xs="12">
                 <MudStack AlignItems="AlignItems.Center" Spacing="3" Class="py-8">
@@ -284,268 +276,3 @@
         }
     </MudGrid>
 </MudContainer>
-
-@code {
-    private Guid EventId { get; set; }
-
-    private EventDto? eventDetails;
-    private OrganizationDto? organization;
-    private ICollection<EventSessionListDto>? eventSessions;
-    private EventSessionListDto? primarySession;
-    private bool isLoading = true;
-    private bool isUserRegistered = false;
-    private bool isCheckingRegistration = true;
-    private string? errorMessage;
-
-    protected override async Task OnInitializedAsync()
-    {
-        // Get route parameter from Blazouter
-        var eventIdStr = RouterState.GetParam("eventId");
-        if (Guid.TryParse(eventIdStr, out var id))
-        {
-            EventId = id;
-        }
-        await LoadEventData();
-    }
-
-    private async Task LoadEventData()
-    {
-        isLoading = true;
-        isCheckingRegistration = true;
-        errorMessage = null;
-
-        try
-        {
-            Console.WriteLine($"[EVENT DETAIL] Loading event {EventId}");
-            eventDetails = await EventService.GetEventByIdAsync(EventId);
-
-            if (eventDetails != null)
-            {
-                Console.WriteLine($"[EVENT DETAIL] Loaded event: {eventDetails.Title}");
-
-                // Load event sessions
-                eventSessions = await EventService.GetSessionsByEventAsync(EventId);
-                primarySession = eventSessions?.FirstOrDefault();
-                Console.WriteLine($"[EVENT DETAIL] Loaded {eventSessions?.Count ?? 0} sessions");
-
-                if (eventDetails.ActorId != Guid.Empty)
-                {
-                    organization = await OrganizationService.GetOrganizationByIdAsync(eventDetails.ActorId);
-                }
-
-                // Check registration status (if applicable)
-                isUserRegistered = false;
-            }
-        }
-        catch (Exception ex)
-        {
-            errorMessage = $"Failed to load event details: {ex.Message}";
-            Console.WriteLine($"[EVENT DETAIL] ERROR: {ex.Message}");
-        }
-        finally
-        {
-            isLoading = false;
-            isCheckingRegistration = false;
-        }
-    }
-
-    private string GetEventTypeName()
-    {
-        return eventDetails?.EventTypeFullName ?? "Event";
-    }
-
-
-    private string GetDateDisplay()
-    {
-        // Use session data if available, otherwise fall back to event dates
-        if (primarySession != null)
-        {
-            var start = primarySession.StartTime.LocalDateTime;
-            var end = primarySession.EndTime.LocalDateTime;
-
-            if (start.Date == end.Date)
-            {
-                return $"{start:dddd d MMMM yyyy} • {start:HH:mm} - {end:HH:mm}";
-            }
-
-            return $"{start:dd/MM/yyyy HH:mm} - {end:dd/MM/yyyy HH:mm}";
-        }
-
-        if (eventDetails == null) return "";
-
-        if (eventDetails.FirstSessionDate.HasValue && eventDetails.LastSessionDate.HasValue)
-        {
-            var start = eventDetails.FirstSessionDate.Value.LocalDateTime;
-            var end = eventDetails.LastSessionDate.Value.LocalDateTime;
-
-            if (start.Date == end.Date)
-            {
-                return $"{start:dddd d MMMM yyyy} • {start:HH:mm} - {end:HH:mm}";
-            }
-
-            return $"{start:dd/MM/yyyy HH:mm} - {end:dd/MM/yyyy HH:mm}";
-        }
-
-        return "Date TBD";
-    }
-
-    private string GetLocationDisplay()
-    {
-        // Use session location if available
-        if (primarySession != null && !string.IsNullOrEmpty(primarySession.LocationFullName))
-        {
-            return primarySession.LocationFullName;
-        }
-        if (primarySession != null && !string.IsNullOrEmpty(primarySession.LocationCity))
-        {
-            return primarySession.LocationCity;
-        }
-
-        return eventDetails?.EventFormatFullName ?? "Online";
-    }
-
-    private string GetFullLocation()
-    {
-        // Use session location if available
-        if (primarySession != null)
-        {
-            var parts = new List<string>();
-            if (!string.IsNullOrEmpty(primarySession.LocationFullName))
-                parts.Add(primarySession.LocationFullName);
-            if (!string.IsNullOrEmpty(primarySession.LocationCity))
-                parts.Add(primarySession.LocationCity);
-
-            if (parts.Any())
-                return string.Join(", ", parts);
-        }
-
-        return eventDetails?.EventFormatFullName ?? "Location to be announced";
-    }
-
-
-    private string GetEventColor()
-    {
-        if (eventDetails == null) return "607D8B";
-
-        // Generate color based on event type
-        return eventDetails.EventTypeFullName?.ToLower() switch
-        {
-            var s when s?.Contains("conference") == true => "2196F3",
-            var s when s?.Contains("workshop") == true => "FF9800",
-            var s when s?.Contains("seminar") == true => "9C27B0",
-            _ => "607D8B"
-        };
-    }
-
-    private async Task OpenRegistrationDialog()
-    {
-        if (eventDetails == null) return;
-        if (primarySession == null)
-        {
-            await DialogService.ShowMessageBox(
-                "Registration unavailable",
-                "No sessions are available for this event yet.",
-                yesText: "OK");
-            return;
-        }
-
-        var parameters = new DialogParameters
-        {
-            { "EventSessionId", primarySession.Id },
-            { "Title", $"Register for {eventDetails.Title}" }
-        };
-
-        var options = new DialogOptions
-        {
-            CloseOnEscapeKey = true,
-            MaxWidth = MaxWidth.Medium,
-            FullWidth = true,
-            Position = DialogPosition.Center
-        };
-
-        var dialog = await DialogService.ShowAsync<Components.EventRegistration>(
-            "Register",
-            parameters,
-            options
-        );
-
-        var result = await dialog.Result;
-
-        if (result != null && !result.Canceled)
-        {
-            // Refresh registration status
-            try
-            {
-                Console.WriteLine("Registration dialog closed successfully");
-                StateHasChanged();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error refreshing registration status: {ex.Message}");
-            }
-        }
-    }
-
-    private string GetButtonText()
-    {
-        if (isCheckingRegistration) return "Checking...";
-        if (isUserRegistered) return "Already Registered";
-        if (primarySession == null) return "Registration unavailable";
-        return eventDetails?.IsRegistrationRequired == true ? "Register now" : "Join us";
-    }
-
-    private bool IsButtonDisabled()
-    {
-        return isCheckingRegistration || isUserRegistered || primarySession == null;
-    }
-
-    private Color GetButtonColor()
-    {
-        return isUserRegistered ? Color.Success : Color.Primary;
-    }
-
-    private void AddToGoogleCalendar()
-    {
-        // To be implemented
-        Console.WriteLine("Add to Google Calendar clicked");
-    }
-
-    private void AddToAppleCalendar()
-    {
-        // To be implemented
-        Console.WriteLine("Add to Apple Calendar (.ics) clicked");
-    }
-
-    private void AddToOutlookCalendar()
-    {
-        // To be implemented
-        Console.WriteLine("Add to Outlook Calendar (.ics) clicked");
-    }
-
-    private async Task OpenDeleteDialog()
-    {
-        if (eventDetails == null) return;
-
-        var parameters = new DialogParameters
-        {
-            { "EventId", EventId },
-            { "EventTitle", eventDetails.Title }
-        };
-
-        var options = new DialogOptions
-        {
-            CloseOnEscapeKey = true,
-            MaxWidth = MaxWidth.Small,
-            FullWidth = true
-        };
-
-        var dialog = await DialogService.ShowAsync<DeleteEventDialog>("Delete Event", parameters, options);
-        var result = await dialog.Result;
-
-        if (result != null && !result.Canceled)
-        {
-            Snackbar.Add("Event deleted successfully", Severity.Success);
-            Navigation.NavigateTo("/");
-        }
-    }
-}

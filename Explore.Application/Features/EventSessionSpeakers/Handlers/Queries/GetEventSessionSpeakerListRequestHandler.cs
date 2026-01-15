@@ -5,11 +5,12 @@ using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventSessionSpeaker;
 using Explore.Application.Features.EventSessionSpeakers.Requests.Queries;
+using Explore.Application.Responses;
 using MediatR;
 
 namespace Explore.Application.Features.EventSessionSpeakers.Handlers.Queries
 {
-    public class GetEventSessionSpeakerListRequestHandler : IRequestHandler<GetEventSessionSpeakerListRequest, List<EventSessionSpeakerListDto>>
+    public class GetEventSessionSpeakerListRequestHandler : IRequestHandler<GetEventSessionSpeakerListRequest, PaginatedResult<EventSessionSpeakerListDto>>
     {
         private readonly IEventSessionSpeakerRepository _speakerRepository;
         private readonly IMapper _mapper;
@@ -22,10 +23,12 @@ namespace Explore.Application.Features.EventSessionSpeakers.Handlers.Queries
             _mapper = mapper;
         }
 
-        public async Task<List<EventSessionSpeakerListDto>> Handle(GetEventSessionSpeakerListRequest request, CancellationToken cancellationToken)
+        public async Task<PaginatedResult<EventSessionSpeakerListDto>> Handle(GetEventSessionSpeakerListRequest request, CancellationToken cancellationToken)
         {
-            var speakers = await _speakerRepository.GetAll();
-            return _mapper.Map<List<EventSessionSpeakerListDto>>(speakers);
+            var (pageNumber, pageSize) = PaginatedResult<EventSessionSpeakerListDto>.NormalizeParameters(request.PageNumber, request.PageSize);
+            var (speakers, totalCount) = await _speakerRepository.GetSpeakersWithDetailsPaged(pageNumber, pageSize);
+            var dtos = _mapper.Map<List<EventSessionSpeakerListDto>>(speakers);
+            return PaginatedResult<EventSessionSpeakerListDto>.Create(dtos, totalCount, pageNumber, pageSize);
         }
     }
 }

@@ -1,4 +1,29 @@
-::deep .announcement-bar-alert {
+/*
+ * AnnouncementBar Component Styles - BEM Methodology
+ * Block: announcement-bar
+ *
+ * Structure:
+ * .announcement-bar
+ *   .announcement-bar__alert (MudAlert component)
+ *     .announcement-bar__content
+ *       .announcement-bar__icon
+ *       .announcement-bar__text
+ *       .announcement-bar__link
+ */
+
+/* ========================================
+   Block: announcement-bar
+   Wrapper for the announcement banner
+   ======================================== */
+.announcement-bar {
+    /* Container styles if needed */
+}
+
+/* ========================================
+   Element: announcement-bar__alert
+   MudAlert component with custom styling
+   ======================================== */
+::deep .announcement-bar__alert {
     border-radius: 0;
     /* Using color-mix to create a translucent effect based on the theme's surface color */
     background: color-mix(
@@ -12,21 +37,41 @@
     border-bottom: 1px solid var(--mud-palette-lines-default);
 }
 
-::deep .announcement-bar-content {
+/* ========================================
+   Element: announcement-bar__content
+   Inner content container with flex layout
+   ======================================== */
+::deep .announcement-bar__content {
     display: flex;
     align-items: center;
     justify-content: center;
     width: 100%;
-    gap: 16px; /* Provides spacing between elements */
+    gap: 16px;
 }
 
-::deep .announcement-bar-text {
+/* ========================================
+   Element: announcement-bar__icon
+   Info icon
+   ======================================== */
+::deep .announcement-bar__icon {
+    /* Styling handled by MudBlazor */
+}
+
+/* ========================================
+   Element: announcement-bar__text
+   Announcement message text
+   ======================================== */
+::deep .announcement-bar__text {
     font-weight: 500;
     font-size: 0.9rem;
     color: var(--mud-palette-text-secondary);
 }
 
-::deep .announcement-bar-link {
+/* ========================================
+   Element: announcement-bar__link
+   Action link (e.g., GitHub link)
+   ======================================== */
+::deep .announcement-bar__link {
     font-weight: 600;
     font-size: 0.9rem;
     color: var(--mud-palette-primary);
@@ -35,7 +80,7 @@
     border-bottom: 1px solid transparent;
 }
 
-::deep .announcement-bar-link:hover {
+::deep .announcement-bar__link:hover {
     color: var(--mud-palette-info);
     border-bottom: 1px solid var(--mud-palette-info);
 }

@@ -89,6 +89,27 @@ public partial class EventService
         }
     }
 
+    public async Task<ICollection<EventSessionLanguageListDto>> GetAllSessionLanguagesAsync()
+    {
+        try
+        {
+            _logger.LogInformation("[EVENT SERVICE] Fetching all session languages...");
+            var response = await _apiClient.EventSessionLanguageAllAsync();
+            _logger.LogInformation("[EVENT SERVICE] Received {Count} session languages", response?.Count ?? 0);
+            return response ?? new List<EventSessionLanguageListDto>();
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[EVENT SERVICE] API error fetching session languages: {StatusCode}", ex.StatusCode);
+            return new List<EventSessionLanguageListDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[EVENT SERVICE] Error fetching session languages");
+            return new List<EventSessionLanguageListDto>();
+        }
+    }
+
     public async Task<BaseCommandResponseOfGuid?> CreateSessionAsync(CreateEventSessionDto session)
     {
         try
@@ -140,6 +161,43 @@ public partial class EventService
         catch (Exception ex)
         {
             _logger.LogError(ex, "[EVENT SERVICE] Error deleting session");
+            return false;
+        }
+    }
+
+    public async Task<BaseCommandResponseOfint?> AssignLanguageToSessionAsync(CreateEventSessionLanguageDto sessionLanguage)
+    {
+        try
+        {
+            return await _apiClient.EventSessionLanguagePOSTAsync(sessionLanguage);
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[EVENT SERVICE] API error assigning session language: {StatusCode}", ex.StatusCode);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[EVENT SERVICE] Error assigning session language");
+            return null;
+        }
+    }
+
+    public async Task<bool> DeleteSessionLanguageAsync(int sessionLanguageId)
+    {
+        try
+        {
+            await _apiClient.EventSessionLanguageDELETEAsync(sessionLanguageId);
+            return true;
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[EVENT SERVICE] API error deleting session language: {StatusCode}", ex.StatusCode);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[EVENT SERVICE] Error deleting session language");
             return false;
         }
     }

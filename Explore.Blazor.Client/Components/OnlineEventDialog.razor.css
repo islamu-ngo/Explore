@@ -1,2 +1,4 @@
-::deep .component-onlineeventdialog{ color: inherit; }
-
+/* ===== Block: online-event-dialog ===== */
+::deep .online-event-dialog {
+    color: inherit;
+}

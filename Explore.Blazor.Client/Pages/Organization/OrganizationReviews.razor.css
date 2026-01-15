@@ -1,22 +1,60 @@
-::deep .component-organizationreviews{ color: inherit; }
-::deep .star-rating{
-        display: inline-flex;
-        gap: 2px;
-        color: #FFC107;
+/* ===== Block: organization-reviews ===== */
+::deep .organization-reviews {
+    padding-block: 24px;
+}
+
+/* ===== Element: organization-reviews__card ===== */
+::deep .organization-reviews__card {
+    height: 100%;
+    border-radius: 14px;
+    border: 1px solid
+        color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
+    background: color-mix(
+        in srgb,
+        var(--mud-palette-background) 85%,
+        var(--mud-palette-surface)
+    );
+    transition:
+        transform 0.12s ease,
+        box-shadow 0.12s ease,
+        border-color 0.12s ease;
+}
+
+::deep .organization-reviews__card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+    border-color: color-mix(
+        in srgb,
+        var(--mud-palette-primary) 35%,
+        var(--mud-palette-lines-default)
+    );
+}
+
+/* ===== Element: organization-reviews__rating ===== */
+::deep .organization-reviews__rating {
+    display: inline-flex;
+    gap: 2px;
+    color: #ffc107; /* gold color for stars */
+}
+
+::deep .organization-reviews__rating .mud-icon-root {
+    font-size: 1.25rem;
+}
+
+/* ===== Responsive: Tablet ===== */
+@media (max-width: 960px) {
+    ::deep .organization-reviews {
+        padding-block: 20px;
     }
-    ::deep .star-rating .mud-icon-root{
-        font-size: 1.25rem;
-    }
-    ::deep .review-card{
-        height: 100%;
-        border-radius: 14px;
-        border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
-        background: color-mix(in srgb, var(--mud-palette-background) 85%, var(--mud-palette-surface));
-        transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
-    }
-    ::deep .review-card:hover{
-        transform: translateY(-2px);
-        box-shadow: 0 12px 28px rgba(0,0,0,.12);
-        border-color: color-mix(in srgb, var(--mud-palette-primary) 35%, var(--mud-palette-lines-default));
+}
+
+/* ===== Responsive: Mobile ===== */
+@media (max-width: 600px) {
+    ::deep .organization-reviews {
+        padding-block: 16px;
     }
 
+    ::deep .organization-reviews__card:hover {
+        transform: translateY(-1px);
+    }
+}

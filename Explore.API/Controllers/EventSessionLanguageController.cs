@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using Explore.Application.DTOs.EventSessionLanguage;
 using Explore.Application.Features.EventSessionLanguages.Requests.Commands;
 using Explore.Application.Features.EventSessionLanguages.Requests.Queries;
@@ -24,11 +27,16 @@ namespace Explore.API.Controllers
         // GET: api/v1/eventsessionlanguage
         [HttpGet]
         [EndpointSummary("Get all Session Languages")]
-        [EndpointDescription("Get a list of all event session language assignments")]
+        [EndpointDescription("Retrieve a paginated list of all event session language assignments. Default page size is 20, max is 100.")]
         [AllowAnonymous]
-        public async Task<ActionResult<List<EventSessionLanguageListDto>>> GetAll()
+        [ProducesResponseType(typeof(PaginatedResult<EventSessionLanguageListDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PaginatedResult<EventSessionLanguageListDto>>> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
         {
-            var eventSessionLanguages = await _mediator.Send(new GetEventSessionLanguageListRequest());
+            var eventSessionLanguages = await _mediator.Send(new GetEventSessionLanguageListRequest
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            });
             return Ok(eventSessionLanguages);
         }
 

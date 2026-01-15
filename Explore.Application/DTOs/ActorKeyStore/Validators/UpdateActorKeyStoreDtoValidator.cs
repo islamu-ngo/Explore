@@ -8,12 +8,10 @@ namespace Explore.Application.DTOs.ActorKeyStore.Validators
     public class UpdateActorKeyStoreDtoValidator : AbstractValidator<UpdateActorKeyStoreDto>
     {
         private readonly IActorRepository _actorRepository;
-        private readonly ITenantRepository _tenantRepository;
 
-        public UpdateActorKeyStoreDtoValidator(IActorRepository actorRepository, ITenantRepository tenantRepository)
+        public UpdateActorKeyStoreDtoValidator(IActorRepository actorRepository)
         {
             _actorRepository = actorRepository;
-            _tenantRepository = tenantRepository;
 
             RuleFor(x => x.Id)
                 .NotEmpty().WithMessage("Actor Key Store ID is required");
@@ -23,10 +21,8 @@ namespace Explore.Application.DTOs.ActorKeyStore.Validators
                 .MustAsync(ActorExists)
                 .WithMessage("Actor does not exist");
 
-            RuleFor(x => x.TenantId)
-                .NotEmpty().WithMessage("Tenant ID is required")
-                .MustAsync(TenantExists)
-                .WithMessage("Tenant does not exist");
+            // TenantId is set by the handler from context, not by the client
+            // No validation needed here
 
             RuleFor(x => x.KeyPurpose)
                 .NotEmpty().WithMessage("Key purpose is required")
@@ -44,11 +40,6 @@ namespace Explore.Application.DTOs.ActorKeyStore.Validators
         private async Task<bool> ActorExists(Guid actorId, CancellationToken cancellationToken)
         {
             return await _actorRepository.Exists(actorId);
-        }
-
-        private async Task<bool> TenantExists(Guid tenantId, CancellationToken cancellationToken)
-        {
-            return await _tenantRepository.Exists(tenantId);
         }
     }
 }

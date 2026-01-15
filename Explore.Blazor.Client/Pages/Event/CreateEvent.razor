@@ -14,38 +14,43 @@
 @inject IImageStorageService ImageStorageService
 @inject ICategoryService CategoryService
 @inject ITagService TagService
+@inject ILocationService LocationService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 @inject RouterStateService RouterState
+@inject ILogger<CreateEvent> Logger
 @attribute [Authorize]
 @using Explore.Blazor.Client.Models.Enums
 @using static Explore.Blazor.Client.Components.Event.EventSessionEditor
+@using Explore.Blazor.Client.Helpers
 
-<MudContainer Class="create-page" DisableGutters="true">
+<MudContainer Class="create-event" DisableGutters="true">
     @if (isLoading)
     {
-        <div style="display: flex; justify-content: center; align-items: center; min-height: 400px;">
+        <div class="create-event__loading">
             <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
         </div>
     }
     else if (organization == null && !_isRetrying)
     {
-        <MudPaper Class="event-form" Elevation="1">
+        <MudPaper Class="isl-status-card" Elevation="1">
             <MudAlert Severity="Severity.Error" Class="mb-4">
                 Organization not found or you do not have permission to create events for this organization.
             </MudAlert>
-            <MudText Typo="Typo.body2" Class="mb-2">
-                <strong>Debug Info:</strong>
-            </MudText>
-            <MudText Typo="Typo.body2" Class="mb-1">
-                • Requested OrganizationId: @OrganizationId
-            </MudText>
-            <MudText Typo="Typo.body2" Class="mb-1">
-                • Current User ID: @(_currentUserId?.ToString() ?? "Not loaded")
-            </MudText>
-            <MudText Typo="Typo.body2" Class="mb-4">
-                • Organizations loaded: @_loadedOrgsCount
-            </MudText>
+            <div class="create-event__debug">
+                <MudText Typo="Typo.body2" Class="mb-2">
+                    <strong>Debug Info:</strong>
+                </MudText>
+                <MudText Typo="Typo.body2" Class="mb-1">
+                    • Requested OrganizationId: @OrganizationId
+                </MudText>
+                <MudText Typo="Typo.body2" Class="mb-1">
+                    • Current User ID: @(_currentUserId?.ToString() ?? "Not loaded")
+                </MudText>
+                <MudText Typo="Typo.body2">
+                    • Organizations loaded: @_loadedOrgsCount
+                </MudText>
+            </div>
             <div class="d-flex gap-2">
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@RetryLoad">
                     Retry
@@ -58,7 +63,7 @@
     }
     else if (!canCreateEvent && !_isRetrying)
     {
-        <MudPaper Class="event-form" Elevation="1">
+        <MudPaper Class="isl-status-card" Elevation="1">
             <MudAlert Severity="Severity.Warning" Class="mb-4">
                 You do not have permission to create events for <strong>@organization?.FullName</strong>.
                 You must be a <strong>Creator</strong>, <strong>Co-Owner</strong> or <strong>Admin</strong> of this organization.
@@ -74,12 +79,12 @@
                    Color="Color.Primary"
                    Variant="Variant.Text"
                    OnClick="@(() => Navigation.NavigateTo($"/organization/{OrganizationId}"))"
-                   Class="mb-4">
+                   Class="create-event__back-button">
             Back to @organization?.FullName
         </MudButton>
 
-        <MudPaper Class="event-form" Elevation="1">
-            <MudText Typo="Typo.h4" Class="title">Create Event for @organization?.FullName</MudText>
+        <MudPaper Class="isl-card isl-form-card" Elevation="1">
+            <MudText Class="isl-form__title">Create Event for @organization?.FullName</MudText>
             <EditForm Model="createDto" OnValidSubmit="OnCreate">
                 <DataAnnotationsValidator />
 
@@ -123,8 +128,8 @@
                 </MudSelect>
 
                 <!-- Event Image Upload -->
-                <MudText Typo="Typo.h6" Class="mb-3">Event Image</MudText>
-                <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
+                <MudText Class="isl-form__section-title mb-3">Event Image</MudText>
+                <MudPaper Class="isl-form-section">
                     <ImageUpload @bind-PreviewUrl="imagePreviewUrl"
                                  FileSelected="OnImageFileSelected"
                                  Width="400px"
@@ -142,8 +147,8 @@
                 </MudPaper>
 
                 <!-- Date and Time -->
-                <MudText Typo="Typo.h6" Class="mb-3">Date and Time</MudText>
-                <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
+                <MudText Class="isl-form__section-title mb-3">Date and Time</MudText>
+                <MudPaper Class="isl-form-section">
                     <MudGrid Spacing="3">
                         <MudItem xs="12" sm="6">
                             <MudDatePicker Label="Start Date" @bind-Date="_startDate" Variant="Variant.Outlined" />
@@ -161,8 +166,8 @@
                 </MudPaper>
 
                 <!-- Event Format -->
-                <MudText Typo="Typo.h6" Class="mb-3">Event Format</MudText>
-                <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
+                <MudText Class="isl-form__section-title mb-3">Event Format</MudText>
+                <MudPaper Class="isl-form-section">
                     <MudSelect @bind-Value="createDto.EventFormatId"
                               Label="Event Format"
                               Variant="Variant.Outlined">
@@ -193,8 +198,8 @@
                 </MudPaper>
 
                 <!-- Visibility & Madhab -->
-                <MudText Typo="Typo.h6" Class="mb-3">Visibility & Religious Settings</MudText>
-                <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
+                <MudText Class="isl-form__section-title mb-3">Visibility & Religious Settings</MudText>
+                <MudPaper Class="isl-form-section">
                     <MudGrid Spacing="3">
                         <MudItem xs="12" sm="6">
                             <MudSelect @bind-Value="createDto.VisibilityTypeId"
@@ -212,7 +217,8 @@
                             </MudSelect>
                         </MudItem>
                         <MudItem xs="12" sm="6">
-                            <MudSelect @bind-Value="selectedMadhabId"
+                            <MudSelect T="int?"
+                                      @bind-Value="selectedMadhabId"
                                       Label="Madhab (Optional)"
                                       Variant="Variant.Outlined"
                                       FullWidth
@@ -221,7 +227,7 @@
                                 {
                                     @foreach (var madhab in madhabs)
                                     {
-                                        <MudSelectItem Value="@madhab.Id">@madhab.FullName</MudSelectItem>
+                                        <MudSelectItem T="int?" Value="@((int?)madhab.Id)">@madhab.FullName</MudSelectItem>
                                     }
                                 }
                             </MudSelect>
@@ -238,8 +244,8 @@
                 </MudPaper>
 
                 <!-- Audience Info -->
-                <MudText Typo="Typo.h6" Class="mb-3">Audience</MudText>
-                <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
+                <MudText Class="isl-form__section-title mb-3">Audience</MudText>
+                <MudPaper Class="isl-form-section">
                     <MudGrid Spacing="3">
                         <MudItem xs="12" sm="6">
                             <MudSelect @bind-Value="createDto.AudienceGenderId"
@@ -273,8 +279,8 @@
                 </MudPaper>
 
                 <!-- Price & Registration -->
-                <MudText Typo="Typo.h6" Class="mb-3">Pricing</MudText>
-                <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
+                <MudText Class="isl-form__section-title mb-3">Pricing</MudText>
+                <MudPaper Class="isl-form-section">
                     <MudGrid Spacing="3">
                         <MudItem xs="12" sm="6">
                             <MudNumericField @bind-Value="createDto.Price"
@@ -296,16 +302,16 @@
                 </MudPaper>
 
                 <!-- Registration Settings -->
-                <MudText Typo="Typo.h6" Class="mb-3">Registration</MudText>
-                <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
+                <MudText Class="isl-form__section-title mb-3">Registration</MudText>
+                <MudPaper Class="isl-form-section">
                     <MudSwitch @bind-Value="createDto.IsRegistrationRequired"
                               Label="Registration Required"
                               Color="Color.Primary" />
                 </MudPaper>
 
                 <!-- Categories -->
-                <MudText Typo="Typo.h6" Class="mb-3">Categories</MudText>
-                <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
+                <MudText Class="isl-form__section-title mb-3">Categories</MudText>
+                <MudPaper Class="isl-form-section">
                     @if (allCategories != null && allCategories.Any())
                     {
                         <MudSelect T="Guid"
@@ -328,8 +334,8 @@
                 </MudPaper>
 
                 <!-- Tags -->
-                <MudText Typo="Typo.h6" Class="mb-3">Tags</MudText>
-                <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
+                <MudText Class="isl-form__section-title mb-3">Tags</MudText>
+                <MudPaper Class="isl-form-section">
                     @if (allTags != null && allTags.Any())
                     {
                         <MudSelect T="Guid"
@@ -352,27 +358,32 @@
                 </MudPaper>
 
                 <!-- Sessions -->
-                <MudText Typo="Typo.h6" Class="mb-3">
+                <MudText Class="isl-form__section-title mb-3">
                     Sessions
                     <MudText Typo="Typo.caption" Class="ml-2" Color="Color.Error">*Required (at least 1)</MudText>
                 </MudText>
-                <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
+                <MudPaper Class="isl-form-section">
                     @if (sessions.Count == 0)
                     {
                         <MudAlert Severity="Severity.Warning" Class="mb-3">
                             At least one session is required. Please add a session.
                         </MudAlert>
                     }
-                    
-                    @for (int i = 0; i < sessions.Count; i++)
-                    {
-                        var index = i;
-                        <EventSessionEditor Session="sessions[index]"
-                                            SessionChanged="@((s) => OnSessionChanged(index, s))"
-                                            Index="index"
-                                            ShowRemoveButton="@(sessions.Count > 1)"
-                                            OnRemove="@(() => RemoveSession(index))" />
-                    }
+
+                        @for (int i = 0; i < sessions.Count; i++)
+                        {
+                            var index = i;
+                            <EventSessionEditor Session="sessions[index]"
+                                                SessionChanged="@((s) => OnSessionChanged(index, s))"
+                                                Index="index"
+                                                ShowRemoveButton="@(sessions.Count > 1)"
+                                            OnRemove="@(() => RemoveSession(index))"
+                                            ShowLocationSelector="true"
+                                            Locations="locations"
+                                            RegistrationModes="registrationModes"
+                                            ShowLanguageSelector="true"
+                                            Languages="languages" />
+                        }
 
                     <MudButton Variant="Variant.Outlined"
                                Color="Color.Primary"
@@ -384,7 +395,7 @@
                 </MudPaper>
 
                 <!-- Action Buttons -->
-                <div class="d-flex justify-content-between mt-4">
+                <div class="isl-form-actions">
                     <MudButton Variant="Variant.Outlined"
                              Color="Color.Secondary"
                              Disabled="@isCreating"
@@ -420,6 +431,9 @@
     private ICollection<MadhabListDto>? madhabs;
     private ICollection<CategoryListDto>? allCategories;
     private ICollection<TagListDto>? allTags;
+    private ICollection<LocationListDto>? locations;
+    private ICollection<RegistrationModeListDto>? registrationModes;
+    private ICollection<LanguageListDto>? languages;
     private bool isLoading = true;
     private bool _isRetrying = false;
     private bool canCreateEvent = false;
@@ -450,13 +464,13 @@
     protected override async Task OnInitializedAsync()
     {
         // Get route parameter from Blazouter
-        var orgIdStr = RouterState.GetParam("OrganizationId");
+        var orgIdStr = RouterState.GetParam("organizationId");
         if (Guid.TryParse(orgIdStr, out var id))
         {
             OrganizationId = id;
         }
-        
-        Console.WriteLine("[CREATE EVENT] OnInitializedAsync starting...");
+
+        Logger.LogInformation("OnInitializedAsync starting for organization {OrganizationId}", OrganizationId);
         await LoadFormData();
     }
 
@@ -510,7 +524,7 @@
         {
             isLoading = true;
 
-            Console.WriteLine($"[CREATE EVENT] Loading form data for organization {OrganizationId}...");
+            Logger.LogInformation("Loading form data for organization {OrganizationId}", OrganizationId);
 
             // Get current user ID first
             if (!_currentUserId.HasValue)
@@ -521,12 +535,12 @@
                     if (currentUser != null)
                     {
                         _currentUserId = currentUser.Id;
-                        Console.WriteLine($"[CREATE EVENT] Current user ID: {_currentUserId}");
+                        Logger.LogInformation("Current user ID: {UserId}", _currentUserId);
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[CREATE EVENT] Error getting current user: {ex.Message}");
+                    Logger.LogError(ex, "Error getting current user");
                 }
             }
 
@@ -536,15 +550,15 @@
             if (_currentUserId.HasValue)
             {
                 allOrgs = await OrganizationService.GetOrganizationsByUserAsync(_currentUserId.Value);
-                Console.WriteLine($"[CREATE EVENT] Got {allOrgs?.Count ?? 0} organizations for user {_currentUserId}");
+                Logger.LogInformation("Got {Count} organizations for user {UserId}", allOrgs?.Count ?? 0, _currentUserId);
             }
 
             // Fallback to old method if no orgs found
             if ((allOrgs == null || allOrgs.Count == 0))
             {
-                Console.WriteLine("[CREATE EVENT] Trying fallback GetMyOrganizationsAsync...");
+                Logger.LogInformation("Trying fallback GetMyOrganizationsAsync");
                 allOrgs = await OrganizationService.GetMyOrganizationsAsync();
-                Console.WriteLine($"[CREATE EVENT] Fallback got {allOrgs?.Count ?? 0} organizations");
+                Logger.LogInformation("Fallback got {Count} organizations", allOrgs?.Count ?? 0);
             }
 
             _loadedOrgsCount = allOrgs?.Count ?? 0;
@@ -552,7 +566,7 @@
 
             if (organization != null)
             {
-                Console.WriteLine($"[CREATE EVENT] Found organization: {organization.FullName}, CurrentUserRole: {organization.CurrentUserRole}");
+                Logger.LogInformation("Found organization: {OrgName}, CurrentUserRole: {Role}", organization.FullName, organization.CurrentUserRole);
 
                 // Check if user can create events
                 canCreateEvent = organization.CurrentUserRole.HasValue &&
@@ -561,7 +575,7 @@
                 // Fallback: if user is a member of the org, allow event creation
                 if (!canCreateEvent)
                 {
-                    Console.WriteLine("[CREATE EVENT] User is member but role not admin-level, allowing as fallback");
+                    Logger.LogInformation("User is member but role not admin-level, allowing as fallback");
                     canCreateEvent = true;
                 }
 
@@ -580,8 +594,11 @@
             var madhabsTask = AdminService.GetMadhabsAsync();
             var categoriesTask = CategoryService.GetAllCategoriesAsync();
             var tagsTask = TagService.GetAllTagsAsync();
+            var locationsTask = LocationService.GetAllLocationsAsync();
+            var registrationModesTask = AdminService.GetRegistrationModesAsync();
+            var languagesTask = AdminService.GetLanguagesAsync();
 
-            await Task.WhenAll(eventTypesTask, audienceGendersTask, audienceAgesTask, eventFormatsTask, visibilityTypesTask, madhabsTask, categoriesTask, tagsTask);
+            await Task.WhenAll(eventTypesTask, audienceGendersTask, audienceAgesTask, eventFormatsTask, visibilityTypesTask, madhabsTask, categoriesTask, tagsTask, locationsTask, registrationModesTask, languagesTask);
 
             eventTypes = await eventTypesTask;
             audienceGenders = await audienceGendersTask;
@@ -591,17 +608,21 @@
             madhabs = await madhabsTask;
             allCategories = await categoriesTask;
             allTags = await tagsTask;
+            locations = await locationsTask;
+            registrationModes = await registrationModesTask;
+            languages = await languagesTask;
 
-            Console.WriteLine($"[CREATE EVENT] Loaded: {eventTypes?.Count ?? 0} event types, {audienceGenders?.Count ?? 0} genders, {audienceAges?.Count ?? 0} ages, {eventFormats?.Count ?? 0} formats, {visibilityTypes?.Count ?? 0} visibility types, {madhabs?.Count ?? 0} madhabs, {allCategories?.Count ?? 0} categories, {allTags?.Count ?? 0} tags");
+            Logger.LogDebug("Loaded reference data: {EventTypes} event types, {Genders} genders, {Ages} ages, {Formats} formats, {Visibility} visibility types, {Madhabs} madhabs, {Categories} categories, {Tags} tags, {Locations} locations, {RegModes} registration modes, {Languages} languages",
+                eventTypes?.Count ?? 0, audienceGenders?.Count ?? 0, audienceAges?.Count ?? 0, eventFormats?.Count ?? 0, visibilityTypes?.Count ?? 0, madhabs?.Count ?? 0, allCategories?.Count ?? 0, allTags?.Count ?? 0, locations?.Count ?? 0, registrationModes?.Count ?? 0, languages?.Count ?? 0);
 
             SetDefaultValues();
             _dataLoaded = true;
 
-            Console.WriteLine($"[CREATE EVENT] Form data loaded. canCreateEvent: {canCreateEvent}, organization: {organization?.FullName ?? "null"}");
+            Logger.LogInformation("Form data loaded. canCreateEvent: {CanCreate}, organization: {OrgName}", canCreateEvent, organization?.FullName ?? "null");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[CREATE EVENT] Error loading form data: {ex.Message}");
+            Logger.LogError(ex, "Error loading form data");
         }
         finally
         {
@@ -611,7 +632,7 @@
 
     private bool isCreating = false;
 
-        private async Task OnCreate()
+    private async Task OnCreate()
         {
             if (isCreating) return;
 
@@ -625,12 +646,12 @@
                 // Step 1: Upload image if one is selected
                 if (selectedImageFile != null)
                 {
-                    Console.WriteLine("[CREATE EVENT] Uploading selected image...");
+                    Logger.LogInformation("Uploading selected image: {FileName}", selectedImageFile.Name);
                     var uploadResult = await ImageStorageService.UploadImageAndCreateRecordAsync(selectedImageFile);
                     if (uploadResult?.Success == true)
                     {
                         featuredImageId = uploadResult.StorageObjectId;
-                        Console.WriteLine($"[CREATE EVENT] Image uploaded. StorageObjectId: {featuredImageId}");
+                        Logger.LogInformation("Image uploaded. StorageObjectId: {StorageObjectId}", featuredImageId);
                     }
                     else
                     {
@@ -646,17 +667,9 @@
                 createDto.FeaturedImageId = featuredImageId;
                 createDto.MadhabId = selectedMadhabId;
 
-                if (_startDate.HasValue && _startTime.HasValue)
-                {
-                    var startDateTime = _startDate.Value.Date + _startTime.Value;
-                    createDto.FirstSessionDate = new DateTimeOffset(startDateTime, TimeZoneInfo.Local.GetUtcOffset(startDateTime)).ToUniversalTime();
-                }
-
-                if (_endDate.HasValue && _endTime.HasValue)
-                {
-                    var endDateTime = _endDate.Value.Date + _endTime.Value;
-                    createDto.LastSessionDate = new DateTimeOffset(endDateTime, TimeZoneInfo.Local.GetUtcOffset(endDateTime)).ToUniversalTime();
-                }
+                // Use DateTimeHelper for consistent UTC conversion
+                createDto.FirstSessionDate = DateTimeHelper.CombineDateTimeToUtc(_startDate, _startTime);
+                createDto.LastSessionDate = DateTimeHelper.CombineDateTimeToUtc(_endDate, _endTime);
 
                 // Step 3: Validate sessions
                 if (sessions.Count == 0)
@@ -668,13 +681,13 @@
                 }
 
                 // Step 4: Create the event
-                Console.WriteLine("[CREATE EVENT] Creating event record...");
+                Logger.LogInformation("Creating event record");
                 var response = await EventService.CreateEventAsync(createDto);
 
                 if (response?.Success == true && response.Id != Guid.Empty)
                 {
                     var eventId = response.Id;
-                    Console.WriteLine($"[CREATE EVENT] Event created with ID: {eventId}");
+                    Logger.LogInformation("Event created with ID: {EventId}", eventId);
 
                     // Step 5: Create sessions
                     var tenantId = Guid.Parse("00000000-0000-0000-0000-000000000001"); // Default tenant
@@ -684,11 +697,24 @@
                         var sessionResponse = await EventService.CreateSessionAsync(sessionDto);
                         if (sessionResponse?.Success == true)
                         {
-                            Console.WriteLine($"[CREATE EVENT] Session created: {sessionResponse.Id}");
+                            Logger.LogInformation("Session created: {SessionId}", sessionResponse.Id);
+                            if (session.LanguageIds.Any() && sessionResponse.Id != Guid.Empty)
+                            {
+                                foreach (var languageId in session.LanguageIds)
+                                {
+                                    var languageDto = new CreateEventSessionLanguageDto
+                                    {
+                                        EventSessionId = sessionResponse.Id,
+                                        LanguageId = languageId,
+                                        TenantId = tenantId
+                                    };
+                                    await EventService.AssignLanguageToSessionAsync(languageDto);
+                                }
+                            }
                         }
                         else
                         {
-                            Console.WriteLine($"[CREATE EVENT] Failed to create session: {sessionResponse?.Message}");
+                            Logger.LogWarning("Failed to create session: {Message}", sessionResponse?.Message);
                         }
                     }
 
@@ -731,8 +757,7 @@
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[CREATE EVENT] Exception during event creation: {ex.Message}");
-                Console.WriteLine($"[CREATE EVENT] Stack trace: {ex.StackTrace}");
+                Logger.LogError(ex, "Exception during event creation");
                 Snackbar.Add($"Error creating event: {ex.Message}", Severity.Error);
             }
             finally
@@ -773,7 +798,7 @@
     {
         if (selectedValues == null || !selectedValues.Any())
             return "Select categories";
-        
+
         return $"{selectedValues.Count} categor{(selectedValues.Count == 1 ? "y" : "ies")} selected";
     }
 
@@ -781,7 +806,7 @@
     {
         if (selectedValues == null || !selectedValues.Any())
             return "Select tags";
-        
+
         return $"{selectedValues.Count} tag{(selectedValues.Count == 1 ? "" : "s")} selected";
     }
 }

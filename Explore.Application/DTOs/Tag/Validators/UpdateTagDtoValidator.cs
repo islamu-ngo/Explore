@@ -19,8 +19,8 @@ namespace Explore.Application.DTOs.Tag.Validators
                 .NotNull()
                 .MaximumLength(500).WithMessage("{PropertyName} must not exceed 500 characters.");
 
-            RuleFor(p => p.TenantId)
-                .NotEmpty().WithMessage("{PropertyName} is required.");
+            // TenantId is set by the handler from context, not by the client
+            // No validation needed here
         }
     }
 }

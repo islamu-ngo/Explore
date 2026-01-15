@@ -1,9 +1,10 @@
 using System;
 using System.ComponentModel.DataAnnotations.Schema;
+using Explore.Domain.Interfaces;
 
 namespace Explore.Domain
 {
-    public class EventSessionLanguage
+    public class EventSessionLanguage : ITenantEntity
     {
         public int Id { get; set; }
 

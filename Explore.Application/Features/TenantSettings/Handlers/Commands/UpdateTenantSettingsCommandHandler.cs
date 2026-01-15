@@ -12,24 +12,25 @@ namespace Explore.Application.Features.TenantSettings.Handlers.Commands
     public class UpdateTenantSettingsCommandHandler : IRequestHandler<UpdateTenantSettingsCommand, BaseCommandResponse<Guid>>
     {
         private readonly ITenantSettingsRepository _tenantSettingsRepository;
+        private readonly ITenantRepository _tenantRepository;
         private readonly IMapper _mapper;
-        private readonly IValidator<UpdateTenantSettingsDto> _validator;
 
         public UpdateTenantSettingsCommandHandler(
             ITenantSettingsRepository tenantSettingsRepository,
-            IMapper mapper,
-            IValidator<UpdateTenantSettingsDto> validator)
+            ITenantRepository tenantRepository,
+            IMapper mapper)
         {
             _tenantSettingsRepository = tenantSettingsRepository;
+            _tenantRepository = tenantRepository;
             _mapper = mapper;
-            _validator = validator;
         }
 
         public async Task<BaseCommandResponse<Guid>> Handle(UpdateTenantSettingsCommand request, CancellationToken cancellationToken)
         {
             var response = new BaseCommandResponse<Guid>();
 
-            var validationResult = await _validator.ValidateAsync(request.TenantSettingsDto);
+            var validator = new UpdateTenantSettingsDtoValidator(_tenantRepository);
+            var validationResult = await validator.ValidateAsync(request.TenantSettingsDto);
 
             if (!validationResult.IsValid)
             {

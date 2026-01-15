@@ -15,9 +15,9 @@ This file is the entrypoint. Detailed docs are imported from `docs/`.
 1. **Repositories Return ENTITIES, Never DTOs** - Map to DTOs in handlers
 2. **Validators Use Manual Instantiation (NOT DI)** - `var validator = new CreateEventDtoValidator(_repo1, _repo2);`
 3. **Navigation Properties Are Readonly** - Use repository for writes: `_memberRepository.Create(member)`
-4. **Use int Instead of long** - Except size/cursor fields
+4. **Use int Instead of long** - Except size/cursor fields or absolutly necessery
 5. **No Default Values in Entities** - Set in handler: `@event.TotalViews = 0;`
-6. **Do Not Remove Using Statements** - Keep ALL using statements
+6. **Do Not Remove Using Statements** - Keep ALL using statements (except errors or old names that were refactored)
 7. **Commands Return BaseCommandResponse<Guid>** - Not just `Guid`
 8. **GET = AllowAnonymous, Write = Authorize** - Public read, protected write
 9. **Extract UserId with Fallback** - `sub` → `nameidentifier` → `sid`
@@ -37,31 +37,34 @@ All API controller actions must include:
 @docs/PROJECT.md
 
 ## Architecture & Technical Stack
-@docs/ARCHITECTURE.md
+docs/ARCHITECTURE.md
 
 ## Domain Model & Business Logic
-@docs/DOMAIN.md
+docs/DOMAIN.md
 
 ## Security Architecture (AuthN/AuthZ)
-@docs/SECURITY.md
+docs/SECURITY.md
 
 ## API
-@docs/API.md
+docs/API.md
+
+## Blazor Frontend (Server + WASM)
+docs/BLAZOR.md
 
 ## Federation (W3C ATProto & ActivityPub)
-@docs/FEDERATION.md
+docs/FEDERATION.md
 
 ## Configuration
-@docs/CONFIGURATION.md
+docs/CONFIGURATION.md
 
 ## Operations (Deployment, Env Vars)
-@docs/OPERATIONS.md
+docs/OPERATIONS.md
 
-## Governance (Contributing)
+## Governance
 @docs/GOVERNANCE.md
 
 ## Troubleshooting
-@docs/TROUBLESHOOTING.md
+docs/TROUBLESHOOTING.md
 
 ### Build Commands
 
@@ -112,11 +115,11 @@ ALWAYS refer to this file and all the files in @dev/active/ that contain context
 ## Rules
 - Only write inside this repo project folder, never in users folder, only edits and changes you can make are project specific (not in C:\Users\*\.claude\ for example or anywhere outside this project folder!)
 - When Gettings build errors after making changes, stop trying to build again! Get the errors and work on them and skip building until you have fixed the errors. Only Get certain amounts of trys to build again after fixing errors. If those trys fail, continue working on fixing the errors without building until you are sure the errors are fixed.
-- Always use int instead of long unless absolutely necessary.
-- never Add default values for properties Inside Domain Entities.
-- Do not remove using imports in files even if they appear unused.
 - Always follow Clean Architecture principles.
 - Always Follow SOLID principles.
 - Always follow C# coding conventions as per .editorconfig or standard .NET conventions.
 - Never run rm -rf commands or delete files/folders unless explicitly instructed!
 - Navigation properties for link/mapping tables should be readonly (for querying only). Writes should go through the mapping table repository directly!
+- Never run rm -rf commands or delete files/folders unless explicitly instructed! instead report files that should be deleted when completed request.
+- Navigation properties for link/mapping tables should be readonly (for querying only). Writes should go through the mapping table repository directly!
+

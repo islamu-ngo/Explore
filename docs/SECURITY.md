@@ -1,157 +1,62 @@
 # Security Architecture
 
-## Authentication (Keycloak)
+This document provides a high-level overview of the security architecture for the ISLAMU Event platform.
 
-**Protocol**: OpenID Connect (OIDC) / OAuth 2.0
+For detailed implementation patterns, code examples, and specific conventions, refer to the **`auth-patterns` skill**.
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                      Authentication Flow                            │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  Blazor (OIDC)                      API (JWT Bearer)                │
-│  ─────────────                      ───────────────                 │
-│  1. User clicks login               1. Client sends JWT in header   │
-│  2. Redirect to Keycloak            2. API validates with Keycloak  │
-│  3. User authenticates              3. Extract claims from token    │
-│  4. Redirect back with code         4. Process request              │
-│  5. Exchange code for tokens                                        │
-│  6. Store in secure cookie                                          │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
-```
+## 1. Authentication Strategy: Backend-for-Frontend (BFF)
 
-**Keycloak Configuration**:
+The project employs a **Backend-for-Frontend (BFF)** security model to provide a high level of security by ensuring that no tokens are ever exposed to the end-user's browser.
 
-| Setting | Value |
-|---------|-------|
-| Realm | `islamu-dev` (dev), `islamu` (prod) |
-| Client ID (API) | `explore-api` |
-| Client ID (Blazor) | `explore-blazor` |
-| Grant Types | Authorization Code (Blazor), Client Credentials (service) |
+**Protocol**: OpenID Connect (OIDC) / OAuth 2.0  
+**Provider**: Keycloak
 
-### User ID Extraction from JWT
+### Conceptual Flow
 
-**Critical Pattern**: Extract userId from JWT claims with fallback order:
+The authentication flow is designed to separate the concerns of browser session management from backend API authorization.
 
-```csharp
-// In controllers requiring user ID extraction
-var userId = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
-    ?? _httpContextAccessor.HttpContext?.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
-    ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sid")?.Value;
+```mermaid
+sequenceDiagram
+    participant Browser (Blazor WASM)
+    participant BFF (Blazor Server)
+    participant Keycloak
+    participant API (Backend)
 
-if (string.IsNullOrEmpty(userId))
-{
-    return Unauthorized(new { error = "User ID not found in token" });
-}
+    Browser->>+BFF: User clicks "Login"
+    BFF->>+Keycloak: Initiates OIDC Authorization Code Flow
+    Keycloak-->>-BFF: Redirects with Authorization Code
+    BFF->>+Keycloak: Exchanges Code for Tokens (Access + Refresh)
+    Keycloak-->>-BFF: Returns JWTs
+    BFF-->>-Browser: Stores tokens in a secure, HttpOnly cookie & redirects
+
+    Browser->>+BFF: Makes API call
+    BFF->>+API: YARP proxy attaches JWT Bearer token
+    API->>API: Validates JWT
+    API-->>-BFF: Returns data
+    BFF-->>-Browser: Returns data
 ```
 
-**Fallback Order**:
-1. `sub` - Standard OIDC subject claim
-2. `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier` - Legacy JWT claim
-3. `sid` - Session ID (fallback for certain auth flows)
+### Key Architectural Principles
 
-### JWT Claims Structure
+*   **`Explore.Blazor` (The BFF)** is the only component that communicates directly with Keycloak. It manages the user's session using a secure, server-side, `HttpOnly` cookie.
+*   **`Explore.Blazor.Client` (The Frontend)** is completely unaware of OIDC or JWTs. It operates like a traditional web application, automatically sending the session cookie with every request to its backend (the BFF).
+*   **`Explore.API` (The Backend Resource)** is a stateless service. It only accepts JWT Bearer tokens for authorization and has no knowledge of the user's session cookie. This allows the API to be used by other clients (e.g., mobile apps, other services) in the future.
 
-Typical JWT token payload:
+## 2. Authorization Strategy
 
-```json
-{
-  "sub": "user-guid-here",
-  "name": "John Doe",
-  "email": "john@example.com",
-  "preferred_username": "johndoe",
-  "email_verified": true,
-  "realm_access": {
-    "roles": ["user", "organization_admin"]
-  },
-  "resource_access": {
-    "explore-api": {
-      "roles": ["read", "write"]
-    }
-  }
-}
-```
+### Endpoint-Level Authorization
 
-### Authorization Patterns
+A simple and strict convention is followed for securing API endpoints:
+*   **Read operations (`GET`)** are generally public and decorated with `[AllowAnonymous]`.
+*   **Write operations (`POST`, `PUT`, `DELETE`)** are protected and require a valid token, enforced with `[Authorize]`.
 
-**Public Read Access**:
-```csharp
-[HttpGet]
-[AllowAnonymous]
-public async Task<ActionResult<List<EventListDto>>> GetAll()
-{
-    // No authentication required
-    var events = await _mediator.Send(new GetEventListRequest());
-    return Ok(events);
-}
-```
+### Resource-Level Authorization
 
-**Authenticated Write Access**:
-```csharp
-[HttpPost]
-[Authorize]
-public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventDto dto)
-{
-    // Requires valid JWT token
-    var command = new CreateEventCommand { EventDto = dto };
-    var response = await _mediator.Send(command);
-    return Ok(response);
-}
-```
+Fine-grained, resource-level authorization (e.g., "can this user edit *this specific* event?") is the responsibility of the **Application Layer**, typically within the MediatR handlers. This logic is not handled at the controller level.
 
-**User-Specific Operations**:
-```csharp
-[HttpGet("my")]
-[Authorize]
-public async Task<ActionResult<List<EventListDto>>> GetMyEvents()
-{
-    // Extract userId from JWT claims
-    var userId = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
-        ?? _httpContextAccessor.HttpContext?.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
-        ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sid")?.Value;
+### Future: Policy-Based Authorization (Cerbos)
 
-    if (string.IsNullOrEmpty(userId))
-    {
-        return Unauthorized(new { error = "User ID not found in token" });
-    }
+The architecture is designed to incorporate a dedicated policy decision point (PDP) like Cerbos in the future. However, **Cerbos is not currently integrated**. All authorization logic is currently implemented within the application code.
 
-    var events = await _mediator.Send(new GetMyEventsRequest { UserId = userId });
-    return Ok(events);
-}
-```
-
-## Authorization (Current State)
-
-### Endpoint-level authorization
-
-This codebase currently relies on ASP.NET Core attributes:
-
-- `GET` endpoints: `[AllowAnonymous]`
-- write endpoints (`POST/PUT/DELETE`): `[Authorize]`
-
-### Resource ownership / permission checks
-
-Ownership checks are implemented inconsistently today.
-
-- Some controllers/handlers accept `UserId` and attempt to enforce ownership.
-- Other handlers (e.g., some delete handlers) currently delete as long as the user is authenticated.
-
-When adding/refactoring endpoints, document the intended authorization rule in:
-
-- `[EndpointDescription("...")]`
-- XML docs (if present)
-- and ensure the handler enforces it.
-
-## Cerbos (Planned)
-
-Some documentation and agent templates reference Cerbos as a future PDP.
-
-**Cerbos is not currently integrated in `Explore.API`** (no Cerbos client/service registration in `Explore.API/Program.cs`).
-
-If/when Cerbos is introduced, update this document with the concrete integration approach, configuration keys, and policy model.
-
-## Logging & PII (Development vs Production)
-
-- `Microsoft.IdentityModel.Logging.IdentityModelEventSource.ShowPII = true;` is enabled in Development in `Explore.API/Program.cs`. Do not enable this in Production.
-- Avoid logging full claim sets or tokens in Production (some controllers currently log all claims for debugging).
+---
+For implementation details, see the `auth-patterns` skill.

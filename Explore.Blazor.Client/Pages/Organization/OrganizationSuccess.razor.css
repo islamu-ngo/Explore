@@ -1,2 +1,18 @@
-::deep .component-organizationsuccess{ color: inherit; }
+/* ===== Block: organization-success ===== */
+::deep .organization-success {
+    padding-block: 24px;
+}
 
+/* ===== Responsive: Tablet ===== */
+@media (max-width: 960px) {
+    ::deep .organization-success {
+        padding-block: 20px;
+    }
+}
+
+/* ===== Responsive: Mobile ===== */
+@media (max-width: 600px) {
+    ::deep .organization-success {
+        padding-block: 16px;
+    }
+}

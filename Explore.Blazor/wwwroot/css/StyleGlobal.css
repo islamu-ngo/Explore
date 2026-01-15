@@ -1,4 +1,73 @@
-﻿/* Reset */
+﻿:root {
+    --isl-card-border-radius: 16px;
+    --isl-card-border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
+    --isl-card-transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    --isl-card-hover-shadow: 0 16px 36px rgba(0, 0, 0, 0.16);
+    --isl-card-hover-border-color: color-mix(in srgb, var(--mud-palette-primary) 40%, var(--mud-palette-lines-default));
+
+    /* Typography Variables */
+    --isl-font-family-primary: "Roboto", sans-serif;
+    --isl-font-family-secondary: "Open Sans", sans-serif;
+
+    --isl-typography-h1-size: 6rem;
+    --isl-typography-h1-weight: 300;
+    --isl-typography-h1-line-height: 1.1;
+
+    --isl-typography-h2-size: 3.75rem;
+    --isl-typography-h2-weight: 300;
+    --isl-typography-h2-line-height: 1.2;
+
+    --isl-typography-h3-size: 3rem;
+    --isl-typography-h3-weight: 400;
+    --isl-typography-h3-line-height: 1.3;
+
+    --isl-typography-h4-size: 2.125rem;
+    --isl-typography-h4-weight: 400;
+    --isl-typography-h4-line-height: 1.4;
+
+    --isl-typography-h5-size: 1.5rem;
+    --isl-typography-h5-weight: 400;
+    --isl-typography-h5-line-height: 1.5;
+
+    --isl-typography-h6-size: 1.25rem;
+    --isl-typography-h6-weight: 500;
+    --isl-typography-h6-line-height: 1.6;
+
+    --isl-typography-body1-size: 1rem;
+    --isl-typography-body1-weight: 400;
+    --isl-typography-body1-line-height: 1.7;
+
+    --isl-typography-body2-size: 0.875rem;
+    --isl-typography-body2-weight: 400;
+    --isl-typography-body2-line-height: 1.6;
+
+    --isl-typography-button-size: 0.875rem;
+    --isl-typography-button-weight: 500;
+    --isl-typography-button-line-height: 1.75;
+    --isl-typography-button-text-transform: uppercase;
+
+    --isl-typography-caption-size: 0.75rem;
+    --isl-typography-caption-weight: 400;
+    --isl-typography-caption-line-height: 1.66;
+
+    --isl-typography-overline-size: 0.75rem;
+    --isl-typography-overline-weight: 400;
+    --isl-typography-overline-line-height: 2.66;
+    --isl-typography-overline-text-transform: uppercase;
+
+    /* Button Variables */
+    --isl-button-border-radius: 8px;
+    --isl-button-padding-x: 16px;
+    --isl-button-padding-y: 8px;
+    --isl-button-font-size: 0.875rem;
+    --isl-button-transition: all 0.2s ease-in-out;
+}
+
+body {
+    font-family: var(--isl-font-family-primary);
+}
+
+/* Reset */
 * {
     margin: 0;
     padding: 0;
@@ -11,6 +80,22 @@ a {
 
 ul {
     list-style: none;
+}
+
+/* ========================================
+   Component: isl-card
+   ======================================== */
+.isl-card {
+    border-radius: var(--isl-card-border-radius);
+    overflow: hidden;
+    border: var(--isl-card-border);
+    transition: var(--isl-card-transition);
+}
+
+.isl-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--isl-card-hover-shadow);
+    border-color: var(--isl-card-hover-border-color);
 }
 
 /* Header Block */
@@ -75,6 +160,77 @@ ul {
         color: #ff6b6b;
     }
 
+/* ========================================
+   Typography Utility Classes
+   ======================================== */
+.isl-typo-h1 {
+    font-size: var(--isl-typography-h1-size);
+    font-weight: var(--isl-typography-h1-weight);
+    line-height: var(--isl-typography-h1-line-height);
+}
+
+.isl-typo-h2 {
+    font-size: var(--isl-typography-h2-size);
+    font-weight: var(--isl-typography-h2-weight);
+    line-height: var(--isl-typography-h2-line-height);
+}
+
+.isl-typo-h3 {
+    font-size: var(--isl-typography-h3-size);
+    font-weight: var(--isl-typography-h3-weight);
+    line-height: var(--isl-typography-h3-line-height);
+}
+
+.isl-typo-h4 {
+    font-size: var(--isl-typography-h4-size);
+    font-weight: var(--isl-typography-h4-weight);
+    line-height: var(--isl-typography-h4-line-height);
+}
+
+.isl-typo-h5 {
+    font-size: var(--isl-typography-h5-size);
+    font-weight: var(--isl-typography-h5-weight);
+    line-height: var(--isl-typography-h5-line-height);
+}
+
+.isl-typo-h6 {
+    font-size: var(--isl-typography-h6-size);
+    font-weight: var(--isl-typography-h6-weight);
+    line-height: var(--isl-typography-h6-line-height);
+}
+
+.isl-typo-body1 {
+    font-size: var(--isl-typography-body1-size);
+    font-weight: var(--isl-typography-body1-weight);
+    line-height: var(--isl-typography-body1-line-height);
+}
+
+.isl-typo-body2 {
+    font-size: var(--isl-typography-body2-size);
+    font-weight: var(--isl-typography-body2-weight);
+    line-height: var(--isl-typography-body2-line-height);
+}
+
+.isl-typo-button {
+    font-size: var(--isl-typography-button-size);
+    font-weight: var(--isl-typography-button-weight);
+    line-height: var(--isl-typography-button-line-height);
+    text-transform: var(--isl-typography-button-text-transform);
+}
+
+.isl-typo-caption {
+    font-size: var(--isl-typography-caption-size);
+    font-weight: var(--isl-typography-caption-weight);
+    line-height: var(--isl-typography-caption-line-height);
+}
+
+.isl-typo-overline {
+    font-size: var(--isl-typography-overline-size);
+    font-weight: var(--isl-typography-overline-weight);
+    line-height: var(--isl-typography-overline-line-height);
+    text-transform: var(--isl-typography-overline-text-transform);
+}
+
 /* Separator Block */
 .footer__separator {
     display: flex;
@@ -103,6 +259,75 @@ ul {
 .footer__copyright {
     font-size: 0.875rem;
     color: #666;
+}
+
+/* ========================================
+   Component: isl-button-pill
+   ======================================== */
+:root {
+    --isl-button-ring: color-mix(
+        in srgb,
+        var(--mud-palette-primary) 30%,
+        transparent
+    );
+}
+
+.isl-button-pill {
+    background-color: var(--mud-palette-surface);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 999px;
+    cursor: pointer;
+    transition:
+        transform 0.12s ease,
+        box-shadow 0.12s ease,
+        border-color 0.12s ease,
+        background 0.12s ease;
+    color: var(--mud-palette-text-primary);
+    padding-inline: 12px;
+}
+
+.isl-button-pill:hover {
+    transform: translateY(-1px);
+    background-color: color-mix(
+        in srgb,
+        var(--mud-palette-primary) 6%,
+        var(--mud-palette-surface)
+    );
+    border-color: var(--mud-palette-primary);
+    box-shadow: 0 0 0 3px var(--isl-button-ring);
+}
+
+/* ========================================
+   Component: MudButton Global Styles
+   ======================================== */
+::deep .mud-button-root {
+    border-radius: var(--isl-button-border-radius);
+    padding: var(--isl-button-padding-y) var(--isl-button-padding-x);
+    font-size: var(--isl-button-font-size);
+    transition: var(--isl-button-transition);
+}
+
+::deep .mud-button-root:hover {
+    transform: translateY(-1px);
+}
+
+/* MudButton with Variant.Filled */
+::deep .mud-button-filled {
+    box-shadow: var(--mud-elevation-2); /* Slightly raised for filled buttons */
+}
+
+::deep .mud-button-filled:hover {
+    box-shadow: var(--mud-elevation-4); /* More pronounced shadow on hover */
+}
+
+/* MudButton with Variant.Outlined */
+::deep .mud-button-outlined {
+    border: 1px solid var(--mud-palette-lines-default);
+}
+
+::deep .mud-button-outlined:hover {
+    border-color: var(--mud-palette-primary);
+    box-shadow: 0 0 0 1px var(--isl-button-ring);
 }
 
 /* Responsive Design */
@@ -153,4 +378,102 @@ ul {
     .footer__link-group {
         min-width: auto;
     }
+}
+
+/* ========================================
+   Component: isl-popover-menu
+   ======================================== */
+.isl-popover-menu {
+    background-color: var(--mud-palette-surface) !important;
+    border: 1px solid var(--mud-palette-lines-default) !important;
+    box-shadow: var(--mud-elevation-8) !important;
+    border-radius: 12px !important;
+}
+
+.isl-popover-menu .mud-text {
+    color: var(--mud-palette-text-primary) !important;
+}
+
+.isl-popover-menu__option {
+    padding: 6px 10px;
+    border-radius: 8px;
+    transition:
+        background 0.12s ease,
+        color 0.12s ease;
+    cursor: pointer;
+}
+
+.isl-popover-menu__option:hover {
+    background: color-mix(in srgb, var(--mud-palette-primary) 10%, transparent);
+}
+
+/* ========================================
+   Component: isl-form-card
+   Inherits from isl-card and adds padding/background
+   ======================================== */
+.isl-form-card {
+    /* Inherit base card styles */
+    /* .isl-card */
+
+    /* Add form-specific styles */
+    padding: 20px;
+    background: var(--mud-palette-background-paper);
+}
+
+/* ========================================
+   Component: isl-form-section
+   Consistent styling for form sections
+   ======================================== */
+.isl-form-section {
+    padding: 16px;
+    margin-bottom: 16px;
+    background-color: var(--mud-palette-background-grey);
+    border-radius: 8px;
+}
+
+/* ========================================
+   Component: isl-form-actions
+   Consistent styling for form action buttons
+   ======================================== */
+.isl-form-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 24px;
+    gap: 16px;
+}
+
+/* ========================================
+   Component: isl-form__title
+   Consistent styling for main form titles
+   ======================================== */
+.isl-form__title {
+    margin: 4px 0 16px;
+    font-weight: 600; /* Assuming a bold title */
+    font-size: var(--isl-typography-h4-size); /* Example, adjust as needed */
+    line-height: var(--isl-typography-h4-line-height);
+    color: var(--mud-palette-text-primary);
+}
+
+/* ========================================
+   Component: isl-form__section-title
+   Consistent styling for section headings within forms
+   ======================================== */
+.isl-form__section-title {
+    margin-bottom: 12px;
+    font-weight: 500; /* Assuming semi-bold */
+    font-size: var(--isl-typography-h6-size); /* Example, adjust as needed */
+    line-height: var(--isl-typography-h6-line-height);
+    color: var(--mud-palette-text-primary);
+}
+
+/* ========================================
+   Component: isl-status-card
+   Consistent styling for error/warning/info status cards
+   ======================================== */
+.isl-status-card {
+    padding: 20px;
+    border-radius: 12px;
+    background: var(--mud-palette-background-paper);
+    /* Add any other common card-like styling here */
+    border: 1px solid var(--mud-palette-lines-default);
 }

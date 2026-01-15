@@ -703,7 +703,12 @@ dotnet list Explore.Domain/Explore.Domain.csproj reference
 # Application should ONLY reference Domain
 dotnet list Explore.Application/Explore.Application.csproj reference
 
-# Check for circular references
+# Persistence should reference Domain + Application
+dotnet list Explore.Persistence/Explore.Persistence.csproj reference
+```
+
+### Check for circular references
+```bash
 dotnet build --no-incremental
 ```
 

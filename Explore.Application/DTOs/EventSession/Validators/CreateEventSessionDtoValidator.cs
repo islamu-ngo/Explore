@@ -65,8 +65,8 @@ namespace Explore.Application.DTOs.EventSession.Validators
                     return exists;
                 }).WithMessage("{PropertyName} does not exist.");
 
-            RuleFor(p => p.TenantId)
-                .NotEmpty().WithMessage("{PropertyName} is required.");
+            // TenantId is set by the handler from ITenantContext, not by the client
+            // No validation needed here
         }
     }
 }

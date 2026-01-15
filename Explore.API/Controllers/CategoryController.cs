@@ -24,11 +24,16 @@ namespace Explore.API.Controllers
         // GET: api/v1/category
         [HttpGet]
         [EndpointSummary("Get all Categories")]
-        [EndpointDescription("Get a list of all event categories")]
+        [EndpointDescription("Retrieve a paginated list of all event categories. Default page size is 20, max is 100.")]
         [AllowAnonymous]
-        public async Task<ActionResult<List<CategoryListDto>>> GetAll()
+        [ProducesResponseType(typeof(PaginatedResult<CategoryListDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PaginatedResult<CategoryListDto>>> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
         {
-            var categories = await _mediator.Send(new GetCategoryListRequest());
+            var categories = await _mediator.Send(new GetCategoryListRequest
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            });
             return Ok(categories);
         }
 

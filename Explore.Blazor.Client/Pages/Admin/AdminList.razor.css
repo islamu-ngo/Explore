@@ -1,384 +1,457 @@
-::deep .component-adminlist{ color: inherit; }
-::deep :root{
-        --adm-radius-xl: 22px;
-        --adm-radius-lg: 16px;
-        --adm-radius-md: 12px;
+/* ===== CSS Custom Properties ===== */
+::deep :root {
+    --admin-list-radius-xl: 22px;
+    --admin-list-radius-lg: 16px;
+    --admin-list-radius-md: 12px;
+}
+
+/* ===== Block: admin-list ===== */
+::deep .admin-list {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 22px;
+}
+
+/* ===== Element: admin-list__hero ===== */
+::deep .admin-list__hero {
+    border-radius: var(--admin-list-radius-xl);
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background:
+        radial-gradient(
+            900px 300px at 20% 10%,
+            rgba(124, 58, 237, 0.22),
+            transparent 55%
+        ),
+        radial-gradient(
+            800px 280px at 80% 0%,
+            rgba(34, 197, 94, 0.14),
+            transparent 55%
+        ),
+        linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.04),
+            rgba(255, 255, 255, 0.02)
+        );
+    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.22);
+}
+
+/* ===== Element: admin-list__hero-top ===== */
+::deep .admin-list__hero-top {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+/* ===== Element: admin-list__hero-title ===== */
+::deep .admin-list__hero-title {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+/* ===== Element: admin-list__hero-badge ===== */
+::deep .admin-list__hero-badge {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    background: rgba(124, 58, 237, 0.18);
+    border: 1px solid rgba(124, 58, 237, 0.35);
+}
+
+/* ===== Element: admin-list__hero-subtitle ===== */
+::deep .admin-list__hero-subtitle {
+    opacity: 0.85;
+}
+
+/* ===== Element: admin-list__stats ===== */
+::deep .admin-list__stats {
+    margin-top: 16px;
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 12px;
+}
+
+/* ===== Element: admin-list__stat ===== */
+::deep .admin-list__stat {
+    grid-column: span 12;
+    border-radius: var(--admin-list-radius-lg);
+    padding: 14px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.03);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+    transition:
+        transform 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+::deep .admin-list__stat:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.18);
+}
+
+/* ===== Element: admin-list__stat-row ===== */
+::deep .admin-list__stat-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* ===== Element: admin-list__stat-icon ===== */
+::deep .admin-list__stat-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ===== Modifier: admin-list__stat-icon--pending ===== */
+::deep .admin-list__stat-icon--pending {
+    background: rgba(56, 189, 248, 0.16);
+    border-color: rgba(56, 189, 248, 0.35);
+}
+
+/* ===== Modifier: admin-list__stat-icon--approved ===== */
+::deep .admin-list__stat-icon--approved {
+    background: rgba(34, 197, 94, 0.14);
+    border-color: rgba(34, 197, 94, 0.3);
+}
+
+/* ===== Modifier: admin-list__stat-icon--rejected ===== */
+::deep .admin-list__stat-icon--rejected {
+    background: rgba(239, 68, 68, 0.14);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* ===== Element: admin-list__stat-label ===== */
+::deep .admin-list__stat-label {
+    opacity: 0.8;
+    font-size: 0.82rem;
+}
+
+/* ===== Element: admin-list__stat-value ===== */
+::deep .admin-list__stat-value {
+    font-size: 1.55rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+}
+
+/* ===== Element: admin-list__section ===== */
+::deep .admin-list__section {
+    margin-top: 18px;
+}
+
+/* ===== Element: admin-list__section-head ===== */
+::deep .admin-list__section-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 16px 4px 10px;
+}
+
+/* ===== Element: admin-list__muted ===== */
+::deep .admin-list__muted {
+    color: var(--mud-palette-text-secondary);
+}
+
+/* ===== Element: admin-list__panel ===== */
+::deep .admin-list__panel {
+    border-radius: var(--admin-list-radius-xl);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.03);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+    padding: 14px;
+}
+
+/* ===== Element: admin-list__toolbar ===== */
+::deep .admin-list__toolbar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+/* ===== Element: admin-list__chip-row ===== */
+::deep .admin-list__chip-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+/* ===== Element: admin-list__tabs ===== */
+::deep .admin-list__tabs {
+    border-radius: var(--admin-list-radius-xl);
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+/* ===== Element: admin-list__table ===== */
+::deep .admin-list__table {
+    border-radius: var(--admin-list-radius-xl);
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.02);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+}
+
+/* ===== Element: admin-list__status-pill ===== */
+::deep .admin-list__status-pill {
+    min-width: 120px;
+    justify-content: center;
+    border-radius: 999px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+}
+
+/* ===== Element: admin-list__org-row ===== */
+::deep .admin-list__org-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 220px;
+}
+
+/* ===== Element: admin-list__org-meta ===== */
+::deep .admin-list__org-meta {
+    line-height: 1.15;
+}
+
+/* ===== Element: admin-list__id ===== */
+::deep .admin-list__id {
+    font-family:
+        ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+        "Liberation Mono", "Courier New", monospace;
+    opacity: 0.9;
+}
+
+/* ===== Element: admin-list__actions ===== */
+::deep .admin-list__actions {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+}
+
+/* ===== Element: admin-list__details-btn ===== */
+::deep .admin-list__details-btn {
+    border-radius: 999px !important;
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+}
+
+/* ===== Element: admin-list__empty ===== */
+::deep .admin-list__empty {
+    padding: 26px;
+    text-align: center;
+    opacity: 0.9;
+}
+
+/* ===== Element: admin-list__mobile ===== */
+::deep .admin-list__mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+/* ===== Element: admin-list__card ===== */
+::deep .admin-list__card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--admin-list-radius-lg);
+    padding: 14px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition:
+        transform 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+::deep .admin-list__card:active {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* ===== Element: admin-list__card-header ===== */
+::deep .admin-list__card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+/* ===== Element: admin-list__card-title ===== */
+::deep .admin-list__card-title {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    flex: 1;
+}
+
+::deep .admin-list__card-title > div {
+    flex: 1;
+}
+
+/* ===== Element: admin-list__card-meta ===== */
+::deep .admin-list__card-meta {
+    font-size: 0.8rem;
+    opacity: 0.6;
+    margin-top: 2px;
+}
+
+/* ===== Element: admin-list__card-status ===== */
+::deep .admin-list__card-status {
+    flex-shrink: 0;
+}
+
+/* ===== Element: admin-list__card-body ===== */
+::deep .admin-list__card-body {
+    margin-bottom: 12px;
+}
+
+/* ===== Element: admin-list__card-row ===== */
+::deep .admin-list__card-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    justify-content: flex-start;
+    align-items: flex-start;
+    font-size: 0.9rem;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+::deep .admin-list__card-row:last-child {
+    border-bottom: none;
+}
+
+/* ===== Element: admin-list__card-label ===== */
+::deep .admin-list__card-label {
+    opacity: 0.6;
+    font-size: 0.85rem;
+    min-width: 80px;
+}
+
+/* ===== Element: admin-list__card-value ===== */
+::deep .admin-list__card-value {
+    text-align: left;
+    font-weight: 600;
+    word-break: break-word;
+}
+
+/* ===== Element: admin-list__card-actions ===== */
+::deep .admin-list__card-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+::deep .admin-list__card-actions button {
+    font-size: 0.85rem !important;
+    padding: 8px 8px !important;
+}
+
+/* ===== Responsive: Mobile (480px) ===== */
+@media (max-width: 480px) {
+    ::deep .admin-list {
+        padding: 12px;
     }
 
-    ::deep .admin-page{
-        max-width: 1280px;
-        margin: 0 auto;
-        padding: 22px;
+    ::deep .admin-list__hero {
+        padding: 16px;
+        border-radius: var(--admin-list-radius-lg);
+        margin-bottom: 16px;
     }
 
-    /* HERO */
-    ::deep .hero{
-        border-radius: var(--adm-radius-xl);
-        padding: 20px;
-        position: relative;
-        overflow: hidden;
-        border: 1px solid rgba(255,255,255,.06);
-        background:
-          radial-gradient(900px 300px at 20% 10%, rgba(124,58,237,.22), transparent 55%),
-          radial-gradient(800px 280px at 80% 0%, rgba(34,197,94,.14), transparent 55%),
-          linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
-        box-shadow: 0 18px 45px rgba(0,0,0,.22);
-    }
-
-    ::deep .hero-top{
-        display:flex;
-        gap:16px;
-        align-items:flex-start;
-        justify-content:space-between;
-        flex-wrap:wrap;
-    }
-
-    ::deep .hero-title{
-        display:flex;
-        gap:12px;
-        align-items:center;
-    }
-
-    ::deep .hero-badge{
-        width:44px;
-        height:44px;
-        border-radius: 14px;
-        display:grid;
-        place-items:center;
-        background: rgba(124,58,237,.18);
-        border: 1px solid rgba(124,58,237,.35);
-    }
-
-    ::deep .hero-sub{
-        opacity:.85;
-    }
-
-    /* STATS */
-    ::deep .stats{
-        margin-top: 16px;
-        display:grid;
-        grid-template-columns: repeat(12, 1fr);
+    ::deep .admin-list__hero-top {
         gap: 12px;
     }
 
-    ::deep .stat-card{
-        grid-column: span 12;
-        border-radius: var(--adm-radius-lg);
-        padding: 14px 14px;
-        border: 1px solid rgba(255,255,255,.06);
-        background: rgba(255,255,255,.03);
-        box-shadow: 0 10px 24px rgba(0,0,0,.12);
-        transition: transform .15s ease, box-shadow .15s ease;
-    }
-    ::deep .stat-card:hover{
-        transform: translateY(-2px);
-        box-shadow: 0 16px 32px rgba(0,0,0,.18);
+    ::deep .admin-list__hero-badge {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
     }
 
-    ::deep .stat-row{
-        display:flex;
-        align-items:center;
-        gap: 12px;
+    ::deep .admin-list__hero-title {
+        gap: 10px;
     }
 
-    ::deep .stat-icon{
-        width:42px; height:42px;
-        border-radius: 14px;
-        display:grid;
-        place-items:center;
-        border: 1px solid rgba(255,255,255,.08);
-    }
-    ::deep .i-pending{ background: rgba(56,189,248,.16); border-color: rgba(56,189,248,.35); }
-    ::deep .i-approved{ background: rgba(34,197,94,.14); border-color: rgba(34,197,94,.30); }
-    ::deep .i-rejected{ background: rgba(239,68,68,.14); border-color: rgba(239,68,68,.30); }
-
-    ::deep .stat-label{ opacity: 0.8; font-size: 0.82rem; }
-    ::deep .stat-value{ font-size: 1.55rem; font-weight: 700; letter-spacing: 0.3px; }
-
-    /* SECTION TITLE */
-    ::deep .section{
-        margin-top: 18px;
+    ::deep .admin-list__hero-title h1 {
+        font-size: 1.5rem !important;
     }
 
-    ::deep .section-head{
-        display:flex;
-        align-items:flex-end;
-        justify-content:space-between;
-        flex-wrap:wrap;
-        gap: 12px;
-        margin: 16px 4px 10px;
-    }
-
-    ::deep .muted{ color: var(--mud-palette-text-secondary); }
-
-    /* TOOLBAR */
-    ::deep .panel{
-        border-radius: var(--adm-radius-xl);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        background: rgba(255, 255, 255, 0.03);
-        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
-        padding: 14px;
-    }
-
-    ::deep .toolbar{
-        display: flex;
-        gap: 12px;
-        align-items: center;
-        flex-wrap: wrap;
-    }
-
-    ::deep .chip-row{
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-
-    /* TABS */
-    ::deep .tabs-wrap{
-        border-radius: var(--adm-radius-xl);
-        overflow: hidden;
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        background: rgba(255, 255, 255, 0.02);
-    }
-
-    /* TABLE */
-    ::deep .table-wrap{
-        border-radius: var(--adm-radius-xl);
-        overflow: hidden;
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        background: rgba(255, 255, 255, 0.02);
-        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
-    }
-
-    ::deep .status-pill{
-        min-width: 120px;
-        justify-content: center;
-        border-radius: 999px;
-        font-weight: 600;
-        letter-spacing: 0.2px;
-    }
-
-    ::deep .row-org{
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        min-width: 220px;
-    }
-
-    ::deep .org-meta{
-        line-height: 1.15;
-    }
-
-    ::deep .id-mono{
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-        opacity: 0.9;
-    }
-
-    ::deep .table-actions{
-        display: flex;
-        justify-content: center;
-        gap: 8px;
-    }
-
-    ::deep .details-btn{
-        border-radius: 999px !important;
-        padding-left: 14px !important;
-        padding-right: 14px !important;
-    }
-
-    ::deep .empty-state{
-        padding: 26px;
-        text-align: center;
-        opacity: 0.9;
-    }
-
-    /* Mobile cards layout */
-    ::deep .mobile-cards{
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
+    ::deep .admin-list__stats {
+        gap: 10px;
         margin-top: 12px;
     }
 
-    ::deep .org-card{
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        border-radius: var(--adm-radius-lg);
-        padding: 14px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    ::deep .admin-list__stat {
+        grid-column: span 12;
+        padding: 12px;
+        border-radius: var(--admin-list-radius-md);
     }
 
-    ::deep .org-card:active{
-        transform: translateY(-1px);
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-    }
-
-    ::deep .card-header{
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 12px;
-        margin-bottom: 12px;
-        padding-bottom: 12px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-    }
-
-    ::deep .card-title{
-        display: flex;
+    ::deep .admin-list__stat-row {
         gap: 10px;
-        align-items: flex-start;
-        flex: 1;
     }
 
-    ::deep .card-title > div{
-        flex: 1;
+    ::deep .admin-list__stat-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
     }
 
-    ::deep .card-meta{
-        font-size: 0.8rem;
-        opacity: 0.6;
-        margin-top: 2px;
+    ::deep .admin-list__stat-value {
+        font-size: 1.3rem !important;
     }
 
-    ::deep .card-status{
-        flex-shrink: 0;
+    ::deep .admin-list__table {
+        display: none !important;
     }
 
-    ::deep .card-body{
-        margin-bottom: 12px;
+    ::deep .admin-list__mobile {
+        display: flex !important;
     }
 
-    ::deep .card-row{
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px 10px;
-        justify-content: flex-start;
-        align-items: flex-start;
+    ::deep .admin-list__section {
+        margin-top: 16px;
+    }
+
+    ::deep .admin-list__toolbar {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    ::deep .admin-list__empty {
+        padding: 16px;
         font-size: 0.9rem;
-        padding: 8px 0;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+        text-align: center;
+    }
+}
+
+/* ===== Responsive: Desktop (481px+) ===== */
+@media (min-width: 481px) {
+    ::deep .admin-list__mobile {
+        display: none !important;
     }
 
-    ::deep .card-row:last-child{
-        border-bottom: none;
+    ::deep .admin-list__table {
+        display: block !important;
     }
-
-    ::deep .card-label{
-        opacity: 0.6;
-        font-size: 0.85rem;
-        min-width: 80px;
-    }
-
-    ::deep .card-value{
-        text-align: left;
-        font-weight: 600;
-        word-break: break-word;
-    }
-
-    ::deep .card-actions{
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
-        padding-top: 12px;
-        border-top: 1px solid rgba(255, 255, 255, 0.04);
-    }
-
-    ::deep .card-actions button{
-        font-size: 0.85rem !important;
-        padding: 8px 8px !important;
-    }
-
-    /* Mobile responsiveness (phones) */
-    @media (max-width: 480px){
-        ::deep .admin-page {
-            padding: 12px;
-        }
-
-        ::deep .hero{
-            padding: 16px;
-            border-radius: var(--adm-radius-lg);
-            margin-bottom: 16px;
-        }
-
-        ::deep .hero-top{
-            gap: 12px;
-        }
-
-        ::deep .hero-badge{
-            width: 40px;
-            height: 40px;
-            border-radius: 12px;
-        }
-
-        ::deep .hero-title{
-            gap: 10px;
-        }
-
-        ::deep .hero-title h1{
-            font-size: 1.5rem !important;
-        }
-
-        ::deep .stats{
-            gap: 10px;
-            margin-top: 12px;
-        }
-
-        ::deep .stat-card{
-            grid-column: span 12;
-            padding: 12px;
-            border-radius: var(--adm-radius-md);
-        }
-
-        ::deep .stat-row{
-            gap: 10px;
-        }
-
-        ::deep .stat-icon{
-            width: 36px;
-            height: 36px;
-            border-radius: 10px;
-        }
-
-        ::deep .stat-value{
-            font-size: 1.3rem !important;
-        }
-
-        ::deep .table-wrap{
-            display: none !important;
-        }
-
-        ::deep .mobile-cards{
-            display: flex !important;
-        }
-
-        ::deep .section{
-            margin-top: 16px;
-        }
-
-        ::deep .toolbar{
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        ::deep .empty-state{
-            padding: 16px;
-            font-size: 0.9rem;
-            text-align: center;
-        }
-    }
-
-    /* Desktop - hide mobile cards */
-    @media (min-width: 481px){
-        ::deep .mobile-cards {
-            display: none !important;
-        }
-
-        ::deep .table-wrap{
-            display: block !important;
-        }
-    }
-
-
-
+}

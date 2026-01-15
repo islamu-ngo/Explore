@@ -20,9 +20,9 @@
     {
         <MudPaper Class="pa-8">
             <div class="text-center mb-6">
-                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" 
-                        Color="Color.Success" 
-                        Size="Size.Large" 
+                <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
+                        Color="Color.Success"
+                        Size="Size.Large"
                         Style="font-size: 5rem;" />
                 <MudText Typo="Typo.h4" Color="Color.Success" Class="mt-4">
                     Event Created Successfully!
@@ -98,12 +98,12 @@
             <MudDivider Class="my-4" />
 
             <div class="d-flex justify-content-between mt-6">
-                <MudButton Variant="Variant.Outlined" 
+                <MudButton Variant="Variant.Outlined"
                           Color="Color.Primary"
                           OnClick="@(() => Navigation.NavigateTo("/createevent"))">
                     Create Another Event
                 </MudButton>
-                <MudButton Variant="Variant.Filled" 
+                <MudButton Variant="Variant.Filled"
                           Color="Color.Primary"
                           OnClick="@(() => Navigation.NavigateTo("/myevents"))">
                     View My Events
@@ -116,7 +116,7 @@
         <MudPaper Class="pa-8 text-center">
             <MudIcon Icon="@Icons.Material.Filled.Error" Color="Color.Error" Size="Size.Large" />
             <MudText Typo="Typo.h6" Class="mt-4">Event not found</MudText>
-            <MudButton Variant="Variant.Filled" 
+            <MudButton Variant="Variant.Filled"
                       Color="Color.Primary"
                       Class="mt-4"
                       OnClick="@(() => Navigation.NavigateTo("/myevents"))">
@@ -135,12 +135,12 @@
     protected override async Task OnInitializedAsync()
     {
         // Get route parameter from Blazouter
-        var eventIdStr = RouterState.GetParam("EventId");
+        var eventIdStr = RouterState.GetParam("eventId");
         if (Guid.TryParse(eventIdStr, out var id))
         {
             EventId = id;
         }
-        
+
         try
         {
             isLoading = true;
@@ -156,4 +156,3 @@
         }
     }
 }
-

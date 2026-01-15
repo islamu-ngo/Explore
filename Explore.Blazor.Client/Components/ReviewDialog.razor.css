@@ -1,2 +1,4 @@
-::deep .component-reviewdialog{ color: inherit; }
-
+/* ===== Block: review-dialog ===== */
+::deep .review-dialog {
+    color: inherit;
+}

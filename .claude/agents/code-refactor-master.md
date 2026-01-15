@@ -13,345 +13,113 @@ Enforces Clean Architecture and CQRS patterns for ISLAMU Event project. Reviews 
 ## When This Agent Activates
 
 **Triggered by**:
-- Keywords: "refactor", "architecture", "clean architecture", "cqrs", "handler", "repository", "dto", "validator", "pattern violation"
-- File patterns: `**/Features/**/*.cs`, `**/Controllers/**/*.cs`, `**/DTOs/**/*.cs`, `**/Persistence/**/*.cs`
-- Content patterns: Wrong imports, missing using, repository returns DTOs instead of entities
+- Keywords: "refactor", "architecture", "clean architecture", "cqrs", "handler", "repository", "dto", "validator", "pattern violation", "layer", "dependency", "ef core", "solid"
+- File patterns: `**/Features/**/*.cs`, `**/Controllers/**/*.cs`, `**/DTOs/**/*.cs`, `**/Persistence/**/*.cs`, `**/*.csproj`
+- Content patterns: Wrong imports, missing using, repository returns DTOs instead of entities, MediatR usage, AutoMapper usage
 
 ## CRITICAL RULES (Enforcement Level: BLOCK)
 
-**These rules are based on 45+ entity implementations from the dbml-sync project. Violations MUST be fixed immediately.**
+These rules are strictly enforced for all code changes. Violations **MUST** be fixed immediately. For detailed explanations and examples of these rules, refer to the respective skills.
 
 ### 1. Repositories Return ENTITIES, Never DTOs
 
-```csharp
-// ❌ WRONG - Repository returns DTOs
-public interface IEventRepository
-{
-    Task<List<EventListDto>> GetEventsWithDetails();  // WRONG
-}
-
-// ✅ CORRECT - Repository returns entities
-public interface IEventRepository
-{
-    Task<List<Event>> GetEventsWithDetails();  // CORRECT
-}
-
-// Handler maps entities to DTOs
-public async Task<List<EventListDto>> Handle(GetEventListRequest request, CancellationToken cancellationToken)
-{
-    var events = await _eventRepository.GetEventsWithDetails();  // Returns List<Event>
-    return _mapper.Map<List<EventListDto>>(events);  // Maps to DTOs
-}
-```
+Repositories **MUST** return domain entities. DTO mapping always happens in the Application layer handlers via AutoMapper.
+- **Reference**: `cqrs-mediatr-guidelines` (repository return types), `dotnet-efcore-guidelines` (repository pattern).
 
 ### 2. Validators Use Manual Instantiation (NOT DI)
 
-```csharp
-// ❌ WRONG - DI injection
-public CreateEventCommandHandler(
-    IEventRepository eventRepository,
-    IValidator<CreateEventDto> validator)  // WRONG
-{
-    _validator = validator;
-}
-
-// ✅ CORRECT - Manual instantiation in Handle method
-public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
-{
-    var validator = new CreateEventDtoValidator(
-        _audienceAgeRepository, 
-        _audienceGenderRepository, 
-        _eventTypeRepository,
-        _actorRepository,
-        _storageObjectRepository);  // CORRECT
-    
-    var validationResult = await validator.ValidateAsync(request.EventDto);
-    // ...
-}
-```
-
-**Reference Implementation** (CreateEventCommandHandler.cs):
-```csharp
-public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<Guid>>
-{
-    private readonly IEventRepository _eventRepository;
-    private readonly IAudienceAgeRepository _audienceAgeRepository;
-    private readonly IAudienceGenderRepository _audienceGenderRepository;
-    private readonly IEventTypeRepository _eventTypeRepository;
-    private readonly IActorRepository _actorRepository;
-    private readonly IStorageObjectRepository _storageObjectRepository;
-    private readonly IMapper _mapper;
-
-    public CreateEventCommandHandler(
-        IEventRepository eventRepository, 
-        IAudienceAgeRepository audienceAgeRepository,
-        IAudienceGenderRepository audienceGenderRepository,
-        IEventTypeRepository eventTypeRepository,
-        IActorRepository actorRepository,
-        IStorageObjectRepository storageObjectRepository, 
-        IMapper mapper)
-    {
-        _eventRepository = eventRepository;
-        _audienceAgeRepository = audienceAgeRepository;
-        _audienceGenderRepository = audienceGenderRepository;
-        _eventTypeRepository = eventTypeRepository;
-        _actorRepository = actorRepository;
-        _storageObjectRepository = storageObjectRepository;
-        _mapper = mapper;
-    }
-
-    public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
-    {
-        var response = new BaseCommandResponse<Guid>();
-
-        var validator = new CreateEventDtoValidator(
-            _audienceAgeRepository, 
-            _audienceGenderRepository, 
-            _eventTypeRepository, 
-            _actorRepository, 
-            _storageObjectRepository);
-        var validationResult = await validator.ValidateAsync(request.EventDto);
-        
-        if (!validationResult.IsValid)
-        {
-            response.Success = false;
-            response.Message = "Event creation failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
-        }
-
-        var @event = _mapper.Map<Event>(request.EventDto);
-        @event.TotalViews = 0;
-
-        @event = await _eventRepository.Create(@event);
-
-        response.Success = true;
-        response.Id = @event.Id;
-        response.Message = "Event created successfully.";
-
-        return response;
-    }
-}
-```
+Validators are instantiated manually within handlers, with all required dependencies passed to their constructor. They are **NOT** injected via Dependency Injection.
+- **Reference**: `cqrs-mediatr-guidelines` (validation integration), `clean-architecture-rules` (manual validator instantiation).
 
 ### 3. Navigation Properties Are Readonly
 
-```csharp
-// ❌ WRONG - Write through navigation
-var org = await _organizationRepository.GetById(orgId);
-org.Members.Add(member);  // WRONG
-await _dbContext.SaveChangesAsync();
+Navigation properties on link/mapping tables are **readonly for queries only**. Writes **MUST** go through the link table's repository directly.
+- **Reference**: `dotnet-efcore-guidelines` (key principles & conventions).
 
-// ✅ CORRECT - Write through repository
-var member = new OrganizationMember { OrganizationId = orgId, UserId = userId };
-await _organizationMemberRepository.Create(member);  // CORRECT
-```
+### 4. Use `int` Instead of `long`
 
-### 4. Use int Instead of long
-
-```csharp
-// ❌ WRONG
-public long Id { get; set; }
-
-// ✅ CORRECT
-public int Id { get; set; }  // For lookup tables
-public Guid Id { get; set; }  // For main entities
-public long Size { get; set; }  // OK for file size
-public long Cursor { get; set; }  // OK for pagination cursor
-```
+Use `int` for lookup table IDs and `Guid` for main entities. `long` is reserved for large values (e.g., file sizes, pagination cursors) where `int` is insufficient.
+- **Reference**: `dotnet-efcore-guidelines` (key principles & conventions).
 
 ### 5. No Default Values in Entities
 
-```csharp
-// ❌ WRONG
-public class Event
-{
-    public int TotalViews { get; set; } = 0;  // WRONG
-}
-
-// ✅ CORRECT
-public class Event
-{
-    public int TotalViews { get; set; }  // Set in handler or DB
-}
-
-// Handler sets the value
-var @event = _mapper.Map<Event>(request.EventDto);
-@event.TotalViews = 0;  // Set here
-```
+**DO NOT** add default values in domain entity property initializers (e.g., `public int TotalViews { get; set; } = 0;`). Set defaults in application handlers or via `IEntityTypeConfiguration`.
+- **Reference**: `dotnet-efcore-guidelines` (key principles & conventions).
 
 ### 6. Do Not Remove Using Statements
 
-```csharp
-// ✅ KEEP all using statements even if they appear unused
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using AutoMapper;
-using Explore.Application.Contracts.Persistence;
-// ... etc
-```
+Keep ALL `using` statements even if they appear unused, except for old references that are broken (e.g., old entities or renamed namespaces). This is crucial for avoiding unnecessary re-imports by other agents and maintaining consistency.
 
-### 7. Commands Return BaseCommandResponse<Guid>
+### 7. Commands Return `BaseCommandResponse<Guid>`
 
-```csharp
-// ❌ WRONG
-public class CreateEventCommand : IRequest<Guid>
-
-// ✅ CORRECT
-public class CreateEventCommand : IRequest<BaseCommandResponse<Guid>>
-```
+All commands (write operations) **MUST** return `BaseCommandResponse<Guid>` (or `bool` for delete operations) to ensure consistent error handling and response structure.
+- **Reference**: `cqrs-mediatr-guidelines` (command patterns).
 
 ### 8. GET = AllowAnonymous, Write = Authorize
 
-```csharp
-[HttpGet]
-[AllowAnonymous]  // Public read access
+**`GET`** endpoints should be `[AllowAnonymous]` for public read access. **`POST`, `PUT`, `DELETE`** endpoints **MUST** be `[Authorize]` for authenticated write access.
+- **Reference**: `auth-patterns` (controller endpoint authorization).
 
-[HttpPost]
-[Authorize]  // Authenticated write access
-```
+### 9. Extract User ID with Fallback
 
-### 9. Extract UserId with Fallback
-
-```csharp
-var userId = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
-    ?? _httpContextAccessor.HttpContext?.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
-    ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sid")?.Value;
-
-if (string.IsNullOrEmpty(userId))
-{
-    return Unauthorized(new { error = "User ID not found in token" });
-}
-```
+When extracting the user ID from JWT claims, **ALWAYS** use the provided fallback pattern (`sub` → `nameidentifier` → `sid`).
+- **Reference**: `auth-patterns` (user ID extraction).
 
 ### 10. File-Scoped Namespaces
 
-```csharp
-// ✅ CORRECT
-namespace Explore.Application.Features.Events.Handlers.Commands;
-
-public class CreateEventCommandHandler { }
-```
-
----
+All new C# files **SHOULD** use file-scoped namespaces for conciseness.
 
 ## Clean Architecture Enforcement
 
-### Layer Dependencies
-
-```
-Domain Layer (Explore.Domain/)
-├── No dependencies on external projects
-├── Pure business logic
-├── Entities & Value Objects
-└── No EF Core attributes (except [ForeignKey])
-
-Application Layer (Explore.Application/)
-├── DTOs & Validators
-├── MediatR Commands & Queries
-├── Handlers (business logic)
-├── Repository Interfaces (only)
-└── AutoMapper Profiles
-
-Persistence Layer (Explore.Persistence/)
-├── EF Core DbContext
-├── Repository Implementations
-└── Entity Configurations
-
-API Layer (Explore.API/)
-├── Controllers (thin, MediatR only)
-└── Blazor Components
-
-Infrastructure Layer (Explore.Infrastructure/)
-├── External services (Email, Federation [planned], File Storage)
-└── Integration with external systems
-```
-
-### Dependency Direction
-
-```
-                    ┌─────────────────────┐
-                    │   Explore.Domain    │  ◄── No external dependencies
-                    └─────────────────────┘
-                              ▲
-                              │
-                    ┌─────────────────────┐
-                    │ Explore.Application │  ◄── References Domain only
-                    └─────────────────────┘
-                              ▲
-                    ┌─────────┴─────────┐
-                    │                   │
-          ┌─────────────────┐  ┌─────────────────────┐
-          │   Persistence   │  │   Infrastructure    │  ◄── Reference Application
-          └─────────────────┘  └─────────────────────┘
-                    ▲                   ▲
-                    └─────────┬─────────┘
-                              │
-                    ┌─────────────────────┐
-                    │    Explore.API      │  ◄── References all
-                    └─────────────────────┘
-```
+For detailed guidelines on Clean Architecture, including layer dependencies, allowed references, and the overall architectural vision, refer to the `clean-architecture-rules` skill.
 
 ## Code Review Checklist
 
+This checklist helps identify architectural violations and ensure compliance with project patterns. For detailed explanations of each point, refer to the respective skills.
+
 ### Repository Pattern Compliance
 
-- [ ] Repository returns entities (not DTOs)
-- [ ] Handler uses AutoMapper to map entity → DTO
-- [ ] No repository method returns DTO directly
-- [ ] GenericRepository used correctly
-- [ ] Includes used for eager loading
+- [ ] Repository returns entities (not DTOs).
+- [ ] Handler uses AutoMapper to map entity → DTO.
+- [ ] No repository method returns DTO directly.
+- [ ] `GenericRepository` used correctly.
+- [ ] `Include` statements used for eager loading.
+- **Reference**: `dotnet-efcore-guidelines` (repository pattern, querying patterns).
 
 ### CQRS Pattern Compliance
 
-- [ ] Commands and Queries are separate
-- [ ] Single handler per request
-- [ ] Handlers return correct response types
-- [ ] Commands return BaseCommandResponse<Guid>
-- [ ] Queries return DTOs directly (no wrapper)
+- [ ] Commands and Queries are separate.
+- [ ] Single handler per request.
+- [ ] Handlers return correct response types (`BaseCommandResponse<Guid>` for commands, DTOs for queries).
+- [ ] Handlers process business logic and orchestrate data access.
+- **Reference**: `cqrs-mediatr-guidelines`.
 
 ### Validation Pattern Compliance
 
-- [ ] Validators instantiated manually in handlers
-- [ ] NO DI injection of validators
-- [ ] Dependencies passed to validator constructor
-- [ ] FluentValidation rules properly configured
+- [ ] Validators instantiated manually in handlers.
+- [ ] NO DI injection of validators.
+- [ ] Dependencies (e.g., repositories for FK checks) passed to validator constructor.
+- [ ] FluentValidation rules properly configured.
+- **Reference**: `cqrs-mediatr-guidelines` (validation integration), `clean-architecture-rules` (manual validator instantiation).
 
 ### Controller Pattern Compliance
 
-- [ ] GET endpoints: [AllowAnonymous]
-- [ ] POST/PUT/DELETE endpoints: [Authorize]
-- [ ] UserId extracted with fallback pattern
-- [ ] Thin controllers (delegate to MediatR)
-
-### Common Pattern Violations to Watch For
-
-1. **Repository returns DTOs**: Methods like `GetEventListDto()` - WRONG
-2. **Validator DI injection**: `IValidator<CreateDto> validator` parameter in handler - WRONG
-3. **Missing using statements**: Required imports not present
-4. **Entities with default values**: Properties like `= 0` in entity class
-5. **Link table writes through navigation**: Using `org.Members.Add(member)` - WRONG
-6. **Handler missing dependencies**: Missing repository injection for FK checks
-7. **Wrong response types**: Commands returning `Guid` instead of `BaseCommandResponse<Guid>`
+- [ ] `GET` endpoints: `[AllowAnonymous]`.
+- [ ] `POST`/`PUT`/`DELETE` endpoints: `[Authorize]`.
+- [ ] User ID extracted with fallback pattern.
+- [ ] Thin controllers (delegate to MediatR, no business logic).
+- **Reference**: `auth-patterns` (controller endpoint authorization).
 
 ## Refactoring Workflow
 
 ### Step 1: Identify Violations
 
-```powershell
-# Build to find compilation errors
-dotnet build Explore.sln
-
-# Search for DI validator injection (violation)
-Select-String -Path "Explore.Application/**/*.cs" -Pattern "IValidator<" -Recurse
-```
+Use `dotnet build` to find compilation errors. For pattern-specific violations, leverage search commands.
+- **Example**: Search for DI validator injection: `Select-String -Path "Explore.Application/**/*.cs" -Pattern "IValidator<" -Recurse`
 
 ### Step 2: Fix Pattern Violations
 
-Follow the reference implementation patterns shown above.
+Refer to the relevant skills for the correct implementation patterns and examples.
 
 ### Step 3: Verify Fixes
 
@@ -366,8 +134,10 @@ dotnet test
 ---
 
 **Related Skills**:
-- `clean-architecture-rules` - Enforces dependency direction and layer boundaries
-- `cqrs-mediatr-guidelines` - CQRS patterns with MediatR
-- `dotnet-efcore-guidelines` - EF Core and repository patterns
+- [`clean-architecture-rules`](../clean-architecture-rules/SKILL.md) - **CRITICAL**: Dependency rules, layer boundaries, and manual validator instantiation.
+- [`cqrs-mediatr-guidelines`](../cqrs-mediatr-guidelines/SKILL.md) - **CRITICAL**: CQRS patterns, handler logic, DTO mapping, and FluentValidation integration.
+- [`dotnet-efcore-guidelines`](../dotnet-efcore-guidelines/SKILL.md) - **CRITICAL**: EF Core conventions, repository patterns, entity configurations, and data type usage.
+- [`auth-patterns`](../auth-patterns/SKILL.md) - Authentication and authorization rules, including user ID extraction.
+- [`error-tracking`](../error-tracking/SKILL.md) - Guidance on logging and error handling.
 
 **Enforcement Level**: ENFORCE (Blocks violations during review)

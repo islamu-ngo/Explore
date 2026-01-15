@@ -5,11 +5,12 @@ using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Category;
 using Explore.Application.Features.Categories.Requests.Queries;
+using Explore.Application.Responses;
 using MediatR;
 
 namespace Explore.Application.Features.Categories.Handlers.Queries
 {
-    public class GetCategoryListRequestHandler : IRequestHandler<GetCategoryListRequest, List<CategoryListDto>>
+    public class GetCategoryListRequestHandler : IRequestHandler<GetCategoryListRequest, PaginatedResult<CategoryListDto>>
     {
         private readonly ICategoryRepository _categoryRepository;
         private readonly IMapper _mapper;
@@ -22,10 +23,12 @@ namespace Explore.Application.Features.Categories.Handlers.Queries
             _mapper = mapper;
         }
 
-        public async Task<List<CategoryListDto>> Handle(GetCategoryListRequest request, CancellationToken cancellationToken)
+        public async Task<PaginatedResult<CategoryListDto>> Handle(GetCategoryListRequest request, CancellationToken cancellationToken)
         {
-            var categories = await _categoryRepository.GetCategoriesWithDetails();
-            return _mapper.Map<List<CategoryListDto>>(categories);
+            var (pageNumber, pageSize) = PaginatedResult<CategoryListDto>.NormalizeParameters(request.PageNumber, request.PageSize);
+            var (categories, totalCount) = await _categoryRepository.GetCategoriesWithDetailsPaged(pageNumber, pageSize);
+            var dtos = _mapper.Map<List<CategoryListDto>>(categories);
+            return PaginatedResult<CategoryListDto>.Create(dtos, totalCount, pageNumber, pageSize);
         }
     }
 }

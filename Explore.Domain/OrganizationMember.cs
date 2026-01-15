@@ -1,9 +1,10 @@
 using System;
 using System.ComponentModel.DataAnnotations.Schema;
+using Explore.Domain.Interfaces;
 
 namespace Explore.Domain
 {
-    public class OrganizationMember
+    public class OrganizationMember : ITenantEntity
     {
         public Guid Id { get; set; }
 
@@ -22,5 +23,9 @@ namespace Explore.Domain
         [ForeignKey("OrganizationPosition")]
         public int? OrganizationPositionId { get; set; }
         public OrganizationPosition? OrganizationPosition { get; set; }
+
+        [ForeignKey("Tenant")]
+        public Guid TenantId { get; set; }
+        public Tenant Tenant { get; set; }
     }
 }

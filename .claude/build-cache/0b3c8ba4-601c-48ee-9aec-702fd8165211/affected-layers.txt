@@ -1,0 +1,4 @@
+Application
+API
+Domain
+Shared

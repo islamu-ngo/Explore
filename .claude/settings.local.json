@@ -15,7 +15,11 @@
       "mcp__context7__resolve-library-id",
       "mcp__context7__query-docs",
       "Bash(tree:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "mcp__acp__Bash",
+      "mcp__acp__Write",
+      "mcp__acp__Edit",
+      "Bash(dotnet build:*)"
     ]
   }
 }

@@ -1,74 +1,164 @@
-::deep .component-createorganization{ color: inherit; }
-::deep .stepper{
-        margin-bottom: 2rem;
+/* ===== CSS Custom Properties ===== */
+::deep :root {
+    --create-organization-primary: var(--mud-palette-primary);
+    --create-organization-success: var(--mud-palette-success);
+}
+
+/* ===== Block: create-organization ===== */
+::deep .create-organization {
+    padding-block: 24px;
+}
+
+/* ===== Element: create-organization__stepper ===== */
+::deep .create-organization__stepper {
+    margin-bottom: 32px;
+}
+
+/* ===== Element: create-organization__step-container ===== */
+::deep .create-organization__step-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* ===== Element: create-organization__step ===== */
+::deep .create-organization__step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 1;
+}
+
+/* ===== Element: create-organization__step-circle ===== */
+::deep .create-organization__step-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8px;
+    background-color: var(--mud-palette-background-grey);
+    border: 2px solid var(--mud-palette-lines-default);
+    color: var(--mud-palette-text-secondary);
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+/* ===== Element: create-organization__step-title ===== */
+::deep .create-organization__step-title {
+    font-size: 0.875rem;
+    color: var(--mud-palette-text-secondary);
+    transition: all 0.3s ease;
+    text-align: center;
+    max-width: 140px;
+}
+
+/* ===== Element: create-organization__step-line ===== */
+::deep .create-organization__step-line {
+    position: absolute;
+    height: 2px;
+    background-color: var(--mud-palette-lines-default);
+    top: 20px;
+    left: 70px;
+    right: 70px;
+    z-index: 0;
+}
+
+/* ===== Element: create-organization__step-progress ===== */
+::deep .create-organization__step-progress {
+    position: absolute;
+    height: 2px;
+    background-color: var(--create-organization-primary);
+    top: 0;
+    left: 0;
+    transition: width 0.3s ease;
+}
+
+/* ===== Modifier: create-organization__step--active ===== */
+::deep .create-organization__step.active .create-organization__step-circle {
+    background-color: var(--create-organization-primary);
+    border-color: var(--create-organization-primary);
+    color: white;
+}
+
+::deep .create-organization__step.active .create-organization__step-title {
+    color: var(--create-organization-primary);
+    font-weight: 500;
+}
+
+/* ===== Modifier: create-organization__step--completed ===== */
+::deep .create-organization__step.completed .create-organization__step-circle {
+    background-color: var(--create-organization-success);
+    border-color: var(--create-organization-success);
+    color: white;
+}
+
+::deep .create-organization__step.completed .create-organization__step-title {
+    color: var(--mud-palette-text-primary);
+}
+
+/* ===== Responsive: Tablet ===== */
+@media (max-width: 960px) {
+    ::deep .create-organization {
+        padding-block: 20px;
     }
 
-    ::deep .step-container{
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        position: relative;
-        max-width: 600px;
-        margin: 0 auto;
+    ::deep .create-organization__step-container {
+        max-width: 480px;
     }
 
-    ::deep .step{
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        z-index: 1;
+    ::deep .create-organization__step-line {
+        left: 60px;
+        right: 60px;
+    }
+}
+
+/* ===== Responsive: Mobile ===== */
+@media (max-width: 600px) {
+    ::deep .create-organization {
+        padding-block: 16px;
     }
 
-    ::deep .step-circle{
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 8px;
-        transition: all 0.3s ease;
+    ::deep .create-organization__stepper {
+        margin-bottom: 24px;
     }
 
-    ::deep .step-title{
+    ::deep .create-organization__step-container {
+        max-width: 100%;
+        padding: 0 8px;
+    }
+
+    ::deep .create-organization__step-circle {
+        width: 32px;
+        height: 32px;
         font-size: 0.875rem;
-        color: var(--mud-palette-text-secondary);
-        transition: all 0.3s ease;
-        text-align: center;
-        max-width: 140px;
     }
 
-    ::deep .step-line{
-        position: absolute;
-        height: 2px;
-        background-color: var(--mud-palette-lines-default);
-        top: 20px;
-        left: 70px;
-        right: 70px;
-        z-index: 0;
+    ::deep .create-organization__step-title {
+        font-size: 0.75rem;
+        max-width: 100px;
     }
 
-    ::deep .step-line-progress{
-        position: absolute;
-        height: 2px;
-        background-color: var(--mud-palette-primary);
-        top: 0;
-        left: 0;
-        transition: width 0.3s ease;
+    ::deep .create-organization__step-line {
+        left: 50px;
+        right: 50px;
+        top: 16px;
+    }
+}
+
+/* ===== Responsive: Mobile Small ===== */
+@media (max-width: 480px) {
+    ::deep .create-organization__step-title {
+        max-width: 80px;
+        font-size: 0.7rem;
     }
 
-    ::deep .active .step-circle{
-        background-color: var(--mud-palette-primary);
-        color: white;
+    ::deep .create-organization__step-line {
+        left: 40px;
+        right: 40px;
     }
-
-    ::deep .active .step-title{
-        color: var(--mud-palette-primary);
-        font-weight: 500;
-    }
-
-    ::deep .completed .step-circle{
-        background-color: var(--mud-palette-success);
-        color: white;
-    }
-
+}

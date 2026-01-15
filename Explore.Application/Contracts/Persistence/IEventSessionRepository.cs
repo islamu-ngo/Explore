@@ -7,5 +7,6 @@ namespace Explore.Application.Contracts.Persistence
         Task<EventSession?> GetSessionWithDetails(Guid id);
         Task<List<EventSession>> GetSessionsByEvent(Guid eventId);
         Task<List<EventSession>> GetSessionsByLocation(Guid locationId);
+        Task<(List<EventSession> Items, int TotalCount)> GetSessionsWithDetailsPaged(int pageNumber, int pageSize);
     }
 }

@@ -14,74 +14,48 @@
 
 ## Visual Dependency Flow
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    ISLAMU Event Dependency Flow                     │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│                         DOMAIN                                      │
-│                    Explore.Domain                                   │
-│              ┌──────────────────────┐                               │
-│              │  • Event.cs          │                               │
-│              │  • Organization.cs   │                               │
-│              │  • EventStatus.cs    │                               │
-│              │  NO DEPENDENCIES     │                               │
-│              └──────────────────────┘                               │
-│                         ▲                                           │
-│                         │                                           │
-│                         │ References Domain                         │
-│                         │                                           │
-│                    APPLICATION                                      │
-│               Explore.Application                                   │
-│         ┌─────────────────────────────────┐                         │
-│         │  • CreateEventCommand.cs        │                         │
-│         │  • GetEventListRequest.cs       │                         │
-│         │  • IEventRepository.cs          │───┐                     │
-│         │  • EventDto.cs                  │   │ Defines             │
-│         │                                 │   │ Interfaces          │
-│         │  Dependencies:                  │   │                     │
-│         │  → Explore.Domain ✓             │   │                     │
-│         │  → MediatR ✓                    │   │                     │
-│         │  → FluentValidation ✓           │   │                     │
-│         └─────────────────────────────────┘   │                     │
-│                         ▲                      │                     │
-│                         │                      │                     │
-│                         │ References           │                     │
-│                         │ App + Domain         │                     │
-│                         │                      │ Implements          │
-│            ┌────────────┴──────────┐           │                     │
-│            │                       │           │                     │
-│       PERSISTENCE            INFRASTRUCTURE    │                     │
-│  Explore.Persistence      Explore.Infrastructure│                    │
-│  ┌─────────────────────┐  ┌──────────────────┐ │                     │
-│  │ • ExploreDbContext  │  │ • EmailService.cs│◄┘                     │
-│  │ • EventRepository.cs│──┼─│ • FileService.cs │                     │
-│  │ • EventConfiguration│  │ │                  │                     │
-│  │                     │  │ │ Dependencies:    │                     │
-│  │ Dependencies:       │  │ │ → App/Domain ✓   │                     │
-│  │ → App/Domain ✓      │  │ │ → SendGrid ✓     │                     │
-│  │ → EF Core ✓         │  │ │ → Azure Blob ✓   │                     │
-│  │ → Npgsql ✓          │  │ └──────────────────┘                     │
-│  │ → PostGIS ✓         │  │                                          │
-│  └─────────────────────┘  │                                          │
-│            ▲               ▲                                         │
-│            │               │                                         │
-│            │ References ALL layers (Composition Root)                │
-│            │               │                                         │
-│      ┌─────┴───────────────┴─────┐                                  │
-│      │                           │                                  │
-│     API                      BLAZOR                                 │
-│  Explore.API            Explore.Blazor                              │
-│  ┌─────────────────┐   ┌──────────────────┐                         │
-│  │ • EventController.cs│ • EventsList.razor  │                      │
-│  │ • Program.cs    │   │ • Program.cs     │                         │
-│  │ • DI Registration   │ • DI Registration│                         │
-│  │                 │   │                  │                         │
-│  │ References:     │   │ References:      │                         │
-│  │ → All layers ✓  │   │ → All layers ✓   │                         │
-│  └─────────────────┘   └──────────────────┘                         │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph Presentation Layer
+        A[Explore.API]
+        B[Explore.Blazor]
+    end
+
+    subgraph Infrastructure Layer
+        C[Explore.Persistence]
+        D[Explore.Infrastructure]
+    end
+
+    subgraph Application Layer
+        E[Explore.Application]
+    end
+
+    subgraph Domain Layer
+        F[Explore.Domain]
+    end
+
+    A --> E
+    A --> C
+    A --> D
+
+    B --> E
+    B --> C
+    B --> D
+
+    C --> E
+    C --> F
+
+    D --> E
+    D --> F
+
+    E --> F
+
+    style A fill:#fbe5c5,stroke:#333
+    style B fill:#fbe5c5,stroke:#333
+    style C fill:#c5fbe5,stroke:#333
+    style D fill:#c5fbe5,stroke:#333
+    style E fill:#e5c5fb,stroke:#333
+    style F fill:#c5fbc5,stroke:#333
 ```
 
 ## The Dependency Inversion Principle (DIP)
@@ -113,7 +87,7 @@ EventRepository (implements IEventRepository)
 
 ### Explore.Domain
 
-**Real Example from Event.cs**:
+**Example from Event.cs**:
 ```csharp
 // File: Explore.Domain/Event.cs
 namespace Explore.Domain;
@@ -148,7 +122,7 @@ using MediatR;                                 // Application concern
 
 ### Explore.Application
 
-**Real Example from CreateEventCommandHandler.cs**:
+**Example from CreateEventCommandHandler.cs**:
 ```csharp
 // File: Explore.Application/Features/Events/Handlers/Commands/CreateEventCommandHandler.cs
 namespace Explore.Application.Features.Events.Handlers.Commands;
@@ -178,7 +152,7 @@ using Microsoft.AspNetCore.Mvc;                // Presentation concern
 
 ### Explore.Persistence
 
-**Real Example from EventRepository.cs**:
+**Example from EventRepository.cs**:
 ```csharp
 // File: Explore.Persistence/Repositories/EventRepository.cs
 namespace Explore.Persistence.Repositories;
@@ -220,7 +194,7 @@ using Microsoft.AspNetCore.Mvc;                // Presentation concern
 
 ### Explore.API
 
-**Real Example from EventController.cs**:
+**Example from EventController.cs**:
 ```csharp
 // File: Explore.API/Controllers/EventController.cs
 namespace Explore.API.Controllers;
@@ -302,10 +276,9 @@ using Scalar.AspNetCore;                                   // API docs
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <ItemGroup>
     <!-- ✅ ALLOWED: References to ALL -->
-    <ProjectReference Include="..\Explore.Domain\Explore.Domain.csproj" />
     <ProjectReference Include="..\Explore.Application\Explore.Application.csproj" />
-    <ProjectReference Include="..\Explore.Persistence\Explore.Persistence.csproj" />
     <ProjectReference Include="..\Explore.Infrastructure\Explore.Infrastructure.csproj" />
+    <ProjectReference Include="..\Explore.Persistence\Explore.Persistence.csproj" />
   </ItemGroup>
 </Project>
 ```
@@ -327,10 +300,10 @@ dotnet list Explore.Persistence/Explore.Persistence.csproj reference
 ### Search for Violations
 ```bash
 # Find prohibited using statements in Domain
-rg "using (Microsoft\.EntityFrameworkCore|Explore\.(Application|Infrastructure|API|Blazor))" Explore.Domain/
+rg "using (Microsoft\.(EntityFrameworkCore|AspNetCore)|Explore\.(Application|Infrastructure|API|Blazor))" Explore.Domain/
 
-# Find prohibited using statements in Application
-rg "using (Microsoft\.EntityFrameworkCore|Explore\.(Infrastructure|Persistence|API|Blazor))" Explore.Application/
+# Find validation annotations in Domain (except [ForeignKey])
+rg "\[Required\]|\[MaxLength\]|\[Range\]|\[StringLength\]" Explore.Domain/
 ```
 
 ## Common Questions
@@ -401,6 +374,7 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
         return await _dbContext.Events  // ✅ EF Core IQueryable handled here
             .Include(e => e.EventType)
             .Include(e => e.AudienceGender)
+            .Include(e => e.AudienceAge)
             .Include(e => e.Actor)
             .ToListAsync();  // ✅ Materializes to List
     }

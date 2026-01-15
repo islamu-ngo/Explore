@@ -1,7 +1,11 @@
 using Explore.Blazor.Client.Clients;
+using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;
 
+/// <summary>
+/// Service for managing organization member operations.
+/// </summary>
 public interface IOrganizationMemberService
 {
     Task<ICollection<OrganizationMemberDto>> GetMembersAsync(Guid organizationId);
@@ -13,13 +17,18 @@ public interface IOrganizationMemberService
     Task<BaseCommandResponseOfGuid?> DeleteMemberAsync(Guid memberId);
 }
 
+/// <summary>
+/// Implementation of organization member service.
+/// </summary>
 public class OrganizationMemberService : IOrganizationMemberService
 {
     private readonly IEventApiClient _apiClient;
+    private readonly ILogger<OrganizationMemberService> _logger;
 
-    public OrganizationMemberService(IEventApiClient apiClient)
+    public OrganizationMemberService(IEventApiClient apiClient, ILogger<OrganizationMemberService> logger)
     {
-        _apiClient = apiClient;
+        _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public async Task<ICollection<OrganizationMemberDto>> GetMembersAsync(Guid organizationId)
@@ -31,12 +40,12 @@ public class OrganizationMemberService : IOrganizationMemberService
         }
         catch (ApiException ex)
         {
-            Console.WriteLine($"API error fetching organization members: {ex.StatusCode} - {ex.Message}");
+            _logger.LogError(ex, "API error fetching organization members: {StatusCode}", ex.StatusCode);
             return new List<OrganizationMemberDto>();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error fetching organization members: {ex.Message}");
+            _logger.LogError(ex, "Error fetching organization members");
             return new List<OrganizationMemberDto>();
         }
     }
@@ -49,12 +58,12 @@ public class OrganizationMemberService : IOrganizationMemberService
         }
         catch (ApiException ex)
         {
-            Console.WriteLine($"API error inviting member: {ex.StatusCode} - {ex.Message}");
+            _logger.LogError(ex, "API error inviting member: {StatusCode}", ex.StatusCode);
             throw;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error inviting member: {ex.Message}");
+            _logger.LogError(ex, "Error inviting member");
             throw;
         }
     }
@@ -67,12 +76,12 @@ public class OrganizationMemberService : IOrganizationMemberService
         }
         catch (ApiException ex)
         {
-            Console.WriteLine($"API error updating member role: {ex.StatusCode} - {ex.Message}");
+            _logger.LogError(ex, "API error updating member role: {StatusCode}", ex.StatusCode);
             throw;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error updating member role: {ex.Message}");
+            _logger.LogError(ex, "Error updating member role");
             throw;
         }
     }
@@ -86,12 +95,12 @@ public class OrganizationMemberService : IOrganizationMemberService
         }
         catch (ApiException ex)
         {
-            Console.WriteLine($"API error fetching invitations: {ex.StatusCode} - {ex.Message}");
+            _logger.LogError(ex, "API error fetching invitations: {StatusCode}", ex.StatusCode);
             return new List<OrganizationInvitationDto>();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error fetching invitations: {ex.Message}");
+            _logger.LogError(ex, "Error fetching invitations");
             return new List<OrganizationInvitationDto>();
         }
     }
@@ -104,12 +113,12 @@ public class OrganizationMemberService : IOrganizationMemberService
         }
         catch (ApiException ex)
         {
-            Console.WriteLine($"API error accepting invitation: {ex.StatusCode} - {ex.Message}");
+            _logger.LogError(ex, "API error accepting invitation: {StatusCode}", ex.StatusCode);
             throw;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error accepting invitation: {ex.Message}");
+            _logger.LogError(ex, "Error accepting invitation");
             throw;
         }
     }
@@ -122,12 +131,12 @@ public class OrganizationMemberService : IOrganizationMemberService
         }
         catch (ApiException ex)
         {
-            Console.WriteLine($"API error declining invitation: {ex.StatusCode} - {ex.Message}");
+            _logger.LogError(ex, "API error declining invitation: {StatusCode}", ex.StatusCode);
             throw;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error declining invitation: {ex.Message}");
+            _logger.LogError(ex, "Error declining invitation");
             throw;
         }
     }
@@ -140,12 +149,12 @@ public class OrganizationMemberService : IOrganizationMemberService
         }
         catch (ApiException ex)
         {
-            Console.WriteLine($"API error deleting member: {ex.StatusCode} - {ex.Message}");
+            _logger.LogError(ex, "API error deleting member: {StatusCode}", ex.StatusCode);
             throw;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error deleting member: {ex.Message}");
+            _logger.LogError(ex, "Error deleting member");
             throw;
         }
     }

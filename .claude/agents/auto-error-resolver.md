@@ -139,19 +139,22 @@ var evt = await _repository.GetById(Guid.Parse("123"));
 
 #### Missing Using Statements
 
-```csharp
-// Common namespaces for ISLAMU Event
-using Explore.Domain;                       // Entities
-using Explore.Application.DTOs.Event;       // DTOs
-using Explore.Application.Contracts.Persistence;  // Repositories
-using MediatR;                               // CQRS
-using AutoMapper;                            // Mapping
-using FluentValidation;                      // Validation
-using Microsoft.EntityFrameworkCore;         // EF Core
-using MudBlazor;                             // UI components (Blazor)
-```
+If you encounter "Type or Namespace Not Found" (CS0246) errors, ensure the necessary `using` statements are present and corresponding project references exist.
+
+- **Domain Entities**: `Explore.Domain` (e.g., `Event`, `Organization`)
+- **Application DTOs, Commands, Queries**: `Explore.Application.DTOs.*`, `Explore.Application.Features.*`
+- **Persistence Interfaces/Implementations**: `Explore.Application.Contracts.Persistence`, `Explore.Persistence.*`
+- **MediatR**: `MediatR`
+- **AutoMapper**: `AutoMapper`
+- **FluentValidation**: `FluentValidation`
+- **EF Core**: `Microsoft.EntityFrameworkCore`
+- **Blazor UI Components**: `MudBlazor`
+
+For more details on layer responsibilities and project references, refer to the `clean-architecture-rules` skill.
 
 #### AutoMapper Mapping Errors
+
+If you encounter errors related to object mapping, ensure your AutoMapper profiles are correctly configured.
 
 ```csharp
 // ❌ No mapping configured
@@ -162,12 +165,13 @@ CreateMap<Event, EventListDto>.ReverseMap();
 CreateMap<CreateEventDto, Event>.ReverseMap();
 ```
 
+For detailed AutoMapper usage within CQRS patterns, refer to the `cqrs-mediatr-guidelines` skill.
+
 #### EF Core Migration Errors
 
-```powershell
-# Error: "The model backing the context has changed"
-# Note: Migrations run automatically via Explore.MigrationService worker on startup
+If you encounter migration-related errors ("The model backing the context has changed"), refer to the `dotnet-efcore-guidelines` skill for detailed instructions on creating and applying EF Core migrations.
 
+```powershell
 # If manual migration needed:
 dotnet ef migrations add DescriptiveName --project Explore.Persistence
 
@@ -177,6 +181,8 @@ dotnet ef database update --project Explore.Persistence
 
 #### Dependency Injection Errors
 
+If you encounter "Unable to resolve service" runtime errors, ensure the service and its implementation are correctly registered in the Dependency Injection container.
+
 ```csharp
 // ❌ Service not registered
 public EventController(IEventRepository repository)  // Runtime error: Unable to resolve service
@@ -185,32 +191,11 @@ public EventController(IEventRepository repository)  // Runtime error: Unable to
 services.AddScoped<IEventRepository, EventRepository>();
 ```
 
+For guidelines on where to register services and adhere to architectural boundaries, refer to the `clean-architecture-rules` skill.
+
 ### 4. Layer-Specific Errors
 
-#### Domain Layer (CS errors)
-
-- No dependencies allowed (except standard library)
-- No EF Core, no AutoMapper, no MediatR
-- Pure business logic and entities
-
-#### Application Layer (CS errors)
-
-- Can reference Domain only
-- Contains DTOs, MediatR handlers, validators
-- No DbContext, no repositories (use interfaces)
-
-#### Persistence Layer (EF Core errors)
-
-- Can reference Domain and Application
-- Contains DbContext, repositories, migrations
-- Check for N+1 queries, missing Include statements
-
-#### API Layer (Runtime errors)
-
-- Check Keycloak configuration in appsettings.json
-- Verify [Authorize] attributes
-- Check handler/controller authorization logic (ownership/roles)
-- Verify Swagger annotations
+For understanding the responsibilities and allowed dependencies of each architectural layer (Domain, Application, Persistence, API), and common violations, refer to the `clean-architecture-rules` skill. This skill details what code belongs where and why.
 
 ### 5. Fix Actions
 
@@ -260,87 +245,33 @@ dotnet format --verify-no-changes
 Based on 45+ entity implementations. **DO NOT VIOLATE THESE RULES when fixing errors:**
 
 ### 1. Repositories Return ENTITIES, Never DTOs
-```csharp
-// ❌ WRONG - Repository returns DTOs
-public interface IEventRepository
-{
-    Task<List<EventListDto>> GetEventsWithDetails();  // WRONG
-}
 
-// ✅ CORRECT - Repository returns entities
-public interface IEventRepository
-{
-    Task<List<Event>> GetEventsWithDetails();  // CORRECT
-}
-
-// Handler maps to DTOs
-var events = await _eventRepository.GetEventsWithDetails();
-return _mapper.Map<List<EventListDto>>(events);
-```
+Repositories **MUST** return domain entities. DTO mapping always happens in the Application layer handlers via AutoMapper. For detailed patterns, refer to the `cqrs-mediatr-guidelines` skill and `dotnet-efcore-guidelines` skill.
 
 ### 2. Validators Use Manual Instantiation (NOT DI)
-```csharp
-// ❌ WRONG - DI injection
-public CreateEventCommandHandler(IValidator<CreateEventDto> validator) { }
 
-// ✅ CORRECT - Manual instantiation in Handle method
-public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
-{
-    var validator = new CreateEventDtoValidator(
-        _audienceAgeRepository, 
-        _audienceGenderRepository, 
-        _eventTypeRepository,
-        _actorRepository,
-        _storageObjectRepository);
-    var validationResult = await validator.ValidateAsync(request.EventDto);
-    // ...
-}
-```
+Validators are instantiated manually within handlers, with all required dependencies passed to their constructor. They are **NOT** injected via Dependency Injection. For detailed explanation and examples, refer to the `cqrs-mediatr-guidelines` skill and the `clean-architecture-rules` skill.
 
 ### 3. Navigation Properties Are Readonly
-```csharp
-// ❌ WRONG - Write through navigation
-org.Members.Add(member);
 
-// ✅ CORRECT - Write through repository
-await _organizationMemberRepository.Create(member);
-```
+Navigation properties on link/mapping tables are **readonly for queries only**. Writes must go through the link table's repository directly. For details, refer to the `dotnet-efcore-guidelines` skill.
 
 ### 4. Use int Instead of long (except size/cursor)
-```csharp
-// ❌ WRONG
-public long Id { get; set; }
 
-// ✅ CORRECT
-public int Id { get; set; }  // For lookup tables
-public Guid Id { get; set; }  // For main entities
-```
+Unless explicitly required for large values (e.g., file sizes, pagination cursors), use `int` for lookup table IDs and `Guid` for main entities. For details, refer to the `dotnet-efcore-guidelines` skill.
 
 ### 5. No Default Values in Entities
-```csharp
-// ❌ WRONG
-public class Event
-{
-    public int TotalViews { get; set; } = 0;  // WRONG
-}
 
-// ✅ CORRECT - Set in handler
-var @event = _mapper.Map<Event>(request.EventDto);
-@event.TotalViews = 0;  // Set here
-```
+**DO NOT** add default values in domain entity property initializers (e.g., `public int TotalViews { get; set; } = 0;`). Set defaults in application handlers or use database-level defaults via `IEntityTypeConfiguration`. For details, refer to the `dotnet-efcore-guidelines` skill.
 
 ### 6. Do Not Remove Using Statements
-Keep ALL using statements even if they appear unused, except for old references that are broken like old entities or renamed namespaces and so on.
 
-5. **No Default Values in Entities**
-   - Fix: Remove `= 0` from entity properties
-   - Set in handler: `@event.TotalViews = 0;`
+Keep ALL `using` statements even if they appear unused, except for old references that are broken (e.g., old entities or renamed namespaces). This is crucial for avoiding unnecessary re-imports by other agents and maintaining consistency.
 
-// ✅ CORRECT
-public class CreateEventCommand : IRequest<BaseCommandResponse<Guid>>
-```
+### 7. File-Scoped Namespaces
 
-### 8. File-Scoped Namespaces
+All new C# files should use file-scoped namespaces.
+
 ```csharp
 // ✅ CORRECT
 namespace Explore.Application.Features.Events.Handlers.Commands;
@@ -384,9 +315,9 @@ dotnet build Explore.sln
 
 ## Related Skills
 
-- `clean-architecture-rules` - Dependency rules and layer responsibilities
-- `cqrs-mediatr-guidelines` - Command/Query patterns
-- `dotnet-efcore-guidelines` - EF Core patterns
+- [`clean-architecture-rules`](../clean-architecture-rules/SKILL.md) - Dependency rules and layer responsibilities
+- [`cqrs-mediatr-guidelines`](../cqrs-mediatr-guidelines/SKILL.md) - Command/Query patterns and manual validation
+- [`dotnet-efcore-guidelines`](../dotnet-efcore-guidelines/SKILL.md) - EF Core patterns, entities, and migrations
 
 ## Output Format
 

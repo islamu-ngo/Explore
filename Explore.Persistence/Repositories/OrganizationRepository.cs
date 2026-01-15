@@ -50,5 +50,43 @@ namespace Explore.Persistence.Repositories
                 .Where(o => o.Members.Any(m => m.UserId == userId))
                 .ToListAsync();
         }
+
+        public async Task<(List<Organization> Items, int TotalCount)> GetOrganizationsWithDetailsPaged(int pageNumber, int pageSize)
+        {
+            var query = _dbContext.Organizations
+                .AsNoTracking()
+                .Include(o => o.ApprovalStatus)
+                .Include(o => o.Actor)
+                .Include(o => o.Tenant)
+                .OrderBy(o => o.FullName);
+
+            var totalCount = await query.CountAsync();
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (items, totalCount);
+        }
+
+        public async Task<(List<Organization> Items, int TotalCount)> GetMyOrganizationsPaged(Guid userId, int pageNumber, int pageSize)
+        {
+            var query = _dbContext.Organizations
+                .AsNoTracking()
+                .Include(o => o.ApprovalStatus)
+                .Include(o => o.Actor)
+                .Include(o => o.Members)
+                    .ThenInclude(m => m.OrganizationRole)
+                .Where(o => o.Members.Any(m => m.UserId == userId))
+                .OrderBy(o => o.FullName);
+
+            var totalCount = await query.CountAsync();
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (items, totalCount);
+        }
     }
 }

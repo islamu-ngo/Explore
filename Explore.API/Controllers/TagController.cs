@@ -24,11 +24,16 @@ namespace Explore.API.Controllers
         // GET: api/v1/tag
         [HttpGet]
         [EndpointSummary("Get all Tags")]
-        [EndpointDescription("Get a list of all tags for events")]
+        [EndpointDescription("Retrieve a paginated list of all tags for events. Default page size is 20, max is 100.")]
         [AllowAnonymous]
-        public async Task<ActionResult<List<TagListDto>>> GetAll()
+        [ProducesResponseType(typeof(PaginatedResult<TagListDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PaginatedResult<TagListDto>>> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
         {
-            var tags = await _mediator.Send(new GetTagListRequest());
+            var tags = await _mediator.Send(new GetTagListRequest
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            });
             return Ok(tags);
         }
 

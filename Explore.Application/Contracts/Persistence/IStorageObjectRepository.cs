@@ -9,5 +9,6 @@ namespace Explore.Application.Contracts.Persistence
     {
         Task<StorageObject?> GetFileWithDetails(Guid id);
         Task<List<StorageObject>> GetFilesWithDetails();
+        Task<(List<StorageObject> Items, int TotalCount)> GetFilesWithDetailsPaged(int pageNumber, int pageSize);
     }
 }

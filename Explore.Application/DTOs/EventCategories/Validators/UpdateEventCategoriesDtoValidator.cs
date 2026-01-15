@@ -34,8 +34,8 @@ namespace Explore.Application.DTOs.EventCategories.Validators
                 .MustAsync(CategoryExists)
                 .WithMessage("{PropertyName} not found");
 
-            RuleFor(x => x.TenantId)
-                .NotEmpty().WithMessage("{PropertyName} is required");
+            // TenantId is set by the handler from context, not by the client
+            // No validation needed here
         }
 
         private async Task<bool> EventExists(Guid eventId, CancellationToken cancellationToken)

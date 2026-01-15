@@ -1,6 +1,8 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using Explore.Blazor.Client.Pages.Landing
+@using Microsoft.Extensions.Logging
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ILogger<Home> Logger
 
 <PageTitle>ISLAMU Explore</PageTitle>
 
@@ -35,7 +37,7 @@ else
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Auth check failed: {ex.Message}");
+            Logger.LogWarning(ex, "Auth check failed");
             isAuthenticated = false;
         }
         finally

@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using Explore.Application.DTOs.EventSessionSpeaker;
 using Explore.Application.Features.EventSessionSpeakers.Requests.Commands;
 using Explore.Application.Features.EventSessionSpeakers.Requests.Queries;
@@ -24,11 +27,16 @@ namespace Explore.API.Controllers
         // GET: api/v1/eventsessionspeaker
         [HttpGet]
         [EndpointSummary("Get all Session Speakers")]
-        [EndpointDescription("Get a list of all event session speaker assignments")]
+        [EndpointDescription("Retrieve a paginated list of all event session speaker assignments. Default page size is 20, max is 100.")]
         [AllowAnonymous]
-        public async Task<ActionResult<List<EventSessionSpeakerListDto>>> GetAll()
+        [ProducesResponseType(typeof(PaginatedResult<EventSessionSpeakerListDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PaginatedResult<EventSessionSpeakerListDto>>> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
         {
-            var speakers = await _mediator.Send(new GetEventSessionSpeakerListRequest());
+            var speakers = await _mediator.Send(new GetEventSessionSpeakerListRequest
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            });
             return Ok(speakers);
         }
 

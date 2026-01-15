@@ -2,466 +2,200 @@
 
 ## Overview
 
-The domain layer contains all business entities, enums, and value objects. Located in `Explore.Domain/`.
+The domain layer (`Explore.Domain/`) is the heart of the application, containing all business entities, enums, and value objects. It defines **what** the system is about, independent of any technical implementation details.
 
-**Key Principles**:
-- All IDs are `Guid` except lookup tables use `int`
-- Use `int` instead of `long` except for size/cursor fields
-- No default values in entities (set in code or database)
-- Tenant isolation: All tenant-scoped entities have `TenantId`
+For details on how these domain models are implemented using Entity Framework Core, including conventions for IDs, numeric types, default values, and link tables, refer to the **`dotnet-efcore-guidelines` skill**.
 
 ## Core Entities
 
 ### Tenant Management
 
 #### Tenant
-- **PK**: `Id` (Guid)
-- **Properties**: `FullName`, `Slug`, `IsActive`
-- **Purpose**: Multi-tenant isolation for SaaS mode
-- **Key**: Used across all tenant-scoped entities for data isolation
+*   **Purpose**: Represents a distinct client or organization within the multi-tenant system, ensuring data isolation.
+*   **Key Relationships**: Core of multi-tenancy; all tenant-scoped entities link to `Tenant`.
+*   **Associated Concepts**: `TenantUser`, `TenantSettings`.
 
 #### TenantUser
-- **PK**: `Id` (int)
-- **FK**: `UserId` → User, `TenantId` → Tenant
-- **Purpose**: Maps users to tenants with roles
-- **Key**: Enables users to belong to multiple tenants
+*   **Purpose**: Links a User to a specific Tenant, often with associated roles.
+*   **Key Relationships**: Many-to-many relationship between `User` and `Tenant`.
 
 #### TenantSettings
-- **PK**: `Id` (int)
-- **FK**: `TenantId` → Tenant
-- **Purpose**: Tenant-specific configuration
-- **Key**: Stores tenant-level settings and policies
+*   **Purpose**: Stores tenant-specific configuration and policies.
+*   **Key Relationships**: One-to-one relationship with `Tenant`.
 
 #### UserRole
-- **PK**: `Id` (int)
-- **Properties**: `FullName`, `MasterCode`, `Description`
-- **Purpose**: Defines user roles within a tenant
-- **Key**: Controls user permissions (Admin, Moderator, User, etc.)
+*   **Purpose**: Defines roles users can have within a tenant (e.g., Admin, Moderator, Member).
+*   **Key Relationships**: Used to classify `TenantUser` permissions.
 
 ### User Management
 
 #### User
-- **PK**: `Id` (Guid)
-- **FK**: `ActorId` → Actor (optional)
-- **Properties**: `Email`, `FirstName`, `LastName`, `AuthProvider`, `EmailVerified`
-- **Purpose**: Represents system users
-- **Key**: Links to ATProto Actor for federation
+*   **Purpose**: Represents a user account in the system.
+*   **Key Relationships**: Can link to an `Actor` for federation, and associated with `UserAuthenticationToken`, `UserExternalLogin`, `OrganizationMember`, `EventRegistration`.
 
 #### UserAuthenticationToken
-- **PK**: `Id` (Guid)
-- **FK**: `UserId` → User, `TenantId` → Tenant
-- **Properties**: `Provider`, `AccessToken`, `RefreshToken`, `PdsHost`, `DpopKey`
-- **Purpose**: Stores authentication tokens (Keycloak, ATProto OAuth)
-- **Key**: Handles hybrid auth (Keycloak + ATProto)
+*   **Purpose**: Stores authentication-related tokens for users (e.g., from Keycloak, ATProto OAuth).
+*   **Key Relationships**: Links to `User` and `Tenant`.
 
 #### UserExternalLogin
-- **PK**: `Id` (Guid)
-- **FK**: `UserId` → User, `TenantId` → Tenant
-- **Properties**: `Provider`, `ProviderKey`, `ProviderDisplayName`
-- **Purpose**: Stores external login credentials (DID, private keys)
-- **Key**: Enables ATProto OAuth users to bring their own DID
+*   **Purpose**: Records external login details, such as DID (Decentralized Identifier) or private keys for ATProto OAuth.
+*   **Key Relationships**: Links to `User` and `Tenant`.
 
 ### Federation (ATProto)
 
 #### Actor
-- **PK**: `Id` (Guid)
-- **FK**: `ActorTypeId` → ActorType, `DidCustodyTypeId` → DidCustodyType
-- **Properties**: `DisplayName`, `Did`, `Handle`, `PdsHost`, `Description`
-- **Purpose**: Represents federated identities (DIDs)
-- **Key**: Decentralized-first identity model
+*   **Purpose**: Represents a federated identity (DID) in the ATProto network. This is the core identity for all content creators and organizations.
+*   **Key Relationships**: Linked to `ActorType`, `DidCustodyType`, `User`.
 
 #### ActorType
-- **PK**: `Id` (int)
-- **Properties**: `FullName`, `MasterCode`, `Description`
-- **Purpose**: Defines actor types (User, Organization, Service, Bot)
-- **Key**: Differentiates between entity types in federation
+*   **Purpose**: Categorizes actors (e.g., User, Organization, Service, Bot).
 
 #### DidCustodyType
-- **PK**: `Id` (int)
-- **Properties**: `FullName`, `MasterCode`, `Description`
-- **Purpose**: Defines DID custody types (Self-Custodied, Custodial, Managed)
-- **Key**: Determines who controls DID keys
+*   **Purpose**: Defines who controls an Actor's DID keys (e.g., Self-Custodied, Custodial).
 
 #### ActorKeyStore
-- **PK**: `Id` (Guid)
-- **FK**: `ActorId` → Actor, `TenantId` → Tenant
-- **Properties**: `KeyPurpose`, `PrivateKeyEncrypted`, `PublicKey`, `IsActive`
-- **Purpose**: Stores actor encryption/rotation keys
-- **Key**: Uses vault transit encryption for private keys
+*   **Purpose**: Securely stores cryptographic keys associated with an `Actor`.
+*   **Key Relationships**: Links to `Actor` and `Tenant`.
 
 #### IndexedDid
-- **PK**: `Did` (varchar)
-- **Properties**: `Handle`, `PdsHost`, `SigningKey`, `IsActive`, `LastIndexedAt`
-- **Purpose**: Tracks indexed DIDs from ATProto network
-- **Key**: Maintains index of federated actors
+*   **Purpose**: Tracks DIDs discovered and indexed from the ATProto network.
 
 #### SyncState
-- **PK**: `Id` (int)
-- **Properties**: `Service` (unique), `Cursor`, `LastSeqTime`
-- **Purpose**: Tracks federation sync progress
-- **Key**: Resumable sync from firehose/relay
+*   **Purpose**: Manages the synchronization progress with federation firehoses/relays.
 
 #### AtprotoRecord
-- **PK**: `Id` (Guid)
-- **Properties**: `Did`, `Collection`, `RecordKey`, `Cid`, `Uri`
-- **Purpose**: Links entities to ATProto records
-- **Key**: Enables strong references (URI + CID = exact version)
+*   **Purpose**: Links local entities (like `Event` or `EventRegistration`) to their corresponding records on the ATProto network.
+*   **Key Relationships**: Linked to entities that are federated.
 
 ### Organization Management
 
 #### Organization
-- **PK**: `Id` (Guid)
-- **FK**: `ApprovalStatusId` → ApprovalStatus, `ActorId` → Actor
-- **Properties**: `FullName`, `Email`, `Country`, `City`, `Address`, `Postcode`, `WebsiteUrl`
-- **Purpose**: Represents event-organizing entities
-- **Key**: Two-tier verification (UserSubmitted vs Verified)
-- **Navigation**: `Members` (readonly, use OrganizationMemberRepository for writes)
+*   **Purpose**: Represents an entity that creates and manages events (e.g., a mosque, a university, a community group).
+*   **Key Relationships**: Linked to `ApprovalStatus`, `Actor`, and has associated `OrganizationMember`s and `OrganizationReview`s.
+*   **Associated Concepts**: Supports a two-tier verification system (User-Submitted vs. Verified).
 
 #### OrganizationMember
-- **PK**: `Id` (int)
-- **FK**: `OrganizationId` → Organization, `UserId` → User
-- **Properties**: `OrganizationRoleId`, `OrganizationPositionId`
-- **Purpose**: Links users to organizations
-- **Key**: User can belong to multiple organizations with different roles
+*   **Purpose**: Represents a `User`'s membership within an `Organization`, defining their role and position.
+*   **Key Relationships**: Links `Organization` with `User`.
 
 #### OrganizationRole
-- **PK**: `Id` (int)
-- **Properties**: `FullName`, `MasterCode`, `Description`
-- **Purpose**: Defines organization member roles (Owner, Admin, Member)
-- **Key**: Controls permissions within organization
+*   **Purpose**: Defines predefined roles for `OrganizationMember`s (e.g., Owner, Admin, Member).
 
 #### OrganizationPosition
-- **PK**: `Id` (int)
-- **Properties**: `FullName`, `MasterCode`, `Description`
-- **Purpose**: Defines member positions (President, Secretary, Member)
-- **Key**: Optional role-based classification
+*   **Purpose**: Defines specific positions within an `Organization` (e.g., President, Secretary).
 
 #### ApprovalStatus
-- **PK**: `Id` (int)
-- **Properties**: `FullName`, `MasterCode`, `Description`
-- **Purpose**: Defines approval status (Pending, Approved, Rejected, Verified)
-- **Key**: Two-tier verification workflow
+*   **Purpose**: Defines the various stages of approval for entities like `Organization`s or `EventRegistration`s (e.g., Pending, Approved, Verified).
 
 #### OrganizationReview
-- **PK**: `Id` (Guid)
-- **Properties**: `Rating`, `Comment`
-- **Purpose**: Community reviews of organizations
-- **Key**: Trust signals for verified orgs
+*   **Purpose**: Captures community reviews and ratings for `Organization`s.
 
 ### Event Management
 
 #### Event
-- **PK**: `Id` (Guid)
-- **FK**: `EventTypeId` → EventType, `AudienceGenderId` → AudienceGender, `AudienceAgeId` → AudienceAge, `ActorId` → Actor, `EventStatusId` → EventStatus, `VisibilityTypeId` → VisibilityType, `EventFormatId` → EventFormat, `MadhabId` → Madhab, `FeaturedImageId` → StorageObject, `AtprotoRecordId` → AtprotoRecord
-- **Properties**: `Title`, `Description`, `Price`, `CurrencyCode`, `TotalViews`, `IsRegistrationRequired`, `EventUrl`, `ExternalRegistrationUrl`, `SessionCount`, `FirstSessionDate`, `LastSessionDate`, `Timezone`, `Slug`
-- **Purpose**: Core event entity with all metadata
-- **Key**: Federation-ready domain model (ATProto/ActivityPub concepts). HTTP federation endpoints are not implemented in `Explore.API` yet.
-- **Computed**: `FirstSessionDate`/`LastSessionDate` from sessions
+*   **Purpose**: The central entity representing a scheduled occurrence (e.g., a conference, webinar, workshop).
+*   **Key Relationships**: Links to `EventType`, `AudienceGender`, `AudienceAge`, `Actor`, `EventStatus`, `VisibilityType`, `EventFormat`, `Madhab`, `StorageObject` (for featured image), and potentially `AtprotoRecord`.
+*   **Associated Concepts**: Can have multiple `EventSession`s.
 
 #### EventSession
-- **PK**: `Id` (Guid)
-- **FK**: `EventId` → Event, `LocationId` → Location, `RegistrationModeId` → RegistrationMode
-- **Properties**: `StartTime`, `EndTime`, `Title`, `Description`, `Slug`, `MaxAudienceAttendees`, `CurrentAudienceAttendees`
-- **Purpose**: Individual sessions within multi-session events
-- **Key**: Allows events to span multiple dates/times/locations
+*   **Purpose**: Represents a specific time slot or segment of an `Event`. Events can have one or many sessions.
+*   **Key Relationships**: Links to `Event`, `Location`, `RegistrationMode`.
+*   **Associated Concepts**: Can contain `EventSessionAgendaItem`s, `EventSessionSpeaker`s, `EventSessionLanguage`s, and `EventRegistration`s.
 
 #### EventSessionAgendaItem
-- **PK**: `Id` (Guid)
-- **FK**: `EventSessionId` → EventSession, `LocationId` → Location
-- **Properties**: `StartTime`, `EndTime`, `Title`, `Description`
-- **Purpose**: Sub-items within sessions (speakers, breaks, activities)
-- **Key**: Detailed agenda structure
+*   **Purpose**: Details specific activities or segments within an `EventSession` (e.g., a speaker's talk, a break).
+*   **Key Relationships**: Links to `EventSession`, `Location`.
 
 #### EventSessionSpeaker
-- **PK**: `Id` (int)
-- **FK**: `ActorId` → Actor, `EventSessionId` → EventSession
-- **Purpose**: Links actors (speakers) to sessions
-- **Key**: Many-to-many relationship with link table
+*   **Purpose**: Links an `Actor` (speaker) to an `EventSession`.
+*   **Key Relationships**: Many-to-many relationship between `Actor` and `EventSession`.
 
 #### EventSessionLanguage
-- **PK**: `Id` (int)
-- **FK**: `EventSessionId` → EventSession, `LanguageId` → Language
-- **Purpose**: Session language support (multi-lingual events)
-- **Key**: Filter events by language
+*   **Purpose**: Indicates the languages supported or used in an `EventSession`.
+*   **Key Relationships**: Many-to-many relationship between `EventSession` and `Language`.
 
 #### EventRegistration
-- **PK**: `Id` (Guid)
-- **FK**: `UserId` → User, `EventSessionId` → EventSession, `ApprovalStatusId` → ApprovalStatus, `AtprotoRecordId` → AtprotoRecord
-- **Purpose**: User registration for sessions
-- **Key**: Supports approval workflow for certain events
+*   **Purpose**: Records a `User`'s registration for an `EventSession`.
+*   **Key Relationships**: Links to `User`, `EventSession`, `ApprovalStatus`, and potentially `AtprotoRecord`.
 
 #### RegistrationMode
-- **PK**: `Id` (int)
-- **Properties**: `MasterCode`, `FullName`, `Description`
-- **Purpose**: Defines registration modes (Open, ApprovalRequired, InvitationOnly)
-- **Key**: Controls registration workflow
+*   **Purpose**: Defines the method of registration for an `EventSession` (e.g., Open, Approval Required, Invitation Only).
 
 ### Event Metadata
 
 #### EventType
-- **PK**: `Id` (int)
-- **Properties**: `FullName`, `MasterCode`, `Description`
-- **Purpose**: Event type classification (Conference, Webinar, Workshop, Seminar)
-- **Key**: Primary event categorization
+*   **Purpose**: Classifies `Event`s (e.g., Conference, Webinar, Workshop).
 
 #### EventStatus
-- **PK**: `Id` (int)
-- **Properties**: `FullName`, `MasterCode`, `Description`
-- **Purpose**: Event lifecycle status (Draft, Published, Cancelled, Completed)
-- **Key**: Event workflow management
+*   **Purpose**: Tracks the lifecycle status of an `Event` (e.g., Draft, Published, Cancelled).
 
 #### VisibilityType
-- **PK**: `Id` (int)
-- **Properties**: `FullName`, `MasterCode`, `Description`
-- **Purpose**: Event visibility (Public, Private, Unlisted)
-- **Key**: Access control
+*   **Purpose**: Controls the visibility of an `Event` (e.g., Public, Private, Unlisted).
 
 #### EventFormat
-- **PK**: `Id` (int)
-- **Properties**: `FullName`, `MasterCode`, `Description`
-- **Purpose**: Event delivery format (In-person Local, Digital Online, Hybrid)
-- **Key**: Physical vs digital classification
+*   **Purpose**: Describes the delivery format of an `Event` (e.g., In-person, Online, Hybrid).
 
 #### Madhab
-- **PK**: `Id` (int)
-- **Properties**: `MasterCode`, `FullName`, `Description`
-- **Purpose**: Islamic jurisprudence school (Hanafi, Maliki, Shafi'i, Hanbali)
-- **Key**: Islamic context filtering
+*   **Purpose**: Classifies `Event`s or `Actor`s by Islamic jurisprudence school (e.g., Hanafi, Maliki).
 
 #### AudienceAge
-- **PK**: `Id` (int)
-- **Properties**: `MasterCode`, `FullName`, `Description`, `MinAge`, `MaxAge`
-- **Purpose**: Target age demographic (Children, Youth, Adults, Seniors, All Ages)
-- **Key**: Age-appropriate event filtering
+*   **Purpose**: Categorizes the target age demographic for an `Event` (e.g., Children, Youth, Adults).
 
 #### AudienceGender
-- **PK**: `Id` (int)
-- **Properties**: `MasterCode`, `FullName`, `Description`
-- **Purpose**: Target gender (Men-only, Women-only, Mixed, Family)
-- **Key**: Gender-appropriate event filtering
+*   **Purpose**: Categorizes the target gender for an `Event` (e.g., Men-only, Women-only, Mixed).
 
 #### Category
-- **PK**: `Id` (Guid)
-- **FK**: `ParentId` → Category (self-referencing)
-- **Properties**: `MasterCode`, `FullName`
-- **Purpose**: Event categorization (Aqidah, Fiqh, Tafsir, Hadith, etc.)
-- **Key**: Hierarchical categories for filtering
+*   **Purpose**: Provides hierarchical categorization for `Event`s (e.g., Aqidah, Fiqh, Tafsir).
+*   **Key Relationships**: Can be self-referencing for parent-child relationships.
 
 #### EventCategories
-- **PK**: `Id` (int)
-- **FK**: `EventId` → Event, `CategoryId` → Category
-- **Purpose**: Many-to-many relationship between events and categories
-- **Key**: Events can belong to multiple categories
+*   **Purpose**: Links `Event`s to `Category`s.
 
 #### Tag
-- **PK**: `Id` (Guid)
-- **Properties**: `MasterCode`, `FullName`
-- **Purpose**: Event tags (speakers, topics, channels, etc.)
-- **Key**: Flexible tagging system
+*   **Purpose**: Provides flexible tagging for `Event`s, `Actor`s, or other entities.
 
 #### TagType
-- **PK**: `Id` (int)
-- **Properties**: `MasterCode`, `FullName`
-- **Purpose**: Tag type classification (Person, Channel, Oeuvre)
-- **Key**: Organizes tags into groups
+*   **Purpose**: Classifies the type of a `Tag` (e.g., Person, Channel, Oeuvre).
 
 #### TagTypeTags
-- **PK**: `Id` (int)
-- **FK**: `TagId` → Tag, `TagTypeId` → TagType
-- **Purpose**: Classifies tags by type
-- **Key**: Tag type taxonomy
+*   **Purpose**: Links `Tag`s to `TagType`s.
 
 #### EventTags
-- **PK**: `Id` (int)
-- **FK**: `EventId` → Event, `TagId` → Tag
-- **Purpose**: Many-to-many relationship between events and tags
-- **Key**: Events can have multiple tags
+*   **Purpose**: Links `Event`s to `Tag`s.
 
 ### Location Management
 
 #### Location
-- **PK**: `Id` (Guid)
-- **Properties**: `FullName`, `Address`, `Postcode`, `Country`, `City`, `Coordinates` (PostGIS point), `Latitude`, `Longitude`, `Timezone`
-- **Purpose**: Physical or virtual event locations
-- **Key**: PostGIS for spatial queries, timezone support
+*   **Purpose**: Defines physical or virtual locations where `EventSession`s can occur.
+*   **Associated Concepts**: Can include geographic coordinates for spatial queries.
 
 ### Storage Management
 
 #### StorageObject
-- **PK**: `Id` (Guid)
-- **FK**: `FileTypeId` → FileType, `ActorId` → Actor (owner)
-- **Properties**: `Uri`, `FullName`, `Extension`, `Size`
-- **Purpose**: File storage (images, documents, etc.)
-- **Key**: Current implementation targets S3-compatible object storage via `Explore.Infrastructure` (multi-provider BYOK is a future capability).
+*   **Purpose**: Represents files stored in the system (e.g., images, documents).
+*   **Key Relationships**: Links to `FileType` and `Actor` (owner).
 
 #### FileType
-- **PK**: `Id` (int)
-- **Properties**: `MasterCode`, `FullName`, `Description`
-- **Purpose**: File type classification (Image, Document, Video, Audio)
-- **Key**: File type validation
+*   **Purpose**: Classifies `StorageObject`s (e.g., Image, Document, Video).
 
 ### Language Support
 
 #### Language
-- **PK**: `Id` (int)
-- **Properties**: `MasterCode`, `FullName`, `Description`
-- **Purpose**: Supported languages (Arabic, English, French, etc.)
-- **Key**: Multi-lingual event filtering
-
-## Entity Relationships
-
-### Core Relationships
-
-```
-Tenant
-  ├── TenantUser (many-to-many with User)
-  │
-  ├── User
-  │   ├── Actor (ATProto identity)
-  │   ├── UserAuthenticationToken
-  │   ├── UserExternalLogin
-  │   ├── OrganizationMember
-  │   └── EventRegistration
-  │
-  ├── Organization
-  │   ├── Actor
-  │   ├── OrganizationMember (many-to-many with User)
-  │   └── OrganizationReview
-  │
-  ├── Event
-  │   ├── Actor (owner)
-  │   ├── StorageObject (featured image)
-  │   ├── EventSession
-  │   │   ├── Location
-  │   │   ├── EventSessionAgendaItem
-  │   │   ├── EventSessionSpeaker
-  │   │   ├── EventSessionLanguage
-  │   │   └── EventRegistration
-  │   ├── EventCategories (many-to-many with Category)
-  │   └── EventTags (many-to-many with Tag)
-  │
-  └── StorageObject
-```
-
-### Lookup Tables (Read-only)
-
-All lookup tables use `int` PK and have seed data:
-- `ApprovalStatus`
-- `EventType`, `EventStatus`, `VisibilityType`, `EventFormat`
-- `Madhab`, `AudienceAge`, `AudienceGender`
-- `Language`, `RegistrationMode`
-- `OrganizationRole`, `OrganizationPosition`
-- `ActorType`, `DidCustodyType`, `FileType`
-- `UserRole`
-
-### Link Tables (Explicit Entities)
-
-All link tables are explicit entities (not implicit many-to-many):
-- `EventCategories` (Event ↔ Category)
-- `EventTags` (Event ↔ Tag)
-- `TagTypeTags` (Tag ↔ TagType)
-- `EventSessionLanguages` (EventSession ↔ Language)
-- `EventSessionSpeakers` (EventSession ↔ Actor)
-- `OrganizationMember` (Organization ↔ User)
-- `TenantUser` (Tenant ↔ User)
-
-**IMPORTANT**: Navigation properties on link tables are **readonly**. Writes must go through the link table repository directly.
-
-## Key Design Decisions
-
-### Why Link Tables as Explicit Entities?
-
-1. **Tenant Isolation**: Link tables carry `TenantId` to prevent cross-tenant data mixing
-2. **Additional Metadata**: Link tables can store relationship-specific data
-3. **Explicit Writes**: Clear separation between read (navigation) and write (repository)
-4. **Audit Trail**: Easy to track when relationships are created/modified
-
-### Why ATProto-First Identity?
-
-1. **Decentralization**: Users own their identity (DID), not tied to platform
-2. **Portability**: Move between platforms without losing identity
-3. **Interoperability**: Works with Blusky, other ATProto services
-4. **ActivityPub Gateway**: Planned bridge to the Fediverse (not implemented in `Explore.API` today)
-
-### Why Hybrid Auth?
-
-1. **Keycloak OAuth**: Traditional web auth, familiar to users
-2. **ATProto OAuth**: Bring your own DID, true decentralization
-3. **Custodial DIDs**: Keycloak users get custodial DIDs automatically
-4. **Async DID Creation**: DID creation is async, handles pending/failed states
+*   **Purpose**: Represents supported human languages for `EventSession`s.
 
 ## Domain Invariants
 
-### Event Validation
+Domain invariants are rules that must always be true for an entity to be in a valid state. These are typically enforced within the domain entities themselves or orchestrated by the application layer.
 
-- `EventSession.EndTime` must be after `EventSession.StartTime`
-- `EventSessionAgendaItem.EndTime` must be within parent session time
-- Event must have at least one session to be published
-- `TotalViews` starts at 0, incremented by views
-
-### Organization Validation
-
-- Organization email must be unique within tenant
-- Organization cannot be its own parent (for hierarchical orgs)
-- Owner role required for organization creation
-
-### Category Validation
-
-- Category cannot be its own parent
-- Circular references not allowed in category hierarchy
-- Root categories (ParentId = null) can exist
-
-### Actor Validation
-
-- DID must be unique globally
-- Handle must be unique within PDS
-- Custodial DIDs require ActorKeyStore entries
-
-## Value Objects
-
-### Geographic Coordinates
-
-```csharp
-// PostGIS point type
-public class Coordinates
-{
-    public double Latitude { get; set; }  // -90 to 90
-    public double Longitude { get; set; } // -180 to 180
-}
-```
-
-### ATProto URI
-
-```csharp
-// AT URI format: at://did:plc:xxx/collection/rkey
-public class AtProtoUri
-{
-    public string Did { get; set; }
-    public string Collection { get; set; }
-    public string RecordKey { get; set; }
-}
-```
+*   **Event-related**: Session end time must be after start time; an event must have at least one session to be published.
+*   **Organization-related**: Organization email must be unique within a tenant; an owner role is required for organization creation.
+*   **Category-related**: Categories cannot form circular references in their hierarchy.
+*   **Actor-related**: DID must be globally unique; custodial DIDs require associated keys.
 
 ## Domain Events
 
-### Event Lifecycle Events
+Domain events are discrete occurrences within the domain that other parts of the system might need to react to.
 
-- `EventCreated`
-- `EventPublished`
-- `EventCancelled`
-- `EventStarted`
-- `EventEnded`
-
-### Organization Events
-
-- `OrganizationCreated`
-- `OrganizationVerified`
-- `OrganizationMemberAdded`
-- `OrganizationMemberRemoved`
-
-### Registration Events
-
-- `UserRegisteredForSession`
-- `UserCancelledRegistration`
-- `RegistrationApproved`
-- `RegistrationRejected`
+*   **Event Lifecycle Events**: `EventCreated`, `EventPublished`, `EventCancelled`, `EventStarted`, `EventEnded`.
+*   **Organization Events**: `OrganizationCreated`, `OrganizationVerified`, `OrganizationMemberAdded`.
+*   **Registration Events**: `UserRegisteredForSession`, `RegistrationApproved`.

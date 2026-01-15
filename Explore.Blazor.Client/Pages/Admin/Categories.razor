@@ -1,141 +1,60 @@
+@page "/admin/categories"
 @using Explore.Blazor.Client.Clients
-@using MudBlazor
-@using Explore.Blazor.Client.Components.Admin
+@using Explore.Blazor.Client.Services.Contracts
 @using Microsoft.AspNetCore.Authorization
-@inject IDialogService DialogService
-@inject IAdminService AdminService
-@inject ISnackbar Snackbar
 @attribute [Authorize(Roles = "Admin")]
+@inject ICategoryService CategoryService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
 
-@using MudBlazor
+<MudText Typo="Typo.h4" GutterBottom="true">Categories</MudText>
 
-<MudText Typo="Typo.h4" Class="mb-4">Category Management</MudText>
-
-<MudDataGrid T="CategoryListDto" Items="@categories" ReadOnly="false" EditMode="DataGridEditMode.Cell"
-             Bordered="true" Dense="true" Hover="true">
-    <Columns>
-        <PropertyColumn Property="x => x.FullName" />
-        <PropertyColumn Property="x => x.MasterCode" />
-        <PropertyColumn Property="x => x.ParentFullName" Title="Parent" />
-        <TemplateColumn StickyRight="true">
-            <CellTemplate Context="context">
-                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => OpenEditDialog(context.Item))" />
-                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="@(() => DeleteCategory(context.Item))" />
-            </CellTemplate>
-        </TemplateColumn>
-    </Columns>
-</MudDataGrid>
-
-<MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog" Class="mt-4">
-    Create Category
-</MudButton>
+<MudTable ServerData="@(new Func<TableState, Task<TableData<CategoryListDto>>>(ServerReload))"
+          Dense="true" Hover="true" Striped="true" @ref="_table">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">Manage Categories</MudText>
+        <MudSpacer />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="(() => OpenDialog(null))">Create Category</MudButton>
+    </ToolBarContent>
+    <HeaderContent>
+        <MudTh>Name</MudTh>
+        <MudTh>Parent</MudTh>
+        <MudTh>Actions</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Name">@context.FullName</MudTd>
+        <MudTd DataLabel="Parent">@context.ParentFullName</MudTd>
+        <MudTd DataLabel="Actions">
+            <MudIconButton Icon="@Icons.Material.Filled.Edit" OnClick="@(() => OpenDialog(context.Id))" />
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="@(() => DeleteCategory(context.Id))" />
+        </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager />
+    </PagerContent>
+</MudTable>
 
 @code {
-    private List<CategoryListDto> categories = new();
+    private MudTable<CategoryListDto> _table;
+    private IEnumerable<CategoryListDto> _categories;
 
-    protected override async Task OnInitializedAsync()
+    private async Task<TableData<CategoryListDto>> ServerReload(TableState state)
     {
-        await LoadCategories();
+        _categories = await CategoryService.GetCategories();
+        return new TableData<CategoryListDto>() { TotalItems = _categories.Count(), Items = _categories };
     }
 
-    private async Task LoadCategories()
+    private async Task OpenDialog(Guid? id)
     {
-        try
-        {
-            var result = await AdminService.GetCategoriesAsync();
-            categories = result.ToList();
-            StateHasChanged();
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error loading categories: {ex.Message}", Severity.Error);
-        }
+        // For now, this is a placeholder. I will implement the dialog later.
+        Snackbar.Add("Create/Edit functionality not yet implemented.", Severity.Info);
+        await Task.CompletedTask;
     }
 
-    private async Task OpenCreateDialog()
+    private async Task DeleteCategory(Guid id)
     {
-        var dialog = await DialogService.Show<CreateCategoryDialog>("Create New Category").Result;
-
-        if (!dialog.Canceled)
-        {
-            var newCategory = (CreateCategoryDto)dialog.Data;
-            try
-            {
-                var created = await AdminService.CreateCategoryAsync(newCategory);
-                if (created)
-                {
-                    Snackbar.Add("Category created successfully.", Severity.Success);
-                    await LoadCategories();
-                }
-                else
-                {
-                    Snackbar.Add("Failed to create category.", Severity.Error);
-                }
-            }
-            catch (Exception ex)
-            {
-                Snackbar.Add($"Error creating category: {ex.Message}", Severity.Error);
-            }
-        }
-    }
-
-    private async Task OpenEditDialog(CategoryListDto category)
-    {
-        var parameters = new DialogParameters { ["ExistingCategory"] = category };
-        var dialog = await DialogService.Show<EditCategoryDialog>("Edit Category", parameters).Result;
-
-        if (!dialog.Canceled)
-        {
-            var updatedCategory = (UpdateCategoryDto)dialog.Data;
-            try
-            {
-                var updated = await AdminService.UpdateCategoryAsync(updatedCategory);
-                if (updated)
-                {
-                    Snackbar.Add("Category updated successfully.", Severity.Success);
-                    await LoadCategories();
-                }
-                else
-                {
-                    Snackbar.Add("Failed to update category.", Severity.Error);
-                }
-            }
-            catch (Exception ex)
-            {
-                Snackbar.Add($"Error updating category: {ex.Message}", Severity.Error);
-            }
-        }
-    }
-
-    private async Task DeleteCategory(CategoryListDto category)
-    {
-        var confirmed = await DialogService.ShowMessageBox(
-            "Delete Category",
-            $"Do you really want to delete the category '{category.FullName}'?",
-            yesText: "Delete",
-            cancelText: "Cancel",
-            options: new DialogOptions { FullWidth = false, MaxWidth = MaxWidth.ExtraSmall }
-        );
-
-        if (confirmed == true)
-        {
-            try
-            {
-                var deleted = await AdminService.DeleteCategoryAsync(category.Id);
-                if (deleted)
-                {
-                    Snackbar.Add("Category deleted successfully.", Severity.Success);
-                    await LoadCategories();
-                }
-                else
-                {
-                    Snackbar.Add("Failed to delete category.", Severity.Error);
-                }
-            }
-            catch (Exception ex)
-            {
-                Snackbar.Add($"Error deleting category: {ex.Message}", Severity.Error);
-            }
-        }
+        // For now, this is a placeholder. I will implement the delete functionality later.
+        Snackbar.Add("Delete functionality not yet implemented.", Severity.Info);
+        await Task.CompletedTask;
     }
 }

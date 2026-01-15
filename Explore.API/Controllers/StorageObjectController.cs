@@ -27,12 +27,16 @@ namespace Explore.API.Controllers
         // GET: api/v1/storageobject
         [HttpGet]
         [EndpointSummary("Get all Storage Objects")]
-        [EndpointDescription("Retrieve a list of all storage objects (files, images, documents, etc.)")]
+        [EndpointDescription("Retrieve a paginated list of all storage objects (files, images, documents, etc.). Default page size is 20, max is 100.")]
         [AllowAnonymous]
-        [ProducesResponseType(typeof(List<StorageObjectListDto>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<List<StorageObjectListDto>>> GetAll()
+        [ProducesResponseType(typeof(PaginatedResult<StorageObjectListDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PaginatedResult<StorageObjectListDto>>> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
         {
-            var storageObjects = await _mediator.Send(new GetStorageObjectListRequest());
+            var storageObjects = await _mediator.Send(new GetStorageObjectListRequest
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            });
             return Ok(storageObjects);
         }
 

@@ -32,8 +32,8 @@ namespace Explore.Application.DTOs.TagTypeTags.Validators
                 .MustAsync(TagTypeTagNotExist)
                 .WithMessage("This Tag is already assigned to this Tag Type");
 
-            RuleFor(x => x.TenantId)
-                .NotEmpty().WithMessage("Tenant is required");
+            // TenantId is set by the handler from context, not by the client
+            // No validation needed here
         }
 
         private async Task<bool> TagExists(Guid tagId, CancellationToken cancellationToken)

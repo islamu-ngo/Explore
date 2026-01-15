@@ -1,8 +1,10 @@
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Web
 @using MudBlazor
+@using Microsoft.Extensions.Logging
 @inject IJSRuntime JSRuntime
 @inject NavigationManager Nav
+@inject ILogger<UsersHome> Logger
 
 <PageTitle>ISLAMU Explore - Dashboard</PageTitle>
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="user-dashboard">
@@ -57,7 +59,7 @@
         <MudText Typo="Typo.h4" Style="margin-bottom: 24px; font-weight: 600;">
             Upcoming Events Near You
         </MudText>
-        
+
         <MudGrid>
             @foreach (var eventItem in RecentEvents)
             {
@@ -128,7 +130,7 @@
         catch (Exception ex)
         {
             // If there's an error checking auth, redirect to welcome
-            Console.WriteLine($"Error checking authentication: {ex.Message}");
+            Logger.LogWarning(ex, "Error checking authentication");
             Nav.NavigateTo("/welcome", true);
             return;
         }
@@ -150,4 +152,3 @@
         public string Description { get; set; } = "";
     }
 }
-

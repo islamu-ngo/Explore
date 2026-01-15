@@ -9,5 +9,6 @@ namespace Explore.Application.Contracts.Persistence
     {
         Task<Tag> GetTagWithDetails(Guid id);
         Task<List<Tag>> GetTagsWithDetails();
+        Task<(List<Tag> Items, int TotalCount)> GetTagsWithDetailsPaged(int pageNumber, int pageSize);
     }
 }

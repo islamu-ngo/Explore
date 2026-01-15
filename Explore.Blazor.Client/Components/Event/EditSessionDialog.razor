@@ -1,5 +1,6 @@
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Validators
+@using Explore.Blazor.Client.Helpers
 @using FluentValidation
 @using MudBlazor
 
@@ -66,8 +67,13 @@
         await form.Validate();
         if (form.IsValid)
         {
-            sessionDto.StartTime = new DateTimeOffset(startDate.Value.Date).Add(startTime.Value);
-            sessionDto.EndTime = new DateTimeOffset(endDate.Value.Date).Add(endTime.Value);
+            // Use DateTimeHelper for consistent UTC conversion
+            var startDateTime = startDate.Value.Date + startTime.Value;
+            var endDateTime = endDate.Value.Date + endTime.Value;
+
+            sessionDto.StartTime = DateTimeHelper.ConvertLocalToUtc(startDateTime);
+            sessionDto.EndTime = DateTimeHelper.ConvertLocalToUtc(endDateTime);
+
             MudDialog.Close(DialogResult.Ok(sessionDto));
         }
     }

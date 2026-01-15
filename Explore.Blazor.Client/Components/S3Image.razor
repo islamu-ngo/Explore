@@ -1,5 +1,7 @@
 @using Explore.Blazor.Client.Services
+@using Microsoft.Extensions.Logging
 @inject IImageStorageService ImageStorageService
+@inject ILogger<S3Image> Logger
 <div class="s3-image-container" style="@ContainerStyle">
     @if (isLoading && !hasError)
     {
@@ -18,8 +20,8 @@
     }
     else if (!string.IsNullOrEmpty(imageUrl))
     {
-        <img src="@imageUrl" 
-             alt="@Alt" 
+        <img src="@imageUrl"
+             alt="@Alt"
              class="s3-image @(isLoading ? "loading" : "")"
              @onload="OnImageLoaded"
              @onerror="OnImageError" />
@@ -27,8 +29,8 @@
     else
     {
         <div class="s3-image-placeholder">
-            <MudIcon Icon="@(PlaceholderIcon ?? Icons.Material.Filled.Image)" 
-                    Color="Color.Secondary" 
+            <MudIcon Icon="@(PlaceholderIcon ?? Icons.Material.Filled.Image)"
+                    Color="Color.Secondary"
                     Size="Size.Large" />
         </div>
     }
@@ -39,42 +41,42 @@
     /// The S3 image key to load
     /// </summary>
     [Parameter] public string? ImageKey { get; set; }
-    
+
     /// <summary>
     /// Direct image URL (if already fetched)
     /// </summary>
     [Parameter] public string? ImageUrl { get; set; }
-    
+
     /// <summary>
     /// Alt text for the image
     /// </summary>
     [Parameter] public string Alt { get; set; } = "Image";
-    
+
     /// <summary>
     /// CSS object-fit property
     /// </summary>
     [Parameter] public string ObjectFit { get; set; } = "cover";
-    
+
     /// <summary>
     /// Border radius for the image
     /// </summary>
     [Parameter] public string? BorderRadius { get; set; }
-    
+
     /// <summary>
     /// Additional styles for the container
     /// </summary>
     [Parameter] public string? ContainerStyle { get; set; }
-    
+
     /// <summary>
     /// Icon to show when no image is available
     /// </summary>
     [Parameter] public string? PlaceholderIcon { get; set; }
-    
+
     /// <summary>
     /// Text to show on error
     /// </summary>
     [Parameter] public string? ErrorText { get; set; }
-    
+
     /// <summary>
     /// Whether to use a fallback image on error
     /// </summary>
@@ -109,7 +111,7 @@
             if (!string.IsNullOrEmpty(ImageKey))
             {
                 var url = await ImageStorageService.GetImageUrlAsync(ImageKey);
-                
+
                 if (!string.IsNullOrEmpty(url))
                 {
                     imageUrl = url;
@@ -118,7 +120,7 @@
                 {
                     hasError = true;
                 }
-                
+
                 isLoading = false;
             }
             else
@@ -129,7 +131,7 @@
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading S3 image: {ex.Message}");
+            Logger.LogError(ex, "Error loading S3 image for key {ImageKey}", ImageKey);
             hasError = true;
             isLoading = false;
         }
@@ -151,9 +153,8 @@
         {
             hasError = true;
         }
-        
+
         isLoading = false;
         StateHasChanged();
     }
 }
-

@@ -1,2 +1,4 @@
-::deep .component-counter{ color: inherit; }
-
+/* ===== Block: counter ===== */
+::deep .counter {
+    padding-block: 24px 32px;
+}

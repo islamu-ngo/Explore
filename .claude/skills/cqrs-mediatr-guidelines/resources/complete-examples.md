@@ -18,9 +18,9 @@ User Request → Controller → MediatR → Handler → Repository → Entity �
 
 ---
 
-## 1. Create Event - Full Command Flow
+<h2>1. Create Event - Full Command Flow</h2>
 
-### Domain Entity
+<h3>Domain Entity</h3>
 
 **File**: `Explore.Domain/Event.cs`
 
@@ -99,7 +99,7 @@ public class Event
 }
 ```
 
-### Create DTO
+<h3>Create DTO</h3>
 
 **File**: `Explore.Application/DTOs/Event/CreateEventDto.cs`
 
@@ -157,7 +157,7 @@ public class CreateEventDto
 }
 ```
 
-### Validator (CRITICAL: Manual Instantiation)
+<h3>Validator (CRITICAL: Manual Instantiation)</h3>
 
 **File**: `Explore.Application/DTOs/Event/Validators/CreateEventDtoValidator.cs`
 
@@ -256,7 +256,7 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
 }
 ```
 
-### Command Request
+<h3>Command Request</h3>
 
 **File**: `Explore.Application/Features/Events/Requests/Commands/CreateEventCommand.cs`
 
@@ -273,7 +273,7 @@ public class CreateEventCommand : IRequest<BaseCommandResponse<Guid>>
 }
 ```
 
-### Command Handler (CRITICAL: Shows All Patterns)
+<h3>Command Handler (CRITICAL: Shows All Patterns)</h3>
 
 **File**: `Explore.Application/Features/Events/Handlers/Commands/CreateEventCommandHandler.cs`
 
@@ -364,7 +364,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
 }
 ```
 
-### Controller (Complete with Authorization)
+<h3>Controller (Complete with Authorization)</h3>
 
 **File**: `Explore.API/Controllers/EventController.cs`
 
@@ -483,9 +483,9 @@ public class EventController : ControllerBase
 
 ---
 
-## 2. Get Event List - Full Query Flow
+<h2>2. Get Event List - Full Query Flow</h2>
 
-### List DTO (Optimized for Display)
+<h3>List DTO (Optimized for Display)</h3>
 
 **File**: `Explore.Application/DTOs/Event/EventListDto.cs`
 
@@ -557,10 +557,14 @@ public class EventListDto
 
     // Tenant
     public Guid TenantId { get; set; }
+
+    public Guid? AtprotoRecordId { get; set; }
+    public string? AtprotoRecordUri { get; set; }
+    public string? AtprotoRecordCid { get; set; }
 }
 ```
 
-### Query Request
+<h3>Query Request</h3>
 
 **File**: `Explore.Application/Features/Events/Requests/Queries/GetEventListRequest.cs`
 
@@ -577,7 +581,7 @@ public class GetEventListRequest : IRequest<List<EventListDto>>
 }
 ```
 
-### Query Handler (Shows Repository → DTO Mapping)
+<h3>Query Handler (Shows Repository → DTO Mapping)</h3>
 
 **File**: `Explore.Application/Features/Events/Handlers/Queries/GetEventListRequestHandler.cs`
 
@@ -615,7 +619,7 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, L
 }
 ```
 
-### Repository Interface
+<h3>Repository Interface</h3>
 
 **File**: `Explore.Application/Contracts/Persistence/IEventRepository.cs`
 
@@ -635,7 +639,7 @@ public interface IEventRepository : IGenericRepository<Event, Guid>
 }
 ```
 
-### Repository Implementation (Complex Include Chains)
+<h3>Repository Implementation (Complex Include Chains)</h3>
 
 **File**: `Explore.Persistence/Repositories/EventRepository.cs`
 
@@ -684,11 +688,13 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
             .Include(e => e.AudienceAge)
             .Include(e => e.Actor)
                 .ThenInclude(a => a.ActorType)
+            .Include(e => e.Actor)
+                .ThenInclude(a => a.ProfilePicture)
+            .Include(e => e.FeaturedImage)
             .Include(e => e.EventStatus)
             .Include(e => e.VisibilityType)
             .Include(e => e.EventFormat)
             .Include(e => e.Madhab)
-            .Include(e => e.FeaturedImage)
             .Include(e => e.AtprotoRecord)
             .FirstOrDefaultAsync(e => e.Id == id);
     }
@@ -704,12 +710,11 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
             .Include(e => e.AudienceAge)
             .Include(e => e.Actor)
                 .ThenInclude(a => a.ActorType)
+            .Include(e => e.FeaturedImage)
             .Include(e => e.EventStatus)
             .Include(e => e.VisibilityType)
             .Include(e => e.EventFormat)
             .Include(e => e.Madhab)
-            .Include(e => e.FeaturedImage)
-            .Include(e => e.AtprotoRecord)
             .AsQueryable();
 
         if (isGuid)
@@ -726,7 +731,7 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
 }
 ```
 
-### AutoMapper Profile
+<h3>AutoMapper Profile</h3>
 
 **File**: `Explore.Application/Profiles/MappingProfile.cs` (excerpt)
 
@@ -758,9 +763,9 @@ public class MappingProfile : Profile
 
 ---
 
-## Key Patterns Demonstrated
+<h2>Key Patterns Demonstrated</h2>
 
-### 1. **Manual Validator Instantiation** ⚠️
+<h3>1. **Manual Validator Instantiation** ⚠️</h3>
 ```csharp
 // CRITICAL: Validators are instantiated with dependencies in handlers
 var validator = new CreateEventDtoValidator(
@@ -771,7 +776,7 @@ var validator = new CreateEventDtoValidator(
     _storageObjectRepository);
 ```
 
-### 2. **Repository Returns Entities, Not DTOs** ⚠️
+<h3>2. **Repository Returns Entities, Not DTOs** ⚠️</h3>
 ```csharp
 // Repository returns entities
 var events = await _eventRepository.GetEventsWithDetails();
@@ -780,7 +785,7 @@ var events = await _eventRepository.GetEventsWithDetails();
 return _mapper.Map<List<EventListDto>>(events);
 ```
 
-### 3. **BaseCommandResponse<Guid> for Commands** ⚠️
+<h3>3. **BaseCommandResponse<Guid> for Commands** ⚠️</h3>
 ```csharp
 public class CreateEventCommand : IRequest<BaseCommandResponse<Guid>>
 {
@@ -788,7 +793,7 @@ public class CreateEventCommand : IRequest<BaseCommandResponse<Guid>>
 }
 ```
 
-### 4. **Authorization Pattern** ⚠️
+<h3>4. **Authorization Pattern** ⚠️</h3>
 ```csharp
 [HttpGet]
 [AllowAnonymous]  // Public read access
@@ -797,14 +802,14 @@ public class CreateEventCommand : IRequest<BaseCommandResponse<Guid>>
 [Authorize]  // Authenticated write access
 ```
 
-### 5. **UserId Extraction with Fallback** ⚠️
+<h3>5. **UserId Extraction with Fallback** ⚠️</h3>
 ```csharp
 var userId = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
     ?? _httpContextAccessor.HttpContext?.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
     ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sid")?.Value;
 ```
 
-### 6. **Complex EF Core Include Chains** ⚠️
+<h3>6. **Complex EF Core Include Chains** ⚠️</h3>
 ```csharp
 return await _dbContext.Events
     .Include(e => e.Actor)

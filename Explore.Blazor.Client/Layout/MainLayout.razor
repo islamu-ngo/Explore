@@ -7,19 +7,21 @@
 
 @using Explore.Blazor.Client.Services
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.Logging
 @inject IUserService UserService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IJSRuntime JSRuntime
+@inject ILogger<MainLayout> Logger
 
-<MudLayout class="component-mainlayout">
+<MudLayout class="main-layout">
 
     <!-- Sticky header container wrapping AnnouncementBar and AppBar -->
-    <div class="sticky-header-container">
+    <div class="main-layout__header">
         <!-- Announcement Bar -->
         <AnnouncementBar />
 
         <!-- Top App Bar (Fixed attribute removed since we use sticky container) -->
-        <MudAppBar Elevation="0" Dense="true" Color="Color.Surface" Class="py-2">
+        <MudAppBar Elevation="0" Dense="true" Fixed="false" Color="Color.Surface" Class="py-2">
             <NavMenu OnToggleTheme="DarkModeToggle" />
         </MudAppBar>
     </div>
@@ -29,7 +31,7 @@
     </MudMainContent>
 
     <!-- Full-width footer outside main content -->
-    <Footer/>
+    <Footer />
 
 </MudLayout>
 @code {
@@ -73,7 +75,7 @@
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[MainLayout] Error syncing user: {ex.Message}");
+                Logger.LogWarning(ex, "Error syncing user");
             }
 
             // Read theme from localStorage (client-side source of truth)
@@ -92,7 +94,7 @@
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[MainLayout] Error reading theme from localStorage: {ex.Message}");
+                Logger.LogWarning(ex, "Error reading theme from localStorage");
             }
 
             _isInitialized = true;
@@ -111,7 +113,7 @@
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[MainLayout] Error saving theme: {ex.Message}");
+            Logger.LogWarning(ex, "Error saving theme");
         }
     }
 

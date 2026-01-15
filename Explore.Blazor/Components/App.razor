@@ -1,7 +1,9 @@
 @using Explore.Blazor.Client.Layout
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.AspNetCore.Authentication
+@using Explore.Blazor.Services
 @inject IHttpContextAccessor HttpContextAccessor
+@inject ICircuitAccessTokenService TokenService
 
 <!DOCTYPE html>
 <html lang="en">
@@ -31,9 +33,36 @@
     @{
         var theme = HttpContextAccessor.HttpContext?.Request.Cookies["theme"];
         var isDark = theme == "dark";
-        
+
         // Capture access token during initial HTTP request for use in SignalR circuit
-        var accessToken = HttpContextAccessor.HttpContext?.GetTokenAsync("access_token").GetAwaiter().GetResult();
+        string? accessToken = null;
+        try
+        {
+            var httpContext = HttpContextAccessor.HttpContext;
+            if (httpContext?.User?.Identity?.IsAuthenticated == true)
+            {
+                accessToken = httpContext.GetTokenAsync("access_token").GetAwaiter().GetResult();
+
+                // Also store in TokenService immediately so it's available for API calls
+                if (!string.IsNullOrEmpty(accessToken))
+                {
+                    TokenService.SetToken(accessToken);
+                    Console.WriteLine($"[App.razor] Stored access token (length: {accessToken.Length})");
+                }
+                else
+                {
+                    Console.WriteLine("[App.razor] User authenticated but no access token available");
+                }
+            }
+            else
+            {
+                Console.WriteLine("[App.razor] User not authenticated");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[App.razor] Token retrieval failed: {ex.Message}");
+        }
     }
 
 	<CascadingAuthenticationState>
@@ -45,6 +74,7 @@
 	</CascadingAuthenticationState>
 	<script src="_framework/blazor.web.js"></script>
 	<script src=@Assets["_content/MudBlazor/MudBlazor.min.js"]></script>
+    <script src="js/layout.js"></script>
 	<script src="js/bff.js"></script>
 </body>
 

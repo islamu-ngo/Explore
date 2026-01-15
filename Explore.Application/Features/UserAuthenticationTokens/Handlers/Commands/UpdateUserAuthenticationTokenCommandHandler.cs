@@ -13,24 +13,28 @@ namespace Explore.Application.Features.UserAuthenticationTokens.Handlers.Command
     public class UpdateUserAuthenticationTokenCommandHandler : IRequestHandler<UpdateUserAuthenticationTokenCommand, BaseCommandResponse<Guid>>
     {
         private readonly IUserAuthenticationTokenRepository _userAuthenticationTokenRepository;
+        private readonly IUserRepository _userRepository;
+        private readonly ITenantRepository _tenantRepository;
         private readonly IMapper _mapper;
-        private readonly IValidator<UpdateUserAuthenticationTokenDto> _validator;
 
         public UpdateUserAuthenticationTokenCommandHandler(
             IUserAuthenticationTokenRepository userAuthenticationTokenRepository,
-            IMapper mapper,
-            IValidator<UpdateUserAuthenticationTokenDto> validator)
+            IUserRepository userRepository,
+            ITenantRepository tenantRepository,
+            IMapper mapper)
         {
             _userAuthenticationTokenRepository = userAuthenticationTokenRepository;
+            _userRepository = userRepository;
+            _tenantRepository = tenantRepository;
             _mapper = mapper;
-            _validator = validator;
         }
 
         public async Task<BaseCommandResponse<Guid>> Handle(UpdateUserAuthenticationTokenCommand request, CancellationToken cancellationToken)
         {
             var response = new BaseCommandResponse<Guid>();
 
-            var validationResult = await _validator.ValidateAsync(request.UserAuthenticationTokenDto);
+            var validator = new UpdateUserAuthenticationTokenDtoValidator(_userRepository, _tenantRepository);
+            var validationResult = await validator.ValidateAsync(request.UserAuthenticationTokenDto);
 
             if (!validationResult.IsValid)
             {

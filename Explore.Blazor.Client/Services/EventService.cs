@@ -15,9 +15,12 @@ public interface IEventService
     Task<ICollection<EventFormatListDto>> GetEventFormatsAsync();
     Task<ICollection<EventSessionListDto>> GetAllSessionsAsync();
     Task<ICollection<EventSessionListDto>> GetSessionsByEventAsync(Guid eventId);
+    Task<ICollection<EventSessionLanguageListDto>> GetAllSessionLanguagesAsync();
     Task<BaseCommandResponseOfGuid?> CreateSessionAsync(CreateEventSessionDto session);
     Task<BaseCommandResponseOfGuid?> UpdateSessionAsync(UpdateEventSessionDto session);
     Task<bool> DeleteSessionAsync(Guid sessionId);
+    Task<BaseCommandResponseOfint?> AssignLanguageToSessionAsync(CreateEventSessionLanguageDto sessionLanguage);
+    Task<bool> DeleteSessionLanguageAsync(int sessionLanguageId);
     Task<BaseCommandResponseOfGuid?> RegisterForEventSessionAsync(CreateEventRegistrationDto registration);
     Task<ICollection<EventRegistrationListDto>> GetRegistrationsForSessionAsync(Guid sessionId);
     Task<ICollection<EventRegistrationListDto>> GetRegistrationsByUserAsync(Guid userId);

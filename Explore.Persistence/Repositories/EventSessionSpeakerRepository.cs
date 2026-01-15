@@ -28,5 +28,23 @@ namespace Explore.Persistence.Repositories
                 .Where(s => s.ActorId == actorId)
                 .ToListAsync();
         }
+
+        public async Task<(List<EventSessionSpeaker> Items, int TotalCount)> GetSpeakersWithDetailsPaged(int pageNumber, int pageSize)
+        {
+            var query = _dbContext.EventSessionSpeakers
+                .AsNoTracking()
+                .Include(s => s.Actor)
+                .Include(s => s.EventSession)
+                    .ThenInclude(es => es.Event)
+                .OrderByDescending(s => s.Id);
+
+            var totalCount = await query.CountAsync();
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (items, totalCount);
+        }
     }
 }

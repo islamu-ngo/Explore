@@ -1,2 +1,4 @@
-::deep .component-editsessiondialog{ color: inherit; }
-
+/* ===== Block: edit-session-dialog ===== */
+::deep .edit-session-dialog {
+    color: inherit;
+}

@@ -1,2 +1,4 @@
-::deep .component-createtagdialog{ color: inherit; }
-
+/* ===== Block: create-tag-dialog ===== */
+::deep .create-tag-dialog {
+    color: inherit;
+}

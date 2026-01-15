@@ -29,8 +29,8 @@ namespace Explore.Application.DTOs.Category.Validators
                     return exists;
                 }).WithMessage("{PropertyName} does not exist.");
 
-            RuleFor(p => p.TenantId)
-                .NotEmpty().WithMessage("{PropertyName} is required.");
+            // TenantId is set by the handler from context, not by the client
+            // No validation needed here
         }
     }
 }

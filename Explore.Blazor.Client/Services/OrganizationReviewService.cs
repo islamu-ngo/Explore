@@ -1,8 +1,12 @@
 using System.Net.Http.Json;
 using Explore.Blazor.Client.Clients;
+using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;
 
+/// <summary>
+/// Service for managing organization reviews.
+/// </summary>
 public interface IOrganizationReviewService
 {
     Task<ICollection<OrganizationReviewDto>> GetReviewsByOrganizationId(Guid organizationId);
@@ -10,13 +14,18 @@ public interface IOrganizationReviewService
     Task<BaseCommandResponseOfGuid?> CreateReview(CreateOrganizationReviewDto review);
 }
 
+/// <summary>
+/// Implementation of organization review service.
+/// </summary>
 public class OrganizationReviewService : IOrganizationReviewService
 {
     private readonly IEventApiClient _apiClient;
+    private readonly ILogger<OrganizationReviewService> _logger;
 
-    public OrganizationReviewService(IEventApiClient apiClient)
+    public OrganizationReviewService(IEventApiClient apiClient, ILogger<OrganizationReviewService> logger)
     {
-        _apiClient = apiClient;
+        _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public async Task<ICollection<OrganizationReviewDto>> GetReviewsByOrganizationId(Guid organizationId)
@@ -28,12 +37,12 @@ public class OrganizationReviewService : IOrganizationReviewService
         }
         catch (ApiException ex)
         {
-            Console.WriteLine($"API error fetching reviews by organization: {ex.StatusCode} - {ex.Message}");
+            _logger.LogError(ex, "API error fetching reviews by organization: {StatusCode}", ex.StatusCode);
             return new List<OrganizationReviewDto>();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error fetching reviews by organization: {ex.Message}");
+            _logger.LogError(ex, "Error fetching reviews by organization");
             return new List<OrganizationReviewDto>();
         }
     }
@@ -47,12 +56,12 @@ public class OrganizationReviewService : IOrganizationReviewService
         }
         catch (ApiException ex)
         {
-            Console.WriteLine($"API error fetching reviews by user: {ex.StatusCode} - {ex.Message}");
+            _logger.LogError(ex, "API error fetching reviews by user: {StatusCode}", ex.StatusCode);
             return new List<OrganizationReviewDto>();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error fetching reviews by user: {ex.Message}");
+            _logger.LogError(ex, "Error fetching reviews by user");
             return new List<OrganizationReviewDto>();
         }
     }
@@ -65,12 +74,12 @@ public class OrganizationReviewService : IOrganizationReviewService
         }
         catch (ApiException ex)
         {
-            Console.WriteLine($"API error creating review: {ex.StatusCode} - {ex.Message}");
+            _logger.LogError(ex, "API error creating review: {StatusCode}", ex.StatusCode);
             throw;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error creating review: {ex.Message}");
+            _logger.LogError(ex, "Error creating review");
             throw;
         }
     }

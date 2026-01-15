@@ -13,24 +13,31 @@ namespace Explore.Application.Features.TenantUsers.Handlers.Commands
     public class UpdateTenantUserCommandHandler : IRequestHandler<UpdateTenantUserCommand, BaseCommandResponse<Guid>>
     {
         private readonly ITenantUserRepository _tenantUserRepository;
+        private readonly IUserRepository _userRepository;
+        private readonly ITenantRepository _tenantRepository;
+        private readonly IUserRoleRepository _userRoleRepository;
         private readonly IMapper _mapper;
-        private readonly IValidator<UpdateTenantUserDto> _validator;
 
         public UpdateTenantUserCommandHandler(
             ITenantUserRepository tenantUserRepository,
-            IMapper mapper,
-            IValidator<UpdateTenantUserDto> validator)
+            IUserRepository userRepository,
+            ITenantRepository tenantRepository,
+            IUserRoleRepository userRoleRepository,
+            IMapper mapper)
         {
             _tenantUserRepository = tenantUserRepository;
+            _userRepository = userRepository;
+            _tenantRepository = tenantRepository;
+            _userRoleRepository = userRoleRepository;
             _mapper = mapper;
-            _validator = validator;
         }
 
         public async Task<BaseCommandResponse<Guid>> Handle(UpdateTenantUserCommand request, CancellationToken cancellationToken)
         {
             var response = new BaseCommandResponse<Guid>();
 
-            var validationResult = await _validator.ValidateAsync(request.TenantUserDto);
+            var validator = new UpdateTenantUserDtoValidator(_userRepository, _tenantRepository, _userRoleRepository);
+            var validationResult = await validator.ValidateAsync(request.TenantUserDto);
 
             if (!validationResult.IsValid)
             {

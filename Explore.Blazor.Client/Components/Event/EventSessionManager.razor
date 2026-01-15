@@ -6,19 +6,24 @@
 
 @using MudBlazor
 
-<MudPaper Class="pa-4 mt-4">
-    <MudText Typo="Typo.h5">Event Sessions</MudText>
+<MudPaper Class="event-session-manager">
+    <MudText Typo="Typo.h5" Class="event-session-manager__title">Event Sessions</MudText>
 
     <MudDataGrid T="EventSessionListDto" Items="@sessions" ReadOnly="false" EditMode="DataGridEditMode.Cell"
-                 Bordered="true" Dense="true" Hover="true">
+                 Bordered="true" Dense="true" Hover="true" Class="event-session-manager__grid">
         <Columns>
             <PropertyColumn Property="x => x.Title" />
             <PropertyColumn Property="x => x.StartTime" Format="s" />
             <PropertyColumn Property="x => x.EndTime" Format="s" />
             <PropertyColumn Property="x => x.LocationFullName" />
             <PropertyColumn Property="x => x.MaxAudienceAttendees" Title="Max Audience" />
+            <TemplateColumn>
+                <CellTemplate>
+                    <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => OpenSpeakerDialog(context.Item))">Manage Speakers</MudButton>
+                </CellTemplate>
+            </TemplateColumn>
             <TemplateColumn StickyRight="true">
-                <CellTemplate Context="context">
+                <CellTemplate>
                     <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => OpenEditDialog(context.Item))" />
                     <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="@(() => DeleteSession(context.Item))" />
                 </CellTemplate>
@@ -26,7 +31,7 @@
         </Columns>
     </MudDataGrid>
 
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog" Class="mt-4">
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog" Class="event-session-manager__create-btn">
         Create Session
     </MudButton>
 </MudPaper>
@@ -140,6 +145,17 @@
             {
                 Snackbar.Add($"Error deleting session: {ex.Message}", Severity.Error);
             }
+        }
+    }
+
+    private async Task OpenSpeakerDialog(EventSessionListDto session)
+    {
+        var parameters = new DialogParameters { ["SessionId"] = session.Id };
+        var dialog = await DialogService.Show<ManageSpeakersDialog>("Manage Speakers", parameters).Result;
+
+        if (!dialog.Canceled)
+        {
+            await LoadSessions();
         }
     }
 }

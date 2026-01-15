@@ -89,12 +89,8 @@ public class CreateActorDtoValidator : AbstractValidator<CreateActorDto>
                 return await _actorTypeRepository.Exists(actorTypeId);
             }).WithMessage("Invalid actor type");
 
-        RuleFor(x => x.TenantId)
-            .NotEmpty().WithMessage("Tenant is required")
-            .MustAsync(async (tenantId, cancellation) =>
-            {
-                return await _tenantRepository.Exists(tenantId);
-            }).WithMessage("Invalid tenant");
+        // TenantId is set by the handler from context, not by the client
+        // No validation needed here
 
         RuleFor(x => x.DidCustodyTypeId)
             .MustAsync(async (didCustodyTypeId, cancellation) =>

@@ -1,9 +1,10 @@
 using System;
 using System.ComponentModel.DataAnnotations.Schema;
+using Explore.Domain.Interfaces;
 
 namespace Explore.Domain
 {
-    public class StorageObject
+    public class StorageObject : ITenantEntity
     {
         public Guid Id { get; set; }
 

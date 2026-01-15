@@ -1,2 +1,4 @@
-::deep .component-registrationmanagerdialog{ color: inherit; }
-
+/* ===== Block: registration-manager-dialog ===== */
+::deep .registration-manager-dialog {
+    color: inherit;
+}

@@ -31,8 +31,8 @@ namespace Explore.Application.DTOs.EventTags.Validators
                 .MustAsync(TagExists)
                 .WithMessage("{PropertyName} not found");
 
-            RuleFor(x => x.TenantId)
-                .NotEmpty().WithMessage("{PropertyName} is required");
+            // TenantId is set by the handler from context, not by the client
+            // No validation needed here
 
             RuleFor(x => x)
                 .MustAsync(EventTagNotExist)

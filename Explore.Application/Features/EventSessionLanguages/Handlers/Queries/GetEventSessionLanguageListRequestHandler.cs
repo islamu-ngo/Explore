@@ -5,11 +5,12 @@ using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventSessionLanguage;
 using Explore.Application.Features.EventSessionLanguages.Requests.Queries;
+using Explore.Application.Responses;
 using MediatR;
 
 namespace Explore.Application.Features.EventSessionLanguages.Handlers.Queries
 {
-    public class GetEventSessionLanguageListRequestHandler : IRequestHandler<GetEventSessionLanguageListRequest, List<EventSessionLanguageListDto>>
+    public class GetEventSessionLanguageListRequestHandler : IRequestHandler<GetEventSessionLanguageListRequest, PaginatedResult<EventSessionLanguageListDto>>
     {
         private readonly IEventSessionLanguageRepository _repository;
         private readonly IMapper _mapper;
@@ -20,10 +21,12 @@ namespace Explore.Application.Features.EventSessionLanguages.Handlers.Queries
             _mapper = mapper;
         }
 
-        public async Task<List<EventSessionLanguageListDto>> Handle(GetEventSessionLanguageListRequest request, CancellationToken cancellationToken)
+        public async Task<PaginatedResult<EventSessionLanguageListDto>> Handle(GetEventSessionLanguageListRequest request, CancellationToken cancellationToken)
         {
-            var eventSessionLanguages = await _repository.GetAll();
-            return _mapper.Map<List<EventSessionLanguageListDto>>(eventSessionLanguages);
+            var (pageNumber, pageSize) = PaginatedResult<EventSessionLanguageListDto>.NormalizeParameters(request.PageNumber, request.PageSize);
+            var (eventSessionLanguages, totalCount) = await _repository.GetLanguagesWithDetailsPaged(pageNumber, pageSize);
+            var dtos = _mapper.Map<List<EventSessionLanguageListDto>>(eventSessionLanguages);
+            return PaginatedResult<EventSessionLanguageListDto>.Create(dtos, totalCount, pageNumber, pageSize);
         }
     }
 }

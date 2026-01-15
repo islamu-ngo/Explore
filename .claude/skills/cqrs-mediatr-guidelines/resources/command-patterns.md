@@ -309,7 +309,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
 - ✅ Set default values (like `TotalViews = 0`) in handler
 - ✅ Return `BaseCommandResponse<Guid>` with Success/Message/Errors
 
-## BaseCommandResponse Structure
+<h2>BaseCommandResponse Structure</h2>
 
 **Real Example**:
 ```csharp

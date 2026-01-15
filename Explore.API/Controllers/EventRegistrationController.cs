@@ -28,12 +28,16 @@ namespace Explore.API.Controllers
         // GET: api/v1/eventregistration
         [HttpGet]
         [EndpointSummary("Get all Event Registrations")]
-        [EndpointDescription("Retrieve a list of all event registrations across all sessions")]
+        [EndpointDescription("Retrieve a paginated list of all event registrations across all sessions. Default page size is 20, max is 100.")]
         [AllowAnonymous]
-        [ProducesResponseType(typeof(List<EventRegistrationListDto>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<List<EventRegistrationListDto>>> GetAll()
+        [ProducesResponseType(typeof(PaginatedResult<EventRegistrationListDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PaginatedResult<EventRegistrationListDto>>> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
         {
-            var eventRegistrations = await _mediator.Send(new GetEventRegistrationListRequest());
+            var eventRegistrations = await _mediator.Send(new GetEventRegistrationListRequest
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            });
             return Ok(eventRegistrations);
         }
 

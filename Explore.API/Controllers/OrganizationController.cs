@@ -25,27 +25,26 @@ namespace Explore.API.Controllers
 
         // GET: api/<OrganizationController>
         [HttpGet]
-        [EndpointSummary("Get all Organizationss")]
-        [EndpointDescription("Get A List of all the Organizations (pagination!)")]
+        [EndpointSummary("Get all Organizations")]
+        [EndpointDescription("Get a paginated list of all Organizations. Default page size is 20, max is 100.")]
         [AllowAnonymous] // Temporarily allow anonymous access for testing TODO
-        public async Task<ActionResult<List<OrganizationListDto>>> GetAll()
+        public async Task<ActionResult<PaginatedResult<OrganizationListDto>>> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
         {
-            var organizations = await _mediator.Send(new GetOrganizationListRequest());
+            var organizations = await _mediator.Send(new GetOrganizationListRequest
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            });
             return Ok(organizations);
         }
 
-        // GET: api/<OrganizationController>/my
+        // GET: api/v1/<OrganizationController>/my
         [HttpGet("my")]
         [EndpointSummary("Get my Organizations")]
-        [EndpointDescription("Get a list of organizations created by the current user")]
+        [EndpointDescription("Get a paginated list of organizations where the current user is a member. Default page size is 20, max is 100.")]
         [Authorize]
-        public async Task<ActionResult<List<OrganizationListDto>>> GetMyOrganizations()
+        public async Task<ActionResult<PaginatedResult<OrganizationListDto>>> GetMyOrganizations([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
         {
-            //var userIdClaim = _httpContextAccessor.HttpContext?.User?.FindFirst(CustomClaimTypes.Id.ToString())?.Value;
-            //if (userIdClaim == null)
-            //{
-            //    return Unauthorized("User ID claim not found.");
-            //}
             var userId = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
                 ?? _httpContextAccessor.HttpContext?.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
                 ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sid")?.Value;
@@ -55,7 +54,12 @@ namespace Explore.API.Controllers
                 return Unauthorized("User ID not found in token");
             }
 
-            var organizations = await _mediator.Send(new GetMyOrganizationsRequest { UserId = userId });
+            var organizations = await _mediator.Send(new GetMyOrganizationsRequest
+            {
+                UserId = userId,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            });
             return Ok(organizations);
         }
 

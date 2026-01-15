@@ -4,7 +4,7 @@
 
 **CRITICAL**: Validation is **manual in handlers** (not automated pipeline behavior).
 
-## Validator Structure
+<h2>Validator Structure</h2>
 
 **Real Example from Event**:
 ```csharp
@@ -97,7 +97,7 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
 - ✅ Check foreign key existence with repository
 - ✅ Custom error messages with `.WithMessage()`
 
-## Handler Validation Pattern
+<h2>Handler Validation Pattern</h2>
 
 **Real Example from CreateEventCommandHandler**:
 ```csharp
@@ -147,15 +147,15 @@ public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, 
 4. **Return errors** in `BaseCommandResponse.Errors` list
 5. **Early return** if validation fails
 
-## Common Validation Rules
+<h2>Common Validation Rules</h2>
 
-### Required Field
+<h3>Required Field</h3>
 ```csharp
 RuleFor(x => x.Title)
     .NotEmpty().WithMessage("Title is required");
 ```
 
-### String Length
+<h3>String Length</h3>
 ```csharp
 RuleFor(x => x.Title)
     .MaximumLength(200).WithMessage("Title must not exceed 200 characters");
@@ -165,7 +165,7 @@ RuleFor(x => x.Description)
     .MaximumLength(5000);
 ```
 
-### Numeric Range
+<h3>Numeric Range</h3>
 ```csharp
 RuleFor(x => x.Price)
     .GreaterThanOrEqualTo(0).WithMessage("Price must be non-negative");
@@ -174,13 +174,13 @@ RuleFor(x => x.MaxAudienceAttendees)
     .InclusiveBetween(1, 10000).WithMessage("Max attendees must be between 1 and 10000");
 ```
 
-### Email Validation
+<h3>Email Validation</h3>
 ```csharp
 RuleFor(x => x.Email)
     .EmailAddress().WithMessage("Invalid email address");
 ```
 
-### Async Database Validation (Foreign Keys)
+<h3>Async Database Validation (Foreign Keys)</h3>
 ```csharp
 RuleFor(x => x.EventTypeId)
     .NotEmpty().WithMessage("Event type is required")
@@ -192,7 +192,7 @@ RuleFor(x => x.EventTypeId)
     .WithMessage("Event type not found");
 ```
 
-### Conditional Validation
+<h3>Conditional Validation</h3>
 ```csharp
 RuleFor(x => x.ExternalRegistrationUrl)
     .NotEmpty()
@@ -205,7 +205,7 @@ RuleFor(x => x.Price)
     .WithMessage("Price must be greater than 0 when currency is specified");
 ```
 
-### Custom Validation Logic
+<h3>Custom Validation Logic</h3>
 ```csharp
 RuleFor(x => x.Slug)
     .MustAsync(async (dto, slug, cancellation) =>
@@ -217,7 +217,7 @@ RuleFor(x => x.Slug)
     .WithMessage("Slug must be unique");
 ```
 
-### Complex Validation (Multiple Properties)
+<h3>Complex Validation (Multiple Properties)</h3>
 ```csharp
 RuleFor(x => x)
     .Must(x => x.FirstSessionDate <= x.LastSessionDate)
@@ -225,7 +225,7 @@ RuleFor(x => x)
     .When(x => x.FirstSessionDate.HasValue && x.LastSessionDate.HasValue);
 ```
 
-## Update DTO Validation
+<h2>Update DTO Validation</h2>
 
 **Different from Create**:
 ```csharp
@@ -256,7 +256,7 @@ public class UpdateEventDtoValidator : AbstractValidator<UpdateEventDto>
 - ⚠️ Some fields might be optional (partial updates)
 - ✅ Validation rules can be less strict than create
 
-## Error Response Format
+<h2>Error Response Format</h2>
 
 **Validation Failure Response**:
 ```json
@@ -282,7 +282,7 @@ public class UpdateEventDtoValidator : AbstractValidator<UpdateEventDto>
 }
 ```
 
-## Why Manual Validation?
+<h2>Why Manual Validation?</h2>
 
 | Approach | ISLAMU Event Pattern | Pipeline Behavior |
 |----------|---------------------|-------------------|
@@ -295,12 +295,12 @@ public class UpdateEventDtoValidator : AbstractValidator<UpdateEventDto>
 
 **Benefits of Manual Validation**:
 - ✅ Fine-grained control over when validation runs
-- ✅ Validators can have different dependencies per use case
+- ✅ Validators can have different repository dependencies per use case
 - ✅ No need to register validators in DI container
 - ✅ Clear and explicit validation flow
 - ✅ Easy to understand for new developers
 
-## FluentValidation NuGet Package
+<h2>FluentValidation NuGet Package</h2>
 
 ```xml
 <PackageReference Include="FluentValidation" Version="11.9.0" />

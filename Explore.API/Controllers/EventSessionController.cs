@@ -24,11 +24,15 @@ namespace Explore.API.Controllers
         // GET: api/v1/eventsession
         [HttpGet]
         [EndpointSummary("Get all Event Sessions")]
-        [EndpointDescription("Get a list of all event sessions")]
+        [EndpointDescription("Get a paginated list of all event sessions. Default page size is 20, max is 100.")]
         [AllowAnonymous]
-        public async Task<ActionResult<List<EventSessionListDto>>> GetAll()
+        public async Task<ActionResult<PaginatedResult<EventSessionListDto>>> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
         {
-            var sessions = await _mediator.Send(new GetEventSessionListRequest());
+            var sessions = await _mediator.Send(new GetEventSessionListRequest
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            });
             return Ok(sessions);
         }
 

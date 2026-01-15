@@ -1,2 +1,4 @@
-::deep .component-myreviews{ color: inherit; }
-
+/* ===== Block: my-reviews ===== */
+::deep .my-reviews {
+    padding-block: 24px 32px;
+}

@@ -1,2 +1,4 @@
-::deep .component-createlocationdialog{ color: inherit; }
-
+/* ===== Block: create-location-dialog ===== */
+::deep .create-location-dialog {
+    color: inherit;
+}

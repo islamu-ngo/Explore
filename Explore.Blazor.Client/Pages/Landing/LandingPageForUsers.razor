@@ -2,8 +2,10 @@
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Clients
 @using Microsoft.AspNetCore.Components
+@using Microsoft.Extensions.Logging
 @inject IJSRuntime JS
 @inject ILandingPageService LandingPageService
+@inject ILogger<LandingPageForUsers> Logger
 <!-- HERO - Full width -->
 <section class="hero">
     <MudContainer MaxWidth="MaxWidth.Large">
@@ -182,7 +184,7 @@
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading landing page events: {ex.Message}");
+            Logger.LogError(ex, "Error loading landing page events");
         }
         finally
         {

@@ -8,5 +8,6 @@ namespace Explore.Application.Contracts.Persistence
         Task<List<EventRegistration>> GetRegistrationsBySession(Guid eventSessionId);
         Task<List<EventRegistration>> GetRegistrationsByUser(Guid userId);
         Task<bool> IsUserRegisteredForSession(Guid userId, Guid eventSessionId);
+        Task<(List<EventRegistration> Items, int TotalCount)> GetRegistrationsWithDetailsPaged(int pageNumber, int pageSize);
     }
 }

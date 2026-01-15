@@ -1,96 +1,136 @@
+@*
+    NavMenu Component - BEM Methodology
+    Block: navbar
+    Elements: __content, __brand, __brand-icon, __brand-text, __brand-highlight,
+              __links, __link, __actions, __theme-toggle, __login-btn,
+              __user-dropdown, __user-btn, __user-avatar, __user-name, __user-arrow,
+              __dropdown-menu, __dropdown-header, __dropdown-divider, __dropdown-section-label,
+              __dropdown-item, __dropdown-overlay
+    Modifiers: __link--active, __dropdown-menu--open, __dropdown-item--danger
+*@
 @using Microsoft.AspNetCore.Components.Authorization
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthStateProvider
 
-<div class="navbar-glass">
-    <div class="nav-content">
+<div class="navbar">
+    <div class="navbar__content">
         <!-- Brand -->
-        <a href="/" class="brand-logo" aria-label="Home">
-            <MudIcon Icon="@Icons.Material.Filled.Explore" Color="Color.Primary" Size="Size.Large" />
-            <div class="brand-text">ISLAMU<span class="brand-highlight">Explore</span></div>
+        <a href="/" class="navbar__brand" aria-label="Home">
+            <MudIcon Icon="@Icons.Material.Filled.Explore" Color="Color.Primary" Size="Size.Large" Class="navbar__brand-icon" />
+            <div class="navbar__brand-text">ISLAMU<span class="navbar__brand-highlight">Explore</span></div>
         </a>
 
         <!-- Center Navigation -->
-        <div class="nav-links">
-            <NavLink href="/" class="nav-item" Match="NavLinkMatch.All">
+        <div class="navbar__links">
+            <NavLink href="/" class="navbar__link" Match="NavLinkMatch.All" ActiveClass="navbar__link--active">
                 Events
             </NavLink>
         </div>
 
         <!-- Right Actions -->
-        <div class="nav-actions">
+        <div class="navbar__actions">
             <MudIconButton Icon="@Icons.Material.Rounded.LightMode"
                            Color="Color.Inherit"
                            OnClick="@OnToggleTheme"
-                           Title="Toggle Theme" />
+                           Title="Toggle Theme"
+                           Class="navbar__theme-toggle" />
 
             <AuthorizeView>
                 <Authorized>
                     <!-- User Dropdown -->
-                    <div class="user-dropdown-container">
-                        <div class="user-profile-btn" @onclick="ToggleDropdown" @onclick:stopPropagation>
-                            <MudAvatar Color="Color.Primary" Size="Size.Small" Class="nav-user-avatar">
+                    <div class="navbar__user-dropdown">
+                        <div class="navbar__user-btn" @onclick="ToggleDropdown" @onclick:stopPropagation>
+                            <MudAvatar Color="Color.Primary" Size="Size.Small" Class="navbar__user-avatar">
                                 @GetInitials(context.User.Identity?.Name)
                             </MudAvatar>
-                            <span class="nav-user-name">@context.User.Identity?.Name</span>
-                            <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" Size="Size.Small" />
+                            <span class="navbar__user-name">@context.User.Identity?.Name</span>
+                            <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" Size="Size.Small" Class="navbar__user-arrow" />
                         </div>
 
                         @if (_dropdownOpen)
                         {
-                            <div class="user-dropdown-menu show" @onclick:stopPropagation>
-                                <div class="dropdown-header">
+                            <div class="navbar__dropdown-menu navbar__dropdown-menu--open" @onclick:stopPropagation>
+                                <div class="navbar__dropdown-header">
                                     <MudText Typo="Typo.caption" Color="Color.Secondary">Signed in as</MudText>
                                     <MudText Typo="Typo.body2" Style="font-weight: 600;">@context.User.Identity?.Name</MudText>
                                 </div>
-                                <div class="menu-divider"></div>
+                                <div class="navbar__dropdown-divider"></div>
 
-                                <a href="/user/profile" class="menu-item" @onclick="CloseDropdown">
+                                <a href="/user/profile" class="navbar__dropdown-item" @onclick="CloseDropdown">
                                     <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
                                     My Profile
                                 </a>
-                                <a href="/myevents" class="menu-item" @onclick="CloseDropdown">
+                                <a href="/myevents" class="navbar__dropdown-item" @onclick="CloseDropdown">
                                     <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Small" />
                                     My Events
                                 </a>
-                                <a href="/organization/my" class="menu-item" @onclick="CloseDropdown">
+                                <a href="/organization/my" class="navbar__dropdown-item" @onclick="CloseDropdown">
                                     <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" />
                                     My Organizations
                                 </a>
-                                <a href="/my-registrations" class="menu-item" @onclick="CloseDropdown">
+                                <a href="/my-registrations" class="navbar__dropdown-item" @onclick="CloseDropdown">
                                     <MudIcon Icon="@Icons.Material.Filled.Assignment" Size="Size.Small" />
                                     My Registrations
                                 </a>
 
                                 @if (IsAdmin(context.User))
                                 {
-                                    <div class="menu-divider"></div>
-                                    <div class="menu-section-label">Admin</div>
-                                    <a href="/admin" class="menu-item" @onclick="CloseDropdown">
+                                    <div class="navbar__dropdown-divider"></div>
+                                    <div class="navbar__dropdown-section-label">Admin</div>
+                                    <a href="/admin" class="navbar__dropdown-item" @onclick="CloseDropdown">
                                         <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Size="Size.Small" />
                                         Organizations
                                     </a>
-                                    <a href="/admin/categories" class="menu-item" @onclick="CloseDropdown">
+                                    <a href="/admin/categories" class="navbar__dropdown-item" @onclick="CloseDropdown">
                                         <MudIcon Icon="@Icons.Material.Filled.Category" Size="Size.Small" />
                                         Categories
                                     </a>
-                                    <a href="/admin/tags" class="menu-item" @onclick="CloseDropdown">
-                                        <MudIcon Icon="@Icons.Material.Filled.Tag" Size="Size.Small" />
-                                        Tags
-                                    </a>
-                                    <a href="/admin/locations" class="menu-item" @onclick="CloseDropdown">
-                                        <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" />
-                                        Locations
-                                    </a>
-                                }
+                                                                        <a href="/admin/tags" class="navbar__dropdown-item" @onclick="CloseDropdown">
+                                                                            <MudIcon Icon="@Icons.Material.Filled.Tag" Size="Size.Small" />
+                                                                            Tags
+                                                                        </a>
+                                                                                                             <a href="/admin/audience-genders" class="navbar__dropdown-item" @onclick="CloseDropdown">
+                                                                                                                <MudIcon Icon="@Icons.Material.Filled.Wc" Size="Size.Small" />
+                                                                                                                Audience Genders
+                                                                                                            </a>
+                                                                                                                                                 <a href="/admin/event-formats" class="navbar__dropdown-item" @onclick="CloseDropdown">
+                                                                                                                                                    <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Small" />
+                                                                                                                                                    Event Formats
+                                                                                                                                                </a>
+                                                                                                                                                                                     <a href="/admin/event-statuses" class="navbar__dropdown-item" @onclick="CloseDropdown">
+                                                                                                                                                                                        <MudIcon Icon="@Icons.Material.Filled.Sync" Size="Size.Small" />
+                                                                                                                                                                                        Event Statuses
+                                                                                                                                                                                    </a>
+                                                                                                                                                                                                                         <a href="/admin/event-types" class="navbar__dropdown-item" @onclick="CloseDropdown">
+                                                                                                                                                                                                                            <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Small" />
+                                                                                                                                                                                                                            Event Types
+                                                                                                                                                                                                                        </a>
+                                                                                                                                                                                                                                                             <a href="/admin/languages" class="navbar__dropdown-item" @onclick="CloseDropdown">
+                                                                                                                                                                                                                                                                <MudIcon Icon="@Icons.Material.Filled.Language" Size="Size.Small" />
+                                                                                                                                                                                                                                                                Languages
+                                                                                                                                                                                                                                                            </a>
+                                                                                                                                                                                                                                                            <a href="/admin/madhabs" class="navbar__dropdown-item" @onclick="CloseDropdown">
+                                                                                                                                                                                                                                                                <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Small" />
+                                                                                                                                                                                                                                                                Madhabs
+                                                                                                                                                                                                                                                            </a>                                                                        <a href="/admin/locations" class="navbar__dropdown-item" @onclick="CloseDropdown">
+                                                                            <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" />
+                                                                            Locations
+                                                                        </a>                                                                                                             <a href="/admin/audience-ages" class="navbar__dropdown-item" @onclick="CloseDropdown">
+                                                                                                                <MudIcon Icon="@Icons.Material.Filled.Accessibility" Size="Size.Small" />
+                                                                                                                Audience Ages
+                                                                                                            </a>
+                                                                                                            <a href="/admin/audience-genders" class="navbar__dropdown-item" @onclick="CloseDropdown">
+                                                                                                                <MudIcon Icon="@Icons.Material.Filled.Wc" Size="Size.Small" />
+                                                                                                                Audience Genders
+                                                                                                            </a>                                }
 
-                                <div class="menu-divider"></div>
+                                <div class="navbar__dropdown-divider"></div>
 
-                                <a href="/settings" class="menu-item" @onclick="CloseDropdown">
+                                <a href="/settings" class="navbar__dropdown-item" @onclick="CloseDropdown">
                                     <MudIcon Icon="@Icons.Material.Filled.Settings" Size="Size.Small" />
                                     Settings
                                 </a>
-                                <a href="/logout" class="menu-item danger" @onclick="CloseDropdown">
+                                <a href="/logout" class="navbar__dropdown-item navbar__dropdown-item--danger" @onclick="CloseDropdown">
                                     <MudIcon Icon="@Icons.Material.Filled.Logout" Size="Size.Small" />
                                     Logout
                                 </a>
@@ -102,7 +142,7 @@
                     <MudButton Variant="Variant.Filled"
                                Color="Color.Primary"
                                Href="/login"
-                               Class="login-btn"
+                               Class="navbar__login-btn"
                                StartIcon="@Icons.Material.Filled.Login">
                         Login
                     </MudButton>
@@ -115,7 +155,7 @@
 @* Overlay to close dropdown when clicking outside *@
 @if (_dropdownOpen)
 {
-    <div class="dropdown-overlay" @onclick="CloseDropdown"></div>
+    <div class="navbar__dropdown-overlay" @onclick="CloseDropdown"></div>
 }
 
 @code {
@@ -144,7 +184,7 @@
 
     private bool IsAdmin(System.Security.Claims.ClaimsPrincipal user)
     {
-        return user.IsInRole("Admin") || 
+        return user.IsInRole("Admin") ||
                user.HasClaim(c => c.Type == "role" && c.Value == "Admin") ||
                user.HasClaim(c => c.Type == "roles" && c.Value.Contains("Admin"));
     }
