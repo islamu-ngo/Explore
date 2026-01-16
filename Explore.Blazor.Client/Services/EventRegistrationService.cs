@@ -31,9 +31,9 @@ public class EventRegistrationService : IEventRegistrationService
         try
         {
             _logger.LogInformation("[REGISTRATION SERVICE] Fetching all registrations...");
-            var response = await _apiClient.EventRegistrationAllAsync();
-            _logger.LogInformation("[REGISTRATION SERVICE] Received {Count} registrations", response?.Count ?? 0);
-            return response ?? new List<EventRegistrationListDto>();
+            var response = await _apiClient.EventRegistrationGETAsync(pageNumber: 1, pageSize: 100);
+            _logger.LogInformation("[REGISTRATION SERVICE] Received {Count} registrations from {Total} total", response?.Items?.Count ?? 0, response?.TotalCount ?? 0);
+            return response?.Items ?? new List<EventRegistrationListDto>();
         }
         catch (ApiException ex)
         {
@@ -51,7 +51,7 @@ public class EventRegistrationService : IEventRegistrationService
     {
         try
         {
-            return await _apiClient.EventRegistrationGETAsync(registrationId);
+            return await _apiClient.EventRegistrationGET2Async(registrationId);
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
         {

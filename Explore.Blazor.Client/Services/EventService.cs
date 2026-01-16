@@ -50,9 +50,9 @@ public partial class EventService : IEventService
             }
 
             _logger.LogInformation("[EVENT SERVICE] Fetching my events...");
-            var response = await _apiClient.MyAsync();
-            _logger.LogInformation("[EVENT SERVICE] Received {Count} events", response?.Count ?? 0);
-            return response ?? new List<EventListDto>();
+            var response = await _apiClient.MyAsync(pageNumber: 1, pageSize: 100);
+            _logger.LogInformation("[EVENT SERVICE] Received {Count} events from {Total} total", response?.Items?.Count ?? 0, response?.TotalCount ?? 0);
+            return response?.Items ?? new List<EventListDto>();
         }
         catch (ApiException ex)
         {
@@ -77,9 +77,9 @@ public partial class EventService : IEventService
             }
 
             _logger.LogInformation("[EVENT SERVICE] Fetching all events...");
-            var response = await _apiClient.EventAllAsync();
-            _logger.LogInformation("[EVENT SERVICE] Received {Count} events", response?.Count ?? 0);
-            return response ?? new List<EventListDto>();
+            var response = await _apiClient.EventGETAsync(pageNumber: 1, pageSize: 100);
+            _logger.LogInformation("[EVENT SERVICE] Received {Count} events from {Total} total", response?.Items?.Count ?? 0, response?.TotalCount ?? 0);
+            return response?.Items ?? new List<EventListDto>();
         }
         catch (ApiException ex)
         {
@@ -103,7 +103,7 @@ public partial class EventService : IEventService
                 return null;
             }
 
-            return await _apiClient.EventGETAsync(eventId);
+            return await _apiClient.EventGET2Async(eventId);
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
         {

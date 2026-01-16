@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
 
@@ -30,12 +31,26 @@ namespace Explore.Persistence
                     throw new InvalidOperationException(
                         "Connection string 'DefaultConnection' not found in configuration.");
                 }
-                services.AddDbContext<ExploreDbContext>(options =>
+
+                // Use pooled DbContext factory for performance (EF Core recommended pattern)
+                // The scoped ExploreDbContext registration below handles TenantContext injection
+                services.AddPooledDbContextFactory<ExploreDbContext>(options =>
                 {
                     options.UseNpgsql(connectionString)
                         .UseSnakeCaseNamingConvention()
                         .EnableSensitiveDataLogging() //temporarly to resolve bug! TODO remove in prod
                         .EnableDetailedErrors();
+                });
+
+                // Register scoped DbContext that sets TenantContext from DI
+                // This follows EF Core's recommended pattern for multi-tenant pooled contexts
+                services.AddScoped(sp =>
+                {
+                    var factory = sp.GetRequiredService<IDbContextFactory<ExploreDbContext>>();
+                    var context = factory.CreateDbContext();
+                    // Set TenantContext if registered (null during migrations, populated during API requests)
+                    context.TenantContext = sp.GetService<ITenantContext>();
+                    return context;
                 });
             }
 

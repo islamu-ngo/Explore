@@ -1786,10 +1786,6 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("organization_id");
 
-                    b.Property<Guid?>("OrganizationId1")
-                        .HasColumnType("uuid")
-                        .HasColumnName("organization_id1");
-
                     b.Property<int?>("OrganizationPositionId")
                         .HasColumnType("integer")
                         .HasColumnName("organization_position_id");
@@ -1797,6 +1793,10 @@ namespace Explore.Persistence.Migrations
                     b.Property<int>("OrganizationRoleId")
                         .HasColumnType("integer")
                         .HasColumnName("organization_role_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
@@ -1808,14 +1808,14 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("OrganizationId")
                         .HasDatabaseName("ix_organization_members_organization_id");
 
-                    b.HasIndex("OrganizationId1")
-                        .HasDatabaseName("ix_organization_members_organization_id1");
-
                     b.HasIndex("OrganizationPositionId")
                         .HasDatabaseName("ix_organization_members_organization_position_id");
 
                     b.HasIndex("OrganizationRoleId")
                         .HasDatabaseName("ix_organization_members_organization_role_id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_organization_members_tenant_id");
 
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_organization_members_user_id");
@@ -1829,6 +1829,7 @@ namespace Explore.Persistence.Migrations
                             OrganizationId = new Guid("018e4e5c-7f00-7000-8000-000000000040"),
                             OrganizationPositionId = 1,
                             OrganizationRoleId = 1,
+                            TenantId = new Guid("00000000-0000-0000-0000-000000000000"),
                             UserId = new Guid("018e4e5c-7f00-7000-8000-000000000030")
                         });
                 });
@@ -3374,16 +3375,11 @@ namespace Explore.Persistence.Migrations
             modelBuilder.Entity("Explore.Domain.OrganizationMember", b =>
                 {
                     b.HasOne("Explore.Domain.Organization", "Organization")
-                        .WithMany()
+                        .WithMany("Members")
                         .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_organization_members_organizations_organization_id");
-
-                    b.HasOne("Explore.Domain.Organization", null)
-                        .WithMany("Members")
-                        .HasForeignKey("OrganizationId1")
-                        .HasConstraintName("fk_organization_members_organizations_organization_id1");
 
                     b.HasOne("Explore.Domain.OrganizationPosition", "OrganizationPosition")
                         .WithMany()
@@ -3398,6 +3394,13 @@ namespace Explore.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_organization_members_organization_roles_organization_role_id");
 
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_organization_members_tenants_tenant_id");
+
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
@@ -3410,6 +3413,8 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("OrganizationPosition");
 
                     b.Navigation("OrganizationRole");
+
+                    b.Navigation("Tenant");
 
                     b.Navigation("User");
                 });

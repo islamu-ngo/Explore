@@ -1,0 +1,52 @@
+@using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Models
+@inject IAuthStateService AuthStateService
+@inject ILogger<TenantContextProvider> Logger
+
+<CascadingValue Value="@_tenantContext" Name="TenantContext">
+    @ChildContent
+</CascadingValue>
+
+@code {
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private TenantContext _tenantContext = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Check if user is authenticated before loading tenant context
+            var isAuthenticated = await AuthStateService.IsAuthenticatedAsync();
+
+            if (isAuthenticated)
+            {
+                // Load tenant ID and user ID from auth context
+                _tenantContext.TenantId = await AuthStateService.GetCurrentTenantIdAsync();
+                _tenantContext.UserId = await AuthStateService.GetCurrentUserIdAsync();
+                _tenantContext.IsAuthenticated = true;
+
+                Logger.LogInformation("Tenant context initialized: TenantId={TenantId}, UserId={UserId}",
+                    _tenantContext.TenantId, _tenantContext.UserId);
+            }
+            else
+            {
+                // User is not authenticated - set default values
+                _tenantContext.IsAuthenticated = false;
+                Logger.LogDebug("User is not authenticated - tenant context not loaded");
+            }
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            // Expected for non-authenticated users
+            Logger.LogDebug(ex, "User is not authenticated");
+            _tenantContext.IsAuthenticated = false;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to initialize tenant context");
+            _tenantContext.IsAuthenticated = false;
+        }
+    }
+}

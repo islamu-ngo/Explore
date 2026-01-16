@@ -17,11 +17,12 @@ public class ActorService : IActorService
 
     public async Task<ICollection<ActorListDto>> GetActorsAsync()
     {
-        return await _client.ActorAllAsync();
+        var response = await _client.ActorGETAsync(pageNumber: 1, pageSize: 100);
+        return response?.Items ?? new List<ActorListDto>();
     }
 
     public async Task<ActorDto> GetActorByIdAsync(Guid id)
     {
-        return await _client.ActorGETAsync(id);
+        return await _client.ActorGET2Async(id);
     }
 }

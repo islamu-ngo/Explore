@@ -9,7 +9,7 @@
 
 <MudText Typo="Typo.h4" GutterBottom="true">Tags</MudText>
 
-<MudTable ServerData="@(new Func<TableState, Task<TableData<TagListDto>>>(ServerReload))"
+<MudTable T="TagListDto" ServerData="@ServerReload"
           Dense="true" Hover="true" Striped="true" @ref="_table">
     <ToolBarContent>
         <MudText Typo="Typo.h6">Manage Tags</MudText>
@@ -38,7 +38,7 @@
     private MudTable<TagListDto> _table;
     private IEnumerable<TagListDto> _tags;
 
-    private async Task<TableData<TagListDto>> ServerReload(TableState state)
+    private async Task<TableData<TagListDto>> ServerReload(TableState state, CancellationToken cancellationToken)
     {
         _tags = await TagService.GetTags();
         return new TableData<TagListDto>() { TotalItems = _tags.Count(), Items = _tags };

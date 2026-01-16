@@ -6,10 +6,10 @@
   },
   "servers": [
     {
-      "url": "https://localhost:52147"
+      "url": "https://localhost:54799"
     },
     {
-      "url": "http://localhost:52148"
+      "url": "http://localhost:54800"
     }
   ],
   "paths": {
@@ -30,32 +30,45 @@
         "tags": [
           "Actor"
         ],
+        "summary": "Get all Actors",
+        "description": "Retrieve a paginated list of all actors. Default page size is 20, max is 100.",
+        "parameters": [
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ActorListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfActorListDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ActorListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfActorListDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ActorListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfActorListDto"
                 }
               }
             }
@@ -1319,33 +1332,44 @@
           "Category"
         ],
         "summary": "Get all Categories",
-        "description": "Get a list of all event categories",
+        "description": "Retrieve a paginated list of all event categories. Default page size is 20, max is 100.",
+        "parameters": [
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/CategoryListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfCategoryListDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/CategoryListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfCategoryListDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/CategoryListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfCategoryListDto"
                 }
               }
             }
@@ -2111,33 +2135,44 @@
           "Event"
         ],
         "summary": "Get all Events (Conference, Webinar, Workshop ...)",
-        "description": "Get A List of all the Events (pagination!)",
+        "description": "Get a paginated list of all Events. Default page size is 20, max is 100.",
+        "parameters": [
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EventListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfEventListDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EventListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfEventListDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EventListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfEventListDto"
                 }
               }
             }
@@ -2200,33 +2235,44 @@
           "Event"
         ],
         "summary": "Get My Events",
-        "description": "Get a list of events created by the current user\u0027s organizations",
+        "description": "Get a paginated list of events created by the current user\u0027s organizations. Default page size is 20, max is 100.",
+        "parameters": [
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EventListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfEventListDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EventListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfEventListDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EventListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfEventListDto"
                 }
               }
             }
@@ -2467,33 +2513,44 @@
           "EventRegistration"
         ],
         "summary": "Get all Event Registrations",
-        "description": "Retrieve a list of all event registrations across all sessions",
+        "description": "Retrieve a paginated list of all event registrations across all sessions. Default page size is 20, max is 100.",
+        "parameters": [
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EventRegistrationListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfEventRegistrationListDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EventRegistrationListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfEventRegistrationListDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EventRegistrationListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfEventRegistrationListDto"
                 }
               }
             }
@@ -2943,33 +3000,44 @@
           "EventSessionAgendaItem"
         ],
         "summary": "Get all Agenda Items",
-        "description": "Get a list of all event session agenda items",
+        "description": "Retrieve a paginated list of all event session agenda items. Default page size is 20, max is 100.",
+        "parameters": [
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EventSessionAgendaItemListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfEventSessionAgendaItemListDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EventSessionAgendaItemListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfEventSessionAgendaItemListDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EventSessionAgendaItemListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfEventSessionAgendaItemListDto"
                 }
               }
             }
@@ -3208,33 +3276,44 @@
           "EventSession"
         ],
         "summary": "Get all Event Sessions",
-        "description": "Get a list of all event sessions",
+        "description": "Get a paginated list of all event sessions. Default page size is 20, max is 100.",
+        "parameters": [
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EventSessionListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfEventSessionListDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EventSessionListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfEventSessionListDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EventSessionListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfEventSessionListDto"
                 }
               }
             }
@@ -3473,33 +3552,44 @@
           "EventSessionLanguage"
         ],
         "summary": "Get all Session Languages",
-        "description": "Get a list of all event session language assignments",
+        "description": "Retrieve a paginated list of all event session language assignments. Default page size is 20, max is 100.",
+        "parameters": [
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EventSessionLanguageListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfEventSessionLanguageListDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EventSessionLanguageListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfEventSessionLanguageListDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EventSessionLanguageListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfEventSessionLanguageListDto"
                 }
               }
             }
@@ -3738,33 +3828,44 @@
           "EventSessionSpeaker"
         ],
         "summary": "Get all Session Speakers",
-        "description": "Get a list of all event session speaker assignments",
+        "description": "Retrieve a paginated list of all event session speaker assignments. Default page size is 20, max is 100.",
+        "parameters": [
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EventSessionSpeakerListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfEventSessionSpeakerListDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EventSessionSpeakerListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfEventSessionSpeakerListDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EventSessionSpeakerListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfEventSessionSpeakerListDto"
                 }
               }
             }
@@ -5189,33 +5290,44 @@
           "Location"
         ],
         "summary": "Get all Locations",
-        "description": "Get a list of all locations",
+        "description": "Retrieve a paginated list of all locations. Default page size is 20, max is 100.",
+        "parameters": [
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/LocationListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfLocationListDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/LocationListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfLocationListDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/LocationListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfLocationListDto"
                 }
               }
             }
@@ -5604,34 +5716,45 @@
         "tags": [
           "Organization"
         ],
-        "summary": "Get all Organizationss",
-        "description": "Get A List of all the Organizations (pagination!)",
+        "summary": "Get all Organizations",
+        "description": "Get a paginated list of all Organizations. Default page size is 20, max is 100.",
+        "parameters": [
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/OrganizationListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfOrganizationListDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/OrganizationListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfOrganizationListDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/OrganizationListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfOrganizationListDto"
                 }
               }
             }
@@ -5694,33 +5817,44 @@
           "Organization"
         ],
         "summary": "Get my Organizations",
-        "description": "Get a list of organizations where the current user is a member",
+        "description": "Get a paginated list of organizations where the current user is a member. Default page size is 20, max is 100.",
+        "parameters": [
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/OrganizationListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfOrganizationListDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/OrganizationListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfOrganizationListDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/OrganizationListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfOrganizationListDto"
                 }
               }
             }
@@ -6656,33 +6790,44 @@
           "StorageObject"
         ],
         "summary": "Get all Storage Objects",
-        "description": "Retrieve a list of all storage objects (files, images, documents, etc.)",
+        "description": "Retrieve a paginated list of all storage objects (files, images, documents, etc.). Default page size is 20, max is 100.",
+        "parameters": [
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/StorageObjectListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfStorageObjectListDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/StorageObjectListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfStorageObjectListDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/StorageObjectListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfStorageObjectListDto"
                 }
               }
             }
@@ -7349,33 +7494,44 @@
           "Tag"
         ],
         "summary": "Get all Tags",
-        "description": "Get a list of all tags for events",
+        "description": "Retrieve a paginated list of all tags for events. Default page size is 20, max is 100.",
+        "parameters": [
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/TagListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfTagListDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/TagListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfTagListDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/TagListDto"
-                  }
+                  "$ref": "#/components/schemas/PaginatedResultOfTagListDto"
                 }
               }
             }
@@ -12722,6 +12878,402 @@
           "description": {
             "type": "string",
             "nullable": true
+          }
+        }
+      },
+      "PaginatedResultOfActorListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActorListDto"
+            }
+          },
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasPreviousPage": {
+            "type": "boolean"
+          },
+          "hasNextPage": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PaginatedResultOfCategoryListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CategoryListDto"
+            }
+          },
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasPreviousPage": {
+            "type": "boolean"
+          },
+          "hasNextPage": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PaginatedResultOfEventListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventListDto"
+            }
+          },
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasPreviousPage": {
+            "type": "boolean"
+          },
+          "hasNextPage": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PaginatedResultOfEventRegistrationListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventRegistrationListDto"
+            }
+          },
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasPreviousPage": {
+            "type": "boolean"
+          },
+          "hasNextPage": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PaginatedResultOfEventSessionAgendaItemListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventSessionAgendaItemListDto"
+            }
+          },
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasPreviousPage": {
+            "type": "boolean"
+          },
+          "hasNextPage": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PaginatedResultOfEventSessionLanguageListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventSessionLanguageListDto"
+            }
+          },
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasPreviousPage": {
+            "type": "boolean"
+          },
+          "hasNextPage": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PaginatedResultOfEventSessionListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventSessionListDto"
+            }
+          },
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasPreviousPage": {
+            "type": "boolean"
+          },
+          "hasNextPage": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PaginatedResultOfEventSessionSpeakerListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventSessionSpeakerListDto"
+            }
+          },
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasPreviousPage": {
+            "type": "boolean"
+          },
+          "hasNextPage": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PaginatedResultOfLocationListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LocationListDto"
+            }
+          },
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasPreviousPage": {
+            "type": "boolean"
+          },
+          "hasNextPage": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PaginatedResultOfOrganizationListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrganizationListDto"
+            }
+          },
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasPreviousPage": {
+            "type": "boolean"
+          },
+          "hasNextPage": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PaginatedResultOfStorageObjectListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StorageObjectListDto"
+            }
+          },
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasPreviousPage": {
+            "type": "boolean"
+          },
+          "hasNextPage": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PaginatedResultOfTagListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TagListDto"
+            }
+          },
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasPreviousPage": {
+            "type": "boolean"
+          },
+          "hasNextPage": {
+            "type": "boolean"
           }
         }
       },

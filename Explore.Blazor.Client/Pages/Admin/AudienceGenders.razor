@@ -9,7 +9,7 @@
 
 <MudText Typo="Typo.h4" GutterBottom="true">Audience Genders</MudText>
 
-<MudTable ServerData="@(new Func<TableState, Task<TableData<AudienceGenderListDto>>>(ServerReload))"
+<MudTable Items="@_audienceGenders"
           Dense="true" Hover="true" Striped="true" @ref="_table">
     <ToolBarContent>
         <MudText Typo="Typo.h6">Manage Audience Genders</MudText>
@@ -36,12 +36,11 @@
 
 @code {
     private MudTable<AudienceGenderListDto> _table;
-    private IEnumerable<AudienceGenderListDto> _audienceGenders;
+    private IEnumerable<AudienceGenderListDto> _audienceGenders = new List<AudienceGenderListDto>();
 
-    private async Task<TableData<AudienceGenderListDto>> ServerReload(TableState state)
+    protected override async Task OnInitializedAsync()
     {
         _audienceGenders = await AudienceGenderService.GetAudienceGendersAsync();
-        return new TableData<AudienceGenderListDto>() { TotalItems = _audienceGenders.Count(), Items = _audienceGenders };
     }
 
     private async Task OpenDialog(int? id)

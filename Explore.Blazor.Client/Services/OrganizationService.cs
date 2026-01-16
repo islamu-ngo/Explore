@@ -101,9 +101,9 @@ public class OrganizationService : IOrganizationService
         try
         {
             _logger.LogInformation("Fetching my organizations via Organization/my");
-            var response = await _apiClient.My2Async();
-            _logger.LogInformation("Received {Count} organizations", response?.Count ?? 0);
-            return response ?? new List<OrganizationListDto>();
+            var response = await _apiClient.My2Async(pageNumber: 1, pageSize: 100);
+            _logger.LogInformation("Received {Count} organizations from {Total} total", response?.Items?.Count ?? 0, response?.TotalCount ?? 0);
+            return response?.Items ?? new List<OrganizationListDto>();
         }
         catch (ApiException ex)
         {
@@ -143,9 +143,9 @@ public class OrganizationService : IOrganizationService
             // Fallback to My2Async if the new endpoint fails
             try
             {
-                var fallbackResponse = await _apiClient.My2Async();
-                _logger.LogInformation("Fallback received {Count} organizations", fallbackResponse?.Count ?? 0);
-                return fallbackResponse ?? new List<OrganizationListDto>();
+                var fallbackResponse = await _apiClient.My2Async(pageNumber: 1, pageSize: 100);
+                _logger.LogInformation("Fallback received {Count} organizations from {Total} total", fallbackResponse?.Items?.Count ?? 0, fallbackResponse?.TotalCount ?? 0);
+                return fallbackResponse?.Items ?? new List<OrganizationListDto>();
             }
             catch (Exception fallbackEx)
             {
@@ -166,7 +166,7 @@ public class OrganizationService : IOrganizationService
         try
         {
             _logger.LogInformation("Fetching organization: {OrganizationId}", id);
-            return await _apiClient.OrganizationGETAsync(id);
+            return await _apiClient.OrganizationGET2Async(id);
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
         {

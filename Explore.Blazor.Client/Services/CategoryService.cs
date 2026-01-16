@@ -6,6 +6,7 @@ namespace Explore.Blazor.Client.Services;
 public interface ICategoryService
 {
     Task<ICollection<CategoryListDto>> GetAllCategoriesAsync();
+    Task<ICollection<CategoryListDto>> GetCategories(); // Alias for admin pages
     Task<CategoryDto?> GetCategoryByIdAsync(Guid categoryId);
     Task<BaseCommandResponseOfGuid?> CreateCategoryAsync(CreateCategoryDto dto);
     Task<BaseCommandResponseOfGuid?> UpdateCategoryAsync(Guid id, UpdateCategoryDto dto);
@@ -32,9 +33,9 @@ public class CategoryService : ICategoryService
         try
         {
             _logger.LogInformation("[CATEGORY SERVICE] Fetching all categories...");
-            var response = await _apiClient.CategoryAllAsync();
-            _logger.LogInformation("[CATEGORY SERVICE] Received {Count} categories", response?.Count ?? 0);
-            return response ?? new List<CategoryListDto>();
+            var response = await _apiClient.CategoryGETAsync(pageNumber: 1, pageSize: 100);
+            _logger.LogInformation("[CATEGORY SERVICE] Received {Count} categories from {Total} total", response?.Items?.Count ?? 0, response?.TotalCount ?? 0);
+            return response?.Items ?? new List<CategoryListDto>();
         }
         catch (ApiException ex)
         {
@@ -48,11 +49,16 @@ public class CategoryService : ICategoryService
         }
     }
 
+    /// <summary>
+    /// Alias for GetAllCategoriesAsync() - used by admin pages.
+    /// </summary>
+    public Task<ICollection<CategoryListDto>> GetCategories() => GetAllCategoriesAsync();
+
     public async Task<CategoryDto?> GetCategoryByIdAsync(Guid categoryId)
     {
         try
         {
-            return await _apiClient.CategoryGETAsync(categoryId);
+            return await _apiClient.CategoryGET2Async(categoryId);
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
         {

@@ -9,7 +9,7 @@
 
 <MudText Typo="Typo.h4" GutterBottom="true">Event Formats</MudText>
 
-<MudTable ServerData="@(new Func<TableState, Task<TableData<EventFormatListDto>>>(ServerReload))"
+<MudTable Items="@_eventFormats"
           Dense="true" Hover="true" Striped="true" @ref="_table">
     <ToolBarContent>
         <MudText Typo="Typo.h6">Manage Event Formats</MudText>
@@ -36,12 +36,11 @@
 
 @code {
     private MudTable<EventFormatListDto> _table;
-    private IEnumerable<EventFormatListDto> _eventFormats;
+    private IEnumerable<EventFormatListDto> _eventFormats = new List<EventFormatListDto>();
 
-    private async Task<TableData<EventFormatListDto>> ServerReload(TableState state)
+    protected override async Task OnInitializedAsync()
     {
         _eventFormats = await EventFormatService.GetEventFormatsAsync();
-        return new TableData<EventFormatListDto>() { TotalItems = _eventFormats.Count(), Items = _eventFormats };
     }
 
     private async Task OpenDialog(int? id)

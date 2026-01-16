@@ -9,7 +9,7 @@
 
 <MudText Typo="Typo.h4" GutterBottom="true">Categories</MudText>
 
-<MudTable ServerData="@(new Func<TableState, Task<TableData<CategoryListDto>>>(ServerReload))"
+<MudTable T="CategoryListDto" ServerData="@ServerReload"
           Dense="true" Hover="true" Striped="true" @ref="_table">
     <ToolBarContent>
         <MudText Typo="Typo.h6">Manage Categories</MudText>
@@ -38,7 +38,7 @@
     private MudTable<CategoryListDto> _table;
     private IEnumerable<CategoryListDto> _categories;
 
-    private async Task<TableData<CategoryListDto>> ServerReload(TableState state)
+    private async Task<TableData<CategoryListDto>> ServerReload(TableState state, CancellationToken cancellationToken)
     {
         _categories = await CategoryService.GetCategories();
         return new TableData<CategoryListDto>() { TotalItems = _categories.Count(), Items = _categories };

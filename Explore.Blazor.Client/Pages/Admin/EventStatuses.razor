@@ -9,7 +9,7 @@
 
 <MudText Typo="Typo.h4" GutterBottom="true">Event Statuses</MudText>
 
-<MudTable ServerData="@(new Func<TableState, Task<TableData<EventStatusListDto>>>(ServerReload))"
+<MudTable Items="@_eventStatuses"
           Dense="true" Hover="true" Striped="true" @ref="_table">
     <ToolBarContent>
         <MudText Typo="Typo.h6">Manage Event Statuses</MudText>
@@ -36,12 +36,11 @@
 
 @code {
     private MudTable<EventStatusListDto> _table;
-    private IEnumerable<EventStatusListDto> _eventStatuses;
+    private IEnumerable<EventStatusListDto> _eventStatuses = new List<EventStatusListDto>();
 
-    private async Task<TableData<EventStatusListDto>> ServerReload(TableState state)
+    protected override async Task OnInitializedAsync()
     {
         _eventStatuses = await EventStatusService.GetEventStatusesAsync();
-        return new TableData<EventStatusListDto>() { TotalItems = _eventStatuses.Count(), Items = _eventStatuses };
     }
 
     private async Task OpenDialog(int? id)

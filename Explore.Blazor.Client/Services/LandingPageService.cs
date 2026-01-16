@@ -54,8 +54,8 @@ public class LandingPageService : ILandingPageService
         try
         {
             _logger.LogDebug("Fetching featured events with count {Count}", count);
-            var response = await _apiClient.EventAllAsync();
-            var events = response?.ToList() ?? new List<EventListDto>();
+            var response = await _apiClient.EventGETAsync(pageNumber: 1, pageSize: 100);
+            var events = response?.Items?.ToList() ?? new List<EventListDto>();
 
             // Filter and sort for landing page display
             var featuredEvents = events
@@ -101,8 +101,8 @@ public class LandingPageService : ILandingPageService
         try
         {
             _logger.LogDebug("Fetching upcoming events count");
-            var response = await _apiClient.EventAllAsync();
-            var count = response?.Count ?? 0;
+            var response = await _apiClient.EventGETAsync(pageNumber: 1, pageSize: 100);
+            var count = response?.TotalCount ?? 0;
             _logger.LogDebug("Retrieved {Count} upcoming events", count);
             return count;
         }

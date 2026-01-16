@@ -37,11 +37,11 @@
 </MudDialog>
 
 @code {
-    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
     [Parameter] public Guid SessionId { get; set; }
 
     private List<EventSessionSpeakerListDto> speakers = new();
-    private ActorListDto selectedActor;
+    private ActorListDto? selectedActor;
     private List<ActorListDto> allActors = new();
 
     protected override async Task OnInitializedAsync()
@@ -56,7 +56,7 @@
         speakers = (await EventSessionSpeakerService.GetSpeakersBySessionAsync(SessionId)).ToList();
     }
 
-    private async Task<IEnumerable<ActorListDto>> SearchActors(string value)
+    private async Task<IEnumerable<ActorListDto>> SearchActors(string value, CancellationToken token)
     {
         if (string.IsNullOrEmpty(value))
         {

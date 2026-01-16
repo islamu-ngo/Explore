@@ -233,6 +233,33 @@ public class AccessTokenForwardingHandler : DelegatingHandler
                 {
                     source = "HttpContext";
                     _logger.LogInformation("[AccessTokenForwardingHandler] Got token from HttpContext (length: {Len})", token.Length);
+
+                    // Debug: Parse and log token details
+                    try
+                    {
+                        var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+                        if (handler.CanReadToken(token))
+                        {
+                            var jwt = handler.ReadJwtToken(token);
+                            var aud = jwt.Audiences?.ToList() ?? new List<string>();
+                            var azp = jwt.Claims.FirstOrDefault(c => c.Type == "azp")?.Value;
+                            var iss = jwt.Issuer;
+                            var exp = jwt.ValidTo;
+                            var sub = jwt.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
+
+                            _logger.LogInformation("[AccessTokenForwardingHandler] Token details - Issuer: {Issuer}, Audiences: [{Audiences}], Azp: {Azp}, Sub: {Sub}, Expires: {Exp}",
+                                iss, string.Join(", ", aud), azp ?? "(null)", sub ?? "(null)", exp);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("[AccessTokenForwardingHandler] Token is NOT a valid JWT! First 50 chars: {Preview}",
+                                token.Length > 50 ? token.Substring(0, 50) + "..." : token);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning("[AccessTokenForwardingHandler] Could not parse token: {Error}", ex.Message);
+                    }
                 }
                 else
                 {

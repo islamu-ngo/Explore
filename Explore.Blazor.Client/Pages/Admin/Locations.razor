@@ -9,7 +9,7 @@
 
 <MudText Typo="Typo.h4" GutterBottom="true">Locations</MudText>
 
-<MudTable ServerData="@(new Func<TableState, Task<TableData<LocationListDto>>>(ServerReload))"
+<MudTable T="LocationListDto" ServerData="@ServerReload"
           Dense="true" Hover="true" Striped="true" @ref="_table">
     <ToolBarContent>
         <MudText Typo="Typo.h6">Manage Locations</MudText>
@@ -42,7 +42,7 @@
     private MudTable<LocationListDto> _table;
     private IEnumerable<LocationListDto> _locations;
 
-    private async Task<TableData<LocationListDto>> ServerReload(TableState state)
+    private async Task<TableData<LocationListDto>> ServerReload(TableState state, CancellationToken cancellationToken)
     {
         _locations = await LocationService.GetLocations();
         return new TableData<LocationListDto>() { TotalItems = _locations.Count(), Items = _locations };

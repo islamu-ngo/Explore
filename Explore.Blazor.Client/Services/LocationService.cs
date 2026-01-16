@@ -6,6 +6,7 @@ namespace Explore.Blazor.Client.Services;
 public interface ILocationService
 {
     Task<ICollection<LocationListDto>> GetAllLocationsAsync();
+    Task<ICollection<LocationListDto>> GetLocations(); // Alias for admin pages
     Task<LocationDto?> GetLocationByIdAsync(Guid locationId);
     Task<BaseCommandResponseOfGuid?> CreateLocationAsync(CreateLocationDto dto);
     Task<BaseCommandResponseOfGuid?> UpdateLocationAsync(Guid id, UpdateLocationDto dto);
@@ -30,9 +31,9 @@ public class LocationService : ILocationService
         try
         {
             _logger.LogInformation("[LOCATION SERVICE] Fetching all locations...");
-            var response = await _apiClient.LocationAllAsync();
-            _logger.LogInformation("[LOCATION SERVICE] Received {Count} locations", response?.Count ?? 0);
-            return response ?? new List<LocationListDto>();
+            var response = await _apiClient.LocationGETAsync(pageNumber: 1, pageSize: 100);
+            _logger.LogInformation("[LOCATION SERVICE] Received {Count} locations from {Total} total", response?.Items?.Count ?? 0, response?.TotalCount ?? 0);
+            return response?.Items ?? new List<LocationListDto>();
         }
         catch (ApiException ex)
         {
@@ -46,11 +47,16 @@ public class LocationService : ILocationService
         }
     }
 
+    /// <summary>
+    /// Alias for GetAllLocationsAsync() - used by admin pages.
+    /// </summary>
+    public Task<ICollection<LocationListDto>> GetLocations() => GetAllLocationsAsync();
+
     public async Task<LocationDto?> GetLocationByIdAsync(Guid locationId)
     {
         try
         {
-            return await _apiClient.LocationGETAsync(locationId);
+            return await _apiClient.LocationGET2Async(locationId);
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
         {

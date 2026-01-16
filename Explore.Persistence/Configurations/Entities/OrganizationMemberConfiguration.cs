@@ -16,7 +16,7 @@ namespace Explore.Persistence.Configurations.Entities
             builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
 
             builder.HasOne(m => m.Organization)
-                .WithMany()
+                .WithMany(o => o.Members)
                 .HasForeignKey(m => m.OrganizationId)
                 .OnDelete(DeleteBehavior.Cascade);
 

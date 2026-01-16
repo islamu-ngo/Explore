@@ -52,9 +52,9 @@ public partial class EventService
         try
         {
             _logger.LogInformation("[EVENT SERVICE] Fetching all sessions...");
-            var response = await _apiClient.EventSessionAllAsync();
-            _logger.LogInformation("[EVENT SERVICE] Received {Count} sessions", response?.Count ?? 0);
-            return response ?? new List<EventSessionListDto>();
+            var response = await _apiClient.EventSessionGETAsync(pageNumber: 1, pageSize: 100);
+            _logger.LogInformation("[EVENT SERVICE] Received {Count} sessions from {Total} total", response?.Items?.Count ?? 0, response?.TotalCount ?? 0);
+            return response?.Items ?? new List<EventSessionListDto>();
         }
         catch (ApiException ex)
         {
@@ -94,9 +94,9 @@ public partial class EventService
         try
         {
             _logger.LogInformation("[EVENT SERVICE] Fetching all session languages...");
-            var response = await _apiClient.EventSessionLanguageAllAsync();
-            _logger.LogInformation("[EVENT SERVICE] Received {Count} session languages", response?.Count ?? 0);
-            return response ?? new List<EventSessionLanguageListDto>();
+            var response = await _apiClient.EventSessionLanguageGETAsync(pageNumber: 1, pageSize: 100);
+            _logger.LogInformation("[EVENT SERVICE] Received {Count} session languages from {Total} total", response?.Items?.Count ?? 0, response?.TotalCount ?? 0);
+            return response?.Items ?? new List<EventSessionLanguageListDto>();
         }
         catch (ApiException ex)
         {

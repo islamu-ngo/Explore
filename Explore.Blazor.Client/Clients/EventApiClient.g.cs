@@ -36,14 +36,26 @@ namespace Explore.Blazor.Client.Clients
         /// <exception cref="ApiException">A server side error occurred.</exception>
         System.Threading.Tasks.Task MigrateAsync(System.Threading.CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Get all Actors
+        /// </summary>
+        /// <remarks>
+        /// Retrieve a paginated list of all actors. Default page size is 20, max is 100.
+        /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<System.Collections.Generic.ICollection<ActorListDto>> ActorAllAsync();
+        System.Threading.Tasks.Task<PaginatedResultOfActorListDto> ActorGETAsync(int? pageNumber, int? pageSize);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get all Actors
+        /// </summary>
+        /// <remarks>
+        /// Retrieve a paginated list of all actors. Default page size is 20, max is 100.
+        /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<System.Collections.Generic.ICollection<ActorListDto>> ActorAllAsync(System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<PaginatedResultOfActorListDto> ActorGETAsync(int? pageNumber, int? pageSize, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -56,12 +68,12 @@ namespace Explore.Blazor.Client.Clients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ActorDto> ActorGETAsync(System.Guid id);
+        System.Threading.Tasks.Task<ActorDto> ActorGET2Async(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ActorDto> ActorGETAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<ActorDto> ActorGET2Async(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -436,22 +448,22 @@ namespace Explore.Blazor.Client.Clients
         /// Get all Categories
         /// </summary>
         /// <remarks>
-        /// Get a list of all event categories
+        /// Retrieve a paginated list of all event categories. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<System.Collections.Generic.ICollection<CategoryListDto>> CategoryAllAsync();
+        System.Threading.Tasks.Task<PaginatedResultOfCategoryListDto> CategoryGETAsync(int? pageNumber, int? pageSize);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
         /// Get all Categories
         /// </summary>
         /// <remarks>
-        /// Get a list of all event categories
+        /// Retrieve a paginated list of all event categories. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<System.Collections.Generic.ICollection<CategoryListDto>> CategoryAllAsync(System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<PaginatedResultOfCategoryListDto> CategoryGETAsync(int? pageNumber, int? pageSize, System.Threading.CancellationToken cancellationToken);
 
         /// <summary>
         /// Create Category
@@ -482,7 +494,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<CategoryDto> CategoryGETAsync(System.Guid id);
+        System.Threading.Tasks.Task<CategoryDto> CategoryGET2Async(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -493,7 +505,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<CategoryDto> CategoryGETAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<CategoryDto> CategoryGET2Async(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
         /// <summary>
         /// Update Category
@@ -730,22 +742,22 @@ namespace Explore.Blazor.Client.Clients
         /// Get all Events (Conference, Webinar, Workshop ...)
         /// </summary>
         /// <remarks>
-        /// Get A List of all the Events (pagination!)
+        /// Get a paginated list of all Events. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<System.Collections.Generic.ICollection<EventListDto>> EventAllAsync();
+        System.Threading.Tasks.Task<PaginatedResultOfEventListDto> EventGETAsync(int? pageNumber, int? pageSize);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
         /// Get all Events (Conference, Webinar, Workshop ...)
         /// </summary>
         /// <remarks>
-        /// Get A List of all the Events (pagination!)
+        /// Get a paginated list of all Events. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<System.Collections.Generic.ICollection<EventListDto>> EventAllAsync(System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<PaginatedResultOfEventListDto> EventGETAsync(int? pageNumber, int? pageSize, System.Threading.CancellationToken cancellationToken);
 
         /// <summary>
         /// Create a new Event
@@ -772,22 +784,22 @@ namespace Explore.Blazor.Client.Clients
         /// Get My Events
         /// </summary>
         /// <remarks>
-        /// Get a list of events created by the current user's organizations
+        /// Get a paginated list of events created by the current user's organizations. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<System.Collections.Generic.ICollection<EventListDto>> MyAsync();
+        System.Threading.Tasks.Task<PaginatedResultOfEventListDto> MyAsync(int? pageNumber, int? pageSize);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
         /// Get My Events
         /// </summary>
         /// <remarks>
-        /// Get a list of events created by the current user's organizations
+        /// Get a paginated list of events created by the current user's organizations. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<System.Collections.Generic.ICollection<EventListDto>> MyAsync(System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<PaginatedResultOfEventListDto> MyAsync(int? pageNumber, int? pageSize, System.Threading.CancellationToken cancellationToken);
 
         /// <summary>
         /// Get Event (Conference, Webinar, Workshop ...) Details
@@ -797,7 +809,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<EventDto> EventGETAsync(System.Guid id);
+        System.Threading.Tasks.Task<EventDto> EventGET2Async(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -808,7 +820,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<EventDto> EventGETAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<EventDto> EventGET2Async(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
         /// <summary>
         /// Update an Event
@@ -898,22 +910,22 @@ namespace Explore.Blazor.Client.Clients
         /// Get all Event Registrations
         /// </summary>
         /// <remarks>
-        /// Retrieve a list of all event registrations across all sessions
+        /// Retrieve a paginated list of all event registrations across all sessions. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<System.Collections.Generic.ICollection<EventRegistrationListDto>> EventRegistrationAllAsync();
+        System.Threading.Tasks.Task<PaginatedResultOfEventRegistrationListDto> EventRegistrationGETAsync(int? pageNumber, int? pageSize);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
         /// Get all Event Registrations
         /// </summary>
         /// <remarks>
-        /// Retrieve a list of all event registrations across all sessions
+        /// Retrieve a paginated list of all event registrations across all sessions. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<System.Collections.Generic.ICollection<EventRegistrationListDto>> EventRegistrationAllAsync(System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<PaginatedResultOfEventRegistrationListDto> EventRegistrationGETAsync(int? pageNumber, int? pageSize, System.Threading.CancellationToken cancellationToken);
 
         /// <summary>
         /// Register User for Event Session
@@ -944,7 +956,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<EventRegistrationDto> EventRegistrationGETAsync(System.Guid id);
+        System.Threading.Tasks.Task<EventRegistrationDto> EventRegistrationGET2Async(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -955,7 +967,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<EventRegistrationDto> EventRegistrationGETAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<EventRegistrationDto> EventRegistrationGET2Async(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
         /// <summary>
         /// Update Event Registration
@@ -1045,22 +1057,22 @@ namespace Explore.Blazor.Client.Clients
         /// Get all Agenda Items
         /// </summary>
         /// <remarks>
-        /// Get a list of all event session agenda items
+        /// Retrieve a paginated list of all event session agenda items. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<System.Collections.Generic.ICollection<EventSessionAgendaItemListDto>> EventSessionAgendaItemAllAsync();
+        System.Threading.Tasks.Task<PaginatedResultOfEventSessionAgendaItemListDto> EventSessionAgendaItemGETAsync(int? pageNumber, int? pageSize);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
         /// Get all Agenda Items
         /// </summary>
         /// <remarks>
-        /// Get a list of all event session agenda items
+        /// Retrieve a paginated list of all event session agenda items. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<System.Collections.Generic.ICollection<EventSessionAgendaItemListDto>> EventSessionAgendaItemAllAsync(System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<PaginatedResultOfEventSessionAgendaItemListDto> EventSessionAgendaItemGETAsync(int? pageNumber, int? pageSize, System.Threading.CancellationToken cancellationToken);
 
         /// <summary>
         /// Create Agenda Item
@@ -1091,7 +1103,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<EventSessionAgendaItemDto> EventSessionAgendaItemGETAsync(System.Guid id);
+        System.Threading.Tasks.Task<EventSessionAgendaItemDto> EventSessionAgendaItemGET2Async(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -1102,7 +1114,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<EventSessionAgendaItemDto> EventSessionAgendaItemGETAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<EventSessionAgendaItemDto> EventSessionAgendaItemGET2Async(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
         /// <summary>
         /// Update Agenda Item
@@ -1171,22 +1183,22 @@ namespace Explore.Blazor.Client.Clients
         /// Get all Event Sessions
         /// </summary>
         /// <remarks>
-        /// Get a list of all event sessions
+        /// Get a paginated list of all event sessions. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<System.Collections.Generic.ICollection<EventSessionListDto>> EventSessionAllAsync();
+        System.Threading.Tasks.Task<PaginatedResultOfEventSessionListDto> EventSessionGETAsync(int? pageNumber, int? pageSize);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
         /// Get all Event Sessions
         /// </summary>
         /// <remarks>
-        /// Get a list of all event sessions
+        /// Get a paginated list of all event sessions. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<System.Collections.Generic.ICollection<EventSessionListDto>> EventSessionAllAsync(System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<PaginatedResultOfEventSessionListDto> EventSessionGETAsync(int? pageNumber, int? pageSize, System.Threading.CancellationToken cancellationToken);
 
         /// <summary>
         /// Create Event Session
@@ -1217,7 +1229,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<EventSessionDto> EventSessionGETAsync(System.Guid id);
+        System.Threading.Tasks.Task<EventSessionDto> EventSessionGET2Async(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -1228,7 +1240,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<EventSessionDto> EventSessionGETAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<EventSessionDto> EventSessionGET2Async(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
         /// <summary>
         /// Update Event Session
@@ -1297,22 +1309,22 @@ namespace Explore.Blazor.Client.Clients
         /// Get all Session Languages
         /// </summary>
         /// <remarks>
-        /// Get a list of all event session language assignments
+        /// Retrieve a paginated list of all event session language assignments. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<System.Collections.Generic.ICollection<EventSessionLanguageListDto>> EventSessionLanguageAllAsync();
+        System.Threading.Tasks.Task<PaginatedResultOfEventSessionLanguageListDto> EventSessionLanguageGETAsync(int? pageNumber, int? pageSize);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
         /// Get all Session Languages
         /// </summary>
         /// <remarks>
-        /// Get a list of all event session language assignments
+        /// Retrieve a paginated list of all event session language assignments. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<System.Collections.Generic.ICollection<EventSessionLanguageListDto>> EventSessionLanguageAllAsync(System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<PaginatedResultOfEventSessionLanguageListDto> EventSessionLanguageGETAsync(int? pageNumber, int? pageSize, System.Threading.CancellationToken cancellationToken);
 
         /// <summary>
         /// Assign Language to Session
@@ -1343,7 +1355,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<EventSessionLanguageDto> EventSessionLanguageGETAsync(int id);
+        System.Threading.Tasks.Task<EventSessionLanguageDto> EventSessionLanguageGET2Async(int id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -1354,7 +1366,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<EventSessionLanguageDto> EventSessionLanguageGETAsync(int id, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<EventSessionLanguageDto> EventSessionLanguageGET2Async(int id, System.Threading.CancellationToken cancellationToken);
 
         /// <summary>
         /// Update Session Language
@@ -1423,22 +1435,22 @@ namespace Explore.Blazor.Client.Clients
         /// Get all Session Speakers
         /// </summary>
         /// <remarks>
-        /// Get a list of all event session speaker assignments
+        /// Retrieve a paginated list of all event session speaker assignments. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<System.Collections.Generic.ICollection<EventSessionSpeakerListDto>> EventSessionSpeakerAllAsync();
+        System.Threading.Tasks.Task<PaginatedResultOfEventSessionSpeakerListDto> EventSessionSpeakerGETAsync(int? pageNumber, int? pageSize);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
         /// Get all Session Speakers
         /// </summary>
         /// <remarks>
-        /// Get a list of all event session speaker assignments
+        /// Retrieve a paginated list of all event session speaker assignments. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<System.Collections.Generic.ICollection<EventSessionSpeakerListDto>> EventSessionSpeakerAllAsync(System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<PaginatedResultOfEventSessionSpeakerListDto> EventSessionSpeakerGETAsync(int? pageNumber, int? pageSize, System.Threading.CancellationToken cancellationToken);
 
         /// <summary>
         /// Assign Speaker to Session
@@ -1469,7 +1481,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<EventSessionSpeakerDto> EventSessionSpeakerGETAsync(System.Guid id);
+        System.Threading.Tasks.Task<EventSessionSpeakerDto> EventSessionSpeakerGET2Async(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -1480,7 +1492,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<EventSessionSpeakerDto> EventSessionSpeakerGETAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<EventSessionSpeakerDto> EventSessionSpeakerGET2Async(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
         /// <summary>
         /// Update Speaker Assignment
@@ -1945,22 +1957,22 @@ namespace Explore.Blazor.Client.Clients
         /// Get all Locations
         /// </summary>
         /// <remarks>
-        /// Get a list of all locations
+        /// Retrieve a paginated list of all locations. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<System.Collections.Generic.ICollection<LocationListDto>> LocationAllAsync();
+        System.Threading.Tasks.Task<PaginatedResultOfLocationListDto> LocationGETAsync(int? pageNumber, int? pageSize);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
         /// Get all Locations
         /// </summary>
         /// <remarks>
-        /// Get a list of all locations
+        /// Retrieve a paginated list of all locations. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<System.Collections.Generic.ICollection<LocationListDto>> LocationAllAsync(System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<PaginatedResultOfLocationListDto> LocationGETAsync(int? pageNumber, int? pageSize, System.Threading.CancellationToken cancellationToken);
 
         /// <summary>
         /// Create Location
@@ -1991,7 +2003,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<LocationDto> LocationGETAsync(System.Guid id);
+        System.Threading.Tasks.Task<LocationDto> LocationGET2Async(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -2002,7 +2014,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<LocationDto> LocationGETAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<LocationDto> LocationGET2Async(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
         /// <summary>
         /// Update Location
@@ -2131,25 +2143,25 @@ namespace Explore.Blazor.Client.Clients
         System.Threading.Tasks.Task<MadhabDto> MadhabAsync(int id, System.Threading.CancellationToken cancellationToken);
 
         /// <summary>
-        /// Get all Organizationss
+        /// Get all Organizations
         /// </summary>
         /// <remarks>
-        /// Get A List of all the Organizations (pagination!)
+        /// Get a paginated list of all Organizations. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<System.Collections.Generic.ICollection<OrganizationListDto>> OrganizationAllAsync();
+        System.Threading.Tasks.Task<PaginatedResultOfOrganizationListDto> OrganizationGETAsync(int? pageNumber, int? pageSize);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
-        /// Get all Organizationss
+        /// Get all Organizations
         /// </summary>
         /// <remarks>
-        /// Get A List of all the Organizations (pagination!)
+        /// Get a paginated list of all Organizations. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<System.Collections.Generic.ICollection<OrganizationListDto>> OrganizationAllAsync(System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<PaginatedResultOfOrganizationListDto> OrganizationGETAsync(int? pageNumber, int? pageSize, System.Threading.CancellationToken cancellationToken);
 
         /// <summary>
         /// Create Organization
@@ -2176,22 +2188,22 @@ namespace Explore.Blazor.Client.Clients
         /// Get my Organizations
         /// </summary>
         /// <remarks>
-        /// Get a list of organizations where the current user is a member
+        /// Get a paginated list of organizations where the current user is a member. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<System.Collections.Generic.ICollection<OrganizationListDto>> My2Async();
+        System.Threading.Tasks.Task<PaginatedResultOfOrganizationListDto> My2Async(int? pageNumber, int? pageSize);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
         /// Get my Organizations
         /// </summary>
         /// <remarks>
-        /// Get a list of organizations where the current user is a member
+        /// Get a paginated list of organizations where the current user is a member. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<System.Collections.Generic.ICollection<OrganizationListDto>> My2Async(System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<PaginatedResultOfOrganizationListDto> My2Async(int? pageNumber, int? pageSize, System.Threading.CancellationToken cancellationToken);
 
         /// <summary>
         /// Get Organization Details
@@ -2201,7 +2213,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<OrganizationDto> OrganizationGETAsync(System.Guid id);
+        System.Threading.Tasks.Task<OrganizationDto> OrganizationGET2Async(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -2212,7 +2224,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<OrganizationDto> OrganizationGETAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<OrganizationDto> OrganizationGET2Async(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -2461,22 +2473,22 @@ namespace Explore.Blazor.Client.Clients
         /// Get all Storage Objects
         /// </summary>
         /// <remarks>
-        /// Retrieve a list of all storage objects (files, images, documents, etc.)
+        /// Retrieve a paginated list of all storage objects (files, images, documents, etc.). Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<System.Collections.Generic.ICollection<StorageObjectListDto>> StorageObjectAllAsync();
+        System.Threading.Tasks.Task<PaginatedResultOfStorageObjectListDto> StorageObjectGETAsync(int? pageNumber, int? pageSize);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
         /// Get all Storage Objects
         /// </summary>
         /// <remarks>
-        /// Retrieve a list of all storage objects (files, images, documents, etc.)
+        /// Retrieve a paginated list of all storage objects (files, images, documents, etc.). Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<System.Collections.Generic.ICollection<StorageObjectListDto>> StorageObjectAllAsync(System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<PaginatedResultOfStorageObjectListDto> StorageObjectGETAsync(int? pageNumber, int? pageSize, System.Threading.CancellationToken cancellationToken);
 
         /// <summary>
         /// Create Storage Object Record
@@ -2507,7 +2519,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<StorageObjectDto> StorageObjectGETAsync(System.Guid id);
+        System.Threading.Tasks.Task<StorageObjectDto> StorageObjectGET2Async(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -2518,7 +2530,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<StorageObjectDto> StorageObjectGETAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<StorageObjectDto> StorageObjectGET2Async(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
         /// <summary>
         /// Update Storage Object
@@ -2653,22 +2665,22 @@ namespace Explore.Blazor.Client.Clients
         /// Get all Tags
         /// </summary>
         /// <remarks>
-        /// Get a list of all tags for events
+        /// Retrieve a paginated list of all tags for events. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<System.Collections.Generic.ICollection<TagListDto>> TagAllAsync();
+        System.Threading.Tasks.Task<PaginatedResultOfTagListDto> TagGETAsync(int? pageNumber, int? pageSize);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
         /// Get all Tags
         /// </summary>
         /// <remarks>
-        /// Get a list of all tags for events
+        /// Retrieve a paginated list of all tags for events. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<System.Collections.Generic.ICollection<TagListDto>> TagAllAsync(System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<PaginatedResultOfTagListDto> TagGETAsync(int? pageNumber, int? pageSize, System.Threading.CancellationToken cancellationToken);
 
         /// <summary>
         /// Create Tag
@@ -2699,7 +2711,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<TagDto> TagGETAsync(System.Guid id);
+        System.Threading.Tasks.Task<TagDto> TagGET2Async(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -2710,7 +2722,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<TagDto> TagGETAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<TagDto> TagGET2Async(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
         /// <summary>
         /// Update Tag
@@ -3620,17 +3632,29 @@ namespace Explore.Blazor.Client.Clients
             }
         }
 
+        /// <summary>
+        /// Get all Actors
+        /// </summary>
+        /// <remarks>
+        /// Retrieve a paginated list of all actors. Default page size is 20, max is 100.
+        /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<System.Collections.Generic.ICollection<ActorListDto>> ActorAllAsync()
+        public virtual System.Threading.Tasks.Task<PaginatedResultOfActorListDto> ActorGETAsync(int? pageNumber, int? pageSize)
         {
-            return ActorAllAsync(System.Threading.CancellationToken.None);
+            return ActorGETAsync(pageNumber, pageSize, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get all Actors
+        /// </summary>
+        /// <remarks>
+        /// Retrieve a paginated list of all actors. Default page size is 20, max is 100.
+        /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.ICollection<ActorListDto>> ActorAllAsync(System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<PaginatedResultOfActorListDto> ActorGETAsync(int? pageNumber, int? pageSize, System.Threading.CancellationToken cancellationToken)
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -3645,6 +3669,16 @@ namespace Explore.Blazor.Client.Clients
                 
                     // Operation Path: "api/v1/Actor"
                     urlBuilder_.Append("api/v1/Actor");
+                    urlBuilder_.Append('?');
+                    if (pageNumber != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("pageNumber")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageNumber, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (pageSize != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("pageSize")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageSize, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -3671,7 +3705,7 @@ namespace Explore.Blazor.Client.Clients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<System.Collections.Generic.ICollection<ActorListDto>>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<PaginatedResultOfActorListDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -3785,15 +3819,15 @@ namespace Explore.Blazor.Client.Clients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<ActorDto> ActorGETAsync(System.Guid id)
+        public virtual System.Threading.Tasks.Task<ActorDto> ActorGET2Async(System.Guid id)
         {
-            return ActorGETAsync(id, System.Threading.CancellationToken.None);
+            return ActorGET2Async(id, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<ActorDto> ActorGETAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<ActorDto> ActorGET2Async(System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
             if (id == null)
                 throw new System.ArgumentNullException("id");
@@ -6120,13 +6154,13 @@ namespace Explore.Blazor.Client.Clients
         /// Get all Categories
         /// </summary>
         /// <remarks>
-        /// Get a list of all event categories
+        /// Retrieve a paginated list of all event categories. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<System.Collections.Generic.ICollection<CategoryListDto>> CategoryAllAsync()
+        public virtual System.Threading.Tasks.Task<PaginatedResultOfCategoryListDto> CategoryGETAsync(int? pageNumber, int? pageSize)
         {
-            return CategoryAllAsync(System.Threading.CancellationToken.None);
+            return CategoryGETAsync(pageNumber, pageSize, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
@@ -6134,11 +6168,11 @@ namespace Explore.Blazor.Client.Clients
         /// Get all Categories
         /// </summary>
         /// <remarks>
-        /// Get a list of all event categories
+        /// Retrieve a paginated list of all event categories. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.ICollection<CategoryListDto>> CategoryAllAsync(System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<PaginatedResultOfCategoryListDto> CategoryGETAsync(int? pageNumber, int? pageSize, System.Threading.CancellationToken cancellationToken)
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -6153,6 +6187,16 @@ namespace Explore.Blazor.Client.Clients
                 
                     // Operation Path: "api/v1/Category"
                     urlBuilder_.Append("api/v1/Category");
+                    urlBuilder_.Append('?');
+                    if (pageNumber != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("pageNumber")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageNumber, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (pageSize != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("pageSize")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageSize, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -6179,7 +6223,7 @@ namespace Explore.Blazor.Client.Clients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<System.Collections.Generic.ICollection<CategoryListDto>>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<PaginatedResultOfCategoryListDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -6311,9 +6355,9 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<CategoryDto> CategoryGETAsync(System.Guid id)
+        public virtual System.Threading.Tasks.Task<CategoryDto> CategoryGET2Async(System.Guid id)
         {
-            return CategoryGETAsync(id, System.Threading.CancellationToken.None);
+            return CategoryGET2Async(id, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
@@ -6325,7 +6369,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<CategoryDto> CategoryGETAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<CategoryDto> CategoryGET2Async(System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
             if (id == null)
                 throw new System.ArgumentNullException("id");
@@ -7522,13 +7566,13 @@ namespace Explore.Blazor.Client.Clients
         /// Get all Events (Conference, Webinar, Workshop ...)
         /// </summary>
         /// <remarks>
-        /// Get A List of all the Events (pagination!)
+        /// Get a paginated list of all Events. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<System.Collections.Generic.ICollection<EventListDto>> EventAllAsync()
+        public virtual System.Threading.Tasks.Task<PaginatedResultOfEventListDto> EventGETAsync(int? pageNumber, int? pageSize)
         {
-            return EventAllAsync(System.Threading.CancellationToken.None);
+            return EventGETAsync(pageNumber, pageSize, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
@@ -7536,11 +7580,11 @@ namespace Explore.Blazor.Client.Clients
         /// Get all Events (Conference, Webinar, Workshop ...)
         /// </summary>
         /// <remarks>
-        /// Get A List of all the Events (pagination!)
+        /// Get a paginated list of all Events. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.ICollection<EventListDto>> EventAllAsync(System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<PaginatedResultOfEventListDto> EventGETAsync(int? pageNumber, int? pageSize, System.Threading.CancellationToken cancellationToken)
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -7555,6 +7599,16 @@ namespace Explore.Blazor.Client.Clients
                 
                     // Operation Path: "api/v1/Event"
                     urlBuilder_.Append("api/v1/Event");
+                    urlBuilder_.Append('?');
+                    if (pageNumber != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("pageNumber")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageNumber, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (pageSize != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("pageSize")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageSize, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -7581,7 +7635,7 @@ namespace Explore.Blazor.Client.Clients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<System.Collections.Generic.ICollection<EventListDto>>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<PaginatedResultOfEventListDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -7709,13 +7763,13 @@ namespace Explore.Blazor.Client.Clients
         /// Get My Events
         /// </summary>
         /// <remarks>
-        /// Get a list of events created by the current user's organizations
+        /// Get a paginated list of events created by the current user's organizations. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<System.Collections.Generic.ICollection<EventListDto>> MyAsync()
+        public virtual System.Threading.Tasks.Task<PaginatedResultOfEventListDto> MyAsync(int? pageNumber, int? pageSize)
         {
-            return MyAsync(System.Threading.CancellationToken.None);
+            return MyAsync(pageNumber, pageSize, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
@@ -7723,11 +7777,11 @@ namespace Explore.Blazor.Client.Clients
         /// Get My Events
         /// </summary>
         /// <remarks>
-        /// Get a list of events created by the current user's organizations
+        /// Get a paginated list of events created by the current user's organizations. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.ICollection<EventListDto>> MyAsync(System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<PaginatedResultOfEventListDto> MyAsync(int? pageNumber, int? pageSize, System.Threading.CancellationToken cancellationToken)
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -7742,6 +7796,16 @@ namespace Explore.Blazor.Client.Clients
                 
                     // Operation Path: "api/v1/Event/my"
                     urlBuilder_.Append("api/v1/Event/my");
+                    urlBuilder_.Append('?');
+                    if (pageNumber != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("pageNumber")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageNumber, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (pageSize != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("pageSize")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageSize, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -7768,7 +7832,7 @@ namespace Explore.Blazor.Client.Clients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<System.Collections.Generic.ICollection<EventListDto>>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<PaginatedResultOfEventListDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -7803,9 +7867,9 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<EventDto> EventGETAsync(System.Guid id)
+        public virtual System.Threading.Tasks.Task<EventDto> EventGET2Async(System.Guid id)
         {
-            return EventGETAsync(id, System.Threading.CancellationToken.None);
+            return EventGET2Async(id, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
@@ -7817,7 +7881,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<EventDto> EventGETAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<EventDto> EventGET2Async(System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
             if (id == null)
                 throw new System.ArgumentNullException("id");
@@ -8276,13 +8340,13 @@ namespace Explore.Blazor.Client.Clients
         /// Get all Event Registrations
         /// </summary>
         /// <remarks>
-        /// Retrieve a list of all event registrations across all sessions
+        /// Retrieve a paginated list of all event registrations across all sessions. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<System.Collections.Generic.ICollection<EventRegistrationListDto>> EventRegistrationAllAsync()
+        public virtual System.Threading.Tasks.Task<PaginatedResultOfEventRegistrationListDto> EventRegistrationGETAsync(int? pageNumber, int? pageSize)
         {
-            return EventRegistrationAllAsync(System.Threading.CancellationToken.None);
+            return EventRegistrationGETAsync(pageNumber, pageSize, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
@@ -8290,11 +8354,11 @@ namespace Explore.Blazor.Client.Clients
         /// Get all Event Registrations
         /// </summary>
         /// <remarks>
-        /// Retrieve a list of all event registrations across all sessions
+        /// Retrieve a paginated list of all event registrations across all sessions. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.ICollection<EventRegistrationListDto>> EventRegistrationAllAsync(System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<PaginatedResultOfEventRegistrationListDto> EventRegistrationGETAsync(int? pageNumber, int? pageSize, System.Threading.CancellationToken cancellationToken)
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -8309,6 +8373,16 @@ namespace Explore.Blazor.Client.Clients
                 
                     // Operation Path: "api/v1/EventRegistration"
                     urlBuilder_.Append("api/v1/EventRegistration");
+                    urlBuilder_.Append('?');
+                    if (pageNumber != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("pageNumber")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageNumber, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (pageSize != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("pageSize")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageSize, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -8335,7 +8409,7 @@ namespace Explore.Blazor.Client.Clients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<System.Collections.Generic.ICollection<EventRegistrationListDto>>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<PaginatedResultOfEventRegistrationListDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -8487,9 +8561,9 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<EventRegistrationDto> EventRegistrationGETAsync(System.Guid id)
+        public virtual System.Threading.Tasks.Task<EventRegistrationDto> EventRegistrationGET2Async(System.Guid id)
         {
-            return EventRegistrationGETAsync(id, System.Threading.CancellationToken.None);
+            return EventRegistrationGET2Async(id, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
@@ -8501,7 +8575,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<EventRegistrationDto> EventRegistrationGETAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<EventRegistrationDto> EventRegistrationGET2Async(System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
             if (id == null)
                 throw new System.ArgumentNullException("id");
@@ -9014,13 +9088,13 @@ namespace Explore.Blazor.Client.Clients
         /// Get all Agenda Items
         /// </summary>
         /// <remarks>
-        /// Get a list of all event session agenda items
+        /// Retrieve a paginated list of all event session agenda items. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<System.Collections.Generic.ICollection<EventSessionAgendaItemListDto>> EventSessionAgendaItemAllAsync()
+        public virtual System.Threading.Tasks.Task<PaginatedResultOfEventSessionAgendaItemListDto> EventSessionAgendaItemGETAsync(int? pageNumber, int? pageSize)
         {
-            return EventSessionAgendaItemAllAsync(System.Threading.CancellationToken.None);
+            return EventSessionAgendaItemGETAsync(pageNumber, pageSize, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
@@ -9028,11 +9102,11 @@ namespace Explore.Blazor.Client.Clients
         /// Get all Agenda Items
         /// </summary>
         /// <remarks>
-        /// Get a list of all event session agenda items
+        /// Retrieve a paginated list of all event session agenda items. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.ICollection<EventSessionAgendaItemListDto>> EventSessionAgendaItemAllAsync(System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<PaginatedResultOfEventSessionAgendaItemListDto> EventSessionAgendaItemGETAsync(int? pageNumber, int? pageSize, System.Threading.CancellationToken cancellationToken)
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -9047,6 +9121,16 @@ namespace Explore.Blazor.Client.Clients
                 
                     // Operation Path: "api/v1/EventSessionAgendaItem"
                     urlBuilder_.Append("api/v1/EventSessionAgendaItem");
+                    urlBuilder_.Append('?');
+                    if (pageNumber != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("pageNumber")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageNumber, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (pageSize != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("pageSize")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageSize, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -9073,7 +9157,7 @@ namespace Explore.Blazor.Client.Clients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<System.Collections.Generic.ICollection<EventSessionAgendaItemListDto>>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<PaginatedResultOfEventSessionAgendaItemListDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -9205,9 +9289,9 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<EventSessionAgendaItemDto> EventSessionAgendaItemGETAsync(System.Guid id)
+        public virtual System.Threading.Tasks.Task<EventSessionAgendaItemDto> EventSessionAgendaItemGET2Async(System.Guid id)
         {
-            return EventSessionAgendaItemGETAsync(id, System.Threading.CancellationToken.None);
+            return EventSessionAgendaItemGET2Async(id, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
@@ -9219,7 +9303,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<EventSessionAgendaItemDto> EventSessionAgendaItemGETAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<EventSessionAgendaItemDto> EventSessionAgendaItemGET2Async(System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
             if (id == null)
                 throw new System.ArgumentNullException("id");
@@ -9578,13 +9662,13 @@ namespace Explore.Blazor.Client.Clients
         /// Get all Event Sessions
         /// </summary>
         /// <remarks>
-        /// Get a list of all event sessions
+        /// Get a paginated list of all event sessions. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<System.Collections.Generic.ICollection<EventSessionListDto>> EventSessionAllAsync()
+        public virtual System.Threading.Tasks.Task<PaginatedResultOfEventSessionListDto> EventSessionGETAsync(int? pageNumber, int? pageSize)
         {
-            return EventSessionAllAsync(System.Threading.CancellationToken.None);
+            return EventSessionGETAsync(pageNumber, pageSize, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
@@ -9592,11 +9676,11 @@ namespace Explore.Blazor.Client.Clients
         /// Get all Event Sessions
         /// </summary>
         /// <remarks>
-        /// Get a list of all event sessions
+        /// Get a paginated list of all event sessions. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.ICollection<EventSessionListDto>> EventSessionAllAsync(System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<PaginatedResultOfEventSessionListDto> EventSessionGETAsync(int? pageNumber, int? pageSize, System.Threading.CancellationToken cancellationToken)
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -9611,6 +9695,16 @@ namespace Explore.Blazor.Client.Clients
                 
                     // Operation Path: "api/v1/EventSession"
                     urlBuilder_.Append("api/v1/EventSession");
+                    urlBuilder_.Append('?');
+                    if (pageNumber != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("pageNumber")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageNumber, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (pageSize != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("pageSize")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageSize, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -9637,7 +9731,7 @@ namespace Explore.Blazor.Client.Clients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<System.Collections.Generic.ICollection<EventSessionListDto>>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<PaginatedResultOfEventSessionListDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -9769,9 +9863,9 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<EventSessionDto> EventSessionGETAsync(System.Guid id)
+        public virtual System.Threading.Tasks.Task<EventSessionDto> EventSessionGET2Async(System.Guid id)
         {
-            return EventSessionGETAsync(id, System.Threading.CancellationToken.None);
+            return EventSessionGET2Async(id, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
@@ -9783,7 +9877,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<EventSessionDto> EventSessionGETAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<EventSessionDto> EventSessionGET2Async(System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
             if (id == null)
                 throw new System.ArgumentNullException("id");
@@ -10142,13 +10236,13 @@ namespace Explore.Blazor.Client.Clients
         /// Get all Session Languages
         /// </summary>
         /// <remarks>
-        /// Get a list of all event session language assignments
+        /// Retrieve a paginated list of all event session language assignments. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<System.Collections.Generic.ICollection<EventSessionLanguageListDto>> EventSessionLanguageAllAsync()
+        public virtual System.Threading.Tasks.Task<PaginatedResultOfEventSessionLanguageListDto> EventSessionLanguageGETAsync(int? pageNumber, int? pageSize)
         {
-            return EventSessionLanguageAllAsync(System.Threading.CancellationToken.None);
+            return EventSessionLanguageGETAsync(pageNumber, pageSize, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
@@ -10156,11 +10250,11 @@ namespace Explore.Blazor.Client.Clients
         /// Get all Session Languages
         /// </summary>
         /// <remarks>
-        /// Get a list of all event session language assignments
+        /// Retrieve a paginated list of all event session language assignments. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.ICollection<EventSessionLanguageListDto>> EventSessionLanguageAllAsync(System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<PaginatedResultOfEventSessionLanguageListDto> EventSessionLanguageGETAsync(int? pageNumber, int? pageSize, System.Threading.CancellationToken cancellationToken)
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -10175,6 +10269,16 @@ namespace Explore.Blazor.Client.Clients
                 
                     // Operation Path: "api/v1/EventSessionLanguage"
                     urlBuilder_.Append("api/v1/EventSessionLanguage");
+                    urlBuilder_.Append('?');
+                    if (pageNumber != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("pageNumber")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageNumber, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (pageSize != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("pageSize")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageSize, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -10201,7 +10305,7 @@ namespace Explore.Blazor.Client.Clients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<System.Collections.Generic.ICollection<EventSessionLanguageListDto>>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<PaginatedResultOfEventSessionLanguageListDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -10333,9 +10437,9 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<EventSessionLanguageDto> EventSessionLanguageGETAsync(int id)
+        public virtual System.Threading.Tasks.Task<EventSessionLanguageDto> EventSessionLanguageGET2Async(int id)
         {
-            return EventSessionLanguageGETAsync(id, System.Threading.CancellationToken.None);
+            return EventSessionLanguageGET2Async(id, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
@@ -10347,7 +10451,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<EventSessionLanguageDto> EventSessionLanguageGETAsync(int id, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<EventSessionLanguageDto> EventSessionLanguageGET2Async(int id, System.Threading.CancellationToken cancellationToken)
         {
             if (id == null)
                 throw new System.ArgumentNullException("id");
@@ -10706,13 +10810,13 @@ namespace Explore.Blazor.Client.Clients
         /// Get all Session Speakers
         /// </summary>
         /// <remarks>
-        /// Get a list of all event session speaker assignments
+        /// Retrieve a paginated list of all event session speaker assignments. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<System.Collections.Generic.ICollection<EventSessionSpeakerListDto>> EventSessionSpeakerAllAsync()
+        public virtual System.Threading.Tasks.Task<PaginatedResultOfEventSessionSpeakerListDto> EventSessionSpeakerGETAsync(int? pageNumber, int? pageSize)
         {
-            return EventSessionSpeakerAllAsync(System.Threading.CancellationToken.None);
+            return EventSessionSpeakerGETAsync(pageNumber, pageSize, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
@@ -10720,11 +10824,11 @@ namespace Explore.Blazor.Client.Clients
         /// Get all Session Speakers
         /// </summary>
         /// <remarks>
-        /// Get a list of all event session speaker assignments
+        /// Retrieve a paginated list of all event session speaker assignments. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.ICollection<EventSessionSpeakerListDto>> EventSessionSpeakerAllAsync(System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<PaginatedResultOfEventSessionSpeakerListDto> EventSessionSpeakerGETAsync(int? pageNumber, int? pageSize, System.Threading.CancellationToken cancellationToken)
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -10739,6 +10843,16 @@ namespace Explore.Blazor.Client.Clients
                 
                     // Operation Path: "api/v1/EventSessionSpeaker"
                     urlBuilder_.Append("api/v1/EventSessionSpeaker");
+                    urlBuilder_.Append('?');
+                    if (pageNumber != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("pageNumber")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageNumber, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (pageSize != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("pageSize")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageSize, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -10765,7 +10879,7 @@ namespace Explore.Blazor.Client.Clients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<System.Collections.Generic.ICollection<EventSessionSpeakerListDto>>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<PaginatedResultOfEventSessionSpeakerListDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -10897,9 +11011,9 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<EventSessionSpeakerDto> EventSessionSpeakerGETAsync(System.Guid id)
+        public virtual System.Threading.Tasks.Task<EventSessionSpeakerDto> EventSessionSpeakerGET2Async(System.Guid id)
         {
-            return EventSessionSpeakerGETAsync(id, System.Threading.CancellationToken.None);
+            return EventSessionSpeakerGET2Async(id, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
@@ -10911,7 +11025,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<EventSessionSpeakerDto> EventSessionSpeakerGETAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<EventSessionSpeakerDto> EventSessionSpeakerGET2Async(System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
             if (id == null)
                 throw new System.ArgumentNullException("id");
@@ -13494,13 +13608,13 @@ namespace Explore.Blazor.Client.Clients
         /// Get all Locations
         /// </summary>
         /// <remarks>
-        /// Get a list of all locations
+        /// Retrieve a paginated list of all locations. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<System.Collections.Generic.ICollection<LocationListDto>> LocationAllAsync()
+        public virtual System.Threading.Tasks.Task<PaginatedResultOfLocationListDto> LocationGETAsync(int? pageNumber, int? pageSize)
         {
-            return LocationAllAsync(System.Threading.CancellationToken.None);
+            return LocationGETAsync(pageNumber, pageSize, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
@@ -13508,11 +13622,11 @@ namespace Explore.Blazor.Client.Clients
         /// Get all Locations
         /// </summary>
         /// <remarks>
-        /// Get a list of all locations
+        /// Retrieve a paginated list of all locations. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.ICollection<LocationListDto>> LocationAllAsync(System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<PaginatedResultOfLocationListDto> LocationGETAsync(int? pageNumber, int? pageSize, System.Threading.CancellationToken cancellationToken)
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -13527,6 +13641,16 @@ namespace Explore.Blazor.Client.Clients
                 
                     // Operation Path: "api/v1/Location"
                     urlBuilder_.Append("api/v1/Location");
+                    urlBuilder_.Append('?');
+                    if (pageNumber != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("pageNumber")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageNumber, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (pageSize != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("pageSize")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageSize, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -13553,7 +13677,7 @@ namespace Explore.Blazor.Client.Clients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<System.Collections.Generic.ICollection<LocationListDto>>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<PaginatedResultOfLocationListDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -13685,9 +13809,9 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<LocationDto> LocationGETAsync(System.Guid id)
+        public virtual System.Threading.Tasks.Task<LocationDto> LocationGET2Async(System.Guid id)
         {
-            return LocationGETAsync(id, System.Threading.CancellationToken.None);
+            return LocationGET2Async(id, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
@@ -13699,7 +13823,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<LocationDto> LocationGETAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<LocationDto> LocationGET2Async(System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
             if (id == null)
                 throw new System.ArgumentNullException("id");
@@ -14343,28 +14467,28 @@ namespace Explore.Blazor.Client.Clients
         }
 
         /// <summary>
-        /// Get all Organizationss
+        /// Get all Organizations
         /// </summary>
         /// <remarks>
-        /// Get A List of all the Organizations (pagination!)
+        /// Get a paginated list of all Organizations. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<System.Collections.Generic.ICollection<OrganizationListDto>> OrganizationAllAsync()
+        public virtual System.Threading.Tasks.Task<PaginatedResultOfOrganizationListDto> OrganizationGETAsync(int? pageNumber, int? pageSize)
         {
-            return OrganizationAllAsync(System.Threading.CancellationToken.None);
+            return OrganizationGETAsync(pageNumber, pageSize, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
-        /// Get all Organizationss
+        /// Get all Organizations
         /// </summary>
         /// <remarks>
-        /// Get A List of all the Organizations (pagination!)
+        /// Get a paginated list of all Organizations. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.ICollection<OrganizationListDto>> OrganizationAllAsync(System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<PaginatedResultOfOrganizationListDto> OrganizationGETAsync(int? pageNumber, int? pageSize, System.Threading.CancellationToken cancellationToken)
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -14379,6 +14503,16 @@ namespace Explore.Blazor.Client.Clients
                 
                     // Operation Path: "api/v1/Organization"
                     urlBuilder_.Append("api/v1/Organization");
+                    urlBuilder_.Append('?');
+                    if (pageNumber != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("pageNumber")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageNumber, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (pageSize != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("pageSize")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageSize, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -14405,7 +14539,7 @@ namespace Explore.Blazor.Client.Clients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<System.Collections.Generic.ICollection<OrganizationListDto>>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<PaginatedResultOfOrganizationListDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -14533,13 +14667,13 @@ namespace Explore.Blazor.Client.Clients
         /// Get my Organizations
         /// </summary>
         /// <remarks>
-        /// Get a list of organizations where the current user is a member
+        /// Get a paginated list of organizations where the current user is a member. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<System.Collections.Generic.ICollection<OrganizationListDto>> My2Async()
+        public virtual System.Threading.Tasks.Task<PaginatedResultOfOrganizationListDto> My2Async(int? pageNumber, int? pageSize)
         {
-            return My2Async(System.Threading.CancellationToken.None);
+            return My2Async(pageNumber, pageSize, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
@@ -14547,11 +14681,11 @@ namespace Explore.Blazor.Client.Clients
         /// Get my Organizations
         /// </summary>
         /// <remarks>
-        /// Get a list of organizations where the current user is a member
+        /// Get a paginated list of organizations where the current user is a member. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.ICollection<OrganizationListDto>> My2Async(System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<PaginatedResultOfOrganizationListDto> My2Async(int? pageNumber, int? pageSize, System.Threading.CancellationToken cancellationToken)
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -14566,6 +14700,16 @@ namespace Explore.Blazor.Client.Clients
                 
                     // Operation Path: "api/v1/Organization/my"
                     urlBuilder_.Append("api/v1/Organization/my");
+                    urlBuilder_.Append('?');
+                    if (pageNumber != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("pageNumber")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageNumber, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (pageSize != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("pageSize")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageSize, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -14592,7 +14736,7 @@ namespace Explore.Blazor.Client.Clients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<System.Collections.Generic.ICollection<OrganizationListDto>>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<PaginatedResultOfOrganizationListDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -14627,9 +14771,9 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<OrganizationDto> OrganizationGETAsync(System.Guid id)
+        public virtual System.Threading.Tasks.Task<OrganizationDto> OrganizationGET2Async(System.Guid id)
         {
-            return OrganizationGETAsync(id, System.Threading.CancellationToken.None);
+            return OrganizationGET2Async(id, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
@@ -14641,7 +14785,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<OrganizationDto> OrganizationGETAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<OrganizationDto> OrganizationGET2Async(System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
             if (id == null)
                 throw new System.ArgumentNullException("id");
@@ -16376,13 +16520,13 @@ namespace Explore.Blazor.Client.Clients
         /// Get all Storage Objects
         /// </summary>
         /// <remarks>
-        /// Retrieve a list of all storage objects (files, images, documents, etc.)
+        /// Retrieve a paginated list of all storage objects (files, images, documents, etc.). Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<System.Collections.Generic.ICollection<StorageObjectListDto>> StorageObjectAllAsync()
+        public virtual System.Threading.Tasks.Task<PaginatedResultOfStorageObjectListDto> StorageObjectGETAsync(int? pageNumber, int? pageSize)
         {
-            return StorageObjectAllAsync(System.Threading.CancellationToken.None);
+            return StorageObjectGETAsync(pageNumber, pageSize, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
@@ -16390,11 +16534,11 @@ namespace Explore.Blazor.Client.Clients
         /// Get all Storage Objects
         /// </summary>
         /// <remarks>
-        /// Retrieve a list of all storage objects (files, images, documents, etc.)
+        /// Retrieve a paginated list of all storage objects (files, images, documents, etc.). Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.ICollection<StorageObjectListDto>> StorageObjectAllAsync(System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<PaginatedResultOfStorageObjectListDto> StorageObjectGETAsync(int? pageNumber, int? pageSize, System.Threading.CancellationToken cancellationToken)
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -16409,6 +16553,16 @@ namespace Explore.Blazor.Client.Clients
                 
                     // Operation Path: "api/v1/StorageObject"
                     urlBuilder_.Append("api/v1/StorageObject");
+                    urlBuilder_.Append('?');
+                    if (pageNumber != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("pageNumber")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageNumber, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (pageSize != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("pageSize")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageSize, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -16435,7 +16589,7 @@ namespace Explore.Blazor.Client.Clients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<System.Collections.Generic.ICollection<StorageObjectListDto>>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<PaginatedResultOfStorageObjectListDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -16587,9 +16741,9 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<StorageObjectDto> StorageObjectGETAsync(System.Guid id)
+        public virtual System.Threading.Tasks.Task<StorageObjectDto> StorageObjectGET2Async(System.Guid id)
         {
-            return StorageObjectGETAsync(id, System.Threading.CancellationToken.None);
+            return StorageObjectGET2Async(id, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
@@ -16601,7 +16755,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<StorageObjectDto> StorageObjectGETAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<StorageObjectDto> StorageObjectGET2Async(System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
             if (id == null)
                 throw new System.ArgumentNullException("id");
@@ -17541,13 +17695,13 @@ namespace Explore.Blazor.Client.Clients
         /// Get all Tags
         /// </summary>
         /// <remarks>
-        /// Get a list of all tags for events
+        /// Retrieve a paginated list of all tags for events. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<System.Collections.Generic.ICollection<TagListDto>> TagAllAsync()
+        public virtual System.Threading.Tasks.Task<PaginatedResultOfTagListDto> TagGETAsync(int? pageNumber, int? pageSize)
         {
-            return TagAllAsync(System.Threading.CancellationToken.None);
+            return TagGETAsync(pageNumber, pageSize, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
@@ -17555,11 +17709,11 @@ namespace Explore.Blazor.Client.Clients
         /// Get all Tags
         /// </summary>
         /// <remarks>
-        /// Get a list of all tags for events
+        /// Retrieve a paginated list of all tags for events. Default page size is 20, max is 100.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.ICollection<TagListDto>> TagAllAsync(System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<PaginatedResultOfTagListDto> TagGETAsync(int? pageNumber, int? pageSize, System.Threading.CancellationToken cancellationToken)
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -17574,6 +17728,16 @@ namespace Explore.Blazor.Client.Clients
                 
                     // Operation Path: "api/v1/Tag"
                     urlBuilder_.Append("api/v1/Tag");
+                    urlBuilder_.Append('?');
+                    if (pageNumber != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("pageNumber")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageNumber, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (pageSize != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("pageSize")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageSize, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -17600,7 +17764,7 @@ namespace Explore.Blazor.Client.Clients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<System.Collections.Generic.ICollection<TagListDto>>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<PaginatedResultOfTagListDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -17732,9 +17896,9 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<TagDto> TagGETAsync(System.Guid id)
+        public virtual System.Threading.Tasks.Task<TagDto> TagGET2Async(System.Guid id)
         {
-            return TagGETAsync(id, System.Threading.CancellationToken.None);
+            return TagGET2Async(id, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
@@ -17746,7 +17910,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<TagDto> TagGETAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<TagDto> TagGET2Async(System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
             if (id == null)
                 throw new System.ArgumentNullException("id");
@@ -25325,6 +25489,426 @@ namespace Explore.Blazor.Client.Clients
 
         [Newtonsoft.Json.JsonProperty("description", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
         public string Description { get; set; }
+
+        private System.Collections.Generic.IDictionary<string, object> _additionalProperties;
+
+        [Newtonsoft.Json.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PaginatedResultOfActorListDto
+    {
+        [Newtonsoft.Json.JsonProperty("items", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public System.Collections.Generic.ICollection<ActorListDto> Items { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("pageNumber", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int PageNumber { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("pageSize", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int PageSize { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("totalCount", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int TotalCount { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("totalPages", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int TotalPages { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("hasPreviousPage", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public bool HasPreviousPage { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("hasNextPage", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public bool HasNextPage { get; set; }
+
+        private System.Collections.Generic.IDictionary<string, object> _additionalProperties;
+
+        [Newtonsoft.Json.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PaginatedResultOfCategoryListDto
+    {
+        [Newtonsoft.Json.JsonProperty("items", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public System.Collections.Generic.ICollection<CategoryListDto> Items { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("pageNumber", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int PageNumber { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("pageSize", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int PageSize { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("totalCount", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int TotalCount { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("totalPages", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int TotalPages { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("hasPreviousPage", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public bool HasPreviousPage { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("hasNextPage", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public bool HasNextPage { get; set; }
+
+        private System.Collections.Generic.IDictionary<string, object> _additionalProperties;
+
+        [Newtonsoft.Json.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PaginatedResultOfEventListDto
+    {
+        [Newtonsoft.Json.JsonProperty("items", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public System.Collections.Generic.ICollection<EventListDto> Items { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("pageNumber", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int PageNumber { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("pageSize", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int PageSize { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("totalCount", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int TotalCount { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("totalPages", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int TotalPages { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("hasPreviousPage", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public bool HasPreviousPage { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("hasNextPage", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public bool HasNextPage { get; set; }
+
+        private System.Collections.Generic.IDictionary<string, object> _additionalProperties;
+
+        [Newtonsoft.Json.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PaginatedResultOfEventRegistrationListDto
+    {
+        [Newtonsoft.Json.JsonProperty("items", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public System.Collections.Generic.ICollection<EventRegistrationListDto> Items { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("pageNumber", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int PageNumber { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("pageSize", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int PageSize { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("totalCount", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int TotalCount { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("totalPages", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int TotalPages { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("hasPreviousPage", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public bool HasPreviousPage { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("hasNextPage", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public bool HasNextPage { get; set; }
+
+        private System.Collections.Generic.IDictionary<string, object> _additionalProperties;
+
+        [Newtonsoft.Json.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PaginatedResultOfEventSessionAgendaItemListDto
+    {
+        [Newtonsoft.Json.JsonProperty("items", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public System.Collections.Generic.ICollection<EventSessionAgendaItemListDto> Items { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("pageNumber", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int PageNumber { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("pageSize", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int PageSize { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("totalCount", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int TotalCount { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("totalPages", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int TotalPages { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("hasPreviousPage", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public bool HasPreviousPage { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("hasNextPage", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public bool HasNextPage { get; set; }
+
+        private System.Collections.Generic.IDictionary<string, object> _additionalProperties;
+
+        [Newtonsoft.Json.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PaginatedResultOfEventSessionLanguageListDto
+    {
+        [Newtonsoft.Json.JsonProperty("items", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public System.Collections.Generic.ICollection<EventSessionLanguageListDto> Items { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("pageNumber", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int PageNumber { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("pageSize", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int PageSize { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("totalCount", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int TotalCount { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("totalPages", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int TotalPages { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("hasPreviousPage", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public bool HasPreviousPage { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("hasNextPage", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public bool HasNextPage { get; set; }
+
+        private System.Collections.Generic.IDictionary<string, object> _additionalProperties;
+
+        [Newtonsoft.Json.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PaginatedResultOfEventSessionListDto
+    {
+        [Newtonsoft.Json.JsonProperty("items", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public System.Collections.Generic.ICollection<EventSessionListDto> Items { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("pageNumber", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int PageNumber { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("pageSize", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int PageSize { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("totalCount", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int TotalCount { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("totalPages", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int TotalPages { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("hasPreviousPage", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public bool HasPreviousPage { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("hasNextPage", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public bool HasNextPage { get; set; }
+
+        private System.Collections.Generic.IDictionary<string, object> _additionalProperties;
+
+        [Newtonsoft.Json.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PaginatedResultOfEventSessionSpeakerListDto
+    {
+        [Newtonsoft.Json.JsonProperty("items", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public System.Collections.Generic.ICollection<EventSessionSpeakerListDto> Items { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("pageNumber", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int PageNumber { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("pageSize", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int PageSize { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("totalCount", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int TotalCount { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("totalPages", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int TotalPages { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("hasPreviousPage", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public bool HasPreviousPage { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("hasNextPage", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public bool HasNextPage { get; set; }
+
+        private System.Collections.Generic.IDictionary<string, object> _additionalProperties;
+
+        [Newtonsoft.Json.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PaginatedResultOfLocationListDto
+    {
+        [Newtonsoft.Json.JsonProperty("items", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public System.Collections.Generic.ICollection<LocationListDto> Items { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("pageNumber", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int PageNumber { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("pageSize", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int PageSize { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("totalCount", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int TotalCount { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("totalPages", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int TotalPages { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("hasPreviousPage", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public bool HasPreviousPage { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("hasNextPage", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public bool HasNextPage { get; set; }
+
+        private System.Collections.Generic.IDictionary<string, object> _additionalProperties;
+
+        [Newtonsoft.Json.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PaginatedResultOfOrganizationListDto
+    {
+        [Newtonsoft.Json.JsonProperty("items", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public System.Collections.Generic.ICollection<OrganizationListDto> Items { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("pageNumber", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int PageNumber { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("pageSize", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int PageSize { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("totalCount", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int TotalCount { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("totalPages", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int TotalPages { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("hasPreviousPage", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public bool HasPreviousPage { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("hasNextPage", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public bool HasNextPage { get; set; }
+
+        private System.Collections.Generic.IDictionary<string, object> _additionalProperties;
+
+        [Newtonsoft.Json.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PaginatedResultOfStorageObjectListDto
+    {
+        [Newtonsoft.Json.JsonProperty("items", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public System.Collections.Generic.ICollection<StorageObjectListDto> Items { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("pageNumber", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int PageNumber { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("pageSize", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int PageSize { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("totalCount", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int TotalCount { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("totalPages", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int TotalPages { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("hasPreviousPage", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public bool HasPreviousPage { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("hasNextPage", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public bool HasNextPage { get; set; }
+
+        private System.Collections.Generic.IDictionary<string, object> _additionalProperties;
+
+        [Newtonsoft.Json.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PaginatedResultOfTagListDto
+    {
+        [Newtonsoft.Json.JsonProperty("items", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public System.Collections.Generic.ICollection<TagListDto> Items { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("pageNumber", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int PageNumber { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("pageSize", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int PageSize { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("totalCount", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int TotalCount { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("totalPages", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int TotalPages { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("hasPreviousPage", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public bool HasPreviousPage { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("hasNextPage", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public bool HasNextPage { get; set; }
 
         private System.Collections.Generic.IDictionary<string, object> _additionalProperties;
 

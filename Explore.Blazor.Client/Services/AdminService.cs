@@ -72,9 +72,9 @@ public class AdminService : IAdminService
         try
         {
             _logger.LogInformation("[ADMIN SERVICE] Fetching all organizations via API client");
-            var response = await _apiClient.OrganizationAllAsync();
-            _logger.LogInformation("[ADMIN SERVICE] Received {Count} organizations from API", response?.Count ?? 0);
-            return response ?? new List<OrganizationListDto>();
+            var response = await _apiClient.OrganizationGETAsync(pageNumber: 1, pageSize: 100);
+            _logger.LogInformation("[ADMIN SERVICE] Received {Count} organizations from {Total} total", response?.Items?.Count ?? 0, response?.TotalCount ?? 0);
+            return response?.Items ?? new List<OrganizationListDto>();
         }
         catch (ApiException ex)
         {
@@ -92,7 +92,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.OrganizationGETAsync(id);
+            return await _apiClient.OrganizationGET2Async(id);
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
         {
@@ -431,9 +431,9 @@ public class AdminService : IAdminService
         try
         {
             _logger.LogInformation("[ADMIN SERVICE] Fetching categories...");
-            var response = await _apiClient.CategoryAllAsync();
-            _logger.LogInformation("[ADMIN SERVICE] Received {Count} categories", response?.Count ?? 0);
-            return response ?? new List<CategoryListDto>();
+            var response = await _apiClient.CategoryGETAsync(pageNumber: 1, pageSize: 100);
+            _logger.LogInformation("[ADMIN SERVICE] Received {Count} categories from {Total} total", response?.Items?.Count ?? 0, response?.TotalCount ?? 0);
+            return response?.Items ?? new List<CategoryListDto>();
         }
         catch (ApiException ex)
         {
@@ -451,7 +451,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.CategoryGETAsync(id);
+            return await _apiClient.CategoryGET2Async(id);
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
         {
@@ -532,9 +532,9 @@ public class AdminService : IAdminService
         try
         {
             _logger.LogInformation("[ADMIN SERVICE] Fetching tags...");
-            var response = await _apiClient.TagAllAsync();
-            _logger.LogInformation("[ADMIN SERVICE] Received {Count} tags", response?.Count ?? 0);
-            return response ?? new List<TagListDto>();
+            var response = await _apiClient.TagGETAsync(pageNumber: 1, pageSize: 100);
+            _logger.LogInformation("[ADMIN SERVICE] Received {Count} tags from {Total} total", response?.Items?.Count ?? 0, response?.TotalCount ?? 0);
+            return response?.Items ?? new List<TagListDto>();
         }
         catch (ApiException ex)
         {
@@ -552,7 +552,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.TagGETAsync(id);
+            return await _apiClient.TagGET2Async(id);
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
         {
@@ -633,9 +633,9 @@ public class AdminService : IAdminService
         try
         {
             _logger.LogInformation("[ADMIN SERVICE] Fetching locations...");
-            var response = await _apiClient.LocationAllAsync();
-            _logger.LogInformation("[ADMIN SERVICE] Received {Count} locations", response?.Count ?? 0);
-            return response ?? new List<LocationListDto>();
+            var response = await _apiClient.LocationGETAsync(pageNumber: 1, pageSize: 100);
+            _logger.LogInformation("[ADMIN SERVICE] Received {Count} locations from {Total} total", response?.Items?.Count ?? 0, response?.TotalCount ?? 0);
+            return response?.Items ?? new List<LocationListDto>();
         }
         catch (ApiException ex)
         {
@@ -653,7 +653,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.LocationGETAsync(id);
+            return await _apiClient.LocationGET2Async(id);
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
         {

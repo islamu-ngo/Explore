@@ -8,25 +8,28 @@
 @using Explore.Blazor.Client.Pages.Organization
 @using Explore.Blazor.Client.Pages.Admin
 @using Explore.Blazor.Client.Pages.Landing
+@using Explore.Blazor.Client.Providers
 @using Microsoft.AspNetCore.Components.Authorization
 @using Explore.Blazor.Services
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ICircuitAccessTokenService TokenService
 @inject ILogger<Routes> Logger
 
-<Blazouter.Components.Router Routes="@_routes" DefaultLayout="typeof(MainLayout)">
-    <NotFound>
-        <LayoutView Layout="typeof(MainLayout)">
-            <MudContainer MaxWidth="MaxWidth.Medium" Class="mt-8">
-                <MudText Typo="Typo.h3">404 - Page Not Found</MudText>
-                <MudText Typo="Typo.body1" Class="mt-4">The page you requested could not be found.</MudText>
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/" Class="mt-4">
-                    Return to Home
-                </MudButton>
-            </MudContainer>
-        </LayoutView>
-    </NotFound>
-</Blazouter.Components.Router>
+<TenantContextProvider>
+    <Blazouter.Components.Router Routes="@_routes" DefaultLayout="typeof(MainLayout)">
+        <NotFound>
+            <LayoutView Layout="typeof(MainLayout)">
+                <MudContainer MaxWidth="MaxWidth.Medium" Class="mt-8">
+                    <MudText Typo="Typo.h3">404 - Page Not Found</MudText>
+                    <MudText Typo="Typo.body1" Class="mt-4">The page you requested could not be found.</MudText>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/" Class="mt-4">
+                        Return to Home
+                    </MudButton>
+                </MudContainer>
+            </LayoutView>
+        </NotFound>
+    </Blazouter.Components.Router>
+</TenantContextProvider>
 
 @code {
     [CascadingParameter(Name = "AccessToken")]

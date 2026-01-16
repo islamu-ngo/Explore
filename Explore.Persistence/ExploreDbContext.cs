@@ -11,15 +11,19 @@ namespace Explore.Persistence
 {
     public class ExploreDbContext : DbContext
     {
-        private readonly ITenantContext? _tenantContext;
+        /// <summary>
+        /// Tenant context for multi-tenant data isolation.
+        /// Set via property injection after DbContext is retrieved from pool.
+        /// When null, Global Query Filters are bypassed (e.g., during migrations).
+        /// </summary>
+        public ITenantContext? TenantContext { get; set; }
 
+        /// <summary>
+        /// Single constructor required for DbContext pooling compatibility.
+        /// Use TenantContext property to set tenant context after retrieval from pool.
+        /// </summary>
         public ExploreDbContext(DbContextOptions<ExploreDbContext> options) : base(options)
         {
-        }
-
-        public ExploreDbContext(DbContextOptions<ExploreDbContext> options, ITenantContext? tenantContext) : base(options)
-        {
-            _tenantContext = tenantContext;
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -35,48 +39,48 @@ namespace Explore.Persistence
 
         /// <summary>
         /// Applies Global Query Filters for multi-tenant data isolation.
-        /// When _tenantContext is null (e.g., during migrations), the filter is bypassed.
+        /// When TenantContext is null (e.g., during migrations), the filter is bypassed.
         /// </summary>
         private void ApplyGlobalQueryFilters(ModelBuilder modelBuilder)
         {
             // Event entities
-            modelBuilder.Entity<Event>().HasQueryFilter(e => _tenantContext == null || e.TenantId == _tenantContext.TenantId);
-            modelBuilder.Entity<EventSession>().HasQueryFilter(e => _tenantContext == null || e.TenantId == _tenantContext.TenantId);
-            modelBuilder.Entity<EventRegistration>().HasQueryFilter(e => _tenantContext == null || e.TenantId == _tenantContext.TenantId);
-            modelBuilder.Entity<EventCategories>().HasQueryFilter(e => _tenantContext == null || e.TenantId == _tenantContext.TenantId);
-            modelBuilder.Entity<EventTags>().HasQueryFilter(e => _tenantContext == null || e.TenantId == _tenantContext.TenantId);
-            modelBuilder.Entity<EventSessionLanguage>().HasQueryFilter(e => _tenantContext == null || e.TenantId == _tenantContext.TenantId);
-            modelBuilder.Entity<EventSessionSpeaker>().HasQueryFilter(e => _tenantContext == null || e.TenantId == _tenantContext.TenantId);
-            modelBuilder.Entity<EventSessionAgendaItem>().HasQueryFilter(e => _tenantContext == null || e.TenantId == _tenantContext.TenantId);
+            modelBuilder.Entity<Event>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+            modelBuilder.Entity<EventSession>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+            modelBuilder.Entity<EventRegistration>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+            modelBuilder.Entity<EventCategories>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+            modelBuilder.Entity<EventTags>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+            modelBuilder.Entity<EventSessionLanguage>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+            modelBuilder.Entity<EventSessionSpeaker>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+            modelBuilder.Entity<EventSessionAgendaItem>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
 
             // Organization entities
-            modelBuilder.Entity<Organization>().HasQueryFilter(e => _tenantContext == null || e.TenantId == _tenantContext.TenantId);
-            modelBuilder.Entity<OrganizationReview>().HasQueryFilter(e => _tenantContext == null || e.TenantId == _tenantContext.TenantId);
-            modelBuilder.Entity<OrganizationMember>().HasQueryFilter(e => _tenantContext == null || e.TenantId == _tenantContext.TenantId);
+            modelBuilder.Entity<Organization>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+            modelBuilder.Entity<OrganizationReview>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+            modelBuilder.Entity<OrganizationMember>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
 
             // Actor entities
-            modelBuilder.Entity<Actor>().HasQueryFilter(e => _tenantContext == null || e.TenantId == _tenantContext.TenantId);
-            modelBuilder.Entity<ActorKeyStore>().HasQueryFilter(e => _tenantContext == null || e.TenantId == _tenantContext.TenantId);
+            modelBuilder.Entity<Actor>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+            modelBuilder.Entity<ActorKeyStore>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
 
             // Location entity
-            modelBuilder.Entity<Location>().HasQueryFilter(e => _tenantContext == null || e.TenantId == _tenantContext.TenantId);
+            modelBuilder.Entity<Location>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
 
             // Storage entity
-            modelBuilder.Entity<StorageObject>().HasQueryFilter(e => _tenantContext == null || e.TenantId == _tenantContext.TenantId);
+            modelBuilder.Entity<StorageObject>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
 
             // Category and Tag entities
-            modelBuilder.Entity<Category>().HasQueryFilter(e => _tenantContext == null || e.TenantId == _tenantContext.TenantId);
-            modelBuilder.Entity<Tag>().HasQueryFilter(e => _tenantContext == null || e.TenantId == _tenantContext.TenantId);
-            modelBuilder.Entity<TagTypeTags>().HasQueryFilter(e => _tenantContext == null || e.TenantId == _tenantContext.TenantId);
+            modelBuilder.Entity<Category>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+            modelBuilder.Entity<Tag>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+            modelBuilder.Entity<TagTypeTags>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
 
             // User-related tenant entities
-            modelBuilder.Entity<UserAuthenticationToken>().HasQueryFilter(e => _tenantContext == null || e.TenantId == _tenantContext.TenantId);
-            modelBuilder.Entity<UserExternalLogin>().HasQueryFilter(e => _tenantContext == null || e.TenantId == _tenantContext.TenantId);
-            modelBuilder.Entity<UserRole>().HasQueryFilter(e => _tenantContext == null || e.TenantId == _tenantContext.TenantId);
+            modelBuilder.Entity<UserAuthenticationToken>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+            modelBuilder.Entity<UserExternalLogin>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+            modelBuilder.Entity<UserRole>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
 
             // Tenant entities (scoped by tenant)
-            modelBuilder.Entity<TenantUser>().HasQueryFilter(e => _tenantContext == null || e.TenantId == _tenantContext.TenantId);
-            modelBuilder.Entity<TenantSettings>().HasQueryFilter(e => _tenantContext == null || e.TenantId == _tenantContext.TenantId);
+            modelBuilder.Entity<TenantUser>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+            modelBuilder.Entity<TenantSettings>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
         }
 
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

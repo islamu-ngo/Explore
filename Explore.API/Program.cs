@@ -112,14 +112,13 @@ builder.Services.AddCors(options =>
 builder.Host.UseSerilog((ctx, lc) =>
     lc.WriteTo.Console().ReadFrom.Configuration(ctx.Configuration));
 
+// JWT Bearer Authentication for Keycloak
+// Using standard AddJwtBearer instead of AddKeycloakJwtBearer for better control
+// over token validation when using external Keycloak (not Aspire-hosted)
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddKeycloakJwtBearer(JwtBearerDefaults.AuthenticationScheme, realm: realm, options =>
+    .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
     {
-        //.AddJwtBearer(options => {
-        // will require when in prod... needs to fix this hardcoded value later...
-        //options.RequireHttpsMetadata = false;
-
-        // Sets options.RequireHttpsMetadata to true if the config value is "true", otherwise false
+        // Sets options.RequireHttpsMetadata based on configuration
         options.RequireHttpsMetadata = string.Equals(
             builder.Configuration["Keycloak:RequireHttpsMetadata"],
             "true",
@@ -127,49 +126,131 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         );
 
         options.Authority = authority;
-        options.Audience = audience;
         options.MetadataAddress = builder.Configuration["Keycloak:MetadataAddress"];
+
+        // Valid audiences for multi-client support (BFF pattern)
+        // Keycloak uses 'azp' (authorized party) in addition to 'aud' for client identification
+        var validAudiences = new[]
+        {
+            "explore-api",           // Direct API access (Swagger, external clients)
+            "explore-blazor-server", // Blazor Server BFF pattern (forwards OIDC tokens)
+            "account"                // Keycloak account service (common in Keycloak tokens)
+        };
+
+        // Token validation parameters for multi-client support (BFF pattern)
         options.TokenValidationParameters = new TokenValidationParameters
         {
+            // Custom audience validation that checks both 'aud' and 'azp' claims
+            // Keycloak often puts the client ID in 'azp' rather than 'aud'
             ValidateAudience = true,
+            AudienceValidator = (audiences, securityToken, validationParameters) =>
+            {
+                var audienceList = audiences?.ToList() ?? new List<string>();
+
+                // Check standard 'aud' claim
+                if (audienceList.Any(aud => validAudiences.Contains(aud)))
+                {
+                    return true;
+                }
+
+                // Check 'azp' (authorized party) claim - Keycloak uses this for the client ID
+                if (securityToken is System.IdentityModel.Tokens.Jwt.JwtSecurityToken jwtToken)
+                {
+                    var azp = jwtToken.Claims.FirstOrDefault(c => c.Type == "azp")?.Value;
+                    if (!string.IsNullOrEmpty(azp) && validAudiences.Contains(azp))
+                    {
+                        return true;
+                    }
+
+                    // Log the audience validation failure for debugging
+                    Console.WriteLine($"[JWT AudienceValidator] Token audiences: [{string.Join(", ", audienceList)}], azp: {azp ?? "(null)"}, valid audiences: [{string.Join(", ", validAudiences)}]");
+                }
+
+                return false;
+            },
+
+            // Issuer validation
             ValidateIssuer = true,
             ValidIssuer = authority,
-            // Accept tokens from both the API client and the Blazor client
-            // explore-api: Direct API access (Swagger, external clients)
-            // explore-blazor-server: Blazor Server BFF pattern (forwards tokens from Keycloak OIDC)
-            // account: Keycloak account service (common audience in Keycloak tokens)
-            ValidAudiences = new[] { "explore-api", "explore-blazor-server", "account" },
+
+            // Lifetime validation
             ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(5), // Allow 5 minutes clock skew
+
+            // Signature validation (automatic via OIDC discovery)
+            ValidateIssuerSigningKey = true,
+
+            // Claim type mappings for Keycloak
             NameClaimType = "preferred_username",
             RoleClaimType = "roles"
         };
 
-        options.BackchannelHttpHandler = new HttpClientHandler
+        // Development: Accept self-signed certificates for Keycloak
+        if (builder.Environment.IsDevelopment())
         {
-            ServerCertificateCustomValidationCallback =
-                HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
-        };
+            options.BackchannelHttpHandler = new HttpClientHandler
+            {
+                ServerCertificateCustomValidationCallback =
+                    HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+            };
+        }
 
-        // Add JWT events for debugging authentication issues
-        options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
+        // JWT Bearer events for debugging and logging
+        options.Events = new JwtBearerEvents
         {
             OnAuthenticationFailed = context =>
             {
                 var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
                 logger.LogWarning("[JWT] Authentication failed: {Error}", context.Exception?.Message);
+
+                // Log detailed exception info for debugging
+                if (context.Exception is SecurityTokenValidationException stve)
+                {
+                    logger.LogWarning("[JWT] Token validation error details: {Details}", stve.Message);
+                }
                 if (context.Exception?.InnerException != null)
                 {
                     logger.LogWarning("[JWT] Inner exception: {Inner}", context.Exception.InnerException.Message);
                 }
+
+                // Log token details for debugging audience issues
+                var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+                if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                {
+                    try
+                    {
+                        var token = authHeader.Substring(7);
+                        var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+                        if (handler.CanReadToken(token))
+                        {
+                            var jwt = handler.ReadJwtToken(token);
+                            var aud = jwt.Audiences?.ToList() ?? new List<string>();
+                            var azp = jwt.Claims.FirstOrDefault(c => c.Type == "azp")?.Value;
+                            var iss = jwt.Issuer;
+                            var exp = jwt.ValidTo;
+
+                            logger.LogWarning("[JWT] Token details - Issuer: {Issuer}, Audiences: [{Audiences}], Azp: {Azp}, Expires: {Exp}",
+                                iss, string.Join(", ", aud), azp ?? "(null)", exp);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogWarning("[JWT] Could not parse token for debugging: {Error}", ex.Message);
+                    }
+                }
+
                 return Task.CompletedTask;
             },
+
             OnTokenValidated = context =>
             {
                 var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
                 var claims = context.Principal?.Claims.Select(c => $"{c.Type}={c.Value}");
-                logger.LogInformation("[JWT] Token validated successfully. Claims: {Claims}", string.Join(", ", claims ?? Array.Empty<string>()));
+                logger.LogInformation("[JWT] Token validated successfully. Claims: {Claims}",
+                    string.Join(", ", claims ?? Array.Empty<string>()));
                 return Task.CompletedTask;
             },
+
             OnChallenge = context =>
             {
                 var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
@@ -177,13 +258,18 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                     context.Error, context.ErrorDescription);
                 return Task.CompletedTask;
             },
+
             OnMessageReceived = context =>
             {
                 var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-                var hasToken = !string.IsNullOrEmpty(context.Token) ||
-                               context.Request.Headers.ContainsKey("Authorization");
-                logger.LogInformation("[JWT] Message received. Has token: {HasToken}, Path: {Path}",
-                    hasToken, context.Request.Path);
+                var hasAuth = context.Request.Headers.ContainsKey("Authorization");
+                var authHeader = hasAuth ? context.Request.Headers["Authorization"].ToString() : null;
+                var tokenPreview = !string.IsNullOrEmpty(authHeader) && authHeader.Length > 20
+                    ? $"{authHeader[..20]}..."
+                    : authHeader;
+
+                logger.LogInformation("[JWT] Message received. Path: {Path}, Has Authorization: {HasAuth}, Header: {Token}",
+                    context.Request.Path, hasAuth, tokenPreview);
                 return Task.CompletedTask;
             }
         };

@@ -9,8 +9,22 @@
 <MudPaper Class="event-session-manager">
     <MudText Typo="Typo.h5" Class="event-session-manager__title">Event Sessions</MudText>
 
-    <MudDataGrid T="EventSessionListDto" Items="@sessions" ReadOnly="false" EditMode="DataGridEditMode.Cell"
-                 Bordered="true" Dense="true" Hover="true" Class="event-session-manager__grid">
+    @if (_isLoading)
+    {
+        <div style="display: flex; justify-content: center; padding: 2rem;">
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+        </div>
+    }
+    else if (!sessions.Any())
+    {
+        <MudAlert Severity="Severity.Info" Class="mb-4">
+            No sessions have been created for this event yet.
+        </MudAlert>
+    }
+    else
+    {
+        <MudDataGrid T="EventSessionListDto" Items="@sessions" ReadOnly="false" EditMode="DataGridEditMode.Cell"
+                     Bordered="true" Dense="true" Hover="true" Class="event-session-manager__grid">
         <Columns>
             <PropertyColumn Property="x => x.Title" />
             <PropertyColumn Property="x => x.StartTime" Format="s" />
@@ -29,7 +43,8 @@
                 </CellTemplate>
             </TemplateColumn>
         </Columns>
-    </MudDataGrid>
+        </MudDataGrid>
+    }
 
     <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog" Class="event-session-manager__create-btn">
         Create Session
@@ -40,23 +55,36 @@
     [Parameter] public Guid EventId { get; set; }
 
     private List<EventSessionListDto> sessions = new();
+    private Guid _previousEventId;
+    private bool _isLoading = true;
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
-        await LoadSessions();
+        // Only reload if EventId changed and is valid
+        if (EventId != Guid.Empty && EventId != _previousEventId)
+        {
+            _previousEventId = EventId;
+            await LoadSessions();
+        }
     }
 
     private async Task LoadSessions()
     {
+        _isLoading = true;
         try
         {
             var result = await EventService.GetSessionsByEventAsync(EventId);
             sessions = result.ToList();
-            StateHasChanged();
         }
         catch (Exception ex)
         {
             Snackbar.Add($"Error loading sessions: {ex.Message}", Severity.Error);
+            sessions = new List<EventSessionListDto>();
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
         }
     }
 

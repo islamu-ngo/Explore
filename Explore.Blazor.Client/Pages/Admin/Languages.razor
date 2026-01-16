@@ -9,7 +9,7 @@
 
 <MudText Typo="Typo.h4" GutterBottom="true">Languages</MudText>
 
-<MudTable ServerData="@(new Func<TableState, Task<TableData<LanguageListDto>>>(ServerReload))"
+<MudTable Items="@_languages"
           Dense="true" Hover="true" Striped="true" @ref="_table">
     <ToolBarContent>
         <MudText Typo="Typo.h6">Manage Languages</MudText>
@@ -36,12 +36,11 @@
 
 @code {
     private MudTable<LanguageListDto> _table;
-    private IEnumerable<LanguageListDto> _languages;
+    private IEnumerable<LanguageListDto> _languages = new List<LanguageListDto>();
 
-    private async Task<TableData<LanguageListDto>> ServerReload(TableState state)
+    protected override async Task OnInitializedAsync()
     {
         _languages = await LanguageService.GetLanguagesAsync();
-        return new TableData<LanguageListDto>() { TotalItems = _languages.Count(), Items = _languages };
     }
 
     private async Task OpenDialog(int? id)

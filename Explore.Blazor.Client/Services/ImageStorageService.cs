@@ -65,13 +65,13 @@ public class ImageUploadResult
 public class ImageStorageService : IImageStorageService
 {
     private readonly IEventApiClient _apiClient;
-    private readonly HttpClient _httpClient;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<ImageStorageService> _logger;
 
-    public ImageStorageService(IEventApiClient apiClient, HttpClient httpClient, ILogger<ImageStorageService> logger)
+    public ImageStorageService(IEventApiClient apiClient, IHttpClientFactory httpClientFactory, ILogger<ImageStorageService> logger)
     {
         _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
-        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -143,8 +143,8 @@ public class ImageStorageService : IImageStorageService
         {
             _logger.LogInformation("Uploading to S3: {FileName}", file.Name);
 
-            // Create a new HttpClient for direct S3 upload (without auth headers)
-            using var s3Client = new HttpClient();
+            // Use named HTTP client for S3 upload (configured with proper timeout)
+            using var s3Client = _httpClientFactory.CreateClient("S3Upload");
 
             // Read the file content
             using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);

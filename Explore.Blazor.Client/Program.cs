@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MudBlazor.Services;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Services.Contracts;
 using Microsoft.AspNetCore.Components.Authorization;
 using System.Net.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -71,6 +72,15 @@ builder.Services.AddScoped<ILanguageService, LanguageService>();
 builder.Services.AddScoped<IMadhabService, MadhabService>();
 builder.Services.AddScoped<IEventSessionSpeakerService, EventSessionSpeakerService>();
 builder.Services.AddScoped<IActorService, ActorService>();
+
+// Register AuthStateService for centralized auth context
+builder.Services.AddScoped<IAuthStateService, AuthStateService>();
+
+// Register named HTTP client for S3 uploads (ImageStorageService)
+builder.Services.AddHttpClient("S3Upload", client =>
+{
+    client.Timeout = TimeSpan.FromMinutes(5); // Allow large file uploads
+});
 
 builder.Services.AddScoped<BffClient>();
 

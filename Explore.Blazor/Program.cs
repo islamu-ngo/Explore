@@ -1,3 +1,4 @@
+using Explore.Blazor.Client.Configuration;
 using Explore.Blazor.Client.Pages;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Clients;
@@ -43,6 +44,15 @@ builder.Services.AddScoped<ILocationService, LocationService>();
 builder.Services.AddTransient<ServerCookieForwardingHandler>();
 builder.Services.AddScoped<ICircuitAccessTokenService, CircuitAccessTokenService>();
 builder.Services.AddTransient<AccessTokenForwardingHandler>();
+// Configure multi-tenancy settings
+builder.Services.Configure<TenantConfiguration>(builder.Configuration.GetSection("Explore:MultiTenancy"));
+// Register AuthStateService for centralized auth context
+builder.Services.AddScoped<IAuthStateService, AuthStateService>();
+// Register named HTTP client for S3 uploads (ImageStorageService)
+builder.Services.AddHttpClient("S3Upload", client =>
+{
+    client.Timeout = TimeSpan.FromMinutes(5); // Allow large file uploads
+});
 
 // Blazor
 builder.Services.AddRazorComponents()

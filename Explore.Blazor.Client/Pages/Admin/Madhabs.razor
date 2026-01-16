@@ -9,7 +9,7 @@
 
 <MudText Typo="Typo.h4" GutterBottom="true">Madhabs</MudText>
 
-<MudTable ServerData="@(new Func<TableState, Task<TableData<MadhabListDto>>>(ServerReload))"
+<MudTable T="MadhabListDto" ServerData="@ServerReload"
           Dense="true" Hover="true" Striped="true" @ref="_table">
     <ToolBarContent>
         <MudText Typo="Typo.h6">Manage Madhabs</MudText>
@@ -38,7 +38,7 @@
     private MudTable<MadhabListDto> _table;
     private IEnumerable<MadhabListDto> _madhabs;
 
-    private async Task<TableData<MadhabListDto>> ServerReload(TableState state)
+    private async Task<TableData<MadhabListDto>> ServerReload(TableState state, CancellationToken cancellationToken)
     {
         _madhabs = await MadhabService.GetMadhabsAsync();
         return new TableData<MadhabListDto>() { TotalItems = _madhabs.Count(), Items = _madhabs };

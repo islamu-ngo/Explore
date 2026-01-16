@@ -6,6 +6,7 @@ namespace Explore.Blazor.Client.Services;
 public interface ITagService
 {
     Task<ICollection<TagListDto>> GetAllTagsAsync();
+    Task<ICollection<TagListDto>> GetTags(); // Alias for admin pages
     Task<TagDto?> GetTagByIdAsync(Guid tagId);
     Task<BaseCommandResponseOfGuid?> CreateTagAsync(CreateTagDto dto);
     Task<BaseCommandResponseOfGuid?> UpdateTagAsync(Guid id, UpdateTagDto dto);
@@ -32,9 +33,9 @@ public class TagService : ITagService
         try
         {
             _logger.LogInformation("[TAG SERVICE] Fetching all tags...");
-            var response = await _apiClient.TagAllAsync();
-            _logger.LogInformation("[TAG SERVICE] Received {Count} tags", response?.Count ?? 0);
-            return response ?? new List<TagListDto>();
+            var response = await _apiClient.TagGETAsync(pageNumber: 1, pageSize: 100);
+            _logger.LogInformation("[TAG SERVICE] Received {Count} tags from {Total} total", response?.Items?.Count ?? 0, response?.TotalCount ?? 0);
+            return response?.Items ?? new List<TagListDto>();
         }
         catch (ApiException ex)
         {
@@ -48,11 +49,16 @@ public class TagService : ITagService
         }
     }
 
+    /// <summary>
+    /// Alias for GetAllTagsAsync() - used by admin pages.
+    /// </summary>
+    public Task<ICollection<TagListDto>> GetTags() => GetAllTagsAsync();
+
     public async Task<TagDto?> GetTagByIdAsync(Guid tagId)
     {
         try
         {
-            return await _apiClient.TagGETAsync(tagId);
+            return await _apiClient.TagGET2Async(tagId);
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
         {
