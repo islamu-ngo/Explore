@@ -21,7 +21,7 @@ namespace Explore.Application.Features.Users.Handlers.Queries
 
         public async Task<UserDto> Handle(GetUserRequest request, CancellationToken cancellationToken)
         {
-            var user = await _userRepository.GetByIdAsync(request.UserId);
+            var user = await _userRepository.GetById(request.UserId);
             return _mapper.Map<UserDto>(user);
         }
     }

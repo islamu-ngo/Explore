@@ -7,6 +7,6 @@ namespace Explore.Application.DTOs.OrganizationMember
     {
         public Guid OrganizationId { get; set; }
         public string Email { get; set; }
-        public OrganizationRole Role { get; set; } = OrganizationRole.Member;
+        public OrganizationRoleEnum Role { get; set; } = OrganizationRoleEnum.Member;
     }
 }

@@ -1,0 +1,66 @@
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Validators
+@using FluentValidation
+@using MudBlazor
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-3 mb-n1" />
+            Edit Location
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="form" @bind-IsValid="success" Model="locationDto">
+            <MudTextField @bind-Value="locationDto.FullName" Label="Name" For="@(() => locationDto.FullName)" Required="true" RequiredError="Name is required." />
+            <MudTextField @bind-Value="locationDto.Address" Label="Address" For="@(() => locationDto.Address)" />
+            <MudTextField @bind-Value="locationDto.City" Label="City" For="@(() => locationDto.City)" />
+            <MudTextField @bind-Value="locationDto.Postcode" Label="Postcode" For="@(() => locationDto.Postcode)" />
+            <MudTextField @bind-Value="locationDto.Country" Label="Country" For="@(() => locationDto.Country)" />
+            <MudNumericField @bind-Value="locationDto.Latitude" Label="Latitude" For="@(() => locationDto.Latitude)" />
+            <MudNumericField @bind-Value="locationDto.Longitude" Label="Longitude" For="@(() => locationDto.Longitude)" />
+            <MudTextField @bind-Value="locationDto.Timezone" Label="Timezone" For="@(() => locationDto.Timezone)" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit">Update</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IDialogReference? DialogReference { get; set; }
+
+    [Parameter] public LocationDto ExistingLocation { get; set; }
+
+    private UpdateLocationDtoValidator validator = new();
+    private MudForm form;
+    private bool success;
+
+    private UpdateLocationDto locationDto = new();
+
+    protected override void OnInitialized()
+    {
+        locationDto.Id = ExistingLocation.Id;
+        locationDto.FullName = ExistingLocation.FullName;
+        locationDto.Address = ExistingLocation.Address;
+        locationDto.City = ExistingLocation.City;
+        locationDto.Postcode = ExistingLocation.Postcode;
+        locationDto.Country = ExistingLocation.Country;
+        locationDto.Latitude = ExistingLocation.Latitude;
+        locationDto.Longitude = ExistingLocation.Longitude;
+        locationDto.Timezone = ExistingLocation.Timezone;
+    }
+
+    private async Task Submit()
+    {
+        await form.Validate();
+        if (form.IsValid)
+        {
+            DialogReference?.Dismiss(DialogResult.Ok(locationDto));
+        }
+    }
+
+    void Cancel() => DialogReference?.Dismiss(DialogResult.Cancel());
+}

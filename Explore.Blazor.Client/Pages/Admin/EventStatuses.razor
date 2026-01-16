@@ -1,0 +1,59 @@
+@page "/admin/event-statuses"
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Services.Contracts
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin")]
+@inject IEventStatusService EventStatusService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<MudText Typo="Typo.h4" GutterBottom="true">Event Statuses</MudText>
+
+<MudTable Items="@_eventStatuses"
+          Dense="true" Hover="true" Striped="true" @ref="_table">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">Manage Event Statuses</MudText>
+        <MudSpacer />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="(() => OpenDialog(null))">Create Event Status</MudButton>
+    </ToolBarContent>
+    <HeaderContent>
+        <MudTh>Name</MudTh>
+        <MudTh>Description</MudTh>
+        <MudTh>Actions</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Name">@context.FullName</MudTd>
+        <MudTd DataLabel="Description">@context.Description</MudTd>
+        <MudTd DataLabel="Actions">
+            <MudIconButton Icon="@Icons.Material.Filled.Edit" OnClick="@(() => OpenDialog(context.Id))" />
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="@(() => DeleteEventStatus(context.Id))" />
+        </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager />
+    </PagerContent>
+</MudTable>
+
+@code {
+    private MudTable<EventStatusListDto> _table;
+    private IEnumerable<EventStatusListDto> _eventStatuses = new List<EventStatusListDto>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _eventStatuses = await EventStatusService.GetEventStatusesAsync();
+    }
+
+    private async Task OpenDialog(int? id)
+    {
+        // For now, this is a placeholder. I will implement the dialog later.
+        Snackbar.Add("Create/Edit functionality not yet implemented.", Severity.Info);
+        await Task.CompletedTask;
+    }
+
+    private async Task DeleteEventStatus(int id)
+    {
+        // For now, this is a placeholder. I will implement the delete functionality later.
+        Snackbar.Add("Delete functionality not yet implemented.", Severity.Info);
+        await Task.CompletedTask;
+    }
+}

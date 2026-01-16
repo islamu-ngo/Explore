@@ -1,0 +1,64 @@
+@page "/admin/locations"
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Services.Contracts
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin")]
+@inject ILocationService LocationService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<MudText Typo="Typo.h4" GutterBottom="true">Locations</MudText>
+
+<MudTable T="LocationListDto" ServerData="@ServerReload"
+          Dense="true" Hover="true" Striped="true" @ref="_table">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">Manage Locations</MudText>
+        <MudSpacer />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="(() => OpenDialog(null))">Create Location</MudButton>
+    </ToolBarContent>
+    <HeaderContent>
+        <MudTh>Name</MudTh>
+        <MudTh>Address</MudTh>
+        <MudTh>City</MudTh>
+        <MudTh>Country</MudTh>
+        <MudTh>Actions</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Name">@context.FullName</MudTd>
+        <MudTd DataLabel="Address">@context.Address</MudTd>
+        <MudTd DataLabel="City">@context.City</MudTd>
+        <MudTd DataLabel="Country">@context.Country</MudTd>
+        <MudTd DataLabel="Actions">
+            <MudIconButton Icon="@Icons.Material.Filled.Edit" OnClick="@(() => OpenDialog(context.Id))" />
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="@(() => DeleteLocation(context.Id))" />
+        </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager />
+    </PagerContent>
+</MudTable>
+
+@code {
+    private MudTable<LocationListDto> _table;
+    private IEnumerable<LocationListDto> _locations;
+
+    private async Task<TableData<LocationListDto>> ServerReload(TableState state, CancellationToken cancellationToken)
+    {
+        _locations = await LocationService.GetLocations();
+        return new TableData<LocationListDto>() { TotalItems = _locations.Count(), Items = _locations };
+    }
+
+    private async Task OpenDialog(Guid? id)
+    {
+        // For now, this is a placeholder. I will implement the dialog later.
+        Snackbar.Add("Create/Edit functionality not yet implemented.", Severity.Info);
+        await Task.CompletedTask;
+    }
+
+    private async Task DeleteLocation(Guid id)
+    {
+        // For now, this is a placeholder. I will implement the delete functionality later.
+        Snackbar.Add("Delete functionality not yet implemented.", Severity.Info);
+        await Task.CompletedTask;
+    }
+}

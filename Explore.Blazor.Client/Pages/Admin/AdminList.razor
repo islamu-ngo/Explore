@@ -1,410 +1,29 @@
-@page "/admin"
 @using MudBlazor
-@using Explore.Blazor.Client.Models.DTOs
+@using Explore.Blazor.Client.Clients;
 @using Explore.Blazor.Client.Services
+@using Microsoft.AspNetCore.Components
+@using Microsoft.Extensions.Logging
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
 @inject IAdminService AdminService
-
-<style>
-    :root{
-        --adm-radius-xl: 22px;
-        --adm-radius-lg: 16px;
-        --adm-radius-md: 12px;
-    }
-
-    .admin-page{
-        max-width: 1280px;
-        margin: 0 auto;
-        padding: 22px;
-    }
-
-    /* HERO */
-    .hero{
-        border-radius: var(--adm-radius-xl);
-        padding: 20px;
-        position: relative;
-        overflow: hidden;
-        border: 1px solid rgba(255,255,255,.06);
-        background:
-          radial-gradient(900px 300px at 20% 10%, rgba(124,58,237,.22), transparent 55%),
-          radial-gradient(800px 280px at 80% 0%, rgba(34,197,94,.14), transparent 55%),
-          linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
-        box-shadow: 0 18px 45px rgba(0,0,0,.22);
-    }
-
-    .hero-top{
-        display:flex;
-        gap:16px;
-        align-items:flex-start;
-        justify-content:space-between;
-        flex-wrap:wrap;
-    }
-
-    .hero-title{
-        display:flex;
-        gap:12px;
-        align-items:center;
-    }
-
-    .hero-badge{
-        width:44px;
-        height:44px;
-        border-radius: 14px;
-        display:grid;
-        place-items:center;
-        background: rgba(124,58,237,.18);
-        border: 1px solid rgba(124,58,237,.35);
-    }
-
-    .hero-sub{
-        opacity:.85;
-    }
-
-    /* STATS */
-    .stats{
-        margin-top: 16px;
-        display:grid;
-        grid-template-columns: repeat(12, 1fr);
-        gap: 12px;
-    }
-
-    .stat-card{
-        grid-column: span 12;
-        border-radius: var(--adm-radius-lg);
-        padding: 14px 14px;
-        border: 1px solid rgba(255,255,255,.06);
-        background: rgba(255,255,255,.03);
-        box-shadow: 0 10px 24px rgba(0,0,0,.12);
-        transition: transform .15s ease, box-shadow .15s ease;
-    }
-    .stat-card:hover{
-        transform: translateY(-2px);
-        box-shadow: 0 16px 32px rgba(0,0,0,.18);
-    }
-
-    .stat-row{
-        display:flex;
-        align-items:center;
-        gap: 12px;
-    }
-
-    .stat-icon{
-        width:42px; height:42px;
-        border-radius: 14px;
-        display:grid;
-        place-items:center;
-        border: 1px solid rgba(255,255,255,.08);
-    }
-    .i-pending{ background: rgba(56,189,248,.16); border-color: rgba(56,189,248,.35); }
-    .i-approved{ background: rgba(34,197,94,.14); border-color: rgba(34,197,94,.30); }
-    .i-rejected{ background: rgba(239,68,68,.14); border-color: rgba(239,68,68,.30); }
-
-    .stat-label { opacity: 0.8; font-size: 0.82rem; }
-    .stat-value { font-size: 1.55rem; font-weight: 700; letter-spacing: 0.3px; }
-
-    /* SECTION TITLE */
-    .section{
-        margin-top: 18px;
-    }
-
-    .section-head{
-        display:flex;
-        align-items:flex-end;
-        justify-content:space-between;
-        flex-wrap:wrap;
-        gap: 12px;
-        margin: 16px 4px 10px;
-    }
-
-    .muted { color: var(--mud-palette-text-secondary); }
-
-    /* TOOLBAR */
-    .panel {
-        border-radius: var(--adm-radius-xl);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        background: rgba(255, 255, 255, 0.03);
-        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
-        padding: 14px;
-    }
-
-    .toolbar {
-        display: flex;
-        gap: 12px;
-        align-items: center;
-        flex-wrap: wrap;
-    }
-
-    .chip-row {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-
-    /* TABS */
-    .tabs-wrap {
-        border-radius: var(--adm-radius-xl);
-        overflow: hidden;
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        background: rgba(255, 255, 255, 0.02);
-    }
-
-    /* TABLE */
-    .table-wrap {
-        border-radius: var(--adm-radius-xl);
-        overflow: hidden;
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        background: rgba(255, 255, 255, 0.02);
-        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
-    }
-
-    .status-pill {
-        min-width: 120px;
-        justify-content: center;
-        border-radius: 999px;
-        font-weight: 600;
-        letter-spacing: 0.2px;
-    }
-
-    .row-org {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        min-width: 220px;
-    }
-
-    .org-meta {
-        line-height: 1.15;
-    }
-
-    .id-mono {
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-        opacity: 0.9;
-    }
-
-    .table-actions {
-        display: flex;
-        justify-content: center;
-        gap: 8px;
-    }
-
-    .details-btn {
-        border-radius: 999px !important;
-        padding-left: 14px !important;
-        padding-right: 14px !important;
-    }
-
-    .empty-state {
-        padding: 26px;
-        text-align: center;
-        opacity: 0.9;
-    }
-
-    /* Mobile cards layout */
-    .mobile-cards {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        margin-top: 12px;
-    }
-
-    .org-card {
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        border-radius: var(--adm-radius-lg);
-        padding: 14px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        transition: transform 0.15s ease, box-shadow 0.15s ease;
-    }
-
-    .org-card:active {
-        transform: translateY(-1px);
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-    }
-
-    .card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 12px;
-        margin-bottom: 12px;
-        padding-bottom: 12px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-    }
-
-    .card-title {
-        display: flex;
-        gap: 10px;
-        align-items: flex-start;
-        flex: 1;
-    }
-
-    .card-title > div {
-        flex: 1;
-    }
-
-    .card-meta {
-        font-size: 0.8rem;
-        opacity: 0.6;
-        margin-top: 2px;
-    }
-
-    .card-status {
-        flex-shrink: 0;
-    }
-
-    .card-body {
-        margin-bottom: 12px;
-    }
-
-    .card-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px 10px;
-        justify-content: flex-start;
-        align-items: flex-start;
-        font-size: 0.9rem;
-        padding: 8px 0;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.02);
-    }
-
-    .card-row:last-child {
-        border-bottom: none;
-    }
-
-    .card-label {
-        opacity: 0.6;
-        font-size: 0.85rem;
-        min-width: 80px;
-    }
-
-    .card-value {
-        text-align: left;
-        font-weight: 600;
-        word-break: break-word;
-    }
-
-    .card-actions {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
-        padding-top: 12px;
-        border-top: 1px solid rgba(255, 255, 255, 0.04);
-    }
-
-    .card-actions button {
-        font-size: 0.85rem !important;
-        padding: 8px 8px !important;
-    }
-
-    /* Mobile responsiveness (phones) */
-    @@media (max-width: 480px) {
-        .admin-page {
-            padding: 12px;
-        }
-
-        .hero {
-            padding: 16px;
-            border-radius: var(--adm-radius-lg);
-            margin-bottom: 16px;
-        }
-
-        .hero-top {
-            gap: 12px;
-        }
-
-        .hero-badge {
-            width: 40px;
-            height: 40px;
-            border-radius: 12px;
-        }
-
-        .hero-title {
-            gap: 10px;
-        }
-
-        .hero-title h1 {
-            font-size: 1.5rem !important;
-        }
-
-        .stats {
-            gap: 10px;
-            margin-top: 12px;
-        }
-
-        .stat-card {
-            grid-column: span 12;
-            padding: 12px;
-            border-radius: var(--adm-radius-md);
-        }
-
-        .stat-row {
-            gap: 10px;
-        }
-
-        .stat-icon {
-            width: 36px;
-            height: 36px;
-            border-radius: 10px;
-        }
-
-        .stat-value {
-            font-size: 1.3rem !important;
-        }
-
-        .table-wrap {
-            display: none !important;
-        }
-
-        .mobile-cards {
-            display: flex !important;
-        }
-
-        .section {
-            margin-top: 16px;
-        }
-
-        .toolbar {
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .empty-state {
-            padding: 16px;
-            font-size: 0.9rem;
-            text-align: center;
-        }
-    }
-
-    /* Desktop - hide mobile cards */
-    @@media (min-width: 481px) {
-        .mobile-cards {
-            display: none !important;
-        }
-
-        .table-wrap {
-            display: block !important;
-        }
-    }
-</style>
-
-<div class="admin-page">
+@inject IUserService UserService
+@inject ILogger<AdminList> Logger
+<div class="admin-list">
 
     <!-- HERO -->
-    <MudPaper Class="hero" Elevation="0">
-        <div class="hero-top">
+    <MudPaper Class="admin-list__hero" Elevation="0">
+        <div class="admin-list__hero-top">
             <div>
-                <div class="hero-title">
-                    <div class="hero-badge">
+                <div class="admin-list__hero-title">
+                    <div class="admin-list__hero-badge">
                         <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Color="Color.Primary" />
                     </div>
                     <div>
                         <MudText Typo="Typo.h4" Style="font-weight:800; letter-spacing:.2px;">
                             Admin Dashboard
                         </MudText>
-                        <MudText Typo="Typo.body2" Class="hero-sub">
+                        <MudText Typo="Typo.body2" Class="admin-list__hero-subtitle">
                             Review and action incoming organization requests
                         </MudText>
                     </div>
@@ -423,39 +42,39 @@
         </div>
 
         <!-- STATS -->
-        <div class="stats">
-            <div class="stat-card">
-                <div class="stat-row">
-                    <div class="stat-icon i-pending">
+        <div class="admin-list__stats">
+            <div class="admin-list__stat">
+                <div class="admin-list__stat-row">
+                    <div class="admin-list__stat-icon admin-list__stat-icon--pending">
                         <MudIcon Icon="@Icons.Material.Filled.HourglassBottom" Color="Color.Info" />
                     </div>
                     <div>
-                        <div class="stat-label">Pending</div>
-                        <div class="stat-value">@PendingCount</div>
+                        <div class="admin-list__stat-label">Pending</div>
+                        <div class="admin-list__stat-value">@PendingCount</div>
                     </div>
                 </div>
             </div>
 
-            <div class="stat-card">
-                <div class="stat-row">
-                    <div class="stat-icon i-approved">
+            <div class="admin-list__stat">
+                <div class="admin-list__stat-row">
+                    <div class="admin-list__stat-icon admin-list__stat-icon--approved">
                         <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" />
                     </div>
                     <div>
-                        <div class="stat-label">Approved</div>
-                        <div class="stat-value">@ApprovedCount</div>
+                        <div class="admin-list__stat-label">Approved</div>
+                        <div class="admin-list__stat-value">@ApprovedCount</div>
                     </div>
                 </div>
             </div>
 
-            <div class="stat-card">
-                <div class="stat-row">
-                    <div class="stat-icon i-rejected">
+            <div class="admin-list__stat">
+                <div class="admin-list__stat-row">
+                    <div class="admin-list__stat-icon admin-list__stat-icon--rejected">
                         <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Error" />
                     </div>
                     <div>
-                        <div class="stat-label">Rejected</div>
-                        <div class="stat-value">@RejectedCount</div>
+                        <div class="admin-list__stat-label">Rejected</div>
+                        <div class="admin-list__stat-value">@RejectedCount</div>
                     </div>
                 </div>
             </div>
@@ -464,29 +83,29 @@
 
     @if (_isLoading)
     {
-        <MudPaper Class="panel" Elevation="0" Style="margin-top:14px;">
+        <MudPaper Class="admin-list__panel" Elevation="0" Style="margin-top:14px;">
             <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="py-4">
                 <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
                 <MudText Typo="Typo.body1">Loading organization requests…</MudText>
-                <MudText Typo="Typo.caption" Class="muted">Please wait a moment.</MudText>
+                <MudText Typo="Typo.caption" Class="admin-list__muted">Please wait a moment.</MudText>
             </MudStack>
         </MudPaper>
     }
     else
     {
-        <div class="section">
-            <div class="section-head">
+        <div class="admin-list__section">
+            <div class="admin-list__section-head">
                 <div>
                     <MudText Typo="Typo.h5" Style="font-weight:800;">Admin Management</MudText>
-                    <MudText Typo="Typo.body2" Class="muted">
+                    <MudText Typo="Typo.body2" Class="admin-list__muted">
                         Showing oldest first • @_organizationRequests.Count requests
                     </MudText>
                 </div>
             </div>
 
             <!-- TOOLBAR -->
-            <MudPaper Class="panel" Elevation="0">
-                <div class="toolbar">
+            <MudPaper Class="admin-list__panel" Elevation="0">
+                <div class="admin-list__toolbar">
                     <MudTextField @bind-Value="_search"
                                   Placeholder="Search by name, email, city, country…"
                                   Adornment="Adornment.Start"
@@ -499,7 +118,7 @@
 
                     <MudDivider Vertical="true" Class="mx-2" />
 
-                    <div class="chip-row">
+                    <div class="admin-list__chip-row">
                         <MudChip T="bool"
                                  Selected="@IsStatusSelected(RequestStatus.Pending)"
                                  OnClick="@(() => ToggleStatus(RequestStatus.Pending))"
@@ -548,7 +167,7 @@
             </MudPaper>
 
             <!-- TABS -->
-            <MudPaper Class="tabs-wrap" Elevation="0" Style="margin-top:12px;">
+            <MudPaper Class="admin-list__tabs" Elevation="0" Style="margin-top:12px;">
                 <MudTabs @bind-ActivePanelIndex="_activeTab"
                          Rounded="true"
                          Border="true"
@@ -573,13 +192,14 @@
 </div>
 
 @code {
-    // Status mapping van API naar local enum
+    // Status mapping from API to local enum
     private enum RequestStatus { Pending = 1, Approved = 2, Rejected = 3 }
 
-    private List<OrganizationListDto> _organizationRequests = new();
+    private ICollection<OrganizationListDto> _organizationRequests = new List<OrganizationListDto>();
     private string _search = string.Empty;
     private int _activeTab = 0;
     private bool _isLoading = true;
+    private string? _errorMessage;
     private HashSet<RequestStatus> _selectedStatuses = new();
     private enum SortOption { OldestFirst, NewestFirst, Name, Status }
     private SortOption _sort = SortOption.OldestFirst;
@@ -592,30 +212,39 @@
     private async Task LoadOrganizationRequests()
     {
         _isLoading = true;
+        _errorMessage = null;
+
         try
         {
-            _organizationRequests = await AdminService.GetOrganizationRequestsAsync();
-            Console.WriteLine($"Loaded {_organizationRequests.Count} organizations");
-            foreach (var org in _organizationRequests)
+            Logger.LogDebug("Loading organizations from API");
+            var tempOrgs = await AdminService.GetOrganizationRequestsAsync();
+
+            if (tempOrgs != null)
             {
-                Console.WriteLine($"Org: {org.FullName}, Status: {org.StatusTypeId} - {org.StatusTypeFullName}");
+                _organizationRequests = tempOrgs;
+                Logger.LogDebug("Loaded {OrganizationCount} organizations", _organizationRequests.Count);
+            }
+            else
+            {
+                _organizationRequests = new List<OrganizationListDto>();
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading organizations: {ex.Message}");
-            Snackbar.Add($"Fout bij laden organisaties: {ex.Message}", Severity.Error);
+            _errorMessage = $"Failed to load organizations: {ex.Message}";
+            Logger.LogError(ex, "Failed to load organizations");
+            Snackbar.Add(_errorMessage, Severity.Error);
+            _organizationRequests = new List<OrganizationListDto>();
         }
         finally
         {
             _isLoading = false;
-            StateHasChanged();
         }
     }
 
-    private int PendingCount  => _organizationRequests.Count(r => r.StatusTypeId == (int)RequestStatus.Pending);
-    private int ApprovedCount => _organizationRequests.Count(r => r.StatusTypeId == (int)RequestStatus.Approved);
-    private int RejectedCount => _organizationRequests.Count(r => r.StatusTypeId == (int)RequestStatus.Rejected);
+    private int PendingCount  => _organizationRequests.Count(r => r.ApprovalStatusId == (int)RequestStatus.Pending);
+    private int ApprovedCount => _organizationRequests.Count(r => r.ApprovalStatusId == (int)RequestStatus.Approved);
+    private int RejectedCount => _organizationRequests.Count(r => r.ApprovalStatusId == (int)RequestStatus.Rejected);
 
     // filter + sorteer (oudste bovenaan)
     private IEnumerable<OrganizationListDto> GetFilteredAndSorted(RequestStatus? status)
@@ -623,13 +252,13 @@
         IEnumerable<OrganizationListDto> q = _organizationRequests;
 
         if (status.HasValue)
-            q = q.Where(r => r.StatusTypeId == (int)status.Value);
+            q = q.Where(r => r.ApprovalStatusId == (int)status.Value);
 
         // apply chip filters if any selected
         if (_selectedStatuses.Count > 0)
         {
             var allowed = _selectedStatuses.Select(s => (int)s).ToHashSet();
-            q = q.Where(r => allowed.Contains(r.StatusTypeId));
+            q = q.Where(r => allowed.Contains(r.ApprovalStatusId));
         }
 
         if (!string.IsNullOrWhiteSpace(_search))
@@ -648,7 +277,7 @@
         {
             SortOption.NewestFirst => q.OrderByDescending(r => r.CreatedAt),
             SortOption.Name        => q.OrderBy(r => r.FullName),
-            SortOption.Status      => q.OrderBy(r => r.StatusTypeId),
+            SortOption.Status      => q.OrderBy(r => r.ApprovalStatusId),
             _ => q.OrderBy(r => r.CreatedAt)
         };
 
@@ -657,7 +286,7 @@
 
     // ====== TABLE (UI modernisée, logique identique) ======
     private RenderFragment TableMarkup(IEnumerable<OrganizationListDto> items) => @<div>
-        <MudPaper Class="table-wrap" Elevation="0" Style="margin-top:12px;">
+        <MudPaper Class="admin-list__table" Elevation="0" Style="margin-top:12px;">
             <MudTable Items="items" Hover="true" Breakpoint="Breakpoint.Sm" Dense="true">
                 <HeaderContent>
                     <MudTh style="width:190px">Submitted</MudTh>
@@ -677,20 +306,20 @@
                     </MudTd>
 
                     <MudTd DataLabel="ID">
-                        <MudText Class="id-mono">@context.Id.ToString()[..8]…</MudText>
+                        <MudText Class="admin-list__id">@context.Id.ToString()[..8]…</MudText>
                     </MudTd>
 
                     <MudTd DataLabel="Organization">
-                        <div class="row-org">
+                        <div class="admin-list__org-row">
                             <MudAvatar Size="Size.Medium" Variant="Variant.Filled" Style="border-radius:14px;">
                                 <MudIcon Icon="@Icons.Material.Filled.Business" />
                             </MudAvatar>
 
-                            <div class="org-meta">
+                            <div class="admin-list__org-meta">
                                 <MudText Typo="Typo.subtitle2" Style="font-weight:750;">
                                     @context.FullName
                                 </MudText>
-                                <MudText Typo="Typo.caption" Class="muted">
+                                <MudText Typo="Typo.caption" Class="admin-list__muted">
                                     @(context.City ?? "Unknown"), @(context.Country ?? "Unknown") • @context.Email
                                 </MudText>
                             </div>
@@ -699,16 +328,16 @@
 
                     <MudTd DataLabel="Status">
                         <MudChip T="string"
-                                 Color="@StatusColor((RequestStatus)context.StatusTypeId)"
+                                 Color="@StatusColor((RequestStatus)context.ApprovalStatusId)"
                                  Variant="Variant.Filled"
-                                 Class="status-pill">
+                                 Class="admin-list__status-pill">
                             @context.StatusTypeFullName
                         </MudChip>
                     </MudTd>
 
                     <MudTd DataLabel="Actions" Style="text-align:center">
-                        <div class="table-actions">
-                            @if (context.StatusTypeId == (int)RequestStatus.Pending)
+                        <div class="admin-list__actions">
+                            @if (context.ApprovalStatusId == (int)RequestStatus.Pending)
                             {
                                 <MudTooltip Text="Approve">
                                     <MudIconButton Icon="@Icons.Material.Filled.CheckCircle"
@@ -725,7 +354,7 @@
                                                    Style="border-radius:14px;" />
                                 </MudTooltip>
                             }
-                            else if (context.StatusTypeId == (int)RequestStatus.Approved)
+                            else if (context.ApprovalStatusId == (int)RequestStatus.Approved)
                             {
                                 <MudTooltip Text="Revoke approval">
                                     <MudIconButton Icon="@Icons.Material.Filled.Restore"
@@ -735,7 +364,7 @@
                                                    Style="border-radius:14px;" />
                                 </MudTooltip>
                             }
-                            else if (context.StatusTypeId == (int)RequestStatus.Rejected)
+                            else if (context.ApprovalStatusId == (int)RequestStatus.Rejected)
                             {
                                 <MudTooltip Text="Move back to pending">
                                     <MudIconButton Icon="@Icons.Material.Filled.Restore"
@@ -752,7 +381,7 @@
                         <MudButton Variant="Variant.Filled"
                                    Color="Color.Primary"
                                    Size="Size.Small"
-                                   Class="details-btn"
+                                   Class="admin-list__details-btn"
                                    StartIcon="@Icons.Material.Filled.Visibility"
                                    OnClick="@(() => Nav.NavigateTo($"/admin/organization/{context.Id}"))">
                             Details
@@ -761,10 +390,10 @@
                 </RowTemplate>
 
                 <NoRecordsContent>
-                    <div class="empty-state">
+                    <div class="admin-list__empty">
                         <MudIcon Icon="@Icons.Material.Filled.Inbox" Size="Size.Large" />
                         <MudText Typo="Typo.h6" Style="margin-top:10px; font-weight:800;">No matching requests</MudText>
-                        <MudText Typo="Typo.body2" Class="muted">Try clearing filters or changing your search.</MudText>
+                        <MudText Typo="Typo.body2" Class="admin-list__muted">Try clearing filters or changing your search.</MudText>
                         <MudButton Variant="Variant.Outlined"
                                    Color="Color.Primary"
                                    OnClick="ClearFilters"
@@ -777,25 +406,25 @@
         </MudPaper>
 
         <!-- Mobile cards view -->
-        <div class="mobile-cards" style="margin-top:12px;">
+        <div class="admin-list__mobile" style="margin-top:12px;">
             @foreach (var org in items)
             {
-                <div class="org-card">
-                    <div class="card-header">
-                        <div class="card-title">
+                <div class="admin-list__card">
+                    <div class="admin-list__card-header">
+                        <div class="admin-list__card-title">
                             <MudAvatar Size="Size.Small" Variant="Variant.Filled" Style="border-radius:10px;">
                                 <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" />
                             </MudAvatar>
                             <div>
                                 <MudText Typo="Typo.body2" Style="font-weight:700;">@org.FullName</MudText>
-                                <div class="card-meta">
+                                <div class="admin-list__card-meta">
                                     @(org.City ?? "Unknown"), @(org.Country ?? "Unknown")
                                 </div>
                             </div>
                         </div>
-                        <div class="card-status">
+                        <div class="admin-list__card-status">
                             <MudChip T="string"
-                                     Color="@StatusColor((RequestStatus)org.StatusTypeId)"
+                                     Color="@StatusColor((RequestStatus)org.ApprovalStatusId)"
                                      Variant="Variant.Filled"
                                      Style="font-size:0.75rem; padding:2px 8px !important; border-radius:6px !important;">
                                 @org.StatusTypeFullName
@@ -803,23 +432,23 @@
                         </div>
                     </div>
 
-                    <div class="card-body">
-                        <div class="card-row">
-                            <span class="card-label">Email:</span>
-                            <span class="card-value">@org.Email</span>
+                    <div class="admin-list__card-body">
+                        <div class="admin-list__card-row">
+                            <span class="admin-list__card-label">Email:</span>
+                            <span class="admin-list__card-value">@org.Email</span>
                         </div>
-                        <div class="card-row">
-                            <span class="card-label">ID:</span>
-                            <span class="card-value">@org.Id.ToString()[..8]…</span>
+                        <div class="admin-list__card-row">
+                            <span class="admin-list__card-label">ID:</span>
+                            <span class="admin-list__card-value">@org.Id.ToString()[..8]…</span>
                         </div>
-                        <div class="card-row">
-                            <span class="card-label">Submitted:</span>
-                            <span class="card-value">@GetRelative(org.CreatedAt)</span>
+                        <div class="admin-list__card-row">
+                            <span class="admin-list__card-label">Submitted:</span>
+                            <span class="admin-list__card-value">@GetRelative(org.CreatedAt)</span>
                         </div>
                     </div>
 
-                    <div class="card-actions">
-                        @if (org.StatusTypeId == (int)RequestStatus.Pending)
+                    <div class="admin-list__card-actions">
+                        @if (org.ApprovalStatusId == (int)RequestStatus.Pending)
                         {
                             <MudButton Variant="Variant.Filled"
                                        Color="Color.Success"
@@ -836,7 +465,7 @@
                                 Reject
                             </MudButton>
                         }
-                        else if (org.StatusTypeId == (int)RequestStatus.Approved)
+                        else if (org.ApprovalStatusId == (int)RequestStatus.Approved)
                         {
                             <MudButton Variant="Variant.Filled"
                                        Color="Color.Warning"
@@ -846,7 +475,7 @@
                                 Revoke
                             </MudButton>
                         }
-                        else if (org.StatusTypeId == (int)RequestStatus.Rejected)
+                        else if (org.ApprovalStatusId == (int)RequestStatus.Rejected)
                         {
                             <MudButton Variant="Variant.Filled"
                                        Color="Color.Info"
@@ -868,10 +497,10 @@
             }
             @if (!items.Any())
             {
-                <div class="empty-state">
+                <div class="admin-list__empty">
                     <MudIcon Icon="@Icons.Material.Filled.Inbox" Size="Size.Large" />
                     <MudText Typo="Typo.h6" Style="margin-top:10px; font-weight:800;">No matching requests</MudText>
-                    <MudText Typo="Typo.body2" Class="muted">Try clearing filters or changing your search.</MudText>
+                    <MudText Typo="Typo.body2" Class="admin-list__muted">Try clearing filters or changing your search.</MudText>
                     <MudButton Variant="Variant.Outlined"
                                Color="Color.Primary"
                                OnClick="ClearFilters"
@@ -910,9 +539,9 @@
     };
 
     // relatieve tijdsweergave
-    private string GetRelative(DateTime utc)
+    private string GetRelative(DateTimeOffset utc)
     {
-        var ts = DateTime.UtcNow - utc;
+        var ts = DateTimeOffset.UtcNow - utc;
         if (ts.TotalDays    >= 1) return $"{(int)ts.TotalDays}d ago";
         if (ts.TotalHours   >= 1) return $"{(int)ts.TotalHours}h ago";
         if (ts.TotalMinutes >= 1) return $"{(int)ts.TotalMinutes}m ago";

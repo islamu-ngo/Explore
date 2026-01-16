@@ -1,15 +1,31 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
-using Explore.Application.DTOs.Event;
 using Explore.Domain;
 
 namespace Explore.Application.Contracts.Persistence
 {
     public interface IEventRepository : IGenericRepository<Event, Guid>
     {
-        Task<EventDto> GetEventWithDetails(Guid id);
-        Task<List<EventListDto>> GetEventsWithDetails();
-        Task<List<EventListDto>> GetMyEventsWithDetails(string userId);
+        Task<Event?> GetEventWithDetails(Guid id);
+        Task<List<Event>> GetEventsWithDetails();
+        Task<List<Event>> GetMyEventsWithDetails(string userId);
+
+        /// <summary>
+        /// Gets a paginated list of events with details.
+        /// </summary>
+        /// <param name="pageNumber">The page number (1-based).</param>
+        /// <param name="pageSize">The number of items per page.</param>
+        /// <returns>A tuple containing the items and total count.</returns>
+        Task<(List<Event> Items, int TotalCount)> GetEventsWithDetailsPaged(int pageNumber, int pageSize);
+
+        /// <summary>
+        /// Gets a paginated list of events for the current user.
+        /// </summary>
+        /// <param name="userId">The user ID.</param>
+        /// <param name="pageNumber">The page number (1-based).</param>
+        /// <param name="pageSize">The number of items per page.</param>
+        /// <returns>A tuple containing the items and total count.</returns>
+        Task<(List<Event> Items, int TotalCount)> GetMyEventsWithDetailsPaged(string userId, int pageNumber, int pageSize);
     }
 }

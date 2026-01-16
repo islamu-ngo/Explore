@@ -1,103 +1,19 @@
-﻿<!-- FOOTER -->
-<style>
-    .site-footer {
-        background-color: var(--mud-palette-surface);
-        border-top: 1px solid var(--mud-palette-lines-default);
-        padding: 64px 0 32px;
-        margin-top: auto;
-        position: relative;
-        overflow: hidden;
-    }
-
-    /* Decorative top gradient line */
-    .site-footer::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 1px;
-        background: linear-gradient(90deg, transparent, var(--mud-palette-primary), transparent);
-        opacity: 0.5;
-    }
-
-    .footer-brand {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 16px;
-    }
-
-    .footer-brand-text {
-        font-size: 1.5rem;
-        font-weight: 800;
-        letter-spacing: -0.02em;
-        color: var(--mud-palette-text-primary);
-    }
-
-    .footer-brand-highlight {
-        color: var(--mud-palette-primary);
-    }
-
-    .footer-desc {
-        color: var(--mud-palette-text-secondary);
-        line-height: 1.6;
-        max-width: 300px;
-    }
-
-    .footer-heading {
-        font-size: 0.875rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: var(--mud-palette-text-primary);
-        margin-bottom: 20px;
-    }
-
-    .footer-link {
-        color: var(--mud-palette-text-secondary);
-        text-decoration: none;
-        font-size: 0.95rem;
-        transition: all 0.2s ease;
-        display: block;
-        margin-bottom: 12px;
-        width: fit-content;
-    }
-
-    .footer-link:hover {
-        color: var(--mud-palette-primary);
-        transform: translateX(4px);
-    }
-
-    .social-btn {
-        color: var(--mud-palette-text-secondary);
-        transition: all 0.2s ease;
-        border: 1px solid var(--mud-palette-lines-default);
-    }
-
-    .social-btn:hover {
-        color: var(--mud-palette-primary);
-        border-color: var(--mud-palette-primary);
-        background-color: color-mix(in srgb, var(--mud-palette-primary) 10%, transparent);
-        transform: translateY(-2px);
-    }
-
-    .copyright-text {
-        color: var(--mud-palette-text-disabled);
-        font-size: 0.875rem;
-    }
-</style>
-
+<!--
+    Footer Component - BEM Methodology
+    Block: site-footer
+    Elements: __brand, __brand-icon, __brand-text, __brand-highlight, __description,
+              __section, __heading, __link, __bottom, __copyright, __social, __social-btn
+-->
 <footer class="site-footer">
     <MudContainer MaxWidth="MaxWidth.Large">
         <MudGrid Spacing="4">
             <!-- Brand Column -->
             <MudItem xs="12" md="4">
-                <div class="footer-brand">
-                    <MudIcon Icon="@Icons.Material.Filled.Explore" Color="Color.Primary" Size="Size.Large" />
-                    <div class="footer-brand-text">ISLAMU<span class="footer-brand-highlight">Explore</span></div>
+                <div class="site-footer__brand">
+                    <MudIcon Icon="@Icons.Material.Filled.Explore" Color="Color.Primary" Size="Size.Large" Class="site-footer__brand-icon" />
+                    <div class="site-footer__brand-text">ISLAMU<span class="site-footer__brand-highlight">Explore</span></div>
                 </div>
-                <MudText Class="footer-desc">
+                <MudText Class="site-footer__description">
                     Connecting Muslims through meaningful events, gatherings, and community building initiatives across the globe.
                 </MudText>
             </MudItem>
@@ -106,24 +22,30 @@
             <MudItem xs="12" md="8">
                 <MudGrid>
                     <MudItem xs="6" sm="4">
-                        <div class="footer-heading">Platform</div>
-                        <a href="/events" class="footer-link">Browse Events</a>
-                        <a href="/event/categories" class="footer-link">Categories</a>
-                        <a href="/organizations" class="footer-link">Organizations</a>
-                    </MudItem>
-                    
-                    <MudItem xs="6" sm="4">
-                        <div class="footer-heading">Company</div>
-                        <a href="/about" class="footer-link">About Us</a>
-                        <a href="/contact" class="footer-link">Contact</a>
-                        <a href="/careers" class="footer-link">Careers</a>
+                        <div class="site-footer__section">
+                            <div class="site-footer__heading">Platform</div>
+                            <a href="/events" class="site-footer__link">Browse Events</a>
+                            <a href="/event/categories" class="site-footer__link">Categories</a>
+                            <a href="/organizations" class="site-footer__link">Organizations</a>
+                        </div>
                     </MudItem>
 
                     <MudItem xs="6" sm="4">
-                        <div class="footer-heading">Legal</div>
-                        <a href="/privacy" class="footer-link">Privacy Policy</a>
-                        <a href="/terms" class="footer-link">Terms of Service</a>
-                        <a href="/cookies" class="footer-link">Cookie Settings</a>
+                        <div class="site-footer__section">
+                            <div class="site-footer__heading">Company</div>
+                            <a href="/about" class="site-footer__link">About Us</a>
+                            <a href="/contact" class="site-footer__link">Contact</a>
+                            <a href="/careers" class="site-footer__link">Careers</a>
+                        </div>
+                    </MudItem>
+
+                    <MudItem xs="6" sm="4">
+                        <div class="site-footer__section">
+                            <div class="site-footer__heading">Legal</div>
+                            <a href="/privacy" class="site-footer__link">Privacy Policy</a>
+                            <a href="/terms" class="site-footer__link">Terms of Service</a>
+                            <a href="/cookies" class="site-footer__link">Cookie Settings</a>
+                        </div>
                     </MudItem>
                 </MudGrid>
             </MudItem>
@@ -131,16 +53,16 @@
 
         <MudDivider Class="my-8" />
 
-        <div class="d-flex flex-column flex-sm-row justify-space-between align-center gap-4">
-            <div class="copyright-text">
+        <div class="site-footer__bottom">
+            <div class="site-footer__copyright">
                 &copy; @DateTime.Now.Year ISLAMU Explore. All rights reserved.
             </div>
-            
-            <div class="d-flex gap-2">
-                <MudIconButton Icon="@Icons.Custom.Brands.Facebook" Class="social-btn" Size="Size.Small" />
-                <MudIconButton Icon="@Icons.Custom.Brands.Twitter" Class="social-btn" Size="Size.Small" />
-                <MudIconButton Icon="@Icons.Custom.Brands.Instagram" Class="social-btn" Size="Size.Small" />
-                <MudIconButton Icon="@Icons.Custom.Brands.LinkedIn" Class="social-btn" Size="Size.Small" />
+
+            <div class="site-footer__social">
+                <MudIconButton Icon="@Icons.Custom.Brands.Facebook" Class="site-footer__social-btn" Size="Size.Small" />
+                <MudIconButton Icon="@Icons.Custom.Brands.Twitter" Class="site-footer__social-btn" Size="Size.Small" />
+                <MudIconButton Icon="@Icons.Custom.Brands.Instagram" Class="site-footer__social-btn" Size="Size.Small" />
+                <MudIconButton Icon="@Icons.Custom.Brands.LinkedIn" Class="site-footer__social-btn" Size="Size.Small" />
             </div>
         </div>
     </MudContainer>

@@ -1,0 +1,246 @@
+/* =============================================
+   Block: event-detail
+   EventDetail page component with hero, content sections, and sticky sidebar
+   ============================================= */
+
+/* ===== CSS Custom Properties ===== */
+::deep :root {
+    --event-detail-ring: color-mix(
+        in srgb,
+        var(--mud-palette-primary) 30%,
+        transparent
+    );
+}
+
+/* ===== Block: event-detail ===== */
+::deep .event-detail {
+    padding-block: 18px 32px;
+}
+
+/* ===== Element: event-detail__header ===== */
+::deep .event-detail__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* ===== Element: event-detail__actions ===== */
+::deep .event-detail__actions {
+    display: flex;
+    gap: 8px;
+}
+
+/* ===== Element: event-detail__hero ===== */
+::deep .event-detail__hero {
+    position: relative;
+    border-radius: 16px;
+    overflow: hidden;
+    height: 320px;
+    margin-bottom: 16px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18);
+}
+
+::deep .event-detail__hero img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+::deep .event-detail__hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        180deg,
+        rgba(0, 0, 0, 0.15) 0%,
+        rgba(0, 0, 0, 0.45) 100%
+    );
+}
+
+/* ===== Element: event-detail__hero-content ===== */
+::deep .event-detail__hero-content {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 18px;
+    color: #fff;
+    z-index: 1;
+}
+
+/* ===== Element: event-detail__hero-badges ===== */
+::deep .event-detail__hero-badges {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+
+/* ===== Element: event-detail__hero-title ===== */
+::deep .event-detail__hero-title {
+    margin: 2px 0 4px 0;
+}
+
+/* ===== Element: event-detail__content ===== */
+::deep .event-detail__content {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: 2fr 1fr;
+}
+
+/* ===== Element: event-detail__main ===== */
+::deep .event-detail__main {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* ===== Element: event-detail__card ===== */
+::deep .event-detail__card {
+    border: 1px solid
+        color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+/* ===== Element: event-detail__section ===== */
+::deep .event-detail__section {
+    padding: 18px;
+}
+
+::deep .event-detail__section + .event-detail__section {
+    border-top: 1px solid var(--mud-palette-lines-default);
+}
+
+/* ===== Element: event-detail__details ===== */
+::deep .event-detail__details {
+    display: grid;
+    gap: 10px;
+}
+
+/* ===== Element: event-detail__detail-row ===== */
+::deep .event-detail__detail-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+::deep .event-detail__detail-row .mud-icon-root {
+    opacity: 0.9;
+}
+
+/* ===== Element: event-detail__sidebar ===== */
+::deep .event-detail__sidebar {
+    /* Wrapper for sidebar */
+}
+
+/* ===== Element: event-detail__sidebar-card ===== */
+::deep .event-detail__sidebar-card {
+    position: sticky;
+    top: 84px;
+    border: 1px solid
+        color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
+    border-radius: 16px;
+    padding: 16px;
+}
+
+/* ===== Element: event-detail__sidebar-row ===== */
+::deep .event-detail__sidebar-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    opacity: 0.9;
+}
+
+/* ===== Element: event-detail__divider ===== */
+::deep .event-detail__divider {
+    margin: 12px 0;
+}
+
+/* ===== Element: event-detail__organizer ===== */
+::deep .event-detail__organizer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ===== Element: event-detail__cta ===== */
+::deep .event-detail__cta .mud-button-root {
+    width: 100%;
+    border-radius: 10px;
+}
+
+::deep .event-detail__cta .mud-button-root:focus-visible {
+    box-shadow: 0 0 0 3px var(--event-detail-ring);
+}
+
+/* ===== Responsive: Tablet (max-width: 1024px) ===== */
+@media (max-width: 1024px) {
+    ::deep .event-detail__content {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ===== Responsive: Mobile (max-width: 480px) ===== */
+@media (max-width: 480px) {
+    /* Block */
+    ::deep .event-detail {
+        padding-block: 8px 16px;
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+
+    /* Hero */
+    ::deep .event-detail__hero {
+        height: 240px;
+        margin-bottom: 12px;
+        border-radius: 12px;
+    }
+
+    ::deep .event-detail__hero-content {
+        padding: 12px;
+    }
+
+    ::deep .event-detail__hero-title {
+        font-size: 1.5rem !important;
+    }
+
+    /* Content */
+    ::deep .event-detail__content {
+        gap: 8px;
+    }
+
+    /* Card */
+    ::deep .event-detail__card {
+        border-radius: 12px;
+    }
+
+    /* Section */
+    ::deep .event-detail__section {
+        padding: 10px;
+    }
+
+    /* Sidebar */
+    ::deep .event-detail__sidebar-card {
+        position: relative;
+        top: auto;
+        border-radius: 12px;
+        padding: 10px;
+        margin-top: 12px;
+    }
+
+    ::deep .event-detail__sidebar-row {
+        gap: 6px;
+    }
+
+    ::deep .event-detail__divider {
+        margin: 8px 0;
+    }
+
+    /* Actions */
+    ::deep .event-detail__actions {
+        gap: 4px;
+    }
+}

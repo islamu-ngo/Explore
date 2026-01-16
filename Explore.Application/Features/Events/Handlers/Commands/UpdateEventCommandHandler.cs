@@ -17,7 +17,7 @@ namespace Explore.Application.Features.Events.Handlers.Commands
         private readonly IAudienceAgeRepository _audienceAgeRepository;
         private readonly IAudienceGenderRepository _audienceGenderRepository;
         private readonly IEventTypeRepository _eventTypeRepository;
-        private readonly IOrganizationRepository _organizationRepository;
+        private readonly IActorRepository _actorRepository;
         private readonly IStorageObjectRepository _storageObjectRepository;
         private readonly IMapper _mapper;
 
@@ -26,7 +26,7 @@ namespace Explore.Application.Features.Events.Handlers.Commands
             IAudienceAgeRepository audienceAgeRepository,
             IAudienceGenderRepository audienceGenderRepository,
             IEventTypeRepository eventTypeRepository,
-            IOrganizationRepository organizationRepository,
+            IActorRepository actorRepository,
             IStorageObjectRepository storageObjectRepository,
             IMapper mapper)
         {
@@ -34,7 +34,7 @@ namespace Explore.Application.Features.Events.Handlers.Commands
             _audienceAgeRepository = audienceAgeRepository;
             _audienceGenderRepository = audienceGenderRepository;
             _eventTypeRepository = eventTypeRepository;
-            _organizationRepository = organizationRepository;
+            _actorRepository = actorRepository;
             _storageObjectRepository = storageObjectRepository;
             _mapper = mapper;
         }
@@ -43,9 +43,9 @@ namespace Explore.Application.Features.Events.Handlers.Commands
         {
             var response = new BaseCommandResponse<Guid>();
 
-            var validator = new UpdateEventDtoValidator(_audienceAgeRepository, _audienceGenderRepository, _eventTypeRepository, _organizationRepository, _storageObjectRepository);
+            var validator = new UpdateEventDtoValidator(_audienceAgeRepository, _audienceGenderRepository, _eventTypeRepository, _actorRepository, _storageObjectRepository);
             var validationResult = await validator.ValidateAsync(request.EventDto);
-            
+
             if (!validationResult.IsValid)
             {
                 response.Success = false;
@@ -63,10 +63,6 @@ namespace Explore.Application.Features.Events.Handlers.Commands
             }
 
             _mapper.Map(request.EventDto, @event);
-            
-            // Ensure dates are UTC for PostgreSQL
-            @event.StartDate = @event.StartDate.ToUniversalTime();
-            @event.EndDate = @event.EndDate.ToUniversalTime();
 
             await _eventRepository.Update(@event);
 

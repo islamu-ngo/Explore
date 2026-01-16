@@ -17,10 +17,339 @@ namespace Explore.Persistence.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.0-rc.2.25502.107")
+                .HasAnnotation("ProductVersion", "10.0.1")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("Explore.Domain.Actor", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<int>("ActorTypeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("actor_type_id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Did")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("did");
+
+                    b.Property<int?>("DidCustodyTypeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("did_custody_type_id");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("display_name");
+
+                    b.Property<string>("Handle")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("handle");
+
+                    b.Property<DateTime?>("IndexedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("indexed_at");
+
+                    b.Property<Guid?>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("PdsHost")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("pds_host");
+
+                    b.Property<string>("ProfilePictureCid")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("profile_picture_cid");
+
+                    b.Property<Guid?>("ProfilePictureId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("profile_picture_id");
+
+                    b.Property<string>("ProfilePictureUri")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("profile_picture_uri");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_actors");
+
+                    b.HasIndex("ActorTypeId")
+                        .HasDatabaseName("ix_actors_actor_type_id");
+
+                    b.HasIndex("DidCustodyTypeId")
+                        .HasDatabaseName("ix_actors_did_custody_type_id");
+
+                    b.HasIndex("OrganizationId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_actors_organization_id")
+                        .HasFilter("organization_id IS NOT NULL");
+
+                    b.HasIndex("ProfilePictureId")
+                        .HasDatabaseName("ix_actors_profile_picture_id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_actors_tenant_id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_actors_user_id")
+                        .HasFilter("user_id IS NOT NULL");
+
+                    b.ToTable("actors", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Actor_UserOrOrganization", "(user_id IS NOT NULL AND organization_id IS NULL) OR (user_id IS NULL AND organization_id IS NOT NULL)");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000022"),
+                            ActorTypeId = 1,
+                            Description = "System user account",
+                            DisplayName = "System Account",
+                            Handle = "system",
+                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001"),
+                            UserId = new Guid("018e4e5c-7f00-7000-8000-000000000030")
+                        },
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000021"),
+                            ActorTypeId = 2,
+                            Description = "ISLAMU NGO - Islamic Learning and Media Union",
+                            DisplayName = "ISLAMU",
+                            Handle = "islamu",
+                            OrganizationId = new Guid("018e4e5c-7f00-7000-8000-000000000040"),
+                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.ActorKeyStore", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<bool?>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("KeyPurpose")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("key_purpose");
+
+                    b.Property<string>("PrivateKeyEncrypted")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("private_key_encrypted");
+
+                    b.Property<string>("PublicKey")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("public_key");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_actor_key_stores");
+
+                    b.HasIndex("ActorId")
+                        .HasDatabaseName("ix_actor_key_stores_actor_id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_actor_key_stores_tenant_id");
+
+                    b.ToTable("actor_key_stores", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.ActorType", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_actor_types");
+
+                    b.ToTable("actor_types", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Description = "Individual user actor",
+                            FullName = "User",
+                            MasterCode = "USER"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Description = "Organization actor",
+                            FullName = "Organization",
+                            MasterCode = "ORGANIZATION"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Description = "Automated bot actor",
+                            FullName = "Bot",
+                            MasterCode = "BOT"
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.ApprovalStatus", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_approval_statuses");
+
+                    b.ToTable("approval_statuses", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Description = "Status is pending approval of Admin verifying the Existence of Legal Entity",
+                            FullName = "Pending",
+                            MasterCode = "PENDING"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Description = "Status has been approved by Admin after verifying the Existence of Legal Entity",
+                            FullName = "Approved",
+                            MasterCode = "APPROVED"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Description = "Status has been rejected by Admin after failing to verify the Existence of Legal Entity",
+                            FullName = "Rejected",
+                            MasterCode = "REJECTED"
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.AtprotoRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<string>("Cid")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("cid");
+
+                    b.Property<string>("Collection")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("collection");
+
+                    b.Property<string>("Did")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("did");
+
+                    b.Property<DateTime?>("IndexedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("indexed_at");
+
+                    b.Property<string>("RecordKey")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("record_key");
+
+                    b.Property<string>("Uri")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("uri");
+
+                    b.HasKey("Id")
+                        .HasName("pk_atproto_records");
+
+                    b.HasIndex("Did", "Collection", "RecordKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_atproto_records_did_collection_record_key");
+
+                    b.ToTable("atproto_records", (string)null);
+                });
 
             modelBuilder.Entity("Explore.Domain.AudienceAge", b =>
                 {
@@ -28,10 +357,19 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("id");
 
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("master_code");
 
                     b.Property<int?>("MaxAge")
                         .HasColumnType("integer")
@@ -50,48 +388,56 @@ namespace Explore.Persistence.Migrations
                         new
                         {
                             Id = 1,
-                            FullName = "All Ages"
+                            FullName = "All Ages",
+                            MasterCode = "ALL_AGES"
                         },
                         new
                         {
                             Id = 2,
                             FullName = "Adults Only (18+)",
+                            MasterCode = "ADULTS_18_PLUS",
                             MinAge = 18
                         },
                         new
                         {
                             Id = 3,
                             FullName = "Teens & Adults (16+)",
+                            MasterCode = "TEENS_16_PLUS",
                             MinAge = 16
                         },
                         new
                         {
                             Id = 4,
                             FullName = "Preteens & Up (12+)",
+                            MasterCode = "PRETEENS_12_PLUS",
                             MinAge = 12
                         },
                         new
                         {
                             Id = 5,
                             FullName = "Young Children (0-6)",
+                            MasterCode = "CHILDREN_UNDER_6",
                             MaxAge = 6
                         },
                         new
                         {
                             Id = 6,
                             FullName = "Children (0-12)",
+                            MasterCode = "YOUTH_UNDER_12",
                             MaxAge = 12
                         },
                         new
                         {
                             Id = 7,
                             FullName = "Children & Young Teens (0-16)",
+                            MasterCode = "YOUTH_UNDER_16",
                             MaxAge = 16
                         },
                         new
                         {
                             Id = 8,
                             FullName = "Youth (0-18)",
+                            MasterCode = "YOUTH_UNDER_18",
                             MaxAge = 18
                         });
                 });
@@ -102,10 +448,19 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("id");
 
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("master_code");
 
                     b.HasKey("Id")
                         .HasName("pk_audience_genders");
@@ -116,21 +471,622 @@ namespace Explore.Persistence.Migrations
                         new
                         {
                             Id = 1,
-                            FullName = "Man"
+                            Description = "Only for Man Audience",
+                            FullName = "Man",
+                            MasterCode = "MAN"
                         },
                         new
                         {
                             Id = 2,
-                            FullName = "Woman"
+                            Description = "Only for Woman Audience",
+                            FullName = "Woman",
+                            MasterCode = "WOMAN"
                         },
                         new
                         {
                             Id = 3,
-                            FullName = "Both"
+                            Description = "For Both Man and Woman but Segregated so no free mixing",
+                            FullName = "Both Segregated",
+                            MasterCode = "BOTH_SEGREGATED"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Description = "For Both Man and Woman but Free Mixing",
+                            FullName = "Both Free Mixing",
+                            MasterCode = "BOTH_FREE_MIXING"
                         });
                 });
 
-            modelBuilder.Entity("Explore.Domain.EducationType", b =>
+            modelBuilder.Entity("Explore.Domain.Category", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("master_code");
+
+                    b.Property<Guid?>("ParentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("parent_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_categories");
+
+                    b.HasIndex("ParentId")
+                        .HasDatabaseName("ix_categories_parent_id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_categories_tenant_id");
+
+                    b.ToTable("categories", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000100"),
+                            FullName = "Islamic Studies",
+                            MasterCode = "ISLAMIC_STUDIES",
+                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
+                        },
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000101"),
+                            FullName = "Quran & Tafsir",
+                            MasterCode = "QURAN",
+                            ParentId = new Guid("018e4e5c-7f00-7000-8000-000000000100"),
+                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
+                        },
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000102"),
+                            FullName = "Hadith Sciences",
+                            MasterCode = "HADITH",
+                            ParentId = new Guid("018e4e5c-7f00-7000-8000-000000000100"),
+                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
+                        },
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000103"),
+                            FullName = "Fiqh (Islamic Jurisprudence)",
+                            MasterCode = "FIQH",
+                            ParentId = new Guid("018e4e5c-7f00-7000-8000-000000000100"),
+                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
+                        },
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000104"),
+                            FullName = "Aqeedah (Islamic Creed)",
+                            MasterCode = "AQEEDAH",
+                            ParentId = new Guid("018e4e5c-7f00-7000-8000-000000000100"),
+                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
+                        },
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000105"),
+                            FullName = "Seerah (Prophetic Biography)",
+                            MasterCode = "SEERAH",
+                            ParentId = new Guid("018e4e5c-7f00-7000-8000-000000000100"),
+                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
+                        },
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000106"),
+                            FullName = "Arabic Language",
+                            MasterCode = "ARABIC",
+                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
+                        },
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000107"),
+                            FullName = "Community Events",
+                            MasterCode = "COMMUNITY",
+                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.DidCustodyType", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_did_custody_types");
+
+                    b.ToTable("did_custody_types", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Description = "Platform manages the DID keys",
+                            FullName = "Custodial",
+                            MasterCode = "CUSTODIAL"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Description = "User manages their own DID keys",
+                            FullName = "Self-Custody",
+                            MasterCode = "SELF_CUSTODY"
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.Event", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<Guid?>("AtprotoRecordId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("atproto_record_id");
+
+                    b.Property<int>("AudienceAgeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("audience_age_id");
+
+                    b.Property<int>("AudienceGenderId")
+                        .HasColumnType("integer")
+                        .HasColumnName("audience_gender_id");
+
+                    b.Property<string>("CurrencyCode")
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency_code");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(5000)
+                        .HasColumnType("character varying(5000)")
+                        .HasColumnName("description");
+
+                    b.Property<int>("EventFormatId")
+                        .HasColumnType("integer")
+                        .HasColumnName("event_format_id");
+
+                    b.Property<int>("EventStatusId")
+                        .HasColumnType("integer")
+                        .HasColumnName("event_status_id");
+
+                    b.Property<int>("EventTypeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("event_type_id");
+
+                    b.Property<string>("EventUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("event_url");
+
+                    b.Property<string>("ExternalRegistrationUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("external_registration_url");
+
+                    b.Property<Guid?>("FeaturedImageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("featured_image_id");
+
+                    b.Property<DateOnly?>("FirstSessionDate")
+                        .HasColumnType("date")
+                        .HasColumnName("first_session_date");
+
+                    b.Property<bool>("IsRegistrationRequired")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_registration_required");
+
+                    b.Property<DateOnly?>("LastSessionDate")
+                        .HasColumnType("date")
+                        .HasColumnName("last_session_date");
+
+                    b.Property<int?>("MadhabId")
+                        .HasColumnType("integer")
+                        .HasColumnName("madhab_id");
+
+                    b.Property<decimal?>("Price")
+                        .HasColumnType("numeric")
+                        .HasColumnName("price");
+
+                    b.Property<int?>("SessionCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("session_count");
+
+                    b.Property<string>("Slug")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("slug");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("Timezone")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("timezone");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<int>("TotalViews")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("total_views");
+
+                    b.Property<int>("VisibilityTypeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("visibility_type_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_events");
+
+                    b.HasIndex("ActorId")
+                        .HasDatabaseName("ix_events_actor_id");
+
+                    b.HasIndex("AtprotoRecordId")
+                        .HasDatabaseName("ix_events_atproto_record_id");
+
+                    b.HasIndex("AudienceAgeId")
+                        .HasDatabaseName("ix_events_audience_age_id");
+
+                    b.HasIndex("AudienceGenderId")
+                        .HasDatabaseName("ix_events_audience_gender_id");
+
+                    b.HasIndex("EventFormatId")
+                        .HasDatabaseName("ix_events_event_format_id");
+
+                    b.HasIndex("EventStatusId")
+                        .HasDatabaseName("ix_events_event_status_id");
+
+                    b.HasIndex("EventTypeId")
+                        .HasDatabaseName("ix_events_event_type_id");
+
+                    b.HasIndex("FeaturedImageId")
+                        .HasDatabaseName("ix_events_featured_image_id");
+
+                    b.HasIndex("MadhabId")
+                        .HasDatabaseName("ix_events_madhab_id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_events_tenant_id");
+
+                    b.HasIndex("VisibilityTypeId")
+                        .HasDatabaseName("ix_events_visibility_type_id");
+
+                    b.ToTable("events", (string)null);
+
+                    b.UseTptMappingStrategy();
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000060"),
+                            ActorId = new Guid("018e4e5c-7f00-7000-8000-000000000021"),
+                            AudienceAgeId = 1,
+                            AudienceGenderId = 3,
+                            CurrencyCode = "EUR",
+                            Description = "This is a sample event to demonstrate the ISLAMU Events platform. Feel free to explore and create your own events!",
+                            EventFormatId = 2,
+                            EventStatusId = 2,
+                            EventTypeId = 2,
+                            FeaturedImageId = new Guid("018e4e5c-7f00-7000-8000-000000000050"),
+                            IsRegistrationRequired = false,
+                            Price = 0m,
+                            Slug = "welcome-to-islamu-events",
+                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001"),
+                            Timezone = "Europe/Brussels",
+                            Title = "Welcome to ISLAMU Events",
+                            TotalViews = 0,
+                            VisibilityTypeId = 1
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventCategories", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("category_id");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_categories");
+
+                    b.HasIndex("CategoryId")
+                        .HasDatabaseName("ix_event_categories_category_id");
+
+                    b.HasIndex("EventId")
+                        .HasDatabaseName("ix_event_categories_event_id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_event_categories_tenant_id");
+
+                    b.ToTable("event_categories", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventFormat", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_formats");
+
+                    b.ToTable("event_formats", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Description = "Event takes place at a physical location",
+                            FullName = "Local (In-Person)",
+                            MasterCode = "LOCAL"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Description = "Event takes place online",
+                            FullName = "Digital (Online)",
+                            MasterCode = "DIGITAL"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Description = "Event takes place both in-person and online",
+                            FullName = "Hybrid",
+                            MasterCode = "HYBRID"
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventRegistration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<int?>("ApprovalStatusId")
+                        .HasColumnType("integer")
+                        .HasColumnName("approval_status_id");
+
+                    b.Property<Guid?>("AtprotoRecordId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("atproto_record_id");
+
+                    b.Property<Guid>("EventSessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_session_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_registrations");
+
+                    b.HasIndex("ApprovalStatusId")
+                        .HasDatabaseName("ix_event_registrations_approval_status_id");
+
+                    b.HasIndex("AtprotoRecordId")
+                        .HasDatabaseName("ix_event_registrations_atproto_record_id");
+
+                    b.HasIndex("EventSessionId")
+                        .HasDatabaseName("ix_event_registrations_event_session_id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_event_registrations_tenant_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_event_registrations_user_id");
+
+                    b.ToTable("event_registrations", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<int?>("CurrentAudienceAttendees")
+                        .HasColumnType("integer")
+                        .HasColumnName("current_audience_attendees");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<DateTimeOffset>("EndTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("end_time");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<Guid?>("LocationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("location_id");
+
+                    b.Property<int?>("MaxAudienceAttendees")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_audience_attendees");
+
+                    b.Property<int?>("RegistrationModeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("registration_mode_id");
+
+                    b.Property<string>("Slug")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("slug");
+
+                    b.Property<DateTimeOffset>("StartTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("start_time");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("title");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_sessions");
+
+                    b.HasIndex("EventId")
+                        .HasDatabaseName("ix_event_sessions_event_id");
+
+                    b.HasIndex("LocationId")
+                        .HasDatabaseName("ix_event_sessions_location_id");
+
+                    b.HasIndex("RegistrationModeId")
+                        .HasDatabaseName("ix_event_sessions_registration_mode_id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_event_sessions_tenant_id");
+
+                    b.ToTable("event_sessions", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSessionAgendaItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<DateTimeOffset>("EndTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("end_time");
+
+                    b.Property<Guid>("EventSessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_session_id");
+
+                    b.Property<Guid?>("LocationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("location_id");
+
+                    b.Property<DateTimeOffset>("StartTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("start_time");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("title");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_session_agenda_items");
+
+                    b.HasIndex("EventSessionId")
+                        .HasDatabaseName("ix_event_session_agenda_items_event_session_id");
+
+                    b.HasIndex("LocationId")
+                        .HasDatabaseName("ix_event_session_agenda_items_location_id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_event_session_agenda_items_tenant_id");
+
+                    b.ToTable("event_session_agenda_items", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSessionLanguage", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -139,36 +1095,165 @@ namespace Explore.Persistence.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<Guid>("EventSessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_session_id");
+
+                    b.Property<int>("LanguageId")
+                        .HasColumnType("integer")
+                        .HasColumnName("language_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_session_languages");
+
+                    b.HasIndex("EventSessionId")
+                        .HasDatabaseName("ix_event_session_languages_event_session_id");
+
+                    b.HasIndex("LanguageId")
+                        .HasDatabaseName("ix_event_session_languages_language_id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_event_session_languages_tenant_id");
+
+                    b.ToTable("event_session_languages", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSessionSpeaker", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<Guid>("EventSessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_session_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_session_speakers");
+
+                    b.HasIndex("ActorId")
+                        .HasDatabaseName("ix_event_session_speakers_actor_id");
+
+                    b.HasIndex("EventSessionId")
+                        .HasDatabaseName("ix_event_session_speakers_event_session_id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_event_session_speakers_tenant_id");
+
+                    b.ToTable("event_session_speakers", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventStatus", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
                     b.Property<string>("Description")
-                        .HasColumnType("text")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("description");
 
                     b.Property<string>("FullName")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("full_name");
 
-                    b.HasKey("Id")
-                        .HasName("pk_education_types");
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("master_code");
 
-                    b.ToTable("education_types", (string)null);
+                    b.HasKey("Id")
+                        .HasName("pk_event_statuses");
+
+                    b.ToTable("event_statuses", (string)null);
 
                     b.HasData(
                         new
                         {
                             Id = 1,
-                            FullName = "School"
+                            Description = "Event is in draft state and not visible to the public",
+                            FullName = "Draft",
+                            MasterCode = "DRAFT"
                         },
                         new
                         {
                             Id = 2,
-                            FullName = "Institut"
+                            Description = "Event is published and visible to the public",
+                            FullName = "Published",
+                            MasterCode = "PUBLISHED"
                         },
                         new
                         {
                             Id = 3,
-                            FullName = "Course"
+                            Description = "Event has been cancelled",
+                            FullName = "Cancelled",
+                            MasterCode = "CANCELLED"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Description = "Event has been completed",
+                            FullName = "Completed",
+                            MasterCode = "COMPLETED"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Description = "Event has been archived",
+                            FullName = "Archived",
+                            MasterCode = "ARCHIVED"
                         });
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventTags", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<Guid>("TagId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tag_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_tags");
+
+                    b.HasIndex("EventId")
+                        .HasDatabaseName("ix_event_tags_event_id");
+
+                    b.HasIndex("TagId")
+                        .HasDatabaseName("ix_event_tags_tag_id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_event_tags_tenant_id");
+
+                    b.ToTable("event_tags", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventType", b =>
@@ -189,6 +1274,11 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("full_name");
 
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("master_code");
+
                     b.HasKey("Id")
                         .HasName("pk_event_types");
 
@@ -198,38 +1288,385 @@ namespace Explore.Persistence.Migrations
                         new
                         {
                             Id = 1,
-                            FullName = "Conference"
+                            FullName = "Conference",
+                            MasterCode = "CONFERENCE"
                         },
                         new
                         {
                             Id = 2,
-                            FullName = "Webinar"
+                            FullName = "Webinar",
+                            MasterCode = "WEBINAR"
                         },
                         new
                         {
                             Id = 3,
-                            FullName = "Workshop"
+                            FullName = "Workshop",
+                            MasterCode = "WORKSHOP"
                         });
                 });
 
             modelBuilder.Entity("Explore.Domain.FileType", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
 
                     b.Property<string>("FullName")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("full_name");
 
-                    b.HasKey("Id")
-                        .HasName("pk_file_type");
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("master_code");
 
-                    b.ToTable("file_type", (string)null);
+                    b.HasKey("Id")
+                        .HasName("pk_file_types");
+
+                    b.ToTable("file_types", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Description = "Image file (PNG, JPG, GIF, etc.)",
+                            FullName = "Image",
+                            MasterCode = "IMAGE"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Description = "Document file (PDF, DOC, etc.)",
+                            FullName = "Document",
+                            MasterCode = "DOCUMENT"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Description = "Video file (MP4, AVI, etc.)",
+                            FullName = "Video",
+                            MasterCode = "VIDEO"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Description = "Audio file (MP3, WAV, etc.)",
+                            FullName = "Audio",
+                            MasterCode = "AUDIO"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Description = "Other file type",
+                            FullName = "Other",
+                            MasterCode = "OTHER"
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.IndexedDid", b =>
+                {
+                    b.Property<string>("Did")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("did");
+
+                    b.Property<string>("Handle")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("handle");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<DateTime>("LastIndexedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_indexed_at");
+
+                    b.Property<DateTime?>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_seen_at");
+
+                    b.Property<string>("PdsHost")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("pds_host");
+
+                    b.Property<string>("SigningKey")
+                        .HasColumnType("text")
+                        .HasColumnName("signing_key");
+
+                    b.HasKey("Did")
+                        .HasName("pk_indexed_dids");
+
+                    b.ToTable("indexed_dids", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.Language", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_languages");
+
+                    b.ToTable("languages", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Description = "Arabic language",
+                            FullName = "Arabic",
+                            MasterCode = "AR"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Description = "English language",
+                            FullName = "English",
+                            MasterCode = "EN"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Description = "French language",
+                            FullName = "French",
+                            MasterCode = "FR"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Description = "Turkish language",
+                            FullName = "Turkish",
+                            MasterCode = "TR"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Description = "Urdu language",
+                            FullName = "Urdu",
+                            MasterCode = "UR"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Description = "Indonesian language",
+                            FullName = "Indonesian",
+                            MasterCode = "ID"
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Description = "Malay language",
+                            FullName = "Malay",
+                            MasterCode = "MS"
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Description = "Bengali language",
+                            FullName = "Bengali",
+                            MasterCode = "BN"
+                        },
+                        new
+                        {
+                            Id = 9,
+                            Description = "Persian/Farsi language",
+                            FullName = "Persian",
+                            MasterCode = "FA"
+                        },
+                        new
+                        {
+                            Id = 10,
+                            Description = "German language",
+                            FullName = "German",
+                            MasterCode = "DE"
+                        },
+                        new
+                        {
+                            Id = 11,
+                            Description = "Dutch language",
+                            FullName = "Dutch",
+                            MasterCode = "NL"
+                        },
+                        new
+                        {
+                            Id = 12,
+                            Description = "Spanish language",
+                            FullName = "Spanish",
+                            MasterCode = "ES"
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.Location", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("address");
+
+                    b.Property<string>("City")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("city");
+
+                    b.Property<string>("Country")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("country");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("full_name");
+
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("latitude");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("longitude");
+
+                    b.Property<string>("Postcode")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("postcode");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("Timezone")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("timezone");
+
+                    b.HasKey("Id")
+                        .HasName("pk_locations");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_locations_tenant_id");
+
+                    b.ToTable("locations", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000300"),
+                            Address = "Virtual",
+                            City = "Virtual",
+                            Country = "Internet",
+                            FullName = "Online / Virtual",
+                            Postcode = "00000",
+                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001"),
+                            Timezone = "UTC"
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.Madhab", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_madhabs");
+
+                    b.ToTable("madhabs", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Description = "Hanafi school of Islamic jurisprudence",
+                            FullName = "Hanafi",
+                            MasterCode = "HANAFI"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Description = "Maliki school of Islamic jurisprudence",
+                            FullName = "Maliki",
+                            MasterCode = "MALIKI"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Description = "Shafi'i school of Islamic jurisprudence",
+                            FullName = "Shafi'i",
+                            MasterCode = "SHAFII"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Description = "Hanbali school of Islamic jurisprudence",
+                            FullName = "Hanbali",
+                            MasterCode = "HANBALI"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Description = "Other Islamic jurisprudence approach",
+                            FullName = "Other",
+                            MasterCode = "OTHER"
+                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.Organization", b =>
@@ -240,73 +1677,99 @@ namespace Explore.Persistence.Migrations
                         .HasColumnName("id")
                         .HasDefaultValueSql("uuidv7()");
 
+                    b.Property<Guid?>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
                     b.Property<string>("Address")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("address");
+
+                    b.Property<int>("ApprovalStatusId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("approval_status_id");
 
                     b.Property<string>("City")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("city");
 
                     b.Property<string>("Country")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("country");
 
                     b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("CreatedByUserId")
-                        .HasColumnType("text")
-                        .HasColumnName("created_by_user_id");
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("email");
 
                     b.Property<string>("FullName")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("full_name");
 
-                    b.Property<int>("Postcode")
-                        .HasColumnType("integer")
+                    b.Property<string>("Postcode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("postcode");
 
-                    b.Property<int>("StatusTypeId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(1)
-                        .HasColumnName("status_type_id");
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
 
                     b.Property<string>("WebsiteUrl")
-                        .HasColumnType("text")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("website_url");
 
                     b.HasKey("Id")
                         .HasName("pk_organizations");
 
-                    b.HasIndex("StatusTypeId")
-                        .HasDatabaseName("ix_organizations_status_type_id");
+                    b.HasIndex("ActorId")
+                        .HasDatabaseName("ix_organizations_actor_id");
+
+                    b.HasIndex("ApprovalStatusId")
+                        .HasDatabaseName("ix_organizations_approval_status_id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_organizations_tenant_id");
 
                     b.ToTable("organizations", (string)null);
 
                     b.HasData(
                         new
                         {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000001"),
-                            Address = "Parc Du Peterbos ...",
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000040"),
+                            ActorId = new Guid("018e4e5c-7f00-7000-8000-000000000021"),
+                            Address = "Parc Du Peterbos",
+                            ApprovalStatusId = 2,
                             City = "Brussels",
                             Country = "Belgium",
-                            CreatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Email = "contact@openislamu.org",
                             FullName = "ISLAMU",
-                            Postcode = 1070,
-                            StatusTypeId = 2,
+                            Postcode = "1070",
+                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001"),
                             WebsiteUrl = "https://islamu.ngo"
                         });
                 });
@@ -319,20 +1782,23 @@ namespace Explore.Persistence.Migrations
                         .HasColumnName("id")
                         .HasDefaultValueSql("uuidv7()");
 
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("email");
-
                     b.Property<Guid>("OrganizationId")
                         .HasColumnType("uuid")
                         .HasColumnName("organization_id");
 
-                    b.Property<int>("Role")
+                    b.Property<int?>("OrganizationPositionId")
                         .HasColumnType("integer")
-                        .HasColumnName("role");
+                        .HasColumnName("organization_position_id");
 
-                    b.Property<Guid?>("UserId")
+                    b.Property<int>("OrganizationRoleId")
+                        .HasColumnType("integer")
+                        .HasColumnName("organization_role_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
@@ -342,10 +1808,159 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("OrganizationId")
                         .HasDatabaseName("ix_organization_members_organization_id");
 
+                    b.HasIndex("OrganizationPositionId")
+                        .HasDatabaseName("ix_organization_members_organization_position_id");
+
+                    b.HasIndex("OrganizationRoleId")
+                        .HasDatabaseName("ix_organization_members_organization_role_id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_organization_members_tenant_id");
+
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_organization_members_user_id");
 
                     b.ToTable("organization_members", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000041"),
+                            OrganizationId = new Guid("018e4e5c-7f00-7000-8000-000000000040"),
+                            OrganizationPositionId = 1,
+                            OrganizationRoleId = 1,
+                            TenantId = new Guid("00000000-0000-0000-0000-000000000000"),
+                            UserId = new Guid("018e4e5c-7f00-7000-8000-000000000030")
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.OrganizationPosition", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_organization_positions");
+
+                    b.ToTable("organization_positions", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Description = "Organization founder",
+                            FullName = "Founder",
+                            MasterCode = "FOUNDER"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Description = "Organization director",
+                            FullName = "Director",
+                            MasterCode = "DIRECTOR"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Description = "Organization manager",
+                            FullName = "Manager",
+                            MasterCode = "MANAGER"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Description = "Teacher or instructor",
+                            FullName = "Teacher",
+                            MasterCode = "TEACHER"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Description = "Organization secretary",
+                            FullName = "Secretary",
+                            MasterCode = "SECRETARY"
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Description = "Organization treasurer",
+                            FullName = "Treasurer",
+                            MasterCode = "TREASURER"
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Description = "Event or activity coordinator",
+                            FullName = "Coordinator",
+                            MasterCode = "COORDINATOR"
+                        },
+                        new
+                        {
+                            Id = 9,
+                            Description = "Organization volunteer",
+                            FullName = "Volunteer",
+                            MasterCode = "VOLUNTEER"
+                        },
+                        new
+                        {
+                            Id = 10,
+                            Description = "Organization intern",
+                            FullName = "Intern",
+                            MasterCode = "INTERN"
+                        },
+                        new
+                        {
+                            Id = 11,
+                            Description = "Organization advisor",
+                            FullName = "Advisor",
+                            MasterCode = "ADVISOR"
+                        },
+                        new
+                        {
+                            Id = 12,
+                            Description = "Organization consultant",
+                            FullName = "Consultant",
+                            MasterCode = "CONSULTANT"
+                        },
+                        new
+                        {
+                            Id = 14,
+                            Description = "Supervisor",
+                            FullName = "Supervisor",
+                            MasterCode = "SUPERVISOR"
+                        },
+                        new
+                        {
+                            Id = 15,
+                            Description = "Assistant",
+                            FullName = "Assistant",
+                            MasterCode = "ASSISTANT"
+                        },
+                        new
+                        {
+                            Id = 16,
+                            Description = "General staff member",
+                            FullName = "Staff",
+                            MasterCode = "STAFF"
+                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.OrganizationReview", b =>
@@ -357,22 +1972,21 @@ namespace Explore.Persistence.Migrations
                         .HasDefaultValueSql("uuidv7()");
 
                     b.Property<string>("Comment")
-                        .IsRequired()
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)")
                         .HasColumnName("comment");
 
-                    b.Property<DateTime>("CreatedAt")
+                    b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("program_id");
 
                     b.Property<Guid>("OrganizationId")
                         .HasColumnType("uuid")
                         .HasColumnName("organization_id");
-
-                    b.Property<Guid>("ProgramId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("program_id");
 
                     b.Property<int>("Rating")
                         .HasColumnType("integer")
@@ -384,7 +1998,11 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("reviewer_name");
 
-                    b.Property<DateTime>("UpdatedAt")
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
@@ -395,234 +2013,179 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_organization_reviews");
 
+                    b.HasIndex("EventId")
+                        .HasDatabaseName("ix_organization_reviews_event_id");
+
+                    b.HasIndex("OrganizationId")
+                        .HasDatabaseName("ix_organization_reviews_organization_id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_organization_reviews_tenant_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_organization_reviews_user_id");
+
                     b.ToTable("organization_reviews", (string)null);
                 });
 
-            modelBuilder.Entity("Explore.Domain.Program", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
-
-                    b.Property<string>("Address")
-                        .HasColumnType("text")
-                        .HasColumnName("address");
-
-                    b.Property<int>("AudienceAgeId")
-                        .HasColumnType("integer")
-                        .HasColumnName("audience_age_id");
-
-                    b.Property<int?>("AudienceAttendees")
-                        .HasColumnType("integer")
-                        .HasColumnName("audience_attendees");
-
-                    b.Property<int>("AudienceGenderId")
-                        .HasColumnType("integer")
-                        .HasColumnName("audience_gender_id");
-
-                    b.Property<string>("City")
-                        .HasColumnType("text")
-                        .HasColumnName("city");
-
-                    b.Property<string>("Country")
-                        .HasColumnType("text")
-                        .HasColumnName("country");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("description");
-
-                    b.Property<DateTime>("EndDate")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("end_date");
-
-                    b.Property<Guid?>("FeaturedImageId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("featured_image_id");
-
-                    b.Property<bool?>("IsRegistrationRequired")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_registration_required");
-
-                    b.Property<Guid>("OrganizationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("organization_id");
-
-                    b.Property<int?>("PostCode")
-                        .HasColumnType("integer")
-                        .HasColumnName("post_code");
-
-                    b.Property<double>("Price")
-                        .HasColumnType("double precision")
-                        .HasColumnName("price");
-
-                    b.Property<int>("ProgramTypeId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(1)
-                        .HasColumnName("program_type_id");
-
-                    b.Property<string>("ProgramUrl")
-                        .HasColumnType("text")
-                        .HasColumnName("program_url");
-
-                    b.Property<DateTime>("StartDate")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("start_date");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("title");
-
-                    b.Property<int>("TotalViews")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0)
-                        .HasColumnName("total_views");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AudienceAgeId")
-                        .HasDatabaseName("ix_programs_audience_age_id");
-
-                    b.HasIndex("AudienceGenderId")
-                        .HasDatabaseName("ix_programs_audience_gender_id");
-
-                    b.HasIndex("FeaturedImageId")
-                        .HasDatabaseName("ix_programs_featured_image_id");
-
-                    b.HasIndex("OrganizationId")
-                        .HasDatabaseName("ix_programs_organization_id");
-
-                    b.HasIndex("ProgramTypeId")
-                        .HasDatabaseName("ix_programs_program_type_id");
-
-                    b.ToTable("programs", (string)null);
-
-                    b.UseTptMappingStrategy();
-                });
-
-            modelBuilder.Entity("Explore.Domain.ProgramRegistartion", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
-
-                    b.Property<string>("Email")
-                        .HasColumnType("text")
-                        .HasColumnName("email");
-
-                    b.Property<string>("FirstName")
-                        .HasColumnType("text")
-                        .HasColumnName("first_name");
-
-                    b.Property<string>("LastName")
-                        .HasColumnType("text")
-                        .HasColumnName("last_name");
-
-                    b.Property<Guid>("ProgramId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("program_id");
-
-                    b.Property<int>("StatusTypeId")
-                        .HasColumnType("integer")
-                        .HasColumnName("status_type_id");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("user_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_program_registartions");
-
-                    b.HasIndex("ProgramId")
-                        .HasDatabaseName("ix_program_registartions_program_id");
-
-                    b.HasIndex("StatusTypeId")
-                        .HasDatabaseName("ix_program_registartions_status_type_id");
-
-                    b.ToTable("program_registartions", (string)null);
-                });
-
-            modelBuilder.Entity("Explore.Domain.ProgramType", b =>
+            modelBuilder.Entity("Explore.Domain.OrganizationRole", b =>
                 {
                     b.Property<int>("Id")
                         .HasColumnType("integer")
                         .HasColumnName("id");
 
                     b.Property<string>("Description")
-                        .HasColumnType("text")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("description");
 
                     b.Property<string>("FullName")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("full_name");
 
-                    b.HasKey("Id")
-                        .HasName("pk_program_types");
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("master_code");
 
-                    b.ToTable("program_types", (string)null);
+                    b.HasKey("Id")
+                        .HasName("pk_organization_roles");
+
+                    b.ToTable("organization_roles", (string)null);
 
                     b.HasData(
                         new
                         {
                             Id = 1,
-                            Description = "Events like Conferences, Webinars, Workshops & More!",
-                            FullName = "Event"
+                            Description = "Organization creator with full ownership",
+                            FullName = "Creator",
+                            MasterCode = "CREATOR"
                         },
                         new
                         {
                             Id = 2,
-                            Description = "Educations like Schools, Bootcamps & More!",
-                            FullName = "Education"
-                        });
-                });
-
-            modelBuilder.Entity("Explore.Domain.StatusType", b =>
-                {
-                    b.Property<int>("Id")
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("text")
-                        .HasColumnName("description");
-
-                    b.Property<string>("FullName")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("full_name");
-
-                    b.HasKey("Id")
-                        .HasName("pk_status_types");
-
-                    b.ToTable("status_types", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Description = "Status is pending approval of Admin verifying the Existence of Legal Entity",
-                            FullName = "Pending"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Description = "Status has been approved by Admin after verifying the Existence of Legal Entity",
-                            FullName = "Approved"
+                            Description = "Co-owner with near-full access",
+                            FullName = "Co-Owner",
+                            MasterCode = "CO_OWNER"
                         },
                         new
                         {
                             Id = 3,
-                            Description = "Status has been rejected by Admin after failing to verify the Existence of Legal Entity",
-                            FullName = "Rejected"
+                            Description = "Organization Administrator with management access",
+                            FullName = "Administrator",
+                            MasterCode = "ADMIN"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Description = "Organization Moderator with limited access",
+                            FullName = "Moderator",
+                            MasterCode = "MODERATOR"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Description = "Regular organization member",
+                            FullName = "Member",
+                            MasterCode = "MEMBER"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Description = "Read-only access to organization",
+                            FullName = "Viewer",
+                            MasterCode = "VIEWER"
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.OwnerType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_owner_types");
+
+                    b.ToTable("owner_types", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationMode", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_registration_modes");
+
+                    b.ToTable("registration_modes", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Description = "Anyone can register",
+                            FullName = "Open",
+                            MasterCode = "OPEN"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Description = "Registration requires approval",
+                            FullName = "Approval Required",
+                            MasterCode = "APPROVAL_REQUIRED"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Description = "Only invited users can register",
+                            FullName = "Invite Only",
+                            MasterCode = "INVITE_ONLY"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Description = "Registration is closed",
+                            FullName = "Closed",
+                            MasterCode = "CLOSED"
                         });
                 });
 
@@ -634,13 +2197,14 @@ namespace Explore.Persistence.Migrations
                         .HasColumnName("id")
                         .HasDefaultValueSql("uuidv7()");
 
-                    b.Property<Guid>("CreatedBy")
+                    b.Property<Guid?>("ActorId")
                         .HasColumnType("uuid")
-                        .HasColumnName("created_by");
+                        .HasColumnName("actor_id");
 
                     b.Property<string>("Extension")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("extension");
 
                     b.Property<int>("FileTypeId")
@@ -649,25 +2213,391 @@ namespace Explore.Persistence.Migrations
 
                     b.Property<string>("FullName")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("full_name");
 
-                    b.Property<int>("Size")
-                        .HasColumnType("integer")
+                    b.Property<long>("Size")
+                        .HasColumnType("bigint")
                         .HasColumnName("size");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
 
                     b.Property<string>("Uri")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
                         .HasColumnName("uri");
 
                     b.HasKey("Id")
-                        .HasName("pk_files");
+                        .HasName("pk_storage_objects");
+
+                    b.HasIndex("ActorId")
+                        .HasDatabaseName("ix_storage_objects_actor_id");
 
                     b.HasIndex("FileTypeId")
-                        .HasDatabaseName("ix_files_file_type_id");
+                        .HasDatabaseName("ix_storage_objects_file_type_id");
 
-                    b.ToTable("files", (string)null);
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_storage_objects_tenant_id");
+
+                    b.ToTable("storage_objects", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000050"),
+                            ActorId = new Guid("018e4e5c-7f00-7000-8000-000000000022"),
+                            Extension = ".jpg",
+                            FileTypeId = 1,
+                            FullName = "Default Event Image",
+                            Size = 0L,
+                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001"),
+                            Uri = "https://placeholder.islamu.org/event-default.jpg"
+                        },
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000051"),
+                            ActorId = new Guid("018e4e5c-7f00-7000-8000-000000000022"),
+                            Extension = ".jpg",
+                            FileTypeId = 1,
+                            FullName = "Default Profile Image",
+                            Size = 0L,
+                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001"),
+                            Uri = "https://placeholder.islamu.org/profile-default.jpg"
+                        },
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000052"),
+                            ActorId = new Guid("018e4e5c-7f00-7000-8000-000000000022"),
+                            Extension = ".jpg",
+                            FileTypeId = 1,
+                            FullName = "Default Organization Logo",
+                            Size = 0L,
+                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001"),
+                            Uri = "https://placeholder.islamu.org/org-default.jpg"
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.SyncState", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<long>("Cursor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("cursor");
+
+                    b.Property<DateTime?>("LastSeqTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_seq_time");
+
+                    b.Property<string>("Service")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("service");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_sync_states");
+
+                    b.HasIndex("Service")
+                        .IsUnique()
+                        .HasDatabaseName("ix_sync_states_service");
+
+                    b.ToTable("sync_states", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.Tag", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("master_code");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_tags");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_tags_tenant_id");
+
+                    b.ToTable("tags", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000200"),
+                            FullName = "Beginner",
+                            MasterCode = "BEGINNER",
+                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
+                        },
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000201"),
+                            FullName = "Intermediate",
+                            MasterCode = "INTERMEDIATE",
+                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
+                        },
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000202"),
+                            FullName = "Advanced",
+                            MasterCode = "ADVANCED",
+                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
+                        },
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000203"),
+                            FullName = "Free",
+                            MasterCode = "FREE",
+                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
+                        },
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000204"),
+                            FullName = "Paid",
+                            MasterCode = "PAID",
+                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
+                        },
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000205"),
+                            FullName = "Online",
+                            MasterCode = "ONLINE",
+                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
+                        },
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000206"),
+                            FullName = "In-Person",
+                            MasterCode = "IN_PERSON",
+                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.TagType", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_tag_types");
+
+                    b.ToTable("tag_types", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Description = "Topic-based tags for content categorization",
+                            FullName = "Topic",
+                            MasterCode = "TOPIC"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Description = "Skill level requirements (beginner, intermediate, advanced)",
+                            FullName = "Skill Level",
+                            MasterCode = "SKILL"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Description = "Language-based tags",
+                            FullName = "Language",
+                            MasterCode = "LANGUAGE"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Description = "Target audience tags",
+                            FullName = "Audience",
+                            MasterCode = "AUDIENCE"
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.TagTypeTags", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("TagId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tag_id");
+
+                    b.Property<int>("TagTypeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("tag_type_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_tag_type_tags");
+
+                    b.HasIndex("TagId")
+                        .HasDatabaseName("ix_tag_type_tags_tag_id");
+
+                    b.HasIndex("TagTypeId")
+                        .HasDatabaseName("ix_tag_type_tags_tag_type_id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_tag_type_tags_tenant_id");
+
+                    b.ToTable("tag_type_tags", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.Tenant", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("full_name");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("slug");
+
+                    b.HasKey("Id")
+                        .HasName("pk_tenants");
+
+                    b.HasIndex("Slug")
+                        .IsUnique()
+                        .HasDatabaseName("ix_tenants_slug");
+
+                    b.ToTable("tenants", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000001"),
+                            FullName = "ISLAMU Default Tenant",
+                            IsActive = true,
+                            Slug = "default"
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.TenantSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_tenant_settings");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_tenant_settings_tenant_id");
+
+                    b.ToTable("tenant_settings", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000400"),
+                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.TenantUser", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<int>("UserRoleId")
+                        .HasColumnType("integer")
+                        .HasColumnName("user_role_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_tenant_users");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_tenant_users_tenant_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_tenant_users_user_id");
+
+                    b.HasIndex("UserRoleId")
+                        .HasDatabaseName("ix_tenant_users_user_role_id");
+
+                    b.ToTable("tenant_users", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.User", b =>
@@ -675,84 +2605,771 @@ namespace Explore.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("id");
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
 
-                    b.Property<string>("Bio")
-                        .HasColumnType("text")
-                        .HasColumnName("bio");
+                    b.Property<Guid?>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
 
-                    b.Property<string>("City")
-                        .HasColumnType("text")
-                        .HasColumnName("city");
+                    b.Property<string>("AuthProvider")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("auth_provider");
 
-                    b.Property<string>("Country")
-                        .HasColumnType("text")
-                        .HasColumnName("country");
+                    b.Property<string>("AuthProviderId")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("auth_provider_id");
+
+                    b.Property<Guid?>("DefaultActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("default_actor_id");
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("email");
+
+                    b.Property<bool?>("EmailVerified")
+                        .HasColumnType("boolean")
+                        .HasColumnName("email_verified");
 
                     b.Property<string>("FirstName")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("first_name");
 
                     b.Property<string>("LastName")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("last_name");
-
-                    b.Property<string>("Username")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("username");
 
                     b.HasKey("Id")
                         .HasName("pk_users");
 
+                    b.HasIndex("ActorId")
+                        .HasDatabaseName("ix_users_actor_id");
+
+                    b.HasIndex("Email")
+                        .IsUnique()
+                        .HasDatabaseName("ix_users_email");
+
                     b.ToTable("users", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000030"),
+                            ActorId = new Guid("018e4e5c-7f00-7000-8000-000000000022"),
+                            AuthProvider = "system",
+                            AuthProviderId = "system",
+                            Email = "system@islamu.org",
+                            EmailVerified = true,
+                            FirstName = "System",
+                            LastName = "Account"
+                        });
                 });
 
-            modelBuilder.Entity("Explore.Domain.Education", b =>
+            modelBuilder.Entity("Explore.Domain.UserAuthenticationToken", b =>
                 {
-                    b.HasBaseType("Explore.Domain.Program");
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
 
-                    b.Property<int>("EducationTypeId")
+                    b.Property<string>("AccessToken")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("access_token");
+
+                    b.Property<string>("DpopKey")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("dpop_key");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("IdToken")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("id_token");
+
+                    b.Property<string>("PdsHost")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("pds_host");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("provider");
+
+                    b.Property<string>("RefreshToken")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("refresh_token");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_authentication_tokens");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_user_authentication_tokens_tenant_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_user_authentication_tokens_user_id");
+
+                    b.ToTable("user_authentication_tokens", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.UserExternalLogin", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<string>("Provider")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("provider");
+
+                    b.Property<string>("ProviderDisplayName")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("provider_display_name");
+
+                    b.Property<string>("ProviderKey")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("provider_key");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_external_logins");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_user_external_logins_tenant_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_user_external_logins_user_id");
+
+                    b.ToTable("user_external_logins", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.UserRole", b =>
+                {
+                    b.Property<int>("Id")
                         .HasColumnType("integer")
-                        .HasColumnName("education_type_id");
+                        .HasColumnName("id");
 
-                    b.HasIndex("EducationTypeId")
-                        .HasDatabaseName("ix_educations_education_type_id");
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
 
-                    b.ToTable("educations", (string)null);
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("master_code");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_roles");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_user_roles_tenant_id");
+
+                    b.ToTable("user_roles", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Description = "Full system access across all tenants",
+                            FullName = "Super Administrator",
+                            MasterCode = "SUPER_ADMIN",
+                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Description = "Tenant administrator with full access within tenant",
+                            FullName = "Administrator",
+                            MasterCode = "ADMIN",
+                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Description = "Content moderation and user management",
+                            FullName = "Moderator",
+                            MasterCode = "MODERATOR",
+                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Description = "Standard user role",
+                            FullName = "User",
+                            MasterCode = "USER",
+                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.VisibilityType", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_visibility_types");
+
+                    b.ToTable("visibility_types", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Description = "Visible to everyone",
+                            FullName = "Public",
+                            MasterCode = "PUBLIC"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Description = "Only visible to invited members",
+                            FullName = "Private",
+                            MasterCode = "PRIVATE"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Description = "Not listed publicly but accessible via direct link",
+                            FullName = "Unlisted",
+                            MasterCode = "UNLISTED"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Description = "Only visible to organization members",
+                            FullName = "Members Only",
+                            MasterCode = "MEMBERS_ONLY"
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.Actor", b =>
+                {
+                    b.HasOne("Explore.Domain.ActorType", "ActorType")
+                        .WithMany()
+                        .HasForeignKey("ActorTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_actors_actor_types_actor_type_id");
+
+                    b.HasOne("Explore.Domain.DidCustodyType", "DidCustodyType")
+                        .WithMany()
+                        .HasForeignKey("DidCustodyTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_actors_did_custody_types_did_custody_type_id");
+
+                    b.HasOne("Explore.Domain.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_actors_organizations_organization_id");
+
+                    b.HasOne("Explore.Domain.StorageObject", "ProfilePicture")
+                        .WithMany()
+                        .HasForeignKey("ProfilePictureId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_actors_storage_objects_profile_picture_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_actors_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_actors_users_user_id");
+
+                    b.Navigation("ActorType");
+
+                    b.Navigation("DidCustodyType");
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("ProfilePicture");
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Explore.Domain.ActorKeyStore", b =>
+                {
+                    b.HasOne("Explore.Domain.Actor", "Actor")
+                        .WithMany()
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_actor_key_stores_actors_actor_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_actor_key_stores_tenants_tenant_id");
+
+                    b.Navigation("Actor");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.Category", b =>
+                {
+                    b.HasOne("Explore.Domain.Category", "Parent")
+                        .WithMany()
+                        .HasForeignKey("ParentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_categories_categories_parent_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_categories_tenants_tenant_id");
+
+                    b.Navigation("Parent");
+
+                    b.Navigation("Tenant");
                 });
 
             modelBuilder.Entity("Explore.Domain.Event", b =>
                 {
-                    b.HasBaseType("Explore.Domain.Program");
+                    b.HasOne("Explore.Domain.Actor", "Actor")
+                        .WithMany()
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_events_actors_actor_id");
 
-                    b.Property<int>("EventTypeId")
-                        .HasColumnType("integer")
-                        .HasColumnName("event_type_id");
+                    b.HasOne("Explore.Domain.AtprotoRecord", "AtprotoRecord")
+                        .WithMany()
+                        .HasForeignKey("AtprotoRecordId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_events_atproto_records_atproto_record_id");
 
-                    b.HasIndex("EventTypeId")
-                        .HasDatabaseName("ix_events_event_type_id");
+                    b.HasOne("Explore.Domain.AudienceAge", "AudienceAge")
+                        .WithMany()
+                        .HasForeignKey("AudienceAgeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_events_audience_ages_audience_age_id");
 
-                    b.ToTable("events", (string)null);
+                    b.HasOne("Explore.Domain.AudienceGender", "AudienceGender")
+                        .WithMany()
+                        .HasForeignKey("AudienceGenderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_events_audience_genders_audience_gender_id");
+
+                    b.HasOne("Explore.Domain.EventFormat", "EventFormat")
+                        .WithMany()
+                        .HasForeignKey("EventFormatId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_events_event_formats_event_format_id");
+
+                    b.HasOne("Explore.Domain.EventStatus", "EventStatus")
+                        .WithMany()
+                        .HasForeignKey("EventStatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_events_event_statuses_event_status_id");
+
+                    b.HasOne("Explore.Domain.EventType", "EventType")
+                        .WithMany()
+                        .HasForeignKey("EventTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_events_event_types_event_type_id");
+
+                    b.HasOne("Explore.Domain.StorageObject", "FeaturedImage")
+                        .WithMany()
+                        .HasForeignKey("FeaturedImageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_events_storage_objects_featured_image_id");
+
+                    b.HasOne("Explore.Domain.Madhab", "Madhab")
+                        .WithMany()
+                        .HasForeignKey("MadhabId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_events_madhabs_madhab_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_events_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.VisibilityType", "VisibilityType")
+                        .WithMany()
+                        .HasForeignKey("VisibilityTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_events_visibility_types_visibility_type_id");
+
+                    b.Navigation("Actor");
+
+                    b.Navigation("AtprotoRecord");
+
+                    b.Navigation("AudienceAge");
+
+                    b.Navigation("AudienceGender");
+
+                    b.Navigation("EventFormat");
+
+                    b.Navigation("EventStatus");
+
+                    b.Navigation("EventType");
+
+                    b.Navigation("FeaturedImage");
+
+                    b.Navigation("Madhab");
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("VisibilityType");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventCategories", b =>
+                {
+                    b.HasOne("Explore.Domain.Category", "Category")
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_categories_categories_category_id");
+
+                    b.HasOne("Explore.Domain.Event", "Event")
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_categories_events_event_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_categories_tenants_tenant_id");
+
+                    b.Navigation("Category");
+
+                    b.Navigation("Event");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventRegistration", b =>
+                {
+                    b.HasOne("Explore.Domain.ApprovalStatus", "ApprovalStatus")
+                        .WithMany()
+                        .HasForeignKey("ApprovalStatusId")
+                        .HasConstraintName("fk_event_registrations_approval_statuses_approval_status_id");
+
+                    b.HasOne("Explore.Domain.AtprotoRecord", "AtprotoRecord")
+                        .WithMany()
+                        .HasForeignKey("AtprotoRecordId")
+                        .HasConstraintName("fk_event_registrations_atproto_records_atproto_record_id");
+
+                    b.HasOne("Explore.Domain.EventSession", "EventSession")
+                        .WithMany()
+                        .HasForeignKey("EventSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_registrations_event_sessions_event_session_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_registrations_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_registrations_users_user_id");
+
+                    b.Navigation("ApprovalStatus");
+
+                    b.Navigation("AtprotoRecord");
+
+                    b.Navigation("EventSession");
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSession", b =>
+                {
+                    b.HasOne("Explore.Domain.Event", "Event")
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_sessions_events_event_id");
+
+                    b.HasOne("Explore.Domain.Location", "Location")
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_event_sessions_locations_location_id");
+
+                    b.HasOne("Explore.Domain.RegistrationMode", "RegistrationMode")
+                        .WithMany()
+                        .HasForeignKey("RegistrationModeId")
+                        .HasConstraintName("fk_event_sessions_registration_modes_registration_mode_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_sessions_tenants_tenant_id");
+
+                    b.Navigation("Event");
+
+                    b.Navigation("Location");
+
+                    b.Navigation("RegistrationMode");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSessionAgendaItem", b =>
+                {
+                    b.HasOne("Explore.Domain.EventSession", "EventSession")
+                        .WithMany()
+                        .HasForeignKey("EventSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_session_agenda_items_event_sessions_event_session_id");
+
+                    b.HasOne("Explore.Domain.Location", "Location")
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_event_session_agenda_items_locations_location_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_session_agenda_items_tenants_tenant_id");
+
+                    b.Navigation("EventSession");
+
+                    b.Navigation("Location");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSessionLanguage", b =>
+                {
+                    b.HasOne("Explore.Domain.EventSession", "EventSession")
+                        .WithMany()
+                        .HasForeignKey("EventSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_session_languages_event_sessions_event_session_id");
+
+                    b.HasOne("Explore.Domain.Language", "Language")
+                        .WithMany()
+                        .HasForeignKey("LanguageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_session_languages_languages_language_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_session_languages_tenants_tenant_id");
+
+                    b.Navigation("EventSession");
+
+                    b.Navigation("Language");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSessionSpeaker", b =>
+                {
+                    b.HasOne("Explore.Domain.Actor", "Actor")
+                        .WithMany()
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_session_speakers_actors_actor_id");
+
+                    b.HasOne("Explore.Domain.EventSession", "EventSession")
+                        .WithMany()
+                        .HasForeignKey("EventSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_session_speakers_event_sessions_event_session_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_session_speakers_tenants_tenant_id");
+
+                    b.Navigation("Actor");
+
+                    b.Navigation("EventSession");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventTags", b =>
+                {
+                    b.HasOne("Explore.Domain.Event", "Event")
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_tags_events_event_id");
+
+                    b.HasOne("Explore.Domain.Tag", "Tag")
+                        .WithMany()
+                        .HasForeignKey("TagId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_tags_tags_tag_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_tags_tenants_tenant_id");
+
+                    b.Navigation("Event");
+
+                    b.Navigation("Tag");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.Location", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_locations_tenants_tenant_id");
+
+                    b.Navigation("Tenant");
                 });
 
             modelBuilder.Entity("Explore.Domain.Organization", b =>
                 {
-                    b.HasOne("Explore.Domain.StatusType", "StatusType")
+                    b.HasOne("Explore.Domain.Actor", "Actor")
                         .WithMany()
-                        .HasForeignKey("StatusTypeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_organizations_status_types_status_type_id");
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_organizations_actors_actor_id");
 
-                    b.Navigation("StatusType");
+                    b.HasOne("Explore.Domain.ApprovalStatus", "ApprovalStatus")
+                        .WithMany()
+                        .HasForeignKey("ApprovalStatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_organizations_approval_statuses_approval_status_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_organizations_tenants_tenant_id");
+
+                    b.Navigation("Actor");
+
+                    b.Navigation("ApprovalStatus");
+
+                    b.Navigation("Tenant");
                 });
 
             modelBuilder.Entity("Explore.Domain.OrganizationMember", b =>
@@ -764,131 +3381,259 @@ namespace Explore.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_organization_members_organizations_organization_id");
 
+                    b.HasOne("Explore.Domain.OrganizationPosition", "OrganizationPosition")
+                        .WithMany()
+                        .HasForeignKey("OrganizationPositionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_organization_members_organization_positions_organization_po");
+
+                    b.HasOne("Explore.Domain.OrganizationRole", "OrganizationRole")
+                        .WithMany()
+                        .HasForeignKey("OrganizationRoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_organization_members_organization_roles_organization_role_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_organization_members_tenants_tenant_id");
+
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
                         .HasConstraintName("fk_organization_members_users_user_id");
 
                     b.Navigation("Organization");
 
+                    b.Navigation("OrganizationPosition");
+
+                    b.Navigation("OrganizationRole");
+
+                    b.Navigation("Tenant");
+
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Explore.Domain.Program", b =>
+            modelBuilder.Entity("Explore.Domain.OrganizationReview", b =>
                 {
-                    b.HasOne("Explore.Domain.AudienceAge", "AudienceAge")
+                    b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany()
-                        .HasForeignKey("AudienceAgeId")
+                        .HasForeignKey("EventId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_programs_audience_ages_audience_age_id");
-
-                    b.HasOne("Explore.Domain.AudienceGender", "AudienceGender")
-                        .WithMany()
-                        .HasForeignKey("AudienceGenderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_programs_audience_genders_audience_gender_id");
-
-                    b.HasOne("Explore.Domain.StorageObject", "FeaturedImage")
-                        .WithMany()
-                        .HasForeignKey("FeaturedImageId")
-                        .HasConstraintName("fk_programs_files_featured_image_id");
+                        .HasConstraintName("fk_organization_reviews_events_event_id");
 
                     b.HasOne("Explore.Domain.Organization", "Organization")
                         .WithMany()
                         .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_programs_organizations_organization_id");
+                        .HasConstraintName("fk_organization_reviews_organizations_organization_id");
 
-                    b.HasOne("Explore.Domain.ProgramType", "ProgramType")
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
-                        .HasForeignKey("ProgramTypeId")
+                        .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_programs_program_types_program_type_id");
+                        .HasConstraintName("fk_organization_reviews_tenants_tenant_id");
 
-                    b.Navigation("AudienceAge");
+                    b.HasOne("Explore.Domain.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_organization_reviews_users_user_id");
 
-                    b.Navigation("AudienceGender");
-
-                    b.Navigation("FeaturedImage");
+                    b.Navigation("Event");
 
                     b.Navigation("Organization");
 
-                    b.Navigation("ProgramType");
-                });
+                    b.Navigation("Tenant");
 
-            modelBuilder.Entity("Explore.Domain.ProgramRegistartion", b =>
-                {
-                    b.HasOne("Explore.Domain.Program", "Program")
-                        .WithMany()
-                        .HasForeignKey("ProgramId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_program_registartions_programs_program_id");
-
-                    b.HasOne("Explore.Domain.StatusType", "StatusType")
-                        .WithMany()
-                        .HasForeignKey("StatusTypeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_program_registartions_status_types_status_type_id");
-
-                    b.Navigation("Program");
-
-                    b.Navigation("StatusType");
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Explore.Domain.StorageObject", b =>
                 {
+                    b.HasOne("Explore.Domain.Actor", "Actor")
+                        .WithMany()
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_storage_objects_actors_actor_id");
+
                     b.HasOne("Explore.Domain.FileType", "FileType")
                         .WithMany()
                         .HasForeignKey("FileTypeId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_files_file_type_file_type_id");
+                        .HasConstraintName("fk_storage_objects_file_types_file_type_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_storage_objects_tenants_tenant_id");
+
+                    b.Navigation("Actor");
 
                     b.Navigation("FileType");
+
+                    b.Navigation("Tenant");
                 });
 
-            modelBuilder.Entity("Explore.Domain.Education", b =>
+            modelBuilder.Entity("Explore.Domain.Tag", b =>
                 {
-                    b.HasOne("Explore.Domain.EducationType", "EducationType")
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
-                        .HasForeignKey("EducationTypeId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_educations_education_types_education_type_id");
+                        .HasConstraintName("fk_tags_tenants_tenant_id");
 
-                    b.HasOne("Explore.Domain.Program", null)
-                        .WithOne()
-                        .HasForeignKey("Explore.Domain.Education", "Id")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_educations_programs_id");
-
-                    b.Navigation("EducationType");
+                    b.Navigation("Tenant");
                 });
 
-            modelBuilder.Entity("Explore.Domain.Event", b =>
+            modelBuilder.Entity("Explore.Domain.TagTypeTags", b =>
                 {
-                    b.HasOne("Explore.Domain.EventType", "EventType")
+                    b.HasOne("Explore.Domain.Tag", "Tag")
                         .WithMany()
-                        .HasForeignKey("EventTypeId")
+                        .HasForeignKey("TagId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_events_event_types_event_type_id");
+                        .HasConstraintName("fk_tag_type_tags_tags_tag_id");
 
-                    b.HasOne("Explore.Domain.Program", null)
-                        .WithOne()
-                        .HasForeignKey("Explore.Domain.Event", "Id")
+                    b.HasOne("Explore.Domain.TagType", "TagType")
+                        .WithMany()
+                        .HasForeignKey("TagTypeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_events_programs_id");
+                        .HasConstraintName("fk_tag_type_tags_tag_types_tag_type_id");
 
-                    b.Navigation("EventType");
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_tag_type_tags_tenants_tenant_id");
+
+                    b.Navigation("Tag");
+
+                    b.Navigation("TagType");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.TenantSettings", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_tenant_settings_tenants_tenant_id");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.TenantUser", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_tenant_users_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_tenant_users_users_user_id");
+
+                    b.HasOne("Explore.Domain.UserRole", "UserRole")
+                        .WithMany()
+                        .HasForeignKey("UserRoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_tenant_users_user_roles_user_role_id");
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("User");
+
+                    b.Navigation("UserRole");
+                });
+
+            modelBuilder.Entity("Explore.Domain.User", b =>
+                {
+                    b.HasOne("Explore.Domain.Actor", "Actor")
+                        .WithMany()
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_users_actors_actor_id");
+
+                    b.Navigation("Actor");
+                });
+
+            modelBuilder.Entity("Explore.Domain.UserAuthenticationToken", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_authentication_tokens_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_authentication_tokens_users_user_id");
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Explore.Domain.UserExternalLogin", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_external_logins_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_external_logins_users_user_id");
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Explore.Domain.UserRole", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_roles_tenants_tenant_id");
+
+                    b.Navigation("Tenant");
                 });
 
             modelBuilder.Entity("Explore.Domain.Organization", b =>

@@ -1,0 +1,51 @@
+/* ===== CSS Custom Properties ===== */
+::deep :root {
+    --admin-categories-radius: 12px;
+    --admin-categories-spacing: 24px;
+}
+
+/* ===== Block: admin-categories ===== */
+::deep .admin-categories {
+    padding: 22px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* ===== Element: admin-categories__title ===== */
+::deep .admin-categories__title {
+    margin-bottom: var(--admin-categories-spacing);
+    font-weight: 800;
+    letter-spacing: 0.3px;
+}
+
+/* ===== Element: admin-categories__grid ===== */
+::deep .admin-categories__grid {
+    border-radius: var(--admin-categories-radius);
+    overflow: hidden;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* ===== Element: admin-categories__create-btn ===== */
+::deep .admin-categories__create-btn {
+    margin-top: var(--admin-categories-spacing);
+    border-radius: 999px;
+    padding: 10px 24px;
+    font-weight: 600;
+    box-shadow: 0 6px 16px rgba(124, 58, 237, 0.3);
+}
+
+/* ===== Responsive: Mobile (600px) ===== */
+@media (max-width: 600px) {
+    ::deep .admin-categories {
+        padding: 16px;
+    }
+
+    ::deep .admin-categories__title {
+        font-size: 1.5rem;
+    }
+
+    ::deep .admin-categories__create-btn {
+        width: 100%;
+    }
+}

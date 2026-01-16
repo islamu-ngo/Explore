@@ -1,0 +1,203 @@
+{
+  "version": "1.0",
+  "description": "Skill activation triggers for ASP.NET Core & Blazor Clean Architecture context.",
+  "skills": {
+    "clean-architecture-rules": {
+      "type": "guardrail",
+      "enforcement": "block",
+      "priority": "critical",
+      "description": "Enforces Clean Architecture dependency rules (Domain -> Application -> Infrastructure -> API)",
+      "promptTriggers": {
+        "keywords": [
+          "dependency",
+          "reference",
+          "architecture",
+          "layer",
+          "clean architecture",
+          "domain logic",
+          "ef core",
+          "dbcontext"
+        ],
+        "intentPatterns": [
+          "(add|create|reference).*?(dependency|project|layer)",
+          "(where).*?(logic|entity|dto).*?(go|belong)",
+          "fix.*?(dependency|reference).*?error"
+        ]
+      },
+      "fileTriggers": {
+        "pathPatterns": ["**/*.Domain/**/*.cs", "**/*.Application/**/*.cs"],
+        "contentPatterns": [
+          "using.*Infrastructure",
+          "using.*Api",
+          "using.*Microsoft.AspNetCore.Mvc"
+        ]
+      },
+      "blockMessage": "⚠️ BLOCKED - Clean Architecture Violation\n\n📋 VIOLATION DETECTED:\nIt appears you are trying to add a reference that violates the Dependency Rule.\n\n1. **Domain** cannot reference ANYTHING.\n2. **Application** can only reference **Domain**.\n3. **Infrastructure** references **Application** and **Domain**.\n4. **API** references **Application** and **Infrastructure**.\n\nREQUIRED ACTION:\n1. Use Skill: `clean-architecture-rules` to review where code belongs.\n2. Move logic to the correct layer (e.g., interfaces in Application, implementation in Infra).",
+      "skipConditions": {
+        "sessionSkillUsed": true,
+        "fileMarkers": ["@skip-architecture-check"]
+      }
+    },
+    "cqrs-mediatr-guidelines": {
+      "type": "domain",
+      "enforcement": "suggest",
+      "priority": "high",
+      "description": "Best practices for CQRS commands/queries and FluentValidation",
+      "promptTriggers": {
+        "keywords": [
+          "command",
+          "query",
+          "handler",
+          "mediatr",
+          "cqrs",
+          "validation",
+          "validator",
+          "pipeline",
+          "behavior"
+        ],
+        "intentPatterns": [
+          "(create|add|implement).*?(feature|endpoint|use case)",
+          "(handle|validate).*?(request|command|query)",
+          "(how to).*?(mediatr|cqrs)"
+        ]
+      },
+      "fileTriggers": {
+        "pathPatterns": [
+          "**/*.Application/**/*Handler.cs",
+          "**/*.Application/**/*Command.cs",
+          "**/*.Application/**/*Query.cs",
+          "**/*.Application/**/*Validator.cs"
+        ],
+        "contentPatterns": [
+          "IRequest",
+          "IRequestHandler",
+          "AbstractValidator",
+          "FluentValidation"
+        ]
+      }
+    },
+    "blazor-mudblazor-guidelines": {
+      "type": "domain",
+      "enforcement": "suggest",
+      "priority": "high",
+      "description": "Blazor component best practices and MudBlazor usage",
+      "promptTriggers": {
+        "keywords": [
+          "blazor",
+          "component",
+          "razor",
+          "mudblazor",
+          "ui",
+          "page",
+          "dialog",
+          "render",
+          "parameter",
+          "eventcallback"
+        ],
+        "intentPatterns": [
+          "(create|fix|style).*?(component|page|ui|button|grid)",
+          "(how to).*?(blazor|mudblazor)",
+          "(render|lifecycle).*?(issue|bug)"
+        ]
+      },
+      "fileTriggers": {
+        "pathPatterns": ["**/*.razor", "**/*.razor.cs", "**/*.Client/**/*.cs"],
+        "contentPatterns": [
+          "<Mud",
+          "@page",
+          "@inject",
+          "Parameter",
+          "CascadingValue"
+        ]
+      }
+    },
+    "keycloak-auth-debugger": {
+      "type": "domain",
+      "enforcement": "suggest",
+      "priority": "medium",
+      "description": "Helper for debugging OIDC, Claims, and Keycloak BFF issues",
+      "promptTriggers": {
+        "keywords": [
+          "auth",
+          "authentication",
+          "authorization",
+          "keycloak",
+          "oidc",
+          "token",
+          "jwt",
+          "claim",
+          "role",
+          "policy",
+          "cookies",
+          "bff",
+          "yarp"
+        ],
+        "intentPatterns": [
+          "(login|logout|auth).*?(issue|fail|error)",
+          "(check|verify|debug).*?(token|claim|role)",
+          "(configure).*?(keycloak|oidc)"
+        ]
+      },
+      "fileTriggers": {
+        "pathPatterns": [
+          "**/Program.cs",
+          "**/appsettings*.json",
+          "**/*Controller.cs"
+        ],
+        "contentPatterns": [
+          "AddAuthentication",
+          "AddKeycloak",
+          "Authorize",
+          "ClaimTypes",
+          "JwtBearer"
+        ]
+      }
+    },
+    "dotnet-efcore-guidelines": {
+      "type": "domain",
+      "enforcement": "suggest",
+      "priority": "medium",
+      "description": "EF Core configuration, Migrations and Postgres patterns",
+      "promptTriggers": {
+        "keywords": [
+          "database",
+          "postgres",
+          "migration",
+          "dbcontext",
+          "entity",
+          "relationship",
+          "foreign key",
+          "index",
+          "seeding"
+        ],
+        "intentPatterns": [
+          "(add|modify).*?(table|column|entity)",
+          "(run|create|apply).*?(migration)",
+          "(configure).*?(db|context|connection)"
+        ]
+      },
+      "fileTriggers": {
+        "pathPatterns": [
+          "**/*.Infrastructure/**/*.cs",
+          "**/*DbContext.cs",
+          "**/*Configuration.cs"
+        ],
+        "contentPatterns": [
+          "DbSet<",
+          "IEntityTypeConfiguration",
+          "OnModelCreating",
+          "UseNpgsql"
+        ]
+      }
+    }
+  },
+  "notes": {
+    "architecture_layers": {
+      "Domain": "Core logic, Entities, ValueObjects. No external deps.",
+      "Application": "Use Cases, Interfaces, DTOs. Depends on Domain.",
+      "Infrastructure": "Db, FileSys, API implementations. Depends on App/Domain.",
+      "API": "Controllers, SignalR. Entry point.",
+      "Blazor": "UI. Depends on Client SDKs or Shared DTOs."
+    }
+  }
+}

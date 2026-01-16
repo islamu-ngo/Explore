@@ -1,34 +1,86 @@
 using System.Net.Http.Json;
-using Explore.Blazor.Client.Models.DTOs;
-using Explore.Blazor.Client.Models.Responses;
+using Explore.Blazor.Client.Clients;
+using Microsoft.Extensions.Logging;
 
-namespace Explore.Blazor.Client.Services
+namespace Explore.Blazor.Client.Services;
+
+/// <summary>
+/// Service for managing organization reviews.
+/// </summary>
+public interface IOrganizationReviewService
 {
-    public class OrganizationReviewService : IOrganizationReviewService
+    Task<ICollection<OrganizationReviewDto>> GetReviewsByOrganizationId(Guid organizationId);
+    Task<ICollection<OrganizationReviewDto>> GetReviewsByUserId(Guid userId);
+    Task<BaseCommandResponseOfGuid?> CreateReview(CreateOrganizationReviewDto review);
+}
+
+/// <summary>
+/// Implementation of organization review service.
+/// </summary>
+public class OrganizationReviewService : IOrganizationReviewService
+{
+    private readonly IEventApiClient _apiClient;
+    private readonly ILogger<OrganizationReviewService> _logger;
+
+    public OrganizationReviewService(IEventApiClient apiClient, ILogger<OrganizationReviewService> logger)
     {
-        private readonly HttpClient _httpClient;
+        _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
 
-        public OrganizationReviewService(HttpClient httpClient)
+    public async Task<ICollection<OrganizationReviewDto>> GetReviewsByOrganizationId(Guid organizationId)
+    {
+        try
         {
-            _httpClient = httpClient;
-        }
-
-        public async Task<List<OrganizationReviewDto>> GetReviewsByOrganizationId(Guid organizationId)
-        {
-            var response = await _httpClient.GetFromJsonAsync<List<OrganizationReviewDto>>($"/bff/api/OrganizationReview/{organizationId}");
+            var response = await _apiClient.OrganizationReviewAllAsync(organizationId);
             return response ?? new List<OrganizationReviewDto>();
         }
-
-        public async Task<List<OrganizationReviewDto>> GetReviewsByUserId(Guid userId)
+        catch (ApiException ex)
         {
-            var response = await _httpClient.GetFromJsonAsync<List<OrganizationReviewDto>>($"/bff/api/OrganizationReview/user/{userId}");
+            _logger.LogError(ex, "API error fetching reviews by organization: {StatusCode}", ex.StatusCode);
+            return new List<OrganizationReviewDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching reviews by organization");
+            return new List<OrganizationReviewDto>();
+        }
+    }
+
+    public async Task<ICollection<OrganizationReviewDto>> GetReviewsByUserId(Guid userId)
+    {
+        try
+        {
+            var response = await _apiClient.UserAsync(userId);
             return response ?? new List<OrganizationReviewDto>();
         }
-
-        public async Task<BaseCommandResponse<Guid>> CreateReview(CreateOrganizationReviewDto review)
+        catch (ApiException ex)
         {
-            var response = await _httpClient.PostAsJsonAsync("/bff/api/OrganizationReview", review);
-            return await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
+            _logger.LogError(ex, "API error fetching reviews by user: {StatusCode}", ex.StatusCode);
+            return new List<OrganizationReviewDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching reviews by user");
+            return new List<OrganizationReviewDto>();
+        }
+    }
+
+    public async Task<BaseCommandResponseOfGuid?> CreateReview(CreateOrganizationReviewDto review)
+    {
+        try
+        {
+            return await _apiClient.OrganizationReviewAsync(review);
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "API error creating review: {StatusCode}", ex.StatusCode);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating review");
+            throw;
         }
     }
 }

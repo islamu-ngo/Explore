@@ -1,329 +1,52 @@
-@page "/my-registrations"
 @using MudBlazor
-@using Explore.Blazor.Client.Models.DTOs
+@using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Components
+@using Microsoft.AspNetCore.Components
+@using Microsoft.Extensions.Logging
 @inject NavigationManager Navigation
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
-@inject IProgramService ProgramService
-@inject IOrganizationReviewService OrganizationReviewService
+@inject IEventService EventService
+@inject IUserService UserService
+@inject ILogger<MyRegistrations> Logger
+
 
 <PageTitle>My Registrations</PageTitle>
-
-<style>
-/* ===== PAGE WRAPPER ===== */
-.registrations-page {
-    padding: 24px 0 40px;
-    min-height: 100vh;
-}
-
-/* ===== HEADER ===== */
-.page-header {
-    margin-bottom: 32px;
-    padding-bottom: 20px;
-    border-bottom: 2px solid var(--mud-palette-divider);
-}
-
-.page-title {
-    font-size: 2rem;
-    font-weight: 700;
-    margin-bottom: 8px;
-    background: linear-gradient(135deg, var(--mud-palette-primary), var(--mud-palette-primary-darken));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-.page-subtitle {
-    color: var(--mud-palette-text-secondary);
-    font-size: 1rem;
-}
-
-/* ===== STATS CARDS ===== */
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 16px;
-    margin-bottom: 32px;
-}
-
-.stat-card {
-    padding: 20px;
-    border-radius: 12px;
-    border: 1px solid var(--mud-palette-lines-default);
-    background: var(--mud-palette-surface);
-    transition: all 0.3s ease;
-}
-
-.stat-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-}
-
-.stat-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 12px;
-}
-
-.stat-icon.primary {
-    background: linear-gradient(135deg, var(--mud-palette-primary), var(--mud-palette-primary-darken));
-    color: white;
-}
-
-.stat-icon.success {
-    background: linear-gradient(135deg, var(--mud-palette-success), var(--mud-palette-success-darken));
-    color: white;
-}
-
-.stat-icon.warning {
-    background: linear-gradient(135deg, var(--mud-palette-warning), var(--mud-palette-warning-darken));
-    color: white;
-}
-
-.stat-value {
-    font-size: 2rem;
-    font-weight: 700;
-    color: var(--mud-palette-text-primary);
-    line-height: 1;
-    margin-bottom: 4px;
-}
-
-.stat-label {
-    font-size: 0.875rem;
-    color: var(--mud-palette-text-secondary);
-}
-
-/* ===== FILTERS ===== */
-.filters-section {
-    margin-bottom: 24px;
-    padding: 16px;
-    border-radius: 12px;
-    background: var(--mud-palette-surface);
-    border: 1px solid var(--mud-palette-lines-default);
-}
-
-.filters-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr auto;
-    gap: 16px;
-    align-items: end;
-}
-
-@@media (max-width: 960px) {
-    .filters-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-/* ===== REGISTRATION CARDS ===== */
-.registrations-grid {
-    display: grid;
-    gap: 20px;
-}
-
-.registration-card {
-    border-radius: 16px;
-    border: 1px solid var(--mud-palette-lines-default);
-    overflow: hidden;
-    transition: all 0.3s ease;
-    background: var(--mud-palette-surface);
-}
-
-.registration-card:hover {
-    box-shadow: 0 12px 24px rgba(0,0,0,0.12);
-    transform: translateY(-2px);
-}
-
-.card-content {
-    display: grid;
-    grid-template-columns: 140px 1fr auto;
-    gap: 20px;
-    padding: 20px;
-}
-
-@@media (max-width: 768px) {
-    .card-content {
-        grid-template-columns: 1fr;
-    }
-}
-
-.event-image {
-    width: 140px;
-    height: 140px;
-    border-radius: 12px;
-    overflow: hidden;
-    background: linear-gradient(135deg, var(--mud-palette-primary), var(--mud-palette-primary-darken));
-    position: relative;
-}
-
-@@media (max-width: 768px) {
-    .event-image {
-        width: 100%;
-        height: 200px;
-    }
-}
-
-.event-image img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.event-details {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.event-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--mud-palette-text-primary);
-    margin: 0;
-}
-
-.event-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-    align-items: center;
-}
-
-.meta-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: var(--mud-palette-text-secondary);
-    font-size: 0.875rem;
-}
-
-.meta-item .mud-icon-root {
-    font-size: 1.125rem;
-}
-
-.status-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.status-badge.upcoming {
-    background: rgba(33, 150, 243, 0.1);
-    color: var(--mud-palette-primary);
-}
-
-.status-badge.completed {
-    background: rgba(76, 175, 80, 0.1);
-    color: var(--mud-palette-success);
-}
-
-.status-badge.cancelled {
-    background: rgba(244, 67, 54, 0.1);
-    color: var(--mud-palette-error);
-}
-
-.event-description {
-    color: var(--mud-palette-text-secondary);
-    line-height: 1.6;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
-.card-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    justify-content: center;
-}
-
-@@media (max-width: 768px) {
-    .card-actions {
-        flex-direction: row;
-    }
-}
-
-/* ===== EMPTY STATE ===== */
-.empty-state {
-    text-align: center;
-    padding: 60px 20px;
-}
-
-.empty-icon {
-    width: 80px;
-    height: 80px;
-    margin: 0 auto 20px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--mud-palette-primary), var(--mud-palette-primary-darken));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-}
-
-.empty-icon .mud-icon-root {
-    font-size: 2.5rem;
-}
-
-.empty-title {
-    font-size: 1.5rem;
-    font-weight: 600;
-    margin-bottom: 8px;
-}
-
-.empty-description {
-    color: var(--mud-palette-text-secondary);
-    margin-bottom: 24px;
-}
-</style>
-
-<MudContainer MaxWidth="MaxWidth.Large" Class="registrations-page">
+<MudContainer MaxWidth="MaxWidth.Large" Class="my-registrations">
     <!-- Header -->
-    <div class="page-header">
-        <h1 class="page-title">My Registrations</h1>
-        <p class="page-subtitle">Manage all your event registrations in one place</p>
+    <div class="my-registrations__header">
+        <h1 class="my-registrations__title">My Registrations</h1>
+        <p class="my-registrations__subtitle">Manage all your event registrations in one place</p>
     </div>
 
     <!-- Stats -->
-    <div class="stats-grid">
-        <div class="stat-card">
-            <div class="stat-icon primary">
+    <div class="my-registrations__stats">
+        <div class="my-registrations__stat">
+            <div class="my-registrations__stat-icon my-registrations__stat-icon--primary">
                 <MudIcon Icon="@Icons.Material.Filled.EventAvailable" Size="Size.Large" />
             </div>
-            <div class="stat-value">@GetTotalRegistrations()</div>
-            <div class="stat-label">Total Registrations</div>
+            <div class="my-registrations__stat-value">@GetTotalRegistrations()</div>
+            <div class="my-registrations__stat-label">Total Registrations</div>
         </div>
-        <div class="stat-card">
-            <div class="stat-icon success">
+        <div class="my-registrations__stat">
+            <div class="my-registrations__stat-icon my-registrations__stat-icon--success">
                 <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Large" />
             </div>
-            <div class="stat-value">@GetUpcomingCount()</div>
-            <div class="stat-label">Upcoming Events</div>
+            <div class="my-registrations__stat-value">@GetUpcomingCount()</div>
+            <div class="my-registrations__stat-label">Upcoming Events</div>
         </div>
-        <div class="stat-card">
-            <div class="stat-icon warning">
+        <div class="my-registrations__stat">
+            <div class="my-registrations__stat-icon my-registrations__stat-icon--warning">
                 <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" />
             </div>
-            <div class="stat-value">@GetCompletedCount()</div>
-            <div class="stat-label">Completed</div>
+            <div class="my-registrations__stat-value">@GetCompletedCount()</div>
+            <div class="my-registrations__stat-label">Completed</div>
         </div>
     </div>
 
     <!-- Filters -->
-    <div class="filters-section">
-        <div class="filters-grid">
+    <div class="my-registrations__filters">
+        <div class="my-registrations__filters-grid">
             <MudTextField @bind-Value="searchQuery"
                           Placeholder="Search registrations..."
                           Adornment="Adornment.Start"
@@ -332,7 +55,7 @@
                           Immediate="true"
                           OnDebounceIntervalElapsed="FilterRegistrations"
                           DebounceInterval="300" />
-            
+
             <MudSelect @bind-Value="statusFilter"
                        Label="Status"
                        Variant="Variant.Outlined"
@@ -356,9 +79,9 @@
     <!-- Registrations List -->
     @if (isLoading)
     {
-        <div class="empty-state">
+        <div class="my-registrations__empty">
             <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
-            <div class="empty-description">Loading your registrations...</div>
+            <div class="my-registrations__empty-description">Loading your registrations...</div>
         </div>
     }
     else if (!string.IsNullOrWhiteSpace(errorMessage))
@@ -367,100 +90,42 @@
     }
     else if (filteredRegistrations.Any())
     {
-        <div class="registrations-grid">
+        <div class="my-registrations__grid">
             @foreach (var registration in filteredRegistrations)
             {
-                <div class="registration-card">
-                    <div class="card-content">
-                        <div class="event-image">
-                            <img src="@GetEventImage(registration)" alt="@registration.ProgramTitle" />
+                <div class="my-registrations__card">
+                    <div class="my-registrations__card-content">
+                        <div class="my-registrations__image">
+                            <img src="@GetEventImage(registration)" alt="@registration.EventSessionTitle" />
                         </div>
 
-                        <div class="event-details">
-                            <h3 class="event-title">@registration.ProgramTitle</h3>
-                            
-                            <div class="event-meta">
-                                <div class="meta-item">
-                                    <MudIcon Icon="@Icons.Material.Filled.CalendarToday" />
-                                    <span>Registered on @registration.RegistrationDate.ToString("MMM dd, yyyy")</span>
-                                </div>
-                                @if (registration.EventStartDate.HasValue)
-                                {
-                                    <div class="meta-item">
-                                        <MudIcon Icon="@Icons.Material.Filled.Event" />
-                                        <span>Event: @registration.EventStartDate.Value.ToString("MMM dd, yyyy")</span>
-                                    </div>
-                                }
-                                <div class="meta-item">
-                                    <MudIcon Icon="@Icons.Material.Filled.LocationOn" />
-                                    <span>@(registration.ProgramCity ?? "")</span>
+                        <div class="my-registrations__details">
+                            <h3 class="my-registrations__event-title">@registration.EventSessionTitle</h3>
+
+                            <div class="my-registrations__meta">
+                                <div class="my-registrations__meta-item">
+                                    <MudIcon Icon="@Icons.Material.Filled.Person" />
+                                    <span>@(registration.UserFullName ?? "Unknown")</span>
                                 </div>
                             </div>
 
                             <div>
-                                <span class="status-badge @GetStatusClass(registration.Status)">
-                                    @registration.Status
+                                <span class="my-registrations__status @GetStatusClass(registration.ApprovalStatusMasterCode)">
+                                    @(registration.ApprovalStatusFullName ?? "Pending")
                                 </span>
                             </div>
-
-                            <p class="event-description">@registration.ProgramDescription</p>
-
-                            @if (!string.IsNullOrWhiteSpace(registration.ProgramAddress))
-                            {
-                                <div class="meta-item">
-                                    <MudIcon Icon="@Icons.Material.Filled.Place" />
-                                    <span>@registration.ProgramAddress</span>
-                                </div>
-                            }
                         </div>
 
-                        <div class="card-actions">
-                            @if (!string.IsNullOrEmpty(registration.ProgramUrl) && 
-                                 registration.EventStartDate.HasValue && 
-                                 registration.EventEndDate.HasValue &&
-                                 DateTime.UtcNow >= registration.EventStartDate.Value && 
-                                 DateTime.UtcNow <= registration.EventEndDate.Value &&
-                                 !registration.Status.Equals("cancelled", StringComparison.OrdinalIgnoreCase))
-                            {
-                                <MudButton Variant="Variant.Filled"
-                                           Color="Color.Success"
-                                           StartIcon="@Icons.Material.Filled.VideoCall"
-                                           OnClick="@(() => OpenOnlineEventDialog(registration))">
-                                    Join Online Event
-                                </MudButton>
-                            }
-
+                        <div class="my-registrations__actions">
                             <MudButton Variant="Variant.Outlined"
                                        Color="Color.Primary"
                                        StartIcon="@Icons.Material.Filled.Visibility"
-                                       OnClick="@(() => ViewDetails(registration.ProgramId))">
-                                View Program
+                                       OnClick="@(() => ViewDetails(registration.EventSessionId))">
+                                View Session
                             </MudButton>
 
-                            @if (registration.EventEndDate.HasValue && registration.EventEndDate.Value < DateTime.Now)
-                            {
-                                @if (registration.HasReviewed)
-                                {
-                                    <MudButton Variant="Variant.Outlined"
-                                               Color="Color.Secondary"
-                                               StartIcon="@Icons.Material.Filled.Check"
-                                               Disabled="true">
-                                        Reviewed
-                                    </MudButton>
-                                }
-                                else
-                                {
-                                    <MudButton Variant="Variant.Outlined"
-                                               Color="Color.Secondary"
-                                               StartIcon="@Icons.Material.Filled.RateReview"
-                                               OnClick="@(() => OpenReviewDialog(registration))">
-                                        Leave Review
-                                    </MudButton>
-                                }
-                            }
-                            
-                            @if (!registration.Status.Equals("completed", StringComparison.OrdinalIgnoreCase) && 
-                                 (!registration.EventEndDate.HasValue || registration.EventEndDate.Value > DateTime.Now))
+                            @if (registration.ApprovalStatusMasterCode?.ToLower() != "completed" &&
+                                 registration.ApprovalStatusMasterCode?.ToLower() != "cancelled")
                             {
                                 <MudButton Variant="Variant.Outlined"
                                            Color="Color.Error"
@@ -477,19 +142,19 @@
     }
     else
     {
-        <div class="empty-state">
-            <div class="empty-icon">
+        <div class="my-registrations__empty">
+            <div class="my-registrations__empty-icon">
                 <MudIcon Icon="@Icons.Material.Filled.EventBusy" />
             </div>
-            <h2 class="empty-title">No Registrations Found</h2>
-            <p class="empty-description">
+            <h2 class="my-registrations__empty-title">No Registrations Found</h2>
+            <p class="my-registrations__empty-description">
                 @if (!string.IsNullOrWhiteSpace(searchQuery) || statusFilter != "all")
                 {
                     <span>Try adjusting your filters or search query.</span>
                 }
                 else
                 {
-                    <span>You haven't registered for any events yet. Discover amazing programs and register now!</span>
+                    <span>You haven't registered for any events yet. Discover upcoming events and register now!</span>
                 }
             </p>
             <MudButton Variant="Variant.Filled"
@@ -503,13 +168,14 @@
 </MudContainer>
 
 @code {
-    private List<ProgramRegistrationListDto> registrations = new();
-    private List<ProgramRegistrationListDto> filteredRegistrations = new();
+    private ICollection<EventRegistrationListDto> registrations = new List<EventRegistrationListDto>();
+    private List<EventRegistrationListDto> filteredRegistrations = new();
     private string searchQuery = "";
     private string statusFilter = "all";
     private bool isLoading = true;
     private string? errorMessage;
 
+    // Simplified initialization: load data from API on client only (no prerender persistence)
     protected override async Task OnInitializedAsync()
     {
         await LoadRegistrationsAsync();
@@ -523,12 +189,16 @@
 
         try
         {
-            registrations = await ProgramService.GetMyRegistrationsAsync();
+            var user = await UserService.GetCurrentUserAsync();
+            if (user != null)
+            {
+                registrations = await EventService.GetRegistrationsByUserAsync(user.Id);
+            }
         }
         catch (Exception ex)
         {
             errorMessage = $"Unable to load your registrations: {ex.Message}";
-            registrations = new List<ProgramRegistrationListDto>();
+            Logger.LogError(ex, "Error loading registrations");
         }
         finally
         {
@@ -538,24 +208,41 @@
 
     private void FilterRegistrations()
     {
-        var query = registrations.AsQueryable();
+        var filtered = registrations.AsEnumerable();
 
+        // Search filter
         if (!string.IsNullOrWhiteSpace(searchQuery))
         {
-            query = query.Where(r =>
-                r.ProgramTitle.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
-                r.ProgramDescription.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
-                (r.ProgramCity ?? "").Contains(searchQuery, StringComparison.OrdinalIgnoreCase));
+            filtered = filtered.Where(r =>
+                (r.EventSessionTitle?.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ?? false));
         }
 
+        // Status filter
         if (statusFilter != "all")
         {
-            query = query.Where(r => r.Status.Equals(statusFilter, StringComparison.OrdinalIgnoreCase));
+            filtered = filtered.Where(r =>
+                (r.ApprovalStatusMasterCode?.Equals(statusFilter, StringComparison.OrdinalIgnoreCase) ?? false));
         }
 
-        filteredRegistrations = query
-            .OrderBy(r => r.ProgramTitle)
-            .ToList();
+        filteredRegistrations = filtered.ToList();
+    }
+
+    private void OnSearchChanged(string value)
+    {
+        searchQuery = value;
+        FilterRegistrations();
+    }
+
+    private void OnStatusFilterChanged(string value)
+    {
+        statusFilter = value;
+        FilterRegistrations();
+    }
+
+    private async Task RefreshData()
+    {
+        await LoadRegistrationsAsync();
+        FilterRegistrations();
     }
 
     private void ResetFilters()
@@ -566,51 +253,64 @@
     }
 
     private int GetTotalRegistrations() => registrations.Count;
-    
-    private int GetUpcomingCount()
-    {
-        return registrations.Count(r => r.EventStartDate.HasValue && r.EventStartDate.Value > DateTime.Now);
-    }
-    
-    private int GetCompletedCount() => registrations.Count(r => r.EventEndDate.HasValue && r.EventEndDate.Value < DateTime.Now);
 
-    private string GetStatusClass(string status)
+    private int GetUpcomingCount() => registrations.Count(r =>
+        r.ApprovalStatusMasterCode?.Equals("pending", StringComparison.OrdinalIgnoreCase) == true ||
+        r.ApprovalStatusMasterCode?.Equals("approved", StringComparison.OrdinalIgnoreCase) == true);
+
+    private int GetCompletedCount() => registrations.Count(r =>
+        r.ApprovalStatusMasterCode?.Equals("completed", StringComparison.OrdinalIgnoreCase) == true);
+
+    private Color GetStatusColor(EventRegistrationListDto registration)
     {
-        return status.ToLower() switch
+        return registration.ApprovalStatusMasterCode?.ToLower() switch
         {
-            "active" => "upcoming",
-            "upcoming" => "upcoming",
-            "completed" => "completed",
-            "cancelled" => "cancelled",
+            "approved" => Color.Success,
+            "pending" => Color.Warning,
+            "rejected" => Color.Error,
+            "completed" => Color.Info,
+            _ => Color.Default
+        };
+    }
+
+    private string GetStatusClass(string? status)
+    {
+        return status?.ToLower() switch
+        {
+            "approved" => "my-registrations__status--approved",
+            "pending" => "my-registrations__status--pending",
+            "rejected" or "cancelled" => "my-registrations__status--cancelled",
+            "completed" => "my-registrations__status--completed",
             _ => ""
         };
     }
 
-    private string GetEventImage(ProgramRegistrationListDto registration)
+    private string GetEventImage(EventRegistrationListDto registration)
     {
-        var color = registration.Status switch
+        var color = registration.ApprovalStatusMasterCode?.ToLower() switch
         {
-            "upcoming" => "2196F3",
-            "completed" => "4CAF50",
-            "cancelled" => "F44336",
+            "approved" => "4CAF50",
+            "pending" => "FF9800",
+            "rejected" => "F44336",
+            "completed" => "2196F3",
             _ => "607D8B"
         };
-        var text = !string.IsNullOrWhiteSpace(registration.ProgramTitle)
-            ? registration.ProgramTitle.Split(' ').FirstOrDefault() ?? "Program"
-            : "Program";
-        return $"https://dummyimage.com/400x400/{color}/ffffff&text={Uri.EscapeDataString(text)}";
+        var text = !string.IsNullOrWhiteSpace(registration.EventSessionTitle)
+            ? registration.EventSessionTitle.Split(' ').FirstOrDefault() ?? "Event"
+            : "Event";
+        return $"https://dummyimage.com/400x200/{color}/ffffff&text={Uri.EscapeDataString(text)}";
     }
 
-    private void ViewDetails(Guid programId)
+    private void ViewDetails(Guid sessionId)
     {
-        Navigation.NavigateTo($"/event/detail/{programId}");
+        Navigation.NavigateTo($"/event/session/{sessionId}");
     }
 
-    private async Task CancelRegistration(ProgramRegistrationListDto registration)
+    private async Task CancelRegistration(EventRegistrationListDto registration)
     {
         var result = await DialogService.ShowMessageBox(
             "Cancel Registration",
-            $"Are you sure you want to unregister from '{registration.ProgramTitle}'?",
+            $"Are you sure you want to unregister from '{registration.EventSessionTitle}'?",
             yesText: "Yes, Unregister",
             cancelText: "No, Keep Registration");
 
@@ -618,70 +318,21 @@
         {
             try
             {
-                var success = await ProgramService.UnregisterFromProgramAsync(registration.Id);
+                var success = await EventService.CancelEventRegistrationAsync(registration.Id);
                 if (success)
                 {
-                    // Remove from list
-                    registrations.Remove(registration);
+                    await LoadRegistrationsAsync();
                     FilterRegistrations();
-                    Snackbar.Add($"Successfully unregistered from {registration.ProgramTitle}", Severity.Success);
+                    Snackbar.Add($"Successfully unregistered from {registration.EventSessionTitle}", Severity.Success);
                 }
                 else
                 {
-                    Snackbar.Add($"Failed to unregister from {registration.ProgramTitle}", Severity.Error);
+                    Snackbar.Add($"Failed to unregister", Severity.Error);
                 }
             }
             catch (Exception ex)
             {
                 Snackbar.Add($"Error: {ex.Message}", Severity.Error);
-            }
-        }
-    }
-
-    private void OpenOnlineEventDialog(ProgramRegistrationListDto registration)
-    {
-        var parameters = new DialogParameters
-        {
-            { "Title", registration.ProgramTitle },
-            { "Url", registration.ProgramUrl }
-        };
-
-        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        DialogService.Show<OnlineEventDialog>("Join Online Event", parameters, options);
-    }
-
-    private async Task OpenReviewDialog(ProgramRegistrationListDto registration)
-    {
-        var parameters = new DialogParameters
-        {
-            { "OrganizationName", registration.OrganizationName }
-        };
-
-        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = DialogService.Show<ReviewDialog>("Leave a Review", parameters, options);
-        var result = await dialog.Result;
-
-        if (!result.Canceled)
-        {
-            var data = (dynamic)result.Data;
-            var review = new CreateOrganizationReviewDto
-            {
-                OrganizationId = registration.OrganizationId,
-                ProgramId = registration.ProgramId,
-                UserId = registration.UserId,
-                ReviewerName = registration.UserName,
-                Rating = data.Rating,
-                Comment = data.Comment
-            };
-
-            var response = await OrganizationReviewService.CreateReview(review);
-            if (response.Success)
-            {
-                Snackbar.Add("Review submitted successfully!", Severity.Success);
-            }
-            else
-            {
-                Snackbar.Add($"Failed to submit review: {response.Message}", Severity.Error);
             }
         }
     }

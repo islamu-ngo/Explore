@@ -1,8 +1,4 @@
-﻿using Explore.Domain;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Text;
+﻿using System;
 
 namespace Explore.Application.DTOs.Organization
 {
@@ -14,13 +10,21 @@ namespace Explore.Application.DTOs.Organization
         public string Email { get; set; }
         public string Country { get; set; }
         public string City { get; set; }
-        public int Postcode { get; set; }
+        public string Postcode { get; set; }
         public string Address { get; set; }
-        public int StatusTypeId { get; set; } // maybe not necessery cause org detail page won't exist if not approved? and admin will decide to approve or not in list view? I need to think about this TODO
-        public string StatusTypeFullName { get; set; }
-        public string? CreatedByUserId { get; set; }
-        public string? CreatorUserName { get; set; }
-        public string? CreatorEmail { get; set; }
-        public DateTime CreatedAt { get; set; }
+        
+        // Approval Status
+        public int ApprovalStatusId { get; set; }
+        public string? ApprovalStatusFullName { get; set; }
+        public string? ApprovalStatusMasterCode { get; set; }
+        
+        // Tenant
+        public Guid TenantId { get; set; }
+        public string? TenantFullName { get; set; }
+        
+        // Actor
+        public Guid? ActorId { get; set; }
+        public string? ActorDisplayName { get; set; }
+        public string? ActorHandle { get; set; }
     }
 }

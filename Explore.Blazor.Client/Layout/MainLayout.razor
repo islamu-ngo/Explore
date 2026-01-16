@@ -1,67 +1,43 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 
-<MudThemeProvider Theme="@_theme" IsDarkMode="_isDarkMode" />
+<MudThemeProvider Theme="@_theme" IsDarkMode="@_isDarkMode" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
 @using Explore.Blazor.Client.Services
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.Logging
 @inject IUserService UserService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IJSRuntime JSRuntime
-@inject PersistentComponentState ApplicationState
-@implements IDisposable
+@inject ILogger<MainLayout> Logger
 
-@* <MudLayout>
-    <MudAppBar Elevation="1">
-        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
-        <MudText Typo="Typo.h5" Class="ml-3">Application</MudText>
-        <MudSpacer />
-        <MudIconButton Icon="@(DarkLightModeButtonIcon)" Color="Color.Inherit" OnClick="@DarkModeToggle" />
-        <MudIconButton Icon="@Icons.Material.Filled.MoreVert" Color="Color.Inherit" Edge="Edge.End" />
-    </MudAppBar>
-    <MudDrawer id="nav-drawer" @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
-        <NavMenu />
-    </MudDrawer>
-    <MudMainContent Class="pt-16 pa-4">
+<MudLayout class="main-layout" style="max-width: 1280px; margin: 0 auto;">
+
+    <!-- Sticky header container wrapping AnnouncementBar and AppBar -->
+    <div class="main-layout__header">
+        <!-- Announcement Bar -->
+        <AnnouncementBar />
+
+        <!-- Top App Bar (Fixed attribute removed since we use sticky container) -->
+        <MudAppBar Elevation="0" Dense="true" Fixed="false" Color="Color.Surface" Class="py-2">
+            <NavMenu OnToggleTheme="DarkModeToggle" />
+        </MudAppBar>
+    </div>
+
+    <MudMainContent>
         @Body
     </MudMainContent>
-</MudLayout> *@
 
-<MudLayout Style="min-height: 100vh; display: flex; flex-direction: column;">
-
-    <!-- Top App Bar -->
-    <MudAppBar Fixed="true" Elevation="0" Dense="true" Color="Color.Surface">
-        <!-- Left: org icon -->
-        <NavMenu OnToggleTheme="DarkModeToggle" />
-        @* <MudIconButton Icon="@(DarkLightModeButtonIcon)" Color="Color.Inherit" OnClick="@DarkModeToggle" /> *@
-    </MudAppBar>
-    
-    <!-- Contextual row -->
-    @* <MudAppBar Fixed="false" Dense="true" Color="Color.Default">
-        <SubNavMenu />
-    </MudAppBar> *@
-
-    <MudMainContent Style="flex: 1;">
-        @Body
-    </MudMainContent>
-    
     <!-- Full-width footer outside main content -->
-    <Footer/>
+    <Footer />
 
 </MudLayout>
-
-@* <div id="blazor-error-ui" data-nosnippet>
-    An unhandled error has occurred.
-    <a href="." class="reload">Reload</a>
-    <span class="dismiss">🗙</span>
-</div> *@
-
 @code {
     private bool _isDarkMode = false;
+    private bool _isInitialized = false;
     private MudTheme? _theme;
-    private PersistingComponentStateSubscription _subscription;
 
     [CascadingParameter(Name = "InitialTheme")]
     public bool? InitialTheme { get; set; }
@@ -70,19 +46,11 @@
     {
         base.OnInitialized();
 
-        _subscription = ApplicationState.RegisterOnPersisting(PersistTheme);
-
-        // 1. Try to restore from PersistentComponentState (Client hydration)
-        if (ApplicationState.TryTakeFromJson<bool>("IsDarkMode", out var restored))
-        {
-            _isDarkMode = restored;
-        }
-        // 2. If not restored, check if we have a CascadingValue from Server (Server Prerendering)
-        else if (InitialTheme.HasValue)
+        // Use the cascaded initial theme from cookie if available
+        if (InitialTheme.HasValue)
         {
             _isDarkMode = InitialTheme.Value;
         }
-        // 3. Default fallback is false (Light)
 
         _theme = new()
         {
@@ -90,23 +58,6 @@
             PaletteDark = _darkPalette,
             LayoutProperties = new LayoutProperties()
         };
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        await base.OnInitializedAsync();
-        // Moved SyncUserAsync to OnAfterRenderAsync to prevent blocking initial render
-    }
-
-    private Task PersistTheme()
-    {
-        ApplicationState.PersistAsJson("IsDarkMode", _isDarkMode);
-        return Task.CompletedTask;
-    }
-
-    public void Dispose()
-    {
-        _subscription.Dispose();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -119,31 +70,34 @@
                 var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
                 if (authState.User.Identity?.IsAuthenticated == true)
                 {
-                    // Fire and forget or await? Awaiting here is fine as UI is already rendered.
                     await UserService.SyncUserAsync();
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error syncing user: {ex.Message}");
+                Logger.LogWarning(ex, "Error syncing user");
             }
 
-            // Fallback to local storage if not persisted (e.g. first visit)
-            // But if we already have a value from PersistentState, we might not want to overwrite it immediately
-            // unless we are sure.
-            // However, PersistentState comes from Server. LocalStorage comes from Client.
-            // LocalStorage is the source of truth for the Client.
-            
-            var storedTheme = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "theme");
-            if (!string.IsNullOrEmpty(storedTheme))
+            // Read theme from localStorage (client-side source of truth)
+            try
             {
-                var isDarkStorage = storedTheme == "dark";
-                if (_isDarkMode != isDarkStorage)
+                var storedTheme = await JSRuntime.InvokeAsync<string>("ExploreTheme.getStoredTheme");
+                if (!string.IsNullOrEmpty(storedTheme))
                 {
-                    _isDarkMode = isDarkStorage;
-                    StateHasChanged();
+                    var isDarkStorage = storedTheme == "dark";
+                    if (_isDarkMode != isDarkStorage)
+                    {
+                        _isDarkMode = isDarkStorage;
+                        StateHasChanged();
+                    }
                 }
             }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Error reading theme from localStorage");
+            }
+
+            _isInitialized = true;
         }
     }
 
@@ -151,8 +105,16 @@
     {
         _isDarkMode = !_isDarkMode;
         var themeValue = _isDarkMode ? "dark" : "light";
-        await JSRuntime.InvokeVoidAsync("localStorage.setItem", "theme", themeValue);
-        await JSRuntime.InvokeVoidAsync("eval", $"document.cookie = 'theme={themeValue}; path=/; max-age=31536000'");
+
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("ExploreTheme.setStoredTheme", themeValue);
+            await JSRuntime.InvokeVoidAsync("ExploreTheme.setThemeCookie", themeValue);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error saving theme");
+        }
     }
 
     private readonly PaletteLight _lightPalette = new()

@@ -1,0 +1,51 @@
+/* ===== CSS Custom Properties ===== */
+::deep :root {
+    --admin-tags-radius: 12px;
+    --admin-tags-spacing: 24px;
+}
+
+/* ===== Block: admin-tags ===== */
+::deep .admin-tags {
+    padding: 22px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* ===== Element: admin-tags__title ===== */
+::deep .admin-tags__title {
+    margin-bottom: var(--admin-tags-spacing);
+    font-weight: 800;
+    letter-spacing: 0.3px;
+}
+
+/* ===== Element: admin-tags__grid ===== */
+::deep .admin-tags__grid {
+    border-radius: var(--admin-tags-radius);
+    overflow: hidden;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* ===== Element: admin-tags__create-btn ===== */
+::deep .admin-tags__create-btn {
+    margin-top: var(--admin-tags-spacing);
+    border-radius: 999px;
+    padding: 10px 24px;
+    font-weight: 600;
+    box-shadow: 0 6px 16px rgba(124, 58, 237, 0.3);
+}
+
+/* ===== Responsive: Mobile (600px) ===== */
+@media (max-width: 600px) {
+    ::deep .admin-tags {
+        padding: 16px;
+    }
+
+    ::deep .admin-tags__title {
+        font-size: 1.5rem;
+    }
+
+    ::deep .admin-tags__create-btn {
+        width: 100%;
+    }
+}

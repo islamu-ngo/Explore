@@ -5,11 +5,12 @@ using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event;
 using Explore.Application.Features.Events.Requests.Queries;
+using Explore.Application.Responses;
 using MediatR;
 
 namespace Explore.Application.Features.Events.Handlers.Queries
 {
-    public class GetMyEventsRequestHandler : IRequestHandler<GetMyEventsRequest, List<EventListDto>>
+    public class GetMyEventsRequestHandler : IRequestHandler<GetMyEventsRequest, PaginatedResult<EventListDto>>
     {
         private readonly IEventRepository _eventRepository;
         private readonly IMapper _mapper;
@@ -20,10 +21,12 @@ namespace Explore.Application.Features.Events.Handlers.Queries
             _mapper = mapper;
         }
 
-        public async Task<List<EventListDto>> Handle(GetMyEventsRequest request, CancellationToken cancellationToken)
+        public async Task<PaginatedResult<EventListDto>> Handle(GetMyEventsRequest request, CancellationToken cancellationToken)
         {
-            var events = await _eventRepository.GetMyEventsWithDetails(request.UserId);
-            return events;
+            var (events, totalCount) = await _eventRepository.GetMyEventsWithDetailsPaged(request.UserId, request.PageNumber, request.PageSize);
+            var eventDtos = _mapper.Map<List<EventListDto>>(events);
+
+            return PaginatedResult<EventListDto>.Create(eventDtos, totalCount, request.PageNumber, request.PageSize);
         }
     }
 }

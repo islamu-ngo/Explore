@@ -1,0 +1,82 @@
+@using MudBlazor
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Services
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Error" Class="mr-2" />
+            Delete Event
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.body1" Class="mb-4">
+            Are you sure you want to delete the event "<strong>@EventTitle</strong>"?
+        </MudText>
+        <MudAlert Severity="Severity.Warning" Dense="true">
+            This action cannot be undone. All sessions and registrations associated with this event will also be deleted.
+        </MudAlert>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Variant="Variant.Text">Cancel</MudButton>
+        <MudButton Color="Color.Error"
+                   Variant="Variant.Filled"
+                   OnClick="ConfirmDelete"
+                   Disabled="@isDeleting"
+                   StartIcon="@(isDeleting ? Icons.Material.Filled.HourglassBottom : Icons.Material.Filled.Delete)">
+            @(isDeleting ? "Deleting..." : "Delete Event")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public Guid EventId { get; set; }
+
+    [Parameter]
+    public string EventTitle { get; set; } = "";
+
+    [Inject]
+    private IEventService EventService { get; set; } = default!;
+
+    [Inject]
+    private ISnackbar Snackbar { get; set; } = default!;
+
+    private bool isDeleting = false;
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task ConfirmDelete()
+    {
+        if (isDeleting) return;
+
+        isDeleting = true;
+        StateHasChanged();
+
+        try
+        {
+            var success = await EventService.DeleteEventAsync(EventId);
+            if (success)
+            {
+                Snackbar.Add("Event deleted successfully", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                Snackbar.Add("Failed to delete event. Please try again.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isDeleting = false;
+            StateHasChanged();
+        }
+    }
+}

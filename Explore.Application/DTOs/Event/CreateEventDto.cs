@@ -7,21 +7,50 @@ namespace Explore.Application.DTOs.Event
     public class CreateEventDto
     {
         public string Title { get; set; }
-        public string Description { get; set; }
+        public string? Description { get; set; }
+        public string? Slug { get; set; }
+
+        // Event Type
+        public int EventTypeId { get; set; }
+
+        // Audience
         public int AudienceGenderId { get; set; }
         public int AudienceAgeId { get; set; }
-        public Guid OrganizationId { get; set; }
-        public int? AudienceAttendees { get; set; }
-        public double Price { get; set; }
+
+        /// <summary>
+        /// Optional: The organization that owns this event.
+        /// If null, the event is created under the user's personal actor.
+        /// If provided, the user must be an admin of the organization.
+        /// </summary>
+        public Guid? OrganizationId { get; set; }
+
+        // Pricing
+        public decimal? Price { get; set; }
+        public string? CurrencyCode { get; set; }
+
+        // Featured Image (optional - null if no image uploaded)
         public Guid? FeaturedImageId { get; set; }
-        public bool? IsRegistrationRequired { get; set; }
-        public string? Country { get; set; }
-        public string? City { get; set; }
-        public int? PostCode { get; set; }
-        public string? Address { get; set; }
-        public string? ProgramUrl { get; set; }
-        public DateTime StartDate { get; set; }
-        public DateTime EndDate { get; set; }
-        public int EventTypeId { get; set; }
+
+        // Registration
+        public bool IsRegistrationRequired { get; set; }
+        public string? ExternalRegistrationUrl { get; set; }
+
+        // Status & Visibility (defaults: Draft=1, Public=1)
+        public int EventStatusId { get; set; } = 1; // Default: Draft
+        public int VisibilityTypeId { get; set; } = 1; // Default: Public
+
+        // Format
+        public int EventFormatId { get; set; } = 1; // Default: In-Person
+
+        // Islamic Context
+        public int? MadhabId { get; set; }
+
+        // Session Info (computed, but can be set initially)
+        public DateTimeOffset? FirstSessionDate { get; set; }
+        public DateTimeOffset? LastSessionDate { get; set; }
+        public string? Timezone { get; set; }
+
+        // Metadata
+        public string? EventUrl { get; set; }
     }
 }

@@ -1,4 +1,3 @@
-using Explore.Domain.Enums;
 using System;
 
 namespace Explore.Application.DTOs.OrganizationMember
@@ -6,10 +5,22 @@ namespace Explore.Application.DTOs.OrganizationMember
     public class OrganizationMemberDto
     {
         public Guid Id { get; set; }
-        public Guid UserId { get; set; }
+        
+        // Organization
         public Guid OrganizationId { get; set; }
-        public OrganizationRole Role { get; set; }
-        public string Email { get; set; }
-        public string? UserName { get; set; }
+        public string? OrganizationFullName { get; set; }
+        
+        // User
+        public Guid UserId { get; set; }
+        public string? UserEmail { get; set; }
+        public string? UserFullName { get; set; }
+        
+        // Role
+        public int OrganizationRoleId { get; set; }
+        public string? OrganizationRoleFullName { get; set; }
+        
+        // Position
+        public int? OrganizationPositionId { get; set; }
+        public string? OrganizationPositionFullName { get; set; }
     }
 }

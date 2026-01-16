@@ -1,0 +1,95 @@
+@*
+    AnnouncementBar Component - BEM Methodology
+    Block: announcement-bar
+    Elements: __wrapper, __alert, __content, __icon, __text, __link
+*@
+@using Microsoft.JSInterop
+@inject IJSRuntime JSRuntime
+
+@if (_isVisible)
+{
+    <div class="announcement-bar" @ref="_barRef">
+        <MudAlert Severity="Severity.Info"
+                  Class="announcement-bar__alert"
+                  Dense="true"
+                  Variant="@Variant.Text"
+                  ContentAlignment="HorizontalAlignment.Center"
+                  ShowCloseIcon="true"
+                  CloseIconClicked="CloseBar">
+            <div class="announcement-bar__content">
+                <MudIcon Icon="@Icons.Material.Filled.Info" Color="Color.Inherit" Size="Size.Small" Class="announcement-bar__icon" />
+                <MudText Class="announcement-bar__text">
+                    This is a development environment. Information displayed is for demonstration purposes only.
+                </MudText>
+                <a href="https://github.com/islamu-ngo/explore" target="_blank" rel="noopener noreferrer" class="announcement-bar__link" @onclick:stopPropagation>
+                    View on GitHub
+                </a>
+            </div>
+        </MudAlert>
+    </div>
+}
+
+@code {
+    private bool _isVisible = true;
+    private ElementReference _barRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadDismissalState();
+        }
+
+        await UpdateAnnouncementHeight();
+    }
+
+    private async Task LoadDismissalState()
+    {
+        try
+        {
+            var dismissed = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "announcementDismissed");
+            if (dismissed == "true")
+            {
+                _isVisible = false;
+                StateHasChanged();
+            }
+        }
+        catch (JSException)
+        {
+            // Fail gracefully if localStorage is not available (e.g., during pre-rendering).
+        }
+    }
+
+    private async Task CloseBar()
+    {
+        _isVisible = false;
+        await UpdateAnnouncementHeight();
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "announcementDismissed", "true");
+        }
+        catch (JSException)
+        {
+            // Fail gracefully.
+        }
+    }
+
+    private async Task UpdateAnnouncementHeight()
+    {
+        try
+        {
+            if (_isVisible)
+            {
+                await JSRuntime.InvokeVoidAsync("ExploreLayout.setAnnouncementBarHeight", _barRef);
+            }
+            else
+            {
+                await JSRuntime.InvokeVoidAsync("ExploreLayout.clearAnnouncementBarHeight");
+            }
+        }
+        catch (JSException)
+        {
+            // Fail gracefully if JS interop isn't available.
+        }
+    }
+}

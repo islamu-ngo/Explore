@@ -1,0 +1,113 @@
+/* Element: event-list__card-media */
+::deep .event-list__card-media {
+    position: relative;
+    height: 200px;
+    overflow: hidden;
+}
+
+::deep .event-list__card-media::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        180deg,
+        rgba(0, 0, 0, 0) 50%,
+        rgba(0, 0, 0, 0.25) 100%
+    );
+}
+
+/* Element: event-list__card-badges */
+::deep .event-list__card-badges {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin: 10px 0 6px 0;
+}
+
+/* Element: event-list__card-footer */
+::deep .event-list__card-footer {
+    /* Wrapper for footer content */
+}
+
+/* Element: event-list__card-location */
+::deep .event-list__card-location {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    opacity: 0.85;
+}
+
+/* ========================================
+   Element: event-list__pagination
+   Pagination container
+   ======================================== */
+::deep .event-list__pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: 24px;
+}
+
+/* Element: event-list__results */
+::deep .event-list__results {
+    display: flex;
+    justify-content: center;
+    margin-top: 8px;
+    opacity: 0.8;
+}
+
+/* ========================================
+   Element: event-list__search-input
+   Search text field
+   ======================================== */
+::deep .event-list__search-input .mud-input-root {
+    border-radius: 999px !important;
+}
+
+::deep
+    .event-list__search-input
+    .mud-input:not(.mud-input-disabled):focus-within {
+    box-shadow: 0 0 0 3px var(--isl-button-ring);
+    border-color: var(--mud-palette-primary);
+}
+
+/* ========================================
+   Responsive Styles - Phone
+   ======================================== */
+@media (max-width: 480px) {
+    ::deep .event-list__wrapper {
+        padding-block: 14px 20px;
+    }
+
+    ::deep .event-list__header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    ::deep .event-list__filters {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    ::deep .event-list__filter-cell,
+    ::deep .event-list__filter-cell--search {
+        grid-column: 1/-1;
+    }
+
+    ::deep .event-list__filter-paper {
+        width: 100%;
+    }
+
+    ::deep .event-list__card {
+        border-radius: 12px;
+    }
+
+    ::deep .event-list__card-media {
+        height: 160px;
+    }
+
+    ::deep .event-list__pagination,
+    ::deep .event-list__results {
+        padding-inline: 4px;
+    }
+}

@@ -1,25 +1,38 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text;
+using Explore.Domain.Interfaces;
 
 namespace Explore.Domain
 {
-    public class Organization
+    public class Organization : ITenantEntity
     {
         public Guid Id { get; set; }
         public string FullName { get; set; }
-        public string? WebsiteUrl { get; set; }
         public string Email { get; set; }
         public string Country { get; set; }
         public string City { get; set; }
-        public int Postcode { get; set; }
         public string Address { get; set; }
-        [ForeignKey("StatusType")]
-        public int StatusTypeId { get; set; }
-        public StatusType StatusType { get; set; }
-        public string? CreatedByUserId { get; set; } // Keycloak User ID
-        public DateTime CreatedAt { get; set; }
-        public ICollection<OrganizationMember> Members { get; set; } = new List<OrganizationMember>();
+        public string Postcode { get; set; }
+        public string? WebsiteUrl { get; set; }
+
+        [ForeignKey("ApprovalStatus")]
+        public int ApprovalStatusId { get; set; }
+        public ApprovalStatus ApprovalStatus { get; set; }
+
+        [ForeignKey("Tenant")]
+        public Guid TenantId { get; set; }
+        public Tenant Tenant { get; set; }
+
+        [ForeignKey("Actor")]
+        public Guid? ActorId { get; set; }
+        public Actor? Actor { get; set; }
+
+        // Audit fields
+        public DateTime? CreatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+
+        // Navigation property for members
+        public ICollection<OrganizationMember> Members { get; set; }
     }
 }

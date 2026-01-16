@@ -1,14 +1,15 @@
-@page "/settings"
-@using Explore.Blazor.Client.Models.DTOs
+@using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Components
 @inject IUserService UserService
+@inject IImageStorageService ImageStorageService
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 @inject IDialogService DialogService
 
 <PageTitle>Settings</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Medium" Class="py-6">
+<MudContainer MaxWidth="MaxWidth.Medium" Class="settings">
     <MudText Typo="Typo.h4" Class="mb-6">Account Settings</MudText>
 
     @if (_isLoading)
@@ -32,25 +33,13 @@
             </MudCardHeader>
             <MudCardContent>
                 <MudForm @ref="_form" @bind-IsValid="_success">
-                    <div class="d-flex align-center gap-4 mb-6">
-                        <MudAvatar Style="height: 80px; width: 80px; font-size: 2rem;" Color="Color.Primary">
-                            @if (!string.IsNullOrEmpty(_user.FirstName) && !string.IsNullOrEmpty(_user.LastName))
-                            {
-                                @(_user.FirstName[0])@(_user.LastName[0])
-                            }
-                            else
-                            {
-                                <MudIcon Icon="@Icons.Material.Filled.Person" />
-                            }
-                        </MudAvatar>
-                        <div>
-                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.CloudUpload">
-                                Change Picture
-                            </MudButton>
-                            <MudText Typo="Typo.caption" Class="d-block mt-1">
-                                JPG, GIF or PNG. Max size of 800K
-                            </MudText>
-                        </div>
+                    <div class="mb-6">
+                        <MudText Typo="Typo.subtitle1" Class="mb-4">Profile Picture</MudText>
+                        <ImageUpload @bind-PreviewUrl="_profileImagePreview"
+                                   FileSelected="OnProfileImageSelected"
+                                   PlaceholderText="Select a new profile picture"
+                                   UploadButtonText="Upload Picture"
+                                   HintText="JPG, GIF or PNG. Max size of 800K" />
                     </div>
 
                     <MudGrid>
@@ -61,13 +50,10 @@
                             <MudTextField @bind-Value="_user.LastName" Label="Last Name" Required="true" Variant="Variant.Outlined" />
                         </MudItem>
                         <MudItem xs="12">
-                            <MudTextField @bind-Value="_user.Bio" Label="Bio" Variant="Variant.Outlined" Lines="3" />
+                            <MudTextField @bind-Value="_user.Username" Label="Username" Variant="Variant.Outlined" />
                         </MudItem>
-                        <MudItem xs="12" sm="6">
-                            <MudTextField @bind-Value="_user.City" Label="City" Variant="Variant.Outlined" />
-                        </MudItem>
-                        <MudItem xs="12" sm="6">
-                            <MudTextField @bind-Value="_user.Country" Label="Country" Variant="Variant.Outlined" />
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="_user.Email" Label="Email" Variant="Variant.Outlined" ReadOnly="true" />
                         </MudItem>
                     </MudGrid>
                     <div class="d-flex justify-end mt-4">
@@ -96,9 +82,18 @@
     private bool _success;
     private MudForm _form = default!;
 
+    // Local image fields
+    private IBrowserFile? _selectedProfileImage;
+    private string? _profileImagePreview;
+
     protected override async Task OnInitializedAsync()
     {
         await LoadUser();
+    }
+
+    private void OnProfileImageSelected(IBrowserFile? file)
+    {
+        _selectedProfileImage = file;
     }
 
     private async Task LoadUser()
@@ -107,6 +102,14 @@
         try
         {
             _user = await UserService.GetCurrentUserAsync();
+            if (_user != null)
+            {
+                // Initialize the preview with the user's current profile picture if it exists.
+                // This assumes UserDto has a property like ProfilePictureUri.
+                // If not, this part needs adjustment based on how the current image URL is fetched.
+                // For now, we'll just ensure it's null if no new image is selected.
+                _profileImagePreview = null;
+            }
         }
         catch (Exception ex)
         {
@@ -125,6 +128,24 @@
         _isSaving = true;
         try
         {
+            Guid? profilePictureStorageId = null;
+
+            // Upload a new profile picture if one was selected
+            if (_selectedProfileImage != null)
+            {
+                var uploadResult = await ImageStorageService.UploadImageAndCreateRecordAsync(_selectedProfileImage);
+                if (uploadResult?.Success == true)
+                {
+                    profilePictureStorageId = uploadResult.StorageObjectId;
+                }
+                else
+                {
+                    Snackbar.Add(uploadResult?.ErrorMessage ?? "Failed to upload profile picture.", Severity.Error);
+                    _isSaving = false;
+                    return; // Stop if upload fails
+                }
+            }
+
             var updateDto = new UpdateUserDto
             {
                 Id = _user.Id,
@@ -132,19 +153,18 @@
                 LastName = _user.LastName,
                 Email = _user.Email,
                 Username = _user.Username,
-                Bio = _user.Bio,
-                City = _user.City,
-                Country = _user.Country
+                ProfilePictureId = profilePictureStorageId
             };
 
             var result = await UserService.UpdateUserAsync(updateDto);
-            if (result)
+            if (result?.Success == true)
             {
                 Snackbar.Add("Settings saved successfully", Severity.Success);
+                await LoadUser(); // Refresh user data
             }
             else
             {
-                Snackbar.Add("Failed to save settings", Severity.Error);
+                Snackbar.Add(result?.Message ?? "Failed to save settings", Severity.Error);
             }
         }
         catch (Exception ex)

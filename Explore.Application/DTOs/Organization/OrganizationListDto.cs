@@ -15,11 +15,12 @@ namespace Explore.Application.DTOs.Organization
         public string Email { get; set; }
         public string Country { get; set; }
         public string City { get; set; }
-        public int Postcode { get; set; }
+        public string Postcode { get; set; }
         public string Address { get; set; }
-        public int StatusTypeId { get; set; }
-        public string StatusTypeFullName { get; set; }
+        public int ApprovalStatusId { get; set; }
+        public string ApprovalStatusFullName { get; set; }
+        public string StatusTypeFullName => ApprovalStatusFullName; // Alias for backward compatibility
         public DateTime CreatedAt { get; set; }
-        public OrganizationRole? CurrentUserRole { get; set; }
+        public OrganizationRoleEnum? CurrentUserRole { get; set; }
     }
 }

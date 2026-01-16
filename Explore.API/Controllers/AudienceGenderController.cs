@@ -1,60 +1,53 @@
-﻿using Explore.Application.DTOs.AudienceGender;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Explore.Application.DTOs.AudienceGender;
 using Explore.Application.Features.AudienceGenders.Requests.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-
-// For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
 namespace Explore.API.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/v1/[controller]")]
     [ApiController]
     public class AudienceGenderController : ControllerBase
     {
         private readonly IMediator _mediator;
-        private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public AudienceGenderController(IMediator mediator, IHttpContextAccessor httpContextAccessor)
+        public AudienceGenderController(IMediator mediator)
         {
             _mediator = mediator;
-            _httpContextAccessor = httpContextAccessor;
         }
 
-        // GET: api/<AudienceGenderController>
+        // GET: api/v1/audiencegender
         [HttpGet]
-        [EndpointSummary("Get all Audience Gender Options")]
-        [EndpointDescription("Get A List of all the Audience Gender Options")]
+        [EndpointSummary("Get all Audience Gender types")]
+        [EndpointDescription("Retrieve a list of all audience gender types (Men-only, Women-only, Mixed, Family)")]
         [AllowAnonymous]
+        [ProducesResponseType(typeof(List<AudienceGenderListDto>), StatusCodes.Status200OK)]
         public async Task<ActionResult<List<AudienceGenderListDto>>> GetAll()
         {
             var audienceGenders = await _mediator.Send(new GetAudienceGenderListRequest());
             return Ok(audienceGenders);
         }
 
-        // GET api/<AudienceGenderController>/5
+        // GET: api/v1/audiencegender/{id}
         [HttpGet("{id}")]
-        public string Get(int id)
+        [EndpointSummary("Get Audience Gender type by ID")]
+        [EndpointDescription("Retrieve details of a specific audience gender type")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(AudienceGenderDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<AudienceGenderDto>> GetById(int id)
         {
-            return "value";
-        }
+            var audienceGender = await _mediator.Send(new GetAudienceGenderDetailsRequest { Id = id });
+            if (audienceGender == null)
+            {
+                return NotFound();
+            }
 
-        // POST api/<AudienceGenderController>
-        [HttpPost]
-        public void Post([FromBody] string value)
-        {
-        }
-
-        // PUT api/<AudienceGenderController>/5
-        [HttpPut("{id}")]
-        public void Put(int id, [FromBody] string value)
-        {
-        }
-
-        // DELETE api/<AudienceGenderController>/5
-        [HttpDelete("{id}")]
-        public void Delete(int id)
-        {
+            return Ok(audienceGender);
         }
     }
 }

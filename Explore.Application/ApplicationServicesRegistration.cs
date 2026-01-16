@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
+using FluentValidation;
 using MediatR;
 
 namespace Explore.Application
@@ -13,6 +14,7 @@ namespace Explore.Application
         {
             services.AddAutoMapper(Assembly.GetExecutingAssembly());
             services.AddMediatR(typeof(ApplicationServicesRegistration).Assembly);
+            services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 
             return services;
         }

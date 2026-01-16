@@ -7,7 +7,6 @@ namespace Explore.Application.Contracts.Persistence
 {
     public interface IAudienceGenderRepository : IGenericRepository<AudienceGender, int>
     {
-        Task<AudienceGender> GetAudienceGenderWithDetails(int id);
-        Task<List<AudienceGender>> GetAudienceGendersWithDetails();
+        
     }
 }

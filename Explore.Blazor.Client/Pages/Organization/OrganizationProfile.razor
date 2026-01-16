@@ -1,121 +1,17 @@
-@page "/organization/profile/{Id:guid}"
 @using MudBlazor
 @using Explore.Blazor.Client.Services
-@using Explore.Blazor.Client.Models.DTOs
+@using Explore.Blazor.Client.Clients
+@using Microsoft.AspNetCore.Components
+@using Blazouter.Services
+@using Microsoft.Extensions.Logging
 @inject IOrganizationService OrganizationService
 @inject IOrganizationReviewService OrganizationReviewService
-
 @inject NavigationManager Navigation
+@inject RouterStateService RouterState
+@inject ILogger<OrganizationProfile> Logger
 
 <PageTitle>Organization Profile</PageTitle>
-
-<style>
-/* ===== Star Rating Display ===== */
-.star-rating {
-    display: inline-flex;
-    gap: 2px;
-    color: #FFC107; /* gold color for stars */
-}
-
-.star-rating .mud-icon-root {
-    font-size: 1.25rem;
-}
-
-/* ===== TOKENS ===== */
-:root{
-  --ring: color-mix(in srgb, var(--mud-palette-primary) 30%, transparent);
-}
-
-/* ===== HERO / HEADER ===== */
-.org-hero{
-  position: relative;
-  border-radius: 16px;
-  overflow: hidden;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--mud-palette-primary) 18%, #0000), color-mix(in srgb, var(--mud-palette-secondary) 14%, #0000));
-  min-height: 140px;
-}
-.org-hero::after{
-  content:""; position:absolute; inset:0;
-  background: linear-gradient(180deg, rgba(0,0,0,.05), rgba(0,0,0,.12));
-}
-.org-header{
-  display:flex; gap:18px; align-items:flex-end; padding: 18px; position: relative; z-index: 1;
-}
-.org-avatar{
-  width:120px; height:120px; border-radius: 16px; overflow:hidden;
-  border: 2px solid var(--mud-palette-surface);
-  box-shadow: 0 10px 26px rgba(0,0,0,.18);
-  background: var(--mud-palette-surface);
-}
-
-/* ===== NAME + VERIFIED ===== */
-.verified{
-  display:inline-flex; align-items:center; gap:6px;
-  padding:4px 10px; border-radius:999px;
-  background: color-mix(in srgb, var(--mud-palette-success) 14%, transparent);
-  color: var(--mud-palette-success);
-  font-weight:600; font-size:.9rem;
-}
-
-.not-verified{
-  display:inline-flex; align-items:center; gap:6px;
-  padding:4px 10px; border-radius:999px;
-  background: color-mix(in srgb, var(--mud-palette-text-secondary) 14%, transparent);
-  color: var(--mud-palette-text-secondary);
-  font-weight:600; font-size:.9rem;
-}
-
-/* ===== STATS ===== */
-.stat-grid{ display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-top: 10px; }
-.stat{
-  text-align:center; padding:10px 8px; border-radius: 12px;
-  background: color-mix(in srgb, var(--mud-palette-primary) 6%, var(--mud-palette-surface));
-  border: 1px solid color-mix(in srgb, var(--mud-palette-primary) 18%, var(--mud-palette-lines-default));
-}
-.stat .num{ color: var(--mud-palette-primary); font-weight: 800; }
-
-/* ===== CARDS ===== */
-.section-card{
-  border-radius: 16px;
-  border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
-  overflow: hidden;
-}
-.section-body{ padding: 18px; }
-.section-body + .section-body{ border-top: 1px solid var(--mud-palette-lines-default); }
-
-/* Info list */
-.info-list{ display:grid; gap:10px; }
-.info-row{ display:flex; align-items:center; gap:10px; }
-
-/* ===== REVIEWS ===== */
-.review{
-  border-radius: 14px;
-  border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
-  background: color-mix(in srgb, var(--mud-palette-background) 85%, var(--mud-palette-surface));
-  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
-}
-.review:hover{
-  transform: translateY(-2px);
-  box-shadow: 0 12px 28px rgba(0,0,0,.12);
-  border-color: color-mix(in srgb, var(--mud-palette-primary) 35%, var(--mud-palette-lines-default));
-}
-
-/* Buttons */
-.btn-outline .mud-button-root{
-  border-radius: 10px;
-}
-.btn-outline .mud-button-root:focus-visible{
-  box-shadow: 0 0 0 3px var(--ring);
-}
-
-/* Responsive */
-@@media (max-width: 960px){
-  .org-header{ align-items: center; }
-  .stat-grid{ grid-template-columns: repeat(3, 1fr); }
-}
-</style>
-
-<MudContainer Class="py-6">
+<MudContainer Class="organization-profile">
     @if (_isLoading)
     {
         <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
@@ -127,42 +23,55 @@
     else
     {
         <!-- Organization Info (Hero + Header + Stats) -->
-        <MudCard Class="mb-6 section-card" Elevation="0">
-            <div class="org-hero"></div>
+        <MudCard Class="mb-6 organization-profile__card" Elevation="0">
+            <div class="organization-profile__hero"></div>
 
-            <MudCardContent Class="section-body" Style="padding-top:0;">
-                <div class="org-header">
+            <MudCardContent Class="organization-profile__content" Style="padding-top:0;">
+                <div class="organization-profile__header">
                     <!-- Avatar -->
-                    <div class="org-avatar">
-                        <MudImage Src="https://via.placeholder.com/240x240/2196F3/FFFFFF?text=ORG" Alt="Organization Logo" Style="width:100%; height:100%; object-fit:cover;" />
+                    <div class="organization-profile__avatar">
+                        @if (false)
+                        {
+                            <S3Image ImageKey=""""
+                                    Alt="@($"{_organization.FullName} Logo")"
+                                    ObjectFit="cover"
+                                    BorderRadius="16px"
+                                    ContainerStyle="width: 100%; height: 100%;" />
+                        }
+                        else
+                        {
+                            <MudImage Src="https://via.placeholder.com/240x240/2196F3/FFFFFF?text=ORG"
+                                     Alt="Organization Logo"
+                                     Style="width:100%; height:100%; object-fit:cover;" />
+                        }
                     </div>
 
                     <!-- Name + Verified + Stats -->
                     <div style="flex:1;">
                         <MudText Typo="Typo.h4" Class="mb-1">@_organization.FullName</MudText>
-                        
-                        @if (_organization.StatusTypeId == 2) // Approved
+
+                        @if (_organization.ApprovalStatusId == 2) // Approved
                         {
-                            <div class="verified">
+                            <div class="organization-profile__badge organization-profile__badge--verified">
                                 <MudIcon Icon="@Icons.Material.Filled.Verified" />
                                 <span>Verified Organization</span>
                             </div>
                         }
                         else
                         {
-                            <div class="not-verified">
+                            <div class="organization-profile__badge organization-profile__badge--unverified">
                                 <MudIcon Icon="@Icons.Material.Filled.NewReleases" />
                                 <span>Unverified Organization</span>
                             </div>
                         }
 
-                        <div class="stat-grid">
-                            <div class="stat">
-                                <MudText Typo="Typo.h5" Class="num">@_reviews.Count</MudText>
+                        <div class="organization-profile__stats">
+                            <div class="organization-profile__stat">
+                                <MudText Typo="Typo.h5" Class="organization-profile__stat-value">@_reviews.Count</MudText>
                                 <MudText Typo="Typo.caption" Color="Color.Secondary">reviews</MudText>
                             </div>
-                            <div class="stat">
-                                <MudText Typo="Typo.h5" Class="num">@(_reviews.Any() ? _reviews.Average(r => r.Rating).ToString("0.0") : "0.0")★</MudText>
+                            <div class="organization-profile__stat">
+                                <MudText Typo="Typo.h5" Class="organization-profile__stat-value">@(_reviews.Any() ? _reviews.Average(r => r.Rating).ToString("0.0") : "0.0")★</MudText>
                                 <MudText Typo="Typo.caption" Color="Color.Secondary">overall rating</MudText>
                             </div>
                         </div>
@@ -172,31 +81,31 @@
         </MudCard>
 
         <!-- About Section -->
-        <MudCard Class="mb-6 section-card" Elevation="0">
+        <MudCard Class="mb-6 organization-profile__card" Elevation="0">
             <MudCardHeader>
                 <CardHeaderContent>
                     <MudText Typo="Typo.h6">About the Organization</MudText>
                 </CardHeaderContent>
             </MudCardHeader>
 
-            <MudCardContent Class="section-body">
-                <div class="info-list">
-                    <div class="info-row">
+            <MudCardContent Class="organization-profile__content">
+                <div class="organization-profile__info-list">
+                    <div class="organization-profile__info-row">
                         <MudIcon Icon="@Icons.Material.Filled.Work" Color="Color.Primary" />
                         <MudText Typo="Typo.body1">Organization type: Religious organization</MudText>
                     </div>
-                    <div class="info-row">
+                    <div class="organization-profile__info-row">
                         <MudIcon Icon="@Icons.Material.Filled.LocationOn" Color="Color.Primary" />
                         <MudText Typo="Typo.body1">Location: @_organization.City, @_organization.Country</MudText>
                     </div>
                     @if (!string.IsNullOrEmpty(_organization.WebsiteUrl))
                     {
-                        <div class="info-row">
+                        <div class="organization-profile__info-row">
                             <MudIcon Icon="@Icons.Material.Filled.Language" Color="Color.Primary" />
                             <MudLink Href="@_organization.WebsiteUrl" Target="_blank" Typo="Typo.body1">@_organization.WebsiteUrl</MudLink>
                         </div>
                     }
-                    <div class="info-row">
+                    <div class="organization-profile__info-row">
                         <MudIcon Icon="@Icons.Material.Filled.Email" Color="Color.Primary" />
                         <MudLink Href="@($"mailto:{_organization.Email}")" Typo="Typo.body1">@_organization.Email</MudLink>
                     </div>
@@ -205,7 +114,7 @@
         </MudCard>
 
         <!-- Reviews Section -->
-        <MudCard Class="section-card" Elevation="0">
+        <MudCard Class="organization-profile__card" Elevation="0">
             <MudCardHeader>
                 <CardHeaderContent>
                     <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Style="width:100%;">
@@ -215,27 +124,27 @@
                 </CardHeaderContent>
             </MudCardHeader>
 
-            <MudCardContent Class="section-body">
+            <MudCardContent Class="organization-profile__content">
                 <MudGrid>
                     @if (_reviews.Any())
                     {
                         @foreach (var review in _reviews.Take(3))
                         {
                             <MudItem xs="12" md="4">
-                                <MudPaper Class="pa-4 review" Elevation="0">
+                                <MudPaper Class="pa-4 organization-profile__review" Elevation="0">
                                     <MudStack Spacing="2">
                                         <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
                                             <MudAvatar Size="Size.Medium">
-                                                <MudText>@(string.IsNullOrEmpty(review.ReviewerName) ? "?" : review.ReviewerName.Substring(0, 1).ToUpper())</MudText>
+                                                <MudText>@(string.IsNullOrEmpty(review.UserFullName) ? "?" : review.UserFullName.Substring(0, 1).ToUpper())</MudText>
                                             </MudAvatar>
                                             <MudStack Spacing="0">
-                                                <MudText Typo="Typo.subtitle2">@review.ReviewerName</MudText>
-                                                <MudText Typo="Typo.caption" Color="Color.Secondary">@review.CreatedAt.ToShortDateString()</MudText>
+                                                <MudText Typo="Typo.subtitle2">@review.UserFullName</MudText>
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">@review.CreatedAt.DateTime.ToShortDateString()</MudText>
                                             </MudStack>
                                         </MudStack>
 
                                         <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
-                                            <div class="star-rating">
+                                            <div class="organization-profile__rating">
                                                 @for (int i = 1; i <= 5; i++)
                                                 {
                                                     if (i <= review.Rating)
@@ -277,22 +186,37 @@
 </MudContainer>
 
 @code {
-    [Parameter] public Guid Id { get; set; }
-    
+    private Guid Id { get; set; }
+
     private OrganizationDto? _organization;
     private bool _isLoading = true;
     private List<OrganizationReviewDto> _reviews = new();
 
+    private string? _errorMessage;
+
     protected override async Task OnInitializedAsync()
     {
+        // Get route parameter from Blazouter
+        var idStr = RouterState.GetParam("id");
+        if (Guid.TryParse(idStr, out var id))
+        {
+            Id = id;
+        }
+
+        _isLoading = true;
+        _errorMessage = null;
+
         try
         {
+            // Load organization and its reviews
             _organization = await OrganizationService.GetOrganizationByIdAsync(Id);
-            _reviews = await OrganizationReviewService.GetReviewsByOrganizationId(Id);
+            _reviews = (await OrganizationReviewService.GetReviewsByOrganizationId(Id)).ToList();
+            Logger.LogDebug("Loaded organization {OrganizationId} with {ReviewCount} reviews", Id, _reviews.Count);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading organization: {ex.Message}");
+            _errorMessage = $"Failed to load organization data: {ex.Message}";
+            Logger.LogError(ex, "Error loading organization {OrganizationId}", Id);
         }
         finally
         {

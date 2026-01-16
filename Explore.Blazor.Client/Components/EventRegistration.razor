@@ -1,125 +1,6 @@
-@inject IProgramService ProgramService
+@inject IEventService EventService
+@inject IUserService UserService
 @inject ISnackbar Snackbar
-
-<style>
-/* ===== DIALOG STYLING ===== */
-.registration-shell {
-    padding: 24px;
-}
-
-/* ===== FORM SECTIONS ===== */
-.form-section {
-    margin-bottom: 24px;
-}
-
-.form-section-title {
-    font-weight: 600;
-    font-size: 1rem;
-    margin-bottom: 16px;
-    color: var(--mud-palette-text-primary);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-/* Grid */
-.form-grid {
-    display: grid;
-    gap: 16px;
-}
-
-.form-grid-2col {
-    display: grid;
-    gap: 16px;
-    grid-template-columns: 1fr 1fr;
-}
-
-@@media (max-width: 600px) {
-    .registration-shell {
-        padding: 16px;
-    }
-
-    .form-grid-2col {
-        grid-template-columns: 1fr;
-    }
-}
-
-/* ===== TERMS ===== */
-.terms-box {
-    padding: 16px;
-    border-radius: 8px;
-    border: 1px solid var(--mud-palette-lines-default);
-    margin-bottom: 16px;
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-}
-
-.terms-box-text {
-    font-size: 0.875rem;
-    color: var(--mud-palette-text-secondary);
-}
-
-/* ===== BUTTONS ===== */
-.action-buttons {
-    display: flex;
-    gap: 12px;
-    justify-content: flex-end;
-    margin-top: 24px;
-}
-
-.submit-button {
-    min-width: 150px;
-}
-
-/* ===== SUCCESS STATE ===== */
-.success-content {
-    text-align: center;
-    padding: 48px 24px;
-}
-
-.success-icon {
-    width: 80px;
-    height: 80px;
-    margin: 0 auto 24px;
-    background: var(--mud-palette-success);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    animation: scaleIn 0.4s ease-out;
-}
-
-@@keyframes scaleIn {
-    from {
-        transform: scale(0.5);
-        opacity: 0;
-    }
-    to {
-        transform: scale(1);
-        opacity: 1;
-    }
-}
-
-.success-icon .mud-icon-root {
-    font-size: 3rem;
-    color: white;
-}
-
-.success-title {
-    font-size: 1.5rem;
-    font-weight: 600;
-    margin-bottom: 12px;
-    color: var(--mud-palette-success);
-}
-
-.success-message {
-    color: var(--mud-palette-text-secondary);
-    line-height: 1.6;
-    margin-bottom: 24px;
-}
-</style>
-
 <MudDialog Class="registration-dialog">
     <DialogContent>
         @if (isLoading)
@@ -160,135 +41,39 @@
             <div class="registration-shell">
                 <MudText Typo="Typo.h5" Class="mb-2">@Title</MudText>
                 <MudText Typo="Typo.body2" Class="mb-6 mud-text-secondary">
-                    Fill out the form to secure your spot
+                    Click confirm to register for this event
                 </MudText>
 
-                <EditForm Model="@registrationModel" OnValidSubmit="HandleSubmit">
-                    <DataAnnotationsValidator />
+                @if (currentUser != null)
+                {
+                    <MudAlert Severity="Severity.Info" Class="mb-4">
+                        You will be registered as: <strong>@currentUser.FirstName @currentUser.LastName</strong> (@currentUser.Email)
+                    </MudAlert>
+                }
 
-                    <!-- Personal Information -->
-                    <div class="form-section">
-                        <MudText Typo="Typo.subtitle1" Class="form-section-title">
-                            <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Class="mr-2" />
-                            Personal Information
-                        </MudText>
-
-                        <div class="form-grid-2col">
-                            <MudTextField T="string"
-                                          Label="First Name"
-                                          @bind-Value="registrationModel.FirstName"
-                                          For="@(() => registrationModel.FirstName)"
-                                          Variant="Variant.Outlined"
-                                          Required="true"
-                                          RequiredError="First name is required"
-                                          Immediate="true" />
-
-                            <MudTextField T="string"
-                                          Label="Last Name"
-                                          @bind-Value="registrationModel.LastName"
-                                          For="@(() => registrationModel.LastName)"
-                                          Variant="Variant.Outlined"
-                                          Required="true"
-                                          RequiredError="Last name is required"
-                                          Immediate="true" />
-                        </div>
-                    </div>
-
-                    <!-- Contact Information -->
-                    <div class="form-section">
-                        <MudText Typo="Typo.subtitle1" Class="form-section-title">
-                            <MudIcon Icon="@Icons.Material.Filled.ContactMail" Size="Size.Small" Class="mr-2" />
-                            Contact Information
-                        </MudText>
-
-                        <div class="form-grid">
-                            <MudTextField T="string"
-                                          Label="Email Address"
-                                          @bind-Value="registrationModel.Email"
-                                          For="@(() => registrationModel.Email)"
-                                          Variant="Variant.Outlined"
-                                          InputType="InputType.Email"
-                                          Required="true"
-                                          RequiredError="Email address is required"
-                                          Validation="@(new Func<string, string?>(ValidateEmail))"
-                                          Immediate="true"
-                                          HelperText="We'll send the confirmation to this address" />
-
-                            <MudTextField T="string"
-                                          Label="Phone Number (optional)"
-                                          @bind-Value="registrationModel.PhoneNumber"
-                                          Variant="Variant.Outlined"
-                                          InputType="InputType.Telephone"
-                                          HelperText="For any updates" />
-                        </div>
-                    </div>
-
-                    <!-- Additional Information -->
-                    <div class="form-section">
-                        <MudText Typo="Typo.subtitle1" Class="form-section-title">
-                            <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="mr-2" />
-                            Additional Information
-                        </MudText>
-
-                        <div class="form-grid">
-                            <MudTextField T="string"
-                                          Label="Organization (optional)"
-                                          @bind-Value="registrationModel.Organization"
-                                          Variant="Variant.Outlined"
-                                          HelperText="Name of your school, company or organization" />
-
-                            <MudTextField T="string"
-                                          Label="Message (optional)"
-                                          @bind-Value="registrationModel.Message"
-                                          Variant="Variant.Outlined"
-                                          Lines="4"
-                                          HelperText="Any questions or comments" />
-                        </div>
-                    </div>
-
-                    <!-- Terms and Conditions -->
-                    <div class="terms-box">
-                        <MudCheckBox T="bool"
-                                     @bind-Value="registrationModel.AcceptTerms"
-                                     For="@(() => registrationModel.AcceptTerms)"
-                                     Color="Color.Primary"
-                                     Required="true"
-                                     RequiredError="You must agree to the terms" />
-                        <MudText Typo="Typo.body2" Class="terms-box-text">
-                            I agree to the
-                            <MudLink Href="/terms" Target="_blank">terms and conditions</MudLink>
-                            and
-                            <MudLink Href="/privacy" Target="_blank">privacy policy</MudLink>.
-                        </MudText>
-                    </div>
-
-                    <ValidationSummary />
-
-                    <div class="action-buttons">
-                        <MudButton Variant="Variant.Text"
-                                   Color="Color.Default"
-                                   OnClick="Cancel"
-                                   Disabled="isSubmitting">
-                            Cancel
-                        </MudButton>
-                        <MudButton ButtonType="ButtonType.Submit"
-                                   Variant="Variant.Filled"
-                                   Color="Color.Primary"
-                                   Class="submit-button"
-                                   Disabled="isSubmitting || !registrationModel.AcceptTerms"
-                                   StartIcon="@(isSubmitting ? null : Icons.Material.Filled.CheckCircle)">
-                            @if (isSubmitting)
-                            {
-                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                                <span>Registering...</span>
-                            }
-                            else
-                            {
-                                <span>Register</span>
-                            }
-                        </MudButton>
-                    </div>
-                </EditForm>
+                <div class="action-buttons">
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Default"
+                               OnClick="Cancel"
+                               Disabled="isSubmitting">
+                        Cancel
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               OnClick="HandleSubmit"
+                               Disabled="isSubmitting || currentUser == null"
+                               StartIcon="@(isSubmitting ? null : Icons.Material.Filled.CheckCircle)">
+                        @if (isSubmitting)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            <span>Registering...</span>
+                        }
+                        else
+                        {
+                            <span>Confirm Registration</span>
+                        }
+                    </MudButton>
+                </div>
             </div>
         }
         else
@@ -302,9 +87,8 @@
                         Registration Successful! 🎉
                     </MudText>
                     <MudText Typo="Typo.body1" Class="success-message">
-                        Thank you for registering, @registrationModel.FirstName! <br />
-                        We've sent a confirmation email to <strong>@registrationModel.Email</strong>.<br />
-                        Please check your spam folder if you don't see the email.
+                        Thank you for registering@(currentUser != null ? $", {currentUser.FirstName}" : "")! <br />
+                        You will receive a confirmation email shortly.
                     </MudText>
                     <MudButton Variant="Variant.Filled"
                                Color="Color.Primary"
@@ -324,12 +108,13 @@
     private MudBlazor.IDialogReference? DialogReference { get; set; }
 
     [Parameter]
-    public Guid ProgramId { get; set; }
+    public Guid EventSessionId { get; set; }
 
     [Parameter]
     public string Title { get; set; } = "Register for Event";
 
-    private ProgramRegistrationDto registrationModel = new();
+    private CreateEventRegistrationDto registrationModel = new();
+    private UserDto? currentUser;
     private bool isSubmitting = false;
     private bool isRegistered = false;
     private bool isAlreadyRegistered = false;
@@ -337,15 +122,20 @@
 
     protected override async Task OnInitializedAsync()
     {
-        registrationModel.ProgramId = ProgramId;
-        
         try
         {
-            isAlreadyRegistered = await ProgramService.IsUserRegisteredAsync(ProgramId);
+            // Get current user
+            currentUser = await UserService.GetCurrentUserAsync();
+
+            if (currentUser != null)
+            {
+                registrationModel.EventSessionId = EventSessionId;
+                registrationModel.UserId = currentUser.Id;
+            }
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error checking registration status: {ex.Message}", Severity.Warning);
+            Snackbar.Add($"Error loading user data: {ex.Message}", Severity.Warning);
         }
         finally
         {
@@ -353,33 +143,34 @@
         }
     }
 
-    private string? ValidateEmail(string email)
-    {
-        if (string.IsNullOrWhiteSpace(email))
-            return "Email address is required";
-
-        if (!email.Contains("@") || !email.Contains("."))
-            return "Please enter a valid email address";
-
-        return null;
-    }
-
     private async Task HandleSubmit()
     {
+        if (currentUser == null)
+        {
+            Snackbar.Add("You must be logged in to register.", Severity.Error);
+            return;
+        }
+
+        if (EventSessionId == Guid.Empty)
+        {
+            Snackbar.Add("Registration is unavailable for this session.", Severity.Error);
+            return;
+        }
+
         isSubmitting = true;
 
         try
         {
-            var success = await ProgramService.RegisterForProgramAsync(registrationModel);
+            var response = await EventService.RegisterForEventSessionAsync(registrationModel);
 
-            if (success)
+            if (response?.Success == true)
             {
                 isRegistered = true;
                 Snackbar.Add("You have been successfully registered!", Severity.Success);
             }
             else
             {
-                Snackbar.Add("Something went wrong. Please try again later.", Severity.Error);
+                Snackbar.Add(response?.Message ?? "Something went wrong. Please try again later.", Severity.Error);
             }
         }
         catch (Exception ex)

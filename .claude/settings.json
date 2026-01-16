@@ -1,0 +1,67 @@
+{
+  "permissions": {
+    "allow": ["Edit:*", "Write:*", "MultiEdit:*", "NotebookEdit:*", "Bash:*"],
+    "defaultMode": "acceptEdits"
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": ["sequential-thinking", "playwright", "context7"],
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "dotnet .claude/hooks/SkillTrigger.cs"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "dotnet .claude/hooks/ContextTracker.cs"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "dotnet .claude/hooks/FormatCode.cs"
+          },
+          {
+            "type": "command",
+            "command": "dotnet .claude/hooks/BuildCheck.cs"
+          }
+        ]
+      }
+    ]
+  },
+  "enabledPlugins": {
+    "github@claude-plugins-official": true,
+    "context7@claude-plugins-official": true,
+    "serena@claude-plugins-official": true,
+    "commit-commands@claude-plugins-official": true,
+    "playwright@claude-plugins-official": true,
+    "security-guidance@claude-plugins-official": true,
+    "csharp-lsp@claude-plugins-official": false,
+    "llm-council@the-llm-council": true
+  },
+  "commands": {
+    "build": "dotnet build",
+    "test": "dotnet test",
+    "format": "dotnet format",
+    "run": "dotnet run"
+  },
+  "trusted_domains": [
+    "localhost",
+    "github.com",
+    "islamu.ngo",
+    "event.islamu.ngo"
+  ]
+}

@@ -1,3 +1,4 @@
+using Explore.Application.DTOs.Organization;
 using Explore.Application.DTOs.User;
 using Explore.Application.Features.Users.Requests.Commands;
 using Explore.Application.Features.Users.Requests.Queries;
@@ -9,7 +10,7 @@ using System.Security.Claims;
 
 namespace Explore.API.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/v1/[controller]")]
     [ApiController]
     public class UserController : ControllerBase
     {
@@ -20,50 +21,69 @@ namespace Explore.API.Controllers
             _mediator = mediator;
         }
 
-        [HttpGet("exists/{email}")]
-        [Authorize]
-        public async Task<ActionResult<bool>> CheckUserExists(string email)
-        {
-            var query = new CheckUserExistsQuery { Email = email };
-            var exists = await _mediator.Send(query);
-            return Ok(exists);
-        }
-
+        /// <summary>
+        /// Syncs the authenticated user from Keycloak to the local database.
+        /// Creates a new User and Actor if they don't exist, otherwise updates the user's basic info.
+        /// Call this endpoint after login/registration to ensure user exists in the system.
+        /// </summary>
         [HttpPost("sync")]
         [Authorize]
+        [EndpointSummary("Sync user from Keycloak")]
+        [EndpointDescription("Creates or updates the user in the local database. Also creates the user's personal Actor if new user. Call this after login/registration.")]
         public async Task<ActionResult<BaseCommandResponse<Guid>>> SyncUser()
         {
-            var userId = User.FindFirst("sub")?.Value 
+            var userId = User.FindFirst("sub")?.Value
                          ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var guidUserId))
             {
-                return BadRequest("Invalid User ID in token");
+                return BadRequest(new BaseCommandResponse<Guid>
+                {
+                    Success = false,
+                    Message = "Invalid User ID in token",
+                    Errors = new List<string> { "Could not parse user ID from authentication token." }
+                });
             }
 
-            var email = User.FindFirst("email")?.Value 
+            var email = User.FindFirst("email")?.Value
                         ?? User.FindFirst(ClaimTypes.Email)?.Value ?? "";
-            
-            var firstName = User.FindFirst("given_name")?.Value 
+
+            var firstName = User.FindFirst("given_name")?.Value
                             ?? User.FindFirst(ClaimTypes.GivenName)?.Value ?? "";
-            
-            var lastName = User.FindFirst("family_name")?.Value 
+
+            var lastName = User.FindFirst("family_name")?.Value
                            ?? User.FindFirst(ClaimTypes.Surname)?.Value ?? "";
-            
-            var username = User.FindFirst("preferred_username")?.Value 
+
+            var username = User.FindFirst("preferred_username")?.Value
                            ?? User.FindFirst(ClaimTypes.Name)?.Value ?? "";
+
+            // Validate required fields
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                return BadRequest(new BaseCommandResponse<Guid>
+                {
+                    Success = false,
+                    Message = "Email is required",
+                    Errors = new List<string> { "Email claim not found in token." }
+                });
+            }
 
             var userDto = new UserDto
             {
                 Id = guidUserId,
                 Email = email,
-                FirstName = firstName,
-                LastName = lastName,
+                FirstName = string.IsNullOrWhiteSpace(firstName) ? "User" : firstName,
+                LastName = string.IsNullOrWhiteSpace(lastName) ? "" : lastName,
                 Username = username
             };
 
             var command = new SyncUserCommand { UserDto = userDto };
             var response = await _mediator.Send(command);
+
+            if (!response.Success)
+            {
+                return BadRequest(response);
+            }
 
             return Ok(response);
         }
@@ -72,7 +92,7 @@ namespace Explore.API.Controllers
         [Authorize]
         public async Task<ActionResult<UserDto>> GetCurrentUser()
         {
-            var userId = User.FindFirst("sub")?.Value 
+            var userId = User.FindFirst("sub")?.Value
                          ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var guidUserId))
@@ -82,14 +102,63 @@ namespace Explore.API.Controllers
 
             var query = new GetUserRequest { UserId = guidUserId };
             var user = await _mediator.Send(query);
+            
+            // FIX: Return 404 if user doesn't exist
+            if (user == null)
+            {
+                Console.WriteLine($"[USER API] User not found in database: {guidUserId}");
+                return NotFound(new 
+                { 
+                    message = "User not found in database. Please refresh the page to sync your profile.",
+                    userId = guidUserId 
+                });
+            }
+            
+            Console.WriteLine($"[USER API] User found: {user.Email}");
             return Ok(user);
+        }
+
+        /// <summary>
+        /// Gets all organizations the specified user is a member of.
+        /// Returns the user's role in each organization.
+        /// </summary>
+        [HttpGet("{userId:guid}/organizations")]
+        [Authorize]
+        [EndpointSummary("Get user's organizations")]
+        [EndpointDescription("Gets all organizations the user is a member of, including their role in each organization.")]
+        public async Task<ActionResult<List<OrganizationListDto>>> GetUserOrganizations(Guid userId)
+        {
+            // Verify the user is requesting their own organizations
+            var currentUserId = User.FindFirst("sub")?.Value
+                         ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(currentUserId) || !Guid.TryParse(currentUserId, out var guidCurrentUserId))
+            {
+                return Unauthorized("Invalid User ID in token");
+            }
+
+            // For now, only allow users to get their own organizations
+            // TODO: Add admin check for viewing other users' organizations
+            if (userId != guidCurrentUserId)
+            {
+                return Forbid("You can only view your own organizations");
+            }
+
+            Console.WriteLine($"[USER API] Getting organizations for user: {userId}");
+            
+            var query = new GetUserOrganizationsRequest { UserId = userId };
+            var organizations = await _mediator.Send(query);
+            
+            Console.WriteLine($"[USER API] Found {organizations.Count} organizations for user {userId}");
+            
+            return Ok(organizations);
         }
 
         [HttpPut]
         [Authorize]
         public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateUser([FromBody] UpdateUserDto userDto)
         {
-            var userId = User.FindFirst("sub")?.Value 
+            var userId = User.FindFirst("sub")?.Value
                          ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var guidUserId))
@@ -111,7 +180,7 @@ namespace Explore.API.Controllers
         [Authorize]
         public async Task<ActionResult> DeleteUser()
         {
-            var userId = User.FindFirst("sub")?.Value 
+            var userId = User.FindFirst("sub")?.Value
                          ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var guidUserId))

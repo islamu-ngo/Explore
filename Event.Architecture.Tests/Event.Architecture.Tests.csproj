@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NetArchTest.Rules" Version="1.3.2" />
+    <PackageReference Include="TUnit" Version="1.11.28" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Explore.Domain\Explore.Domain.csproj" />
+    <ProjectReference Include="..\Explore.Application\Explore.Application.csproj" />
+    <ProjectReference Include="..\Explore.Persistence\Explore.Persistence.csproj" />
+    <ProjectReference Include="..\Explore.Infrastructure\Explore.Infrastructure.csproj" />
+    <ProjectReference Include="..\Explore.API\Explore.API.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,102 @@
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Services.Contracts
+@using MudBlazor
+@using MudBlazor.Services
+@inject IEventSessionSpeakerService EventSessionSpeakerService
+@inject IActorService ActorService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Manage Speakers</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="4">
+            <MudAutocomplete T="ActorListDto" Label="Add Speaker" @bind-Value="selectedActor"
+                             SearchFunc="@SearchActors" ToStringFunc="@(e => e?.DisplayName)"
+                             Variant="Variant.Outlined" Dense="true" />
+
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AddSpeaker" Disabled="@(selectedActor == null)">Add Speaker</MudButton>
+
+            <MudText Typo="Typo.h6">Current Speakers</MudText>
+            <MudList T="EventSessionSpeakerListDto" Clickable="true">
+                @foreach (var speaker in speakers)
+                {
+                    <MudListItem T="EventSessionSpeakerListDto">
+                        @speaker.ActorDisplayName
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="@(() => RemoveSpeaker(speaker.Id))" />
+                    </MudListItem>
+                }
+            </MudList>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit">Ok</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public Guid SessionId { get; set; }
+
+    private List<EventSessionSpeakerListDto> speakers = new();
+    private ActorListDto? selectedActor;
+    private List<ActorListDto> allActors = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSpeakers();
+        var actorsCollection = await ActorService.GetActorsAsync();
+        allActors = actorsCollection.ToList();
+    }
+
+    private async Task LoadSpeakers()
+    {
+        speakers = (await EventSessionSpeakerService.GetSpeakersBySessionAsync(SessionId)).ToList();
+    }
+
+    private async Task<IEnumerable<ActorListDto>> SearchActors(string value, CancellationToken token)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return allActors;
+        }
+        return allActors.Where(x => x.DisplayName.Contains(value, StringComparison.InvariantCultureIgnoreCase));
+    }
+
+    private async Task AddSpeaker()
+    {
+        if (selectedActor != null)
+        {
+            var newSpeaker = new CreateEventSessionSpeakerDto
+            {              
+                ActorId = selectedActor.Id,
+                EventSessionId = SessionId
+            };
+            var response = await EventSessionSpeakerService.AddSpeakerToSessionAsync(newSpeaker);
+            if (response.Success)
+            {               
+                Snackbar.Add("Speaker added.", Severity.Success);
+                await LoadSpeakers();
+                selectedActor = null;
+                StateHasChanged();
+            }
+            else
+            {
+                Snackbar.Add(response.Message, Severity.Error);
+            }
+        }
+    }
+
+    private async Task RemoveSpeaker(Guid speakerId)
+    {
+        await EventSessionSpeakerService.RemoveSpeakerFromSessionAsync(speakerId);
+        Snackbar.Add("Speaker removed.", Severity.Success);
+        await LoadSpeakers();
+        StateHasChanged();
+    }
+
+    void Submit() => MudDialog.Close(DialogResult.Ok(true));
+    void Cancel() => MudDialog.Cancel();
+}

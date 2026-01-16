@@ -11,10 +11,10 @@ namespace Explore.Application.Features.StatusTypes.Handlers.Queries
 {
     public class GetStatusTypeListRequestHandler : IRequestHandler<GetStatusTypeListRequest, List<StatusTypeListDto>>
     {
-        private readonly IStatusTypeRepository _statusTypeRepository;
+        private readonly IApprovalStatusRepository _statusTypeRepository;
         private readonly IMapper _mapper;
 
-        public GetStatusTypeListRequestHandler(IStatusTypeRepository statusTypeRepository, IMapper mapper)
+        public GetStatusTypeListRequestHandler(IApprovalStatusRepository statusTypeRepository, IMapper mapper)
         {
             _statusTypeRepository = statusTypeRepository;
             _mapper = mapper;

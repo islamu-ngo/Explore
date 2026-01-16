@@ -1,0 +1,201 @@
+Application:build:dotnet build Explore.Application --nologo --no-restore
+API:build:dotnet build Explore.Api --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Domain:build:dotnet build Explore.Domain --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Shared:build:dotnet build --nologo
+Domain:build:dotnet build Explore.Domain --nologo --no-restore
+Domain:build:dotnet build Explore.Domain --nologo --no-restore
+Domain:build:dotnet build Explore.Domain --nologo --no-restore
+Domain:build:dotnet build Explore.Domain --nologo --no-restore
+Domain:build:dotnet build Explore.Domain --nologo --no-restore
+Domain:build:dotnet build Explore.Domain --nologo --no-restore
+Domain:build:dotnet build Explore.Domain --nologo --no-restore
+Domain:build:dotnet build Explore.Domain --nologo --no-restore
+Domain:build:dotnet build Explore.Domain --nologo --no-restore
+Domain:build:dotnet build Explore.Domain --nologo --no-restore
+Domain:build:dotnet build Explore.Domain --nologo --no-restore
+Domain:build:dotnet build Explore.Domain --nologo --no-restore
+Domain:build:dotnet build Explore.Domain --nologo --no-restore
+Domain:build:dotnet build Explore.Domain --nologo --no-restore
+Domain:build:dotnet build Explore.Domain --nologo --no-restore
+Domain:build:dotnet build Explore.Domain --nologo --no-restore
+Domain:build:dotnet build Explore.Domain --nologo --no-restore
+Domain:build:dotnet build Explore.Domain --nologo --no-restore
+Domain:build:dotnet build Explore.Domain --nologo --no-restore
+Domain:build:dotnet build Explore.Domain --nologo --no-restore
+Domain:build:dotnet build Explore.Domain --nologo --no-restore
+Domain:build:dotnet build Explore.Domain --nologo --no-restore
+Shared:build:dotnet build --nologo
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Shared:build:dotnet build --nologo
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Shared:build:dotnet build --nologo
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+API:build:dotnet build Explore.Api --nologo --no-restore
+API:build:dotnet build Explore.Api --nologo --no-restore
+API:build:dotnet build Explore.Api --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Shared:build:dotnet build --nologo
+Shared:build:dotnet build --nologo
+Shared:build:dotnet build --nologo
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Shared:build:dotnet build --nologo
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+API:build:dotnet build Explore.Api --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Shared:build:dotnet build --nologo
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+API:build:dotnet build Explore.Api --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Shared:build:dotnet build --nologo
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+API:build:dotnet build Explore.Api --nologo --no-restore
+API:build:dotnet build Explore.Api --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Shared:build:dotnet build --nologo
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+API:build:dotnet build Explore.Api --nologo --no-restore
+API:build:dotnet build Explore.Api --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Shared:build:dotnet build --nologo
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+API:build:dotnet build Explore.Api --nologo --no-restore
+API:build:dotnet build Explore.Api --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Shared:build:dotnet build --nologo
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+API:build:dotnet build Explore.Api --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Shared:build:dotnet build --nologo
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+API:build:dotnet build Explore.Api --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Shared:build:dotnet build --nologo
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+API:build:dotnet build Explore.Api --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Shared:build:dotnet build --nologo
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+API:build:dotnet build Explore.Api --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Shared:build:dotnet build --nologo
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+API:build:dotnet build Explore.Api --nologo --no-restore
+Shared:build:dotnet build --nologo
+Shared:build:dotnet build --nologo
+Frontend:build:dotnet build Explore.Blazor --nologo --no-restore
+Frontend:build:dotnet build Explore.Blazor --nologo --no-restore
+Shared:build:dotnet build --nologo
+Shared:build:dotnet build --nologo
+Shared:build:dotnet build --nologo
+Shared:build:dotnet build --nologo
+Shared:build:dotnet build --nologo
+Shared:build:dotnet build --nologo
+Shared:build:dotnet build --nologo
+Shared:build:dotnet build --nologo
+Shared:build:dotnet build --nologo
+Shared:build:dotnet build --nologo
+Shared:build:dotnet build --nologo
+Shared:build:dotnet build --nologo
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore
+Application:build:dotnet build Explore.Application --nologo --no-restore

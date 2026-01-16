@@ -1,5 +1,4 @@
-@using Explore.Blazor.Client.Models.DTOs.OrganizationMember
-@using Explore.Blazor.Client.Models.Enums
+@using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Services
 @using MudBlazor
 @inject IOrganizationMemberService MemberService
@@ -8,14 +7,10 @@
 <MudDialog>
     <DialogContent>
         <MudTextField @bind-Value="model.Email" Label="Email" Required="true" RequiredError="Email is required" InputType="InputType.Email" />
-        <MudSelect T="OrganizationRole" Label="Role" @bind-Value="model.Role" AnchorOrigin="Origin.BottomCenter">
-            @foreach (OrganizationRole role in Enum.GetValues(typeof(OrganizationRole)))
-            {
-                if (role != OrganizationRole.Creator)
-                {
-                    <MudSelectItem Value="@role">@role</MudSelectItem>
-                }
-            }
+        <MudSelect T="int" Label="Role" @bind-Value="model.Role" AnchorOrigin="Origin.BottomCenter">
+            <MudSelectItem Value="2">Co-Owner</MudSelectItem>
+            <MudSelectItem Value="3">Admin</MudSelectItem>
+            <MudSelectItem Value="4">Member</MudSelectItem>
         </MudSelect>
     </DialogContent>
     <DialogActions>
@@ -33,7 +28,7 @@
     protected override void OnInitialized()
     {
         model.OrganizationId = OrganizationId;
-        model.Role = OrganizationRole.Member;
+        model.Role = 4; // Member role
     }
 
     private void Cancel() => MudDialog.Cancel();
@@ -48,14 +43,6 @@
 
         try
         {
-            // Check if user exists
-            var userExists = await MemberService.CheckUserExistsAsync(model.Email);
-            if (!userExists)
-            {
-                Snackbar.Add($"User with email '{model.Email}' does not exist.", Severity.Warning);
-                return;
-            }
-
             await MemberService.InviteMemberAsync(model);
             Snackbar.Add("Member invited successfully", Severity.Success);
             MudDialog.Close(DialogResult.Ok(true));
@@ -66,3 +53,4 @@
         }
     }
 }
+

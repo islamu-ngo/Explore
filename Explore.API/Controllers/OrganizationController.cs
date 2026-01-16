@@ -1,4 +1,4 @@
-﻿using Explore.Application.DTOs.Organization;
+using Explore.Application.DTOs.Organization;
 using Explore.Application.Features.Organizations.Requests.Commands;
 using Explore.Application.Features.Organizations.Requests.Queries;
 using Explore.Application.Responses;
@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Explore.API.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/v1/[controller]")]
     [ApiController]
     public class OrganizationController : ControllerBase
     {
@@ -25,27 +25,26 @@ namespace Explore.API.Controllers
 
         // GET: api/<OrganizationController>
         [HttpGet]
-        [EndpointSummary("Get all Organizationss")]
-        [EndpointDescription("Get A List of all the Organizations (pagination!)")]
-        [AllowAnonymous] // Temporarily allow anonymous access for testing
-        public async Task<ActionResult<List<OrganizationListDto>>> GetAll()
+        [EndpointSummary("Get all Organizations")]
+        [EndpointDescription("Get a paginated list of all Organizations. Default page size is 20, max is 100.")]
+        [AllowAnonymous] // Temporarily allow anonymous access for testing TODO
+        public async Task<ActionResult<PaginatedResult<OrganizationListDto>>> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
         {
-            var organizations = await _mediator.Send(new GetOrganizationListRequest());
+            var organizations = await _mediator.Send(new GetOrganizationListRequest
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            });
             return Ok(organizations);
         }
 
-        // GET: api/<OrganizationController>/my
+        // GET: api/v1/<OrganizationController>/my
         [HttpGet("my")]
         [EndpointSummary("Get my Organizations")]
-        [EndpointDescription("Get a list of organizations created by the current user")]
+        [EndpointDescription("Get a paginated list of organizations where the current user is a member. Default page size is 20, max is 100.")]
         [Authorize]
-        public async Task<ActionResult<List<OrganizationListDto>>> GetMyOrganizations()
+        public async Task<ActionResult<PaginatedResult<OrganizationListDto>>> GetMyOrganizations([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
         {
-            //var userIdClaim = _httpContextAccessor.HttpContext?.User?.FindFirst(CustomClaimTypes.Id.ToString())?.Value;
-            //if (userIdClaim == null)
-            //{
-            //    return Unauthorized("User ID claim not found.");
-            //}
             var userId = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
                 ?? _httpContextAccessor.HttpContext?.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
                 ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sid")?.Value;
@@ -55,7 +54,12 @@ namespace Explore.API.Controllers
                 return Unauthorized("User ID not found in token");
             }
 
-            var organizations = await _mediator.Send(new GetMyOrganizationsRequest { UserId = userId });
+            var organizations = await _mediator.Send(new GetMyOrganizationsRequest
+            {
+                UserId = userId,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            });
             return Ok(organizations);
         }
 
@@ -94,8 +98,8 @@ namespace Explore.API.Controllers
 
             Console.WriteLine($"Final UserId: {userId}");
 
-            var command = new CreateOrganizationCommand() 
-            { 
+            var command = new CreateOrganizationCommand()
+            {
                 OrganizationDto = organization,
                 UserId = userId
             };
@@ -110,7 +114,7 @@ namespace Explore.API.Controllers
         {
             // Get the user ID from the token
             var userId = User.FindFirst("sub")?.Value;
-            
+
             if (string.IsNullOrEmpty(userId))
             {
                 return Unauthorized("User ID not found in token");
@@ -136,9 +140,9 @@ namespace Explore.API.Controllers
         // PUT api/<OrganizationController>/updatestatustype/5
         [HttpPut("updatestatustype/{id}")]
         [AllowAnonymous] // Temporarily allow anonymous access for testing
-        public async Task<ActionResult> UpdateStatusType(Guid id, [FromBody] UpdateOrganizationStatusTypeDto organizationStatusType)
+        public async Task<ActionResult> UpdateStatusType(Guid id, [FromBody] UpdateOrganizationApprovalStatusDto organizationApprovalStatus)
         {
-            var command = new UpdateOrganizationCommand() { Id = id, OrganizationStatusTypeDto = organizationStatusType };
+            var command = new UpdateOrganizationCommand() { Id = id, OrganizationApprovalStatusDto = organizationApprovalStatus };
             await _mediator.Send(command);
             return NoContent();
         }

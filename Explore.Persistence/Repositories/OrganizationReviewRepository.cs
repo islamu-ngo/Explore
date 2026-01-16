@@ -24,7 +24,7 @@ namespace Explore.Persistence.Repositories
         public async Task<List<OrganizationReview>> GetByUserId(Guid userId)
         {
             return await _dbContext.Set<OrganizationReview>()
-                .Include(r => r.Program)
+                .Include(r => r.Event)
                 .Where(r => r.UserId == userId)
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
@@ -33,7 +33,7 @@ namespace Explore.Persistence.Repositories
         public async Task<bool> HasUserReviewedProgram(Guid userId, Guid programId)
         {
             return await _dbContext.Set<OrganizationReview>()
-                .AnyAsync(r => r.UserId == userId && r.ProgramId == programId);
+                .AnyAsync(r => r.UserId == userId && r.EventId == programId);
         }
     }
 }

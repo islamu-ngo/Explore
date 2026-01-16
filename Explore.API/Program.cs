@@ -1,6 +1,8 @@
 using Explore.API.Extensions;
 using Explore.API.Middleware;
+using Explore.API.Services;
 using Explore.Application;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Infrastructure;
 using Explore.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -27,13 +29,41 @@ var authority = builder.Configuration["Keycloak:Authority"];
 var realm = builder.Configuration["Keycloak:Realm"];
 var audience = builder.Configuration["Keycloak:Audience"];
 
+// 1. Lire les variables d’environnement S3
+var s3Region = builder.Configuration["ISLAMU_EVENT_REGION"]; // si tu en as une
+var s3BucketName = builder.Configuration["ISLAMU_EVENT_PRIVATE_BUCKET_NAME"];
+var s3AccessKeyId = builder.Configuration["ISLAMU_EVENT_PRIVATE_ACCESS_KEY_ID"];
+var s3SecretAccessKey = builder.Configuration["ISLAMU_EVENT_PRIVATE_SECRET_ACCESS_KEY_ID"];
+var s3Endpoint = builder.Configuration["ISLAMU_EVENT_S3_ENDPOINT"];
+
+// 2. Ajouter une source de configuration en mémoire qui expose une section "S3Settings"
+var s3SettingsDict = new Dictionary<string, string?>
+{
+    ["S3Settings:Region"] = s3Region,
+    ["S3Settings:BucketName"] = s3BucketName,
+    ["S3Settings:AccessKeyId"] = s3AccessKeyId,
+    ["S3Settings:SecretAccessKey"] = s3SecretAccessKey,
+    ["S3Settings:Endpoint"] = s3Endpoint
+};
+
+builder.Configuration.AddInMemoryCollection(
+    s3SettingsDict.Where(kv => !string.IsNullOrEmpty(kv.Value))
+        .ToDictionary(kv => kv.Key, kv => kv.Value)!
+);
+
 //AddSwaggerDoc(builder.Services); moved to AddSwaggerGenWithAuth extension method
 
 // Add services to the container.
 
 builder.Services.ConfigureApplicationServices();
 builder.Services.ConfigureInfrastructureServices(builder.Configuration);
-builder.Services.CongfigurePersistenceServices(builder.Configuration);
+
+// Skip DbContext registration if running in Testing environment (Integration tests register their own)
+var skipDbContext = builder.Environment.IsEnvironment("Testing");
+builder.Services.CongfigurePersistenceServices(builder.Configuration, skipDbContextRegistration: skipDbContext);
+
+// Register tenant context for single-tenant mode
+builder.Services.AddScoped<ITenantContext, TenantContext>();
 
 builder.Services.AddControllers();
 
@@ -41,46 +71,15 @@ builder.Services.AddEndpointsApiExplorer();
 //builder.Services.AddSwaggerGen(); // moved to AddSwaggerGenWithAuth extension method
 builder.Services.AddSwaggerGenWithAuth(builder.Configuration);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-//builder.Services.AddOpenApi(opt =>
-//{
-//    opt.AddDocumentTransformer((document, context, CancellationToken) =>
-//    {
-//        document.Info.Title = "ISLAMU Explore API";
-//        document.Info.Contact = new OpenApiContact()
-//        {
-//            Name = "Amir",
-//            Email = "contact@openislamu.org"
-//        };
 
-//        // Add JWT Bearer security scheme
-//        document.Components ??= new();
-//        document.Components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
-//        {
-//            Type = SecuritySchemeType.Http,
-//            Scheme = "bearer",
-//            BearerFormat = "JWT",
-//            Description = "Enter JWT Bearer token"
-//        };
+// The build tool needs this to generate the JSON file
+builder.Services.AddOpenApi("explore-api");
 
-//        // Add global security requirement
-//        document.SecurityRequirements.Add(new OpenApiSecurityRequirement
-//        {
-//            {
-//                new OpenApiSecurityScheme
-//                {
-//                    Reference = new OpenApiReference
-//                    {
-//                        Type = ReferenceType.SecurityScheme,
-//                        Id = "Bearer"
-//                    }
-//                },
-//                Array.Empty<string>()
-//            }
-//        });
+// Add HttpClient for OpenAPI export service
+builder.Services.AddHttpClient();
 
-//        return Task.CompletedTask;
-//    });
-//});
+// Register OpenAPI export service (exports swagger.json at startup in Development)
+builder.Services.AddHostedService<OpenApiExportService>();
 
 builder.Services.AddCors(options =>
 {
@@ -113,13 +112,13 @@ builder.Services.AddCors(options =>
 builder.Host.UseSerilog((ctx, lc) =>
     lc.WriteTo.Console().ReadFrom.Configuration(ctx.Configuration));
 
+// JWT Bearer Authentication for Keycloak
+// Using standard AddJwtBearer instead of AddKeycloakJwtBearer for better control
+// over token validation when using external Keycloak (not Aspire-hosted)
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddKeycloakJwtBearer(JwtBearerDefaults.AuthenticationScheme, realm: realm, options => {
-    //.AddJwtBearer(options => {
-        // will require when in prod... needs to fix this hardcoded value later...
-        //options.RequireHttpsMetadata = false;
-
-        // Sets options.RequireHttpsMetadata to true if the config value is "true", otherwise false
+    .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
+    {
+        // Sets options.RequireHttpsMetadata based on configuration
         options.RequireHttpsMetadata = string.Equals(
             builder.Configuration["Keycloak:RequireHttpsMetadata"],
             "true",
@@ -127,25 +126,152 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         );
 
         options.Authority = authority;
-        options.Audience = audience;
         options.MetadataAddress = builder.Configuration["Keycloak:MetadataAddress"];
-        options.TokenValidationParameters = new TokenValidationParameters
+
+        // Valid audiences for multi-client support (BFF pattern)
+        // Keycloak uses 'azp' (authorized party) in addition to 'aud' for client identification
+        var validAudiences = new[]
         {
-            ValidateAudience = true,
-            ValidateIssuer = true,
-            ValidIssuer = authority,
-            // it only checks if envirement variable isnullorempty... I need audience to contain identity-api !!
-            //ValidateAudience = !string.IsNullOrEmpty(builder.Configuration["Keycloak:Audience"]),
-            ValidAudiences = new[] { "explore-api" },
-            ValidateLifetime = true,
-            NameClaimType = "preferred_username",
-            RoleClaimType = "roles" // see mapper note below
+            "explore-api",           // Direct API access (Swagger, external clients)
+            "explore-blazor-server", // Blazor Server BFF pattern (forwards OIDC tokens)
+            "account"                // Keycloak account service (common in Keycloak tokens)
         };
 
-        options.BackchannelHttpHandler = new HttpClientHandler
+        // Token validation parameters for multi-client support (BFF pattern)
+        options.TokenValidationParameters = new TokenValidationParameters
         {
-            ServerCertificateCustomValidationCallback =
-                HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+            // Custom audience validation that checks both 'aud' and 'azp' claims
+            // Keycloak often puts the client ID in 'azp' rather than 'aud'
+            ValidateAudience = true,
+            AudienceValidator = (audiences, securityToken, validationParameters) =>
+            {
+                var audienceList = audiences?.ToList() ?? new List<string>();
+
+                // Check standard 'aud' claim
+                if (audienceList.Any(aud => validAudiences.Contains(aud)))
+                {
+                    return true;
+                }
+
+                // Check 'azp' (authorized party) claim - Keycloak uses this for the client ID
+                if (securityToken is System.IdentityModel.Tokens.Jwt.JwtSecurityToken jwtToken)
+                {
+                    var azp = jwtToken.Claims.FirstOrDefault(c => c.Type == "azp")?.Value;
+                    if (!string.IsNullOrEmpty(azp) && validAudiences.Contains(azp))
+                    {
+                        return true;
+                    }
+
+                    // Log the audience validation failure for debugging
+                    Console.WriteLine($"[JWT AudienceValidator] Token audiences: [{string.Join(", ", audienceList)}], azp: {azp ?? "(null)"}, valid audiences: [{string.Join(", ", validAudiences)}]");
+                }
+
+                return false;
+            },
+
+            // Issuer validation
+            ValidateIssuer = true,
+            ValidIssuer = authority,
+
+            // Lifetime validation
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(5), // Allow 5 minutes clock skew
+
+            // Signature validation (automatic via OIDC discovery)
+            ValidateIssuerSigningKey = true,
+
+            // Claim type mappings for Keycloak
+            NameClaimType = "preferred_username",
+            RoleClaimType = "roles"
+        };
+
+        // Development: Accept self-signed certificates for Keycloak
+        if (builder.Environment.IsDevelopment())
+        {
+            options.BackchannelHttpHandler = new HttpClientHandler
+            {
+                ServerCertificateCustomValidationCallback =
+                    HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+            };
+        }
+
+        // JWT Bearer events for debugging and logging
+        options.Events = new JwtBearerEvents
+        {
+            OnAuthenticationFailed = context =>
+            {
+                var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+                logger.LogWarning("[JWT] Authentication failed: {Error}", context.Exception?.Message);
+
+                // Log detailed exception info for debugging
+                if (context.Exception is SecurityTokenValidationException stve)
+                {
+                    logger.LogWarning("[JWT] Token validation error details: {Details}", stve.Message);
+                }
+                if (context.Exception?.InnerException != null)
+                {
+                    logger.LogWarning("[JWT] Inner exception: {Inner}", context.Exception.InnerException.Message);
+                }
+
+                // Log token details for debugging audience issues
+                var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+                if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                {
+                    try
+                    {
+                        var token = authHeader.Substring(7);
+                        var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+                        if (handler.CanReadToken(token))
+                        {
+                            var jwt = handler.ReadJwtToken(token);
+                            var aud = jwt.Audiences?.ToList() ?? new List<string>();
+                            var azp = jwt.Claims.FirstOrDefault(c => c.Type == "azp")?.Value;
+                            var iss = jwt.Issuer;
+                            var exp = jwt.ValidTo;
+
+                            logger.LogWarning("[JWT] Token details - Issuer: {Issuer}, Audiences: [{Audiences}], Azp: {Azp}, Expires: {Exp}",
+                                iss, string.Join(", ", aud), azp ?? "(null)", exp);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogWarning("[JWT] Could not parse token for debugging: {Error}", ex.Message);
+                    }
+                }
+
+                return Task.CompletedTask;
+            },
+
+            OnTokenValidated = context =>
+            {
+                var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+                var claims = context.Principal?.Claims.Select(c => $"{c.Type}={c.Value}");
+                logger.LogInformation("[JWT] Token validated successfully. Claims: {Claims}",
+                    string.Join(", ", claims ?? Array.Empty<string>()));
+                return Task.CompletedTask;
+            },
+
+            OnChallenge = context =>
+            {
+                var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+                logger.LogWarning("[JWT] Challenge issued. Error: {Error}, ErrorDescription: {Desc}",
+                    context.Error, context.ErrorDescription);
+                return Task.CompletedTask;
+            },
+
+            OnMessageReceived = context =>
+            {
+                var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+                var hasAuth = context.Request.Headers.ContainsKey("Authorization");
+                var authHeader = hasAuth ? context.Request.Headers["Authorization"].ToString() : null;
+                var tokenPreview = !string.IsNullOrEmpty(authHeader) && authHeader.Length > 20
+                    ? $"{authHeader[..20]}..."
+                    : authHeader;
+
+                logger.LogInformation("[JWT] Message received. Path: {Path}, Has Authorization: {HasAuth}, Header: {Token}",
+                    context.Request.Path, hasAuth, tokenPreview);
+                return Task.CompletedTask;
+            }
         };
     });
 
@@ -239,7 +365,7 @@ app.Run();
 //    {
 //        c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
 //        {
-//            Description = @"JWT Authorization header using the Bearer scheme. 
+//            Description = @"JWT Authorization header using the Bearer scheme.
 //                            Enter 'Bearer' [space] and then your token in the text input below.
 //                            Example: 'Bearer 12345abcdef'",
 //            Name = "Authorization",

@@ -3,55 +3,7 @@
 
 <MudDialog>
     <DialogContent>
-        <style>
-            .review-dialog-content {
-                padding: 8px 0;
-            }
-
-            .rating-section {
-                margin-bottom: 24px;
-                text-align: center;
-            }
-
-            .rating-label {
-                font-size: 1rem;
-                font-weight: 600;
-                margin-bottom: 12px;
-                color: var(--mud-palette-text-primary);
-            }
-
-            .star-rating {
-                display: flex;
-                justify-content: center;
-                gap: 8px;
-                font-size: 2.5rem;
-            }
-
-            .star {
-                cursor: pointer;
-                transition: all 0.2s ease;
-                color: var(--mud-palette-text-disabled);
-            }
-
-            .star:hover,
-            .star.filled {
-                color: #FFC107;
-                transform: scale(1.1);
-            }
-
-            .comment-section {
-                margin-bottom: 16px;
-            }
-
-            .comment-label {
-                font-size: 0.875rem;
-                font-weight: 600;
-                margin-bottom: 8px;
-                color: var(--mud-palette-text-primary);
-            }
-        </style>
-
-        <div class="review-dialog-content">
+<div class="review-dialog-content">
             <div class="rating-section">
                 <div class="rating-label">How would you rate this event?</div>
                 <div class="star-rating">
@@ -163,3 +115,4 @@
         DialogReference?.Close(DialogResult.Cancel());
     }
 }
+

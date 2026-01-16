@@ -1,20 +1,28 @@
-﻿using System;
-using System.Collections.Generic;
+using System;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text;
+using Explore.Domain.Interfaces;
 
 namespace Explore.Domain
 {
-    public class StorageObject
+    public class StorageObject : ITenantEntity
     {
         public Guid Id { get; set; }
+
         [ForeignKey("FileType")]
         public int FileTypeId { get; set; }
         public FileType FileType { get; set; }
+
         public string Uri { get; set; }
         public string FullName { get; set; }
         public string Extension { get; set; }
-        public int Size { get; set; }
-        public Guid CreatedBy { get; set; }
+        public long Size { get; set; }
+
+        [ForeignKey("Tenant")]
+        public Guid TenantId { get; set; }
+        public Tenant Tenant { get; set; }
+
+        [ForeignKey("Actor")]
+        public Guid? ActorId { get; set; }
+        public Actor? Actor { get; set; }
     }
 }

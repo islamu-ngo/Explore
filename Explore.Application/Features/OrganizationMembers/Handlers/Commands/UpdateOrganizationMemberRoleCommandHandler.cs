@@ -48,40 +48,38 @@ namespace Explore.Application.Features.OrganizationMembers.Handlers.Commands
                 return response;
             }
 
-            // Check permissions
-            bool isOwner = organization.CreatedByUserId == request.RequesterUserId;
-            
-            if (!isOwner)
+            // Check permissions - requester must be an Admin
+            var members = await _organizationMemberRepository.GetMembersByOrganizationId(memberToUpdate.OrganizationId);
+            if (Guid.TryParse(request.RequesterUserId, out Guid requesterGuid))
             {
-                var members = await _organizationMemberRepository.GetMembersByOrganizationId(memberToUpdate.OrganizationId);
-                if (Guid.TryParse(request.RequesterUserId, out Guid requesterGuid))
+                var requesterMember = members.FirstOrDefault(m => m.UserId == requesterGuid);
+                // Only Admin role (OrganizationRoleId = 1) can update roles
+                if (requesterMember == null || requesterMember.OrganizationRoleId != (int)OrganizationRoleEnum.Admin)
                 {
-                    var requesterMember = members.FirstOrDefault(m => m.UserId == requesterGuid);
-                    // Only Admins, CoOwners and Creators can update roles
-                    if (requesterMember == null || (requesterMember.Role != OrganizationRole.Admin && requesterMember.Role != OrganizationRole.CoOwner && requesterMember.Role != OrganizationRole.Creator))
-                    {
-                        response.Success = false;
-                        response.Message = "You do not have permission to update roles.";
-                        return response;
-                    }
-                    
-                    // Admins cannot change role of Creator or other Admins (optional rule, but good practice)
-                    if (memberToUpdate.Role == OrganizationRole.Creator)
-                    {
-                         response.Success = false;
-                         response.Message = "Cannot change role of the Creator.";
-                         return response;
-                    }
+                    response.Success = false;
+                    response.Message = "You do not have permission to update roles.";
+                    return response;
                 }
-                else
+                
+                // Prevent demoting the last admin
+                var adminCount = members.Count(m => m.OrganizationRoleId == (int)OrganizationRoleEnum.Admin);
+                if (memberToUpdate.OrganizationRoleId == (int)OrganizationRoleEnum.Admin && 
+                    (int)dto.Role != (int)OrganizationRoleEnum.Admin && 
+                    adminCount <= 1)
                 {
-                     response.Success = false;
-                     response.Message = "Invalid requester User ID.";
-                     return response;
+                    response.Success = false;
+                    response.Message = "Cannot demote the last admin of the organization.";
+                    return response;
                 }
             }
+            else
+            {
+                response.Success = false;
+                response.Message = "Invalid requester User ID.";
+                return response;
+            }
 
-            memberToUpdate.Role = dto.Role;
+            memberToUpdate.OrganizationRoleId = (int)dto.Role;
             await _organizationMemberRepository.Update(memberToUpdate);
 
             response.Success = true;

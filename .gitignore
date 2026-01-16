@@ -6,6 +6,19 @@
 # dotenv files
 .env
 
+.env.local
+.env.*.local
+config.ini
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Database
+*.sqlite
+*.db
+
 # User-specific files
 *.rsuser
 *.suo
@@ -15,6 +28,9 @@
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
+
+# MCP config
+.mcp.json
 
 # Mono auto generated files
 mono_crash.*
@@ -184,6 +200,7 @@ DocProject/Help/html
 
 # Click-Once directory
 publish/
+Publish/
 
 # Publish Web Output
 *.[Pp]ublish.xml
@@ -484,3 +501,8 @@ $RECYCLE.BIN/
 *.swp
 /.vs/Explore
 /.vs
+
+# remove error logs except from last one
+.claude/hooks/.claude/build-cache/
+
+.mcp.json

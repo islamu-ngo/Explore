@@ -1,13 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+using System;
 
 namespace Explore.Domain
 {
     public class AudienceAge
     {
         public int Id { get; set; }
+        public string MasterCode { get; set; }
         public string FullName { get; set; }
+        public string? Description { get; set; }
         public int? MinAge { get; set; }
         public int? MaxAge { get; set; }
     }

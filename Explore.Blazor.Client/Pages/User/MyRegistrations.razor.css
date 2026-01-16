@@ -1,0 +1,351 @@
+/* ===== Block: my-registrations ===== */
+::deep .my-registrations {
+    padding: 24px 0 40px;
+    min-height: 100vh;
+}
+
+/* ===== Element: my-registrations__header ===== */
+::deep .my-registrations__header {
+    margin-bottom: 32px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid var(--mud-palette-divider);
+}
+
+/* ===== Element: my-registrations__title ===== */
+::deep .my-registrations__title {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    background: linear-gradient(
+        135deg,
+        var(--mud-palette-primary),
+        var(--mud-palette-primary-darken)
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* ===== Element: my-registrations__subtitle ===== */
+::deep .my-registrations__subtitle {
+    color: var(--mud-palette-text-secondary);
+    font-size: 1rem;
+}
+
+/* ===== Element: my-registrations__stats ===== */
+::deep .my-registrations__stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+}
+
+/* ===== Element: my-registrations__stat ===== */
+::deep .my-registrations__stat {
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid var(--mud-palette-lines-default);
+    background: var(--mud-palette-surface);
+    transition: all 0.3s ease;
+}
+
+::deep .my-registrations__stat:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* ===== Element: my-registrations__stat-icon ===== */
+::deep .my-registrations__stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+}
+
+/* ===== Modifier: my-registrations__stat-icon--primary ===== */
+::deep .my-registrations__stat-icon--primary {
+    background: linear-gradient(
+        135deg,
+        var(--mud-palette-primary),
+        var(--mud-palette-primary-darken)
+    );
+    color: white;
+}
+
+/* ===== Modifier: my-registrations__stat-icon--success ===== */
+::deep .my-registrations__stat-icon--success {
+    background: linear-gradient(
+        135deg,
+        var(--mud-palette-success),
+        var(--mud-palette-success-darken)
+    );
+    color: white;
+}
+
+/* ===== Modifier: my-registrations__stat-icon--warning ===== */
+::deep .my-registrations__stat-icon--warning {
+    background: linear-gradient(
+        135deg,
+        var(--mud-palette-warning),
+        var(--mud-palette-warning-darken)
+    );
+    color: white;
+}
+
+/* ===== Element: my-registrations__stat-value ===== */
+::deep .my-registrations__stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--mud-palette-text-primary);
+    line-height: 1;
+    margin-bottom: 4px;
+}
+
+/* ===== Element: my-registrations__stat-label ===== */
+::deep .my-registrations__stat-label {
+    font-size: 0.875rem;
+    color: var(--mud-palette-text-secondary);
+}
+
+/* ===== Element: my-registrations__filters ===== */
+::deep .my-registrations__filters {
+    margin-bottom: 24px;
+    padding: 16px;
+    border-radius: 12px;
+    background: var(--mud-palette-surface);
+    border: 1px solid var(--mud-palette-lines-default);
+}
+
+/* ===== Element: my-registrations__filters-grid ===== */
+::deep .my-registrations__filters-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 16px;
+    align-items: end;
+}
+
+/* ===== Element: my-registrations__grid ===== */
+::deep .my-registrations__grid {
+    display: grid;
+    gap: 20px;
+}
+
+/* ===== Element: my-registrations__card ===== */
+::deep .my-registrations__card {
+    border-radius: 16px;
+    border: 1px solid var(--mud-palette-lines-default);
+    overflow: hidden;
+    transition: all 0.3s ease;
+    background: var(--mud-palette-surface);
+}
+
+::deep .my-registrations__card:hover {
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+}
+
+/* ===== Element: my-registrations__card-content ===== */
+::deep .my-registrations__card-content {
+    display: grid;
+    grid-template-columns: 140px 1fr auto;
+    gap: 20px;
+    padding: 20px;
+}
+
+/* ===== Element: my-registrations__image ===== */
+::deep .my-registrations__image {
+    width: 140px;
+    height: 140px;
+    border-radius: 12px;
+    overflow: hidden;
+    background: linear-gradient(
+        135deg,
+        var(--mud-palette-primary),
+        var(--mud-palette-primary-darken)
+    );
+    position: relative;
+}
+
+::deep .my-registrations__image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* ===== Element: my-registrations__details ===== */
+::deep .my-registrations__details {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* ===== Element: my-registrations__event-title ===== */
+::deep .my-registrations__event-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--mud-palette-text-primary);
+    margin: 0;
+}
+
+/* ===== Element: my-registrations__meta ===== */
+::deep .my-registrations__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+}
+
+/* ===== Element: my-registrations__meta-item ===== */
+::deep .my-registrations__meta-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--mud-palette-text-secondary);
+    font-size: 0.875rem;
+}
+
+::deep .my-registrations__meta-item .mud-icon-root {
+    font-size: 1.125rem;
+}
+
+/* ===== Element: my-registrations__status ===== */
+::deep .my-registrations__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ===== Modifier: my-registrations__status--approved ===== */
+::deep .my-registrations__status--approved {
+    background: rgba(76, 175, 80, 0.1);
+    color: var(--mud-palette-success);
+}
+
+/* ===== Modifier: my-registrations__status--pending ===== */
+::deep .my-registrations__status--pending {
+    background: rgba(33, 150, 243, 0.1);
+    color: var(--mud-palette-primary);
+}
+
+/* ===== Modifier: my-registrations__status--cancelled ===== */
+::deep .my-registrations__status--cancelled {
+    background: rgba(244, 67, 54, 0.1);
+    color: var(--mud-palette-error);
+}
+
+/* ===== Modifier: my-registrations__status--completed ===== */
+::deep .my-registrations__status--completed {
+    background: rgba(76, 175, 80, 0.1);
+    color: var(--mud-palette-success);
+}
+
+/* ===== Element: my-registrations__actions ===== */
+::deep .my-registrations__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    justify-content: center;
+}
+
+/* ===== Element: my-registrations__empty ===== */
+::deep .my-registrations__empty {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+/* ===== Element: my-registrations__empty-icon ===== */
+::deep .my-registrations__empty-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 20px;
+    border-radius: 50%;
+    background: linear-gradient(
+        135deg,
+        var(--mud-palette-primary),
+        var(--mud-palette-primary-darken)
+    );
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+::deep .my-registrations__empty-icon .mud-icon-root {
+    font-size: 2.5rem;
+}
+
+/* ===== Element: my-registrations__empty-title ===== */
+::deep .my-registrations__empty-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+/* ===== Element: my-registrations__empty-description ===== */
+::deep .my-registrations__empty-description {
+    color: var(--mud-palette-text-secondary);
+    margin-bottom: 24px;
+}
+
+/* ===== Responsive: Tablet (960px) ===== */
+@media (max-width: 960px) {
+    ::deep .my-registrations__filters-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ===== Responsive: Mobile (768px) ===== */
+@media (max-width: 768px) {
+    ::deep .my-registrations__card-content {
+        grid-template-columns: 1fr;
+    }
+
+    ::deep .my-registrations__image {
+        width: 100%;
+        height: 200px;
+    }
+
+    ::deep .my-registrations__actions {
+        flex-direction: row;
+    }
+}
+
+/* ===== Responsive: Mobile Small (480px) ===== */
+@media (max-width: 480px) {
+    ::deep .my-registrations__filters {
+        padding: 12px;
+        border-radius: 10px;
+    }
+
+    ::deep .my-registrations__filters-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    ::deep .my-registrations__card-content {
+        padding: 14px;
+        gap: 12px;
+    }
+
+    ::deep .my-registrations__card {
+        border-radius: 12px;
+    }
+
+    ::deep .my-registrations__image {
+        height: 160px;
+    }
+
+    ::deep .my-registrations__actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+}

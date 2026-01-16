@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+﻿<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
@@ -6,13 +6,48 @@
     <Nullable>enable</Nullable>
     <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
     <StaticWebAssetProjectMode>Default</StaticWebAssetProjectMode>
-    <!--<BdtSkipComponents>ItemContent;MudTimelineItem;MudDialog</BdtSkipComponents>-->
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Blazouter" Version="1.0.13" />
+    <PackageReference Include="Blazouter.WebAssembly" Version="1.0.13" />
+    <PackageReference Include="FluentValidation" Version="11.9.0" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="9.*" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Authentication" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.ApiDescription.Client" Version="9.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.1" />
     <PackageReference Include="MudBlazor" Version="8.13.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="NSwag.ApiDescription.Client" Version="14.4.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <!-- 
+    OpenAPI Client Generation (NSwag)
+    ==================================
+    WORKFLOW:
+    1. Start Aspire → API starts and exports swagger.json (via OpenApiExportService)
+    2. Rebuild Blazor.Client → NSwag regenerates EventApiClient.g.cs from swagger.json
+    
+    The swagger.json is checked into source control for CI/CD builds.
+    In development, the API auto-exports it at startup.
+    
+    To manually regenerate after API changes:
+    - Restart Aspire (API exports fresh swagger.json)
+    - Rebuild this project (NSwag regenerates client)
+  -->
+  <ItemGroup>
+	  <OpenApiReference Include="..\Explore.API\swagger.json" CodeGenerator="NSwagCSharp" Namespace="Explore.Blazor.Client.Clients" ClassName="EventApiClient" OutputPath="$(ProjectDir)Clients\EventApiClient.g.cs">
+		  <Options>/GenerateDtoTypes:true /GenerateClientInterfaces:true /InjectHttpClient:true /GenerateExceptionClasses:true /ExceptionClass:ApiException /UseBaseUrl:false /GenerateClientClasses:true /ClientClassAccessModifier:public /JsonLibrary:NewtonsoftJson</Options>
+	  </OpenApiReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Helpers\" />
   </ItemGroup>
 
 </Project>

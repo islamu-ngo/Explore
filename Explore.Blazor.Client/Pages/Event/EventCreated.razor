@@ -1,8 +1,10 @@
-@page "/event-created/{EventId:guid}"
 @using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Clients
+@using Blazouter.Services
 @inject IEventService EventService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
+@inject RouterStateService RouterState
 
 <PageTitle>Event Created - Explore</PageTitle>
 
@@ -18,9 +20,9 @@
     {
         <MudPaper Class="pa-8">
             <div class="text-center mb-6">
-                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" 
-                        Color="Color.Success" 
-                        Size="Size.Large" 
+                <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
+                        Color="Color.Success"
+                        Size="Size.Large"
                         Style="font-size: 5rem;" />
                 <MudText Typo="Typo.h4" Color="Color.Success" Class="mt-4">
                     Event Created Successfully!
@@ -46,12 +48,8 @@
                 </MudItem>
 
                 <MudItem xs="12" sm="6">
-                    <MudText Typo="Typo.subtitle2" Color="Color.Primary">Location</MudText>
-                    <MudText Typo="Typo.body1" Class="mb-3">
-                        @eventDetails.Address<br />
-                        @eventDetails.City, @eventDetails.PostCode<br />
-                        @eventDetails.Country
-                    </MudText>
+                    <MudText Typo="Typo.subtitle2" Color="Color.Primary">Event Format</MudText>
+                    <MudText Typo="Typo.body1" Class="mb-3">@eventDetails.EventFormatFullName</MudText>
                 </MudItem>
 
                 <MudItem xs="12" sm="6">
@@ -60,31 +58,39 @@
                 </MudItem>
 
                 <MudItem xs="12" sm="6">
-                    <MudText Typo="Typo.subtitle2" Color="Color.Primary">Expected Attendees</MudText>
-                    <MudText Typo="Typo.body1" Class="mb-3">@(eventDetails.AudienceAttendees?.ToString() ?? "Not specified")</MudText>
+                    <MudText Typo="Typo.subtitle2" Color="Color.Primary">Target Audience</MudText>
+                    <MudText Typo="Typo.body1" Class="mb-3">@eventDetails.AudienceGenderFullName, @eventDetails.AudienceAgeFullName</MudText>
                 </MudItem>
 
                 <MudItem xs="12" sm="6">
                     <MudText Typo="Typo.subtitle2" Color="Color.Primary">Price</MudText>
                     <MudText Typo="Typo.body1" Class="mb-3">
-                        @(eventDetails.Price > 0 ? $"€{eventDetails.Price:N2}" : "Free")
+                        @(eventDetails.Price > 0 ? $"{eventDetails.CurrencyCode} {eventDetails.Price:N2}" : "Free")
                     </MudText>
                 </MudItem>
 
                 <MudItem xs="12" sm="6">
                     <MudText Typo="Typo.subtitle2" Color="Color.Primary">Registration Required</MudText>
                     <MudText Typo="Typo.body1" Class="mb-3">
-                        @(eventDetails.IsRegistrationRequired == true ? "Yes" : "No")
+                        @(eventDetails.IsRegistrationRequired ? "Yes" : "No")
                     </MudText>
                 </MudItem>
 
-                @if (!string.IsNullOrEmpty(eventDetails.ProgramUrl))
+                @if (!string.IsNullOrEmpty(eventDetails.EventUrl))
                 {
                     <MudItem xs="12" sm="6">
-                        <MudText Typo="Typo.subtitle2" Color="Color.Primary">Program URL</MudText>
-                        <MudLink Href="@eventDetails.ProgramUrl" Target="_blank" Typo="Typo.body1">
-                            View Program
+                        <MudText Typo="Typo.subtitle2" Color="Color.Primary">Event URL</MudText>
+                        <MudLink Href="@eventDetails.EventUrl" Target="_blank" Typo="Typo.body1">
+                            View Event Page
                         </MudLink>
+                    </MudItem>
+                }
+
+                @if (eventDetails.FirstSessionDate.HasValue)
+                {
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.subtitle2" Color="Color.Primary">First Session</MudText>
+                        <MudText Typo="Typo.body1" Class="mb-3">@eventDetails.FirstSessionDate.Value.ToString("g")</MudText>
                     </MudItem>
                 }
             </MudGrid>
@@ -92,12 +98,12 @@
             <MudDivider Class="my-4" />
 
             <div class="d-flex justify-content-between mt-6">
-                <MudButton Variant="Variant.Outlined" 
+                <MudButton Variant="Variant.Outlined"
                           Color="Color.Primary"
                           OnClick="@(() => Navigation.NavigateTo("/createevent"))">
                     Create Another Event
                 </MudButton>
-                <MudButton Variant="Variant.Filled" 
+                <MudButton Variant="Variant.Filled"
                           Color="Color.Primary"
                           OnClick="@(() => Navigation.NavigateTo("/myevents"))">
                     View My Events
@@ -108,11 +114,9 @@
     else
     {
         <MudPaper Class="pa-8 text-center">
-            <MudIcon Icon="@Icons.Material.Filled.Error" 
-                    Color="Color.Error" 
-                    Size="Size.Large" />
+            <MudIcon Icon="@Icons.Material.Filled.Error" Color="Color.Error" Size="Size.Large" />
             <MudText Typo="Typo.h6" Class="mt-4">Event not found</MudText>
-            <MudButton Variant="Variant.Filled" 
+            <MudButton Variant="Variant.Filled"
                       Color="Color.Primary"
                       Class="mt-4"
                       OnClick="@(() => Navigation.NavigateTo("/myevents"))">
@@ -123,14 +127,20 @@
 </MudContainer>
 
 @code {
-    [Parameter]
-    public Guid EventId { get; set; }
+    private Guid EventId { get; set; }
 
-    private EventDetailsDto? eventDetails;
+    private EventDto? eventDetails;
     private bool isLoading = true;
 
     protected override async Task OnInitializedAsync()
     {
+        // Get route parameter from Blazouter
+        var eventIdStr = RouterState.GetParam("eventId");
+        if (Guid.TryParse(eventIdStr, out var id))
+        {
+            EventId = id;
+        }
+
         try
         {
             isLoading = true;

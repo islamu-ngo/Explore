@@ -1,12 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+using System;
 
 namespace Explore.Domain
 {
     public class AudienceGender
     {
         public int Id { get; set; }
+        public string MasterCode { get; set; }
         public string FullName { get; set; }
+        public string? Description { get; set; }
     }
 }

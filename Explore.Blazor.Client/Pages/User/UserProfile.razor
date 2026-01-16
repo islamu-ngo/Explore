@@ -1,325 +1,192 @@
 @page "/user/profile"
+@using MudBlazor
+@using Microsoft.AspNetCore.Authorization
+@using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Clients
+@attribute [Authorize]
 
 <PageTitle>User Profile</PageTitle>
 
-<style>
-/* ===== TOKENS ===== */
-:root{
-  --ring: color-mix(in srgb, var(--mud-palette-primary) 30%, transparent);
-}
-
-/* ===== HERO / HEADER ===== */
-.user-hero{
-  position: relative;
-  border-radius: 16px;
-  overflow: hidden;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--mud-palette-primary) 22%, #0000), color-mix(in srgb, var(--mud-palette-secondary) 18%, #0000));
-  min-height: 200px;
-}
-.user-hero::after{
-  content:""; position:absolute; inset:0;
-  background: linear-gradient(180deg, rgba(0,0,0,.08), rgba(0,0,0,.18));
-}
-.user-header{
-  display:flex; gap:24px; align-items:flex-end; padding: 24px; position: relative; z-index: 1;
-}
-.user-avatar{
-  width:140px; height:140px; border-radius: 50%; overflow:hidden;
-  border: 4px solid var(--mud-palette-surface);
-  box-shadow: 0 12px 32px rgba(0,0,0,.22);
-  background: var(--mud-palette-surface);
-}
-
-/* ===== NAME ===== */
-
-/* ===== STATS ===== */
-.stat-grid{ 
-  display:grid; 
-  grid-template-columns: repeat(3, 1fr); 
-  gap:16px; 
-  margin-top: 16px; 
-}
-.stat{
-  text-align:center; 
-  padding:16px 12px; 
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--mud-palette-primary) 8%, var(--mud-palette-surface));
-  border: 1px solid color-mix(in srgb, var(--mud-palette-primary) 20%, var(--mud-palette-lines-default));
-  transition: transform .12s ease, box-shadow .12s ease;
-}
-.stat:hover{
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0,0,0,.1);
-}
-.stat .num{ 
-  color: var(--mud-palette-primary); 
-  font-weight: 800; 
-  font-size: 1.75rem;
-}
-
-/* ===== CARDS ===== */
-.section-card{
-  border-radius: 16px;
-  border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
-  overflow: hidden;
-  background: var(--mud-palette-surface);
-}
-.section-body{ padding: 20px; }
-.section-body + .section-body{ border-top: 1px solid var(--mud-palette-lines-default); }
-
-/* Info list */
-.info-list{ display:grid; gap:14px; }
-.info-row{ 
-  display:flex; 
-  align-items:center; 
-  gap:12px;
-  padding: 12px;
-  border-radius: 10px;
-  transition: background .12s ease;
-}
-.info-row:hover{
-  background: color-mix(in srgb, var(--mud-palette-primary) 5%, transparent);
-}
-
-/* ===== INTERESTS / TAGS ===== */
-.tags-wrap{
-  display:flex; gap:8px; flex-wrap:wrap;
-}
-.tag{
-  padding: 8px 16px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--mud-palette-primary) 12%, var(--mud-palette-surface));
-  border: 1px solid color-mix(in srgb, var(--mud-palette-primary) 25%, var(--mud-palette-lines-default));
-  font-weight: 600;
-  font-size: .9rem;
-  transition: transform .12s ease, background .12s ease;
-}
-.tag:hover{
-  transform: translateY(-2px);
-  background: color-mix(in srgb, var(--mud-palette-primary) 20%, var(--mud-palette-surface));
-}
-
-/* ===== ACTIVITY CARD ===== */
-.activity-item{
-  border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
-  background: color-mix(in srgb, var(--mud-palette-background) 85%, var(--mud-palette-surface));
-  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
-}
-.activity-item:hover{
-  transform: translateY(-2px);
-  box-shadow: 0 12px 28px rgba(0,0,0,.12);
-  border-color: color-mix(in srgb, var(--mud-palette-primary) 40%, var(--mud-palette-lines-default));
-}
-
-/* ===== REVIEWS ===== */
-.review-card{
-  border-radius: 14px;
-  border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
-  background: color-mix(in srgb, var(--mud-palette-background) 85%, var(--mud-palette-surface));
-  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
-}
-.review-card:hover{
-  transform: translateY(-2px);
-  box-shadow: 0 12px 28px rgba(0,0,0,.12);
-  border-color: color-mix(in srgb, var(--mud-palette-primary) 35%, var(--mud-palette-lines-default));
-}
-
-/* ===== Star Rating Display ===== */
-.star-rating {
-    display: inline-flex;
-    gap: 2px;
-    color: #FFC107; /* gold color for stars */
-}
-
-.star-rating .mud-icon-root {
-    font-size: 1.1rem;
-}
-
-/* Buttons */
-.btn-outline .mud-button-root{
-  border-radius: 10px;
-}
-.btn-outline .mud-button-root:focus-visible{
-  box-shadow: 0 0 0 3px var(--ring);
-}
-
-/* Responsive */
-@@media (max-width: 960px){
-  .user-header{ align-items: center; flex-direction: column; text-align: center; }
-  .stat-grid{ grid-template-columns: repeat(2, 1fr); }
-}
-@@media (max-width: 600px){
-  .stat-grid{ grid-template-columns: repeat(1, 1fr); }
-}
-</style>
-
 @if (IsLoading)
 {
-    <MudContainer Class="py-6">
+    <MudContainer Class="user-profile user-profile--loading">
         <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Style="min-height: 400px;">
             <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
             <MudText Typo="Typo.h6">Loading profile...</MudText>
         </MudStack>
     </MudContainer>
 }
+else if (!string.IsNullOrEmpty(ErrorMessage))
+{
+    <MudContainer Class="user-profile user-profile--error">
+        <MudAlert Severity="Severity.Error" Class="mb-4">
+            @ErrorMessage
+        </MudAlert>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@LoadUserDataAsync">
+            Retry
+        </MudButton>
+    </MudContainer>
+}
 else if (UserData == null)
 {
-    <MudContainer Class="py-6">
+    <MudContainer Class="user-profile user-profile--no-data">
         <MudAlert Severity="Severity.Warning">
             Unable to load user profile. Please try logging in again.
         </MudAlert>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/login" Class="mt-4">
+            Log In
+        </MudButton>
     </MudContainer>
 }
 else
 {
-<MudContainer Class="py-6">
+    <MudContainer Class="user-profile">
+        <!-- User Info (Hero + Header + Stats) -->
+        <MudCard Class="mb-6 user-profile__card" Elevation="0">
+            <div class="user-profile__hero"></div>
 
-    <!-- User Info (Hero + Header + Stats) -->
-    <MudCard Class="mb-6 section-card" Elevation="0">
-        <div class="user-hero"></div>
+            <MudCardContent Class="user-profile__content" Style="padding-top:0;">
+                <div class="user-profile__header">
+                    <!-- Avatar -->
+                    <div class="user-profile__avatar">
+                        <MudAvatar Size="Size.Large" Style="width:140px; height:140px; font-size:3rem;">
+                            @GetInitials()
+                        </MudAvatar>
+                    </div>
 
-        <MudCardContent Class="section-body" Style="padding-top:0;">
-            <div class="user-header">
-                <!-- Avatar -->
-                <div class="user-avatar">
-                    <MudImage Src="https://via.placeholder.com/280x280/7E6FFF/FFFFFF?text=AS" Alt="User Avatar" Style="width:100%; height:100%; object-fit:cover;" />
-                </div>
+                    <!-- Name + Stats -->
+                    <div style="flex:1;">
+                        <MudText Typo="Typo.h4" Class="mb-1">@GetFullName()</MudText>
+                        <MudText Typo="Typo.body1" Color="Color.Secondary">
+                            @("@" + GetUsername()) @if (!string.IsNullOrEmpty(GetDisplayLocation()) && GetDisplayLocation() != "Location not set") { <span> • @GetDisplayLocation()</span> }
+                        </MudText>
 
-                <!-- Name + Stats -->
-                <div style="flex:1;">
-                    <MudText Typo="Typo.h4" Class="mb-1">@GetFullName()</MudText>
-                    <MudText Typo="Typo.body1" Color="Color.Secondary">
-                        @("@" + UserData.Username) • @GetDisplayLocation()
-                    </MudText>
-
-                    <div class="stat-grid">
-                        <div class="stat">
-                            <MudText Typo="Typo.h5" Class="num">@EventsAttended</MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">Events Attended</MudText>
-                        </div>
-                        <div class="stat">
-                            <MudText Typo="Typo.h5" Class="num">@ReviewsGiven</MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">Reviews Given</MudText>
+                        <div class="user-profile__stats">
+                            <div class="user-profile__stat">
+                                <MudText Typo="Typo.h5" Class="user-profile__stat-value">@EventsAttended</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Events Attended</MudText>
+                            </div>
+                            <div class="user-profile__stat">
+                                <MudText Typo="Typo.h5" Class="user-profile__stat-value">@ReviewsGiven</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Reviews Given</MudText>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </MudCardContent>
-    </MudCard>
+            </MudCardContent>
+        </MudCard>
 
-    <MudGrid>
-        <!-- Left Column -->
-        <MudItem xs="12" md="4">
-            <!-- About Section -->
-            <MudCard Class="mb-6 section-card" Elevation="0">
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h6">About</MudText>
-                    </CardHeaderContent>
-                </MudCardHeader>
+        <MudGrid>
+            <!-- Left Column -->
+            <MudItem xs="12" md="4">
+                <!-- About Section -->
+                <MudCard Class="mb-6 user-profile__card" Elevation="0">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">About</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
 
-                <MudCardContent Class="section-body">
-                    @if (!string.IsNullOrEmpty(UserData.Bio))
-                    {
-                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
-                            @UserData.Bio
-                        </MudText>
-                    }
-                    else
-                    {
+                    <MudCardContent Class="user-profile__content">
                         <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4" Style="font-style: italic;">
-                            No bio yet.
+                            Member of the community
                         </MudText>
-                    }
 
-                    <div class="info-list">
-                        @if (!string.IsNullOrEmpty(UserData.Email))
-                        {
-                            <div class="info-row">
-                                <MudIcon Icon="@Icons.Material.Filled.Email" Color="Color.Primary" />
-                                <MudStack Spacing="0">
-                                    <MudText Typo="Typo.body2">@UserData.Email</MudText>
-                                </MudStack>
-                            </div>
-                        }
-                        @if (!string.IsNullOrEmpty(GetDisplayLocation()) && GetDisplayLocation() != "Location not set")
-                        {
-                            <div class="info-row">
-                                <MudIcon Icon="@Icons.Material.Filled.LocationOn" Color="Color.Primary" />
-                                <MudText Typo="Typo.body2">Lives in @GetDisplayLocation()</MudText>
-                            </div>
-                        }
-                    </div>
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
-
-        <!-- Right Column -->
-        <MudItem xs="12" md="8">
-            <!-- User Reviews Section -->
-            <MudCard Class="section-card" Elevation="0">
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Style="width:100%;">
-                            <MudText Typo="Typo.h6">My Reviews</MudText>
-                            <MudChip T="string" Size="Size.Small" Color="Color.Primary">@ReviewsGiven total</MudChip>
-                        </MudStack>
-                    </CardHeaderContent>
-                </MudCardHeader>
-
-                <MudCardContent Class="section-body">
-                    <MudStack Spacing="4">
-                        @if (MyReviews != null && MyReviews.Any())
-                        {
-                            @foreach (var review in MyReviews.Take(3))
+                        <div class="user-profile__info-list">
+                            @if (!string.IsNullOrEmpty(UserData.Email))
                             {
-                                <MudPaper Class="pa-4 review-card" Elevation="0">
-                                    <MudStack Spacing="2">
-                                        <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-                                            <MudText Typo="Typo.subtitle1" Style="font-weight:600;">
-                                                @review.ProgramTitle
-                                            </MudText>
-                                            <div class="star-rating">
-                                                @for (int i = 1; i <= 5; i++)
-                                                {
-                                                    if (i <= review.Rating)
-                                                    {
-                                                        <MudIcon Icon="@Icons.Material.Filled.Star" />
-                                                    }
-                                                    else
-                                                    {
-                                                        <MudIcon Icon="@Icons.Material.Outlined.StarBorder" />
-                                                    }
-                                                }
-                                            </div>
-                                        </MudStack>
-                                        
-                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                            @review.CreatedAt.ToString("MMM dd, yyyy")
-                                        </MudText>
-
-                                        <MudText Typo="Typo.body2">
-                                            @review.Comment
-                                        </MudText>
+                                <div class="user-profile__info-row">
+                                    <MudIcon Icon="@Icons.Material.Filled.Email" Color="Color.Primary" />
+                                    <MudStack Spacing="0">
+                                        <MudText Typo="Typo.body2">@UserData.Email</MudText>
                                     </MudStack>
-                                </MudPaper>
+                                </div>
                             }
-                        }
-                        else
-                        {
-                            <MudText Typo="Typo.body2" Color="Color.Secondary">No reviews given yet.</MudText>
-                        }
-                    </MudStack>
+                            @if (!string.IsNullOrEmpty(GetDisplayLocation()) && GetDisplayLocation() != "Location not set")
+                            {
+                                <div class="user-profile__info-row">
+                                    <MudIcon Icon="@Icons.Material.Filled.LocationOn" Color="Color.Primary" />
+                                    <MudText Typo="Typo.body2">Lives in @GetDisplayLocation()</MudText>
+                                </div>
+                            }
+                            @if (UserData.EmailVerified == true)
+                            {
+                                <div class="user-profile__info-row">
+                                    <MudIcon Icon="@Icons.Material.Filled.Verified" Color="Color.Success" />
+                                    <MudText Typo="Typo.body2">Email verified</MudText>
+                                </div>
+                            }
+                        </div>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
 
-                    <div class="btn-outline" style="display:flex; justify-content:center;">
-                        <MudButton Variant="Variant.Outlined" Class="mt-6" StartIcon="@Icons.Material.Filled.RateReview" Href="/user/reviews">
-                            View All Reviews
-                        </MudButton>
-                    </div>
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
-    </MudGrid>
-</MudContainer>
+            <!-- Right Column -->
+            <MudItem xs="12" md="8">
+                <!-- User Reviews Section -->
+                <MudCard Class="user-profile__card" Elevation="0">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Style="width:100%;">
+                                <MudText Typo="Typo.h6">My Reviews</MudText>
+                                <MudChip T="string" Size="Size.Small" Color="Color.Primary">@ReviewsGiven total</MudChip>
+                            </MudStack>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+
+                    <MudCardContent Class="user-profile__content">
+                        <MudStack Spacing="4">
+                            @if (MyReviews != null && MyReviews.Any())
+                            {
+                                @foreach (var review in MyReviews.Take(3))
+                                {
+                                    <MudPaper Class="pa-4 user-profile__review" Elevation="0">
+                                        <MudStack Spacing="2">
+                                            <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                                <MudText Typo="Typo.subtitle1" Style="font-weight:600;">
+                                                    @(review.OrganizationFullName ?? "Organization")
+                                                </MudText>
+                                                <div class="user-profile__rating">
+                                                    @for (int i = 1; i <= 5; i++)
+                                                    {
+                                                        var starIndex = i;
+                                                        if (starIndex <= review.Rating)
+                                                        {
+                                                            <MudIcon Icon="@Icons.Material.Filled.Star" Color="Color.Warning" />
+                                                        }
+                                                        else
+                                                        {
+                                                            <MudIcon Icon="@Icons.Material.Outlined.StarBorder" />
+                                                        }
+                                                    }
+                                                </div>
+                                            </MudStack>
+
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                @review.CreatedAt.ToString("MMM dd, yyyy")
+                                            </MudText>
+
+                                            <MudText Typo="Typo.body2">
+                                                @review.Comment
+                                            </MudText>
+                                        </MudStack>
+                                    </MudPaper>
+                                }
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">No reviews given yet.</MudText>
+                            }
+                        </MudStack>
+
+                        <div class="btn-outline" style="display:flex; justify-content:center;">
+                            <MudButton Variant="Variant.Outlined" Class="mt-6" StartIcon="@Icons.Material.Filled.RateReview" Href="/user/reviews">
+                                View All Reviews
+                            </MudButton>
+                        </div>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+    </MudContainer>
 }

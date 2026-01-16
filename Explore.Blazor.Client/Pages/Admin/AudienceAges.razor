@@ -1,0 +1,62 @@
+@page "/admin/audience-ages"
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Services.Contracts
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin")]
+@inject IAudienceAgeService AudienceAgeService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<MudText Typo="Typo.h4" GutterBottom="true">Audience Ages</MudText>
+
+<MudTable Items="@_audienceAges"
+          Dense="true" Hover="true" Striped="true" @ref="_table">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">Manage Audience Ages</MudText>
+        <MudSpacer />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="(() => OpenDialog(null))">Create Audience Age</MudButton>
+    </ToolBarContent>
+    <HeaderContent>
+        <MudTh>Name</MudTh>
+        <MudTh>Min Age</MudTh>
+        <MudTh>Max Age</MudTh>
+        <MudTh>Actions</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Name">@context.FullName</MudTd>
+        <MudTd DataLabel="Min Age">@context.MinAge</MudTd>
+        <MudTd DataLabel="Max Age">@context.MaxAge</MudTd>
+        <MudTd DataLabel="Actions">
+            <MudIconButton Icon="@Icons.Material.Filled.Edit" OnClick="@(() => OpenDialog(context.Id))" />
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="@(() => DeleteAudienceAge(context.Id))" />
+        </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager />
+    </PagerContent>
+</MudTable>
+
+@code {
+    private MudTable<AudienceAgeListDto> _table;
+    private IEnumerable<AudienceAgeListDto> _audienceAges = new List<AudienceAgeListDto>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _audienceAges = await AudienceAgeService.GetAudienceAgesAsync();
+    }
+
+    private async Task OpenDialog(int? id)
+    {
+        // For now, this is a placeholder. I will implement the dialog later.
+        // The dialog will handle both create and edit.
+        Snackbar.Add("Create/Edit functionality not yet implemented.", Severity.Info);
+        await Task.CompletedTask;
+    }
+
+    private async Task DeleteAudienceAge(int id)
+    {
+        // For now, this is a placeholder. I will implement the delete functionality later.
+        Snackbar.Add("Delete functionality not yet implemented.", Severity.Info);
+        await Task.CompletedTask;
+    }
+}

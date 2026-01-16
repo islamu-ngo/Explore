@@ -1,0 +1,61 @@
+/* ===== CSS Custom Properties ===== */
+::deep :root {
+    --event-session-editor-radius: 12px;
+}
+
+/* ===== Block: event-session-editor ===== */
+::deep .event-session-editor {
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: var(--event-session-editor-radius);
+    background-color: var(--mud-palette-surface);
+    border: 1px solid var(--mud-palette-lines-default);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transition: all 280ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+::deep .event-session-editor:hover {
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14);
+}
+
+/* ===== Element: event-session-editor__header ===== */
+::deep .event-session-editor__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+/* ===== Element: event-session-editor__title ===== */
+::deep .event-session-editor__title {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    color: var(--mud-palette-text-primary);
+}
+
+/* ===== Element: event-session-editor__divider ===== */
+::deep .event-session-editor__divider {
+    margin-bottom: 18px;
+}
+
+/* ===== Input Styling ===== */
+::deep .event-session-editor .mud-input-outlined {
+    border-radius: 8px;
+}
+
+::deep .event-session-editor .mud-select {
+    border-radius: 8px;
+}
+
+/* ===== Responsive: Mobile (600px) ===== */
+@media (max-width: 600px) {
+    ::deep .event-session-editor {
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    ::deep .event-session-editor__title {
+        font-size: 0.95rem;
+    }
+}

@@ -17,15 +17,18 @@ namespace Explore.Application.Features.OrganizationMembers.Handlers.Commands
     {
         private readonly IOrganizationMemberRepository _organizationMemberRepository;
         private readonly IOrganizationRepository _organizationRepository;
+        private readonly IUserRepository _userRepository;
         private readonly IMapper _mapper;
 
         public AddOrganizationMemberCommandHandler(
             IOrganizationMemberRepository organizationMemberRepository,
             IOrganizationRepository organizationRepository,
+            IUserRepository userRepository,
             IMapper mapper)
         {
             _organizationMemberRepository = organizationMemberRepository;
             _organizationRepository = organizationRepository;
+            _userRepository = userRepository;
             _mapper = mapper;
         }
 
@@ -43,60 +46,56 @@ namespace Explore.Application.Features.OrganizationMembers.Handlers.Commands
                 return response;
             }
 
-            // 2. Check permissions (Requester must be Owner or Admin)
-            // First check if requester is the creator (Owner)
-            bool isOwner = organization.CreatedByUserId == request.RequesterUserId;
+            // 2. Check permissions (Requester must be an Admin member)
+            var members = await _organizationMemberRepository.GetMembersByOrganizationId(dto.OrganizationId);
             
-            // If not creator, check if they are an Admin member
-            if (!isOwner)
+            if (Guid.TryParse(request.RequesterUserId, out Guid requesterGuid))
             {
-                // We need to find the member record for the requester
-                // Since we don't have a direct way to query by UserId in the repo yet, we might need to add it or fetch all members
-                // For now, let's fetch all members of the org and filter in memory (not efficient but works for small orgs)
-                var members = await _organizationMemberRepository.GetMembersByOrganizationId(dto.OrganizationId);
-                
-                // We need to match UserId (Guid) with RequesterUserId (string). 
-                // This assumes we can parse the string to Guid.
-                if (Guid.TryParse(request.RequesterUserId, out Guid requesterGuid))
+                var requesterMember = members.FirstOrDefault(m => m.UserId == requesterGuid);
+                // Only Admin role (OrganizationRoleId = 1) can invite members
+                if (requesterMember == null || requesterMember.OrganizationRoleId != (int)OrganizationRoleEnum.Admin)
                 {
-                    var requesterMember = members.FirstOrDefault(m => m.UserId == requesterGuid);
-                    if (requesterMember == null || (requesterMember.Role != OrganizationRole.Admin && requesterMember.Role != OrganizationRole.CoOwner && requesterMember.Role != OrganizationRole.Creator))
-                    {
-                        response.Success = false;
-                        response.Message = "You do not have permission to invite members.";
-                        return response;
-                    }
-                }
-                else
-                {
-                     response.Success = false;
-                     response.Message = "Invalid requester User ID.";
-                     return response;
+                    response.Success = false;
+                    response.Message = "You do not have permission to invite members.";
+                    return response;
                 }
             }
-
-            // 3. Check if already a member
-            var existingMembers = await _organizationMemberRepository.GetMembersByOrganizationId(dto.OrganizationId);
-            if (existingMembers.Any(m => m.Email.Equals(dto.Email, StringComparison.OrdinalIgnoreCase)))
+            else
             {
                 response.Success = false;
-                response.Message = "User with this email is already a member or invited.";
+                response.Message = "Invalid requester User ID.";
                 return response;
             }
 
-            // 4. Create Member
+            // 3. Find user by email
+            var userToAdd = await _userRepository.GetUserByEmail(dto.Email);
+            if (userToAdd == null)
+            {
+                response.Success = false;
+                response.Message = "User with this email not found.";
+                return response;
+            }
+
+            // 4. Check if user is already a member
+            if (members.Any(m => m.UserId == userToAdd.Id))
+            {
+                response.Success = false;
+                response.Message = "User is already a member of this organization.";
+                return response;
+            }
+
+            // 5. Create Member
             var organizationMember = new OrganizationMember
             {
                 OrganizationId = dto.OrganizationId,
-                Email = dto.Email,
-                Role = dto.Role,
-                UserId = null // Pending invite
+                UserId = userToAdd.Id,
+                OrganizationRoleId = (int)dto.Role
             };
 
             organizationMember = await _organizationMemberRepository.Create(organizationMember);
 
             response.Success = true;
-            response.Message = "Member invited successfully";
+            response.Message = "Member added successfully";
             response.Id = organizationMember.Id;
 
             return response;

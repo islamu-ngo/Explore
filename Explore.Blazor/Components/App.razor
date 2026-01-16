@@ -1,5 +1,9 @@
-﻿@using Explore.Blazor.Client.Layout
+@using Explore.Blazor.Client.Layout
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Authentication
+@using Explore.Blazor.Services
 @inject IHttpContextAccessor HttpContextAccessor
+@inject ICircuitAccessTokenService TokenService
 
 <!DOCTYPE html>
 <html lang="en">
@@ -14,41 +18,64 @@
                connect-src 'self' http://localhost:8080 http://keycloak:8080;
                img-src 'self' data:;
                font-src 'self' https://fonts.gstatic.com;"> *@
-	<base href="/" />  
-	<link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
+	<base href="/" />
 	<link href=@Assets["_content/MudBlazor/MudBlazor.min.css"] rel="stylesheet" />
-	<link href="css/site.css" rel="stylesheet" />
+	<link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
+	<link href="css/StyleGlobal.css" rel="stylesheet" />
+	<link href="Explore.Blazor.styles.css" rel="stylesheet" />
+	<link rel="stylesheet" href="_content/Blazouter/blazouter.min.css" />
 	<ImportMap />
 	<link rel="icon" type="image/ico" href="favicon.ico" />
-	<HeadOutlet @rendermode="InteractiveAuto" />
+	<HeadOutlet @rendermode="new InteractiveServerRenderMode(prerender: false)" />
 </head>
 
 <body>
     @{
         var theme = HttpContextAccessor.HttpContext?.Request.Cookies["theme"];
-        // Default to light if no cookie is present, or if cookie says light
-        var isDark = theme == "dark"; 
+        var isDark = theme == "dark";
+
+        // Capture access token during initial HTTP request for use in SignalR circuit
+        string? accessToken = null;
+        try
+        {
+            var httpContext = HttpContextAccessor.HttpContext;
+            if (httpContext?.User?.Identity?.IsAuthenticated == true)
+            {
+                accessToken = httpContext.GetTokenAsync("access_token").GetAwaiter().GetResult();
+
+                // Also store in TokenService immediately so it's available for API calls
+                if (!string.IsNullOrEmpty(accessToken))
+                {
+                    TokenService.SetToken(accessToken);
+                    Console.WriteLine($"[App.razor] Stored access token (length: {accessToken.Length})");
+                }
+                else
+                {
+                    Console.WriteLine("[App.razor] User authenticated but no access token available");
+                }
+            }
+            else
+            {
+                Console.WriteLine("[App.razor] User not authenticated");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[App.razor] Token retrieval failed: {ex.Message}");
+        }
     }
-    
-    @* 
-       We use a CascadingValue to pass the initial theme to the MainLayout 
-       during the Server Prerendering phase.
-       However, MainLayout uses PersistentComponentState to transfer this to the Client.
-       So we need to make sure MainLayout initializes _isDarkMode correctly on the Server.
-       
-       Since MainLayout is inside Routes, we can't easily pass parameters.
-       But we can use a CascadingValue!
-    *@
-    
+
 	<CascadingAuthenticationState>
         <CascadingValue Value="isDark" Name="InitialTheme">
-		    <Routes @rendermode="InteractiveAuto" />
+            <CascadingValue Value="accessToken" Name="AccessToken">
+		        <Routes @rendermode="InteractiveServer" />
+            </CascadingValue>
         </CascadingValue>
 	</CascadingAuthenticationState>
 	<script src="_framework/blazor.web.js"></script>
 	<script src=@Assets["_content/MudBlazor/MudBlazor.min.js"]></script>
+    <script src="js/layout.js"></script>
 	<script src="js/bff.js"></script>
 </body>
 
 </html>
-

@@ -1,0 +1,160 @@
+@using Explore.Blazor.Client.Services
+@using Microsoft.Extensions.Logging
+@inject IImageStorageService ImageStorageService
+@inject ILogger<S3Image> Logger
+<div class="s3-image-container" style="@ContainerStyle">
+    @if (isLoading && !hasError)
+    {
+        <div class="s3-image-placeholder">
+            <div class="loading-spinner">
+                <MudProgressCircular Color="Color.Primary" Size="Size.Small" Indeterminate="true" />
+            </div>
+        </div>
+    }
+    else if (hasError)
+    {
+        <div class="s3-image-error">
+            <MudIcon Icon="@Icons.Material.Filled.BrokenImage" Color="Color.Secondary" Size="Size.Large" />
+            <MudText Typo="Typo.caption">@(ErrorText ?? "Failed to load image")</MudText>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(imageUrl))
+    {
+        <img src="@imageUrl"
+             alt="@Alt"
+             class="s3-image @(isLoading ? "loading" : "")"
+             @onload="OnImageLoaded"
+             @onerror="OnImageError" />
+    }
+    else
+    {
+        <div class="s3-image-placeholder">
+            <MudIcon Icon="@(PlaceholderIcon ?? Icons.Material.Filled.Image)"
+                    Color="Color.Secondary"
+                    Size="Size.Large" />
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// The S3 image key to load
+    /// </summary>
+    [Parameter] public string? ImageKey { get; set; }
+
+    /// <summary>
+    /// Direct image URL (if already fetched)
+    /// </summary>
+    [Parameter] public string? ImageUrl { get; set; }
+
+    /// <summary>
+    /// Alt text for the image
+    /// </summary>
+    [Parameter] public string Alt { get; set; } = "Image";
+
+    /// <summary>
+    /// CSS object-fit property
+    /// </summary>
+    [Parameter] public string ObjectFit { get; set; } = "cover";
+
+    /// <summary>
+    /// Border radius for the image
+    /// </summary>
+    [Parameter] public string? BorderRadius { get; set; }
+
+    /// <summary>
+    /// Additional styles for the container
+    /// </summary>
+    [Parameter] public string? ContainerStyle { get; set; }
+
+    /// <summary>
+    /// Icon to show when no image is available
+    /// </summary>
+    [Parameter] public string? PlaceholderIcon { get; set; }
+
+    /// <summary>
+    /// Text to show on error
+    /// </summary>
+    [Parameter] public string? ErrorText { get; set; }
+
+    /// <summary>
+    /// Whether to use a fallback image on error
+    /// </summary>
+    [Parameter] public string? FallbackUrl { get; set; }
+
+    private string? imageUrl;
+    private bool isLoading = true;
+    private bool hasError = false;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadImageAsync();
+    }
+
+    private async Task LoadImageAsync()
+    {
+        isLoading = true;
+        hasError = false;
+        imageUrl = null;
+
+        try
+        {
+            // If ImageUrl is provided directly, use it
+            if (!string.IsNullOrEmpty(ImageUrl))
+            {
+                imageUrl = ImageUrl;
+                isLoading = false;
+                return;
+            }
+
+            // If ImageKey is provided, fetch the pre-signed URL
+            if (!string.IsNullOrEmpty(ImageKey))
+            {
+                var url = await ImageStorageService.GetImageUrlAsync(ImageKey);
+
+                if (!string.IsNullOrEmpty(url))
+                {
+                    imageUrl = url;
+                }
+                else
+                {
+                    hasError = true;
+                }
+
+                isLoading = false;
+            }
+            else
+            {
+                // No image key or URL provided
+                isLoading = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading S3 image for key {ImageKey}", ImageKey);
+            hasError = true;
+            isLoading = false;
+        }
+    }
+
+    private void OnImageLoaded()
+    {
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    private void OnImageError()
+    {
+        if (!string.IsNullOrEmpty(FallbackUrl))
+        {
+            imageUrl = FallbackUrl;
+        }
+        else
+        {
+            hasError = true;
+        }
+
+        isLoading = false;
+        StateHasChanged();
+    }
+}

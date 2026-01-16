@@ -1,0 +1,255 @@
+/* ===== CSS Custom Properties ===== */
+::deep :root {
+    --organization-profile-ring: color-mix(
+        in srgb,
+        var(--mud-palette-primary) 30%,
+        transparent
+    );
+    --organization-profile-success: var(--mud-palette-success);
+}
+
+/* ===== Block: organization-profile ===== */
+::deep .organization-profile {
+    padding-block: 24px;
+}
+
+/* ===== Element: organization-profile__hero ===== */
+::deep .organization-profile__hero {
+    position: relative;
+    border-radius: 16px;
+    overflow: hidden;
+    background: linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--mud-palette-primary) 18%, transparent),
+        color-mix(in srgb, var(--mud-palette-secondary) 14%, transparent)
+    );
+    min-height: 140px;
+}
+
+::deep .organization-profile__hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        180deg,
+        rgba(0, 0, 0, 0.05),
+        rgba(0, 0, 0, 0.12)
+    );
+}
+
+/* ===== Element: organization-profile__header ===== */
+::deep .organization-profile__header {
+    display: flex;
+    gap: 18px;
+    align-items: flex-end;
+    padding: 18px;
+    position: relative;
+    z-index: 1;
+}
+
+/* ===== Element: organization-profile__avatar ===== */
+::deep .organization-profile__avatar {
+    width: 120px;
+    height: 120px;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 2px solid var(--mud-palette-surface);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.18);
+    background: var(--mud-palette-surface);
+    flex-shrink: 0;
+}
+
+/* ===== Element: organization-profile__badge ===== */
+::deep .organization-profile__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+/* ===== Modifier: organization-profile__badge--verified ===== */
+::deep .organization-profile__badge--verified {
+    background: color-mix(
+        in srgb,
+        var(--organization-profile-success) 14%,
+        transparent
+    );
+    color: var(--organization-profile-success);
+}
+
+/* ===== Modifier: organization-profile__badge--unverified ===== */
+::deep .organization-profile__badge--unverified {
+    background: color-mix(
+        in srgb,
+        var(--mud-palette-text-secondary) 14%,
+        transparent
+    );
+    color: var(--mud-palette-text-secondary);
+}
+
+/* ===== Element: organization-profile__stats ===== */
+::deep .organization-profile__stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 10px;
+}
+
+/* ===== Element: organization-profile__stat ===== */
+::deep .organization-profile__stat {
+    text-align: center;
+    padding: 10px 8px;
+    border-radius: 12px;
+    background: color-mix(
+        in srgb,
+        var(--mud-palette-primary) 6%,
+        var(--mud-palette-surface)
+    );
+    border: 1px solid
+        color-mix(
+            in srgb,
+            var(--mud-palette-primary) 18%,
+            var(--mud-palette-lines-default)
+        );
+}
+
+/* ===== Element: organization-profile__stat-value ===== */
+::deep .organization-profile__stat-value {
+    color: var(--mud-palette-primary);
+    font-weight: 800;
+}
+
+/* ===== Element: organization-profile__card ===== */
+::deep .organization-profile__card {
+    border-radius: 16px;
+    border: 1px solid
+        color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
+    overflow: hidden;
+}
+
+/* ===== Element: organization-profile__content ===== */
+::deep .organization-profile__content {
+    padding: 18px;
+}
+
+::deep .organization-profile__content + .organization-profile__content {
+    border-top: 1px solid var(--mud-palette-lines-default);
+}
+
+/* ===== Element: organization-profile__info-list ===== */
+::deep .organization-profile__info-list {
+    display: grid;
+    gap: 10px;
+}
+
+/* ===== Element: organization-profile__info-row ===== */
+::deep .organization-profile__info-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* ===== Element: organization-profile__review ===== */
+::deep .organization-profile__review {
+    border-radius: 14px;
+    border: 1px solid
+        color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
+    background: color-mix(
+        in srgb,
+        var(--mud-palette-background) 85%,
+        var(--mud-palette-surface)
+    );
+    transition:
+        transform 0.12s ease,
+        box-shadow 0.12s ease,
+        border-color 0.12s ease;
+}
+
+::deep .organization-profile__review:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+    border-color: color-mix(
+        in srgb,
+        var(--mud-palette-primary) 35%,
+        var(--mud-palette-lines-default)
+    );
+}
+
+/* ===== Element: organization-profile__rating ===== */
+::deep .organization-profile__rating {
+    display: inline-flex;
+    gap: 2px;
+    color: #ffc107; /* gold color for stars */
+}
+
+::deep .organization-profile__rating .mud-icon-root {
+    font-size: 1.25rem;
+}
+
+/* ===== Responsive: Tablet ===== */
+@media (max-width: 960px) {
+    ::deep .organization-profile {
+        padding-block: 20px;
+    }
+
+    ::deep .organization-profile__header {
+        align-items: center;
+    }
+
+    ::deep .organization-profile__stats {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* ===== Responsive: Mobile ===== */
+@media (max-width: 600px) {
+    ::deep .organization-profile {
+        padding-block: 16px;
+    }
+
+    ::deep .organization-profile__card {
+        border-radius: 12px;
+    }
+
+    ::deep .organization-profile__content {
+        padding: 14px;
+    }
+
+    ::deep .organization-profile__stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    ::deep .organization-profile__info-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+}
+
+/* ===== Responsive: Mobile Small ===== */
+@media (max-width: 480px) {
+    ::deep .organization-profile__header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 14px;
+    }
+
+    ::deep .organization-profile__avatar {
+        width: 92px;
+        height: 92px;
+        border-radius: 12px;
+    }
+
+    ::deep .organization-profile__hero {
+        min-height: 100px;
+    }
+
+    ::deep .organization-profile__review:hover {
+        transform: translateY(-1px);
+    }
+}

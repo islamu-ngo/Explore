@@ -1,10 +1,14 @@
-namespace Explore.Blazor.Client.Models.Enums
+namespace Explore.Blazor.Client.Models.Enums;
+
+/// <summary>
+/// Organization role enum - mirrors the backend OrganizationRoleEnum
+/// </summary>
+public enum OrganizationRole
 {
-    public enum OrganizationRole
-    {
-        Member = 0,
-        Admin = 1,
-        CoOwner = 2,
-        Creator = 3
-    }
+    Creator = 1,
+    CoOwner = 2,
+    Admin = 3,
+    Moderator = 4,
+    Member = 5,
+    Viewer = 6
 }

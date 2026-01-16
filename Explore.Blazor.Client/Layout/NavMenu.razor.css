@@ -1,0 +1,345 @@
+/*
+ * NavMenu Component Styles - BEM Methodology
+ * Block: navbar
+ *
+ * Structure:
+ * .navbar
+ *   .navbar__content
+ *     .navbar__brand
+ *       .navbar__brand-icon
+ *       .navbar__brand-text
+ *         .navbar__brand-highlight
+ *     .navbar__links
+ *       .navbar__link / .navbar__link--active
+ *     .navbar__actions
+ *       .navbar__theme-toggle
+ *       .navbar__login-btn
+ *       .navbar__user-dropdown
+ *         .navbar__user-btn
+ *           .navbar__user-avatar
+ *           .navbar__user-name
+ *           .navbar__user-arrow
+ *         .navbar__dropdown-menu / .navbar__dropdown-menu--open
+ *           .navbar__dropdown-header
+ *           .navbar__dropdown-divider
+ *           .navbar__dropdown-section-label
+ *           .navbar__dropdown-item / .navbar__dropdown-item--danger
+ *   .navbar__dropdown-overlay
+ */
+
+/* ========================================
+   Block: navbar
+   Main navigation container with glass effect
+   ======================================== */
+.navbar {
+    width: 100%;
+    min-height: 64px;
+    padding: 10px 20px;
+    background: color-mix(in srgb, var(--mud-palette-surface) 90%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid
+        color-mix(in srgb, var(--mud-palette-lines-default) 40%, transparent);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    position: relative;
+    z-index: 1301;
+}
+
+/* ========================================
+   Element: navbar__content
+   Inner container with max-width
+   ======================================== */
+.navbar__content {
+    max-width: 1280px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    width: 100%;
+}
+
+/* ========================================
+   Element: navbar__brand
+   Logo and brand name
+   ======================================== */
+.navbar__brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+}
+
+.navbar__brand:hover {
+    transform: scale(1.02);
+}
+
+/* Element: navbar__brand-icon */
+.navbar__brand-icon {
+    /* Styling handled by MudBlazor */
+}
+
+/* Element: navbar__brand-text */
+.navbar__brand-text {
+    font-size: 1.25rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--mud-palette-text-primary);
+}
+
+/* Element: navbar__brand-highlight */
+.navbar__brand-highlight {
+    color: var(--mud-palette-primary);
+}
+
+/* ========================================
+   Element: navbar__links
+   Center navigation links container
+   ======================================== */
+.navbar__links {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+}
+
+/* Element: navbar__link */
+.navbar__link {
+    padding: 8px 18px;
+    border-radius: 12px;
+    color: var(--mud-palette-text-secondary);
+    font-weight: 700;
+    font-size: 0.95rem;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.navbar__link:hover {
+    color: var(--mud-palette-text-primary);
+    background: color-mix(in srgb, var(--mud-palette-surface) 50%, transparent);
+}
+
+/* Modifier: navbar__link--active */
+.navbar__link--active {
+    background: var(--mud-palette-surface);
+    color: var(--mud-palette-primary);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* ========================================
+   Element: navbar__actions
+   Right-side actions container
+   ======================================== */
+.navbar__actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-shrink: 0;
+}
+
+/* Element: navbar__theme-toggle */
+.navbar__theme-toggle {
+    /* Styling handled by MudBlazor */
+}
+
+/* Element: navbar__login-btn */
+::deep .navbar__login-btn {
+    border-radius: 999px !important;
+    padding: 10px 20px !important;
+    font-weight: 700 !important;
+}
+
+/* ========================================
+   Element: navbar__user-dropdown
+   User dropdown container
+   ======================================== */
+.navbar__user-dropdown {
+    position: relative;
+}
+
+/* Element: navbar__user-btn */
+.navbar__user-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 12px 6px 6px;
+    background: color-mix(in srgb, var(--mud-palette-surface) 50%, transparent);
+    border: 1px solid
+        color-mix(in srgb, var(--mud-palette-lines-default) 50%, transparent);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.navbar__user-btn:hover {
+    background: color-mix(in srgb, var(--mud-palette-primary) 8%, transparent);
+    border-color: color-mix(
+        in srgb,
+        var(--mud-palette-primary) 20%,
+        transparent
+    );
+}
+
+/* Element: navbar__user-avatar */
+::deep .navbar__user-avatar {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 14px !important;
+}
+
+/* Element: navbar__user-name */
+.navbar__user-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--mud-palette-text-primary);
+}
+
+/* Element: navbar__user-arrow */
+.navbar__user-arrow {
+    /* Styling handled by MudBlazor */
+}
+
+/* ========================================
+   Element: navbar__dropdown-menu
+   User dropdown menu
+   ======================================== */
+.navbar__dropdown-menu {
+    position: absolute;
+    top: calc(100% + 12px);
+    right: 0;
+    min-width: 240px;
+    background: var(--mud-palette-surface);
+    border: 1px solid
+        color-mix(in srgb, var(--mud-palette-lines-default) 50%, transparent);
+    border-radius: 16px;
+    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.2);
+    padding: 8px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 1302;
+}
+
+/* Modifier: navbar__dropdown-menu--open */
+.navbar__dropdown-menu--open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+/* Element: navbar__dropdown-header */
+.navbar__dropdown-header {
+    padding: 8px 12px;
+    margin-bottom: 4px;
+}
+
+/* Element: navbar__dropdown-divider */
+.navbar__dropdown-divider {
+    height: 1px;
+    background: color-mix(
+        in srgb,
+        var(--mud-palette-lines-default) 50%,
+        transparent
+    );
+    margin: 6px 0;
+}
+
+/* Element: navbar__dropdown-section-label */
+.navbar__dropdown-section-label {
+    padding: 8px 12px 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--mud-palette-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Element: navbar__dropdown-item */
+.navbar__dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    color: var(--mud-palette-text-primary);
+    text-decoration: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.15s ease;
+}
+
+.navbar__dropdown-item:hover {
+    background: color-mix(
+        in srgb,
+        var(--mud-palette-text-primary) 6%,
+        transparent
+    );
+}
+
+/* Modifier: navbar__dropdown-item--danger */
+.navbar__dropdown-item--danger {
+    color: var(--mud-palette-error);
+}
+
+.navbar__dropdown-item--danger:hover {
+    background: color-mix(in srgb, var(--mud-palette-error) 10%, transparent);
+}
+
+/* ========================================
+   Element: navbar__dropdown-overlay
+   Overlay for closing dropdown on outside click
+   ======================================== */
+.navbar__dropdown-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1200;
+    background: transparent;
+}
+
+/* ========================================
+   Responsive Styles
+   ======================================== */
+@media (max-width: 768px) {
+    .navbar {
+        padding: 6px 12px;
+        min-height: 56px;
+    }
+
+    .navbar__content {
+        gap: 8px;
+    }
+
+    .navbar__brand-text {
+        font-size: 0.95rem;
+    }
+
+    .navbar__link {
+        padding: 4px 10px;
+        font-size: 0.8rem;
+    }
+
+    .navbar__actions {
+        gap: 6px;
+    }
+
+    .navbar__user-name {
+        display: none;
+    }
+
+    .navbar__user-btn {
+        padding: 4px 8px 4px 4px;
+        gap: 6px;
+    }
+
+    ::deep .navbar__user-avatar {
+        width: 28px !important;
+        height: 28px !important;
+        font-size: 12px !important;
+    }
+}

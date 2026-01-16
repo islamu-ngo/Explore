@@ -1,0 +1,52 @@
+/* ===== CSS Custom Properties ===== */
+::deep :root {
+    --event-session-manager-radius: 12px;
+    --event-session-manager-spacing: 24px;
+}
+
+/* ===== Block: event-session-manager ===== */
+::deep .event-session-manager {
+    padding: 24px;
+    margin-top: 24px;
+    border-radius: var(--event-session-manager-radius);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* ===== Element: event-session-manager__title ===== */
+::deep .event-session-manager__title {
+    margin-bottom: 20px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+}
+
+/* ===== Element: event-session-manager__grid ===== */
+::deep .event-session-manager__grid {
+    border-radius: calc(var(--event-session-manager-radius) - 4px);
+    overflow: hidden;
+}
+
+/* ===== Element: event-session-manager__create-btn ===== */
+::deep .event-session-manager__create-btn {
+    margin-top: var(--event-session-manager-spacing);
+    border-radius: 999px;
+    padding: 10px 24px;
+    font-weight: 600;
+    box-shadow: 0 6px 16px rgba(124, 58, 237, 0.3);
+}
+
+/* ===== Responsive: Mobile (600px) ===== */
+@media (max-width: 600px) {
+    ::deep .event-session-manager {
+        padding: 18px;
+        margin-top: 18px;
+    }
+
+    ::deep .event-session-manager__title {
+        font-size: 1.25rem;
+    }
+
+    ::deep .event-session-manager__create-btn {
+        width: 100%;
+    }
+}

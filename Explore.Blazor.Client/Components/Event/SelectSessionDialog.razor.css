@@ -1,0 +1,4 @@
+/* ===== Block: select-session-dialog ===== */
+::deep .select-session-dialog {
+    color: inherit;
+}

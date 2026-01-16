@@ -1,0 +1,40 @@
+@using Explore.Blazor.Client.Clients
+@using MudBlazor
+@inject IEventService EventService
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Select a Session</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudDataGrid T="EventSessionListDto" Items="@sessions" ReadOnly="true" Bordered="true" Dense="true">
+            <Columns>
+                <PropertyColumn Property="x => x.Title" />
+                <PropertyColumn Property="x => x.StartTime" />
+                <TemplateColumn StickyRight="true">
+                    <CellTemplate Context="context">
+                        <MudButton OnClick="@(() => Select(context.Item))" Variant="Variant.Text">Select</MudButton>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+        </MudDataGrid>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IDialogReference? DialogReference { get; set; }
+
+    private List<EventSessionListDto> sessions = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await EventService.GetAllSessionsAsync();
+        sessions = result.ToList();
+    }
+
+    private void Select(EventSessionListDto item)
+    {
+        DialogReference?.Dismiss(DialogResult.Ok(item.Id));
+    }
+}

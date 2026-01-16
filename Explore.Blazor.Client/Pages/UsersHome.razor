@@ -1,47 +1,12 @@
-@page "/dashboard"
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Web
 @using MudBlazor
+@using Microsoft.Extensions.Logging
 @inject IJSRuntime JSRuntime
 @inject NavigationManager Nav
+@inject ILogger<UsersHome> Logger
 
 <PageTitle>ISLAMU Explore - Dashboard</PageTitle>
-
-<style>
-.user-dashboard {
-    padding: 32px 0;
-}
-.welcome-section {
-    background: linear-gradient(135deg, #1976D2 0%, #42A5F5 100%);
-    color: white;
-    padding: 48px 32px;
-    border-radius: 16px;
-    margin-bottom: 32px;
-    text-align: center;
-}
-.quick-actions {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 24px;
-    margin-bottom: 32px;
-}
-.action-card {
-    padding: 24px;
-    background: var(--mud-palette-background-paper);
-    border-radius: 12px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-    text-align: center;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-.action-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.12);
-}
-.recent-events {
-    margin-top: 32px;
-}
-</style>
-
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="user-dashboard">
     <!-- Welcome Section -->
     <div class="welcome-section">
@@ -94,7 +59,7 @@
         <MudText Typo="Typo.h4" Style="margin-bottom: 24px; font-weight: 600;">
             Upcoming Events Near You
         </MudText>
-        
+
         <MudGrid>
             @foreach (var eventItem in RecentEvents)
             {
@@ -165,7 +130,7 @@
         catch (Exception ex)
         {
             // If there's an error checking auth, redirect to welcome
-            Console.WriteLine($"Error checking authentication: {ex.Message}");
+            Logger.LogWarning(ex, "Error checking authentication");
             Nav.NavigateTo("/welcome", true);
             return;
         }

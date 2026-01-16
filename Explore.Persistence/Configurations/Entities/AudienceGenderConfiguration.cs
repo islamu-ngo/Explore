@@ -18,19 +18,31 @@ namespace Explore.Persistence.Configurations.Entities
                 new AudienceGender
                 {
                     Id = (int)AudienceGenderEnum.Man,
-                    FullName = "Man"
+                    MasterCode = "MAN",
+                    FullName = "Man",
+                    Description = "Only for Man Audience"
                 },
                 new AudienceGender
                 {
                     Id = (int)AudienceGenderEnum.Woman,
-                    FullName = "Woman"
+                    MasterCode = "WOMAN",
+                    FullName = "Woman",
+                    Description = "Only for Woman Audience"
                 },
                 new AudienceGender
                 {
                     Id = (int)AudienceGenderEnum.Both,
-                    FullName = "Both"
-                }
-                );
+                    MasterCode = "BOTH_SEGREGATED",
+                    FullName = "Both Segregated",
+                    Description = "For Both Man and Woman but Segregated so no free mixing"
+                },
+                new AudienceGender
+                {
+                    Id = 4,
+                    MasterCode = "BOTH_FREE_MIXING",
+                    FullName = "Both Free Mixing",
+                    Description = "For Both Man and Woman but Free Mixing"
+                });
         }
     }
 }
