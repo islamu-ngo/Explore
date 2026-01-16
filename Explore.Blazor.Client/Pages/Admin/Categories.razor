@@ -1,60 +1,321 @@
 @page "/admin/categories"
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Services.Contracts
+@using Explore.Blazor.Client.Components.Admin
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize(Roles = "Admin")]
 @inject ICategoryService CategoryService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
+@inject NavigationManager Nav
 
-<MudText Typo="Typo.h4" GutterBottom="true">Categories</MudText>
+<div class="admin-categories">
+    <!-- Hero Section -->
+    <MudPaper Class="admin-categories__hero" Elevation="0">
+        <div class="admin-categories__hero-top">
+            <div class="admin-categories__hero-title">
+                <div class="admin-categories__hero-badge">
+                    <MudIcon Icon="@Icons.Material.Filled.Category" Color="Color.Secondary" />
+                </div>
+                <div>
+                    <MudText Typo="Typo.h4" Style="font-weight:800; letter-spacing:.2px;">
+                        Categories Management
+                    </MudText>
+                    <MudText Typo="Typo.body2" Class="admin-categories__hero-subtitle">
+                        Create, edit, and manage event categories
+                    </MudText>
+                </div>
+            </div>
 
-<MudTable T="CategoryListDto" ServerData="@ServerReload"
-          Dense="true" Hover="true" Striped="true" @ref="_table">
-    <ToolBarContent>
-        <MudText Typo="Typo.h6">Manage Categories</MudText>
-        <MudSpacer />
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="(() => OpenDialog(null))">Create Category</MudButton>
-    </ToolBarContent>
-    <HeaderContent>
-        <MudTh>Name</MudTh>
-        <MudTh>Parent</MudTh>
-        <MudTh>Actions</MudTh>
-    </HeaderContent>
-    <RowTemplate>
-        <MudTd DataLabel="Name">@context.FullName</MudTd>
-        <MudTd DataLabel="Parent">@context.ParentFullName</MudTd>
-        <MudTd DataLabel="Actions">
-            <MudIconButton Icon="@Icons.Material.Filled.Edit" OnClick="@(() => OpenDialog(context.Id))" />
-            <MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="@(() => DeleteCategory(context.Id))" />
-        </MudTd>
-    </RowTemplate>
-    <PagerContent>
-        <MudTablePager />
-    </PagerContent>
-</MudTable>
+            <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Default"
+                           StartIcon="@Icons.Material.Filled.ArrowBack"
+                           OnClick="@(() => Nav.NavigateTo("/admin"))"
+                           Style="border-radius:999px; padding:10px 16px;">
+                    Back to Admin
+                </MudButton>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Secondary"
+                           StartIcon="@Icons.Material.Filled.Refresh"
+                           OnClick="LoadCategories"
+                           Style="border-radius:999px; padding:10px 16px;">
+                    Refresh
+                </MudButton>
+            </MudStack>
+        </div>
+
+        <!-- Stats -->
+        <div class="admin-categories__stats">
+            <div class="admin-categories__stat">
+                <div class="admin-categories__stat-row">
+                    <div class="admin-categories__stat-icon">
+                        <MudIcon Icon="@Icons.Material.Filled.Category" Color="Color.Secondary" />
+                    </div>
+                    <div>
+                        <div class="admin-categories__stat-label">Total Categories</div>
+                        <div class="admin-categories__stat-value">@_categories.Count</div>
+                    </div>
+                </div>
+            </div>
+            <div class="admin-categories__stat">
+                <div class="admin-categories__stat-row">
+                    <div class="admin-categories__stat-icon admin-categories__stat-icon--parent">
+                        <MudIcon Icon="@Icons.Material.Filled.AccountTree" Color="Color.Info" />
+                    </div>
+                    <div>
+                        <div class="admin-categories__stat-label">Parent Categories</div>
+                        <div class="admin-categories__stat-value">@_categories.Count(c => c.ParentId == null)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </MudPaper>
+
+    @if (_isLoading)
+    {
+        <MudPaper Class="admin-categories__panel" Elevation="0" Style="margin-top:14px;">
+            <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="py-4">
+                <MudProgressCircular Color="Color.Secondary" Size="Size.Large" Indeterminate="true" />
+                <MudText Typo="Typo.body1">Loading categories…</MudText>
+            </MudStack>
+        </MudPaper>
+    }
+    else
+    {
+        <div class="admin-categories__section">
+            <!-- Toolbar -->
+            <MudPaper Class="admin-categories__panel" Elevation="0" Style="margin-top:14px;">
+                <div class="admin-categories__toolbar">
+                    <MudTextField @bind-Value="_searchString"
+                                  Placeholder="Search categories..."
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  Variant="Variant.Outlined"
+                                  Immediate="true"
+                                  Clearable="true"
+                                  Margin="Margin.Dense"
+                                  Style="min-width:280px; border-radius:999px;" />
+
+                    <MudSpacer />
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Secondary"
+                               StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="OpenCreateDialog"
+                               Class="admin-categories__create-btn">
+                        Create Category
+                    </MudButton>
+                </div>
+            </MudPaper>
+
+            <!-- Table -->
+            <MudPaper Class="admin-categories__table-panel" Elevation="0" Style="margin-top:12px;">
+                <MudTable Items="@FilteredCategories"
+                          Dense="true"
+                          Hover="true"
+                          Striped="true"
+                          Breakpoint="Breakpoint.Sm"
+                          Loading="@_isLoading"
+                          LoadingProgressColor="Color.Secondary">
+                    <HeaderContent>
+                        <MudTh Style="width:50px">#</MudTh>
+                        <MudTh>Name</MudTh>
+                        <MudTh>Master Code</MudTh>
+                        <MudTh>Parent Category</MudTh>
+                        <MudTh Style="text-align:center; width:150px">Actions</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="#">
+                            <MudText Typo="Typo.body2" Class="admin-categories__id">@context.Id.ToString()[..8]…</MudText>
+                        </MudTd>
+                        <MudTd DataLabel="Name">
+                            <div class="admin-categories__name-cell">
+                                <MudIcon Icon="@Icons.Material.Filled.Category" Size="Size.Small" Color="Color.Secondary" />
+                                <MudText Typo="Typo.body2" Style="font-weight:600;">@context.FullName</MudText>
+                            </div>
+                        </MudTd>
+                        <MudTd DataLabel="Code">
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default">
+                                @context.MasterCode
+                            </MudChip>
+                        </MudTd>
+                        <MudTd DataLabel="Parent">
+                            @if (!string.IsNullOrEmpty(context.ParentFullName))
+                            {
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="Color.Info">
+                                    @context.ParentFullName
+                                </MudChip>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.caption" Class="admin-categories__muted">Root category</MudText>
+                            }
+                        </MudTd>
+                        <MudTd DataLabel="Actions" Style="text-align:center">
+                            <div class="admin-categories__actions">
+                                <MudTooltip Text="Edit">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                   Color="Color.Primary"
+                                                   Size="Size.Small"
+                                                   OnClick="@(() => OpenEditDialog(context))" />
+                                </MudTooltip>
+                                <MudTooltip Text="Delete">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                   Color="Color.Error"
+                                                   Size="Size.Small"
+                                                   OnClick="@(() => DeleteCategory(context))" />
+                                </MudTooltip>
+                            </div>
+                        </MudTd>
+                    </RowTemplate>
+                    <NoRecordsContent>
+                        <div class="admin-categories__empty">
+                            <MudIcon Icon="@Icons.Material.Filled.Category" Size="Size.Large" />
+                            <MudText Typo="Typo.h6" Style="margin-top:10px; font-weight:800;">No categories found</MudText>
+                            <MudText Typo="Typo.body2" Class="admin-categories__muted">
+                                @if (string.IsNullOrWhiteSpace(_searchString))
+                                {
+                                    <span>Create your first category to get started.</span>
+                                }
+                                else
+                                {
+                                    <span>No categories match your search criteria.</span>
+                                }
+                            </MudText>
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Secondary"
+                                       OnClick="OpenCreateDialog"
+                                       Style="margin-top:12px; border-radius:999px;">
+                                Create Category
+                            </MudButton>
+                        </div>
+                    </NoRecordsContent>
+                    <PagerContent>
+                        <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
+                    </PagerContent>
+                </MudTable>
+            </MudPaper>
+        </div>
+    }
+</div>
 
 @code {
-    private MudTable<CategoryListDto> _table;
-    private IEnumerable<CategoryListDto> _categories;
+    private ICollection<CategoryListDto> _categories = new List<CategoryListDto>();
+    private string _searchString = string.Empty;
+    private bool _isLoading = true;
 
-    private async Task<TableData<CategoryListDto>> ServerReload(TableState state, CancellationToken cancellationToken)
+    private IEnumerable<CategoryListDto> FilteredCategories => string.IsNullOrWhiteSpace(_searchString)
+        ? _categories
+        : _categories.Where(c =>
+            (c.FullName?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (c.MasterCode?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (c.ParentFullName?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false));
+
+    protected override async Task OnInitializedAsync()
     {
-        _categories = await CategoryService.GetCategories();
-        return new TableData<CategoryListDto>() { TotalItems = _categories.Count(), Items = _categories };
+        await LoadCategories();
     }
 
-    private async Task OpenDialog(Guid? id)
+    private async Task LoadCategories()
     {
-        // For now, this is a placeholder. I will implement the dialog later.
-        Snackbar.Add("Create/Edit functionality not yet implemented.", Severity.Info);
-        await Task.CompletedTask;
+        _isLoading = true;
+        try
+        {
+            _categories = await CategoryService.GetCategories();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load categories: {ex.Message}", Severity.Error);
+            _categories = new List<CategoryListDto>();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
     }
 
-    private async Task DeleteCategory(Guid id)
+    private async Task OpenCreateDialog()
     {
-        // For now, this is a placeholder. I will implement the delete functionality later.
-        Snackbar.Add("Delete functionality not yet implemented.", Severity.Info);
-        await Task.CompletedTask;
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<CreateCategoryDialog>("Create Category", options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: CreateCategoryDto createDto })
+        {
+            var response = await CategoryService.CreateCategoryAsync(createDto);
+            if (response?.Success == true)
+            {
+                Snackbar.Add($"Category '{createDto.FullName}' created successfully", Severity.Success);
+                await LoadCategories();
+            }
+            else
+            {
+                var errors = response?.Errors != null ? string.Join(", ", response.Errors) : "Unknown error";
+                Snackbar.Add($"Failed to create category: {errors}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task OpenEditDialog(CategoryListDto category)
+    {
+        var parameters = new DialogParameters<EditCategoryDialog>
+        {
+            { x => x.ExistingCategory, category }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<EditCategoryDialog>("Edit Category", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: UpdateCategoryDto updateDto })
+        {
+            var response = await CategoryService.UpdateCategoryAsync(updateDto.Id, updateDto);
+            if (response?.Success == true)
+            {
+                Snackbar.Add($"Category '{updateDto.FullName}' updated successfully", Severity.Success);
+                await LoadCategories();
+            }
+            else
+            {
+                var errors = response?.Errors != null ? string.Join(", ", response.Errors) : "Unknown error";
+                Snackbar.Add($"Failed to update category: {errors}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task DeleteCategory(CategoryListDto category)
+    {
+        bool? confirm = await DialogService.ShowMessageBox(
+            "Confirm Delete",
+            $"Are you sure you want to delete the category '{category.FullName}'? This action cannot be undone.",
+            yesText: "Delete",
+            cancelText: "Cancel");
+
+        if (confirm == true)
+        {
+            var success = await CategoryService.DeleteCategoryAsync(category.Id);
+            if (success)
+            {
+                Snackbar.Add($"Category '{category.FullName}' deleted successfully", Severity.Success);
+                await LoadCategories();
+            }
+            else
+            {
+                Snackbar.Add($"Failed to delete category '{category.FullName}'", Severity.Error);
+            }
+        }
     }
 }

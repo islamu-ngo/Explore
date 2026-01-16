@@ -43,12 +43,14 @@ public class TenantConfiguration
     /// The default tenant ID used for single-instance deployments (Mode 1).
     /// This UUID maps to the tenant record in the database.
     ///
-    /// Default: 00000000-0000-0000-0000-000000000001
+    /// Default: 018e4e5c-7f00-7000-8000-000000000001 (matches SeedIds.DefaultTenantId)
     ///
     /// Note: This tenant must exist in the database (tenant table).
     /// The application should create this tenant on first run if it doesn't exist.
+    /// IMPORTANT: This MUST match Explore.API.Services.TenantContext.DefaultTenantId
+    /// and Explore.Persistence.SeedIds.DefaultTenantId for tenant isolation to work correctly.
     /// </summary>
-    public Guid DefaultTenantId { get; set; } = Guid.Parse("00000000-0000-0000-0000-000000000001");
+    public Guid DefaultTenantId { get; set; } = Guid.Parse("018e4e5c-7f00-7000-8000-000000000001");
 
     /// <summary>
     /// The slug/identifier for the default tenant.

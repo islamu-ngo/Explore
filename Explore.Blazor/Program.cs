@@ -183,6 +183,10 @@ var proxyClusters = new[]
     }
 };
 
+// Default tenant ID - MUST match Explore.API.Services.TenantContext.DefaultTenantId
+// and Explore.Persistence.SeedIds.DefaultTenantId for proper multi-tenant isolation
+const string DefaultTenantId = "018e4e5c-7f00-7000-8000-000000000001";
+
 builder.Services.AddReverseProxy()
     .LoadFromMemory(proxyRoutes, proxyClusters)
     .AddTransforms(context =>
@@ -195,6 +199,13 @@ builder.Services.AddReverseProxy()
             {
                 transformContext.ProxyRequest.Headers.Authorization =
                     new AuthenticationHeaderValue("Bearer", token);
+            }
+
+            // Always add X-Tenant-Id header for multi-tenant isolation
+            // This ensures the API knows which tenant the request belongs to
+            if (!transformContext.ProxyRequest.Headers.Contains("X-Tenant-Id"))
+            {
+                transformContext.ProxyRequest.Headers.Add("X-Tenant-Id", DefaultTenantId);
             }
         });
     });

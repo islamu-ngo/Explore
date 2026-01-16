@@ -25,6 +25,7 @@ namespace Explore.Persistence.Repositories
         public async Task<List<EventSession>> GetSessionsByEvent(Guid eventId)
         {
             return await _dbContext.EventSessions
+                .Include(s => s.Event)
                 .Include(s => s.Location)
                 .Include(s => s.RegistrationMode)
                 .Where(s => s.EventId == eventId)

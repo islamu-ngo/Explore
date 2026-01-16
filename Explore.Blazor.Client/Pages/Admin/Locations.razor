@@ -1,64 +1,338 @@
 @page "/admin/locations"
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Services.Contracts
+@using Explore.Blazor.Client.Components.Admin
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize(Roles = "Admin")]
 @inject ILocationService LocationService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
+@inject NavigationManager Nav
 
-<MudText Typo="Typo.h4" GutterBottom="true">Locations</MudText>
+<div class="admin-locations">
+    <!-- Hero Section -->
+    <MudPaper Class="admin-locations__hero" Elevation="0">
+        <div class="admin-locations__hero-top">
+            <div class="admin-locations__hero-title">
+                <div class="admin-locations__hero-badge">
+                    <MudIcon Icon="@Icons.Material.Filled.LocationOn" Color="Color.Success" />
+                </div>
+                <div>
+                    <MudText Typo="Typo.h4" Style="font-weight:800; letter-spacing:.2px;">
+                        Locations Management
+                    </MudText>
+                    <MudText Typo="Typo.body2" Class="admin-locations__hero-subtitle">
+                        Create, edit, and manage event locations
+                    </MudText>
+                </div>
+            </div>
 
-<MudTable T="LocationListDto" ServerData="@ServerReload"
-          Dense="true" Hover="true" Striped="true" @ref="_table">
-    <ToolBarContent>
-        <MudText Typo="Typo.h6">Manage Locations</MudText>
-        <MudSpacer />
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="(() => OpenDialog(null))">Create Location</MudButton>
-    </ToolBarContent>
-    <HeaderContent>
-        <MudTh>Name</MudTh>
-        <MudTh>Address</MudTh>
-        <MudTh>City</MudTh>
-        <MudTh>Country</MudTh>
-        <MudTh>Actions</MudTh>
-    </HeaderContent>
-    <RowTemplate>
-        <MudTd DataLabel="Name">@context.FullName</MudTd>
-        <MudTd DataLabel="Address">@context.Address</MudTd>
-        <MudTd DataLabel="City">@context.City</MudTd>
-        <MudTd DataLabel="Country">@context.Country</MudTd>
-        <MudTd DataLabel="Actions">
-            <MudIconButton Icon="@Icons.Material.Filled.Edit" OnClick="@(() => OpenDialog(context.Id))" />
-            <MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="@(() => DeleteLocation(context.Id))" />
-        </MudTd>
-    </RowTemplate>
-    <PagerContent>
-        <MudTablePager />
-    </PagerContent>
-</MudTable>
+            <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Default"
+                           StartIcon="@Icons.Material.Filled.ArrowBack"
+                           OnClick="@(() => Nav.NavigateTo("/admin"))"
+                           Style="border-radius:999px; padding:10px 16px;">
+                    Back to Admin
+                </MudButton>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Success"
+                           StartIcon="@Icons.Material.Filled.Refresh"
+                           OnClick="LoadLocations"
+                           Style="border-radius:999px; padding:10px 16px;">
+                    Refresh
+                </MudButton>
+            </MudStack>
+        </div>
+
+        <!-- Stats -->
+        <div class="admin-locations__stats">
+            <div class="admin-locations__stat">
+                <div class="admin-locations__stat-row">
+                    <div class="admin-locations__stat-icon">
+                        <MudIcon Icon="@Icons.Material.Filled.LocationOn" Color="Color.Success" />
+                    </div>
+                    <div>
+                        <div class="admin-locations__stat-label">Total Locations</div>
+                        <div class="admin-locations__stat-value">@_locations.Count</div>
+                    </div>
+                </div>
+            </div>
+            <div class="admin-locations__stat">
+                <div class="admin-locations__stat-row">
+                    <div class="admin-locations__stat-icon admin-locations__stat-icon--countries">
+                        <MudIcon Icon="@Icons.Material.Filled.Public" Color="Color.Info" />
+                    </div>
+                    <div>
+                        <div class="admin-locations__stat-label">Countries</div>
+                        <div class="admin-locations__stat-value">@_locations.Select(l => l.Country).Distinct().Count()</div>
+                    </div>
+                </div>
+            </div>
+            <div class="admin-locations__stat">
+                <div class="admin-locations__stat-row">
+                    <div class="admin-locations__stat-icon admin-locations__stat-icon--cities">
+                        <MudIcon Icon="@Icons.Material.Filled.LocationCity" Color="Color.Warning" />
+                    </div>
+                    <div>
+                        <div class="admin-locations__stat-label">Cities</div>
+                        <div class="admin-locations__stat-value">@_locations.Select(l => l.City).Distinct().Count()</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </MudPaper>
+
+    @if (_isLoading)
+    {
+        <MudPaper Class="admin-locations__panel" Elevation="0" Style="margin-top:14px;">
+            <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="py-4">
+                <MudProgressCircular Color="Color.Success" Size="Size.Large" Indeterminate="true" />
+                <MudText Typo="Typo.body1">Loading locations…</MudText>
+            </MudStack>
+        </MudPaper>
+    }
+    else
+    {
+        <div class="admin-locations__section">
+            <!-- Toolbar -->
+            <MudPaper Class="admin-locations__panel" Elevation="0" Style="margin-top:14px;">
+                <div class="admin-locations__toolbar">
+                    <MudTextField @bind-Value="_searchString"
+                                  Placeholder="Search locations..."
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  Variant="Variant.Outlined"
+                                  Immediate="true"
+                                  Clearable="true"
+                                  Margin="Margin.Dense"
+                                  Style="min-width:280px; border-radius:999px;" />
+
+                    <MudSpacer />
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Success"
+                               StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="OpenCreateDialog"
+                               Class="admin-locations__create-btn">
+                        Create Location
+                    </MudButton>
+                </div>
+            </MudPaper>
+
+            <!-- Table -->
+            <MudPaper Class="admin-locations__table-panel" Elevation="0" Style="margin-top:12px;">
+                <MudTable Items="@FilteredLocations"
+                          Dense="true"
+                          Hover="true"
+                          Striped="true"
+                          Breakpoint="Breakpoint.Sm"
+                          Loading="@_isLoading"
+                          LoadingProgressColor="Color.Success">
+                    <HeaderContent>
+                        <MudTh Style="width:50px">#</MudTh>
+                        <MudTh>Name</MudTh>
+                        <MudTh>Address</MudTh>
+                        <MudTh>City</MudTh>
+                        <MudTh>Country</MudTh>
+                        <MudTh Style="text-align:center; width:150px">Actions</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="#">
+                            <MudText Typo="Typo.body2" Class="admin-locations__id">@context.Id.ToString()[..8]…</MudText>
+                        </MudTd>
+                        <MudTd DataLabel="Name">
+                            <div class="admin-locations__name-cell">
+                                <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Color="Color.Success" />
+                                <MudText Typo="Typo.body2" Style="font-weight:600;">@context.FullName</MudText>
+                            </div>
+                        </MudTd>
+                        <MudTd DataLabel="Address">
+                            <MudText Typo="Typo.body2">@(context.Address ?? "—")</MudText>
+                        </MudTd>
+                        <MudTd DataLabel="City">
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Info">
+                                @(context.City ?? "—")
+                            </MudChip>
+                        </MudTd>
+                        <MudTd DataLabel="Country">
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="Color.Default">
+                                @(context.Country ?? "—")
+                            </MudChip>
+                        </MudTd>
+                        <MudTd DataLabel="Actions" Style="text-align:center">
+                            <div class="admin-locations__actions">
+                                <MudTooltip Text="Edit">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                   Color="Color.Primary"
+                                                   Size="Size.Small"
+                                                   OnClick="@(() => OpenEditDialog(context))" />
+                                </MudTooltip>
+                                <MudTooltip Text="Delete">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                   Color="Color.Error"
+                                                   Size="Size.Small"
+                                                   OnClick="@(() => DeleteLocation(context))" />
+                                </MudTooltip>
+                            </div>
+                        </MudTd>
+                    </RowTemplate>
+                    <NoRecordsContent>
+                        <div class="admin-locations__empty">
+                            <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Large" />
+                            <MudText Typo="Typo.h6" Style="margin-top:10px; font-weight:800;">No locations found</MudText>
+                            <MudText Typo="Typo.body2" Class="admin-locations__muted">
+                                @if (string.IsNullOrWhiteSpace(_searchString))
+                                {
+                                    <span>Create your first location to get started.</span>
+                                }
+                                else
+                                {
+                                    <span>No locations match your search criteria.</span>
+                                }
+                            </MudText>
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Success"
+                                       OnClick="OpenCreateDialog"
+                                       Style="margin-top:12px; border-radius:999px;">
+                                Create Location
+                            </MudButton>
+                        </div>
+                    </NoRecordsContent>
+                    <PagerContent>
+                        <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
+                    </PagerContent>
+                </MudTable>
+            </MudPaper>
+        </div>
+    }
+</div>
 
 @code {
-    private MudTable<LocationListDto> _table;
-    private IEnumerable<LocationListDto> _locations;
+    private ICollection<LocationListDto> _locations = new List<LocationListDto>();
+    private string _searchString = string.Empty;
+    private bool _isLoading = true;
 
-    private async Task<TableData<LocationListDto>> ServerReload(TableState state, CancellationToken cancellationToken)
+    private IEnumerable<LocationListDto> FilteredLocations => string.IsNullOrWhiteSpace(_searchString)
+        ? _locations
+        : _locations.Where(l =>
+            (l.FullName?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (l.Address?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (l.City?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (l.Country?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false));
+
+    protected override async Task OnInitializedAsync()
     {
-        _locations = await LocationService.GetLocations();
-        return new TableData<LocationListDto>() { TotalItems = _locations.Count(), Items = _locations };
+        await LoadLocations();
     }
 
-    private async Task OpenDialog(Guid? id)
+    private async Task LoadLocations()
     {
-        // For now, this is a placeholder. I will implement the dialog later.
-        Snackbar.Add("Create/Edit functionality not yet implemented.", Severity.Info);
-        await Task.CompletedTask;
+        _isLoading = true;
+        try
+        {
+            _locations = await LocationService.GetLocations();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load locations: {ex.Message}", Severity.Error);
+            _locations = new List<LocationListDto>();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
     }
 
-    private async Task DeleteLocation(Guid id)
+    private async Task OpenCreateDialog()
     {
-        // For now, this is a placeholder. I will implement the delete functionality later.
-        Snackbar.Add("Delete functionality not yet implemented.", Severity.Info);
-        await Task.CompletedTask;
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<CreateLocationDialog>("Create Location", options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: CreateLocationDto createDto })
+        {
+            var response = await LocationService.CreateLocationAsync(createDto);
+            if (response?.Success == true)
+            {
+                Snackbar.Add($"Location '{createDto.FullName}' created successfully", Severity.Success);
+                await LoadLocations();
+            }
+            else
+            {
+                var errors = response?.Errors != null ? string.Join(", ", response.Errors) : "Unknown error";
+                Snackbar.Add($"Failed to create location: {errors}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task OpenEditDialog(LocationListDto location)
+    {
+        // First, get the full location details
+        var locationDetails = await LocationService.GetLocationByIdAsync(location.Id);
+        if (locationDetails == null)
+        {
+            Snackbar.Add("Failed to load location details", Severity.Error);
+            return;
+        }
+
+        var parameters = new DialogParameters<EditLocationDialog>
+        {
+            { x => x.ExistingLocation, locationDetails }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<EditLocationDialog>("Edit Location", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: UpdateLocationDto updateDto })
+        {
+            var response = await LocationService.UpdateLocationAsync(updateDto.Id, updateDto);
+            if (response?.Success == true)
+            {
+                Snackbar.Add($"Location '{updateDto.FullName}' updated successfully", Severity.Success);
+                await LoadLocations();
+            }
+            else
+            {
+                var errors = response?.Errors != null ? string.Join(", ", response.Errors) : "Unknown error";
+                Snackbar.Add($"Failed to update location: {errors}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task DeleteLocation(LocationListDto location)
+    {
+        bool? confirm = await DialogService.ShowMessageBox(
+            "Confirm Delete",
+            $"Are you sure you want to delete the location '{location.FullName}'? This action cannot be undone.",
+            yesText: "Delete",
+            cancelText: "Cancel");
+
+        if (confirm == true)
+        {
+            var success = await LocationService.DeleteLocationAsync(location.Id);
+            if (success)
+            {
+                Snackbar.Add($"Location '{location.FullName}' deleted successfully", Severity.Success);
+                await LoadLocations();
+            }
+            else
+            {
+                Snackbar.Add($"Failed to delete location '{location.FullName}'", Severity.Error);
+            }
+        }
     }
 }
