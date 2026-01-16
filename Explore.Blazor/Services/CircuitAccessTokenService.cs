@@ -193,11 +193,20 @@ public class CircuitAccessTokenService : ICircuitAccessTokenService
 }
 
 /// <summary>
-/// HTTP message handler that forwards the access token to API requests.
+/// HTTP message handler that forwards the access token and tenant ID to API requests.
 /// Uses multiple strategies to obtain the token.
 /// </summary>
 public class AccessTokenForwardingHandler : DelegatingHandler
 {
+    private const string TenantIdHeaderName = "X-Tenant-Id";
+
+    /// <summary>
+    /// Default tenant ID for single-instance deployments.
+    /// MUST match Explore.API.Services.TenantContext.DefaultTenantId
+    /// and Explore.Persistence.SeedIds.DefaultTenantId.
+    /// </summary>
+    private static readonly Guid DefaultTenantId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000001");
+
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<AccessTokenForwardingHandler> _logger;
 
@@ -319,6 +328,15 @@ public class AccessTokenForwardingHandler : DelegatingHandler
         else if (string.IsNullOrEmpty(token))
         {
             _logger.LogWarning("[AccessTokenForwardingHandler] ✗ NO TOKEN AVAILABLE for {Path} - request will likely fail with 401", request.RequestUri?.PathAndQuery);
+        }
+
+        // Always add X-Tenant-Id header for multi-tenant isolation
+        // This ensures the API knows which tenant the request belongs to
+        if (!request.Headers.Contains(TenantIdHeaderName))
+        {
+            request.Headers.Add(TenantIdHeaderName, DefaultTenantId.ToString());
+            _logger.LogDebug("[AccessTokenForwardingHandler] Added {Header}: {TenantId} to {Path}",
+                TenantIdHeaderName, DefaultTenantId, request.RequestUri?.PathAndQuery);
         }
 
         return await base.SendAsync(request, cancellationToken);

@@ -1,60 +1,304 @@
 @page "/admin/tags"
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Services.Contracts
+@using Explore.Blazor.Client.Components.Admin
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize(Roles = "Admin")]
 @inject ITagService TagService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
+@inject NavigationManager Nav
 
-<MudText Typo="Typo.h4" GutterBottom="true">Tags</MudText>
+<div class="admin-tags">
+    <!-- Hero Section -->
+    <MudPaper Class="admin-tags__hero" Elevation="0">
+        <div class="admin-tags__hero-top">
+            <div class="admin-tags__hero-title">
+                <div class="admin-tags__hero-badge">
+                    <MudIcon Icon="@Icons.Material.Filled.LocalOffer" Color="Color.Primary" />
+                </div>
+                <div>
+                    <MudText Typo="Typo.h4" Style="font-weight:800; letter-spacing:.2px;">
+                        Tags Management
+                    </MudText>
+                    <MudText Typo="Typo.body2" Class="admin-tags__hero-subtitle">
+                        Create, edit, and manage event tags
+                    </MudText>
+                </div>
+            </div>
 
-<MudTable T="TagListDto" ServerData="@ServerReload"
-          Dense="true" Hover="true" Striped="true" @ref="_table">
-    <ToolBarContent>
-        <MudText Typo="Typo.h6">Manage Tags</MudText>
-        <MudSpacer />
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="(() => OpenDialog(null))">Create Tag</MudButton>
-    </ToolBarContent>
-    <HeaderContent>
-        <MudTh>Name</MudTh>
-        <MudTh>Code</MudTh>
-        <MudTh>Actions</MudTh>
-    </HeaderContent>
-    <RowTemplate>
-        <MudTd DataLabel="Name">@context.FullName</MudTd>
-        <MudTd DataLabel="Code">@context.MasterCode</MudTd>
-        <MudTd DataLabel="Actions">
-            <MudIconButton Icon="@Icons.Material.Filled.Edit" OnClick="@(() => OpenDialog(context.Id))" />
-            <MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="@(() => DeleteTag(context.Id))" />
-        </MudTd>
-    </RowTemplate>
-    <PagerContent>
-        <MudTablePager />
-    </PagerContent>
-</MudTable>
+            <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Default"
+                           StartIcon="@Icons.Material.Filled.ArrowBack"
+                           OnClick="@(() => Nav.NavigateTo("/admin"))"
+                           Style="border-radius:999px; padding:10px 16px;">
+                    Back to Admin
+                </MudButton>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Refresh"
+                           OnClick="LoadTags"
+                           Style="border-radius:999px; padding:10px 16px;">
+                    Refresh
+                </MudButton>
+            </MudStack>
+        </div>
+
+        <!-- Stats -->
+        <div class="admin-tags__stats">
+            <div class="admin-tags__stat">
+                <div class="admin-tags__stat-row">
+                    <div class="admin-tags__stat-icon">
+                        <MudIcon Icon="@Icons.Material.Filled.LocalOffer" Color="Color.Primary" />
+                    </div>
+                    <div>
+                        <div class="admin-tags__stat-label">Total Tags</div>
+                        <div class="admin-tags__stat-value">@_tags.Count</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </MudPaper>
+
+    @if (_isLoading)
+    {
+        <MudPaper Class="admin-tags__panel" Elevation="0" Style="margin-top:14px;">
+            <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="py-4">
+                <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+                <MudText Typo="Typo.body1">Loading tags…</MudText>
+            </MudStack>
+        </MudPaper>
+    }
+    else
+    {
+        <div class="admin-tags__section">
+            <!-- Toolbar -->
+            <MudPaper Class="admin-tags__panel" Elevation="0" Style="margin-top:14px;">
+                <div class="admin-tags__toolbar">
+                    <MudTextField @bind-Value="_searchString"
+                                  Placeholder="Search tags..."
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  Variant="Variant.Outlined"
+                                  Immediate="true"
+                                  Clearable="true"
+                                  Margin="Margin.Dense"
+                                  Style="min-width:280px; border-radius:999px;" />
+
+                    <MudSpacer />
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="OpenCreateDialog"
+                               Class="admin-tags__create-btn">
+                        Create Tag
+                    </MudButton>
+                </div>
+            </MudPaper>
+
+            <!-- Table -->
+            <MudPaper Class="admin-tags__table-panel" Elevation="0" Style="margin-top:12px;">
+                <MudTable Items="@FilteredTags"
+                          Dense="true"
+                          Hover="true"
+                          Striped="true"
+                          Breakpoint="Breakpoint.Sm"
+                          Loading="@_isLoading"
+                          LoadingProgressColor="Color.Primary">
+                    <HeaderContent>
+                        <MudTh Style="width:50px">#</MudTh>
+                        <MudTh>Name</MudTh>
+                        <MudTh>Master Code</MudTh>
+                        <MudTh Style="text-align:center; width:150px">Actions</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="#">
+                            <MudText Typo="Typo.body2" Class="admin-tags__id">@context.Id.ToString()[..8]…</MudText>
+                        </MudTd>
+                        <MudTd DataLabel="Name">
+                            <div class="admin-tags__name-cell">
+                                <MudIcon Icon="@Icons.Material.Filled.LocalOffer" Size="Size.Small" Color="Color.Primary" />
+                                <MudText Typo="Typo.body2" Style="font-weight:600;">@context.FullName</MudText>
+                            </div>
+                        </MudTd>
+                        <MudTd DataLabel="Code">
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default">
+                                @context.MasterCode
+                            </MudChip>
+                        </MudTd>
+                        <MudTd DataLabel="Actions" Style="text-align:center">
+                            <div class="admin-tags__actions">
+                                <MudTooltip Text="Edit">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                   Color="Color.Primary"
+                                                   Size="Size.Small"
+                                                   OnClick="@(() => OpenEditDialog(context))" />
+                                </MudTooltip>
+                                <MudTooltip Text="Delete">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                   Color="Color.Error"
+                                                   Size="Size.Small"
+                                                   OnClick="@(() => DeleteTag(context))" />
+                                </MudTooltip>
+                            </div>
+                        </MudTd>
+                    </RowTemplate>
+                    <NoRecordsContent>
+                        <div class="admin-tags__empty">
+                            <MudIcon Icon="@Icons.Material.Filled.LocalOffer" Size="Size.Large" />
+                            <MudText Typo="Typo.h6" Style="margin-top:10px; font-weight:800;">No tags found</MudText>
+                            <MudText Typo="Typo.body2" Class="admin-tags__muted">
+                                @if (string.IsNullOrWhiteSpace(_searchString))
+                                {
+                                    <span>Create your first tag to get started.</span>
+                                }
+                                else
+                                {
+                                    <span>No tags match your search criteria.</span>
+                                }
+                            </MudText>
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       OnClick="OpenCreateDialog"
+                                       Style="margin-top:12px; border-radius:999px;">
+                                Create Tag
+                            </MudButton>
+                        </div>
+                    </NoRecordsContent>
+                    <PagerContent>
+                        <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
+                    </PagerContent>
+                </MudTable>
+            </MudPaper>
+        </div>
+    }
+</div>
 
 @code {
-    private MudTable<TagListDto> _table;
-    private IEnumerable<TagListDto> _tags;
+    private ICollection<TagListDto> _tags = new List<TagListDto>();
+    private string _searchString = string.Empty;
+    private bool _isLoading = true;
 
-    private async Task<TableData<TagListDto>> ServerReload(TableState state, CancellationToken cancellationToken)
+    private IEnumerable<TagListDto> FilteredTags => string.IsNullOrWhiteSpace(_searchString)
+        ? _tags
+        : _tags.Where(t =>
+            (t.FullName?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (t.MasterCode?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false));
+
+    protected override async Task OnInitializedAsync()
     {
-        _tags = await TagService.GetTags();
-        return new TableData<TagListDto>() { TotalItems = _tags.Count(), Items = _tags };
+        await LoadTags();
     }
 
-    private async Task OpenDialog(Guid? id)
+    private async Task LoadTags()
     {
-        // For now, this is a placeholder. I will implement the dialog later.
-        Snackbar.Add("Create/Edit functionality not yet implemented.", Severity.Info);
-        await Task.CompletedTask;
+        _isLoading = true;
+        try
+        {
+            _tags = await TagService.GetTags();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load tags: {ex.Message}", Severity.Error);
+            _tags = new List<TagListDto>();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
     }
 
-    private async Task DeleteTag(Guid id)
+    private async Task OpenCreateDialog()
     {
-        // For now, this is a placeholder. I will implement the delete functionality later.
-        Snackbar.Add("Delete functionality not yet implemented.", Severity.Info);
-        await Task.CompletedTask;
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<CreateTagDialog>("Create Tag", options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: CreateTagDto createDto })
+        {
+            var response = await TagService.CreateTagAsync(createDto);
+            if (response?.Success == true)
+            {
+                Snackbar.Add($"Tag '{createDto.FullName}' created successfully", Severity.Success);
+                await LoadTags();
+            }
+            else
+            {
+                var errors = response?.Errors != null ? string.Join(", ", response.Errors) : "Unknown error";
+                Snackbar.Add($"Failed to create tag: {errors}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task OpenEditDialog(TagListDto tag)
+    {
+        // First, get the full tag details
+        var tagDetails = await TagService.GetTagByIdAsync(tag.Id);
+        if (tagDetails == null)
+        {
+            Snackbar.Add("Failed to load tag details", Severity.Error);
+            return;
+        }
+
+        var parameters = new DialogParameters<EditTagDialog>
+        {
+            { x => x.ExistingTag, tagDetails }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<EditTagDialog>("Edit Tag", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: UpdateTagDto updateDto })
+        {
+            var response = await TagService.UpdateTagAsync(updateDto.Id, updateDto);
+            if (response?.Success == true)
+            {
+                Snackbar.Add($"Tag '{updateDto.FullName}' updated successfully", Severity.Success);
+                await LoadTags();
+            }
+            else
+            {
+                var errors = response?.Errors != null ? string.Join(", ", response.Errors) : "Unknown error";
+                Snackbar.Add($"Failed to update tag: {errors}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task DeleteTag(TagListDto tag)
+    {
+        bool? confirm = await DialogService.ShowMessageBox(
+            "Confirm Delete",
+            $"Are you sure you want to delete the tag '{tag.FullName}'? This action cannot be undone.",
+            yesText: "Delete",
+            cancelText: "Cancel");
+
+        if (confirm == true)
+        {
+            var success = await TagService.DeleteTagAsync(tag.Id);
+            if (success)
+            {
+                Snackbar.Add($"Tag '{tag.FullName}' deleted successfully", Severity.Success);
+                await LoadTags();
+            }
+            else
+            {
+                Snackbar.Add($"Failed to delete tag '{tag.FullName}'", Severity.Error);
+            }
+        }
     }
 }

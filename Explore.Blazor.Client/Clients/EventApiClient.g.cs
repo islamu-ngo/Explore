@@ -3534,9 +3534,9 @@ namespace Explore.Blazor.Client.Clients
         private static System.Lazy<Newtonsoft.Json.JsonSerializerSettings> _settings = new System.Lazy<Newtonsoft.Json.JsonSerializerSettings>(CreateSerializerSettings, true);
         private Newtonsoft.Json.JsonSerializerSettings _instanceSettings;
 
-    #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public EventApiClient(System.Net.Http.HttpClient httpClient)
-    #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
             Initialize();
@@ -3581,7 +3581,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("POST");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "admin/migrate"
                     urlBuilder_.Append("admin/migrate");
 
@@ -3666,7 +3666,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Actor"
                     urlBuilder_.Append("api/v1/Actor");
                     urlBuilder_.Append('?');
@@ -3761,7 +3761,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Actor"
                     urlBuilder_.Append("api/v1/Actor");
 
@@ -3842,7 +3842,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Actor/{id}"
                     urlBuilder_.Append("api/v1/Actor/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -3931,7 +3931,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Actor/{id}"
                     urlBuilder_.Append("api/v1/Actor/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -4012,7 +4012,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Actor/{id}"
                     urlBuilder_.Append("api/v1/Actor/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -4089,7 +4089,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Actor/by-did/{did}"
                     urlBuilder_.Append("api/v1/Actor/by-did/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(did, System.Globalization.CultureInfo.InvariantCulture)));
@@ -4171,7 +4171,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Actor/by-tenant/{tenantId}"
                     urlBuilder_.Append("api/v1/Actor/by-tenant/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(tenantId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -4262,7 +4262,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/ActorKeyStore"
                     urlBuilder_.Append("api/v1/ActorKeyStore");
 
@@ -4359,7 +4359,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/ActorKeyStore"
                     urlBuilder_.Append("api/v1/ActorKeyStore");
 
@@ -4396,20 +4396,20 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 400)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 400)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -4462,7 +4462,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/ActorKeyStore/{id}"
                     urlBuilder_.Append("api/v1/ActorKeyStore/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -4500,20 +4500,20 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 404)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -4573,7 +4573,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/ActorKeyStore/{id}"
                     urlBuilder_.Append("api/v1/ActorKeyStore/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -4611,30 +4611,30 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 400)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 400)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                                if (status_ == 404)
+                                {
+                                    var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                    if (objectResponse_.Object == null)
+                                    {
+                                        throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                    }
+                                    throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                                }
+                                else
+                                {
+                                    var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                    throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                                }
                     }
                     finally
                     {
@@ -4686,7 +4686,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/ActorKeyStore/{id}"
                     urlBuilder_.Append("api/v1/ActorKeyStore/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -4719,20 +4719,20 @@ namespace Explore.Blazor.Client.Clients
                             return;
                         }
                         else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 404)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -4782,7 +4782,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/ActorType"
                     urlBuilder_.Append("api/v1/ActorType");
 
@@ -4875,7 +4875,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/ActorType/{id}"
                     urlBuilder_.Append("api/v1/ActorType/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -4913,20 +4913,20 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 404)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -4976,7 +4976,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/ApprovalStatus"
                     urlBuilder_.Append("api/v1/ApprovalStatus");
 
@@ -5060,7 +5060,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("POST");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/ApprovalStatus"
                     urlBuilder_.Append("api/v1/ApprovalStatus");
 
@@ -5136,7 +5136,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/ApprovalStatus/{id}"
                     urlBuilder_.Append("api/v1/ApprovalStatus/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -5224,7 +5224,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/ApprovalStatus/{id}"
                     urlBuilder_.Append("api/v1/ApprovalStatus/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -5300,7 +5300,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/ApprovalStatus/{id}"
                     urlBuilder_.Append("api/v1/ApprovalStatus/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -5374,7 +5374,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/AtprotoRecord"
                     urlBuilder_.Append("api/v1/AtprotoRecord");
 
@@ -5459,7 +5459,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/AtprotoRecord"
                     urlBuilder_.Append("api/v1/AtprotoRecord");
 
@@ -5540,7 +5540,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/AtprotoRecord/{id}"
                     urlBuilder_.Append("api/v1/AtprotoRecord/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -5629,7 +5629,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/AtprotoRecord/{id}"
                     urlBuilder_.Append("api/v1/AtprotoRecord/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -5710,7 +5710,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/AtprotoRecord/{id}"
                     urlBuilder_.Append("api/v1/AtprotoRecord/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -5796,7 +5796,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/AudienceAge"
                     urlBuilder_.Append("api/v1/AudienceAge");
 
@@ -5889,7 +5889,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/AudienceAge/{id}"
                     urlBuilder_.Append("api/v1/AudienceAge/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -5927,20 +5927,20 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 404)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -5990,7 +5990,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/AudienceGender"
                     urlBuilder_.Append("api/v1/AudienceGender");
 
@@ -6083,7 +6083,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/AudienceGender/{id}"
                     urlBuilder_.Append("api/v1/AudienceGender/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -6121,20 +6121,20 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 404)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -6184,7 +6184,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Category"
                     urlBuilder_.Append("api/v1/Category");
                     urlBuilder_.Append('?');
@@ -6291,7 +6291,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Category"
                     urlBuilder_.Append("api/v1/Category");
 
@@ -6384,7 +6384,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Category/{id}"
                     urlBuilder_.Append("api/v1/Category/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -6485,7 +6485,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Category/{id}"
                     urlBuilder_.Append("api/v1/Category/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -6578,7 +6578,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Category/{id}"
                     urlBuilder_.Append("api/v1/Category/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -6664,7 +6664,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/DidCustodyType"
                     urlBuilder_.Append("api/v1/DidCustodyType");
 
@@ -6757,7 +6757,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/DidCustodyType/{id}"
                     urlBuilder_.Append("api/v1/DidCustodyType/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -6795,20 +6795,20 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 404)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -6858,7 +6858,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventCategories"
                     urlBuilder_.Append("api/v1/EventCategories");
 
@@ -6955,7 +6955,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventCategories"
                     urlBuilder_.Append("api/v1/EventCategories");
 
@@ -6992,30 +6992,30 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 400)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 400)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        if (status_ == 401)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                                if (status_ == 401)
+                                {
+                                    var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                    if (objectResponse_.Object == null)
+                                    {
+                                        throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                    }
+                                    throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                                }
+                                else
+                                {
+                                    var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                    throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                                }
                     }
                     finally
                     {
@@ -7068,7 +7068,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventCategories/{id}"
                     urlBuilder_.Append("api/v1/EventCategories/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -7106,20 +7106,20 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 404)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -7179,7 +7179,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventCategories/{id}"
                     urlBuilder_.Append("api/v1/EventCategories/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -7217,40 +7217,40 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 400)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 400)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        if (status_ == 401)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                                if (status_ == 401)
+                                {
+                                    var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                    if (objectResponse_.Object == null)
+                                    {
+                                        throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                    }
+                                    throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                                }
+                                else
+                                    if (status_ == 404)
+                                    {
+                                        var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                        if (objectResponse_.Object == null)
+                                        {
+                                            throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                        }
+                                        throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                                    }
+                                    else
+                                    {
+                                        var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                        throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                                    }
                     }
                     finally
                     {
@@ -7302,7 +7302,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventCategories/{id}"
                     urlBuilder_.Append("api/v1/EventCategories/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -7335,30 +7335,30 @@ namespace Explore.Blazor.Client.Clients
                             return;
                         }
                         else
-                        if (status_ == 401)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 401)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                                if (status_ == 404)
+                                {
+                                    var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                    if (objectResponse_.Object == null)
+                                    {
+                                        throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                    }
+                                    throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                                }
+                                else
+                                {
+                                    var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                    throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                                }
                     }
                     finally
                     {
@@ -7411,7 +7411,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventCategories/by-event/{eventId}"
                     urlBuilder_.Append("api/v1/EventCategories/by-event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -7505,7 +7505,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventCategories/by-category/{categoryId}"
                     urlBuilder_.Append("api/v1/EventCategories/by-category/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(categoryId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -7596,7 +7596,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Event"
                     urlBuilder_.Append("api/v1/Event");
                     urlBuilder_.Append('?');
@@ -7703,7 +7703,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Event"
                     urlBuilder_.Append("api/v1/Event");
 
@@ -7793,7 +7793,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Event/my"
                     urlBuilder_.Append("api/v1/Event/my");
                     urlBuilder_.Append('?');
@@ -7896,7 +7896,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Event/{id}"
                     urlBuilder_.Append("api/v1/Event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -7997,7 +7997,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Event/{id}"
                     urlBuilder_.Append("api/v1/Event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -8090,7 +8090,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Event/{id}"
                     urlBuilder_.Append("api/v1/Event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -8176,7 +8176,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventFormat"
                     urlBuilder_.Append("api/v1/EventFormat");
 
@@ -8269,7 +8269,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventFormat/{id}"
                     urlBuilder_.Append("api/v1/EventFormat/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -8307,20 +8307,20 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 404)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -8370,7 +8370,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventRegistration"
                     urlBuilder_.Append("api/v1/EventRegistration");
                     urlBuilder_.Append('?');
@@ -8477,7 +8477,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventRegistration"
                     urlBuilder_.Append("api/v1/EventRegistration");
 
@@ -8514,30 +8514,30 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 400)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 400)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        if (status_ == 401)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                                if (status_ == 401)
+                                {
+                                    var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                    if (objectResponse_.Object == null)
+                                    {
+                                        throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                    }
+                                    throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                                }
+                                else
+                                {
+                                    var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                    throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                                }
                     }
                     finally
                     {
@@ -8590,7 +8590,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventRegistration/{id}"
                     urlBuilder_.Append("api/v1/EventRegistration/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -8628,20 +8628,20 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 404)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -8701,7 +8701,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventRegistration/{id}"
                     urlBuilder_.Append("api/v1/EventRegistration/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -8739,40 +8739,40 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 400)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 400)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        if (status_ == 401)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                                if (status_ == 401)
+                                {
+                                    var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                    if (objectResponse_.Object == null)
+                                    {
+                                        throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                    }
+                                    throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                                }
+                                else
+                                    if (status_ == 404)
+                                    {
+                                        var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                        if (objectResponse_.Object == null)
+                                        {
+                                            throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                        }
+                                        throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                                    }
+                                    else
+                                    {
+                                        var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                        throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                                    }
                     }
                     finally
                     {
@@ -8824,7 +8824,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventRegistration/{id}"
                     urlBuilder_.Append("api/v1/EventRegistration/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -8857,30 +8857,30 @@ namespace Explore.Blazor.Client.Clients
                             return;
                         }
                         else
-                        if (status_ == 401)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 401)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                                if (status_ == 404)
+                                {
+                                    var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                    if (objectResponse_.Object == null)
+                                    {
+                                        throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                    }
+                                    throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                                }
+                                else
+                                {
+                                    var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                    throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                                }
                     }
                     finally
                     {
@@ -8933,7 +8933,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventRegistration/by-session/{eventSessionId}"
                     urlBuilder_.Append("api/v1/EventRegistration/by-session/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventSessionId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -9027,7 +9027,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventRegistration/by-user/{userId}"
                     urlBuilder_.Append("api/v1/EventRegistration/by-user/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(userId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -9118,7 +9118,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventSessionAgendaItem"
                     urlBuilder_.Append("api/v1/EventSessionAgendaItem");
                     urlBuilder_.Append('?');
@@ -9225,7 +9225,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventSessionAgendaItem"
                     urlBuilder_.Append("api/v1/EventSessionAgendaItem");
 
@@ -9318,7 +9318,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventSessionAgendaItem/{id}"
                     urlBuilder_.Append("api/v1/EventSessionAgendaItem/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -9419,7 +9419,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventSessionAgendaItem/{id}"
                     urlBuilder_.Append("api/v1/EventSessionAgendaItem/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -9512,7 +9512,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventSessionAgendaItem/{id}"
                     urlBuilder_.Append("api/v1/EventSessionAgendaItem/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -9601,7 +9601,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventSessionAgendaItem/by-session/{sessionId}"
                     urlBuilder_.Append("api/v1/EventSessionAgendaItem/by-session/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(sessionId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -9692,7 +9692,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventSession"
                     urlBuilder_.Append("api/v1/EventSession");
                     urlBuilder_.Append('?');
@@ -9799,7 +9799,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventSession"
                     urlBuilder_.Append("api/v1/EventSession");
 
@@ -9892,7 +9892,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventSession/{id}"
                     urlBuilder_.Append("api/v1/EventSession/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -9993,7 +9993,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventSession/{id}"
                     urlBuilder_.Append("api/v1/EventSession/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -10086,7 +10086,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventSession/{id}"
                     urlBuilder_.Append("api/v1/EventSession/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -10175,7 +10175,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventSession/by-event/{eventId}"
                     urlBuilder_.Append("api/v1/EventSession/by-event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -10266,7 +10266,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventSessionLanguage"
                     urlBuilder_.Append("api/v1/EventSessionLanguage");
                     urlBuilder_.Append('?');
@@ -10373,7 +10373,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventSessionLanguage"
                     urlBuilder_.Append("api/v1/EventSessionLanguage");
 
@@ -10466,7 +10466,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventSessionLanguage/{id}"
                     urlBuilder_.Append("api/v1/EventSessionLanguage/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -10567,7 +10567,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventSessionLanguage/{id}"
                     urlBuilder_.Append("api/v1/EventSessionLanguage/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -10660,7 +10660,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventSessionLanguage/{id}"
                     urlBuilder_.Append("api/v1/EventSessionLanguage/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -10749,7 +10749,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventSessionLanguage/by-session/{sessionId}"
                     urlBuilder_.Append("api/v1/EventSessionLanguage/by-session/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(sessionId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -10840,7 +10840,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventSessionSpeaker"
                     urlBuilder_.Append("api/v1/EventSessionSpeaker");
                     urlBuilder_.Append('?');
@@ -10947,7 +10947,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventSessionSpeaker"
                     urlBuilder_.Append("api/v1/EventSessionSpeaker");
 
@@ -11040,7 +11040,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventSessionSpeaker/{id}"
                     urlBuilder_.Append("api/v1/EventSessionSpeaker/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -11141,7 +11141,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventSessionSpeaker/{id}"
                     urlBuilder_.Append("api/v1/EventSessionSpeaker/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -11234,7 +11234,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventSessionSpeaker/{id}"
                     urlBuilder_.Append("api/v1/EventSessionSpeaker/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -11323,7 +11323,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventSessionSpeaker/by-session/{sessionId}"
                     urlBuilder_.Append("api/v1/EventSessionSpeaker/by-session/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(sessionId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -11417,7 +11417,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventSessionSpeaker/by-actor/{actorId}"
                     urlBuilder_.Append("api/v1/EventSessionSpeaker/by-actor/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(actorId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -11508,7 +11508,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventStatus"
                     urlBuilder_.Append("api/v1/EventStatus");
 
@@ -11601,7 +11601,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventStatus/{id}"
                     urlBuilder_.Append("api/v1/EventStatus/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -11639,20 +11639,20 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 404)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -11702,7 +11702,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventTags"
                     urlBuilder_.Append("api/v1/EventTags");
 
@@ -11799,7 +11799,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventTags"
                     urlBuilder_.Append("api/v1/EventTags");
 
@@ -11836,30 +11836,30 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 400)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 400)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        if (status_ == 401)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                                if (status_ == 401)
+                                {
+                                    var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                    if (objectResponse_.Object == null)
+                                    {
+                                        throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                    }
+                                    throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                                }
+                                else
+                                {
+                                    var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                    throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                                }
                     }
                     finally
                     {
@@ -11912,7 +11912,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventTags/{id}"
                     urlBuilder_.Append("api/v1/EventTags/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -11950,20 +11950,20 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 404)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -12023,7 +12023,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventTags/{id}"
                     urlBuilder_.Append("api/v1/EventTags/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -12061,40 +12061,40 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 400)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 400)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        if (status_ == 401)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                                if (status_ == 401)
+                                {
+                                    var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                    if (objectResponse_.Object == null)
+                                    {
+                                        throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                    }
+                                    throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                                }
+                                else
+                                    if (status_ == 404)
+                                    {
+                                        var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                        if (objectResponse_.Object == null)
+                                        {
+                                            throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                        }
+                                        throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                                    }
+                                    else
+                                    {
+                                        var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                        throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                                    }
                     }
                     finally
                     {
@@ -12146,7 +12146,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventTags/{id}"
                     urlBuilder_.Append("api/v1/EventTags/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -12179,30 +12179,30 @@ namespace Explore.Blazor.Client.Clients
                             return;
                         }
                         else
-                        if (status_ == 401)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 401)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                                if (status_ == 404)
+                                {
+                                    var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                    if (objectResponse_.Object == null)
+                                    {
+                                        throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                    }
+                                    throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                                }
+                                else
+                                {
+                                    var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                    throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                                }
                     }
                     finally
                     {
@@ -12255,7 +12255,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventTags/by-event/{eventId}"
                     urlBuilder_.Append("api/v1/EventTags/by-event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -12349,7 +12349,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventTags/by-tag/{tagId}"
                     urlBuilder_.Append("api/v1/EventTags/by-tag/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(tagId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -12440,7 +12440,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventType"
                     urlBuilder_.Append("api/v1/EventType");
 
@@ -12524,7 +12524,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("POST");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventType"
                     urlBuilder_.Append("api/v1/EventType");
 
@@ -12600,7 +12600,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventType/{id}"
                     urlBuilder_.Append("api/v1/EventType/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -12688,7 +12688,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventType/{id}"
                     urlBuilder_.Append("api/v1/EventType/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -12764,7 +12764,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/EventType/{id}"
                     urlBuilder_.Append("api/v1/EventType/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -12850,7 +12850,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/FileType"
                     urlBuilder_.Append("api/v1/FileType");
 
@@ -12943,7 +12943,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/FileType/{id}"
                     urlBuilder_.Append("api/v1/FileType/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -12981,20 +12981,20 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 404)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -13032,7 +13032,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/IndexedDid"
                     urlBuilder_.Append("api/v1/IndexedDid");
 
@@ -13117,7 +13117,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/IndexedDid"
                     urlBuilder_.Append("api/v1/IndexedDid");
 
@@ -13198,7 +13198,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/IndexedDid/{did}"
                     urlBuilder_.Append("api/v1/IndexedDid/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(did, System.Globalization.CultureInfo.InvariantCulture)));
@@ -13287,7 +13287,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/IndexedDid/{did}"
                     urlBuilder_.Append("api/v1/IndexedDid/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(did, System.Globalization.CultureInfo.InvariantCulture)));
@@ -13368,7 +13368,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/IndexedDid/{did}"
                     urlBuilder_.Append("api/v1/IndexedDid/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(did, System.Globalization.CultureInfo.InvariantCulture)));
@@ -13454,7 +13454,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Language"
                     urlBuilder_.Append("api/v1/Language");
 
@@ -13547,7 +13547,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Language/{id}"
                     urlBuilder_.Append("api/v1/Language/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -13638,7 +13638,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Location"
                     urlBuilder_.Append("api/v1/Location");
                     urlBuilder_.Append('?');
@@ -13745,7 +13745,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Location"
                     urlBuilder_.Append("api/v1/Location");
 
@@ -13838,7 +13838,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Location/{id}"
                     urlBuilder_.Append("api/v1/Location/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -13939,7 +13939,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Location/{id}"
                     urlBuilder_.Append("api/v1/Location/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -14032,7 +14032,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Location/{id}"
                     urlBuilder_.Append("api/v1/Location/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -14121,7 +14121,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Location/by-city/{city}"
                     urlBuilder_.Append("api/v1/Location/by-city/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(city, System.Globalization.CultureInfo.InvariantCulture)));
@@ -14215,7 +14215,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Location/by-country/{country}"
                     urlBuilder_.Append("api/v1/Location/by-country/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(country, System.Globalization.CultureInfo.InvariantCulture)));
@@ -14306,7 +14306,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Madhab"
                     urlBuilder_.Append("api/v1/Madhab");
 
@@ -14399,7 +14399,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Madhab/{id}"
                     urlBuilder_.Append("api/v1/Madhab/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -14437,20 +14437,20 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 404)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -14500,7 +14500,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Organization"
                     urlBuilder_.Append("api/v1/Organization");
                     urlBuilder_.Append('?');
@@ -14607,7 +14607,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Organization"
                     urlBuilder_.Append("api/v1/Organization");
 
@@ -14697,7 +14697,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Organization/my"
                     urlBuilder_.Append("api/v1/Organization/my");
                     urlBuilder_.Append('?');
@@ -14800,7 +14800,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Organization/{id}"
                     urlBuilder_.Append("api/v1/Organization/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -14889,7 +14889,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Organization/{id}"
                     urlBuilder_.Append("api/v1/Organization/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -14970,7 +14970,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Organization/{id}"
                     urlBuilder_.Append("api/v1/Organization/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -15053,7 +15053,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Organization/updatestatustype/{id}"
                     urlBuilder_.Append("api/v1/Organization/updatestatustype/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -15130,7 +15130,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/OrganizationMember/{organizationId}"
                     urlBuilder_.Append("api/v1/OrganizationMember/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(organizationId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -15216,7 +15216,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/OrganizationMember"
                     urlBuilder_.Append("api/v1/OrganizationMember");
 
@@ -15301,7 +15301,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/OrganizationMember/role"
                     urlBuilder_.Append("api/v1/OrganizationMember/role");
 
@@ -15379,7 +15379,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/OrganizationMember/invitations"
                     urlBuilder_.Append("api/v1/OrganizationMember/invitations");
 
@@ -15461,7 +15461,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/OrganizationMember/invitations/{id}/accept"
                     urlBuilder_.Append("api/v1/OrganizationMember/invitations/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -15545,7 +15545,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/OrganizationMember/invitations/{id}/decline"
                     urlBuilder_.Append("api/v1/OrganizationMember/invitations/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -15628,7 +15628,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/OrganizationMember/{id}"
                     urlBuilder_.Append("api/v1/OrganizationMember/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -15719,7 +15719,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/OrganizationPosition"
                     urlBuilder_.Append("api/v1/OrganizationPosition");
 
@@ -15812,7 +15812,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/OrganizationPosition/{id}"
                     urlBuilder_.Append("api/v1/OrganizationPosition/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -15850,20 +15850,20 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 404)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -15904,7 +15904,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/OrganizationReview/{organizationId}"
                     urlBuilder_.Append("api/v1/OrganizationReview/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(organizationId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -15986,7 +15986,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/OrganizationReview/user/{userId}"
                     urlBuilder_.Append("api/v1/OrganizationReview/user/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(userId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -16072,7 +16072,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/OrganizationReview"
                     urlBuilder_.Append("api/v1/OrganizationReview");
 
@@ -16162,7 +16162,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/OrganizationRole"
                     urlBuilder_.Append("api/v1/OrganizationRole");
 
@@ -16255,7 +16255,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/OrganizationRole/{id}"
                     urlBuilder_.Append("api/v1/OrganizationRole/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -16293,20 +16293,20 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 404)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -16356,7 +16356,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/RegistrationMode"
                     urlBuilder_.Append("api/v1/RegistrationMode");
 
@@ -16449,7 +16449,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/RegistrationMode/{id}"
                     urlBuilder_.Append("api/v1/RegistrationMode/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -16487,20 +16487,20 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 404)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -16550,7 +16550,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/StorageObject"
                     urlBuilder_.Append("api/v1/StorageObject");
                     urlBuilder_.Append('?');
@@ -16657,7 +16657,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/StorageObject"
                     urlBuilder_.Append("api/v1/StorageObject");
 
@@ -16694,30 +16694,30 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 400)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 400)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        if (status_ == 401)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                                if (status_ == 401)
+                                {
+                                    var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                    if (objectResponse_.Object == null)
+                                    {
+                                        throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                    }
+                                    throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                                }
+                                else
+                                {
+                                    var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                    throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                                }
                     }
                     finally
                     {
@@ -16770,7 +16770,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/StorageObject/{id}"
                     urlBuilder_.Append("api/v1/StorageObject/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -16808,20 +16808,20 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 404)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -16881,7 +16881,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/StorageObject/{id}"
                     urlBuilder_.Append("api/v1/StorageObject/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -16919,40 +16919,40 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 400)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 400)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        if (status_ == 401)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                                if (status_ == 401)
+                                {
+                                    var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                    if (objectResponse_.Object == null)
+                                    {
+                                        throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                    }
+                                    throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                                }
+                                else
+                                    if (status_ == 404)
+                                    {
+                                        var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                        if (objectResponse_.Object == null)
+                                        {
+                                            throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                        }
+                                        throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                                    }
+                                    else
+                                    {
+                                        var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                        throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                                    }
                     }
                     finally
                     {
@@ -17004,7 +17004,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/StorageObject/{id}"
                     urlBuilder_.Append("api/v1/StorageObject/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -17037,30 +17037,30 @@ namespace Explore.Blazor.Client.Clients
                             return;
                         }
                         else
-                        if (status_ == 401)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 401)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                                if (status_ == 404)
+                                {
+                                    var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                    if (objectResponse_.Object == null)
+                                    {
+                                        throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                    }
+                                    throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                                }
+                                else
+                                {
+                                    var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                    throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                                }
                     }
                     finally
                     {
@@ -17112,7 +17112,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("GET");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/StorageObject/file/{fileKey}"
                     urlBuilder_.Append("api/v1/StorageObject/file/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(fileKey, System.Globalization.CultureInfo.InvariantCulture)));
@@ -17205,7 +17205,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/StorageObject/generate-upload-url"
                     urlBuilder_.Append("api/v1/StorageObject/generate-upload-url");
 
@@ -17242,30 +17242,30 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 400)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 400)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        if (status_ == 401)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                                if (status_ == 401)
+                                {
+                                    var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                    if (objectResponse_.Object == null)
+                                    {
+                                        throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                    }
+                                    throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                                }
+                                else
+                                {
+                                    var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                    throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                                }
                     }
                     finally
                     {
@@ -17303,7 +17303,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/SyncState"
                     urlBuilder_.Append("api/v1/SyncState");
 
@@ -17388,7 +17388,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/SyncState"
                     urlBuilder_.Append("api/v1/SyncState");
 
@@ -17469,7 +17469,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/SyncState/{id}"
                     urlBuilder_.Append("api/v1/SyncState/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -17558,7 +17558,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/SyncState/{id}"
                     urlBuilder_.Append("api/v1/SyncState/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -17639,7 +17639,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/SyncState/{id}"
                     urlBuilder_.Append("api/v1/SyncState/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -17725,7 +17725,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Tag"
                     urlBuilder_.Append("api/v1/Tag");
                     urlBuilder_.Append('?');
@@ -17832,7 +17832,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Tag"
                     urlBuilder_.Append("api/v1/Tag");
 
@@ -17925,7 +17925,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Tag/{id}"
                     urlBuilder_.Append("api/v1/Tag/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -18026,7 +18026,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Tag/{id}"
                     urlBuilder_.Append("api/v1/Tag/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -18119,7 +18119,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Tag/{id}"
                     urlBuilder_.Append("api/v1/Tag/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -18193,7 +18193,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/TagType"
                     urlBuilder_.Append("api/v1/TagType");
 
@@ -18274,7 +18274,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/TagType/{id}"
                     urlBuilder_.Append("api/v1/TagType/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -18353,7 +18353,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/TagTypeTags"
                     urlBuilder_.Append("api/v1/TagTypeTags");
 
@@ -18438,7 +18438,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/TagTypeTags"
                     urlBuilder_.Append("api/v1/TagTypeTags");
 
@@ -18519,7 +18519,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/TagTypeTags/{id}"
                     urlBuilder_.Append("api/v1/TagTypeTags/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -18608,7 +18608,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/TagTypeTags/{id}"
                     urlBuilder_.Append("api/v1/TagTypeTags/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -18689,7 +18689,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/TagTypeTags/{id}"
                     urlBuilder_.Append("api/v1/TagTypeTags/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -18766,7 +18766,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/TagTypeTags/by-tagtype/{tagTypeId}"
                     urlBuilder_.Append("api/v1/TagTypeTags/by-tagtype/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(tagTypeId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -18848,7 +18848,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/TagTypeTags/by-tag/{tagId}"
                     urlBuilder_.Append("api/v1/TagTypeTags/by-tag/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(tagId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -18939,7 +18939,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Tenant"
                     urlBuilder_.Append("api/v1/Tenant");
 
@@ -19036,7 +19036,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Tenant"
                     urlBuilder_.Append("api/v1/Tenant");
 
@@ -19073,20 +19073,20 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 400)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 400)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -19139,7 +19139,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Tenant/{id}"
                     urlBuilder_.Append("api/v1/Tenant/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -19177,20 +19177,20 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 404)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -19250,7 +19250,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Tenant/{id}"
                     urlBuilder_.Append("api/v1/Tenant/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -19288,30 +19288,30 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 400)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 400)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                                if (status_ == 404)
+                                {
+                                    var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                    if (objectResponse_.Object == null)
+                                    {
+                                        throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                    }
+                                    throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                                }
+                                else
+                                {
+                                    var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                    throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                                }
                     }
                     finally
                     {
@@ -19363,7 +19363,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/Tenant/{id}"
                     urlBuilder_.Append("api/v1/Tenant/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -19396,20 +19396,20 @@ namespace Explore.Blazor.Client.Clients
                             return;
                         }
                         else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 404)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -19459,7 +19459,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/TenantSettings"
                     urlBuilder_.Append("api/v1/TenantSettings");
 
@@ -19556,7 +19556,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/TenantSettings"
                     urlBuilder_.Append("api/v1/TenantSettings");
 
@@ -19593,20 +19593,20 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 400)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 400)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -19659,7 +19659,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/TenantSettings/{id}"
                     urlBuilder_.Append("api/v1/TenantSettings/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -19697,20 +19697,20 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 404)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -19770,7 +19770,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/TenantSettings/{id}"
                     urlBuilder_.Append("api/v1/TenantSettings/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -19808,30 +19808,30 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 400)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 400)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                                if (status_ == 404)
+                                {
+                                    var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                    if (objectResponse_.Object == null)
+                                    {
+                                        throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                    }
+                                    throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                                }
+                                else
+                                {
+                                    var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                    throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                                }
                     }
                     finally
                     {
@@ -19883,7 +19883,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/TenantSettings/{id}"
                     urlBuilder_.Append("api/v1/TenantSettings/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -19916,20 +19916,20 @@ namespace Explore.Blazor.Client.Clients
                             return;
                         }
                         else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 404)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -19979,7 +19979,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/TenantUser"
                     urlBuilder_.Append("api/v1/TenantUser");
 
@@ -20076,7 +20076,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/TenantUser"
                     urlBuilder_.Append("api/v1/TenantUser");
 
@@ -20113,20 +20113,20 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 400)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 400)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -20179,7 +20179,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/TenantUser/{id}"
                     urlBuilder_.Append("api/v1/TenantUser/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -20217,20 +20217,20 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 404)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -20290,7 +20290,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/TenantUser/{id}"
                     urlBuilder_.Append("api/v1/TenantUser/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -20328,30 +20328,30 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 400)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 400)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                                if (status_ == 404)
+                                {
+                                    var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                    if (objectResponse_.Object == null)
+                                    {
+                                        throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                    }
+                                    throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                                }
+                                else
+                                {
+                                    var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                    throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                                }
                     }
                     finally
                     {
@@ -20403,7 +20403,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/TenantUser/{id}"
                     urlBuilder_.Append("api/v1/TenantUser/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -20436,20 +20436,20 @@ namespace Explore.Blazor.Client.Clients
                             return;
                         }
                         else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 404)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -20499,7 +20499,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/UserAuthenticationToken"
                     urlBuilder_.Append("api/v1/UserAuthenticationToken");
 
@@ -20596,7 +20596,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/UserAuthenticationToken"
                     urlBuilder_.Append("api/v1/UserAuthenticationToken");
 
@@ -20633,20 +20633,20 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 400)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 400)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -20699,7 +20699,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/UserAuthenticationToken/{id}"
                     urlBuilder_.Append("api/v1/UserAuthenticationToken/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -20737,20 +20737,20 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 404)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -20810,7 +20810,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/UserAuthenticationToken/{id}"
                     urlBuilder_.Append("api/v1/UserAuthenticationToken/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -20848,30 +20848,30 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 400)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 400)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                                if (status_ == 404)
+                                {
+                                    var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                    if (objectResponse_.Object == null)
+                                    {
+                                        throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                    }
+                                    throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                                }
+                                else
+                                {
+                                    var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                    throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                                }
                     }
                     finally
                     {
@@ -20923,7 +20923,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/UserAuthenticationToken/{id}"
                     urlBuilder_.Append("api/v1/UserAuthenticationToken/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -20956,20 +20956,20 @@ namespace Explore.Blazor.Client.Clients
                             return;
                         }
                         else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 404)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -21020,7 +21020,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/User/sync"
                     urlBuilder_.Append("api/v1/User/sync");
 
@@ -21098,7 +21098,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/User"
                     urlBuilder_.Append("api/v1/User");
 
@@ -21183,7 +21183,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/User"
                     urlBuilder_.Append("api/v1/User");
 
@@ -21260,7 +21260,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/User"
                     urlBuilder_.Append("api/v1/User");
 
@@ -21348,7 +21348,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/User/{userId}/organizations"
                     urlBuilder_.Append("api/v1/User/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(userId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -21440,7 +21440,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/UserExternalLogin"
                     urlBuilder_.Append("api/v1/UserExternalLogin");
 
@@ -21537,7 +21537,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/UserExternalLogin"
                     urlBuilder_.Append("api/v1/UserExternalLogin");
 
@@ -21574,20 +21574,20 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 400)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 400)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -21640,7 +21640,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/UserExternalLogin/{id}"
                     urlBuilder_.Append("api/v1/UserExternalLogin/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -21678,20 +21678,20 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 404)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -21751,7 +21751,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/UserExternalLogin/{id}"
                     urlBuilder_.Append("api/v1/UserExternalLogin/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -21789,30 +21789,30 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 400)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 400)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                                if (status_ == 404)
+                                {
+                                    var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                    if (objectResponse_.Object == null)
+                                    {
+                                        throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                    }
+                                    throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                                }
+                                else
+                                {
+                                    var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                    throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                                }
                     }
                     finally
                     {
@@ -21864,7 +21864,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/UserExternalLogin/{id}"
                     urlBuilder_.Append("api/v1/UserExternalLogin/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -21897,20 +21897,20 @@ namespace Explore.Blazor.Client.Clients
                             return;
                         }
                         else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 404)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -21960,7 +21960,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/UserRole"
                     urlBuilder_.Append("api/v1/UserRole");
 
@@ -22053,7 +22053,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/UserRole/{id}"
                     urlBuilder_.Append("api/v1/UserRole/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -22091,20 +22091,20 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 404)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -22154,7 +22154,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/VisibilityType"
                     urlBuilder_.Append("api/v1/VisibilityType");
 
@@ -22247,7 +22247,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/v1/VisibilityType/{id}"
                     urlBuilder_.Append("api/v1/VisibilityType/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -22285,20 +22285,20 @@ namespace Explore.Blazor.Client.Clients
                             return objectResponse_.Object;
                         }
                         else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
+                            if (status_ == 404)
                             {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                                if (objectResponse_.Object == null)
+                                {
+                                    throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                                }
+                                throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                             }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
+                            else
+                            {
+                                var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                            }
                     }
                     finally
                     {
@@ -22386,7 +22386,7 @@ namespace Explore.Blazor.Client.Clients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -22398,13 +22398,13 @@ namespace Explore.Blazor.Client.Clients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool) 
+            else if (value is bool)
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[]) value);
+                return System.Convert.ToBase64String((byte[])value);
             }
             else if (value is string[])
             {
@@ -24864,6 +24864,9 @@ namespace Explore.Blazor.Client.Clients
         [Newtonsoft.Json.JsonProperty("fullName", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
         public string FullName { get; set; }
 
+        [Newtonsoft.Json.JsonProperty("masterCode", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public string MasterCode { get; set; }
+
         [Newtonsoft.Json.JsonProperty("description", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
         public string Description { get; set; }
 
@@ -25031,6 +25034,9 @@ namespace Explore.Blazor.Client.Clients
 
         [Newtonsoft.Json.JsonProperty("fullName", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
         public string FullName { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("description", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public string Description { get; set; }
 
         private System.Collections.Generic.IDictionary<string, object> _additionalProperties;
 

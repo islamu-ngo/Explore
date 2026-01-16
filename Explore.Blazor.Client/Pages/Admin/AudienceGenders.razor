@@ -4,56 +4,158 @@
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize(Roles = "Admin")]
 @inject IAudienceGenderService AudienceGenderService
-@inject IDialogService DialogService
 @inject ISnackbar Snackbar
+@inject NavigationManager Nav
 
-<MudText Typo="Typo.h4" GutterBottom="true">Audience Genders</MudText>
+<div class="admin-lookup">
+    <!-- Hero Section -->
+    <MudPaper Class="admin-lookup__hero admin-lookup__hero--gender" Elevation="0">
+        <div class="admin-lookup__hero-top">
+            <div class="admin-lookup__hero-title">
+                <div class="admin-lookup__hero-badge admin-lookup__hero-badge--gender">
+                    <MudIcon Icon="@Icons.Material.Filled.People" Color="Color.Info" />
+                </div>
+                <div>
+                    <MudText Typo="Typo.h4" Style="font-weight:800; letter-spacing:.2px;">
+                        Audience Genders
+                    </MudText>
+                    <MudText Typo="Typo.body2" Class="admin-lookup__hero-subtitle">
+                        Gender audience classifications for events (read-only lookup table)
+                    </MudText>
+                </div>
+            </div>
 
-<MudTable Items="@_audienceGenders"
-          Dense="true" Hover="true" Striped="true" @ref="_table">
-    <ToolBarContent>
-        <MudText Typo="Typo.h6">Manage Audience Genders</MudText>
-        <MudSpacer />
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="(() => OpenDialog(null))">Create Audience Gender</MudButton>
-    </ToolBarContent>
-    <HeaderContent>
-        <MudTh>Name</MudTh>
-        <MudTh>Description</MudTh>
-        <MudTh>Actions</MudTh>
-    </HeaderContent>
-    <RowTemplate>
-        <MudTd DataLabel="Name">@context.FullName</MudTd>
-        <MudTd DataLabel="Description">@context.Description</MudTd>
-        <MudTd DataLabel="Actions">
-            <MudIconButton Icon="@Icons.Material.Filled.Edit" OnClick="@(() => OpenDialog(context.Id))" />
-            <MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="@(() => DeleteAudienceGender(context.Id))" />
-        </MudTd>
-    </RowTemplate>
-    <PagerContent>
-        <MudTablePager />
-    </PagerContent>
-</MudTable>
+            <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Default"
+                           StartIcon="@Icons.Material.Filled.ArrowBack"
+                           OnClick="@(() => Nav.NavigateTo("/admin"))"
+                           Style="border-radius:999px; padding:10px 16px;">
+                    Back to Admin
+                </MudButton>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Info"
+                           StartIcon="@Icons.Material.Filled.Refresh"
+                           OnClick="LoadData"
+                           Style="border-radius:999px; padding:10px 16px;">
+                    Refresh
+                </MudButton>
+            </MudStack>
+        </div>
+
+        <!-- Stats -->
+        <div class="admin-lookup__stats">
+            <div class="admin-lookup__stat">
+                <div class="admin-lookup__stat-row">
+                    <div class="admin-lookup__stat-icon admin-lookup__stat-icon--gender">
+                        <MudIcon Icon="@Icons.Material.Filled.People" Color="Color.Info" />
+                    </div>
+                    <div>
+                        <div class="admin-lookup__stat-label">Total Gender Options</div>
+                        <div class="admin-lookup__stat-value">@_items.Count</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </MudPaper>
+
+    @if (_isLoading)
+    {
+        <MudPaper Class="admin-lookup__panel" Elevation="0" Style="margin-top:14px;">
+            <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="py-4">
+                <MudProgressCircular Color="Color.Info" Size="Size.Large" Indeterminate="true" />
+                <MudText Typo="Typo.body1">Loading audience genders…</MudText>
+            </MudStack>
+        </MudPaper>
+    }
+    else
+    {
+        <div class="admin-lookup__section">
+            <!-- Info Banner -->
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-3" Style="border-radius:14px;">
+                <MudText Typo="Typo.body2">
+                    <strong>Read-only lookup table.</strong> Audience gender options are system-defined values.
+                    Contact system administrator if changes are needed.
+                </MudText>
+            </MudAlert>
+
+            <!-- Table -->
+            <MudPaper Class="admin-lookup__table-panel" Elevation="0">
+                <MudTable Items="@_items"
+                          Dense="true"
+                          Hover="true"
+                          Striped="true"
+                          Breakpoint="Breakpoint.Sm"
+                          Loading="@_isLoading"
+                          LoadingProgressColor="Color.Info">
+                    <HeaderContent>
+                        <MudTh Style="width:80px">ID</MudTh>
+                        <MudTh>Name</MudTh>
+                        <MudTh>Master Code</MudTh>
+                        <MudTh>Description</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="ID">
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="Color.Default">
+                                @context.Id
+                            </MudChip>
+                        </MudTd>
+                        <MudTd DataLabel="Name">
+                            <div class="admin-lookup__name-cell">
+                                <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Small" Color="Color.Info" />
+                                <MudText Typo="Typo.body2" Style="font-weight:600;">@context.FullName</MudText>
+                            </div>
+                        </MudTd>
+                        <MudTd DataLabel="Code">
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default">
+                                @context.MasterCode
+                            </MudChip>
+                        </MudTd>
+                        <MudTd DataLabel="Description">
+                            <MudText Typo="Typo.body2" Class="admin-lookup__muted">
+                                @(context.Description ?? "—")
+                            </MudText>
+                        </MudTd>
+                    </RowTemplate>
+                    <NoRecordsContent>
+                        <div class="admin-lookup__empty">
+                            <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Large" />
+                            <MudText Typo="Typo.h6" Style="margin-top:10px; font-weight:800;">No gender options found</MudText>
+                            <MudText Typo="Typo.body2" Class="admin-lookup__muted">
+                                The lookup table is empty.
+                            </MudText>
+                        </div>
+                    </NoRecordsContent>
+                </MudTable>
+            </MudPaper>
+        </div>
+    }
+</div>
 
 @code {
-    private MudTable<AudienceGenderListDto> _table;
-    private IEnumerable<AudienceGenderListDto> _audienceGenders = new List<AudienceGenderListDto>();
+    private ICollection<AudienceGenderListDto> _items = new List<AudienceGenderListDto>();
+    private bool _isLoading = true;
 
     protected override async Task OnInitializedAsync()
     {
-        _audienceGenders = await AudienceGenderService.GetAudienceGendersAsync();
+        await LoadData();
     }
 
-    private async Task OpenDialog(int? id)
+    private async Task LoadData()
     {
-        // For now, this is a placeholder. I will implement the dialog later.
-        Snackbar.Add("Create/Edit functionality not yet implemented.", Severity.Info);
-        await Task.CompletedTask;
-    }
-
-    private async Task DeleteAudienceGender(int id)
-    {
-        // For now, this is a placeholder. I will implement the delete functionality later.
-        Snackbar.Add("Delete functionality not yet implemented.", Severity.Info);
-        await Task.CompletedTask;
+        _isLoading = true;
+        try
+        {
+            _items = await AudienceGenderService.GetAudienceGendersAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load audience genders: {ex.Message}", Severity.Error);
+            _items = new List<AudienceGenderListDto>();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
     }
 }

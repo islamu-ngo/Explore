@@ -81,6 +81,121 @@
         </div>
     </MudPaper>
 
+    <!-- LOOKUP TABLES NAVIGATION -->
+    <div class="admin-list__lookup-section">
+        <div class="admin-list__section-head">
+            <div>
+                <MudText Typo="Typo.h5" Style="font-weight:800;">Lookup Tables</MudText>
+                <MudText Typo="Typo.body2" Class="admin-list__muted">
+                    Manage system data and configurations
+                </MudText>
+            </div>
+        </div>
+
+        <div class="admin-list__lookup-grid">
+            <!-- CRUD Tables (Full Edit Access) -->
+            <MudPaper Class="admin-list__lookup-card admin-list__lookup-card--crud" Elevation="0" @onclick="@(() => Nav.NavigateTo("/admin/tags"))">
+                <div class="admin-list__lookup-card-icon admin-list__lookup-card-icon--tags">
+                    <MudIcon Icon="@Icons.Material.Filled.LocalOffer" />
+                </div>
+                <div class="admin-list__lookup-card-content">
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:700;">Tags</MudText>
+                    <MudText Typo="Typo.caption" Class="admin-list__muted">Create, edit, delete tags</MudText>
+                </div>
+                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled">CRUD</MudChip>
+            </MudPaper>
+
+            <MudPaper Class="admin-list__lookup-card admin-list__lookup-card--crud" Elevation="0" @onclick="@(() => Nav.NavigateTo("/admin/categories"))">
+                <div class="admin-list__lookup-card-icon admin-list__lookup-card-icon--categories">
+                    <MudIcon Icon="@Icons.Material.Filled.Category" />
+                </div>
+                <div class="admin-list__lookup-card-content">
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:700;">Categories</MudText>
+                    <MudText Typo="Typo.caption" Class="admin-list__muted">Manage event categories</MudText>
+                </div>
+                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled">CRUD</MudChip>
+            </MudPaper>
+
+            <MudPaper Class="admin-list__lookup-card admin-list__lookup-card--crud" Elevation="0" @onclick="@(() => Nav.NavigateTo("/admin/locations"))">
+                <div class="admin-list__lookup-card-icon admin-list__lookup-card-icon--locations">
+                    <MudIcon Icon="@Icons.Material.Filled.LocationOn" />
+                </div>
+                <div class="admin-list__lookup-card-content">
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:700;">Locations</MudText>
+                    <MudText Typo="Typo.caption" Class="admin-list__muted">Manage event venues</MudText>
+                </div>
+                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled">CRUD</MudChip>
+            </MudPaper>
+
+            <!-- Read-Only Tables -->
+            <MudPaper Class="admin-list__lookup-card" Elevation="0" @onclick="@(() => Nav.NavigateTo("/admin/madhabs"))">
+                <div class="admin-list__lookup-card-icon admin-list__lookup-card-icon--madhabs">
+                    <MudIcon Icon="@Icons.Material.Filled.MenuBook" />
+                </div>
+                <div class="admin-list__lookup-card-content">
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:700;">Madhabs</MudText>
+                    <MudText Typo="Typo.caption" Class="admin-list__muted">Islamic jurisprudence schools</MudText>
+                </div>
+                <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">View</MudChip>
+            </MudPaper>
+
+            <MudPaper Class="admin-list__lookup-card" Elevation="0" @onclick="@(() => Nav.NavigateTo("/admin/audience-ages"))">
+                <div class="admin-list__lookup-card-icon admin-list__lookup-card-icon--ages">
+                    <MudIcon Icon="@Icons.Material.Filled.Cake" />
+                </div>
+                <div class="admin-list__lookup-card-content">
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:700;">Audience Ages</MudText>
+                    <MudText Typo="Typo.caption" Class="admin-list__muted">Age group classifications</MudText>
+                </div>
+                <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">View</MudChip>
+            </MudPaper>
+
+            <MudPaper Class="admin-list__lookup-card" Elevation="0" @onclick="@(() => Nav.NavigateTo("/admin/audience-genders"))">
+                <div class="admin-list__lookup-card-icon admin-list__lookup-card-icon--genders">
+                    <MudIcon Icon="@Icons.Material.Filled.People" />
+                </div>
+                <div class="admin-list__lookup-card-content">
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:700;">Audience Genders</MudText>
+                    <MudText Typo="Typo.caption" Class="admin-list__muted">Gender audience options</MudText>
+                </div>
+                <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">View</MudChip>
+            </MudPaper>
+
+            <MudPaper Class="admin-list__lookup-card" Elevation="0" @onclick="@(() => Nav.NavigateTo("/admin/event-types"))">
+                <div class="admin-list__lookup-card-icon admin-list__lookup-card-icon--event-types">
+                    <MudIcon Icon="@Icons.Material.Filled.Event" />
+                </div>
+                <div class="admin-list__lookup-card-content">
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:700;">Event Types</MudText>
+                    <MudText Typo="Typo.caption" Class="admin-list__muted">Event classifications</MudText>
+                </div>
+                <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">View</MudChip>
+            </MudPaper>
+
+            <MudPaper Class="admin-list__lookup-card" Elevation="0" @onclick="@(() => Nav.NavigateTo("/admin/event-formats"))">
+                <div class="admin-list__lookup-card-icon admin-list__lookup-card-icon--event-formats">
+                    <MudIcon Icon="@Icons.Material.Filled.Videocam" />
+                </div>
+                <div class="admin-list__lookup-card-content">
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:700;">Event Formats</MudText>
+                    <MudText Typo="Typo.caption" Class="admin-list__muted">In-person, Online, Hybrid</MudText>
+                </div>
+                <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">View</MudChip>
+            </MudPaper>
+
+            <MudPaper Class="admin-list__lookup-card" Elevation="0" @onclick="@(() => Nav.NavigateTo("/admin/languages"))">
+                <div class="admin-list__lookup-card-icon admin-list__lookup-card-icon--languages">
+                    <MudIcon Icon="@Icons.Material.Filled.Language" />
+                </div>
+                <div class="admin-list__lookup-card-content">
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:700;">Languages</MudText>
+                    <MudText Typo="Typo.caption" Class="admin-list__muted">Supported languages</MudText>
+                </div>
+                <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">View</MudChip>
+            </MudPaper>
+        </div>
+    </div>
+
     @if (_isLoading)
     {
         <MudPaper Class="admin-list__panel" Elevation="0" Style="margin-top:14px;">

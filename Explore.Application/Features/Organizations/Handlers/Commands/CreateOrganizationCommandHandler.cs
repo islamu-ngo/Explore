@@ -85,7 +85,8 @@ namespace Explore.Application.Features.Organizations.Handlers.Commands
                 OrganizationId = organization.Id,
                 UserId = currentUserId,
                 OrganizationRoleId = (int)OrganizationRoleEnum.Creator,
-                OrganizationPositionId = null // No position assigned initially
+                OrganizationPositionId = null, // No position assigned initially
+                TenantId = _tenantContext.TenantId // Required for multi-tenant isolation
             };
 
             await _organizationMemberRepository.Create(organizationMember);
