@@ -1,6 +1,23 @@
 # BFF Configuration
 
-This document details the configuration for the Backend-for-Frontend (BFF) pattern using YARP (Yet Another Reverse Proxy) in the `Explore.Blazor` project.
+> **Project-Agnostic BFF Configuration with YARP**
+>
+> Placeholders use `{Placeholder}` syntax - see [../../../../docs/TEMPLATE_GLOSSARY.md](../../../../docs/TEMPLATE_GLOSSARY.md).
+>
+> **Note**: All code examples use the ISLAMU Event (Explore) implementation. Replace project-specific names with your values.
+
+## Placeholder Substitutions
+
+| Placeholder | Replace With | Example (ISLAMU Event) |
+|-------------|--------------|------------------------|
+| `{Project}` | Your solution name | `Explore` |
+| `{Project}.Blazor` | Blazor Server (BFF) project | `Explore.Blazor` |
+| `{Project}.API` | Backend API project | `Explore.API` |
+| `{project}` | camelCase project name | `explore` |
+
+---
+
+This document details the configuration for the Backend-for-Frontend (BFF) pattern using YARP (Yet Another Reverse Proxy) in the `{Project}.Blazor` project.
 
 ---
 

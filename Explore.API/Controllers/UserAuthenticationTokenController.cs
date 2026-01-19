@@ -26,7 +26,7 @@ namespace Explore.API.Controllers
         [HttpGet]
         [EndpointSummary("Get all User Authentication Tokens")]
         [EndpointDescription("Retrieve a list of all user authentication tokens")]
-        [AllowAnonymous]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(List<UserAuthenticationTokenListDto>), StatusCodes.Status200OK)]
         public async Task<ActionResult<List<UserAuthenticationTokenListDto>>> GetAll()
         {
@@ -38,7 +38,7 @@ namespace Explore.API.Controllers
         [HttpGet("{id}")]
         [EndpointSummary("Get User Authentication Token by ID")]
         [EndpointDescription("Retrieve details of a specific user authentication token")]
-        [AllowAnonymous]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(UserAuthenticationTokenDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<UserAuthenticationTokenDto>> GetById(Guid id)
@@ -56,7 +56,7 @@ namespace Explore.API.Controllers
         [HttpPost]
         [EndpointSummary("Create new User Authentication Token")]
         [EndpointDescription("Create a new user authentication token")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateUserAuthenticationTokenDto dto)
@@ -76,7 +76,7 @@ namespace Explore.API.Controllers
         [HttpPut("{id}")]
         [EndpointSummary("Update User Authentication Token")]
         [EndpointDescription("Update an existing user authentication token")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -102,7 +102,7 @@ namespace Explore.API.Controllers
         [HttpDelete("{id}")]
         [EndpointSummary("Delete User Authentication Token")]
         [EndpointDescription("Delete a user authentication token")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult> Delete(Guid id)

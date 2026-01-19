@@ -1,5 +1,24 @@
 # Service Layer Patterns
 
+> **Project-Agnostic Service Layer Patterns for Blazor**
+>
+> Placeholders use `{Placeholder}` syntax - see [../../../../docs/TEMPLATE_GLOSSARY.md](../../../../docs/TEMPLATE_GLOSSARY.md).
+>
+> **Note**: All code examples in this document use the ISLAMU Event (Explore) implementation as a concrete reference. Replace `Explore`, `Event`, and related names with your project-specific values.
+
+## Placeholder Substitutions
+
+| Placeholder | Replace With | Example (ISLAMU Event) |
+|-------------|--------------|------------------------|
+| `{Project}` | Your solution name | `Explore` |
+| `{Project}.Blazor.Client` | Blazor WASM project | `Explore.Blazor.Client` |
+| `{Entity}` | Main entity (singular) | `Event` |
+| `{Entities}` | Entity plural | `Events` |
+| `{entity}` | camelCase entity | `event` |
+| `{IdType}` | Primary key type | `Guid` |
+
+---
+
 This document describes the recommended pattern for creating a service layer that wraps the NSwag-generated API clients in the Blazor frontend.
 
 ---

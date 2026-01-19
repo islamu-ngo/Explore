@@ -26,7 +26,7 @@ namespace Explore.API.Controllers
         [HttpGet]
         [EndpointSummary("Get all Tenant Users")]
         [EndpointDescription("Retrieve a list of all tenant users")]
-        [AllowAnonymous]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(List<TenantUserListDto>), StatusCodes.Status200OK)]
         public async Task<ActionResult<List<TenantUserListDto>>> GetAll()
         {
@@ -38,7 +38,7 @@ namespace Explore.API.Controllers
         [HttpGet("{id}")]
         [EndpointSummary("Get Tenant User by ID")]
         [EndpointDescription("Retrieve details of a specific tenant user")]
-        [AllowAnonymous]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(TenantUserDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<TenantUserDto>> GetById(Guid id)
@@ -56,7 +56,7 @@ namespace Explore.API.Controllers
         [HttpPost]
         [EndpointSummary("Create new Tenant User")]
         [EndpointDescription("Create a new tenant user association")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(BaseCommandResponse<int>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<BaseCommandResponse<int>>> Create([FromBody] CreateTenantUserDto dto)
@@ -76,7 +76,7 @@ namespace Explore.API.Controllers
         [HttpPut("{id}")]
         [EndpointSummary("Update Tenant User")]
         [EndpointDescription("Update an existing tenant user association")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -102,7 +102,7 @@ namespace Explore.API.Controllers
         [HttpDelete("{id}")]
         [EndpointSummary("Delete Tenant User")]
         [EndpointDescription("Delete a tenant user association")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult> Delete(Guid id)

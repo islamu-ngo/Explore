@@ -1,8 +1,25 @@
 # Blazor Frontend Architecture
 
-> Comprehensive guide for Blazor Server + WebAssembly hybrid UI in ISLAMU Event.
+> **Project-Agnostic Blazor Hybrid UI Guide**
+>
+> Placeholders use `{Placeholder}` syntax - see [TEMPLATE_GLOSSARY.md](TEMPLATE_GLOSSARY.md).
 
 **Last Updated**: January 2026
+
+---
+
+## Placeholder Substitutions
+
+| Placeholder | Replace With | Example (ISLAMU Event) |
+|-------------|--------------|------------------------|
+| `{Project}` | Your solution name | `Explore` |
+| `{Project}.Blazor` | Blazor Server (BFF) project | `Explore.Blazor` |
+| `{Project}.Blazor.Client` | Blazor WASM project | `Explore.Blazor.Client` |
+| `{Project}.API` | Backend API project | `Explore.API` |
+| `{Entity}` | Main entity (singular) | `Event` |
+| `{Entities}` | Main entity (plural) | `Events` |
+| `{entity}` | camelCase entity | `event` |
+| `{IdType}` | Primary key type | `Guid` |
 
 ---
 
@@ -27,10 +44,10 @@
 
 ## 1. Overview
 
-The ISLAMU Event frontend uses a **Blazor Hybrid** architecture combining:
+A **Blazor Hybrid** architecture combines:
 
-- **Blazor Server** (`Explore.Blazor`): Acts as the Backend-for-Frontend (BFF)
-- **Blazor WebAssembly** (`Explore.Blazor.Client`): Contains UI components and pages
+- **Blazor Server** (`{Project}.Blazor`): Acts as the Backend-for-Frontend (BFF)
+- **Blazor WebAssembly** (`{Project}.Blazor.Client`): Contains UI components and pages
 
 ### Key Architecture Decisions
 
@@ -42,7 +59,41 @@ The ISLAMU Event frontend uses a **Blazor Hybrid** architecture combining:
 | Authentication | BFF + Cookie | No tokens exposed to browser |
 | Proxy | YARP | Token forwarding to backend API |
 
-### Architecture Flow
+### Architecture Flow (Generic)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                           Browser                                   │
+│  ┌───────────────────────────────────────────────────────────────┐  │
+│  │          {Project}.Blazor.Client (WASM/Server)                │  │
+│  │  • Pages ({Entity}List, {Entity}Detail, etc.)                 │  │
+│  │  • Components ({Entity}Manager, Dialogs, etc.)                │  │
+│  │  • Services (I{Entity}Service, I{RelatedEntity}Service, etc.) │  │
+│  └───────────────────────────────────────────────────────────────┘  │
+│                              │                                      │
+│                        Cookie Auth                                  │
+└──────────────────────────────┼──────────────────────────────────────┘
+                               │
+┌──────────────────────────────▼──────────────────────────────────────┐
+│                    {Project}.Blazor (BFF Server)                    │
+│  • OIDC Authentication with Identity Provider                       │
+│  • Session Cookie Management                                        │
+│  • YARP Reverse Proxy → API                                         │
+│  • AccessTokenForwardingHandler                                     │
+│  • X-Tenant-Id Header Injection                                     │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+                         JWT Bearer Token
+                               │
+┌──────────────────────────────▼──────────────────────────────────────┐
+│                        {Project}.API                                │
+│  • REST Endpoints                                                   │
+│  • JWT Validation                                                   │
+│  • Multi-Tenant Query Filters                                       │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Implementation Example: ISLAMU Event
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -80,7 +131,80 @@ The ISLAMU Event frontend uses a **Blazor Hybrid** architecture combining:
 
 ## 2. Project Structure
 
-### Explore.Blazor (Server/BFF)
+### Generic Template
+
+#### {Project}.Blazor (Server/BFF)
+
+```
+{Project}.Blazor/
+├── Components/
+│   ├── App.razor               # Root application component
+│   ├── Routes.razor            # Routing configuration
+│   └── _Imports.razor          # Global imports
+├── Services/
+│   ├── CircuitAccessTokenService.cs  # Token storage for SignalR
+│   └── ServerCookieForwardingHandler.cs
+├── Program.cs                  # DI, OIDC, YARP configuration
+└── appsettings.json            # Identity provider, API URLs
+```
+
+#### {Project}.Blazor.Client (UI)
+
+```
+{Project}.Blazor.Client/
+├── Pages/                      # Routable pages
+│   ├── {Entity}/
+│   │   ├── {Entity}List.razor     # {Entity} discovery with filters
+│   │   ├── {Entity}Detail.razor   # Single {entity} view
+│   │   ├── {Entity}Edit.razor     # {Entity} editing
+│   │   ├── Create{Entity}.razor   # Multi-step {entity} creation
+│   │   └── My{Entities}.razor     # User's {entities}
+│   ├── {RelatedEntity}/
+│   │   ├── Create{RelatedEntity}.razor
+│   │   ├── {RelatedEntity}Profile.razor
+│   │   └── My{RelatedEntities}.razor
+│   ├── Admin/
+│   │   ├── AdminList.razor        # Admin dashboard
+│   │   ├── Categories.razor       # Category management
+│   │   ├── Tags.razor             # Tag management
+│   │   └── Locations.razor        # Location management
+│   └── User/
+│       ├── UserProfile.razor
+│       ├── MyRegistrations.razor
+│       └── Settings.razor
+├── Components/                 # Reusable components
+│   ├── {Entity}/
+│   │   ├── {Entity}Manager.razor
+│   │   ├── Create{ChildEntity}Dialog.razor
+│   │   ├── Edit{ChildEntity}Dialog.razor
+│   │   └── Delete{Entity}Dialog.razor
+│   ├── Admin/
+│   │   ├── CreateCategoryDialog.razor
+│   │   └── EditCategoryDialog.razor
+│   ├── ImageUpload.razor
+│   ├── S3Image.razor
+│   └── {Entity}Registration.razor
+├── Layout/
+│   ├── MainLayout.razor        # Application shell
+│   ├── NavMenu.razor           # Navigation
+│   ├── Footer.razor            # Footer
+│   └── AnnouncementBar.razor   # Top announcement
+├── Services/                   # Service layer
+│   ├── {Entity}Service.cs
+│   ├── {RelatedEntity}Service.cs
+│   ├── CategoryService.cs
+│   ├── AuthStateService.cs
+│   └── [Other]Service.cs
+├── Clients/
+│   └── {Entity}ApiClient.g.cs     # NSwag-generated API client
+├── Configuration/
+│   └── TenantConfiguration.cs
+└── _Imports.razor              # Global imports
+```
+
+### Implementation Example: ISLAMU Event
+
+#### Explore.Blazor (Server/BFF)
 
 ```
 Explore.Blazor/
@@ -95,7 +219,7 @@ Explore.Blazor/
 └── appsettings.json            # Keycloak, API URLs
 ```
 
-### Explore.Blazor.Client (UI)
+#### Explore.Blazor.Client (UI)
 
 ```
 Explore.Blazor.Client/
@@ -197,7 +321,50 @@ The application uses `InteractiveAuto` render mode:
 
 ### Interface-Based Design
 
-All services implement an interface for testability:
+All services implement an interface for testability.
+
+**Generic Template:**
+
+```csharp
+// Interface definition
+public interface I{Entity}Service
+{
+    Task<ICollection<{Entity}ListDto>> GetAll{Entities}Async();
+    Task<{Entity}Dto?> Get{Entity}ByIdAsync({IdType} {entity}Id);
+    Task<BaseCommandResponse<{IdType}>?> Create{Entity}Async(Create{Entity}Dto dto);
+    Task<bool> Delete{Entity}Async({IdType} {entity}Id);
+}
+
+// Implementation
+public class {Entity}Service : I{Entity}Service
+{
+    private readonly I{Entity}ApiClient _apiClient;
+    private readonly ILogger<{Entity}Service> _logger;
+
+    public {Entity}Service(I{Entity}ApiClient apiClient, ILogger<{Entity}Service> logger)
+    {
+        _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
+    public async Task<ICollection<{Entity}ListDto>> GetAll{Entities}Async()
+    {
+        try
+        {
+            _logger.LogInformation("[{ENTITY} SERVICE] Fetching all {entities}...");
+            var response = await _apiClient.{Entity}GETAsync(pageNumber: 1, pageSize: 100);
+            return response?.Items ?? new List<{Entity}ListDto>();
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[{ENTITY} SERVICE] API error: {StatusCode}", ex.StatusCode);
+            return new List<{Entity}ListDto>();
+        }
+    }
+}
+```
+
+**Implementation Example: ISLAMU Event**
 
 ```csharp
 // Interface definition
@@ -240,7 +407,20 @@ public class EventService : IEventService
 
 ### Service Registration
 
-Services are registered in `Program.cs`:
+Services are registered in `Program.cs`.
+
+**Generic Template:**
+
+```csharp
+// {Project}.Blazor/Program.cs
+builder.Services.AddScoped<I{Entity}Service, {Entity}Service>();
+builder.Services.AddScoped<I{RelatedEntity}Service, {RelatedEntity}Service>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<IAuthStateService, AuthStateService>();
+// ... etc
+```
+
+**Implementation Example: ISLAMU Event**
 
 ```csharp
 // Explore.Blazor/Program.cs
@@ -253,7 +433,24 @@ builder.Services.AddScoped<IAuthStateService, AuthStateService>();
 
 ### NSwag API Client
 
-The `IEventApiClient` is auto-generated from OpenAPI spec:
+The API client is auto-generated from OpenAPI spec.
+
+**Generic Template:**
+
+```csharp
+// Configured in Program.cs
+builder.Services.AddHttpClient<I{Entity}ApiClient, {Entity}ApiClient>(client =>
+    {
+        client.BaseAddress = new Uri({project}ApiBaseUrl);
+    })
+    .AddHttpMessageHandler<AccessTokenForwardingHandler>()
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        // Dev SSL handling if needed
+    });
+```
+
+**Implementation Example: ISLAMU Event**
 
 ```csharp
 // Configured in Program.cs
@@ -278,6 +475,51 @@ Page components are routable and typically:
 1. Load data in `OnInitializedAsync`
 2. Manage local state
 3. Delegate to services for API calls
+
+**Generic Template:**
+
+```razor
+@page "/{entities}"
+@inject I{Entity}Service {Entity}Service
+@inject ILogger<{Entity}List> Logger
+
+<PageTitle>{Entities}</PageTitle>
+
+@if (_isLoading)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else
+{
+    @foreach (var item in _{entities})
+    {
+        <{Entity}Card {Entity}="@item" />
+    }
+}
+
+@code {
+    private bool _isLoading = true;
+    private ICollection<{Entity}ListDto> _{entities} = new List<{Entity}ListDto>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _{entities} = await {Entity}Service.GetAll{Entities}Async();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading {entities}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}
+```
+
+**Implementation Example: ISLAMU Event**
 
 ```razor
 @page "/events"
@@ -322,7 +564,33 @@ else
 
 ### Reusable Components
 
-Components receive data via parameters and emit events:
+Components receive data via parameters and emit events.
+
+**Generic Template:**
+
+```razor
+@* {Entity}Card.razor *@
+<MudCard Class="{entity}-card">
+    <MudCardContent>
+        <MudText Typo="Typo.h6">@{Entity}.Title</MudText>
+    </MudCardContent>
+    <MudCardActions>
+        <MudButton OnClick="@(() => OnViewDetails.InvokeAsync({Entity}.Id))">
+            View Details
+        </MudButton>
+    </MudCardActions>
+</MudCard>
+
+@code {
+    [Parameter, EditorRequired]
+    public {Entity}ListDto {Entity} { get; set; } = null!;
+
+    [Parameter]
+    public EventCallback<{IdType}> OnViewDetails { get; set; }
+}
+```
+
+**Implementation Example: ISLAMU Event**
 
 ```razor
 @* EventCard.razor *@
@@ -439,7 +707,19 @@ In `MainLayout.razor`:
 
 ### Local Component State
 
-For simple state, use private fields:
+For simple state, use private fields.
+
+**Generic Template:**
+
+```csharp
+@code {
+    private bool _isLoading = true;
+    private List<{Entity}ListDto> _{entities} = new();
+    private string _searchText = "";
+}
+```
+
+**Implementation Example: ISLAMU Event**
 
 ```csharp
 @code {
@@ -499,7 +779,9 @@ public interface IAuthStateService
 
 ### Client-Side Pagination
 
-For smaller datasets (< 1000 items), load all and paginate client-side:
+For smaller datasets (< 1000 items), load all and paginate client-side.
+
+**Generic Template:**
 
 ```razor
 <MudPagination Count="@TotalPages"
@@ -515,6 +797,30 @@ For smaller datasets (< 1000 items), load all and paginate client-side:
     of @_allItems.Count items
 </MudText>
 
+@code {
+    private int _currentPage = 1;
+    private int _pageSize = 10;
+    private List<{Entity}ListDto> _allItems = new();
+
+    private List<{Entity}ListDto> PagedItems => _allItems
+        .Skip((_currentPage - 1) * _pageSize)
+        .Take(_pageSize)
+        .ToList();
+
+    private int TotalPages => _allItems.Count > 0
+        ? (int)Math.Ceiling((double)_allItems.Count / _pageSize)
+        : 1;
+
+    private void OnPageChanged(int page)
+    {
+        _currentPage = page;
+    }
+}
+```
+
+**Implementation Example: ISLAMU Event**
+
+```razor
 @code {
     private int _currentPage = 1;
     private int _pageSize = 10;
@@ -538,7 +844,57 @@ For smaller datasets (< 1000 items), load all and paginate client-side:
 
 ### Server-Side Pagination
 
-For large datasets, use API pagination:
+For large datasets, use API pagination.
+
+**Generic Template:**
+
+```csharp
+// Service method
+public async Task<PagedResult<{Entity}ListDto>> Get{Entities}PagedAsync(int page, int pageSize)
+{
+    var response = await _apiClient.{Entity}GETAsync(pageNumber: page, pageSize: pageSize);
+    return new PagedResult<{Entity}ListDto>
+    {
+        Items = response?.Items?.ToList() ?? new List<{Entity}ListDto>(),
+        TotalCount = response?.TotalCount ?? 0,
+        PageNumber = page,
+        PageSize = pageSize
+    };
+}
+```
+
+```razor
+@code {
+    private int _currentPage = 1;
+    private int _pageSize = 10;
+    private int _totalCount = 0;
+    private List<{Entity}ListDto> _items = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPageAsync(_currentPage);
+    }
+
+    private async Task LoadPageAsync(int page)
+    {
+        var result = await {Entity}Service.Get{Entities}PagedAsync(page, _pageSize);
+        _items = result.Items;
+        _totalCount = result.TotalCount;
+        _currentPage = page;
+    }
+
+    private int TotalPages => _totalCount > 0
+        ? (int)Math.Ceiling((double)_totalCount / _pageSize)
+        : 1;
+
+    private async Task OnPageChanged(int page)
+    {
+        await LoadPageAsync(page);
+    }
+}
+```
+
+**Implementation Example: ISLAMU Event**
 
 ```csharp
 // Service method
@@ -588,7 +944,38 @@ public async Task<PagedResult<EventListDto>> GetEventsPagedAsync(int page, int p
 
 ### Filtering with Pagination
 
-When filters change, reset to page 1:
+When filters change, reset to page 1.
+
+**Generic Template:**
+
+```razor
+@code {
+    private {IdType}? _selectedCategoryId;
+    private string _searchText = "";
+
+    private async Task OnCategoryChanged({IdType}? categoryId)
+    {
+        _selectedCategoryId = categoryId;
+        _currentPage = 1;  // Reset to first page
+        await ApplyFiltersAsync();
+    }
+
+    private void OnSearch(string value)
+    {
+        _searchText = value;
+        _currentPage = 1;  // Reset to first page
+    }
+
+    private List<{Entity}ListDto> FilteredItems => _allItems
+        .Where(e => string.IsNullOrEmpty(_searchText) ||
+                    e.Title.Contains(_searchText, StringComparison.OrdinalIgnoreCase))
+        .Where(e => !_selectedCategoryId.HasValue ||
+                    e.CategoryId == _selectedCategoryId.Value)
+        .ToList();
+}
+```
+
+**Implementation Example: ISLAMU Event**
 
 ```razor
 @code {

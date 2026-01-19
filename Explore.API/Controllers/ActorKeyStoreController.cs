@@ -26,7 +26,7 @@ namespace Explore.API.Controllers
         [HttpGet]
         [EndpointSummary("Get all Actor Key Stores")]
         [EndpointDescription("Retrieve a list of all actor key stores")]
-        [AllowAnonymous]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(List<ActorKeyStoreListDto>), StatusCodes.Status200OK)]
         public async Task<ActionResult<List<ActorKeyStoreListDto>>> GetAll()
         {
@@ -38,7 +38,7 @@ namespace Explore.API.Controllers
         [HttpGet("{id}")]
         [EndpointSummary("Get Actor Key Store by ID")]
         [EndpointDescription("Retrieve details of a specific actor key store")]
-        [AllowAnonymous]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(ActorKeyStoreDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<ActorKeyStoreDto>> GetById(Guid id)
@@ -56,7 +56,7 @@ namespace Explore.API.Controllers
         [HttpPost]
         [EndpointSummary("Create new Actor Key Store")]
         [EndpointDescription("Create a new actor key store")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateActorKeyStoreDto dto)
@@ -76,7 +76,7 @@ namespace Explore.API.Controllers
         [HttpPut("{id}")]
         [EndpointSummary("Update Actor Key Store")]
         [EndpointDescription("Update an existing actor key store")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -102,7 +102,7 @@ namespace Explore.API.Controllers
         [HttpDelete("{id}")]
         [EndpointSummary("Delete Actor Key Store")]
         [EndpointDescription("Delete an actor key store")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult> Delete(Guid id)

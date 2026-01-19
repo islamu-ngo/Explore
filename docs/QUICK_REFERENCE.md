@@ -9,7 +9,7 @@
 
 ---
 
-## 10 Critical Rules (Never Violate)
+## 12 Critical Rules (Never Violate)
 
 ### 1. Repositories Return ENTITIES, Never DTOs
 
@@ -171,7 +171,7 @@ public class BaseCommandResponse<T>
 
 ---
 
-### 8. GET = AllowAnonymous, Write = Authorize
+### 8. GET = AllowAnonymous, Write = Authorize, Admin = Roles
 
 ```csharp
 [HttpGet]
@@ -187,11 +187,16 @@ public async Task<ActionResult<BaseCommandResponse<{IdType}>>> Create(...) { }
 public async Task<ActionResult<BaseCommandResponse<{IdType}>>> Update(...) { }
 
 [HttpDelete("{id}")]
-[Authorize]  // ✅ Authenticated write access
+[Authorize]  // ✅ Authenticated write access (or use Roles="Admin" for admin-only)
 public async Task<ActionResult> Delete({IdType} id) { }
+
+// Admin-only endpoints
+[HttpDelete("{id}")]
+[Authorize(Roles = "Admin")]  // ✅ Admin-only access
+public async Task<ActionResult> DeletePermanent({IdType} id) { }
 ```
 
-**Why (Security)**: Public discovery; protected writes; standard REST pattern.
+**Why (Security)**: Public discovery; protected writes; role-based access control for sensitive operations.
 
 ---
 
@@ -231,6 +236,63 @@ public class Create{Entity}CommandHandler { }
 ```
 
 **Why (Clean Code)**: C# 10+ convention; reduces nesting; cleaner code.
+
+---
+
+### 11. Entities Include Auditing Fields
+
+```csharp
+// ✅ CORRECT - Include auditing fields
+public class {Entity}
+{
+    public {IdType} Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+
+    // Auditing fields
+    public DateTime CreatedAt { get; set; }
+    public Guid? CreatedBy { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public Guid? UpdatedBy { get; set; }
+
+    // Soft delete
+    public bool IsDeleted { get; set; }
+
+    // Tenant isolation
+    public Guid TenantId { get; set; }
+}
+
+// Set in handler
+var entity = _mapper.Map<{Entity}>(request.{Entity}Dto);
+entity.CreatedAt = DateTime.UtcNow;
+entity.CreatedBy = currentUserId;  // From HttpContext
+entity.IsDeleted = false;
+```
+
+**Why (Audit Trail)**: Track who created/modified entities and when; enables soft delete; maintains data history.
+
+---
+
+### 12. Use Named Query Filters for Soft Delete
+
+```csharp
+// ❌ WRONG - Single combined filter
+modelBuilder.Entity<{Entity}>()
+    .HasQueryFilter(e => !e.IsDeleted && (TenantContext == null || e.TenantId == TenantContext.TenantId));
+
+// ✅ CORRECT - Named filters (EF Core 10+)
+modelBuilder.Entity<{Entity}>()
+    .HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+
+modelBuilder.Entity<{Entity}>()
+    .HasQueryFilter(name: "SoftDelete", predicate: e => !e.IsDeleted);
+
+// Temporarily disable soft delete filter when needed
+var allEntities = await _dbContext.{Entities}
+    .IgnoreQueryFilter("SoftDelete")
+    .ToListAsync();
+```
+
+**Why (EF Core 10)**: Named filters allow selective disabling; tenant filter always active; soft delete filter can be bypassed for admin operations.
 
 ---
 
@@ -434,6 +496,10 @@ public async Task<ActionResult<{Entity}Dto>> GetById({IdType} id)
 | Nested namespaces | Use file-scoped namespaces |
 | Missing userId fallback | Use sub → nameidentifier → sid |
 | Missing [AllowAnonymous] on GET | Add for public read access |
+| Missing auditing fields | Add CreatedAt, CreatedBy, UpdatedAt, UpdatedBy |
+| Missing soft delete | Add IsDeleted, use named query filter |
+| Admin endpoint without Roles | Add `[Authorize(Roles = "Admin")]` |
+| Combined query filters | Use named filters: `HasQueryFilter(name: "SoftDelete", ...)` |
 
 ---
 

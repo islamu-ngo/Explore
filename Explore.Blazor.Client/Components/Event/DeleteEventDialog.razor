@@ -1,6 +1,7 @@
 @using MudBlazor
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Services
+@using Microsoft.Extensions.Logging
 
 <MudDialog>
     <TitleContent>
@@ -10,21 +11,52 @@
         </MudText>
     </TitleContent>
     <DialogContent>
-        <MudText Typo="Typo.body1" Class="mb-4">
-            Are you sure you want to delete the event "<strong>@EventTitle</strong>"?
-        </MudText>
-        <MudAlert Severity="Severity.Warning" Dense="true">
-            This action cannot be undone. All sessions and registrations associated with this event will also be deleted.
-        </MudAlert>
+        @if (_isLoading)
+        {
+            <div class="d-flex align-center justify-center pa-4">
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Small" />
+                <MudText Typo="Typo.body2" Class="ml-3">Loading event details...</MudText>
+            </div>
+        }
+        else
+        {
+            <MudText Typo="Typo.body1" Class="mb-3">
+                Are you sure you want to delete the event "<strong>@EventTitle</strong>"?
+            </MudText>
+
+            @if (_sessionCount > 0)
+            {
+                <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
+                    This event has <strong>@_sessionCount</strong> @(_sessionCount == 1 ? "session" : "sessions") that will also be deleted.
+                </MudAlert>
+            }
+
+            <MudAlert Severity="Severity.Warning" Dense="true">
+                <MudText Typo="Typo.body2">
+                    <strong>This action cannot be undone.</strong>
+                </MudText>
+                <MudText Typo="Typo.body2" Class="mt-2">
+                    The following will be permanently deleted:
+                </MudText>
+                <ul class="mt-1 mb-0">
+                    <li>Event details and metadata</li>
+                    @if (_sessionCount > 0)
+                    {
+                        <li>@_sessionCount event @(_sessionCount == 1 ? "session" : "sessions")</li>
+                        <li>All registrations for @(_sessionCount == 1 ? "this session" : "these sessions")</li>
+                    }
+                </ul>
+            </MudAlert>
+        }
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel" Variant="Variant.Text">Cancel</MudButton>
+        <MudButton OnClick="Cancel" Variant="Variant.Text" Disabled="@_isDeleting">Cancel</MudButton>
         <MudButton Color="Color.Error"
                    Variant="Variant.Filled"
                    OnClick="ConfirmDelete"
-                   Disabled="@isDeleting"
-                   StartIcon="@(isDeleting ? Icons.Material.Filled.HourglassBottom : Icons.Material.Filled.Delete)">
-            @(isDeleting ? "Deleting..." : "Delete Event")
+                   Disabled="@(_isDeleting || _isLoading)"
+                   StartIcon="@(_isDeleting ? Icons.Material.Filled.HourglassBottom : Icons.Material.Filled.Delete)">
+            @(_isDeleting ? "Deleting..." : "Delete Event")
         </MudButton>
     </DialogActions>
 </MudDialog>
@@ -45,37 +77,84 @@
     [Inject]
     private ISnackbar Snackbar { get; set; } = default!;
 
-    private bool isDeleting = false;
+    [Inject]
+    private ILogger<DeleteEventDialog> Logger { get; set; } = default!;
 
-    private void Cancel() => MudDialog.Cancel();
+    private bool _isDeleting = false;
+    private bool _isLoading = true;
+    private int _sessionCount = 0;
 
-    private async Task ConfirmDelete()
+    protected override async Task OnInitializedAsync()
     {
-        if (isDeleting) return;
+        await LoadSessionCount();
+    }
 
-        isDeleting = true;
+    private async Task LoadSessionCount()
+    {
+        _isLoading = true;
         StateHasChanged();
 
         try
         {
+            var sessions = await EventService.GetSessionsByEventAsync(EventId);
+            _sessionCount = sessions?.Count ?? 0;
+            Logger.LogDebug("Loaded {SessionCount} sessions for event {EventId}", _sessionCount, EventId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading session count for event {EventId}", EventId);
+            // Continue anyway - deletion should still work even if we can't load session count
+            _sessionCount = 0;
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void Cancel()
+    {
+        Logger.LogDebug("Delete cancelled for event {EventId}", EventId);
+        MudDialog.Cancel();
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (_isDeleting || _isLoading) return;
+
+        _isDeleting = true;
+        StateHasChanged();
+
+        try
+        {
+            Logger.LogInformation("Attempting to delete event {EventId} with {SessionCount} sessions", EventId, _sessionCount);
+
             var success = await EventService.DeleteEventAsync(EventId);
+
             if (success)
             {
-                Snackbar.Add("Event deleted successfully", Severity.Success);
+                var message = _sessionCount > 0
+                    ? $"Event and {_sessionCount} {(_sessionCount == 1 ? "session" : "sessions")} deleted successfully"
+                    : "Event deleted successfully";
+
+                Logger.LogInformation("Successfully deleted event {EventId}", EventId);
+                Snackbar.Add(message, Severity.Success);
                 MudDialog.Close(DialogResult.Ok(true));
             }
             else
             {
-                Snackbar.Add("Failed to delete event. Please try again.", Severity.Error);
+                Logger.LogWarning("Failed to delete event {EventId} - API returned false", EventId);
+                Snackbar.Add("Failed to delete event. You may not have permission or the event may not exist.", Severity.Error);
+                _isDeleting = false;
+                StateHasChanged();
             }
         }
         catch (Exception ex)
         {
+            Logger.LogError(ex, "Error deleting event {EventId}", EventId);
             Snackbar.Add($"Error: {ex.Message}", Severity.Error);
-        }
-        finally
-        {
-            isDeleting = false;
+            _isDeleting = false;
             StateHasChanged();
         }
     }

@@ -1,14 +1,45 @@
-
 # Troubleshooting
+
+> **Project-Agnostic .NET Backend Troubleshooting Guide**
+>
+> Placeholders use `{Placeholder}` syntax - see [TEMPLATE_GLOSSARY.md](TEMPLATE_GLOSSARY.md).
+
+**Last Updated**: January 2026
+
+---
+
+## Placeholder Substitutions
+
+| Placeholder | Replace With | Example (ISLAMU Event) |
+|-------------|--------------|------------------------|
+| `{Project}` | Your solution name | `Explore` |
+| `{Project}.API` | API project | `Explore.API` |
+| `{Project}.Application` | Application project | `Explore.Application` |
+| `{Project}.Domain` | Domain project | `Explore.Domain` |
+| `{Project}.Persistence` | Persistence project | `Explore.Persistence` |
+| `{Project}.Infrastructure` | Infrastructure project | `Explore.Infrastructure` |
+
+---
 
 This guide focuses on common issues when working on the **backend** projects:
 
-- `Explore.API`
-- `Explore.Application`
-- `Explore.Domain`
-- `Explore.Persistence`
-- `Explore.Infrastructure`
-- `Event.MigrationService`
+- `{Project}.API`
+- `{Project}.Application`
+- `{Project}.Domain`
+- `{Project}.Persistence`
+- `{Project}.Infrastructure`
+- Migration/worker services (if applicable)
+
+### Implementation Example: ISLAMU Event
+
+```
+- Explore.API
+- Explore.Application
+- Explore.Domain
+- Explore.Persistence
+- Explore.Infrastructure
+- Event.MigrationService
+```
 
 ## Build & Restore
 
@@ -46,13 +77,15 @@ See `docs/API.md`.
 
 ### swagger.json file is stale
 
-In Development, `Explore.API` runs `OpenApiExportService` which exports a `swagger.json` file at startup.
+In Development, `{Project}.API` runs `OpenApiExportService` which exports a `swagger.json` file at startup.
 
-If it doesn’t update:
+If it doesn't update:
 
-- Ensure `Explore.API` starts successfully in Development.
+- Ensure `{Project}.API` starts successfully in Development.
 - Check startup logs for the hosted service.
 - Confirm the file is not locked by another process.
+
+**Example (ISLAMU Event)**: `Explore.API` exports `swagger.json` to `Explore.API/swagger.json`
 
 ## Authentication / Authorization
 
@@ -73,7 +106,7 @@ If all are missing, return `401`.
 
 ### Apply migrations (Development)
 
-`Explore.API` exposes a Development-only endpoint:
+`{Project}.API` exposes a Development-only endpoint:
 
 ```http
 POST /admin/migrate
@@ -81,9 +114,13 @@ POST /admin/migrate
 
 It is protected with `.RequireAuthorization()`.
 
-### Migration worker
+**Example (ISLAMU Event)**: `Explore.API` provides `POST /admin/migrate`
 
-`Event.MigrationService` is responsible for background migration/maintenance tasks (see `Event.MigrationService/Program.cs`).
+### Migration worker (if applicable)
+
+If your project has a dedicated migration service, it's responsible for background migration/maintenance tasks.
+
+**Example (ISLAMU Event)**: `Event.MigrationService` handles background migrations (see `Event.MigrationService/Program.cs`)
 
 ### Duplicate key violations
 

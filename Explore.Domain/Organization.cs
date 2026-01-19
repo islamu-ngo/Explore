@@ -5,7 +5,7 @@ using Explore.Domain.Interfaces;
 
 namespace Explore.Domain
 {
-    public class Organization : ITenantEntity
+    public class Organization : ITenantEntity, IAuditableEntity, ISoftDeletable
     {
         public Guid Id { get; set; }
         public string FullName { get; set; }
@@ -29,8 +29,15 @@ namespace Explore.Domain
         public Actor? Actor { get; set; }
 
         // Audit fields
-        public DateTime? CreatedAt { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public Guid? CreatedBy { get; set; }
         public DateTime? UpdatedAt { get; set; }
+        public Guid? UpdatedBy { get; set; }
+
+        // Soft delete fields
+        public bool IsDeleted { get; set; }
+        public DateTime? DeletedAt { get; set; }
+        public Guid? DeletedBy { get; set; }
 
         // Navigation property for members
         public ICollection<OrganizationMember> Members { get; set; }

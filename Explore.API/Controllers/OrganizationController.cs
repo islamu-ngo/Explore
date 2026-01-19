@@ -139,7 +139,7 @@ namespace Explore.API.Controllers
 
         // PUT api/<OrganizationController>/updatestatustype/5
         [HttpPut("updatestatustype/{id}")]
-        [AllowAnonymous] // Temporarily allow anonymous access for testing
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult> UpdateStatusType(Guid id, [FromBody] UpdateOrganizationApprovalStatusDto organizationApprovalStatus)
         {
             var command = new UpdateOrganizationCommand() { Id = id, OrganizationApprovalStatusDto = organizationApprovalStatus };

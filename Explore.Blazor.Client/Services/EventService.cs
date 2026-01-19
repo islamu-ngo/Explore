@@ -9,6 +9,7 @@ public interface IEventService
     Task<ICollection<EventListDto>> GetMyEventsAsync();
     Task<EventDto?> GetEventByIdAsync(Guid eventId);
     Task<bool> DeleteEventAsync(Guid eventId);
+    Task<bool> CanDeleteEventAsync(Guid eventId);
     Task<BaseCommandResponseOfGuid?> UpdateEventAsync(Guid eventId, UpdateEventDto eventDto);
     Task<BaseCommandResponseOfGuid?> CreateEventAsync(CreateEventDto createDto);
     Task<ICollection<EventTypeListDto>> GetEventTypesAsync();
@@ -32,11 +33,16 @@ public interface IEventService
 public partial class EventService : IEventService
 {
     private readonly IEventApiClient _apiClient;
+    private readonly IOrganizationService _organizationService;
     private readonly ILogger<EventService> _logger;
 
-    public EventService(IEventApiClient apiClient, ILogger<EventService> logger)
+    public EventService(
+        IEventApiClient apiClient,
+        IOrganizationService organizationService,
+        ILogger<EventService> logger)
     {
         _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
+        _organizationService = organizationService ?? throw new ArgumentNullException(nameof(organizationService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -170,6 +176,13 @@ public partial class EventService : IEventService
             await _apiClient.EventDELETEAsync(eventId);
             return true;
         }
+        catch (ApiException ex) when (ex.StatusCode == 204)
+        {
+            // 204 No Content is success for DELETE operations
+            // NSwag may throw if OpenAPI spec doesn't explicitly document 204
+            _logger.LogDebug("[EVENT SERVICE] Event {EventId} deleted successfully (204 No Content)", eventId);
+            return true;
+        }
         catch (ApiException ex)
         {
             _logger.LogError(ex, "[EVENT SERVICE] API error deleting event {EventId}: {StatusCode}", eventId, ex.StatusCode);
@@ -178,6 +191,94 @@ public partial class EventService : IEventService
         catch (Exception ex)
         {
             _logger.LogError(ex, "[EVENT SERVICE] Error deleting event {EventId}", eventId);
+            return false;
+        }
+    }
+
+    public async Task<bool> CanDeleteEventAsync(Guid eventId)
+    {
+        try
+        {
+            if (_apiClient == null)
+            {
+                _logger.LogWarning("[EVENT SERVICE] API client is null");
+                return false;
+            }
+
+            // Get event details
+            var eventDto = await _apiClient.EventGET2Async(eventId);
+            if (eventDto == null)
+            {
+                _logger.LogWarning("[EVENT SERVICE] Event {EventId} not found", eventId);
+                return false;
+            }
+
+            // Get actor details to determine ownership
+            var actor = await _apiClient.ActorGET2Async(eventDto.ActorId);
+            if (actor == null)
+            {
+                _logger.LogWarning("[EVENT SERVICE] Actor {ActorId} not found for event {EventId}", eventDto.ActorId, eventId);
+                return false;
+            }
+
+            // If this is an organization event, check if user is a member with appropriate role
+            if (actor.OrganizationId.HasValue)
+            {
+                var myOrganizations = await _organizationService.GetMyOrganizationsAsync();
+                var membershipInOrg = myOrganizations.FirstOrDefault(o => o.Id == actor.OrganizationId.Value);
+
+                if (membershipInOrg == null)
+                {
+                    _logger.LogDebug(
+                        "[EVENT SERVICE] User is not a member of organization {OrgId} for event {EventId}",
+                        actor.OrganizationId.Value,
+                        eventId);
+                    return false;
+                }
+
+                // Check if user has Creator (1), CoOwner (2), or Admin (3) role
+                // CurrentUserRole contains the user's role in this organization
+                var canDelete = membershipInOrg.CurrentUserRole.HasValue &&
+                    (membershipInOrg.CurrentUserRole.Value == 1 ||  // Creator
+                     membershipInOrg.CurrentUserRole.Value == 2 ||  // CoOwner
+                     membershipInOrg.CurrentUserRole.Value == 3);   // Admin
+
+                _logger.LogDebug(
+                    "[EVENT SERVICE] Authorization check for event {EventId}: OrgId={OrgId}, UserRole={Role}, CanDelete={CanDelete}",
+                    eventId,
+                    actor.OrganizationId.Value,
+                    membershipInOrg.CurrentUserRole,
+                    canDelete);
+
+                return canDelete;
+            }
+
+            // If this is a personal event (actor.UserId is set), assume user can delete their own events
+            // The backend will perform the actual authorization check
+            if (actor.UserId.HasValue)
+            {
+                _logger.LogDebug("[EVENT SERVICE] Event {EventId} is a personal event, allowing delete", eventId);
+                return true;
+            }
+
+            _logger.LogWarning(
+                "[EVENT SERVICE] Actor {ActorId} has neither OrganizationId nor UserId for event {EventId}",
+                eventDto.ActorId,
+                eventId);
+            return false;
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(
+                ex,
+                "[EVENT SERVICE] API error checking delete authorization for event {EventId}: {StatusCode}",
+                eventId,
+                ex.StatusCode);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[EVENT SERVICE] Error checking delete authorization for event {EventId}", eventId);
             return false;
         }
     }

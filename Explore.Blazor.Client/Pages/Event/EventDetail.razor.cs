@@ -34,6 +34,8 @@ public partial class EventDetail : ComponentBase
     private bool _isLoading = true;
     private bool _isUserRegistered;
     private bool _isCheckingRegistration = true;
+    private bool _canDelete = false;
+    private bool _isCheckingAuth = true;
     private string? _errorMessage;
 
     /// <summary>
@@ -56,6 +58,7 @@ public partial class EventDetail : ComponentBase
     {
         _isLoading = true;
         _isCheckingRegistration = true;
+        _isCheckingAuth = true;
         _errorMessage = null;
 
         try
@@ -72,8 +75,10 @@ public partial class EventDetail : ComponentBase
                 _primarySession = _eventSessions?.FirstOrDefault();
                 Logger.LogInformation("Loaded {SessionCount} sessions", _eventSessions?.Count ?? 0);
 
-                // Check registration status
-                await CheckRegistrationStatusAsync();
+                // Check registration status and authorization in parallel
+                var registrationTask = CheckRegistrationStatusAsync();
+                var authTask = CheckDeleteAuthorizationAsync();
+                await Task.WhenAll(registrationTask, authTask);
             }
         }
         catch (Exception ex)
@@ -85,6 +90,7 @@ public partial class EventDetail : ComponentBase
         {
             _isLoading = false;
             _isCheckingRegistration = false;
+            _isCheckingAuth = false;
         }
     }
 
@@ -111,6 +117,32 @@ public partial class EventDetail : ComponentBase
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error checking registration status");
+        }
+    }
+
+    /// <summary>
+    /// Checks if the current user is authorized to delete this event.
+    /// </summary>
+    private async Task CheckDeleteAuthorizationAsync()
+    {
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            if (authState.User.Identity?.IsAuthenticated == true)
+            {
+                _canDelete = await EventService.CanDeleteEventAsync(EventId);
+                Logger.LogDebug("Delete authorization check for event {EventId}: {CanDelete}", EventId, _canDelete);
+            }
+            else
+            {
+                _canDelete = false;
+                Logger.LogDebug("User not authenticated, cannot delete event {EventId}", EventId);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error checking delete authorization for event {EventId}", EventId);
+            _canDelete = false;
         }
     }
 
@@ -428,8 +460,9 @@ public partial class EventDetail : ComponentBase
 
         if (result != null && !result.Canceled)
         {
-            Snackbar.Add("Event deleted successfully", Severity.Success);
-            Navigation.NavigateTo("/");
+            // Dialog already handled deletion and snackbar notification
+            // Navigate to My Events page
+            Navigation.NavigateTo("/myevents");
         }
     }
 }

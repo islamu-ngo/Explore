@@ -1,9 +1,10 @@
 using System;
 using System.ComponentModel.DataAnnotations.Schema;
+using Explore.Domain.Interfaces;
 
 namespace Explore.Domain
 {
-    public class User
+    public class User : IAuditableEntity, ISoftDeletable
     {
         public Guid Id { get; set; }
         public string Email { get; set; }
@@ -23,5 +24,16 @@ namespace Explore.Domain
         public string? AuthProviderId { get; set; }
         public Guid? DefaultActorId { get; set; }
         public bool? EmailVerified { get; set; }
+
+        // Audit fields
+        public DateTime CreatedAt { get; set; }
+        public Guid? CreatedBy { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+        public Guid? UpdatedBy { get; set; }
+
+        // Soft delete fields
+        public bool IsDeleted { get; set; }
+        public DateTime? DeletedAt { get; set; }
+        public Guid? DeletedBy { get; set; }
     }
 }

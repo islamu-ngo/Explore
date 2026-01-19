@@ -25,7 +25,7 @@ namespace Explore.API.Controllers
 
         // GET: api/v1/indexeddid
         [HttpGet]
-        [AllowAnonymous]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<List<IndexedDidListDto>>> GetAll()
         {
             var indexedDids = await _mediator.Send(new GetIndexedDidListRequest());
@@ -34,7 +34,7 @@ namespace Explore.API.Controllers
 
         // GET: api/v1/indexeddid/{did}
         [HttpGet("{did}")]
-        [AllowAnonymous]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<IndexedDidDto>> GetById(string did)
         {
             var indexedDid = await _mediator.Send(new GetIndexedDidDetailsRequest { Did = did });
@@ -48,7 +48,7 @@ namespace Explore.API.Controllers
 
         // POST: api/v1/indexeddid
         [HttpPost]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<BaseCommandResponse<string>>> Create([FromBody] CreateIndexedDidDto dto)
         {
             var command = new CreateIndexedDidCommand { IndexedDidDto = dto };
@@ -58,7 +58,7 @@ namespace Explore.API.Controllers
 
         // PUT: api/v1/indexeddid/{did}
         [HttpPut("{did}")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<BaseCommandResponse<string>>> Update(string did, [FromBody] UpdateIndexedDidDto dto)
         {
             if (did != dto.Did)
@@ -79,7 +79,7 @@ namespace Explore.API.Controllers
 
         // DELETE: api/v1/indexeddid/{did}
         [HttpDelete("{did}")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult> Delete(string did)
         {
             var command = new DeleteIndexedDidCommand { Did = did };

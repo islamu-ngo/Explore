@@ -26,7 +26,7 @@ namespace Explore.API.Controllers
         [HttpGet]
         [EndpointSummary("Get all Tenant Settings")]
         [EndpointDescription("Retrieve a list of all tenant settings")]
-        [AllowAnonymous]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(List<TenantSettingsListDto>), StatusCodes.Status200OK)]
         public async Task<ActionResult<List<TenantSettingsListDto>>> GetAll()
         {
@@ -38,7 +38,7 @@ namespace Explore.API.Controllers
         [HttpGet("{id}")]
         [EndpointSummary("Get Tenant Settings by ID")]
         [EndpointDescription("Retrieve details of specific tenant settings")]
-        [AllowAnonymous]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(TenantSettingsDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<TenantSettingsDto>> GetById(Guid id)
@@ -56,7 +56,7 @@ namespace Explore.API.Controllers
         [HttpPost]
         [EndpointSummary("Create new Tenant Settings")]
         [EndpointDescription("Create new tenant settings")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateTenantSettingsDto dto)
@@ -76,7 +76,7 @@ namespace Explore.API.Controllers
         [HttpPut("{id}")]
         [EndpointSummary("Update Tenant Settings")]
         [EndpointDescription("Update existing tenant settings")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -102,7 +102,7 @@ namespace Explore.API.Controllers
         [HttpDelete("{id}")]
         [EndpointSummary("Delete Tenant Settings")]
         [EndpointDescription("Delete tenant settings")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult> Delete(Guid id)

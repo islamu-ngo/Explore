@@ -20,6 +20,18 @@ namespace Explore.Application.Contracts.Persistence
         Task<bool> Exists(TKey id);
         Task<T> Create(T entity);
         Task Update(T entity);
+
+        /// <summary>
+        /// Deletes an entity. If entity implements ISoftDeletable, performs soft delete.
+        /// Otherwise performs hard delete (permanent removal).
+        /// </summary>
         Task Delete(T entity);
+
+        /// <summary>
+        /// Performs a hard delete (permanent removal from database) regardless of ISoftDeletable.
+        /// Use with caution - this operation is irreversible.
+        /// Should only be used by system administrators for data cleanup.
+        /// </summary>
+        Task HardDelete(T entity);
     }
 }

@@ -1,10 +1,27 @@
 # Deployment Modes & Customization
 
-ISLAMU Event is designed to be **highly customizable** to support diverse deployment scenarios—from single-organization instances to full SaaS platforms serving multiple tenants. This section covers all customization options.
+> **Project-Agnostic Operations & Deployment Guide**
+>
+> Placeholders use `{Placeholder}` syntax - see [TEMPLATE_GLOSSARY.md](TEMPLATE_GLOSSARY.md).
+
+## Placeholder Substitutions
+
+| Placeholder | Replace With | Example (ISLAMU Event) |
+|-------------|--------------|------------------------|
+| `{Project}` | Your solution name | `Explore` |
+| `{Project}.Infrastructure` | Infrastructure project | `Explore.Infrastructure` |
+| `{Instance Name}` | Your instance display name | `ISLAMU Event` |
+
+---
+
+This platform is designed to be **highly customizable** to support diverse deployment scenarios—from single-organization instances to full SaaS platforms serving multiple tenants. This section covers all customization options.
+
+### Implementation Example: ISLAMU Event
+The ISLAMU Event platform (project name: Explore) is the reference implementation of this system, designed for Islamic event discovery globally.
 
 ## Deployment Modes
 
-ISLAMU Event supports two primary deployment modes:
+The platform supports two primary deployment modes:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -70,7 +87,7 @@ services:
 
 ## Blazor Rendering Modes
 
-ISLAMU Event supports **three Blazor rendering modes** configurable via environment variables:
+The platform supports **three Blazor rendering modes** configurable via environment variables:
 
 | Mode | Description | Use Case |
 |------|-------------|----------|
@@ -178,8 +195,11 @@ Tenant-level BYOK integrations are a **roadmap** capability.
 
 **Current state**:
 
-- Object storage integration exists (S3-compatible) via `Explore.Infrastructure`.
+- Object storage integration exists (S3-compatible) via `{Project}.Infrastructure`.
 - Other per-tenant integrations (analytics, payments, AI services, email/SMS routing) are not implemented yet.
+
+### Implementation Example: ISLAMU Event
+In the Explore project, object storage is implemented in `Explore.Infrastructure` with S3-compatible providers.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐

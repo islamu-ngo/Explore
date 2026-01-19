@@ -4,7 +4,7 @@ using Explore.Domain.Interfaces;
 
 namespace Explore.Domain
 {
-    public class Event : ITenantEntity
+    public class Event : ITenantEntity, IAuditableEntity, ISoftDeletable
     {
         public Guid Id { get; set; }
 
@@ -70,5 +70,16 @@ namespace Explore.Domain
         [ForeignKey("AtprotoRecord")]
         public Guid? AtprotoRecordId { get; set; }
         public AtprotoRecord? AtprotoRecord { get; set; }
+
+        // Audit fields
+        public DateTime CreatedAt { get; set; }
+        public Guid? CreatedBy { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+        public Guid? UpdatedBy { get; set; }
+
+        // Soft delete fields
+        public bool IsDeleted { get; set; }
+        public DateTime? DeletedAt { get; set; }
+        public Guid? DeletedBy { get; set; }
     }
 }

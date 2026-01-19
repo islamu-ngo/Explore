@@ -30,13 +30,16 @@
                                    Href="@($"/event/edit/{EventId}")">
                             Edit
                         </MudButton>
-                        <MudButton StartIcon="@Icons.Material.Filled.Delete"
-                                   Variant="Variant.Outlined"
-                                   Color="Color.Error"
-                                   Size="Size.Small"
-                                   OnClick="OpenDeleteDialog">
-                            Delete
-                        </MudButton>
+                        @if (_canDelete && !_isCheckingAuth)
+                        {
+                            <MudButton StartIcon="@Icons.Material.Filled.Delete"
+                                       Variant="Variant.Outlined"
+                                       Color="Color.Error"
+                                       Size="Size.Small"
+                                       OnClick="OpenDeleteDialog">
+                                Delete
+                            </MudButton>
+                        }
                     </div>
                 }
             </div>

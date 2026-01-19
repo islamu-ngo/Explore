@@ -9,23 +9,7 @@
 <PageTitle>Explore Events</PageTitle>
 
 <MudContainer Class="event-list__wrapper" MaxWidth="MaxWidth.ExtraLarge">
-    
-    <!-- Row 1: Search -->
-    <div class="event-list__search-container mb-4">
-        <MudTextField @bind-Value="searchText"
-                      Placeholder="Search events..."
-                      Adornment="Adornment.Start"
-                      AdornmentIcon="@Icons.Material.Filled.Search"
-                      IconSize="Size.Medium"
-                      Variant="Variant.Outlined"
-                      Margin="Margin.Dense" 
-                      Class="event-list__search-input"
-                      Immediate="true"
-                      DebounceInterval="500"
-                      TextChanged="OnSearch" />
-    </div>
-
-    <!-- Row 2: Filters Container - Single Row -->
+    <!-- Filters Container - Single Row -->
     <div class="event-list__filters-container">
         <!-- Date -->
         <MudSelect T="string" Value="@selectedDate" ValueChanged="@((string d) => OnDateChanged(d))" 

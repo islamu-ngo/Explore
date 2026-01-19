@@ -19,8 +19,15 @@ namespace Explore.Persistence
         public ITenantContext? TenantContext { get; set; }
 
         /// <summary>
-        /// Single constructor required for DbContext pooling compatibility.
-        /// Use TenantContext property to set tenant context after retrieval from pool.
+        /// Current user service for audit field population.
+        /// Set via property injection after DbContext is retrieved from pool.
+        /// When null (e.g., during migrations), audit fields use null values.
+        /// </summary>
+        public ICurrentUserService? CurrentUserService { get; set; }
+
+        /// <summary>
+        /// Constructor for DbContext pooling compatibility.
+        /// All scoped dependencies (TenantContext, CurrentUserService) are set via property injection.
         /// </summary>
         public ExploreDbContext(DbContextOptions<ExploreDbContext> options) : base(options)
         {
@@ -38,14 +45,21 @@ namespace Explore.Persistence
         }
 
         /// <summary>
-        /// Applies Global Query Filters for multi-tenant data isolation.
-        /// When TenantContext is null (e.g., during migrations), the filter is bypassed.
+        /// Applies Global Query Filters for multi-tenant data isolation and soft delete.
+        /// When TenantContext is null (e.g., during migrations), the tenant filter is bypassed.
+        /// Soft delete filters use named filters (EF Core 10+) for selective disabling.
         /// </summary>
         private void ApplyGlobalQueryFilters(ModelBuilder modelBuilder)
         {
-            // Event entities
-            modelBuilder.Entity<Event>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
-            modelBuilder.Entity<EventSession>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+            // ===== Event Entities =====
+            // Tenant + Soft Delete filters (combined in single expression)
+            modelBuilder.Entity<Event>()
+                .HasQueryFilter(e => (TenantContext == null || e.TenantId == TenantContext.TenantId) && !e.IsDeleted);
+
+            modelBuilder.Entity<EventSession>()
+                .HasQueryFilter(e => (TenantContext == null || e.TenantId == TenantContext.TenantId) && !e.IsDeleted);
+
+            // Other event-related entities (tenant only - no soft delete yet)
             modelBuilder.Entity<EventRegistration>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
             modelBuilder.Entity<EventCategories>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
             modelBuilder.Entity<EventTags>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
@@ -53,50 +67,113 @@ namespace Explore.Persistence
             modelBuilder.Entity<EventSessionSpeaker>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
             modelBuilder.Entity<EventSessionAgendaItem>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
 
-            // Organization entities
-            modelBuilder.Entity<Organization>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
-            modelBuilder.Entity<OrganizationReview>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
-            modelBuilder.Entity<OrganizationMember>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+            // ===== Organization Entities =====
+            // Tenant + Soft Delete filters (combined in single expression)
+            modelBuilder.Entity<Organization>()
+                .HasQueryFilter(e => (TenantContext == null || e.TenantId == TenantContext.TenantId) && !e.IsDeleted);
 
-            // Actor entities
-            modelBuilder.Entity<Actor>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+            modelBuilder.Entity<OrganizationMember>()
+                .HasQueryFilter(e => (TenantContext == null || e.TenantId == TenantContext.TenantId) && !e.IsDeleted);
+
+            // Organization review (tenant only - no soft delete yet)
+            modelBuilder.Entity<OrganizationReview>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+
+            // ===== Actor Entities =====
+            // Tenant + Soft Delete filters (combined in single expression)
+            modelBuilder.Entity<Actor>()
+                .HasQueryFilter(e => (TenantContext == null || e.TenantId == TenantContext.TenantId) && !e.IsDeleted);
+
             modelBuilder.Entity<ActorKeyStore>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
 
-            // Location entity
+            // ===== User Entity =====
+            // Soft Delete only (not tenant-scoped)
+            modelBuilder.Entity<User>()
+                .HasQueryFilter(u => !u.IsDeleted);
+
+            // ===== Location Entity =====
             modelBuilder.Entity<Location>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
 
-            // Storage entity
+            // ===== Storage Entity =====
             modelBuilder.Entity<StorageObject>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
 
-            // Category and Tag entities
+            // ===== Category and Tag Entities =====
             modelBuilder.Entity<Category>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
             modelBuilder.Entity<Tag>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
             modelBuilder.Entity<TagTypeTags>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
 
-            // User-related tenant entities
+            // ===== User-Related Tenant Entities =====
             modelBuilder.Entity<UserAuthenticationToken>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
             modelBuilder.Entity<UserExternalLogin>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
             modelBuilder.Entity<UserRole>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
 
-            // Tenant entities (scoped by tenant)
+            // ===== Tenant Entities =====
             modelBuilder.Entity<TenantUser>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
             modelBuilder.Entity<TenantSettings>().HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId);
         }
 
-        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        /// <summary>
+        /// Overrides SaveChangesAsync to automatically populate audit fields and handle soft delete.
+        /// - IAuditableEntity: Sets CreatedAt/CreatedBy on insert, UpdatedAt/UpdatedBy on update
+        /// - ISoftDeletable: Converts hard deletes to soft deletes (IsDeleted=true)
+        /// </summary>
+        public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
+            var userId = GetCurrentUserId();
+            var now = DateTime.UtcNow;
+
             foreach (var entry in ChangeTracker.Entries())
             {
-                if (entry.State == EntityState.Added)
+                // Handle IAuditableEntity - automatic audit field population
+                if (entry.Entity is IAuditableEntity auditable)
                 {
-                    //actionType = ActionType.Create;
-                    // Could add audit logging here
+                    switch (entry.State)
+                    {
+                        case EntityState.Added:
+                            auditable.CreatedAt = now;
+                            auditable.CreatedBy = userId;
+                            break;
+
+                        case EntityState.Modified:
+                            // Only update if not already set by soft delete logic below
+                            if (auditable.UpdatedAt == null || auditable.UpdatedAt == default(DateTime))
+                            {
+                                auditable.UpdatedAt = now;
+                                auditable.UpdatedBy = userId;
+                            }
+                            break;
+                    }
                 }
-                //var logMessage = CreateLogMessage(entry, actionType);
-                //LogHelper.Log(logMessage); // Assuming LogHelper has a static Log method
+
+                // Handle ISoftDeletable - convert hard deletes to soft deletes
+                if (entry.Entity is ISoftDeletable deletable && entry.State == EntityState.Deleted)
+                {
+                    // Change state from Deleted to Modified (prevent actual deletion)
+                    entry.State = EntityState.Modified;
+
+                    // Mark as soft deleted
+                    deletable.IsDeleted = true;
+                    deletable.DeletedAt = now;
+                    deletable.DeletedBy = userId;
+
+                    // Also update audit fields if entity is auditable
+                    if (entry.Entity is IAuditableEntity auditableDeleted)
+                    {
+                        auditableDeleted.UpdatedAt = now;
+                        auditableDeleted.UpdatedBy = userId;
+                    }
+                }
             }
 
-            return base.SaveChangesAsync(cancellationToken);
+            return await base.SaveChangesAsync(cancellationToken);
+        }
+
+        /// <summary>
+        /// Gets the current user ID from the authentication context.
+        /// Returns null if no user is authenticated (e.g., during migrations, seeding).
+        /// </summary>
+        private Guid? GetCurrentUserId()
+        {
+            return CurrentUserService?.UserId;
         }
 
         // ===== Multi-tenancy =====

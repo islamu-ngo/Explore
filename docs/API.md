@@ -1,8 +1,25 @@
 # API Architecture
 
-> REST API design patterns and conventions for ISLAMU Event.
+> **Project-Agnostic REST API Design Patterns**
+>
+> Placeholders use `{Placeholder}` syntax - see [TEMPLATE_GLOSSARY.md](TEMPLATE_GLOSSARY.md).
 
 **Last Updated**: January 2026
+
+---
+
+## Placeholder Substitutions
+
+| Placeholder | Replace With | Example (ISLAMU Event) |
+|-------------|--------------|------------------------|
+| `{Project}` | Your solution name | `Explore` |
+| `{Project}.API` | API project | `Explore.API` |
+| `{Project}.Blazor` | Blazor Server project | `Explore.Blazor` |
+| `{DbContext}` | EF Core DbContext class | `ExploreDbContext` |
+| `{Entity}` | Your main entity (singular) | `Event` |
+| `{Entities}` | Your main entity (plural) | `Events` |
+| `{entity}` | camelCase entity | `event` |
+| `{IdType}` | Primary key type | `Guid` |
 
 ---
 
@@ -23,7 +40,13 @@
 
 ## 1. Overview
 
-The `Explore.API` is a stateless REST API built on ASP.NET Core, following Clean Architecture and CQRS patterns.
+The `{Project}.API` is a stateless REST API built on ASP.NET Core, following Clean Architecture and CQRS patterns.
+
+### Implementation Example: ISLAMU Event
+
+- **API Project**: `Explore.API`
+- **Technology**: ASP.NET Core 10.0
+- **Architecture**: Clean Architecture + CQRS + MediatR
 
 ### Key Characteristics
 
@@ -57,13 +80,20 @@ HTTP Request → Controller → MediatR → Handler → Repository → Entity �
 
 ### URL Structure
 
+**Generic Pattern:**
 ```
 /api/v1/{resource}
 /api/v1/{resource}/{id}
 /api/v1/{resource}/{id}/{subresource}
 ```
 
-**Examples**:
+**Generic Examples:**
+- `GET /api/v1/{entity}` - List entities
+- `GET /api/v1/{entity}/{id}` - Get entity details
+- `GET /api/v1/{childEntity}/by-{parentEntity}/{parentId}` - Get children
+- `POST /api/v1/{entity}` - Create entity
+
+### Implementation Examples: ISLAMU Event
 - `GET /api/v1/event` - List events
 - `GET /api/v1/event/{id}` - Get event details
 - `GET /api/v1/eventsession/by-event/{eventId}` - Get sessions for event
@@ -74,6 +104,31 @@ HTTP Request → Controller → MediatR → Handler → Repository → Entity �
 ## 3. Controller Conventions
 
 ### Standard Controller Structure
+
+**Generic Template:**
+
+```csharp
+[Route("api/v1/[controller]")]
+[ApiController]
+public class {Entity}Controller : ControllerBase
+{
+    private readonly IMediator _mediator;
+    private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly ILogger<{Entity}Controller> _logger;
+
+    public {Entity}Controller(
+        IMediator mediator,
+        IHttpContextAccessor httpContextAccessor,
+        ILogger<{Entity}Controller> logger)
+    {
+        _mediator = mediator;
+        _httpContextAccessor = httpContextAccessor;
+        _logger = logger;
+    }
+}
+```
+
+### Implementation Example: ISLAMU Event
 
 ```csharp
 [Route("api/v1/[controller]")]
@@ -100,10 +155,10 @@ public class EventController : ControllerBase
 
 | Operation | HTTP Method | Route | Auth | Returns |
 |-----------|-------------|-------|------|---------|
-| List | `GET` | `/` | `[AllowAnonymous]` | `PaginatedResult<TListDto>` |
-| Get | `GET` | `/{id}` | `[AllowAnonymous]` | `TDto` |
-| Create | `POST` | `/` | `[Authorize]` | `BaseCommandResponse<Guid>` |
-| Update | `PUT` | `/{id}` | `[Authorize]` | `BaseCommandResponse<Guid>` |
+| List | `GET` | `/` | `[AllowAnonymous]` | `PaginatedResult<{Entity}ListDto>` |
+| Get | `GET` | `/{id}` | `[AllowAnonymous]` | `{Entity}Dto` |
+| Create | `POST` | `/` | `[Authorize]` | `BaseCommandResponse<{IdType}>` |
+| Update | `PUT` | `/{id}` | `[Authorize]` | `BaseCommandResponse<{IdType}>` |
 | Delete | `DELETE` | `/{id}` | `[Authorize]` | `NoContent` or `NotFound` |
 
 ### Thin Controllers
@@ -112,6 +167,27 @@ Controllers should be thin - they only:
 1. Extract data from HTTP request
 2. Send command/query to MediatR
 3. Return appropriate HTTP response
+
+**Generic Template:**
+
+```csharp
+[HttpPost]
+[Authorize]
+public async Task<ActionResult<BaseCommandResponse<{IdType}>>> Create([FromBody] Create{Entity}Dto dto)
+{
+    var command = new Create{Entity}Command { {Entity}Dto = dto };
+    var response = await _mediator.Send(command);
+
+    if (!response.Success)
+    {
+        return BadRequest(response);
+    }
+
+    return Ok(response);
+}
+```
+
+### Implementation Example: ISLAMU Event
 
 ```csharp
 [HttpPost]
@@ -155,16 +231,16 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 ```csharp
 [HttpGet]
 [AllowAnonymous]
-[EndpointSummary("Get all Events")]
-public async Task<ActionResult<PaginatedResult<EventListDto>>> GetAll(...)
+[EndpointSummary("Get all {Entities}")]
+public async Task<ActionResult<PaginatedResult<{Entity}ListDto>>> GetAll(...)
 ```
 
 **Write Operations** - Authenticated users:
 ```csharp
 [HttpPost]
 [Authorize]
-[EndpointSummary("Create a new Event")]
-public async Task<ActionResult<BaseCommandResponse<Guid>>> Create(...)
+[EndpointSummary("Create a new {Entity}")]
+public async Task<ActionResult<BaseCommandResponse<{IdType}>>> Create(...)
 ```
 
 ### User ID Extraction
@@ -204,6 +280,31 @@ public class BaseCommandResponse<T>
 ```json
 {
     "success": true,
+    "message": "{Entity} created successfully.",
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "errors": []
+}
+```
+
+**Failure Response**:
+```json
+{
+    "success": false,
+    "message": "{Entity} creation failed.",
+    "id": null,
+    "errors": [
+        "Title is required",
+        "{RelatedEntity}Id not found"
+    ]
+}
+```
+
+### Implementation Example: ISLAMU Event
+
+**Success Response**:
+```json
+{
+    "success": true,
     "message": "Event created successfully.",
     "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
     "errors": []
@@ -227,12 +328,14 @@ public class BaseCommandResponse<T>
 
 Read operations return DTOs directly or wrapped in `PaginatedResult<T>`:
 
+**Generic Pattern:**
+
 ```csharp
 // Single entity
-public async Task<ActionResult<EventDto>> GetById(Guid id)
+public async Task<ActionResult<{Entity}Dto>> GetById({IdType} id)
 
 // List with pagination
-public async Task<ActionResult<PaginatedResult<EventListDto>>> GetAll(...)
+public async Task<ActionResult<PaginatedResult<{Entity}ListDto>>> GetAll(...)
 ```
 
 ---
@@ -256,6 +359,12 @@ public class PaginatedResult<T>
 
 ### Query Parameters
 
+**Generic Pattern:**
+```
+GET /api/v1/{entity}?pageNumber=1&pageSize=20
+```
+
+**Example (ISLAMU Event):**
 ```
 GET /api/v1/event?pageNumber=1&pageSize=20
 ```
@@ -322,6 +431,40 @@ Or with validation errors:
 
 ### Exception Handling
 
+**Generic Template:**
+
+```csharp
+[HttpDelete("{id}")]
+[Authorize]
+public async Task<ActionResult> Delete({IdType} id)
+{
+    try
+    {
+        var userId = ExtractUserId();
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized(new { error = "User ID not found in token" });
+        }
+
+        var result = await _mediator.Send(new Delete{Entity}Command { Id = id, UserId = userId });
+
+        if (!result)
+        {
+            return NotFound(new { error = "{Entity} not found or permission denied" });
+        }
+
+        return NoContent();
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error deleting {entity} {{EntityId}}", id);
+        return StatusCode(500, new { error = ex.Message });
+    }
+}
+```
+
+### Implementation Example: ISLAMU Event
+
 ```csharp
 [HttpDelete("{id}")]
 [Authorize]
@@ -360,6 +503,20 @@ public async Task<ActionResult> Delete(Guid id)
 
 All controller actions must include:
 
+**Generic Template:**
+
+```csharp
+[HttpGet("{id}")]
+[EndpointSummary("Get {Entity} Details")]
+[EndpointDescription("Returns detailed information about a specific {entity} including related data.")]
+[AllowAnonymous]
+[ProducesResponseType(typeof({Entity}Dto), StatusCodes.Status200OK)]
+[ProducesResponseType(StatusCodes.Status404NotFound)]
+public async Task<ActionResult<{Entity}Dto>> GetById({IdType} id)
+```
+
+### Implementation Example: ISLAMU Event
+
 ```csharp
 [HttpGet("{id}")]
 [EndpointSummary("Get Event Details")]
@@ -380,6 +537,22 @@ public async Task<ActionResult<EventDto>> GetById(Guid id)
 | `[Consumes]` | For POST/PUT | Request content type |
 
 ### Example with Full Documentation
+
+**Generic Template:**
+
+```csharp
+[HttpPost]
+[EndpointSummary("Create a new {Entity}")]
+[EndpointDescription("Creates a new {entity} under the specified {relatedEntity}. User must have appropriate permissions.")]
+[Authorize]
+[Consumes("application/json")]
+[ProducesResponseType(typeof(BaseCommandResponse<{IdType}>), StatusCodes.Status200OK)]
+[ProducesResponseType(typeof(BaseCommandResponse<{IdType}>), StatusCodes.Status400BadRequest)]
+[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+public async Task<ActionResult<BaseCommandResponse<{IdType}>>> Create([FromBody] Create{Entity}Dto dto)
+```
+
+### Implementation Example: ISLAMU Event
 
 ```csharp
 [HttpPost]
@@ -457,6 +630,12 @@ For single-instance deployments, use the default tenant:
 ```
 
 This MUST match across:
+- `{Project}.API/Services/TenantContext.cs`
+- `{Project}.Blazor/Program.cs` (YARP transform)
+- `{Project}.Blazor/Services/CircuitAccessTokenService.cs`
+- `{Project}.Persistence/SeedIds.cs`
+
+### Implementation Example: ISLAMU Event
 - `Explore.API/Services/TenantContext.cs`
 - `Explore.Blazor/Program.cs` (YARP transform)
 - `Explore.Blazor/Services/CircuitAccessTokenService.cs`
@@ -488,6 +667,20 @@ public class TenantContext : ITenantContext
 ### Global Query Filters
 
 EF Core automatically filters all queries by tenant:
+
+**Generic Template:**
+
+```csharp
+// In {DbContext}
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    // Apply tenant filter to all entities with TenantId
+    modelBuilder.Entity<{Entity}>().HasQueryFilter(e => e.TenantId == _tenantContext.TenantId);
+    // ... etc for all tenant-scoped entities
+}
+```
+
+### Implementation Example: ISLAMU Event
 
 ```csharp
 // In ExploreDbContext
