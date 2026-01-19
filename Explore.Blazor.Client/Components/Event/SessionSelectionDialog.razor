@@ -7,6 +7,24 @@
         <MudText Typo="Typo.body2" Class="mb-4">Which session(s) would you like to attend?</MudText>
         
         <MudStack Spacing="3">
+            <!-- Register All Option -->
+            <MudPaper Class="pa-4 cursor-pointer" 
+                      Elevation="@(IsAllSelected ? 4 : 0)"
+                      Style="@GetAllSelectionStyle()"
+                      OnClick="ToggleSelectAll">
+                <div class="d-flex align-center gap-3">
+                    <MudCheckBox T="bool" Value="IsAllSelected" 
+                                 ValueChanged="@((v) => ToggleSelectAll())" 
+                                 Color="Color.Primary" />
+                    <div>
+                        <MudText Typo="Typo.subtitle1" Color="Color.Primary"><b>Register for ALL Sessions</b></MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Select all @Sessions.Count available sessions</MudText>
+                    </div>
+                </div>
+            </MudPaper>
+
+            <MudDivider Class="my-2" />
+
             @foreach (var session in Sessions)
             {
                 <MudPaper Class="pa-4 cursor-pointer" 
@@ -39,6 +57,27 @@
     [Parameter] public List<EventSessionListDto> Sessions { get; set; } = new();
 
     private HashSet<Guid> _selectedSessionIds = new();
+
+    private bool IsAllSelected => Sessions.Any() && _selectedSessionIds.Count == Sessions.Count;
+
+    private void ToggleSelectAll()
+    {
+        if (IsAllSelected)
+        {
+            _selectedSessionIds.Clear();
+        }
+        else
+        {
+            _selectedSessionIds = Sessions.Select(s => s.Id).ToHashSet();
+        }
+    }
+
+    private string GetAllSelectionStyle()
+    {
+        return IsAllSelected 
+            ? "border: 2px solid var(--mud-palette-primary); background-color: var(--mud-palette-primary-hover);" 
+            : "border: 1px solid var(--mud-palette-lines-default);";
+    }
 
     private void ToggleSelection(Guid sessionId)
     {

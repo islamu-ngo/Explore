@@ -26,13 +26,14 @@
     }
     else
     {
-        <MudGrid Spacing="3">
+        <MudGrid Spacing="4">
             @foreach (var reg in FilteredRegistrations)
             {
-                <MudItem xs="12" sm="6" md="4">
+                <!-- Adjusted grid to match EventList: LG=4 (3 cols), XL=3 (4 cols) -->
+                <MudItem xs="12" sm="6" md="6" lg="4" xl="3">
                     <MudCard Elevation="0" Class="my-registrations__card">
                         <MudCardMedia Image="@(string.IsNullOrEmpty(reg.FeaturedImageUri) ? $"https://placehold.co/600x400?text={Uri.EscapeDataString(reg.EventTitle ?? "Event")}" : reg.FeaturedImageUri)" 
-                                      Height="200" 
+                                      Height="180" 
                                       Class="my-registrations__card-media" />
                         <MudCardContent>
                             <div class="my-registrations__badges mb-2">
@@ -41,14 +42,16 @@
                                 </MudChip>
                             </div>
                             
-                            <MudText Typo="Typo.h6" Class="mb-1">@reg.EventTitle</MudText>
+                            <MudText Typo="Typo.h6" Class="my-registrations__card-title">@reg.EventTitle</MudText>
                             
-                            <div class="d-flex align-center gap-1 mt-2">
-                                <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" Color="Color.Secondary" />
-                                <MudText Typo="Typo.body2" Color="Color.Secondary">@reg.StartTime?.ToString("f")</MudText>
+                            <div class="my-registrations__card-meta mt-2">
+                                <div class="d-flex align-center gap-1">
+                                    <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" Color="Color.Secondary" />
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@reg.StartTime?.ToString("f")</MudText>
+                                </div>
                             </div>
                         </MudCardContent>
-                        <MudCardActions Class="pa-4 pt-0">
+                        <MudCardActions Class="pa-3 pt-0 card-actions">
                             <MudButton Variant="Variant.Text" 
                                        Color="Color.Primary" 
                                        EndIcon="@Icons.Material.Filled.ArrowForward"

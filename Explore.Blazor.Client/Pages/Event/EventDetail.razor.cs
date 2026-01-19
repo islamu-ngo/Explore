@@ -286,11 +286,21 @@ public partial class EventDetail : ComponentBase
             if (result != null && !result.Canceled && result.Data is List<Guid> selectedSessionIds)
             {
                 // Register for each selected session
-                // TODO: Batch registration or loop
+                int successCount = 0;
                 foreach (var sessionId in selectedSessionIds)
                 {
                     var session = _eventSessions.First(s => s.Id == sessionId);
-                    await RegisterForSession(session);
+                    if (await RegisterForSession(session))
+                    {
+                        successCount++;
+                    }
+                }
+                
+                if (successCount > 0)
+                {
+                    // Refresh status to update UI immediately
+                    await CheckRegistrationStatusAsync();
+                    StateHasChanged();
                 }
             }
         }
@@ -299,7 +309,7 @@ public partial class EventDetail : ComponentBase
     /// <summary>
     /// Registers the user for a specific session.
     /// </summary>
-    private async Task RegisterForSession(EventSessionListDto session)
+    private async Task<bool> RegisterForSession(EventSessionListDto session)
     {
         var parameters = new DialogParameters
         {
@@ -327,9 +337,16 @@ public partial class EventDetail : ComponentBase
         {
             Logger.LogInformation("Registration completed for session {SessionId}", session.Id);
             Snackbar.Add($"Successfully registered for {session.Title}!", Severity.Success);
-            // Optionally refresh registration status here
-            await CheckRegistrationStatusAsync();
+            
+            // For single session flow, we update status here too
+            if (_eventSessions != null && _eventSessions.Count == 1)
+            {
+                await CheckRegistrationStatusAsync();
+                StateHasChanged();
+            }
+            return true;
         }
+        return false;
     }
 
     /// <summary>

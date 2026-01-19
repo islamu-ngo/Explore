@@ -75,9 +75,9 @@ else
                                     }
                                 </div>
                             </div>
-                            
+
                             <div class="d-flex gap-2">
-                                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Edit" Href="/user/settings">Edit Profile</MudButton>
+                                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Edit" Href="/settings">Edit Profile</MudButton>
                             </div>
                         </div>
 
@@ -101,7 +101,7 @@ else
             <MudItem xs="12" md="4">
                 <MudCard Elevation="0" Class="pa-4 border-solid border-1 mud-border-lines-default rounded-lg h-100">
                     <MudText Typo="Typo.h6" Class="mb-4">About</MudText>
-                    
+
                     <MudText Typo="Typo.body1" Class="mb-6 user-profile__bio">
                         Member of the community
                     </MudText>
@@ -113,7 +113,7 @@ else
                                 <MudText Typo="Typo.body2">@UserData.Email</MudText>
                             </MudListItem>
                         }
-                        
+
                         @if (UserData.EmailVerified == true)
                         {
                             <MudListItem Icon="@Icons.Material.Filled.Verified" IconColor="Color.Success">

@@ -135,35 +135,66 @@
 
 /* ===== Element: my-registrations__card ===== */
 ::deep .my-registrations__card {
-    border-radius: 12px;
-    border: 1px solid var(--mud-palette-lines-default);
     height: 100%;
     display: flex;
     flex-direction: column;
-    transition: transform 0.2s, box-shadow 0.2s;
+    /* Stronger border for light mode visibility */
+    border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 80%, #000 10%);
+    border-radius: 12px;
+    background-color: var(--mud-palette-surface);
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
+                box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                border-color 0.2s ease;
+    overflow: hidden;
+    min-height: 380px; /* Consistent minimum height */
 }
 
 ::deep .my-registrations__card:hover {
     transform: translateY(-4px);
-    box-shadow: var(--mud-elevation-4);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+    border-color: var(--mud-palette-primary);
 }
 
 /* ===== Element: my-registrations__card-media ===== */
 ::deep .my-registrations__card-media {
     position: relative;
+    height: 180px; /* Fixed height match EventList */
+    border-bottom: 1px solid var(--mud-palette-lines-default);
 }
 
 ::deep .my-registrations__card-media::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(to bottom, transparent 60%, rgba(0,0,0,0.4));
+    /* Removed overlay to match EventList clean style */
+    display: none;
 }
 
-/* ===== Element: my-registrations__badges ===== */
-::deep .my-registrations__badges {
+/* ===== Element: my-registrations__card-title ===== */
+::deep .my-registrations__card-title {
+    font-weight: 700;
+    line-height: 1.3;
+    font-size: 1.15rem;
+    color: var(--mud-palette-text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    min-height: 2.6em;
+    margin-bottom: 8px;
+}
+
+/* ===== Element: my-registrations__card-meta ===== */
+::deep .my-registrations__card-meta {
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid var(--mud-palette-divider);
+}
+
+/* ===== Wrapper for content to push footer down ===== */
+::deep .mud-card-content {
+    flex: 1;
     display: flex;
-    gap: 8px;
+    flex-direction: column;
+    padding: 16px !important;
 }
 
 /* ===== Element: my-registrations__actions ===== */

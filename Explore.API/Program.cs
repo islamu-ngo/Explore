@@ -22,9 +22,25 @@ using Polly.Bulkhead;
 using static Microsoft.AspNetCore.Http.StatusCodes;
 
 // Graceful shutdown tracking for zero-downtime deployments
+// SIGTERM: 25 second grace period (health returns 503, still accepts requests)
+// SIGINT: Immediate shutdown
 var isShuttingDown = false;
+var shutdownCts = new CancellationTokenSource();
+const int GracefulShutdownSeconds = 25;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure shutdown timeout for graceful termination
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.KeepAliveTimeout = TimeSpan.FromSeconds(GracefulShutdownSeconds + 5);
+});
+
+// Set host shutdown timeout
+builder.Host.ConfigureHostOptions(options =>
+{
+    options.ShutdownTimeout = TimeSpan.FromSeconds(GracefulShutdownSeconds + 5);
+});
 
 builder.AddServiceDefaults();
 builder.Configuration.AddInfisicalCompatibility();
@@ -289,18 +305,46 @@ builder.Services.AddHealthChecks()
         if (isShuttingDown)
             return HealthCheckResult.Unhealthy("Application is shutting down");
         return HealthCheckResult.Healthy();
-    }, tags: ["live", "ready"]);
+    }, tags: ["live", "ready"])
+    .AddDbContextCheck<ExploreDbContext>("database", tags: ["ready"]);
 
 var app = builder.Build();
 
-// Register graceful shutdown handler for zero-downtime deployments
-// When Coolify sends SIGTERM, we set isShuttingDown to true
-// This causes health checks to return 503, so load balancer stops routing traffic
+// Register graceful shutdown handlers for zero-downtime deployments
+// SIGTERM: Start graceful shutdown with 25 second grace period
+// SIGINT (Ctrl+C): Immediate shutdown
 app.Lifetime.ApplicationStopping.Register(() =>
 {
     isShuttingDown = true;
-    app.Logger.LogInformation("Application is shutting down, health checks will return unhealthy...");
+    app.Logger.LogInformation(
+        "SIGTERM received. Starting graceful shutdown. Health checks return 503. " +
+        "Accepting requests for {Seconds} more seconds...",
+        GracefulShutdownSeconds);
 });
+
+// Handle SIGINT for immediate shutdown
+Console.CancelKeyPress += (sender, e) =>
+{
+    app.Logger.LogWarning("SIGINT received. Initiating immediate shutdown...");
+    e.Cancel = false; // Allow the process to terminate immediately
+    shutdownCts.Cancel();
+    Environment.Exit(0);
+};
+
+// Handle SIGTERM with grace period (Unix systems)
+AppDomain.CurrentDomain.ProcessExit += (sender, e) =>
+{
+    if (!isShuttingDown)
+    {
+        isShuttingDown = true;
+        app.Logger.LogInformation(
+            "Process exit signal received. Graceful shutdown with {Seconds} second grace period...",
+            GracefulShutdownSeconds);
+
+        // Wait for grace period to allow in-flight requests to complete
+        Thread.Sleep(TimeSpan.FromSeconds(GracefulShutdownSeconds));
+    }
+};
 
 // Apply database migrations before starting the application
 // EF Core 9+ has built-in locking for concurrent migration protection (safe for multiple replicas)
@@ -380,6 +424,9 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseMiddleware<ExceptionMiddleware>();
 app.MapControllers();
+
+// Map health check endpoints for Coolify/container orchestration
+app.MapDefaultEndpoints();
 
 //app.MapGet("users/me", (ClaimsPrincipal claimsPrincipal) =>
 //{

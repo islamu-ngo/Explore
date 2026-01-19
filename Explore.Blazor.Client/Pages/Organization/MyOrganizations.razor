@@ -79,10 +79,10 @@
         }
         else
         {
-            <MudGrid Spacing="3">
+            <MudGrid Spacing="4">
                 @foreach (var org in FilteredOrganizations)
                 {
-                    <MudItem xs="12" sm="6" md="4">
+                    <MudItem xs="12" sm="6" md="6" lg="4" xl="3">
                         <MudCard Class="my-organizations__card" Elevation="0">
                             <!-- Card Media / Banner -->
                             <div class="my-organizations__card-media" style="background-color: @GetOrganizationColor(org.FullName);">
@@ -96,9 +96,9 @@
 
                             <MudCardContent Class="my-organizations__content">
                                 <!-- Role Badge -->
-                                @if (org.CurrentUserRole.HasValue)
-                                {
-                                    <div class="my-organizations__badges">
+                                <div class="my-organizations__badges">
+                                    @if (org.CurrentUserRole.HasValue)
+                                    {
                                         <MudChip T="string"
                                                  Size="Size.Small"
                                                  Color="@GetRoleColor(org.CurrentUserRole.Value)"
@@ -106,21 +106,23 @@
                                                  Class="my-organizations__role-chip">
                                             @GetRoleName(org.CurrentUserRole.Value)
                                         </MudChip>
-                                    </div>
-                                }
-
-                                <MudText Typo="Typo.h6" Class="my-organizations__name mb-1">@org.FullName</MudText>
-
-                                <div class="my-organizations__info-row">
-                                    <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Color="Color.Secondary" />
-                                    <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                        @org.City, @org.Country
-                                    </MudText>
+                                    }
                                 </div>
-                                
-                                <div class="my-organizations__info-row">
-                                    <MudIcon Icon="@Icons.Material.Filled.Email" Size="Size.Small" Color="Color.Secondary" />
-                                    <MudText Typo="Typo.body2" Color="Color.Secondary">@org.Email</MudText>
+
+                                <MudText Typo="Typo.h6" Class="my-organizations__card-title">@org.FullName</MudText>
+
+                                <div class="my-organizations__card-meta">
+                                    <div class="my-organizations__info-row mb-1">
+                                        <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Color="Color.Secondary" />
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                            @org.City, @org.Country
+                                        </MudText>
+                                    </div>
+                                    
+                                    <div class="my-organizations__info-row">
+                                        <MudIcon Icon="@Icons.Material.Filled.Email" Size="Size.Small" Color="Color.Secondary" />
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@org.Email</MudText>
+                                    </div>
                                 </div>
                             </MudCardContent>
 
