@@ -1,6 +1,10 @@
 # BEM Methodology - CSS Naming Conventions
 
-This document outlines the **BEM (Block, Element, Modifier)** methodology for naming CSS classes within the ISLAMU Event Blazor application. Adhering to BEM ensures maintainable, scalable, and understandable stylesheets, especially important in component-based UI frameworks like Blazor with MudBlazor.
+> **Project-Agnostic BEM CSS Patterns**
+>
+> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../../docs/TEMPLATE_GLOSSARY.md).
+
+This document outlines the **BEM (Block, Element, Modifier)** methodology for naming CSS classes within Blazor applications. Adhering to BEM ensures maintainable, scalable, and understandable stylesheets, especially important in component-based UI frameworks like Blazor with MudBlazor.
 
 ---
 
@@ -9,11 +13,11 @@ This document outlines the **BEM (Block, Element, Modifier)** methodology for na
 BEM stands for **Block**, **Element**, **Modifier**. It's a highly structured naming convention that helps you develop CSS that is modular, reusable, and easy to understand.
 
 *   **Block (`.block`)**: A standalone entity that is meaningful on its own.
-    *   Examples: `.header`, `.footer`, `.menu`, `.button`, `.event-card`, `.user-avatar`.
+    *   Examples: `.header`, `.footer`, `.menu`, `.button`, `.{entity}-card`, `.user-avatar`.
 *   **Element (`.block__element`)**: A part of a block that has no standalone meaning and is semantically tied to its block.
-    *   Examples: `.menu__item`, `.button__icon`, `.event-card__title`, `.user-avatar__image`.
+    *   Examples: `.menu__item`, `.button__icon`, `.{entity}-card__title`, `.user-avatar__image`.
 *   **Modifier (`.block--modifier` or `.block__element--modifier`)**: A flag on a block or an element. It's used to change the appearance, behavior, or state of a block or element.
-    *   Examples: `.button--primary`, `.button--disabled`, `.event-card--featured`, `.menu__item--active`.
+    *   Examples: `.button--primary`, `.button--disabled`, `.{entity}-card--featured`, `.menu__item--active`.
 
 ### Naming Syntax
 
@@ -37,27 +41,27 @@ BEM stands for **Block**, **Element**, **Modifier**. It's a highly structured na
 
 When working with Blazor and MudBlazor, BEM is used for custom styling that goes beyond MudBlazor's theming and utility classes.
 
-### Example: Custom Event Card
+### Example: Custom {Entity} Card
 
-Let's say we have an event card component with custom styling that extends MudBlazor's `MudCard`.
+Let's say we have an {entity} card component with custom styling that extends MudBlazor's `MudCard`.
 
-**`EventCard.razor`**:
+**`{Entity}Card.razor`**:
 ```razor
-<MudCard Class="event-card @(_isFeatured ? "event-card--featured" : "")">
-    <MudCardMedia Image="@Event.ImageUrl" Height="200" Class="event-card__image" />
+<MudCard Class="{entity}-card @(_isFeatured ? "{entity}-card--featured" : "")">
+    <MudCardMedia Image="@{Entity}.ImageUrl" Height="200" Class="{entity}-card__image" />
     <MudCardContent>
-        <MudText Typo="Typo.h6" Class="event-card__title">@Event.Title</MudText>
-        <MudText Typo="Typo.body2" Class="event-card__date">@Event.Date.ToShortDateString()</MudText>
+        <MudText Typo="Typo.h6" Class="{entity}-card__title">@{Entity}.Title</MudText>
+        <MudText Typo="Typo.body2" Class="{entity}-card__date">@{Entity}.Date.ToShortDateString()</MudText>
     </MudCardContent>
-    <MudCardActions Class="event-card__actions">
-        <MudButton Variant="Variant.Text" OnClick="ViewDetails" Class="event-card__button">
+    <MudCardActions Class="{entity}-card__actions">
+        <MudButton Variant="Variant.Text" OnClick="ViewDetails" Class="{entity}-card__button">
             View Details
         </MudButton>
     </MudCardActions>
 </MudCard>
 
 @code {
-    [Parameter] public EventDto Event { get; set; } = null!;
+    [Parameter] public {Entity}Dto {Entity} { get; set; } = null!;
     [Parameter] public bool IsFeatured { get; set; }
 
     private bool _isFeatured => IsFeatured; // Use local state for conditional classes
@@ -65,59 +69,59 @@ Let's say we have an event card component with custom styling that extends MudBl
 }
 ```
 
-**`EventCard.razor.css`** (scoped CSS for the component):
+**`{Entity}Card.razor.css`** (scoped CSS for the component):
 ```css
-/* Block: .event-card */
-.event-card {
+/* Block: .{entity}-card */
+.{entity}-card {
     border: 1px solid var(--mud-palette-lines-default);
     border-radius: var(--mud-default-border-radius);
     box-shadow: var(--mud-shadow-1);
     transition: all 0.2s ease-in-out;
 }
 
-.event-card:hover {
+.{entity}-card:hover {
     box-shadow: var(--mud-shadow-3);
     transform: translateY(-2px);
 }
 
-/* Element: .event-card__image */
-.event-card__image {
+/* Element: .{entity}-card__image */
+.{entity}-card__image {
     object-fit: cover;
 }
 
-/* Element: .event-card__title */
-.event-card__title {
+/* Element: .{entity}-card__title */
+.{entity}-card__title {
     font-weight: 600;
     margin-bottom: 8px;
     /* Using MudBlazor's CSS variables for theme integration */
     color: var(--mud-palette-text-primary);
 }
 
-/* Element: .event-card__date */
-.event-card__date {
+/* Element: .{entity}-card__date */
+.{entity}-card__date {
     font-size: 0.875rem;
     color: var(--mud-palette-text-secondary);
 }
 
-/* Element: .event-card__actions */
-.event-card__actions {
+/* Element: .{entity}-card__actions */
+.{entity}-card__actions {
     padding: 8px 16px;
     justify-content: flex-end;
 }
 
-/* Element: .event-card__button */
+/* Element: .{entity}-card__button */
 /* Note: MudButton already provides extensive styling, this is for subtle overrides */
-.event-card__button {
+.{entity}-card__button {
     text-transform: uppercase;
 }
 
-/* Modifier: .event-card--featured */
-.event-card--featured {
-    border-color: var(--mud-palette-primary); /* Highlight featured events */
+/* Modifier: .{entity}-card--featured */
+.{entity}-card--featured {
+    border-color: var(--mud-palette-primary); /* Highlight featured items */
     box-shadow: var(--mud-shadow-6);
 }
 
-.event-card--featured .event-card__title {
+.{entity}-card--featured .{entity}-card__title {
     color: var(--mud-palette-primary-text); /* Ensure good contrast */
 }
 ```
@@ -143,38 +147,38 @@ Let's say we have an event card component with custom styling that extends MudBl
 
 *   **Over-nesting**: Keep selectors flat. Avoid deeply nested CSS rules.
     ```css
-    /* ❌ Bad */
-    .event-card .event-card__content .event-card__title {
+    /* BAD */
+    .{entity}-card .{entity}-card__content .{entity}-card__title {
         /* ... */
     }
 
-    /* ✅ Good */
-    .event-card__title {
+    /* GOOD */
+    .{entity}-card__title {
         /* ... */
     }
     ```
 *   **Block Modifiers on Elements**: Modifiers should describe the state of the *block* or *element* they are attached to, not another block's element.
     ```html
-    <!-- ❌ Bad -->
-    <div class="event-card">
-        <h2 class="event-card__title event-card--featured">Event Title</h2>
+    <!-- BAD -->
+    <div class="{entity}-card">
+        <h2 class="{entity}-card__title {entity}-card--featured">{Entity} Title</h2>
     </div>
 
-    <!-- ✅ Good -->
-    <div class="event-card event-card--featured">
-        <h2 class="event-card__title">Event Title</h2>
+    <!-- GOOD -->
+    <div class="{entity}-card {entity}-card--featured">
+        <h2 class="{entity}-card__title">{Entity} Title</h2>
     </div>
     ```
 *   **Semantic Overload**: A block should be a standalone entity. Don't make an element also a block.
     ```html
-    <!-- ❌ Bad -->
-    <div class="event-card">
-        <div class="title-block">Event Title</div>
+    <!-- BAD -->
+    <div class="{entity}-card">
+        <div class="title-block">{Entity} Title</div>
     </div>
 
-    <!-- ✅ Good -->
-    <div class="event-card">
-        <h2 class="event-card__title">Event Title</h2>
+    <!-- GOOD -->
+    <div class="{entity}-card">
+        <h2 class="{entity}-card__title">{Entity} Title</h2>
     </div>
     ```
 

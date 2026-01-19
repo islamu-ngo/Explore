@@ -1,29 +1,33 @@
 ---
 name: code-architecture-reviewer
-description: Expert in .NET 10 architecture review for ISLAMU Event. Enforces Clean Architecture compliance, CQRS patterns, and best practices.
+description: Expert in .NET 10 architecture review for {Project}. Enforces Clean Architecture compliance, CQRS patterns, and best practices.
 type: domain
 enforcement: enforce
 priority: high
 ---
 
+> **Project-Agnostic Architecture Review Agent**
+>
+> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../docs/TEMPLATE_GLOSSARY.md).
+
 # Code Architecture Reviewer Agent
 
-## 🎯 Purpose
+## Purpose
 
 Reviews .NET 10 code for Clean Architecture compliance, CQRS patterns, and architectural best practices. Ensures project follows SOLID principles and layer separation.
 
-## ⚡ When This Agent Activates
+## When This Agent Activates
 
 **Triggered by**:
 - Keywords: "architecture", "review", "code review", "compliance", "clean architecture", "cqrs", "handler", "repository", "dto", "validator", "layer", "dependency", "ef core", "solid"
 - File patterns: `**/Features/**/*.cs`, `**/Controllers/**/*.cs`, `**/DTOs/**/*.cs`, `**/Persistence/**/*.cs`, `**/*.csproj`
 - Content patterns: CQRS violations, architectural concerns, missing patterns
 
-## 🏗️ ISLAMU Event Architecture
+## {Project} Architecture
 
-For a detailed overview of the ISLAMU Event Clean Architecture, including layer responsibilities, dependency rules, and project references, refer to [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) and the `clean-architecture-rules` skill.
+For a detailed overview of the {Project} Clean Architecture, including layer responsibilities, dependency rules, and project references, refer to [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) and the `clean-architecture-rules` skill.
 
-## 📊 Review Checklist
+## Review Checklist
 
 This checklist helps ensure code adheres to established architectural patterns and best practices. For detailed guidance on each point, refer to the `clean-architecture-rules`, `cqrs-mediatr-guidelines`, and `dotnet-efcore-guidelines` skills.
 
@@ -38,7 +42,7 @@ This checklist helps ensure code adheres to established architectural patterns a
 - [ ] **Naming Conventions**:
     - [ ] File-scoped namespaces used.
     - [ ] PascalCase for public members, `_camelCase` for private fields.
-    - [ ] Folder names plural, class names singular (e.g., `Events` folder, `Event` class).
+    - [ ] Folder names plural, class names singular (e.g., `{Entities}` folder, `{Entity}` class).
 - [ ] **Using Statements**: All `using` statements preserved, even if they appear unused (unless old, broken references).
 
 ### CQRS Pattern Compliance (`cqrs-mediatr-guidelines`)
@@ -68,7 +72,7 @@ This checklist helps ensure code adheres to established architectural patterns a
 
 ### Common Architectural Violations to Watch
 
-- ❌ Repository method returns DTOs (e.g., `GetEventListDto()`).
+- ❌ Repository method returns DTOs (e.g., `Get{Entity}ListDto()`).
 - ❌ Repository method returns entities but handler doesn't map to DTO before returning to presentation layer.
 - ❌ Validator injected via DI in handler constructor.
 - ❌ Handler contains business logic that belongs in the domain entity.
@@ -76,7 +80,7 @@ This checklist helps ensure code adheres to established architectural patterns a
 - ❌ Entity property has a default value in its class declaration.
 - ❌ `long` used for non-size/cursor fields where `int` or `Guid` is appropriate.
 
-## 🔧 Automated Refactoring Actions
+## Automated Refactoring Actions
 
 When violations are found, this agent will:
 
@@ -85,7 +89,7 @@ When violations are found, this agent will:
 3. **Suggest** a refactoring approach aligned with established patterns.
 4. **Block** commits that introduce architectural violations.
 
-## 🎯 Review Process
+## Review Process
 
 To conduct a thorough architectural review, follow these steps, utilizing the referenced skills for detailed guidance:
 
@@ -96,15 +100,15 @@ To conduct a thorough architectural review, follow these steps, utilizing the re
 5.  **Check Naming & Style**: Verify adherence to project naming conventions and file-scoped namespaces.
 6.  **Generate Report**: Provide specific violations, explanations, suggested fixes (referencing code examples in skills), and prevention strategies.
 
-## 📝 Related Skills
+## Related Skills
 
-- [`clean-architecture-rules`](../clean-architecture-rules/SKILL.md) - **CRITICAL**: Enforces dependency direction, layer boundaries, and manual validator instantiation.
-- [`cqrs-mediatr-guidelines`](../cqrs-mediatr-guidelines/SKILL.md) - **CRITICAL**: Covers MediatR usage, Command/Query patterns, handler logic, DTO mapping, and FluentValidation integration.
-- [`dotnet-efcore-guidelines`](../dotnet-efcore-guidelines/SKILL.md) - **CRITICAL**: Details EF Core conventions, repository patterns, entity configurations, and data type usage.
-- [`blazor-ui-conventions`](../blazor-ui-conventions/SKILL.md) - For Blazor UI architecture best practices and component-level concerns.
-- [`blazor-bff-patterns`](../blazor-bff-patterns/SKILL.md) - For BFF specific architectural patterns and security integration.
-- [`auth-patterns`](../auth-patterns/SKILL.md) - For authentication and authorization architectural concerns.
-- [`error-tracking`](../error-tracking/SKILL.md) - For centralized error handling and performance monitoring in the context of architectural layers.
+- [`clean-architecture-rules`](../skills/clean-architecture-rules/SKILL.md) - **CRITICAL**: Enforces dependency direction, layer boundaries, and manual validator instantiation.
+- [`cqrs-mediatr-guidelines`](../skills/cqrs-mediatr-guidelines/SKILL.md) - **CRITICAL**: Covers MediatR usage, Command/Query patterns, handler logic, DTO mapping, and FluentValidation integration.
+- [`dotnet-efcore-guidelines`](../skills/dotnet-efcore-guidelines/SKILL.md) - **CRITICAL**: Details EF Core conventions, repository patterns, entity configurations, and data type usage.
+- [`blazor-ui-conventions`](../skills/blazor-ui-conventions/SKILL.md) - For Blazor UI architecture best practices and component-level concerns.
+- [`blazor-bff-patterns`](../skills/blazor-bff-patterns/SKILL.md) - For BFF specific architectural patterns and security integration.
+- [`auth-patterns`](../skills/auth-patterns/SKILL.md) - For authentication and authorization architectural concerns.
+- [`error-tracking`](../skills/error-tracking/SKILL.md) - For centralized error handling and performance monitoring in the context of architectural layers.
 
 ## Output Format
 
@@ -125,4 +129,4 @@ When reviewing code for architectural compliance, provide:
 4. **Prevention Strategies**
    - Recommendations on how to avoid similar violations in future development.
 
-**Enforcement Level**: 🔒️ ENFORCE (Blocks architectural violations during code review)
+**Enforcement Level**: ENFORCE (Blocks architectural violations during code review)

@@ -1,13 +1,16 @@
-# Handler Patterns - ISLAMU Event Conventions
+# Handler Patterns - Complete Reference
 
-<h2>Repository Usage in Handlers</h2>
+> **Project-Agnostic Handler Patterns**
+>
+> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../../docs/TEMPLATE_GLOSSARY.md).
+
+## Repository Usage in Handlers
 
 **CRITICAL RULE**: Handlers use repositories (not DbContext directly).
 
-**Real Example from Event**:
 ```csharp
-// File: Explore.Application/Features/Events/Handlers/Commands/CreateEventCommandHandler.cs
-namespace Explore.Application.Features.Events.Handlers.Commands;
+// File: {Project}.Application/Features/{Entities}/Handlers/Commands/Create{Entity}CommandHandler.cs
+namespace {Project}.Application.Features.{Entities}.Handlers.Commands;
 
 using System;
 using System.Collections.Generic;
@@ -15,62 +18,56 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
-using Explore.Application.Contracts.Persistence;  // ✅ Repository interfaces
-using Explore.Application.DTOs.Event.Validators;
-using Explore.Application.Features.Events.Requests.Commands;
-using Explore.Application.Responses;
-using Explore.Domain;
+using {Project}.Application.Contracts.Persistence;  // ✅ Repository interfaces
+using {Project}.Application.DTOs.{Entity}.Validators;
+using {Project}.Application.Features.{Entities}.Requests.Commands;
+using {Project}.Application.Responses;
+using {Project}.Domain;
 using MediatR;
 
-public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<Guid>>
+public class Create{Entity}CommandHandler : IRequestHandler<Create{Entity}Command, BaseCommandResponse<{IdType}>>
 {
-    private readonly IEventRepository _eventRepository;  // ✅ Repository interface
-    private readonly IAudienceAgeRepository _audienceAgeRepository;
-    private readonly IAudienceGenderRepository _audienceGenderRepository;
-    private readonly IEventTypeRepository _eventTypeRepository;
-    private readonly IOrganizationRepository _organizationRepository;
-    private readonly IStorageObjectRepository _storageObjectRepository;
+    private readonly I{Entity}Repository _{entity}Repository;  // ✅ Repository interface
+    private readonly I{RelatedEntity1}Repository _{relatedEntity1}Repository;
+    private readonly I{RelatedEntity2}Repository _{relatedEntity2}Repository;
+    private readonly I{LookupEntity}Repository _{lookupEntity}Repository;
     private readonly IUserContext _userContext;
     private readonly ITenantContext _tenantContext;
     private readonly IMapper _mapper;
-    
+
     // ✅ Inject repositories, not DbContext
-    public CreateEventCommandHandler(
-        IEventRepository eventRepository,
-        IAudienceAgeRepository audienceAgeRepository,
-        IAudienceGenderRepository audienceGenderRepository,
-        IEventTypeRepository eventTypeRepository,
-        IOrganizationRepository organizationRepository,
-        IStorageObjectRepository storageObjectRepository,
+    public Create{Entity}CommandHandler(
+        I{Entity}Repository {entity}Repository,
+        I{RelatedEntity1}Repository {relatedEntity1}Repository,
+        I{RelatedEntity2}Repository {relatedEntity2}Repository,
+        I{LookupEntity}Repository {lookupEntity}Repository,
         IUserContext userContext,
         ITenantContext tenantContext,
         IMapper mapper)
     {
-        _eventRepository = eventRepository;
-        _audienceAgeRepository = audienceAgeRepository;
-        _audienceGenderRepository = audienceGenderRepository;
-        _eventTypeRepository = eventTypeRepository;
-        _organizationRepository = organizationRepository;
-        _storageObjectRepository = storageObjectRepository;
+        _{entity}Repository = {entity}Repository;
+        _{relatedEntity1}Repository = {relatedEntity1}Repository;
+        _{relatedEntity2}Repository = {relatedEntity2}Repository;
+        _{lookupEntity}Repository = {lookupEntity}Repository;
         _userContext = userContext;
         _tenantContext = tenantContext;
         _mapper = mapper;
     }
 
-    public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
+    public async Task<BaseCommandResponse<{IdType}>> Handle(Create{Entity}Command request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
+        var response = new BaseCommandResponse<{IdType}>();
 
         // Validation...
-        var @event = _mapper.Map<Event>(request.EventDto);
-        @event.TotalViews = 0;
+        var {entity} = _mapper.Map<{Entity}>(request.{Entity}Dto);
+        {entity}.ViewCount = 0;
 
         // ✅ Use repository methods
-        @event = await _eventRepository.Create(@event);
+        {entity} = await _{entity}Repository.Create({entity});
 
         response.Success = true;
-        response.Id = @event.Id;
-        response.Message = "Event created successfully.";
+        response.Id = {entity}.Id;
+        response.Message = "{Entity} created successfully.";
 
         return response;
     }
@@ -83,40 +80,42 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
 - ✅ Encapsulates complex queries
 - ✅ Consistent data access patterns
 
-<h2>AutoMapper Usage</h2>
+---
 
-**Real Example from GetEventListRequestHandler**:
+## AutoMapper Usage
+
+**Query Handler Example**:
 ```csharp
-// File: Explore.Application/Features/Events/Handlers/Queries/GetEventListRequestHandler.cs
-namespace Explore.Application.Features.Events.Handlers.Queries;
+// File: {Project}.Application/Features/{Entities}/Handlers/Queries/Get{Entity}ListRequestHandler.cs
+namespace {Project}.Application.Features.{Entities}.Handlers.Queries;
 
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
-using Explore.Application.Contracts.Persistence;
-using Explore.Application.DTOs.Event;
-using Explore.Application.Features.Events.Requests.Queries;
+using {Project}.Application.Contracts.Persistence;
+using {Project}.Application.DTOs.{Entity};
+using {Project}.Application.Features.{Entities}.Requests.Queries;
 using MediatR;
 
-public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, List<EventListDto>>
+public class Get{Entity}ListRequestHandler : IRequestHandler<Get{Entity}ListRequest, List<{Entity}ListDto>>
 {
-    private readonly IEventRepository _eventRepository;
+    private readonly I{Entity}Repository _{entity}Repository;
     private readonly IMapper _mapper;
 
-    public GetEventListRequestHandler(IEventRepository eventRepository, IMapper mapper)
+    public Get{Entity}ListRequestHandler(I{Entity}Repository {entity}Repository, IMapper mapper)
     {
-        _eventRepository = eventRepository;
+        _{entity}Repository = {entity}Repository;
         _mapper = mapper;
     }
 
-    public async Task<List<EventListDto>> Handle(GetEventListRequest request, CancellationToken cancellationToken)
+    public async Task<List<{Entity}ListDto>> Handle(Get{Entity}ListRequest request, CancellationToken cancellationToken)
     {
-        // ✅ Repository returns List<Event> (entities)
-        var events = await _eventRepository.GetEventsWithDetails();
+        // ✅ Repository returns List<{Entity}> (entities)
+        var {entities} = await _{entity}Repository.Get{Entities}WithDetails();
 
         // ✅ AutoMapper maps entities → DTOs
-        return _mapper.Map<List<EventListDto>>(events);
+        return _mapper.Map<List<{Entity}ListDto>>({entities});
     }
 }
 ```
@@ -124,30 +123,31 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, L
 **Common AutoMapper Patterns**:
 ```csharp
 // Map DTO → Entity (Create)
-var entity = _mapper.Map<Event>(request.EventDto);
+var entity = _mapper.Map<{Entity}>(request.{Entity}Dto);
 
 // Map DTO → Existing Entity (Update)
-_mapper.Map(request.EventDto, existingEntity);
+_mapper.Map(request.{Entity}Dto, existingEntity);
 
 // Map Entity → DTO (Read)
-var dto = _mapper.Map<EventDto>(entity);
+var dto = _mapper.Map<{Entity}Dto>(entity);
 
 // Map Entity Collection → DTO Collection (List)
-var dtos = _mapper.Map<List<EventListDto>>(entities);
+var dtos = _mapper.Map<List<{Entity}ListDto>>(entities);
 ```
 
-<h2>CancellationToken Pattern</h2>
+---
+
+## CancellationToken Pattern
 
 **Always include `CancellationToken` parameter in Handle method**:
 
 ```csharp
-public async Task<BaseCommandResponse<Guid>> Handle(
-    CreateEventCommand request,
+public async Task<BaseCommandResponse<{IdType}>> Handle(
+    Create{Entity}Command request,
     CancellationToken cancellationToken)  // ✅ Always include
 {
-    // Pass cancellationToken to all async operations that accept it (e.g., validator, EF Core queries).
-    // Note: some repository methods in this codebase don't currently accept a CancellationToken.
-    await _eventRepository.Create(@event);
+    // Pass cancellationToken to all async operations that accept it
+    await _{entity}Repository.Create({entity});
 }
 ```
 
@@ -156,30 +156,30 @@ public async Task<BaseCommandResponse<Guid>> Handle(
 - ✅ Prevents wasted work when client disconnects
 - ✅ Required by MediatR `IRequestHandler<TRequest, TResponse>`
 
-<h2>Manual Validator Instantiation Pattern</h2>
+---
+
+## Manual Validator Instantiation Pattern
 
 **CRITICAL PATTERN**: Validators are instantiated manually with dependencies, NOT injected via DI.
 
-**Real Example from CreateEventCommandHandler**:
 ```csharp
-public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
+public async Task<BaseCommandResponse<{IdType}>> Handle(Create{Entity}Command request, CancellationToken cancellationToken)
 {
-    var response = new BaseCommandResponse<Guid>();
+    var response = new BaseCommandResponse<{IdType}>();
 
     // ✅ CRITICAL: Manual validator instantiation with all required repositories
-    var validator = new CreateEventDtoValidator(
-        _audienceAgeRepository,
-        _audienceGenderRepository,
-        _eventTypeRepository,
-            _organizationRepository,
-        _storageObjectRepository);
+    var validator = new Create{Entity}DtoValidator(
+        _{relatedEntity1}Repository,
+        _{relatedEntity2}Repository,
+        _{lookupEntity}Repository,
+        _{storageObject}Repository);
 
-        var validationResult = await validator.ValidateAsync(request.EventDto, cancellationToken);
+    var validationResult = await validator.ValidateAsync(request.{Entity}Dto, cancellationToken);
 
     if (!validationResult.IsValid)
     {
         response.Success = false;
-        response.Message = "Event creation failed.";
+        response.Message = "{Entity} creation failed.";
         response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
         return response;
     }
@@ -194,124 +194,132 @@ public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, 
 - ✅ No need to register validators in DI container
 - ✅ Clear and explicit
 
-<h2>Command Handler Pattern (Create)</h2>
+---
+
+## Command Handler Pattern (Create)
 
 **Full Pattern**:
 ```csharp
-public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
+public async Task<BaseCommandResponse<{IdType}>> Handle(Create{Entity}Command request, CancellationToken cancellationToken)
 {
-    var response = new BaseCommandResponse<Guid>();
+    var response = new BaseCommandResponse<{IdType}>();
 
     // 1. Manual validation
-    var validator = new CreateEventDtoValidator(/* repositories */);
-    var validationResult = await validator.ValidateAsync(request.EventDto);
+    var validator = new Create{Entity}DtoValidator(/* repositories */);
+    var validationResult = await validator.ValidateAsync(request.{Entity}Dto);
 
     if (!validationResult.IsValid)
     {
         response.Success = false;
-        response.Message = "Event creation failed.";
+        response.Message = "{Entity} creation failed.";
         response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
         return response;
     }
 
     // 2. Map DTO → Entity
-    var @event = _mapper.Map<Event>(request.EventDto);
+    var {entity} = _mapper.Map<{Entity}>(request.{Entity}Dto);
 
     // 3. Set default values (not in DTO)
-        @event.TotalViews = 0;
-        @event.TenantId = _tenantContext.TenantId;
+    {entity}.ViewCount = 0;
+    {entity}.TenantId = _tenantContext.TenantId;
 
     // 4. Save through repository
-    @event = await _eventRepository.Create(@event);
+    {entity} = await _{entity}Repository.Create({entity});
 
     // 5. Return success response
     response.Success = true;
-    response.Id = @event.Id;
-    response.Message = "Event created successfully.";
+    response.Id = {entity}.Id;
+    response.Message = "{Entity} created successfully.";
 
     return response;
 }
 ```
 
-<h2>Command Handler Pattern (Update)</h2>
+---
+
+## Command Handler Pattern (Update)
 
 **Full Pattern**:
 ```csharp
-public async Task<BaseCommandResponse<Guid>> Handle(UpdateEventCommand request, CancellationToken cancellationToken)
+public async Task<BaseCommandResponse<{IdType}>> Handle(Update{Entity}Command request, CancellationToken cancellationToken)
 {
-    var response = new BaseCommandResponse<Guid>();
+    var response = new BaseCommandResponse<{IdType}>();
 
     // 1. Validate
-    var validator = new UpdateEventDtoValidator(/* repositories */);
-    var validationResult = await validator.ValidateAsync(request.EventDto);
+    var validator = new Update{Entity}DtoValidator(/* repositories */);
+    var validationResult = await validator.ValidateAsync(request.{Entity}Dto);
 
     if (!validationResult.IsValid)
     {
         response.Success = false;
-        response.Message = "Event update failed.";
+        response.Message = "{Entity} update failed.";
         response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
         return response;
     }
 
     // 2. Get existing entity
-    var @event = await _eventRepository.GetById(request.EventDto.Id);
+    var {entity} = await _{entity}Repository.GetById(request.{Entity}Dto.Id);
 
-    if (@event == null)
+    if ({entity} == null)
     {
         response.Success = false;
-        response.Message = "Event not found.";
+        response.Message = "{Entity} not found.";
         return response;
     }
 
     // 3. Map DTO → Existing Entity
-    _mapper.Map(request.EventDto, @event);
+    _mapper.Map(request.{Entity}Dto, {entity});
 
     // 4. Update through repository
-    await _eventRepository.Update(@event);
+    await _{entity}Repository.Update({entity});
 
     // 5. Return success response
     response.Success = true;
-    response.Id = @event.Id;
-    response.Message = "Event updated successfully.";
+    response.Id = {entity}.Id;
+    response.Message = "{Entity} updated successfully.";
 
     return response;
 }
 ```
 
-<h2>Command Handler Pattern (Delete)</h2>
+---
+
+## Command Handler Pattern (Delete)
 
 **Full Pattern**:
 ```csharp
-public async Task<bool> Handle(DeleteEventCommand request, CancellationToken cancellationToken)
+public async Task<bool> Handle(Delete{Entity}Command request, CancellationToken cancellationToken)
 {
     // 1. Get entity
-    var @event = await _eventRepository.GetById(request.Id);
+    var {entity} = await _{entity}Repository.GetById(request.Id);
 
     // 2. Check if exists
-    if (@event == null)
+    if ({entity} == null)
         return false;
 
     // 3. Delete through repository
-    await _eventRepository.Delete(@event);
+    await _{entity}Repository.Delete({entity});
 
     // 4. Return success
     return true;
 }
 ```
 
-**Note**: Delete returns `bool`, not `BaseCommandResponse<Guid>`.
+**Note**: Delete returns `bool`, not `BaseCommandResponse<{IdType}>`.
 
-<h2>Query Handler Pattern (List)</h2>
+---
+
+## Query Handler Pattern (List)
 
 **Full Pattern**:
 ```csharp
-public async Task<List<EventListDto>> Handle(GetEventListRequest request, CancellationToken cancellationToken)
+public async Task<List<{Entity}ListDto>> Handle(Get{Entity}ListRequest request, CancellationToken cancellationToken)
 {
     // 1. Get entities from repository
-    var events = await _eventRepository.GetEventsWithDetails();
+    var {entities} = await _{entity}Repository.Get{Entities}WithDetails();
 
     // 2. Map entities → DTOs
-    return _mapper.Map<List<EventListDto>>(events);
+    return _mapper.Map<List<{Entity}ListDto>>({entities});
 }
 ```
 
@@ -321,21 +329,23 @@ public async Task<List<EventListDto>> Handle(GetEventListRequest request, Cancel
 - ✅ Return DTOs directly
 - ✅ Repository returns entities, handler maps to DTOs
 
-<h2>Query Handler Pattern (Details)</h2>
+---
+
+## Query Handler Pattern (Details)
 
 **Full Pattern**:
 ```csharp
-public async Task<EventDto> Handle(GetEventDetailsRequest request, CancellationToken cancellationToken)
+public async Task<{Entity}Dto> Handle(Get{Entity}DetailsRequest request, CancellationToken cancellationToken)
 {
     // 1. Get entity from repository
-    var @event = await _eventRepository.GetEventWithDetails(request.Id);
+    var {entity} = await _{entity}Repository.Get{Entity}WithDetails(request.Id);
 
     // 2. Return null if not found (controller handles NotFound)
-    if (@event == null)
+    if ({entity} == null)
         return null;
 
     // 3. Map entity → DTO
-    return _mapper.Map<EventDto>(@event);
+    return _mapper.Map<{Entity}Dto>({entity});
 }
 ```
 
@@ -344,7 +354,9 @@ public async Task<EventDto> Handle(GetEventDetailsRequest request, CancellationT
 - ✅ Controller checks for null and returns `NotFound()`
 - ✅ Simple and straightforward
 
-<h2>Error Handling Pattern</h2>
+---
+
+## Error Handling Pattern
 
 **Commands**:
 ```csharp
@@ -379,18 +391,20 @@ if (entity == null)
     return null;  // Let controller handle NotFound()
 
 // Success
-return _mapper.Map<EventDto>(entity);
+return _mapper.Map<{Entity}Dto>(entity);
 ```
 
-<h2>Dependency Injection Registration</h2>
+---
+
+## Dependency Injection Registration
 
 **Handlers are auto-registered by MediatR**:
 ```csharp
-// File: Explore.API/Program.cs
-using Explore.Application.Profiles;
+// File: {Project}.API/Program.cs
+using {Project}.Application.Profiles;
 
 // Register MediatR (scans assembly for handlers)
-builder.Services.AddMediatR(cfg => 
+builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(typeof(MappingProfile).Assembly));
 
 // Register AutoMapper
@@ -399,11 +413,13 @@ builder.Services.AddAutoMapper(typeof(MappingProfile));
 
 **No need to manually register each handler!**
 
-<h2>Common Patterns Summary</h2>
+---
+
+## Common Patterns Summary
 
 | Pattern | Command | Query |
 |---------|---------|-------|
-| **Response Type** | `BaseCommandResponse<Guid>` (or `bool` for Delete) | DTO type directly |
+| **Response Type** | `BaseCommandResponse<{IdType}>` (or `bool` for Delete) | DTO type directly |
 | **Validation** | Manual with validator | Not needed |
 | **Repository** | CRUD operations | Read with `.Include()` |
 | **Mapping** | DTO → Entity | Entity → DTO |

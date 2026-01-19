@@ -96,7 +96,7 @@ public class OrganizationControllerTests
             Country = "Belgium",
             City = "Brussels",
             Address = "123 Test Street",
-            Postcode = "1000"
+            Postcode = 1000
         };
 
         // Act
@@ -117,8 +117,12 @@ public class OrganizationControllerTests
         var id = Guid.NewGuid();
         var updateDto = new UpdateOrganizationDto
         {
-            Id = id,
-            FullName = "Updated Organization"
+            FullName = "Updated Organization",
+            Email = "updated@example.com",
+            Country = "Belgium",
+            City = "Brussels",
+            Address = "456 Updated Street",
+            Postcode = 1000
         };
 
         // Act

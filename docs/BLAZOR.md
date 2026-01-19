@@ -1,0 +1,1081 @@
+# Blazor Frontend Architecture
+
+> Comprehensive guide for Blazor Server + WebAssembly hybrid UI in ISLAMU Event.
+
+**Last Updated**: January 2026
+
+---
+
+## Table of Contents
+
+1. [Overview](#1-overview)
+2. [Project Structure](#2-project-structure)
+3. [Render Modes](#3-render-modes)
+4. [Service Layer Architecture](#4-service-layer-architecture)
+5. [Component Patterns](#5-component-patterns)
+6. [MudBlazor Usage](#6-mudblazor-usage)
+7. [State Management](#7-state-management)
+8. [Pagination Patterns](#8-pagination-patterns)
+9. [Dialog Patterns](#9-dialog-patterns)
+10. [Authentication & Authorization](#10-authentication--authorization)
+11. [Theming](#11-theming)
+12. [CSS & Styling Conventions](#12-css--styling-conventions)
+13. [Error Handling](#13-error-handling)
+14. [Best Practices](#14-best-practices)
+
+---
+
+## 1. Overview
+
+The ISLAMU Event frontend uses a **Blazor Hybrid** architecture combining:
+
+- **Blazor Server** (`Explore.Blazor`): Acts as the Backend-for-Frontend (BFF)
+- **Blazor WebAssembly** (`Explore.Blazor.Client`): Contains UI components and pages
+
+### Key Architecture Decisions
+
+| Aspect | Decision | Rationale |
+|--------|----------|-----------|
+| Render Mode | `InteractiveAuto` | Fast initial load (server), then WASM for subsequent |
+| UI Library | MudBlazor | Material Design, comprehensive components |
+| API Communication | NSwag-generated client | Type-safe, auto-generated from OpenAPI |
+| Authentication | BFF + Cookie | No tokens exposed to browser |
+| Proxy | YARP | Token forwarding to backend API |
+
+### Architecture Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                           Browser                                   │
+│  ┌───────────────────────────────────────────────────────────────┐  │
+│  │              Explore.Blazor.Client (WASM/Server)              │  │
+│  │  • Pages (EventList, EventDetail, etc.)                       │  │
+│  │  • Components (EventSessionManager, Dialogs, etc.)            │  │
+│  │  • Services (IEventService, IOrganizationService, etc.)       │  │
+│  └───────────────────────────────────────────────────────────────┘  │
+│                              │                                      │
+│                        Cookie Auth                                  │
+└──────────────────────────────┼──────────────────────────────────────┘
+                               │
+┌──────────────────────────────▼──────────────────────────────────────┐
+│                    Explore.Blazor (BFF Server)                      │
+│  • OIDC Authentication with Keycloak                                │
+│  • Session Cookie Management                                        │
+│  • YARP Reverse Proxy → API                                         │
+│  • AccessTokenForwardingHandler                                     │
+│  • X-Tenant-Id Header Injection                                     │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+                         JWT Bearer Token
+                               │
+┌──────────────────────────────▼──────────────────────────────────────┐
+│                        Explore.API                                  │
+│  • REST Endpoints                                                   │
+│  • JWT Validation                                                   │
+│  • Multi-Tenant Query Filters                                       │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 2. Project Structure
+
+### Explore.Blazor (Server/BFF)
+
+```
+Explore.Blazor/
+├── Components/
+│   ├── App.razor               # Root application component
+│   ├── Routes.razor            # Routing configuration
+│   └── _Imports.razor          # Global imports
+├── Services/
+│   ├── CircuitAccessTokenService.cs  # Token storage for SignalR
+│   └── ServerCookieForwardingHandler.cs
+├── Program.cs                  # DI, OIDC, YARP configuration
+└── appsettings.json            # Keycloak, API URLs
+```
+
+### Explore.Blazor.Client (UI)
+
+```
+Explore.Blazor.Client/
+├── Pages/                      # Routable pages
+│   ├── Event/
+│   │   ├── EventList.razor     # Event discovery with filters
+│   │   ├── EventDetail.razor   # Single event view
+│   │   ├── EventEdit.razor     # Event editing
+│   │   ├── CreateEvent.razor   # Multi-step event creation
+│   │   └── MyEvents.razor      # User's events
+│   ├── Organization/
+│   │   ├── CreateOrganization.razor
+│   │   ├── OrganizationProfile.razor
+│   │   └── MyOrganizations.razor
+│   ├── Admin/
+│   │   ├── AdminList.razor     # Admin dashboard
+│   │   ├── Categories.razor    # Category management
+│   │   ├── Tags.razor          # Tag management
+│   │   └── Locations.razor     # Location management
+│   └── User/
+│       ├── UserProfile.razor
+│       ├── MyRegistrations.razor
+│       └── Settings.razor
+├── Components/                 # Reusable components
+│   ├── Event/
+│   │   ├── EventSessionManager.razor
+│   │   ├── CreateSessionDialog.razor
+│   │   ├── EditSessionDialog.razor
+│   │   └── DeleteEventDialog.razor
+│   ├── Admin/
+│   │   ├── CreateCategoryDialog.razor
+│   │   └── EditCategoryDialog.razor
+│   ├── ImageUpload.razor
+│   ├── S3Image.razor
+│   └── EventRegistration.razor
+├── Layout/
+│   ├── MainLayout.razor        # Application shell
+│   ├── NavMenu.razor           # Navigation
+│   ├── Footer.razor            # Footer
+│   └── AnnouncementBar.razor   # Top announcement
+├── Services/                   # Service layer
+│   ├── EventService.cs
+│   ├── OrganizationService.cs
+│   ├── CategoryService.cs
+│   ├── AuthStateService.cs
+│   └── [Entity]Service.cs
+├── Clients/
+│   └── EventApiClient.g.cs     # NSwag-generated API client
+├── Configuration/
+│   └── TenantConfiguration.cs
+└── _Imports.razor              # Global imports
+```
+
+---
+
+## 3. Render Modes
+
+### InteractiveAuto (Default)
+
+The application uses `InteractiveAuto` render mode:
+
+```razor
+@* In App.razor or page *@
+@rendermode InteractiveAuto
+```
+
+**Behavior**:
+1. **First Visit**: Renders on server via SignalR (fast initial load)
+2. **Background**: WASM runtime downloads in background
+3. **Subsequent**: Client-side rendering (better performance)
+
+### When to Use Different Modes
+
+| Mode | Use Case |
+|------|----------|
+| `InteractiveServer` | Real-time data, admin dashboards |
+| `InteractiveWebAssembly` | Offline-capable, compute-heavy UI |
+| `InteractiveAuto` | Default for most pages |
+| Static SSR | Simple content pages |
+
+### Declaring Render Mode
+
+**Page-level**:
+```razor
+@page "/events"
+@rendermode InteractiveAuto
+
+<PageTitle>Events</PageTitle>
+```
+
+**Component-level**:
+```razor
+<EventSessionManager @rendermode="InteractiveServer" EventId="@eventId" />
+```
+
+---
+
+## 4. Service Layer Architecture
+
+### Interface-Based Design
+
+All services implement an interface for testability:
+
+```csharp
+// Interface definition
+public interface IEventService
+{
+    Task<ICollection<EventListDto>> GetAllEventsAsync();
+    Task<EventDto?> GetEventByIdAsync(Guid eventId);
+    Task<BaseCommandResponseOfGuid?> CreateEventAsync(CreateEventDto dto);
+    Task<bool> DeleteEventAsync(Guid eventId);
+}
+
+// Implementation
+public class EventService : IEventService
+{
+    private readonly IEventApiClient _apiClient;
+    private readonly ILogger<EventService> _logger;
+
+    public EventService(IEventApiClient apiClient, ILogger<EventService> logger)
+    {
+        _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
+    public async Task<ICollection<EventListDto>> GetAllEventsAsync()
+    {
+        try
+        {
+            _logger.LogInformation("[EVENT SERVICE] Fetching all events...");
+            var response = await _apiClient.EventGETAsync(pageNumber: 1, pageSize: 100);
+            return response?.Items ?? new List<EventListDto>();
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[EVENT SERVICE] API error: {StatusCode}", ex.StatusCode);
+            return new List<EventListDto>();
+        }
+    }
+}
+```
+
+### Service Registration
+
+Services are registered in `Program.cs`:
+
+```csharp
+// Explore.Blazor/Program.cs
+builder.Services.AddScoped<IEventService, EventService>();
+builder.Services.AddScoped<IOrganizationService, OrganizationService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<IAuthStateService, AuthStateService>();
+// ... etc
+```
+
+### NSwag API Client
+
+The `IEventApiClient` is auto-generated from OpenAPI spec:
+
+```csharp
+// Configured in Program.cs
+builder.Services.AddHttpClient<IEventApiClient, EventApiClient>(client =>
+    {
+        client.BaseAddress = new Uri(exploreApiBaseUrl);
+    })
+    .AddHttpMessageHandler<AccessTokenForwardingHandler>()
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        // Dev SSL handling if needed
+    });
+```
+
+---
+
+## 5. Component Patterns
+
+### Page Components
+
+Page components are routable and typically:
+1. Load data in `OnInitializedAsync`
+2. Manage local state
+3. Delegate to services for API calls
+
+```razor
+@page "/events"
+@inject IEventService EventService
+@inject ILogger<EventList> Logger
+
+<PageTitle>Explore Events</PageTitle>
+
+@if (_isLoading)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else
+{
+    @foreach (var evt in _events)
+    {
+        <EventCard Event="@evt" />
+    }
+}
+
+@code {
+    private bool _isLoading = true;
+    private ICollection<EventListDto> _events = new List<EventListDto>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _events = await EventService.GetAllEventsAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading events");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}
+```
+
+### Reusable Components
+
+Components receive data via parameters and emit events:
+
+```razor
+@* EventCard.razor *@
+<MudCard Class="event-card">
+    <MudCardContent>
+        <MudText Typo="Typo.h6">@Event.Title</MudText>
+    </MudCardContent>
+    <MudCardActions>
+        <MudButton OnClick="@(() => OnViewDetails.InvokeAsync(Event.Id))">
+            View Details
+        </MudButton>
+    </MudCardActions>
+</MudCard>
+
+@code {
+    [Parameter, EditorRequired]
+    public EventListDto Event { get; set; } = null!;
+
+    [Parameter]
+    public EventCallback<Guid> OnViewDetails { get; set; }
+}
+```
+
+### Parameter Conventions
+
+| Convention | Example |
+|------------|---------|
+| Required parameters | `[Parameter, EditorRequired]` |
+| Nullable parameters | `[Parameter] public Guid? ParentId { get; set; }` |
+| Event callbacks | `[Parameter] public EventCallback<T> OnChanged { get; set; }` |
+| Cascading values | `[CascadingParameter] public Task<AuthenticationState> AuthState { get; set; }` |
+
+---
+
+## 6. MudBlazor Usage
+
+### Required Providers
+
+In `MainLayout.razor`:
+
+```razor
+<MudThemeProvider Theme="@_theme" IsDarkMode="@_isDarkMode" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+```
+
+### Common Components
+
+**Data Display**:
+```razor
+@* DataGrid with CRUD *@
+<MudDataGrid T="EventSessionListDto" Items="@sessions"
+             ReadOnly="false" EditMode="DataGridEditMode.Cell"
+             Bordered="true" Dense="true" Hover="true">
+    <Columns>
+        <PropertyColumn Property="x => x.Title" />
+        <PropertyColumn Property="x => x.StartTime" Format="s" />
+        <TemplateColumn StickyRight="true">
+            <CellTemplate>
+                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                               OnClick="@(() => Edit(context.Item))" />
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+</MudDataGrid>
+```
+
+**Forms**:
+```razor
+<MudForm @ref="_form" @bind-IsValid="@_isValid">
+    <MudTextField @bind-Value="model.Title"
+                  Label="Title"
+                  Required="true"
+                  RequiredError="Title is required" />
+
+    <MudSelect @bind-Value="model.CategoryId"
+               Label="Category"
+               AnchorOrigin="Origin.BottomCenter">
+        @foreach (var cat in categories)
+        {
+            <MudSelectItem Value="@cat.Id">@cat.FullName</MudSelectItem>
+        }
+    </MudSelect>
+
+    <MudDatePicker @bind-Date="model.StartDate"
+                   Label="Start Date" />
+</MudForm>
+```
+
+**Feedback**:
+```razor
+@inject ISnackbar Snackbar
+
+@code {
+    private async Task SaveAsync()
+    {
+        var result = await Service.CreateAsync(model);
+        if (result?.Success == true)
+        {
+            Snackbar.Add("Created successfully!", Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add(result?.Message ?? "Error", Severity.Error);
+        }
+    }
+}
+```
+
+---
+
+## 7. State Management
+
+### Local Component State
+
+For simple state, use private fields:
+
+```csharp
+@code {
+    private bool _isLoading = true;
+    private List<EventListDto> _events = new();
+    private string _searchText = "";
+}
+```
+
+### Cascading Values
+
+For state shared across component tree:
+
+```razor
+@* In parent *@
+<CascadingValue Value="@_currentTenant" Name="CurrentTenant">
+    @Body
+</CascadingValue>
+
+@* In child *@
+@code {
+    [CascadingParameter(Name = "CurrentTenant")]
+    public TenantDto? CurrentTenant { get; set; }
+}
+```
+
+### AuthStateService
+
+Centralized authentication state:
+
+```csharp
+public interface IAuthStateService
+{
+    Task<string> GetCurrentUserIdAsync();
+    Task<Guid> GetCurrentTenantIdAsync();
+    Task<bool> IsAuthenticatedAsync();
+}
+
+// Usage in component
+@inject IAuthStateService AuthState
+
+@code {
+    private async Task LoadUserDataAsync()
+    {
+        if (await AuthState.IsAuthenticatedAsync())
+        {
+            var userId = await AuthState.GetCurrentUserIdAsync();
+            // Load user-specific data
+        }
+    }
+}
+```
+
+---
+
+## 8. Pagination Patterns
+
+### Client-Side Pagination
+
+For smaller datasets (< 1000 items), load all and paginate client-side:
+
+```razor
+<MudPagination Count="@TotalPages"
+               Selected="@_currentPage"
+               SelectedChanged="@OnPageChanged"
+               Color="Color.Primary"
+               ShowFirstButton="true"
+               ShowLastButton="true" />
+
+<MudText Typo="Typo.body2">
+    Showing @((_currentPage - 1) * _pageSize + 1) -
+    @(Math.Min(_currentPage * _pageSize, _allItems.Count))
+    of @_allItems.Count items
+</MudText>
+
+@code {
+    private int _currentPage = 1;
+    private int _pageSize = 10;
+    private List<EventListDto> _allItems = new();
+
+    private List<EventListDto> PagedItems => _allItems
+        .Skip((_currentPage - 1) * _pageSize)
+        .Take(_pageSize)
+        .ToList();
+
+    private int TotalPages => _allItems.Count > 0
+        ? (int)Math.Ceiling((double)_allItems.Count / _pageSize)
+        : 1;
+
+    private void OnPageChanged(int page)
+    {
+        _currentPage = page;
+    }
+}
+```
+
+### Server-Side Pagination
+
+For large datasets, use API pagination:
+
+```csharp
+// Service method
+public async Task<PagedResult<EventListDto>> GetEventsPagedAsync(int page, int pageSize)
+{
+    var response = await _apiClient.EventGETAsync(pageNumber: page, pageSize: pageSize);
+    return new PagedResult<EventListDto>
+    {
+        Items = response?.Items?.ToList() ?? new List<EventListDto>(),
+        TotalCount = response?.TotalCount ?? 0,
+        PageNumber = page,
+        PageSize = pageSize
+    };
+}
+```
+
+```razor
+@code {
+    private int _currentPage = 1;
+    private int _pageSize = 10;
+    private int _totalCount = 0;
+    private List<EventListDto> _items = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPageAsync(_currentPage);
+    }
+
+    private async Task LoadPageAsync(int page)
+    {
+        var result = await EventService.GetEventsPagedAsync(page, _pageSize);
+        _items = result.Items;
+        _totalCount = result.TotalCount;
+        _currentPage = page;
+    }
+
+    private int TotalPages => _totalCount > 0
+        ? (int)Math.Ceiling((double)_totalCount / _pageSize)
+        : 1;
+
+    private async Task OnPageChanged(int page)
+    {
+        await LoadPageAsync(page);
+    }
+}
+```
+
+### Filtering with Pagination
+
+When filters change, reset to page 1:
+
+```razor
+@code {
+    private Guid? _selectedCategoryId;
+    private string _searchText = "";
+
+    private async Task OnCategoryChanged(Guid? categoryId)
+    {
+        _selectedCategoryId = categoryId;
+        _currentPage = 1;  // Reset to first page
+        await ApplyFiltersAsync();
+    }
+
+    private void OnSearch(string value)
+    {
+        _searchText = value;
+        _currentPage = 1;  // Reset to first page
+    }
+
+    private List<EventListDto> FilteredItems => _allItems
+        .Where(e => string.IsNullOrEmpty(_searchText) ||
+                    e.Title.Contains(_searchText, StringComparison.OrdinalIgnoreCase))
+        .Where(e => !_selectedCategoryId.HasValue ||
+                    e.CategoryId == _selectedCategoryId.Value)
+        .ToList();
+}
+```
+
+---
+
+## 9. Dialog Patterns
+
+### Creating Dialogs
+
+```razor
+@* CreateCategoryDialog.razor *@
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="@_isValid">
+            <MudTextField @bind-Value="_model.FullName"
+                          Label="Name" Required="true" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary"
+                   Disabled="@(!_isValid)"
+                   OnClick="Submit">Create</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; } = null!;
+
+    private MudForm _form = null!;
+    private bool _isValid;
+    private CreateCategoryDto _model = new();
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit() => MudDialog.Close(DialogResult.Ok(_model));
+}
+```
+
+### Opening Dialogs
+
+```csharp
+@inject IDialogService DialogService
+
+@code {
+    private async Task OpenCreateDialogAsync()
+    {
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<CreateCategoryDialog>(
+            "Create Category",
+            options);
+
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            var newCategory = (CreateCategoryDto)result.Data;
+            await SaveCategoryAsync(newCategory);
+        }
+    }
+}
+```
+
+### Dialogs with Parameters
+
+```csharp
+var parameters = new DialogParameters
+{
+    { "EventId", eventId },
+    { "Title", "Edit Event" }
+};
+
+var dialog = await DialogService.ShowAsync<EditEventDialog>(
+    "Edit Event",
+    parameters,
+    options);
+```
+
+### Confirmation Dialogs
+
+```csharp
+var confirmed = await DialogService.ShowMessageBox(
+    "Delete Item",
+    "Are you sure you want to delete this item?",
+    yesText: "Delete",
+    cancelText: "Cancel",
+    options: new DialogOptions
+    {
+        FullWidth = false,
+        MaxWidth = MaxWidth.ExtraSmall
+    }
+);
+
+if (confirmed == true)
+{
+    await DeleteItemAsync(itemId);
+}
+```
+
+---
+
+## 10. Authentication & Authorization
+
+### Checking Authentication State
+
+```razor
+@inject AuthenticationStateProvider AuthStateProvider
+
+<AuthorizeView>
+    <Authorized>
+        <MudText>Welcome, @context.User.Identity?.Name!</MudText>
+        <MudButton Href="/logout">Logout</MudButton>
+    </Authorized>
+    <NotAuthorized>
+        <MudButton Href="/login">Login</MudButton>
+    </NotAuthorized>
+</AuthorizeView>
+```
+
+### Protected Pages
+
+```razor
+@page "/my-events"
+@attribute [Authorize]
+
+@* Page content only visible to authenticated users *@
+```
+
+### Using AuthStateService
+
+```csharp
+@inject IAuthStateService AuthState
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await AuthState.IsAuthenticatedAsync())
+        {
+            Navigation.NavigateTo("/login?returnUrl=/my-events");
+            return;
+        }
+
+        var userId = await AuthState.GetCurrentUserIdAsync();
+        var tenantId = await AuthState.GetCurrentTenantIdAsync();
+
+        // Load user-specific data
+    }
+}
+```
+
+### User ID Claim Extraction
+
+The `AuthStateService` uses a fallback chain:
+
+```csharp
+var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value
+             ?? user.FindFirst("sub")?.Value
+             ?? user.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
+             ?? user.FindFirst("sid")?.Value;
+```
+
+---
+
+## 11. Theming
+
+### Theme Configuration
+
+In `MainLayout.razor`:
+
+```csharp
+@code {
+    private bool _isDarkMode = false;
+    private MudTheme? _theme;
+
+    protected override void OnInitialized()
+    {
+        _theme = new()
+        {
+            PaletteLight = _lightPalette,
+            PaletteDark = _darkPalette,
+            LayoutProperties = new LayoutProperties()
+        };
+    }
+
+    private readonly PaletteLight _lightPalette = new()
+    {
+        Black = "#110e2d",
+        AppbarText = "#424242",
+        AppbarBackground = "rgba(255,255,255,0.8)",
+        DrawerBackground = "#ffffff",
+        GrayLight = "#e8e8e8",
+        GrayLighter = "#f9f9f9",
+    };
+
+    private readonly PaletteDark _darkPalette = new()
+    {
+        Primary = "#7e6fff",
+        Surface = "#1e1e2d",
+        Background = "#1a1a27",
+        // ... etc
+    };
+}
+```
+
+### Theme Persistence
+
+Theme preference is stored in localStorage and cookie:
+
+```javascript
+// wwwroot/js/theme.js
+window.ExploreTheme = {
+    getStoredTheme: () => localStorage.getItem('theme'),
+    setStoredTheme: (theme) => localStorage.setItem('theme', theme),
+    setThemeCookie: (theme) => {
+        document.cookie = `theme=${theme};path=/;max-age=31536000`;
+    }
+};
+```
+
+### Dark Mode Toggle
+
+```csharp
+private async Task DarkModeToggle()
+{
+    _isDarkMode = !_isDarkMode;
+    var themeValue = _isDarkMode ? "dark" : "light";
+
+    await JSRuntime.InvokeVoidAsync("ExploreTheme.setStoredTheme", themeValue);
+    await JSRuntime.InvokeVoidAsync("ExploreTheme.setThemeCookie", themeValue);
+}
+```
+
+---
+
+## 12. CSS & Styling Conventions
+
+### BEM Methodology
+
+Use BEM (Block Element Modifier) for CSS class naming:
+
+```css
+/* Block */
+.event-card { }
+
+/* Element */
+.event-card__title { }
+.event-card__actions { }
+.event-card__badge { }
+
+/* Modifier */
+.event-card--featured { }
+.event-card--compact { }
+```
+
+### Component-Scoped CSS
+
+Place CSS in `.razor.css` files:
+
+```
+EventCard.razor
+EventCard.razor.css
+```
+
+```css
+/* EventCard.razor.css */
+.event-card {
+    transition: box-shadow 0.2s ease;
+}
+
+.event-card:hover {
+    box-shadow: var(--mud-elevation-4);
+}
+
+.event-card__title {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+```
+
+### Global Styles
+
+Global styles go in `wwwroot/css/app.css`:
+
+```css
+/* Custom utility classes */
+.isl-typo-h5 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.isl-button-pill {
+    border-radius: 20px;
+    padding: 8px 16px;
+    cursor: pointer;
+}
+
+.isl-popover-menu {
+    border-radius: 8px;
+    box-shadow: var(--mud-elevation-4);
+}
+
+.isl-popover-menu__option {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.isl-popover-menu__option:hover {
+    background-color: var(--mud-palette-action-default-hover);
+}
+```
+
+---
+
+## 13. Error Handling
+
+### Service-Level Error Handling
+
+```csharp
+public async Task<ICollection<EventListDto>> GetAllEventsAsync()
+{
+    try
+    {
+        var response = await _apiClient.EventGETAsync(pageNumber: 1, pageSize: 100);
+        return response?.Items ?? new List<EventListDto>();
+    }
+    catch (ApiException ex) when (ex.StatusCode == 401)
+    {
+        _logger.LogWarning("Unauthorized access attempt");
+        return new List<EventListDto>();
+    }
+    catch (ApiException ex) when (ex.StatusCode == 404)
+    {
+        _logger.LogInformation("Resource not found");
+        return new List<EventListDto>();
+    }
+    catch (ApiException ex)
+    {
+        _logger.LogError(ex, "API error: {StatusCode}", ex.StatusCode);
+        return new List<EventListDto>();
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Unexpected error");
+        return new List<EventListDto>();
+    }
+}
+```
+
+### Component-Level Error Handling
+
+```razor
+@code {
+    private bool _hasError = false;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            _hasError = true;
+            _errorMessage = "Failed to load data. Please try again.";
+            Logger.LogError(ex, "Error in OnInitializedAsync");
+        }
+    }
+}
+
+@if (_hasError)
+{
+    <MudAlert Severity="Severity.Error">@_errorMessage</MudAlert>
+    <MudButton OnClick="RetryAsync">Retry</MudButton>
+}
+```
+
+### Global Error Boundary
+
+```razor
+@* In App.razor *@
+<ErrorBoundary>
+    <ChildContent>
+        <Router AppAssembly="@typeof(App).Assembly">
+            <!-- ... -->
+        </Router>
+    </ChildContent>
+    <ErrorContent Context="ex">
+        <MudAlert Severity="Severity.Error">
+            An unexpected error occurred. Please refresh the page.
+        </MudAlert>
+    </ErrorContent>
+</ErrorBoundary>
+```
+
+---
+
+## 14. Best Practices
+
+### DO ✅
+
+1. **Use service layer** - Never call `IEventApiClient` directly from components
+2. **Handle loading states** - Show skeletons or spinners during data fetching
+3. **Reset pagination on filter change** - Always reset to page 1
+4. **Use `[EditorRequired]`** - For mandatory parameters
+5. **Log appropriately** - Use structured logging with context
+6. **Dispose resources** - Implement `IDisposable` when needed
+7. **Use `StateHasChanged()`** - Only when necessary (after async callbacks)
+
+### DON'T ❌
+
+1. **Don't store tokens in WASM** - BFF handles token management
+2. **Don't call API directly** - Use the generated NSwag client via services
+3. **Don't use `Console.WriteLine`** - Use `ILogger<T>` instead
+4. **Don't block with `.Result`** - Always use `await`
+5. **Don't ignore errors** - Handle and log all exceptions
+6. **Don't hardcode URLs** - Use configuration
+
+### Performance Tips
+
+```csharp
+// Use parallel loading for independent data
+protected override async Task OnInitializedAsync()
+{
+    var eventsTask = EventService.GetAllEventsAsync();
+    var categoriesTask = CategoryService.GetAllCategoriesAsync();
+    var tagsTask = TagService.GetAllTagsAsync();
+
+    await Task.WhenAll(eventsTask, categoriesTask, tagsTask);
+
+    _events = await eventsTask;
+    _categories = await categoriesTask;
+    _tags = await tagsTask;
+}
+
+// Use virtualization for large lists
+<MudVirtualize Items="@_largeList" Context="item" OverscanCount="5">
+    <ItemContent>
+        <EventCard Event="@item" />
+    </ItemContent>
+</MudVirtualize>
+```
+
+---
+
+## Related Documentation
+
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Overall system architecture
+- **[SECURITY.md](SECURITY.md)** - Authentication and authorization
+- **[QUICK_REFERENCE.md](QUICK_REFERENCE.md)** - Critical coding rules
+
+## Skills
+
+- **`blazor-ui-conventions`** - MudBlazor patterns and component structure
+- **`blazor-bff-patterns`** - BFF architecture and YARP configuration
+- **`auth-patterns`** - Authentication and Keycloak integration

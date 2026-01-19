@@ -1,5 +1,9 @@
 # MediatR Handler Logging Behavior
 
+> **Project-Agnostic Logging Behavior Patterns**
+>
+> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../../docs/TEMPLATE_GLOSSARY.md).
+
 This document describes how to implement a logging behavior for MediatR requests using a pipeline behavior. This pattern allows for centralized logging of request processing, providing insight into the application's flow without cluttering individual handlers.
 
 ---
@@ -8,7 +12,7 @@ This document describes how to implement a logging behavior for MediatR requests
 
 Create a class that implements `IPipelineBehavior<TRequest, TResponse>`. This class will intercept all MediatR requests before they are handled and after they complete.
 
-**File**: `Explore.Application/Behaviors/LoggingBehavior.cs`
+**File**: `{Project}.Application/Behaviors/LoggingBehavior.cs`
 
 ```csharp
 using MediatR;
@@ -16,7 +20,7 @@ using Microsoft.Extensions.Logging;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Explore.Application.Behaviors;
+namespace {Project}.Application.Behaviors;
 
 /// <summary>
 /// MediatR pipeline behavior for logging requests and responses.
@@ -25,7 +29,7 @@ namespace Explore.Application.Behaviors;
 /// <typeparam name="TResponse">The type of the MediatR response.</typeparam>
 public sealed class LoggingBehavior<TRequest, TResponse>(ILogger<LoggingBehavior<TRequest, TResponse>> logger)
     : IPipelineBehavior<TRequest, TResponse>
-    where TRequest : IRequest<TResponse> // Ensures TRequest is a MediatR request
+    where TRequest : IRequest<TResponse>
 {
     public async Task<TResponse> Handle(
         TRequest request,
@@ -33,7 +37,7 @@ public sealed class LoggingBehavior<TRequest, TResponse>(ILogger<LoggingBehavior
         CancellationToken cancellationToken)
     {
         // Log information BEFORE the request is handled
-        logger.LogInformation("Handling MediatR Request: {RequestName} ({RequestType})", 
+        logger.LogInformation("Handling MediatR Request: {RequestName} ({RequestType})",
             typeof(TRequest).Name, typeof(TRequest).FullName);
 
         TResponse response;
@@ -42,15 +46,15 @@ public sealed class LoggingBehavior<TRequest, TResponse>(ILogger<LoggingBehavior
             // Call the next delegate in the pipeline, which eventually invokes the handler
             response = await next();
         }
-        catch (System.Exception ex) // Catching exceptions for logging purposes
+        catch (System.Exception ex)
         {
             logger.LogError(ex, "MediatR Request: {RequestName} ({RequestType}) failed with exception: {ErrorMessage}",
                 typeof(TRequest).Name, typeof(TRequest).FullName, ex.Message);
-            throw; // Re-throw the exception so it can be handled by higher-level exception handlers (e.g., API's UseExceptionHandler)
+            throw; // Re-throw for higher-level exception handlers
         }
 
         // Log information AFTER the request has been successfully handled
-        logger.LogInformation("Handled MediatR Request: {RequestName} ({RequestType}) - Response: {ResponseType}", 
+        logger.LogInformation("Handled MediatR Request: {RequestName} ({RequestType}) - Response: {ResponseType}",
             typeof(TRequest).Name, typeof(TRequest).FullName, typeof(TResponse).Name);
 
         return response;
@@ -64,21 +68,20 @@ public sealed class LoggingBehavior<TRequest, TResponse>(ILogger<LoggingBehavior
 
 The `LoggingBehavior` needs to be registered with MediatR in the application's `Program.cs` file.
 
-**File**: `Explore.API/Program.cs` (or `Explore.Blazor/Program.cs` if using MediatR in Blazor)
+**File**: `{Project}.API/Program.cs` (or `{Project}.Blazor/Program.cs` if using MediatR in Blazor)
 
 ```csharp
 using MediatR;
-using Explore.Application.Behaviors; // Namespace for your behavior
+using {Project}.Application.Behaviors;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add MediatR services to the DI container
 builder.Services.AddMediatR(cfg => {
     // Register the assembly containing your handlers and requests
-    cfg.RegisterServicesFromAssembly(typeof(Explore.Application.ApplicationServicesRegistration).Assembly);
+    cfg.RegisterServicesFromAssembly(typeof({Project}.Application.ApplicationServicesRegistration).Assembly);
 
     // Register the LoggingBehavior as a pipeline behavior
-    // MediatR will automatically wrap requests with this behavior
     cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
 });
 ```

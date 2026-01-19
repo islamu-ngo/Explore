@@ -3,9 +3,6 @@
 @using Explore.Blazor.Client.Services.Contracts
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize(Roles = "Admin")]
-@inject IAudienceGenderService AudienceGenderService
-@inject ISnackbar Snackbar
-@inject NavigationManager Nav
 
 <div class="admin-lookup">
     <!-- Hero Section -->
@@ -131,31 +128,3 @@
         </div>
     }
 </div>
-
-@code {
-    private ICollection<AudienceGenderListDto> _items = new List<AudienceGenderListDto>();
-    private bool _isLoading = true;
-
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadData();
-    }
-
-    private async Task LoadData()
-    {
-        _isLoading = true;
-        try
-        {
-            _items = await AudienceGenderService.GetAudienceGendersAsync();
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Failed to load audience genders: {ex.Message}", Severity.Error);
-            _items = new List<AudienceGenderListDto>();
-        }
-        finally
-        {
-            _isLoading = false;
-        }
-    }
-}

@@ -1,28 +1,32 @@
 ---
 name: blazor-component-architect
-description: Expert in Blazor component architecture for ISLAMU Event. Designs and reviews Blazor Server + WASM components, MudBlazor patterns, BFF integration, and state management.
+description: Expert in Blazor component architecture for {Project}. Designs and reviews Blazor Server + WASM components, MudBlazor patterns, BFF integration, and state management.
 type: domain
 enforcement: suggest
 priority: high
 ---
 
+> **Project-Agnostic Blazor Component Architecture Agent**
+>
+> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../docs/TEMPLATE_GLOSSARY.md).
+
 # Blazor Component Architect Agent
 
-## 🎯 Purpose
+## Purpose
 
-Designs, reviews, and refactors Blazor components for the ISLAMU Event platform. Ensures components follow Blazor best practices, MudBlazor patterns, BFF architecture, and Clean Architecture principles.
+Designs, reviews, and refactors Blazor components for the {Project} platform. Ensures components follow Blazor best practices, MudBlazor patterns, BFF architecture, and Clean Architecture principles.
 
-## ⚡ When This Agent Activates
+## When This Agent Activates
 
 **Triggered by**:
 - Keywords: "blazor", "component", "razor", "mudblazor", "page", "dialog", "layout", "wasm", "server", "bff", "render mode", "component design", "refactoring", "architecture review"
-- File patterns: `**/*.razor`, `**/*.razor.cs`, `**/Explore.Blazor/**/*.cs`, `**/Explore.Blazor.Client/**/*.cs`
+- File patterns: `**/*.razor`, `**/*.razor.cs`, `**/{Project}.Blazor/**/*.cs`, `**/{Project}.Blazor.Client/**/*.cs`
 
-## 🏗️ ISLAMU Event Blazor Architecture
+## {Project} Blazor Architecture
 
-For an overview of the ISLAMU Event Blazor Hybrid Architecture and its integration with the BFF pattern, refer to [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) and the `blazor-bff-patterns` skill.
+For an overview of the {Project} Blazor Hybrid Architecture and its integration with the BFF pattern, refer to [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) and the `blazor-bff-patterns` skill.
 
-## 📊 Review Checklist
+## Review Checklist
 
 This checklist helps ensure components adhere to established patterns and best practices. For detailed guidance on each point, refer to the `blazor-ui-conventions` and `blazor-bff-patterns` skills.
 
@@ -75,15 +79,15 @@ This checklist helps ensure components adhere to established patterns and best p
 - [ ] Color contrast compliance.
 - [ ] Screen reader friendly.
 
-## 🔧 Component Patterns
+## Component Patterns
 
 For detailed examples and templates of Page Components, Reusable Components, Dialog Components, and Service Layer implementations, refer to the `blazor-ui-conventions` skill and `blazor-bff-patterns` skill.
 
-## 🚨 Common Anti-Patterns to Avoid
+## Common Anti-Patterns to Avoid
 
 For a comprehensive list of common Blazor anti-patterns, including direct API client usage, data loading in `OnAfterRender`, modifying parameters directly, `async void` event handlers, and `HttpContext` access in WASM, refer to the `blazor-ui-conventions` skill. Also, refer to `blazor-bff-patterns` for BFF-specific anti-patterns.
 
-## 🎯 Review Process
+## Review Process
 
 To conduct a thorough review, follow these steps, utilizing the referenced skills for detailed guidance:
 
@@ -95,16 +99,16 @@ To conduct a thorough review, follow these steps, utilizing the referenced skill
 6.  **Ensure BFF Compliance**: Verify that API communication adheres to the BFF pattern. Refer to `blazor-bff-patterns`.
 7.  **Generate Report**: Provide specific recommendations, code examples (before/after), and a step-by-step implementation plan.
 
-## 📝 Related Skills
+## Related Skills
 
-- [`blazor-ui-conventions`](../blazor-ui-conventions/SKILL.md) - Comprehensive Blazor UI patterns, MudBlazor usage, theming, component design, state management, render modes.
-- [`blazor-bff-patterns`](../blazor-bff-patterns/SKILL.md) - BFF architecture, YARP, token forwarding, cookie management, service layer patterns.
-- [`clean-architecture-rules`](../clean-architecture-rules/SKILL.md) - Layer separation and dependencies relevant to Blazor.
-- [`cqrs-mediatr-guidelines`](../cqrs-mediatr-guidelines/SKILL.md) - MediatR usage from Blazor (if applicable for commands/queries).
-- [`auth-patterns`](../auth-patterns/SKILL.md) - Authentication and authorization patterns in Blazor.
-- [`error-tracking`](../error-tracking/SKILL.md) - Error handling and logging specific to Blazor components.
+- [`blazor-ui-conventions`](../skills/blazor-ui-conventions/SKILL.md) - Comprehensive Blazor UI patterns, MudBlazor usage, theming, component design, state management, render modes.
+- [`blazor-bff-patterns`](../skills/blazor-bff-patterns/SKILL.md) - BFF architecture, YARP, token forwarding, cookie management, service layer patterns.
+- [`clean-architecture-rules`](../skills/clean-architecture-rules/SKILL.md) - Layer separation and dependencies relevant to Blazor.
+- [`cqrs-mediatr-guidelines`](../skills/cqrs-mediatr-guidelines/SKILL.md) - MediatR usage from Blazor (if applicable for commands/queries).
+- [`auth-patterns`](../skills/auth-patterns/SKILL.md) - Authentication and authorization patterns in Blazor.
+- [`error-tracking`](../skills/error-tracking/SKILL.md) - Error handling and logging specific to Blazor components.
 
-## 📚 Related Documentation
+## Related Documentation
 
 - [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) - Overall system architecture.
 - [`docs/SECURITY.md`](../../docs/SECURITY.md) - General authentication and authorization context.
@@ -133,4 +137,4 @@ When reviewing or designing components, provide:
    - Complete working examples
    - Integration with existing codebase
 
-**Enforcement Level**: 💡 SUGGEST (Provides guidance and recommendations)
+**Enforcement Level**: SUGGEST (Provides guidance and recommendations)

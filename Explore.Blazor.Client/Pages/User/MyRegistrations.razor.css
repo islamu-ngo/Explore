@@ -135,117 +135,35 @@
 
 /* ===== Element: my-registrations__card ===== */
 ::deep .my-registrations__card {
-    border-radius: 16px;
+    border-radius: 12px;
     border: 1px solid var(--mud-palette-lines-default);
-    overflow: hidden;
-    transition: all 0.3s ease;
-    background: var(--mud-palette-surface);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s, box-shadow 0.2s;
 }
 
 ::deep .my-registrations__card:hover {
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
-    transform: translateY(-2px);
+    transform: translateY(-4px);
+    box-shadow: var(--mud-elevation-4);
 }
 
-/* ===== Element: my-registrations__card-content ===== */
-::deep .my-registrations__card-content {
-    display: grid;
-    grid-template-columns: 140px 1fr auto;
-    gap: 20px;
-    padding: 20px;
-}
-
-/* ===== Element: my-registrations__image ===== */
-::deep .my-registrations__image {
-    width: 140px;
-    height: 140px;
-    border-radius: 12px;
-    overflow: hidden;
-    background: linear-gradient(
-        135deg,
-        var(--mud-palette-primary),
-        var(--mud-palette-primary-darken)
-    );
+/* ===== Element: my-registrations__card-media ===== */
+::deep .my-registrations__card-media {
     position: relative;
 }
 
-::deep .my-registrations__image img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+::deep .my-registrations__card-media::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, transparent 60%, rgba(0,0,0,0.4));
 }
 
-/* ===== Element: my-registrations__details ===== */
-::deep .my-registrations__details {
+/* ===== Element: my-registrations__badges ===== */
+::deep .my-registrations__badges {
     display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-/* ===== Element: my-registrations__event-title ===== */
-::deep .my-registrations__event-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--mud-palette-text-primary);
-    margin: 0;
-}
-
-/* ===== Element: my-registrations__meta ===== */
-::deep .my-registrations__meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-    align-items: center;
-}
-
-/* ===== Element: my-registrations__meta-item ===== */
-::deep .my-registrations__meta-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: var(--mud-palette-text-secondary);
-    font-size: 0.875rem;
-}
-
-::deep .my-registrations__meta-item .mud-icon-root {
-    font-size: 1.125rem;
-}
-
-/* ===== Element: my-registrations__status ===== */
-::deep .my-registrations__status {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-/* ===== Modifier: my-registrations__status--approved ===== */
-::deep .my-registrations__status--approved {
-    background: rgba(76, 175, 80, 0.1);
-    color: var(--mud-palette-success);
-}
-
-/* ===== Modifier: my-registrations__status--pending ===== */
-::deep .my-registrations__status--pending {
-    background: rgba(33, 150, 243, 0.1);
-    color: var(--mud-palette-primary);
-}
-
-/* ===== Modifier: my-registrations__status--cancelled ===== */
-::deep .my-registrations__status--cancelled {
-    background: rgba(244, 67, 54, 0.1);
-    color: var(--mud-palette-error);
-}
-
-/* ===== Modifier: my-registrations__status--completed ===== */
-::deep .my-registrations__status--completed {
-    background: rgba(76, 175, 80, 0.1);
-    color: var(--mud-palette-success);
+    gap: 8px;
 }
 
 /* ===== Element: my-registrations__actions ===== */

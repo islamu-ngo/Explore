@@ -55,6 +55,11 @@
     align-items: center;
 }
 
+::deep .admin-categories__title-text {
+    font-weight: 800;
+    letter-spacing: 0.2px;
+}
+
 /* ===== Element: admin-categories__hero-badge ===== */
 ::deep .admin-categories__hero-badge {
     width: 44px;
@@ -69,6 +74,11 @@
 /* ===== Element: admin-categories__hero-subtitle ===== */
 ::deep .admin-categories__hero-subtitle {
     opacity: 0.85;
+}
+
+::deep .admin-categories__action-btn {
+    border-radius: 999px;
+    padding: 10px 16px;
 }
 
 /* ===== Element: admin-categories__stats ===== */
@@ -145,6 +155,12 @@
     background: rgba(255, 255, 255, 0.03);
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
     padding: 14px;
+    margin-top: 14px;
+}
+
+::deep .admin-categories__search-field {
+    min-width: 280px;
+    border-radius: 999px;
 }
 
 /* ===== Element: admin-categories__toolbar ===== */
@@ -170,6 +186,16 @@
     border: 1px solid rgba(255, 255, 255, 0.06);
     background: rgba(255, 255, 255, 0.02);
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+    margin-top: 12px;
+}
+
+::deep .admin-categories__col-id {
+    width: 50px;
+}
+
+::deep .admin-categories__col-actions {
+    text-align: center;
+    width: 150px;
 }
 
 /* ===== Element: admin-categories__id ===== */
@@ -186,11 +212,19 @@
     gap: 8px;
 }
 
+::deep .admin-categories__name-text {
+    font-weight: 600;
+}
+
 /* ===== Element: admin-categories__actions ===== */
 ::deep .admin-categories__actions {
     display: flex;
     gap: 4px;
     justify-content: center;
+}
+
+::deep .admin-categories__cell-actions {
+    text-align: center;
 }
 
 /* ===== Element: admin-categories__empty ===== */
@@ -200,6 +234,16 @@
     align-items: center;
     padding: 48px 24px;
     text-align: center;
+}
+
+::deep .admin-categories__empty-title {
+    margin-top: 10px;
+    font-weight: 800;
+}
+
+::deep .admin-categories__empty-btn {
+    margin-top: 12px;
+    border-radius: 999px;
 }
 
 /* ===== Element: admin-categories__muted ===== */

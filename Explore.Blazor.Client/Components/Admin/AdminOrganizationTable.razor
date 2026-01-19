@@ -1,0 +1,151 @@
+@using MudBlazor
+@using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Clients
+
+<MudPaper Class="admin-list__table" Elevation="0" Style="margin-top:12px;">
+    <MudTable Items="Items" Hover="true" Breakpoint="Breakpoint.Sm" Dense="true">
+        <HeaderContent>
+            <MudTh style="width:190px">Submitted</MudTh>
+            <MudTh style="width:150px">ID</MudTh>
+            <MudTh>Organization</MudTh>
+            <MudTh style="width:170px">Status</MudTh>
+            <MudTh style="text-align:center; width:170px">Actions</MudTh>
+            <MudTh style="text-align:center; width:140px">Details</MudTh>
+        </HeaderContent>
+
+        <RowTemplate>
+            <MudTd DataLabel="Submitted">
+                <MudText Typo="Typo.body2" Style="font-weight:650;">
+                    @context.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+                </MudText>
+                <MudText Typo="Typo.caption" Class="muted">@GetRelative(context.CreatedAt)</MudText>
+            </MudTd>
+
+            <MudTd DataLabel="ID">
+                <MudText Class="admin-list__id">@context.Id.ToString()[..8]…</MudText>
+            </MudTd>
+
+            <MudTd DataLabel="Organization">
+                <div class="admin-list__org-row">
+                    <MudAvatar Size="Size.Medium" Variant="Variant.Filled" Style="border-radius:14px;">
+                        <MudIcon Icon="@Icons.Material.Filled.Business" />
+                    </MudAvatar>
+
+                    <div class="admin-list__org-meta">
+                        <MudText Typo="Typo.subtitle2" Style="font-weight:750;">
+                            @context.FullName
+                        </MudText>
+                        <MudText Typo="Typo.caption" Class="admin-list__muted">
+                            @(context.City ?? "Unknown"), @(context.Country ?? "Unknown") • @context.Email
+                        </MudText>
+                    </div>
+                </div>
+            </MudTd>
+
+            <MudTd DataLabel="Status">
+                <MudChip T="string"
+                         Color="@StatusColor((RequestStatus)context.ApprovalStatusId)"
+                         Variant="Variant.Filled"
+                         Class="admin-list__status-pill">
+                    @context.StatusTypeFullName
+                </MudChip>
+            </MudTd>
+
+            <MudTd DataLabel="Actions" Style="text-align:center">
+                <div class="admin-list__actions">
+                    @if (context.ApprovalStatusId == (int)RequestStatus.Pending)
+                    {
+                        <MudTooltip Text="Approve">
+                            <MudIconButton Icon="@Icons.Material.Filled.CheckCircle"
+                                           Color="Color.Success"
+                                           Variant="Variant.Filled"
+                                           OnClick="@(() => OnApprove.InvokeAsync(context))"
+                                           Style="border-radius:14px;" />
+                        </MudTooltip>
+                        <MudTooltip Text="Reject">
+                            <MudIconButton Icon="@Icons.Material.Filled.Cancel"
+                                           Color="Color.Error"
+                                           Variant="Variant.Filled"
+                                           OnClick="@(() => OnReject.InvokeAsync(context))"
+                                           Style="border-radius:14px;" />
+                        </MudTooltip>
+                    }
+                    else if (context.ApprovalStatusId == (int)RequestStatus.Approved)
+                    {
+                        <MudTooltip Text="Revoke approval">
+                            <MudIconButton Icon="@Icons.Material.Filled.Restore"
+                                           Color="Color.Warning"
+                                           Variant="Variant.Filled"
+                                           OnClick="@(() => OnRevert.InvokeAsync(context))"
+                                           Style="border-radius:14px;" />
+                        </MudTooltip>
+                    }
+                    else if (context.ApprovalStatusId == (int)RequestStatus.Rejected)
+                    {
+                        <MudTooltip Text="Move back to pending">
+                            <MudIconButton Icon="@Icons.Material.Filled.Restore"
+                                           Color="Color.Info"
+                                           Variant="Variant.Filled"
+                                           OnClick="@(() => OnRevert.InvokeAsync(context))"
+                                           Style="border-radius:14px;" />
+                        </MudTooltip>
+                    }
+                </div>
+            </MudTd>
+
+            <MudTd DataLabel="Details" Style="text-align:center">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Size="Size.Small"
+                           Class="admin-list__details-btn"
+                           StartIcon="@Icons.Material.Filled.Visibility"
+                           OnClick="@(() => OnViewDetails.InvokeAsync(context))">
+                    Details
+                </MudButton>
+            </MudTd>
+        </RowTemplate>
+
+        <NoRecordsContent>
+            <div class="admin-list__empty">
+                <MudIcon Icon="@Icons.Material.Filled.Inbox" Size="Size.Large" />
+                <MudText Typo="Typo.h6" Style="margin-top:10px; font-weight:800;">No matching requests</MudText>
+                <MudText Typo="Typo.body2" Class="admin-list__muted">Try clearing filters or changing your search.</MudText>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           OnClick="OnClearFilters"
+                           Style="margin-top:12px; border-radius:999px;">
+                    Clear filters
+                </MudButton>
+            </div>
+        </NoRecordsContent>
+    </MudTable>
+</MudPaper>
+
+@code {
+    [Parameter] public IEnumerable<OrganizationListDto> Items { get; set; } = Enumerable.Empty<OrganizationListDto>();
+    [Parameter] public EventCallback<OrganizationListDto> OnApprove { get; set; }
+    [Parameter] public EventCallback<OrganizationListDto> OnReject { get; set; }
+    [Parameter] public EventCallback<OrganizationListDto> OnRevert { get; set; }
+    [Parameter] public EventCallback<OrganizationListDto> OnViewDetails { get; set; }
+    [Parameter] public EventCallback OnClearFilters { get; set; }
+
+    // Helpers duplicated here for display logic
+    private enum RequestStatus { Pending = 1, Approved = 2, Rejected = 3 }
+
+    private Color StatusColor(RequestStatus s) => s switch
+    {
+        RequestStatus.Pending => Color.Info,
+        RequestStatus.Approved => Color.Success,
+        RequestStatus.Rejected => Color.Error,
+        _ => Color.Default
+    };
+
+    private string GetRelative(DateTimeOffset utc)
+    {
+        var ts = DateTimeOffset.UtcNow - utc;
+        if (ts.TotalDays >= 1) return $"{(int)ts.TotalDays}d ago";
+        if (ts.TotalHours >= 1) return $"{(int)ts.TotalHours}h ago";
+        if (ts.TotalMinutes >= 1) return $"{(int)ts.TotalMinutes}m ago";
+        return "just now";
+    }
+}

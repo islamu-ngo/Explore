@@ -1,6 +1,8 @@
 # Entity Configuration
 
-Entity configuration using `IEntityTypeConfiguration<T>` for ISLAMU Event.
+> **Project-Agnostic Entity Configuration Patterns**
+>
+> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../../docs/TEMPLATE_GLOSSARY.md).
 
 ---
 
@@ -13,33 +15,32 @@ Separate configuration classes for each entity.
 ```csharp
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Explore.Domain;
+using {Project}.Domain;
 
-namespace Explore.Persistence.Configurations.Entities;
+namespace {Project}.Persistence.Configurations.Entities;
 
-public class EventConfiguration : IEntityTypeConfiguration<Event>
+public class {Entity}Configuration : IEntityTypeConfiguration<{Entity}>
 {
-    public void Configure(EntityTypeBuilder<Event> builder)
+    public void Configure(EntityTypeBuilder<{Entity}> builder)
     {
         // Project standard: TPT + UUIDv7
         builder.UseTptMappingStrategy();
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
 
         // DB-level defaults are OK here (do not add defaults in Domain entities)
-        builder.Property(e => e.TotalViews).HasDefaultValue(0);
+        builder.Property(e => e.ViewCount).HasDefaultValue(0);
 
         builder.Property(e => e.Title).HasMaxLength(200).IsRequired();
         builder.Property(e => e.Description).HasMaxLength(5000);
         builder.Property(e => e.Slug).HasMaxLength(500);
         builder.Property(e => e.CurrencyCode).HasMaxLength(3);
-        builder.Property(e => e.EventUrl).HasMaxLength(500);
-        builder.Property(e => e.ExternalRegistrationUrl).HasMaxLength(500);
+        builder.Property(e => e.ExternalUrl).HasMaxLength(500);
         builder.Property(e => e.Timezone).HasMaxLength(100);
 
-        // Relationships (current codebase uses Restrict for most FK deletes)
-        builder.HasOne(e => e.Actor)
+        // Relationships (use Restrict for most FK deletes)
+        builder.HasOne(e => e.{ParentEntity})
             .WithMany()
-            .HasForeignKey(e => e.ActorId)
+            .HasForeignKey(e => e.{ParentEntity}Id)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }
@@ -47,20 +48,20 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
 
 ---
 
-## ISLAMU Event Patterns
+## Common Patterns
 
 ### TPT (Table Per Type) Strategy
 
 ```csharp
-public class EventConfiguration : IEntityTypeConfiguration<Event>
+public class {Entity}Configuration : IEntityTypeConfiguration<{Entity}>
 {
-    public void Configure(EntityTypeBuilder<Event> builder)
+    public void Configure(EntityTypeBuilder<{Entity}> builder)
     {
         // ✅ TPT Strategy (project standard)
         builder.UseTptMappingStrategy();
 
         // Each derived type gets its own table
-        // Base Event table + derived tables (Conference, Workshop, etc.)
+        // Base {Entity} table + derived tables
     }
 }
 ```
@@ -77,9 +78,9 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
 ### PostgreSQL UUIDv7 Primary Keys
 
 ```csharp
-public class EventConfiguration : IEntityTypeConfiguration<Event>
+public class {Entity}Configuration : IEntityTypeConfiguration<{Entity}>
 {
-    public void Configure(EntityTypeBuilder<Event> builder)
+    public void Configure(EntityTypeBuilder<{Entity}> builder)
     {
         // ✅ PostgreSQL function for UUIDv7
         builder.Property(e => e.Id)
@@ -96,12 +97,12 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
 ### Default Values
 
 ```csharp
-public class EventConfiguration : IEntityTypeConfiguration<Event>
+public class {Entity}Configuration : IEntityTypeConfiguration<{Entity}>
 {
-    public void Configure(EntityTypeBuilder<Event> builder)
+    public void Configure(EntityTypeBuilder<{Entity}> builder)
     {
         // Default value in database
-        builder.Property(e => e.TotalViews)
+        builder.Property(e => e.ViewCount)
                .HasDefaultValue(0);
 
         // Use DB defaults only for stable, cross-cutting values.
@@ -179,17 +180,17 @@ builder.Property(e => e.Location)
 ### One-to-Many
 
 ```csharp
-// Actor has many Events (current model: Event references Actor, but Actor doesn't expose a collection navigation)
-builder.HasOne(e => e.Actor)
+// {ParentEntity} has many {Entities} (current model: {Entity} references {ParentEntity}, but {ParentEntity} doesn't expose a collection navigation)
+builder.HasOne(e => e.{ParentEntity})
        .WithMany()
-       .HasForeignKey(e => e.ActorId)
+       .HasForeignKey(e => e.{ParentEntity}Id)
        .OnDelete(DeleteBehavior.Restrict);
 ```
 
 ### Many-to-One
 
 ```csharp
-// Event belongs to one Tenant
+// {Entity} belongs to one Tenant
 builder.HasOne(e => e.Tenant)
        .WithMany()
        .HasForeignKey(e => e.TenantId)
@@ -199,14 +200,14 @@ builder.HasOne(e => e.Tenant)
 ### Many-to-Many
 
 ```csharp
-// Event <-> Category uses a mapping entity with its own Id (current codebase)
-public class EventCategoriesConfiguration : IEntityTypeConfiguration<EventCategories>
+// {Entity} <-> Category uses a mapping entity with its own Id
+public class {Entity}CategoriesConfiguration : IEntityTypeConfiguration<{Entity}Categories>
 {
-    public void Configure(EntityTypeBuilder<EventCategories> builder)
+    public void Configure(EntityTypeBuilder<{Entity}Categories> builder)
     {
-        builder.HasOne(e => e.Event)
+        builder.HasOne(e => e.{Entity})
             .WithMany()
-            .HasForeignKey(e => e.EventId)
+            .HasForeignKey(e => e.{Entity}Id)
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(e => e.Category)
@@ -242,9 +243,9 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 ## Delete Behavior
 
 ```csharp
-builder.HasOne(e => e.Actor)
+builder.HasOne(e => e.{ParentEntity})
        .WithMany()
-       .HasForeignKey(e => e.ActorId)
+       .HasForeignKey(e => e.{ParentEntity}Id)
        .OnDelete(DeleteBehavior.Restrict);
 ```
 
@@ -262,14 +263,14 @@ builder.HasOne(e => e.Actor)
 ### Simple Index
 
 ```csharp
-builder.HasIndex(e => e.ActorId);
+builder.HasIndex(e => e.{ParentEntity}Id);
 builder.HasIndex(e => e.TenantId);
 ```
 
 ### Composite Index
 
 ```csharp
-builder.HasIndex(e => new { e.TenantId, e.ActorId });
+builder.HasIndex(e => new { e.TenantId, e.{ParentEntity}Id });
 ```
 
 ### Unique Index
@@ -282,7 +283,7 @@ builder.HasIndex(e => e.Email).IsUnique();
 
 ```csharp
 builder.HasIndex(e => e.Title)
-       .HasDatabaseName("IX_Events_Title");
+       .HasDatabaseName("IX_{Entities}_Title");
 ```
 
 ### Filtered Index (PostgreSQL)
@@ -332,9 +333,9 @@ builder.Property(e => e.Tags)
 For value objects that don't have their own identity.
 
 ```csharp
-public class EventConfiguration : IEntityTypeConfiguration<Event>
+public class {Entity}Configuration : IEntityTypeConfiguration<{Entity}>
 {
-    public void Configure(EntityTypeBuilder<Event> builder)
+    public void Configure(EntityTypeBuilder<{Entity}> builder)
     {
         // Address is an owned type
         builder.OwnsOne(e => e.Address, address =>
@@ -354,14 +355,14 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
 Multiple entities mapped to same table.
 
 ```csharp
-// Event and EventDetails share same table
-builder.ToTable("Events");
+// {Entity} and {Entity}Details share same table
+builder.ToTable("{Entities}");
 builder.HasOne(e => e.Details)
        .WithOne()
-       .HasForeignKey<EventDetails>(d => d.EventId);
+       .HasForeignKey<{Entity}Details>(d => d.{Entity}Id);
 
-// EventDetails configuration
-builder.ToTable("Events");  // Same table as Event
+// {Entity}Details configuration
+builder.ToTable("{Entities}");  // Same table as {Entity}
 ```
 
 ---
@@ -370,12 +371,12 @@ builder.ToTable("Events");  // Same table as Event
 
 ```csharp
 // Enable temporal table (SQL Server only)
-builder.ToTable("Events", b => b.IsTemporal(
+builder.ToTable("{Entities}", b => b.IsTemporal(
     temporal =>
     {
         temporal.HasPeriodStart("ValidFrom");
         temporal.HasPeriodEnd("ValidTo");
-        temporal.UseHistoryTable("EventsHistory");
+        temporal.UseHistoryTable("{Entities}History");
     }));
 ```
 

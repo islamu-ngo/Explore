@@ -29,6 +29,8 @@ namespace Explore.Application.DTOs.Event
         public string ActorDisplayName { get; set; }
         public int ActorTypeId { get; set; }
         public string ActorTypeFullName { get; set; }
+        public Guid? ActorProfilePictureId { get; set; }
+        public string? ActorProfilePictureUri { get; set; }
 
         // Pricing
         public decimal? Price { get; set; }

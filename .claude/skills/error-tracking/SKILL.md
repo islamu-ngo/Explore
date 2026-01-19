@@ -1,29 +1,33 @@
 ---
 name: error-tracking
-description: Add Sentry error tracking and performance monitoring to ISLAMU Event .NET services. Use this skill when adding error handling, creating new controllers, or tracking performance. ALL ERRORS MUST BE CAPTURED TO SENTRY - no exceptions.
+description: Add Sentry error tracking and performance monitoring to .NET services. Use this skill when adding error handling, creating new controllers, or tracking performance. ALL ERRORS MUST BE CAPTURED - no exceptions.
 type: guardrail
 enforcement: suggest
 priority: high
 ---
 
-# ISLAMU Event Error Tracking & Observability Guidelines
+# Error Tracking & Observability Guidelines
 
-## 🎯 Purpose
+> **Project-Agnostic Error Tracking Patterns**
+>
+> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../docs/TEMPLATE_GLOSSARY.md).
 
-This skill provides guidelines for implementing robust error tracking and performance monitoring across ISLAMU Event .NET services (API, Blazor). It outlines patterns for centralized exception handling, logging, tracing, and Sentry integration.
+## Purpose
 
-## ⚡ When This Skill Activates
+This skill provides guidelines for implementing robust error tracking and performance monitoring across .NET services (API, Blazor). It outlines patterns for centralized exception handling, logging, tracing, and Sentry integration.
+
+## When This Skill Activates
 
 **Triggered by**:
 - Keywords: "error handling", "exception", "sentry", "logging", "performance", "tracing", "problem details", "observability"
 - Intent patterns: "add error logging", "implement try-catch", "monitor API performance", "handle UI errors"
 - File patterns: `**/Program.cs`, `**/*Controller.cs`, `**/*Handler.cs`, `**/*Repository.cs`, `**/*.razor`
 
-## 🚨 CRITICAL RULE: Do Not Swallow Exceptions!
+## CRITICAL RULE: Do Not Swallow Exceptions!
 
 All errors **MUST** be handled gracefully. Use structured logging (`ILogger`) and centralized exception handling. When Sentry is integrated, capture all exceptions.
 
-## 📚 Resources
+## Resources
 
 *For detailed implementation examples, refer to the `resources/` folder within this skill.*
 
@@ -36,14 +40,14 @@ All errors **MUST** be handled gracefully. Use structured logging (`ILogger`) an
 | [sentry-middleware-config.md](resources/sentry-middleware-config.md) | Conceptual guidance for Sentry SDK and middleware integration in ASP.NET Core. |
 | [sentry-testing-endpoints.md](resources/sentry-testing-endpoints.md) | Example API endpoints for testing Sentry integration (error capture, performance). |
 
-## ⚡ Quick Reference
+## Quick Reference
 
 ### 1. Centralized API Exception Handling
 
 API unhandled exceptions are caught and transformed into RFC 7807 `ProblemDetails` responses.
 
 ```csharp
-// Explore.API/Program.cs (Simplified)
+// {Project}.API/Program.cs (Simplified)
 app.UseExceptionHandler(exceptionHandlerApp => { /* ... */ });
 ```
 *For complete code, see [api-exception-handling.md](resources/api-exception-handling.md).*
@@ -53,7 +57,7 @@ app.UseExceptionHandler(exceptionHandlerApp => { /* ... */ });
 A `LoggingBehavior` in the MediatR pipeline ensures all requests are logged and exceptions are captured.
 
 ```csharp
-// Explore.Application/Behaviors/LoggingBehavior.cs (Simplified)
+// {Project}.Application/Behaviors/LoggingBehavior.cs (Simplified)
 public sealed class LoggingBehavior<TRequest, TResponse>(ILogger<LoggingBehavior<TRequest, TResponse>> logger)
     : IPipelineBehavior<TRequest, TResponse>
 { /* ... */ }
@@ -65,11 +69,11 @@ public sealed class LoggingBehavior<TRequest, TResponse>(ILogger<LoggingBehavior
 Use `ActivitySource` for custom spans to trace database operations, integrating with OpenTelemetry.
 
 ```csharp
-// Explore.Persistence/Repositories/EventRepository.cs (Simplified)
+// {Project}.Persistence/Repositories/{Entity}Repository.cs (Simplified)
 using System.Diagnostics;
-public class EventRepository : IEventRepository
+public class {Entity}Repository : I{Entity}Repository
 {
-    public async Task<List<Event>> GetEventsWithDetails()
+    public async Task<List<{Entity}>> Get{Entities}WithDetails()
     {
         using var activity = ActivitySourceProvider.PersistenceActivitySource.StartActivity("...");
         // ... EF Core query ...
@@ -83,7 +87,7 @@ public class EventRepository : IEventRepository
 Gracefully handle unhandled UI errors in Blazor components, displaying a fallback UI and logging the error.
 
 ```razor
-<!-- Explore.Blazor/Components/Pages/Events.razor (Simplified) -->
+<!-- {Project}.Blazor/Components/Pages/{Entities}.razor (Simplified) -->
 <ErrorBoundary>
     <ChildContent> <!-- Potentially error-prone content --> </ChildContent>
     <ErrorContent Context="ex"> <!-- Fallback UI --> </ErrorContent>
@@ -96,7 +100,7 @@ Gracefully handle unhandled UI errors in Blazor components, displaying a fallbac
 When Sentry is integrated, `UseSentry` and `app.UseSentryTracing()` provide automatic error and performance tracking.
 
 ```csharp
-// Explore.API/Program.cs (Simplified)
+// {Project}.API/Program.cs (Simplified)
 builder.WebHost.UseSentry(options => { /* ... */ });
 app.UseSentryTracing();
 ```
@@ -107,7 +111,7 @@ app.UseSentryTracing();
 Dedicated endpoints can be used to verify Sentry's error and performance capturing capabilities.
 
 ```csharp
-// Explore.API/Controllers/EventController.cs (Simplified)
+// {Project}.API/Controllers/{Entity}Controller.cs (Simplified)
 [HttpGet("sentry/test-error")]
 public IActionResult TestSentryError() { /* ... */ }
 [HttpGet("sentry/test-performance")]
@@ -115,7 +119,7 @@ public async Task<IActionResult> TestPerformance() { /* ... */ }
 ```
 *For complete test endpoint examples, see [sentry-testing-endpoints.md](resources/sentry-testing-endpoints.md).*
 
-## 🔑 Key Principles
+## Key Principles
 
 *   **No Uncaught Exceptions**: All exceptions, whether from API, MediatR handlers, or Blazor UI, should be caught and logged.
 *   **Structured Logging**: Use `ILogger` for all logging, leveraging structured logging capabilities.

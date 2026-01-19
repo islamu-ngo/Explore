@@ -3,23 +3,20 @@
 @using Explore.Blazor.Client.Services.Contracts
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize(Roles = "Admin")]
-@inject IMadhabService MadhabService
-@inject ISnackbar Snackbar
-@inject NavigationManager Nav
 
-<div class="admin-lookup">
+<div class="admin-madhabs">
     <!-- Hero Section -->
-    <MudPaper Class="admin-lookup__hero admin-lookup__hero--madhab" Elevation="0">
-        <div class="admin-lookup__hero-top">
-            <div class="admin-lookup__hero-title">
-                <div class="admin-lookup__hero-badge admin-lookup__hero-badge--madhab">
+    <MudPaper Class="admin-madhabs__hero" Elevation="0">
+        <div class="admin-madhabs__hero-top">
+            <div class="admin-madhabs__hero-title">
+                <div class="admin-madhabs__hero-badge">
                     <MudIcon Icon="@Icons.Material.Filled.MenuBook" Color="Color.Tertiary" />
                 </div>
                 <div>
-                    <MudText Typo="Typo.h4" Style="font-weight:800; letter-spacing:.2px;">
+                    <MudText Typo="Typo.h4" Class="admin-madhabs__title-text">
                         Madhabs
                     </MudText>
-                    <MudText Typo="Typo.body2" Class="admin-lookup__hero-subtitle">
+                    <MudText Typo="Typo.body2" Class="admin-madhabs__hero-subtitle">
                         Islamic jurisprudence schools (read-only lookup table)
                     </MudText>
                 </div>
@@ -30,29 +27,29 @@
                            Color="Color.Default"
                            StartIcon="@Icons.Material.Filled.ArrowBack"
                            OnClick="@(() => Nav.NavigateTo("/admin"))"
-                           Style="border-radius:999px; padding:10px 16px;">
+                           Class="admin-madhabs__action-btn">
                     Back to Admin
                 </MudButton>
                 <MudButton Variant="Variant.Filled"
                            Color="Color.Tertiary"
                            StartIcon="@Icons.Material.Filled.Refresh"
                            OnClick="LoadData"
-                           Style="border-radius:999px; padding:10px 16px;">
+                           Class="admin-madhabs__action-btn">
                     Refresh
                 </MudButton>
             </MudStack>
         </div>
 
         <!-- Stats -->
-        <div class="admin-lookup__stats">
-            <div class="admin-lookup__stat">
-                <div class="admin-lookup__stat-row">
-                    <div class="admin-lookup__stat-icon admin-lookup__stat-icon--madhab">
+        <div class="admin-madhabs__stats">
+            <div class="admin-madhabs__stat">
+                <div class="admin-madhabs__stat-row">
+                    <div class="admin-madhabs__stat-icon">
                         <MudIcon Icon="@Icons.Material.Filled.MenuBook" Color="Color.Tertiary" />
                     </div>
                     <div>
-                        <div class="admin-lookup__stat-label">Total Madhabs</div>
-                        <div class="admin-lookup__stat-value">@_items.Count</div>
+                        <div class="admin-madhabs__stat-label">Total Madhabs</div>
+                        <div class="admin-madhabs__stat-value">@_items.Count</div>
                     </div>
                 </div>
             </div>
@@ -61,7 +58,7 @@
 
     @if (_isLoading)
     {
-        <MudPaper Class="admin-lookup__panel" Elevation="0" Style="margin-top:14px;">
+        <MudPaper Class="admin-madhabs__panel" Elevation="0">
             <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="py-4">
                 <MudProgressCircular Color="Color.Tertiary" Size="Size.Large" Indeterminate="true" />
                 <MudText Typo="Typo.body1">Loading madhabs…</MudText>
@@ -70,9 +67,9 @@
     }
     else
     {
-        <div class="admin-lookup__section">
+        <div class="admin-madhabs__section">
             <!-- Info Banner -->
-            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-3" Style="border-radius:14px;">
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="admin-madhabs__alert mb-3">
                 <MudText Typo="Typo.body2">
                     <strong>Read-only lookup table.</strong> Madhabs are system-defined values used throughout the application.
                     Contact system administrator if changes are needed.
@@ -80,7 +77,7 @@
             </MudAlert>
 
             <!-- Table -->
-            <MudPaper Class="admin-lookup__table-panel" Elevation="0">
+            <MudPaper Class="admin-madhabs__table-panel" Elevation="0">
                 <MudTable Items="@_items"
                           Dense="true"
                           Hover="true"
@@ -89,7 +86,7 @@
                           Loading="@_isLoading"
                           LoadingProgressColor="Color.Tertiary">
                     <HeaderContent>
-                        <MudTh Style="width:80px">ID</MudTh>
+                        <MudTh Class="admin-madhabs__col-id">ID</MudTh>
                         <MudTh>Name</MudTh>
                         <MudTh>Master Code</MudTh>
                         <MudTh>Description</MudTh>
@@ -101,9 +98,9 @@
                             </MudChip>
                         </MudTd>
                         <MudTd DataLabel="Name">
-                            <div class="admin-lookup__name-cell">
+                            <div class="admin-madhabs__name-cell">
                                 <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Small" Color="Color.Tertiary" />
-                                <MudText Typo="Typo.body2" Style="font-weight:600;">@context.FullName</MudText>
+                                <MudText Typo="Typo.body2" Class="admin-madhabs__name-text">@context.FullName</MudText>
                             </div>
                         </MudTd>
                         <MudTd DataLabel="Code">
@@ -112,16 +109,16 @@
                             </MudChip>
                         </MudTd>
                         <MudTd DataLabel="Description">
-                            <MudText Typo="Typo.body2" Class="admin-lookup__muted">
+                            <MudText Typo="Typo.body2" Class="admin-madhabs__muted">
                                 @(context.Description ?? "—")
                             </MudText>
                         </MudTd>
                     </RowTemplate>
                     <NoRecordsContent>
-                        <div class="admin-lookup__empty">
+                        <div class="admin-madhabs__empty">
                             <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Large" />
-                            <MudText Typo="Typo.h6" Style="margin-top:10px; font-weight:800;">No madhabs found</MudText>
-                            <MudText Typo="Typo.body2" Class="admin-lookup__muted">
+                            <MudText Typo="Typo.h6" Class="admin-madhabs__empty-title">No madhabs found</MudText>
+                            <MudText Typo="Typo.body2" Class="admin-madhabs__muted">
                                 The lookup table is empty.
                             </MudText>
                         </div>
@@ -131,31 +128,3 @@
         </div>
     }
 </div>
-
-@code {
-    private ICollection<MadhabListDto> _items = new List<MadhabListDto>();
-    private bool _isLoading = true;
-
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadData();
-    }
-
-    private async Task LoadData()
-    {
-        _isLoading = true;
-        try
-        {
-            _items = await MadhabService.GetMadhabsAsync();
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Failed to load madhabs: {ex.Message}", Severity.Error);
-            _items = new List<MadhabListDto>();
-        }
-        finally
-        {
-            _isLoading = false;
-        }
-    }
-}

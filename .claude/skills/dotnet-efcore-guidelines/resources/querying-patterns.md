@@ -1,6 +1,8 @@
 # Querying Patterns
 
-Efficient querying patterns with Entity Framework Core for ISLAMU Event.
+> **Project-Agnostic Querying Patterns**
+>
+> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../../docs/TEMPLATE_GLOSSARY.md).
 
 ---
 
@@ -10,10 +12,10 @@ Efficient querying patterns with Entity Framework Core for ISLAMU Event.
 
 ```csharp
 // ✅ Simple get all
-var events = await _dbContext.Events.ToListAsync();
+var {entities} = await _dbContext.{Entities}.ToListAsync();
 
 // ✅ With AsNoTracking for read-only
-var events = await _dbContext.Events
+var {entities} = await _dbContext.{Entities}
     .AsNoTracking()
     .ToListAsync();
 ```
@@ -22,19 +24,19 @@ var events = await _dbContext.Events
 
 ```csharp
 // ✅ FindAsync (uses primary key)
-var event = await _dbContext.Events.FindAsync(eventId);
+var {entity} = await _dbContext.{Entities}.FindAsync({entity}Id);
 
 // ✅ FirstOrDefaultAsync with condition
-var event = await _dbContext.Events
-    .FirstOrDefaultAsync(e => e.Id == eventId);
+var {entity} = await _dbContext.{Entities}
+    .FirstOrDefaultAsync(e => e.Id == {entity}Id);
 ```
 
 ### Get Single
 
 ```csharp
 // ✅ SingleOrDefaultAsync (throws if multiple)
-var event = await _dbContext.Events
-    .SingleOrDefaultAsync(e => e.Id == eventId);
+var {entity} = await _dbContext.{Entities}
+    .SingleOrDefaultAsync(e => e.Id == {entity}Id);
 
 // ⚠️ Use only when expecting exactly 0 or 1 result
 ```
@@ -47,24 +49,24 @@ var event = await _dbContext.Events
 
 ```csharp
 // Simple filter
-var upcomingEvents = await _dbContext.Events
+var upcoming{Entities} = await _dbContext.{Entities}
     .Where(e => e.StartDate > DateTime.Now)
     .ToListAsync();
 
 // Multiple conditions
-var events = await _dbContext.Events
-    .Where(e => e.OrganizationId == orgId &&
+var {entities} = await _dbContext.{Entities}
+    .Where(e => e.{ParentEntity}Id == parentId &&
                 e.StartDate > DateTime.Now &&
                 !e.IsCancelled)
     .ToListAsync();
 
 // String contains (case-sensitive in PostgreSQL)
-var events = await _dbContext.Events
+var {entities} = await _dbContext.{Entities}
     .Where(e => e.Title.Contains(searchTerm))
     .ToListAsync();
 
 // Case-insensitive search (PostgreSQL)
-var events = await _dbContext.Events
+var {entities} = await _dbContext.{Entities}
     .Where(e => EF.Functions.ILike(e.Title, $"%{searchTerm}%"))
     .ToListAsync();
 ```
@@ -76,9 +78,9 @@ var events = await _dbContext.Events
 ### Single Level
 
 ```csharp
-// ✅ Load events with organization
-var events = await _dbContext.Events
-    .Include(e => e.Organization)
+// ✅ Load {entities} with {parentEntity}
+var {entities} = await _dbContext.{Entities}
+    .Include(e => e.{ParentEntity})
     .ToListAsync();
 ```
 
@@ -86,26 +88,26 @@ var events = await _dbContext.Events
 
 ```csharp
 // ✅ Multiple related entities
-var events = await _dbContext.Events
-    .Include(e => e.Organization)
-    .Include(e => e.EventType)
+var {entities} = await _dbContext.{Entities}
+    .Include(e => e.{ParentEntity})
+    .Include(e => e.{LookupEntity})
     .Include(e => e.FeaturedImage)
-    .Include(e => e.AudienceAge)
+    .Include(e => e.Status)
     .ToListAsync();
 ```
 
 ### Nested Include (ThenInclude)
 
 ```csharp
-// ✅ Load events with organization and organization members
-var events = await _dbContext.Events
-    .Include(e => e.Organization)
+// ✅ Load {entities} with {parentEntity} and members
+var {entities} = await _dbContext.{Entities}
+    .Include(e => e.{ParentEntity})
         .ThenInclude(o => o.Members)
     .ToListAsync();
 
 // ✅ Multiple levels
-var events = await _dbContext.Events
-    .Include(e => e.Organization)
+var {entities} = await _dbContext.{Entities}
+    .Include(e => e.{ParentEntity})
         .ThenInclude(o => o.Members)
             .ThenInclude(m => m.User)
     .ToListAsync();
@@ -115,13 +117,13 @@ var events = await _dbContext.Events
 
 ```csharp
 // ✅ Only include approved members
-var organizations = await _dbContext.Organizations
+var {parentEntities} = await _dbContext.{ParentEntities}
     .Include(o => o.Members.Where(m => m.IsApproved))
     .ToListAsync();
 
-// ✅ Only include upcoming events
-var organizations = await _dbContext.Organizations
-    .Include(o => o.Events.Where(e => e.StartDate > DateTime.Now))
+// ✅ Only include upcoming {entities}
+var {parentEntities} = await _dbContext.{ParentEntities}
+    .Include(o => o.{Entities}.Where(e => e.StartDate > DateTime.Now))
     .ToListAsync();
 ```
 
@@ -133,14 +135,14 @@ var organizations = await _dbContext.Organizations
 
 ```csharp
 // ✅ RECOMMENDED: Project directly to DTO
-var eventDtos = await _dbContext.Events
-    .Include(e => e.Organization)
-    .Select(e => new EventListDto
+var {entity}Dtos = await _dbContext.{Entities}
+    .Include(e => e.{ParentEntity})
+    .Select(e => new {Entity}ListDto
     {
         Id = e.Id,
         Title = e.Title,
         Description = e.Description,
-        OrganizationName = e.Organization.FullName,  // ✅ No N+1 query
+        {ParentEntity}Name = e.{ParentEntity}.FullName,  // ✅ No N+1 query
         StartDate = e.StartDate
     })
     .ToListAsync();
@@ -155,12 +157,12 @@ var eventDtos = await _dbContext.Events
 
 ```csharp
 // ✅ Project to anonymous type
-var events = await _dbContext.Events
+var {entities} = await _dbContext.{Entities}
     .Select(e => new
     {
         e.Id,
         e.Title,
-        OrganizationName = e.Organization.FullName
+        {ParentEntity}Name = e.{ParentEntity}.FullName
     })
     .ToListAsync();
 ```
@@ -169,8 +171,8 @@ var events = await _dbContext.Events
 
 ```csharp
 // ✅ Conditional fields in projection
-var events = await _dbContext.Events
-    .Select(e => new EventListDto
+var {entities} = await _dbContext.{Entities}
+    .Select(e => new {Entity}ListDto
     {
         Id = e.Id,
         Title = e.Title,
@@ -188,18 +190,18 @@ var events = await _dbContext.Events
 
 ```csharp
 // ✅ Ascending
-var events = await _dbContext.Events
+var {entities} = await _dbContext.{Entities}
     .OrderBy(e => e.StartDate)
     .ToListAsync();
 
 // ✅ Descending
-var events = await _dbContext.Events
+var {entities} = await _dbContext.{Entities}
     .OrderByDescending(e => e.StartDate)
     .ToListAsync();
 
 // ✅ Multiple sort criteria
-var events = await _dbContext.Events
-    .OrderBy(e => e.OrganizationId)
+var {entities} = await _dbContext.{Entities}
+    .OrderBy(e => e.{ParentEntity}Id)
     .ThenByDescending(e => e.StartDate)
     .ToListAsync();
 ```
@@ -207,20 +209,20 @@ var events = await _dbContext.Events
 ### Dynamic Sorting
 
 ```csharp
-public async Task<List<EventListDto>> GetEvents(string sortBy, bool descending)
+public async Task<List<{Entity}ListDto>> Get{Entities}(string sortBy, bool descending)
 {
-    var query = _dbContext.Events.AsQueryable();
+    var query = _dbContext.{Entities}.AsQueryable();
 
     query = sortBy switch
     {
         "title" => descending ? query.OrderByDescending(e => e.Title) : query.OrderBy(e => e.Title),
         "date" => descending ? query.OrderByDescending(e => e.StartDate) : query.OrderBy(e => e.StartDate),
-        "views" => descending ? query.OrderByDescending(e => e.TotalViews) : query.OrderBy(e => e.TotalViews),
+        "views" => descending ? query.OrderByDescending(e => e.ViewCount) : query.OrderBy(e => e.ViewCount),
         _ => query.OrderByDescending(e => e.StartDate)  // Default
     };
 
     return await query
-        .Select(e => new EventListDto { /* ... */ })
+        .Select(e => new {Entity}ListDto { /* ... */ })
         .ToListAsync();
 }
 ```
@@ -232,13 +234,13 @@ public async Task<List<EventListDto>> GetEvents(string sortBy, bool descending)
 ### Skip and Take
 
 ```csharp
-public async Task<List<EventListDto>> GetEventsPaginated(int page, int pageSize)
+public async Task<List<{Entity}ListDto>> Get{Entities}Paginated(int page, int pageSize)
 {
-    return await _dbContext.Events
+    return await _dbContext.{Entities}
         .OrderByDescending(e => e.StartDate)
         .Skip((page - 1) * pageSize)
         .Take(pageSize)
-        .Select(e => new EventListDto { /* ... */ })
+        .Select(e => new {Entity}ListDto { /* ... */ })
         .ToListAsync();
 }
 ```
@@ -246,22 +248,22 @@ public async Task<List<EventListDto>> GetEventsPaginated(int page, int pageSize)
 ### With Total Count
 
 ```csharp
-public async Task<(List<EventListDto> Events, int TotalCount)> GetEventsPaginated(
+public async Task<(List<{Entity}ListDto> {Entities}, int TotalCount)> Get{Entities}Paginated(
     int page,
     int pageSize)
 {
-    var query = _dbContext.Events.AsQueryable();
+    var query = _dbContext.{Entities}.AsQueryable();
 
     var totalCount = await query.CountAsync();
 
-    var events = await query
+    var {entities} = await query
         .OrderByDescending(e => e.StartDate)
         .Skip((page - 1) * pageSize)
         .Take(pageSize)
-        .Select(e => new EventListDto { /* ... */ })
+        .Select(e => new {Entity}ListDto { /* ... */ })
         .ToListAsync();
 
-    return (events, totalCount);
+    return ({entities}, totalCount);
 }
 ```
 
@@ -273,10 +275,10 @@ public async Task<(List<EventListDto> Events, int TotalCount)> GetEventsPaginate
 
 ```csharp
 // Total count
-var totalEvents = await _dbContext.Events.CountAsync();
+var total{Entities} = await _dbContext.{Entities}.CountAsync();
 
 // Conditional count
-var upcomingCount = await _dbContext.Events
+var upcomingCount = await _dbContext.{Entities}
     .CountAsync(e => e.StartDate > DateTime.Now);
 ```
 
@@ -284,27 +286,27 @@ var upcomingCount = await _dbContext.Events
 
 ```csharp
 // Sum
-var totalViews = await _dbContext.Events.SumAsync(e => e.TotalViews);
+var totalViews = await _dbContext.{Entities}.SumAsync(e => e.ViewCount);
 
 // Average
-var avgPrice = await _dbContext.Events.AverageAsync(e => e.Price);
+var avgPrice = await _dbContext.{Entities}.AverageAsync(e => e.Price);
 
 // Min and Max
-var earliestEvent = await _dbContext.Events.MinAsync(e => e.StartDate);
-var latestEvent = await _dbContext.Events.MaxAsync(e => e.StartDate);
+var earliest{Entity} = await _dbContext.{Entities}.MinAsync(e => e.StartDate);
+var latest{Entity} = await _dbContext.{Entities}.MaxAsync(e => e.StartDate);
 ```
 
 ### GroupBy
 
 ```csharp
-// Group events by organization
-var eventsByOrg = await _dbContext.Events
-    .GroupBy(e => e.OrganizationId)
+// Group {entities} by {parentEntity}
+var {entities}By{ParentEntity} = await _dbContext.{Entities}
+    .GroupBy(e => e.{ParentEntity}Id)
     .Select(g => new
     {
-        OrganizationId = g.Key,
-        EventCount = g.Count(),
-        TotalViews = g.Sum(e => e.TotalViews)
+        {ParentEntity}Id = g.Key,
+        {Entity}Count = g.Count(),
+        TotalViews = g.Sum(e => e.ViewCount)
     })
     .ToListAsync();
 ```
@@ -317,13 +319,13 @@ var eventsByOrg = await _dbContext.Events
 
 ```csharp
 var result = await (
-    from e in _dbContext.Events
-    join o in _dbContext.Organizations on e.OrganizationId equals o.Id
-    select new EventListDto
+    from e in _dbContext.{Entities}
+    join o in _dbContext.{ParentEntities} on e.{ParentEntity}Id equals o.Id
+    select new {Entity}ListDto
     {
         Id = e.Id,
         Title = e.Title,
-        OrganizationName = o.FullName
+        {ParentEntity}Name = o.FullName
     })
     .ToListAsync();
 ```
@@ -332,17 +334,17 @@ var result = await (
 
 ```csharp
 // ❌ Include (loads entire related entity)
-var events = await _dbContext.Events
-    .Include(e => e.Organization)
+var {entities} = await _dbContext.{Entities}
+    .Include(e => e.{ParentEntity})
     .ToListAsync();
 
 // ✅ Select (only needed fields)
-var events = await _dbContext.Events
-    .Select(e => new EventListDto
+var {entities} = await _dbContext.{Entities}
+    .Select(e => new {Entity}ListDto
     {
         Id = e.Id,
         Title = e.Title,
-        OrganizationName = e.Organization.FullName  // Automatic join
+        {ParentEntity}Name = e.{ParentEntity}.FullName  // Automatic join
     })
     .ToListAsync();
 ```
@@ -355,9 +357,9 @@ var events = await _dbContext.Events
 
 ```csharp
 // ✅ Use for read-only queries (faster)
-var events = await _dbContext.Events
+var {entities} = await _dbContext.{Entities}
     .AsNoTracking()
-    .Include(e => e.Organization)
+    .Include(e => e.{ParentEntity})
     .ToListAsync();
 ```
 
@@ -365,15 +367,15 @@ var events = await _dbContext.Events
 
 ```csharp
 // ✅ Avoid cartesian explosion with multiple Includes
-var organizations = await _dbContext.Organizations
-    .Include(o => o.Events)
+var {parentEntities} = await _dbContext.{ParentEntities}
+    .Include(o => o.{Entities})
     .Include(o => o.Members)
     .AsSplitQuery()  // Executes as 3 separate SQL queries
     .ToListAsync();
 
 // ❌ Single query (can cause performance issues)
-var organizations = await _dbContext.Organizations
-    .Include(o => o.Events)
+var {parentEntities} = await _dbContext.{ParentEntities}
+    .Include(o => o.{Entities})
     .Include(o => o.Members)
     .ToListAsync();
 ```
@@ -382,19 +384,19 @@ var organizations = await _dbContext.Organizations
 
 ```csharp
 // ✅ Use for complex queries not supported by LINQ
-var events = await _dbContext.Events
+var {entities} = await _dbContext.{Entities}
     .FromSqlRaw(@"
-        SELECT * FROM ""Events""
+        SELECT * FROM ""{Entities}""
         WHERE ""StartDate"" > {0}
-        ORDER BY ""TotalViews"" DESC
+        ORDER BY ""ViewCount"" DESC
     ", DateTime.Now)
     .ToListAsync();
 
 // ⚠️ Use parameters to prevent SQL injection
 var searchTerm = "conference";
-var events = await _dbContext.Events
+var {entities} = await _dbContext.{Entities}
     .FromSqlRaw(@"
-        SELECT * FROM ""Events""
+        SELECT * FROM ""{Entities}""
         WHERE ""Title"" ILIKE {0}
     ", $"%{searchTerm}%")
     .ToListAsync();
@@ -404,17 +406,17 @@ var events = await _dbContext.Events
 
 ```csharp
 // Any: Check if any records exist
-var hasUpcomingEvents = await _dbContext.Events
+var hasUpcoming{Entities} = await _dbContext.{Entities}
     .AnyAsync(e => e.StartDate > DateTime.Now);
 
 // All: Check if all records match condition
-var allFree = await _dbContext.Events
+var allFree = await _dbContext.{Entities}
     .AllAsync(e => e.Price == 0);
 
 // Contains: Check if value in list
-var organizationIds = new[] { guid1, guid2, guid3 };
-var events = await _dbContext.Events
-    .Where(e => organizationIds.Contains(e.OrganizationId))
+var {parentEntity}Ids = new[] { guid1, guid2, guid3 };
+var {entities} = await _dbContext.{Entities}
+    .Where(e => {parentEntity}Ids.Contains(e.{ParentEntity}Id))
     .ToListAsync();
 ```
 
@@ -425,25 +427,25 @@ var events = await _dbContext.Events
 ### N+1 Query Problem
 
 ```csharp
-// ❌ N+1 PROBLEM: Loads organization for each event
-var events = await _dbContext.Events.ToListAsync();
-foreach (var evt in events)
+// ❌ N+1 PROBLEM: Loads {parentEntity} for each {entity}
+var {entities} = await _dbContext.{Entities}.ToListAsync();
+foreach (var item in {entities})
 {
-    Console.WriteLine(evt.Organization.FullName);  // ❌ Separate query per event!
+    Console.WriteLine(item.{ParentEntity}.FullName);  // ❌ Separate query per item!
 }
 
 // ✅ FIX 1: Use Include
-var events = await _dbContext.Events
-    .Include(e => e.Organization)
+var {entities} = await _dbContext.{Entities}
+    .Include(e => e.{ParentEntity})
     .ToListAsync();
 
 // ✅ FIX 2: Use Select (RECOMMENDED)
-var events = await _dbContext.Events
+var {entities} = await _dbContext.{Entities}
     .Select(e => new
     {
         e.Id,
         e.Title,
-        OrganizationName = e.Organization.FullName  // ✅ Single query
+        {ParentEntity}Name = e.{ParentEntity}.FullName  // ✅ Single query
     })
     .ToListAsync();
 ```
@@ -452,12 +454,12 @@ var events = await _dbContext.Events
 
 ```csharp
 // ❌ Loads entire entity (all columns)
-var titles = await _dbContext.Events
+var titles = await _dbContext.{Entities}
     .ToListAsync()
     .Select(e => e.Title);  // ❌ Executes in memory
 
 // ✅ Project to only needed columns
-var titles = await _dbContext.Events
+var titles = await _dbContext.{Entities}
     .Select(e => e.Title)
     .ToListAsync();  // ✅ Only selects Title column
 ```
@@ -466,12 +468,12 @@ var titles = await _dbContext.Events
 
 ```csharp
 // Define compiled query (cached)
-private static readonly Func<ExploreDbContext, Guid, Task<Event?>> _getEventById =
-    EF.CompileAsyncQuery((ExploreDbContext context, Guid id) =>
-        context.Events.FirstOrDefault(e => e.Id == id));
+private static readonly Func<{DbContext}, {IdType}, Task<{Entity}?>> _get{Entity}ById =
+    EF.CompileAsyncQuery(({DbContext} context, {IdType} id) =>
+        context.{Entities}.FirstOrDefault(e => e.Id == id));
 
 // Use compiled query
-var event = await _getEventById(_dbContext, eventId);
+var {entity} = await _get{Entity}ById(_dbContext, {entity}Id);
 ```
 
 ---

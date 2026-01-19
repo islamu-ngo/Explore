@@ -15,5 +15,11 @@ namespace Explore.Application.DTOs.Organization
         public string City { get; set; }
         public int Postcode { get; set; }
         public string Address { get; set; }
+
+        /// <summary>
+        /// Optional profile picture for the organization's Actor.
+        /// This should be the ID of a previously uploaded StorageObject.
+        /// </summary>
+        public Guid? ProfilePictureId { get; set; }
     }
 }

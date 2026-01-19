@@ -20,7 +20,11 @@ public partial class EventDetail : ComponentBase
     [Inject] private IMapsService MapsService { get; set; } = default!;
     [Inject] private RouterStateService RouterState { get; set; } = default!;
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
-    [Inject] private ILogger<EventDetail> Logger { get; set; } = default!;
+    [Inject] private IUserService UserService { get; set; } = default!;
+    [Inject] private Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
+    
+    // Changed from private to protected to be accessible by Razor view
+    [Inject] protected ILogger<EventDetail> Logger { get; set; } = default!;
 
     private Guid EventId { get; set; }
 
@@ -68,8 +72,8 @@ public partial class EventDetail : ComponentBase
                 _primarySession = _eventSessions?.FirstOrDefault();
                 Logger.LogInformation("Loaded {SessionCount} sessions", _eventSessions?.Count ?? 0);
 
-                // Registration status check would go here when implemented
-                _isUserRegistered = false;
+                // Check registration status
+                await CheckRegistrationStatusAsync();
             }
         }
         catch (Exception ex)
@@ -81,6 +85,32 @@ public partial class EventDetail : ComponentBase
         {
             _isLoading = false;
             _isCheckingRegistration = false;
+        }
+    }
+
+    private async Task CheckRegistrationStatusAsync()
+    {
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            if (authState.User.Identity?.IsAuthenticated == true)
+            {
+                var user = await UserService.GetCurrentUserAsync();
+                if (user != null)
+                {
+                    var registrations = await EventService.GetRegistrationsByUserAsync(user.Id);
+                    // Check if any registration belongs to any session of this event
+                    if (_eventSessions != null && registrations != null)
+                    {
+                        var sessionIds = _eventSessions.Select(s => s.Id).ToHashSet();
+                        _isUserRegistered = registrations.Any(r => sessionIds.Contains(r.EventSessionId));
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error checking registration status");
         }
     }
 
@@ -208,11 +238,14 @@ public partial class EventDetail : ComponentBase
 
     /// <summary>
     /// Opens the registration dialog for the event.
+    /// Handles single vs multiple session scenarios.
     /// </summary>
     private async Task OpenRegistrationDialog()
     {
         if (_eventDetails == null) return;
-        if (_primarySession == null)
+        
+        // Ensure sessions are loaded
+        if (_eventSessions == null || !_eventSessions.Any())
         {
             await DialogService.ShowMessageBox(
                 "Registration unavailable",
@@ -221,10 +254,57 @@ public partial class EventDetail : ComponentBase
             return;
         }
 
+        // Case 1: Single Session -> Register directly
+        if (_eventSessions.Count == 1)
+        {
+            await RegisterForSession(_eventSessions.First());
+        }
+        // Case 2: Multiple Sessions -> Show Selection Dialog
+        else
+        {
+            var parameters = new DialogParameters
+            {
+                { "Sessions", _eventSessions.ToList() }
+            };
+
+            var options = new DialogOptions
+            {
+                CloseOnEscapeKey = true,
+                MaxWidth = MaxWidth.Small,
+                FullWidth = true,
+                Position = DialogPosition.Center
+            };
+
+            var dialog = await DialogService.ShowAsync<Explore.Blazor.Client.Components.Event.SessionSelectionDialog>(
+                "Select Session",
+                parameters,
+                options
+            );
+
+            var result = await dialog.Result;
+
+            if (result != null && !result.Canceled && result.Data is List<Guid> selectedSessionIds)
+            {
+                // Register for each selected session
+                // TODO: Batch registration or loop
+                foreach (var sessionId in selectedSessionIds)
+                {
+                    var session = _eventSessions.First(s => s.Id == sessionId);
+                    await RegisterForSession(session);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Registers the user for a specific session.
+    /// </summary>
+    private async Task RegisterForSession(EventSessionListDto session)
+    {
         var parameters = new DialogParameters
         {
-            { "EventSessionId", _primarySession.Id },
-            { "Title", $"Register for {_eventDetails.Title}" }
+            { "EventSessionId", session.Id },
+            { "Title", $"Register for {_eventDetails!.Title} - {session.Title}" }
         };
 
         var options = new DialogOptions
@@ -245,8 +325,10 @@ public partial class EventDetail : ComponentBase
 
         if (result != null && !result.Canceled)
         {
-            Logger.LogInformation("Registration dialog completed successfully");
-            StateHasChanged();
+            Logger.LogInformation("Registration completed for session {SessionId}", session.Id);
+            Snackbar.Add($"Successfully registered for {session.Title}!", Severity.Success);
+            // Optionally refresh registration status here
+            await CheckRegistrationStatusAsync();
         }
     }
 

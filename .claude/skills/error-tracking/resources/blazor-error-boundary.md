@@ -1,5 +1,9 @@
 # Blazor Error Boundary
 
+> **Project-Agnostic Error Boundary Patterns**
+>
+> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../../docs/TEMPLATE_GLOSSARY.md).
+
 The `ErrorBoundary` component in Blazor is a powerful tool for gracefully handling unhandled exceptions that occur during the rendering or lifecycle of its child components. Instead of crashing the entire UI, it allows you to display a fallback UI and optionally log the error.
 
 ---
@@ -8,42 +12,42 @@ The `ErrorBoundary` component in Blazor is a powerful tool for gracefully handli
 
 Wrap any potentially error-prone content with an `ErrorBoundary` component. It provides two `RenderFragment` properties: `ChildContent` (the content to protect) and `ErrorContent` (the UI to display if an error occurs).
 
-**File**: `Explore.Blazor/Components/Pages/Events.razor`
+**File**: `{Project}.Blazor/Components/Pages/{Entities}.razor`
 
 ```razor
-@page "/events"
-@inject ILogger<Events> _logger // Inject a logger for capturing errors
+@page "/{entities}"
+@inject ILogger<{Entities}> _logger
 
-<MudText Typo="Typo.h4" Class="mb-4">Events Overview</MudText>
+<MudText Typo="Typo.h4" Class="mb-4">{Entities} Overview</MudText>
 
-@* Wrap the component that fetches and displays event data *@
+@* Wrap the component that fetches and displays {entity} data *@
 <ErrorBoundary>
     <ChildContent>
-        @if (_events == null)
+        @if (_{entities} == null)
         {
             <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
-            <MudText Class="ml-2">Loading events...</MudText>
+            <MudText Class="ml-2">Loading {entities}...</MudText>
         }
-        else if (_events.Any())
+        else if (_{entities}.Any())
         {
             <MudGrid Spacing="3">
-                @foreach (var evt in _events)
+                @foreach (var item in _{entities})
                 {
                     <MudItem xs="12" sm="6" md="4" lg="3">
-                        <EventCard Event="@evt" />
+                        <{Entity}Card {Entity}="@item" />
                     </MudItem>
                 }
             </MudGrid>
         }
         else
         {
-            <MudText>No events found. Try creating one!</MudText>
+            <MudText>No {entities} found. Try creating one!</MudText>
         }
     </ChildContent>
-    <ErrorContent Context="exception"> @* The 'exception' parameter provides the caught exception *@
+    <ErrorContent Context="exception">
         <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mt-4">
             <MudText Typo="Typo.h6">An unexpected error occurred!</MudText>
-            <MudText>We're sorry, but we couldn't load the event data right now.</MudText>
+            <MudText>We're sorry, but we couldn't load the {entity} data right now.</MudText>
             <MudText Class="mt-2">Error details: <i>@exception.Message</i></MudText>
             <MudButton OnClick="@(() => _errorBoundary?.Recover())" Color="Color.Warning" Class="mt-3">
                 Try Reloading
@@ -53,30 +57,26 @@ Wrap any potentially error-prone content with an `ErrorBoundary` component. It p
             // ✅ Log the exception to your logging provider (e.g., Application Insights, Sentry)
             protected override void OnInitialized()
             {
-                _logger.LogError(exception, "An unhandled UI error occurred in EventList component.");
+                _logger.LogError(exception, "An unhandled UI error occurred in {Entity}List component.");
             }
         }
     </ErrorContent>
 </ErrorBoundary>
 
 @code {
-    private List<EventListDto>? _events;
-    private ErrorBoundary? _errorBoundary; // Optional: Reference to the ErrorBoundary component
+    private List<{Entity}ListDto>? _{entities};
+    private ErrorBoundary? _errorBoundary;
 
-    // This method could cause an error if, for example, Http.GetFromJsonAsync fails
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            // Simulate an error for demonstration purposes
-            // if (true) throw new InvalidOperationException("Simulated event loading error!");
-
-            _events = await Http.GetFromJsonAsync<List<EventListDto>>("api/v1/event");
+            _{entities} = await Http.GetFromJsonAsync<List<{Entity}ListDto>>("api/v1/{entity}");
         }
         catch (Exception ex)
         {
             // ✅ Log the exception here, but then re-throw it to let the ErrorBoundary catch it
-            _logger.LogError(ex, "Failed to load events in OnInitializedAsync.");
+            _logger.LogError(ex, "Failed to load {entities} in OnInitializedAsync.");
             throw; // IMPORTANT: Re-throw to propagate to the ErrorBoundary
         }
     }
@@ -89,7 +89,7 @@ Wrap any potentially error-prone content with an `ErrorBoundary` component. It p
 
 You can place an `ErrorBoundary` at a higher level, such as in `App.razor` or `MainLayout.razor`, to catch errors from a larger portion of your application.
 
-**File**: `Explore.Blazor/Components/App.razor`
+**File**: `{Project}.Blazor/Components/App.razor`
 
 ```razor
 <ErrorBoundary @ref="_errorBoundary">
@@ -123,11 +123,6 @@ You can place an `ErrorBoundary` at a higher level, such as in `App.razor` or `M
                 Reload Page
             </MudButton>
         </MudContainer>
-        @code {
-            // Optional: Log the global exception to a service here
-            // @inject ILogger<App> _logger;
-            // protected override void OnInitialized() { _logger.LogError(exception, "Global unhandled error in Blazor App."); }
-        }
     </ErrorContent>
 </ErrorBoundary>
 

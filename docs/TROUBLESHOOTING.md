@@ -14,7 +14,7 @@ This guide focuses on common issues when working on the **backend** projects:
 
 ```powershell
 dotnet restore
-dotnet build Explore.sln
+dotnet build
 dotnet test
 ```
 

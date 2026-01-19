@@ -18,7 +18,7 @@
                     <MudIcon Icon="@Icons.Material.Filled.LocationOn" Color="Color.Success" />
                 </div>
                 <div>
-                    <MudText Typo="Typo.h4" Style="font-weight:800; letter-spacing:.2px;">
+                    <MudText Typo="Typo.h4" Class="admin-locations__title-text">
                         Locations Management
                     </MudText>
                     <MudText Typo="Typo.body2" Class="admin-locations__hero-subtitle">
@@ -32,14 +32,14 @@
                            Color="Color.Default"
                            StartIcon="@Icons.Material.Filled.ArrowBack"
                            OnClick="@(() => Nav.NavigateTo("/admin"))"
-                           Style="border-radius:999px; padding:10px 16px;">
+                           Class="admin-locations__action-btn">
                     Back to Admin
                 </MudButton>
                 <MudButton Variant="Variant.Filled"
                            Color="Color.Success"
                            StartIcon="@Icons.Material.Filled.Refresh"
                            OnClick="LoadLocations"
-                           Style="border-radius:999px; padding:10px 16px;">
+                           Class="admin-locations__action-btn">
                     Refresh
                 </MudButton>
             </MudStack>
@@ -85,7 +85,7 @@
 
     @if (_isLoading)
     {
-        <MudPaper Class="admin-locations__panel" Elevation="0" Style="margin-top:14px;">
+        <MudPaper Class="admin-locations__panel" Elevation="0">
             <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="py-4">
                 <MudProgressCircular Color="Color.Success" Size="Size.Large" Indeterminate="true" />
                 <MudText Typo="Typo.body1">Loading locations…</MudText>
@@ -96,7 +96,7 @@
     {
         <div class="admin-locations__section">
             <!-- Toolbar -->
-            <MudPaper Class="admin-locations__panel" Elevation="0" Style="margin-top:14px;">
+            <MudPaper Class="admin-locations__panel" Elevation="0">
                 <div class="admin-locations__toolbar">
                     <MudTextField @bind-Value="_searchString"
                                   Placeholder="Search locations..."
@@ -106,7 +106,7 @@
                                   Immediate="true"
                                   Clearable="true"
                                   Margin="Margin.Dense"
-                                  Style="min-width:280px; border-radius:999px;" />
+                                  Class="admin-locations__search-field" />
 
                     <MudSpacer />
 
@@ -121,7 +121,7 @@
             </MudPaper>
 
             <!-- Table -->
-            <MudPaper Class="admin-locations__table-panel" Elevation="0" Style="margin-top:12px;">
+            <MudPaper Class="admin-locations__table-panel" Elevation="0">
                 <MudTable Items="@FilteredLocations"
                           Dense="true"
                           Hover="true"
@@ -130,12 +130,12 @@
                           Loading="@_isLoading"
                           LoadingProgressColor="Color.Success">
                     <HeaderContent>
-                        <MudTh Style="width:50px">#</MudTh>
+                        <MudTh Class="admin-locations__col-id">#</MudTh>
                         <MudTh>Name</MudTh>
                         <MudTh>Address</MudTh>
                         <MudTh>City</MudTh>
                         <MudTh>Country</MudTh>
-                        <MudTh Style="text-align:center; width:150px">Actions</MudTh>
+                        <MudTh Class="admin-locations__col-actions">Actions</MudTh>
                     </HeaderContent>
                     <RowTemplate>
                         <MudTd DataLabel="#">
@@ -144,7 +144,7 @@
                         <MudTd DataLabel="Name">
                             <div class="admin-locations__name-cell">
                                 <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Color="Color.Success" />
-                                <MudText Typo="Typo.body2" Style="font-weight:600;">@context.FullName</MudText>
+                                <MudText Typo="Typo.body2" Class="admin-locations__name-text">@context.FullName</MudText>
                             </div>
                         </MudTd>
                         <MudTd DataLabel="Address">
@@ -160,7 +160,7 @@
                                 @(context.Country ?? "—")
                             </MudChip>
                         </MudTd>
-                        <MudTd DataLabel="Actions" Style="text-align:center">
+                        <MudTd DataLabel="Actions" Class="admin-locations__cell-actions">
                             <div class="admin-locations__actions">
                                 <MudTooltip Text="Edit">
                                     <MudIconButton Icon="@Icons.Material.Filled.Edit"
@@ -180,7 +180,7 @@
                     <NoRecordsContent>
                         <div class="admin-locations__empty">
                             <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Large" />
-                            <MudText Typo="Typo.h6" Style="margin-top:10px; font-weight:800;">No locations found</MudText>
+                            <MudText Typo="Typo.h6" Class="admin-locations__empty-title">No locations found</MudText>
                             <MudText Typo="Typo.body2" Class="admin-locations__muted">
                                 @if (string.IsNullOrWhiteSpace(_searchString))
                                 {
@@ -194,7 +194,7 @@
                             <MudButton Variant="Variant.Filled"
                                        Color="Color.Success"
                                        OnClick="OpenCreateDialog"
-                                       Style="margin-top:12px; border-radius:999px;">
+                                       Class="admin-locations__empty-btn">
                                 Create Location
                             </MudButton>
                         </div>

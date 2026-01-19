@@ -10,13 +10,14 @@
     color: inherit;
     --announcement-bar-height: 0px;
     --nav-height: 64px;
+    --content-max-width: 1280px;
 }
 
 /* Element: main-layout__header
-   The sticky header container for navbar and announcements
+   The sticky header container for navbar and announcements - FULL WIDTH
    -------------------------------------------------------------------------- */
 .main-layout__header {
-    position: fixed;
+    position: sticky;
     top: 0;
     left: 0;
     right: 0;
@@ -26,13 +27,19 @@
     flex-direction: column;
 }
 
-/* Ensure MudAppBar within header is properly positioned */
-::deep .main-layout__header .mud-appbar {
-    position: static;
+/* Element: main-layout__content-wrapper
+   Wrapper for main content with max-width constraint
+   -------------------------------------------------------------------------- */
+.main-layout__content-wrapper {
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    width: 100%;
+    padding-inline: 16px;
+    padding-block: 24px;
 }
 
 /* Element: main-layout__container
-   The MudLayout container
+   The MudLayout container - full width
    -------------------------------------------------------------------------- */
 ::deep .mud-layout {
     min-height: 100vh;
@@ -47,7 +54,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    padding-top: calc(var(--announcement-bar-height) + var(--nav-height));
+    padding-top: 0; /* Sticky header handles spacing */
 }
 
 /* Element: main-layout__footer
@@ -65,5 +72,15 @@
 @media (max-width: 768px) {
     .main-layout {
         --nav-height: 56px;
+    }
+
+    .main-layout__content-wrapper {
+        padding-inline: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .main-layout__content-wrapper {
+        padding-inline: 8px;
     }
 }

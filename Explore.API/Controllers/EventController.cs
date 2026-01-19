@@ -101,7 +101,7 @@ namespace Explore.API.Controllers
         [AllowAnonymous]
         public async Task<ActionResult<EventDto>> GetById(Guid id)
         {
-            var @event = await _mediator.Send(new GetEventDetailsRequest{Id = id});
+            var @event = await _mediator.Send(new GetEventDetailsRequest { Id = id });
             return Ok(@event);
         }
 
@@ -114,13 +114,40 @@ namespace Explore.API.Controllers
         {
             var command = new CreateEventCommand { EventDto = @event };
             var response = await _mediator.Send(command);
-            
+
             if (!response.Success)
             {
                 return BadRequest(response);
             }
-            
+
             return Ok(response);
+        }
+
+        // POST api/<EventController>/with-sessions
+        /// <summary>
+        /// Creates a new event along with its sessions in a single transaction.
+        /// FirstSessionDate and LastSessionDate are computed from the provided sessions.
+        /// At least one session is required.
+        /// </summary>
+        [HttpPost("with-sessions")]
+        [EndpointSummary("Create Event with Sessions")]
+        [EndpointDescription("Creates a new event along with its sessions in a single transaction. At least one session is required. FirstSessionDate and LastSessionDate are computed automatically from the sessions.")]
+        [Authorize]
+        [Consumes("application/json")]
+        [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<BaseCommandResponse<Guid>>> CreateWithSessions([FromBody] CreateEventWithSessionsDto dto)
+        {
+            var command = new CreateEventWithSessionsCommand { EventWithSessionsDto = dto };
+            var response = await _mediator.Send(command);
+
+            if (!response.Success)
+            {
+                return BadRequest(response);
+            }
+
+            return CreatedAtAction(nameof(GetById), new { id = response.Id }, response);
         }
 
         // PUT api/<EventController>/5
@@ -137,12 +164,12 @@ namespace Explore.API.Controllers
 
             var command = new UpdateEventCommand { EventDto = @event };
             var response = await _mediator.Send(command);
-            
+
             if (!response.Success)
             {
                 return BadRequest(response);
             }
-            
+
             return Ok(response);
         }
 

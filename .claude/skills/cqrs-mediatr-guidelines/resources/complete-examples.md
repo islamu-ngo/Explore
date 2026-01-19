@@ -1,6 +1,9 @@
-# Complete Feature Example - Event Management
+# Complete Feature Example - Full CQRS Cycle
 
-This document shows the **complete CQRS cycle** for the Event entity from the ISLAMU Event codebase, demonstrating all patterns and conventions in a real-world implementation.
+> **Project-Agnostic Complete Example**
+>
+> This document shows the **complete CQRS cycle** for a generic entity, demonstrating all patterns and conventions.
+> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../../docs/TEMPLATE_GLOSSARY.md).
 
 ---
 
@@ -8,184 +11,157 @@ This document shows the **complete CQRS cycle** for the Event entity from the IS
 
 ```
 User Request → Controller → MediatR → Handler → Repository → Entity → Database
-                                ↓
-                           Validation (manual instantiation)
-                                ↓
-                           AutoMapper (Entity ↔ DTO)
-                                ↓
-                           Response (BaseCommandResponse<Guid>)
+                               ↓
+                          Validation (manual instantiation)
+                               ↓
+                          AutoMapper (Entity ↔ DTO)
+                               ↓
+                          Response (BaseCommandResponse<{IdType}>)
 ```
 
 ---
 
-<h2>1. Create Event - Full Command Flow</h2>
+## 1. Create Entity - Full Command Flow
 
-<h3>Domain Entity</h3>
+### Domain Entity
 
-**File**: `Explore.Domain/Event.cs`
+**File**: `{Project}.Domain/{Entity}.cs`
 
 ```csharp
 using System;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Explore.Domain;
+namespace {Project}.Domain;
 
-public class Event
+public class {Entity}
 {
-    public Guid Id { get; set; }
-    
-    [ForeignKey("EventType")]
-    public int EventTypeId { get; set; }
-    public EventType EventType { get; set; }
-    
+    public {IdType} Id { get; set; }
+
+    [ForeignKey("{LookupEntity}")]
+    public {LookupIdType} {LookupEntity}Id { get; set; }
+    public {LookupEntity} {LookupEntity} { get; set; }
+
     public string Title { get; set; }
     public string? Description { get; set; }
-    
-    [ForeignKey("AudienceGender")]
-    public int AudienceGenderId { get; set; }
-    public AudienceGender AudienceGender { get; set; }
-    
-    [ForeignKey("AudienceAge")]
-    public int AudienceAgeId { get; set; }
-    public AudienceAge AudienceAge { get; set; }
-    
-    [ForeignKey("Actor")]
-    public Guid ActorId { get; set; }
-    public Actor Actor { get; set; }
-    
+
+    [ForeignKey("{RelatedEntity1}")]
+    public {LookupIdType} {RelatedEntity1}Id { get; set; }
+    public {RelatedEntity1} {RelatedEntity1} { get; set; }
+
+    [ForeignKey("{RelatedEntity2}")]
+    public {LookupIdType} {RelatedEntity2}Id { get; set; }
+    public {RelatedEntity2} {RelatedEntity2} { get; set; }
+
+    [ForeignKey("{ParentEntity}")]
+    public {IdType} {ParentEntity}Id { get; set; }
+    public {ParentEntity} {ParentEntity} { get; set; }
+
     public decimal? Price { get; set; }
     public string? CurrencyCode { get; set; }
-    
+
     [ForeignKey("FeaturedImage")]
-    public Guid? FeaturedImageId { get; set; }
+    public {IdType}? FeaturedImageId { get; set; }
     public StorageObject? FeaturedImage { get; set; }
-    
-    public int TotalViews { get; set; }
-    public bool IsRegistrationRequired { get; set; }
-    public string? EventUrl { get; set; }
-    
-    [ForeignKey("EventStatus")]
-    public int EventStatusId { get; set; }
-    public EventStatus EventStatus { get; set; }
-    
-    [ForeignKey("VisibilityType")]
-    public int VisibilityTypeId { get; set; }
-    public VisibilityType VisibilityType { get; set; }
-    
-    [ForeignKey("EventFormat")]
-    public int EventFormatId { get; set; }
-    public EventFormat EventFormat { get; set; }
-    
-    [ForeignKey("Madhab")]
-    public int? MadhabId { get; set; }
-    public Madhab? Madhab { get; set; }
-    
+
+    public int ViewCount { get; set; }
+    public bool IsActive { get; set; }
+    public string? ExternalUrl { get; set; }
+
+    [ForeignKey("Status")]
+    public {LookupIdType} StatusId { get; set; }
+    public Status Status { get; set; }
+
+    [ForeignKey("Visibility")]
+    public {LookupIdType} VisibilityId { get; set; }
+    public Visibility Visibility { get; set; }
+
     [ForeignKey("Tenant")]
-    public Guid TenantId { get; set; }
+    public {IdType} TenantId { get; set; }
     public Tenant Tenant { get; set; }
-    
+
     public string? Slug { get; set; }
-    public int? SessionCount { get; set; }
-    public DateOnly? FirstSessionDate { get; set; }
-    public DateOnly? LastSessionDate { get; set; }
+    public DateOnly? StartDate { get; set; }
+    public DateOnly? EndDate { get; set; }
     public string? Timezone { get; set; }
-    public string? ExternalRegistrationUrl { get; set; }
-    
-    [ForeignKey("AtprotoRecord")]
-    public Guid? AtprotoRecordId { get; set; }
-    public AtprotoRecord? AtprotoRecord { get; set; }
-    
-    // Note: this Domain entity currently doesn't expose collection navigation properties.
 }
 ```
 
-<h3>Create DTO</h3>
+### Create DTO
 
-**File**: `Explore.Application/DTOs/Event/CreateEventDto.cs`
+**File**: `{Project}.Application/DTOs/{Entity}/Create{Entity}Dto.cs`
 
 ```csharp
 using System;
 
-namespace Explore.Application.DTOs.Event;
+namespace {Project}.Application.DTOs.{Entity};
 
-public class CreateEventDto
+public class Create{Entity}Dto
 {
     public string Title { get; set; }
     public string? Description { get; set; }
     public string? Slug { get; set; }
 
-    // Event Type
-    public int EventTypeId { get; set; }
+    // Lookup references
+    public {LookupIdType} {LookupEntity}Id { get; set; }
+    public {LookupIdType} {RelatedEntity1}Id { get; set; }
+    public {LookupIdType} {RelatedEntity2}Id { get; set; }
 
-    // Audience
-    public int AudienceGenderId { get; set; }
-    public int AudienceAgeId { get; set; }
-
-    // Optional: create under an organization (otherwise personal actor)
-    public Guid? OrganizationId { get; set; }
+    // Optional parent reference
+    public {IdType}? {ParentEntity}Id { get; set; }
 
     // Pricing
     public decimal? Price { get; set; }
     public string? CurrencyCode { get; set; }
 
     // Featured Image (optional)
-    public Guid? FeaturedImageId { get; set; }
+    public {IdType}? FeaturedImageId { get; set; }
 
-    // Registration
-    public bool IsRegistrationRequired { get; set; }
-    public string? ExternalRegistrationUrl { get; set; }
+    // Configuration
+    public bool IsActive { get; set; }
+    public string? ExternalUrl { get; set; }
 
     // Status & Visibility (DTO defaults are OK; do not add defaults in Domain entities)
-    public int EventStatusId { get; set; } = 1;
-    public int VisibilityTypeId { get; set; } = 1;
+    public {LookupIdType} StatusId { get; set; } = 1;
+    public {LookupIdType} VisibilityId { get; set; } = 1;
 
-    // Format
-    public int EventFormatId { get; set; } = 1;
-
-    // Islamic Context
-    public int? MadhabId { get; set; }
-
-    // Session Info (computed, but can be set initially)
-    public DateTimeOffset? FirstSessionDate { get; set; }
-    public DateTimeOffset? LastSessionDate { get; set; }
+    // Date range
+    public DateTimeOffset? StartDate { get; set; }
+    public DateTimeOffset? EndDate { get; set; }
     public string? Timezone { get; set; }
 
-    // Metadata
-    public string? EventUrl { get; set; }
-
-    // TenantId and ActorId are set by the handler from the authenticated context.
+    // TenantId is set by the handler from the authenticated context.
 }
 ```
 
-<h3>Validator (CRITICAL: Manual Instantiation)</h3>
+### Validator (CRITICAL: Manual Instantiation)
 
-**File**: `Explore.Application/DTOs/Event/Validators/CreateEventDtoValidator.cs`
+**File**: `{Project}.Application/DTOs/{Entity}/Validators/Create{Entity}DtoValidator.cs`
 
 ```csharp
 using FluentValidation;
-using Explore.Application.Contracts.Persistence;
+using {Project}.Application.Contracts.Persistence;
 
-namespace Explore.Application.DTOs.Event.Validators;
+namespace {Project}.Application.DTOs.{Entity}.Validators;
 
-public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
+public class Create{Entity}DtoValidator : AbstractValidator<Create{Entity}Dto>
 {
-    private readonly IAudienceAgeRepository _audienceAgeRepository;
-    private readonly IAudienceGenderRepository _audienceGenderRepository;
-    private readonly IEventTypeRepository _eventTypeRepository;
-    private readonly IOrganizationRepository _organizationRepository;
+    private readonly I{RelatedEntity1}Repository _{relatedEntity1}Repository;
+    private readonly I{RelatedEntity2}Repository _{relatedEntity2}Repository;
+    private readonly I{LookupEntity}Repository _{lookupEntity}Repository;
+    private readonly I{ParentEntity}Repository _{parentEntity}Repository;
     private readonly IStorageObjectRepository _storageObjectRepository;
 
-    public CreateEventDtoValidator(
-        IAudienceAgeRepository audienceAgeRepository,
-        IAudienceGenderRepository audienceGenderRepository,
-        IEventTypeRepository eventTypeRepository,
-        IOrganizationRepository organizationRepository,
+    public Create{Entity}DtoValidator(
+        I{RelatedEntity1}Repository {relatedEntity1}Repository,
+        I{RelatedEntity2}Repository {relatedEntity2}Repository,
+        I{LookupEntity}Repository {lookupEntity}Repository,
+        I{ParentEntity}Repository {parentEntity}Repository,
         IStorageObjectRepository storageObjectRepository)
     {
-        _audienceAgeRepository = audienceAgeRepository;
-        _audienceGenderRepository = audienceGenderRepository;
-        _eventTypeRepository = eventTypeRepository;
-        _organizationRepository = organizationRepository;
+        _{relatedEntity1}Repository = {relatedEntity1}Repository;
+        _{relatedEntity2}Repository = {relatedEntity2}Repository;
+        _{lookupEntity}Repository = {lookupEntity}Repository;
+        _{parentEntity}Repository = {parentEntity}Repository;
         _storageObjectRepository = storageObjectRepository;
 
         // Title validation
@@ -193,45 +169,45 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
             .NotEmpty().WithMessage("Title is required")
             .MaximumLength(200).WithMessage("Title cannot exceed 200 characters");
 
-        // Event Type validation with async database check
-        RuleFor(x => x.EventTypeId)
-            .NotEmpty().WithMessage("Event Type is required")
+        // Lookup entity validation with async database check
+        RuleFor(x => x.{LookupEntity}Id)
+            .NotEmpty().WithMessage("{LookupEntity} is required")
             .MustAsync(async (id, cancellation) =>
             {
-                var exists = await _eventTypeRepository.Exists(id);
+                var exists = await _{lookupEntity}Repository.Exists(id);
                 return exists;
             })
-            .WithMessage("Event Type not found");
+            .WithMessage("{LookupEntity} not found");
 
-        // Audience Gender validation
-        RuleFor(x => x.AudienceGenderId)
-            .NotEmpty().WithMessage("Audience Gender is required")
+        // Related entity 1 validation
+        RuleFor(x => x.{RelatedEntity1}Id)
+            .NotEmpty().WithMessage("{RelatedEntity1} is required")
             .MustAsync(async (id, cancellation) =>
             {
-                var exists = await _audienceGenderRepository.Exists(id);
+                var exists = await _{relatedEntity1}Repository.Exists(id);
                 return exists;
             })
-            .WithMessage("Audience Gender not found");
+            .WithMessage("{RelatedEntity1} not found");
 
-        // Audience Age validation
-        RuleFor(x => x.AudienceAgeId)
-            .NotEmpty().WithMessage("Audience Age is required")
+        // Related entity 2 validation
+        RuleFor(x => x.{RelatedEntity2}Id)
+            .NotEmpty().WithMessage("{RelatedEntity2} is required")
             .MustAsync(async (id, cancellation) =>
             {
-                var exists = await _audienceAgeRepository.Exists(id);
+                var exists = await _{relatedEntity2}Repository.Exists(id);
                 return exists;
             })
-            .WithMessage("Audience Age not found");
+            .WithMessage("{RelatedEntity2} not found");
 
-        // Actor validation
-        RuleFor(x => x.OrganizationId)
+        // Parent entity validation (optional)
+        RuleFor(x => x.{ParentEntity}Id)
             .MustAsync(async (id, cancellation) =>
             {
                 if (!id.HasValue) return true;
-                return await _organizationRepository.Exists(id.Value);
+                return await _{parentEntity}Repository.Exists(id.Value);
             })
-            .When(x => x.OrganizationId.HasValue)
-            .WithMessage("Organization does not exist.");
+            .When(x => x.{ParentEntity}Id.HasValue)
+            .WithMessage("{ParentEntity} does not exist.");
 
         RuleFor(x => x.FeaturedImageId)
             .MustAsync(async (id, cancellation) =>
@@ -256,26 +232,26 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
 }
 ```
 
-<h3>Command Request</h3>
+### Command Request
 
-**File**: `Explore.Application/Features/Events/Requests/Commands/CreateEventCommand.cs`
+**File**: `{Project}.Application/Features/{Entities}/Requests/Commands/Create{Entity}Command.cs`
 
 ```csharp
 using MediatR;
-using Explore.Application.DTOs.Event;
-using Explore.Application.Responses;
+using {Project}.Application.DTOs.{Entity};
+using {Project}.Application.Responses;
 
-namespace Explore.Application.Features.Events.Requests.Commands;
+namespace {Project}.Application.Features.{Entities}.Requests.Commands;
 
-public class CreateEventCommand : IRequest<BaseCommandResponse<Guid>>
+public class Create{Entity}Command : IRequest<BaseCommandResponse<{IdType}>>
 {
-    public CreateEventDto EventDto { get; set; }
+    public Create{Entity}Dto {Entity}Dto { get; set; }
 }
 ```
 
-<h3>Command Handler (CRITICAL: Shows All Patterns)</h3>
+### Command Handler (CRITICAL: Shows All Patterns)
 
-**File**: `Explore.Application/Features/Events/Handlers/Commands/CreateEventCommandHandler.cs`
+**File**: `{Project}.Application/Features/{Entities}/Handlers/Commands/Create{Entity}CommandHandler.cs`
 
 ```csharp
 using System;
@@ -283,99 +259,99 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
-using Explore.Application.Contracts.Persistence;
-using Explore.Application.DTOs.Event.Validators;
-using Explore.Application.Features.Events.Requests.Commands;
-using Explore.Application.Responses;
-using Explore.Domain;
+using {Project}.Application.Contracts.Persistence;
+using {Project}.Application.DTOs.{Entity}.Validators;
+using {Project}.Application.Features.{Entities}.Requests.Commands;
+using {Project}.Application.Responses;
+using {Project}.Domain;
 using MediatR;
 
-namespace Explore.Application.Features.Events.Handlers.Commands;
+namespace {Project}.Application.Features.{Entities}.Handlers.Commands;
 
-public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<Guid>>
+public class Create{Entity}CommandHandler : IRequestHandler<Create{Entity}Command, BaseCommandResponse<{IdType}>>
 {
-    private readonly IEventRepository _eventRepository;
-    private readonly IAudienceAgeRepository _audienceAgeRepository;
-    private readonly IAudienceGenderRepository _audienceGenderRepository;
-    private readonly IEventTypeRepository _eventTypeRepository;
-    private readonly IOrganizationRepository _organizationRepository;
+    private readonly I{Entity}Repository _{entity}Repository;
+    private readonly I{RelatedEntity1}Repository _{relatedEntity1}Repository;
+    private readonly I{RelatedEntity2}Repository _{relatedEntity2}Repository;
+    private readonly I{LookupEntity}Repository _{lookupEntity}Repository;
+    private readonly I{ParentEntity}Repository _{parentEntity}Repository;
     private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly ITenantContext _tenantContext;
     private readonly IMapper _mapper;
 
-    public CreateEventCommandHandler(
-        IEventRepository eventRepository,
-        IAudienceAgeRepository audienceAgeRepository,
-        IAudienceGenderRepository audienceGenderRepository,
-        IEventTypeRepository eventTypeRepository,
-        IOrganizationRepository organizationRepository,
+    public Create{Entity}CommandHandler(
+        I{Entity}Repository {entity}Repository,
+        I{RelatedEntity1}Repository {relatedEntity1}Repository,
+        I{RelatedEntity2}Repository {relatedEntity2}Repository,
+        I{LookupEntity}Repository {lookupEntity}Repository,
+        I{ParentEntity}Repository {parentEntity}Repository,
         IStorageObjectRepository storageObjectRepository,
         ITenantContext tenantContext,
         IMapper mapper)
     {
-        _eventRepository = eventRepository;
-        _audienceAgeRepository = audienceAgeRepository;
-        _audienceGenderRepository = audienceGenderRepository;
-        _eventTypeRepository = eventTypeRepository;
-        _organizationRepository = organizationRepository;
+        _{entity}Repository = {entity}Repository;
+        _{relatedEntity1}Repository = {relatedEntity1}Repository;
+        _{relatedEntity2}Repository = {relatedEntity2}Repository;
+        _{lookupEntity}Repository = {lookupEntity}Repository;
+        _{parentEntity}Repository = {parentEntity}Repository;
         _storageObjectRepository = storageObjectRepository;
         _tenantContext = tenantContext;
         _mapper = mapper;
     }
 
-    public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
+    public async Task<BaseCommandResponse<{IdType}>> Handle(Create{Entity}Command request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
+        var response = new BaseCommandResponse<{IdType}>();
 
         // CRITICAL: Manual validator instantiation with all dependencies
-        var validator = new CreateEventDtoValidator(
-            _audienceAgeRepository, 
-            _audienceGenderRepository, 
-            _eventTypeRepository, 
-            _organizationRepository, 
+        var validator = new Create{Entity}DtoValidator(
+            _{relatedEntity1}Repository,
+            _{relatedEntity2}Repository,
+            _{lookupEntity}Repository,
+            _{parentEntity}Repository,
             _storageObjectRepository);
-        
-        var validationResult = await validator.ValidateAsync(request.EventDto, cancellationToken);
+
+        var validationResult = await validator.ValidateAsync(request.{Entity}Dto, cancellationToken);
 
         if (!validationResult.IsValid)
         {
             response.Success = false;
-            response.Message = "Event creation failed.";
+            response.Message = "{Entity} creation failed.";
             response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
             return response;
         }
 
         // Map DTO to Entity using AutoMapper
-        var @event = _mapper.Map<Event>(request.EventDto);
-        
+        var {entity} = _mapper.Map<{Entity}>(request.{Entity}Dto);
+
         // Set properties not in DTO (system-generated values)
-        @event.TotalViews = 0;
-        @event.TenantId = _tenantContext.TenantId;
+        {entity}.ViewCount = 0;
+        {entity}.TenantId = _tenantContext.TenantId;
 
         // Save through repository
-        @event = await _eventRepository.Create(@event);
+        {entity} = await _{entity}Repository.Create({entity});
 
         response.Success = true;
-        response.Id = @event.Id;
-        response.Message = "Event created successfully.";
+        response.Id = {entity}.Id;
+        response.Message = "{Entity} created successfully.";
 
         return response;
     }
 }
 ```
 
-<h3>Controller (Complete with Authorization)</h3>
+### Controller (Complete with Authorization)
 
-**File**: `Explore.API/Controllers/EventController.cs`
+**File**: `{Project}.API/Controllers/{Entity}Controller.cs`
 
 ```csharp
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Explore.Application.DTOs.Event;
-using Explore.Application.Features.Events.Requests.Commands;
-using Explore.Application.Features.Events.Requests.Queries;
-using Explore.Application.Responses;
+using {Project}.Application.DTOs.{Entity};
+using {Project}.Application.Features.{Entities}.Requests.Commands;
+using {Project}.Application.Features.{Entities}.Requests.Queries;
+using {Project}.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -383,38 +359,38 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using static Microsoft.AspNetCore.Http.StatusCodes;
 
-namespace Explore.API.Controllers;
+namespace {Project}.API.Controllers;
 
 [Route("api/v1/[controller]")]
 [ApiController]
-public class EventController : ControllerBase
+public class {Entity}Controller : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly ILogger<EventController> _logger;
+    private readonly ILogger<{Entity}Controller> _logger;
 
-    public EventController(
+    public {Entity}Controller(
         IMediator mediator,
         IHttpContextAccessor httpContextAccessor,
-        ILogger<EventController> logger)
+        ILogger<{Entity}Controller> logger)
     {
         _mediator = mediator;
         _httpContextAccessor = httpContextAccessor;
         _logger = logger;
     }
 
-    // POST: api/v1/event
+    // POST: api/v1/{entity}
     [HttpPost]
-    [EndpointSummary("Create Event")]
-    [EndpointDescription("Creates a new event. Requires authentication.")]
+    [EndpointSummary("Create {Entity}")]
+    [EndpointDescription("Creates a new {entity}. Requires authentication.")]
     [Authorize]  // CRITICAL: Write operations require authentication
     [Consumes("application/json")]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), Status400BadRequest)]
+    [ProducesResponseType(typeof(BaseCommandResponse<{IdType}>), Status200OK)]
+    [ProducesResponseType(typeof(BaseCommandResponse<{IdType}>), Status400BadRequest)]
     [ProducesResponseType(Status401Unauthorized)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventDto dto)
+    public async Task<ActionResult<BaseCommandResponse<{IdType}>>> Create([FromBody] Create{Entity}Dto dto)
     {
-        var command = new CreateEventCommand { EventDto = dto };
+        var command = new Create{Entity}Command { {Entity}Dto = dto };
         var response = await _mediator.Send(command);
 
         if (!response.Success)
@@ -425,45 +401,45 @@ public class EventController : ControllerBase
         return Ok(response);
     }
 
-    // GET: api/v1/event
+    // GET: api/v1/{entity}
     [HttpGet]
-    [EndpointSummary("List Events")]
-    [EndpointDescription("Returns a list of events.")]
+    [EndpointSummary("List {Entities}")]
+    [EndpointDescription("Returns a list of {entities}.")]
     [AllowAnonymous]  // CRITICAL: Read operations are public
-    [ProducesResponseType(typeof(List<EventListDto>), Status200OK)]
-    public async Task<ActionResult<List<EventListDto>>> GetAll()
+    [ProducesResponseType(typeof(List<{Entity}ListDto>), Status200OK)]
+    public async Task<ActionResult<List<{Entity}ListDto>>> GetAll()
     {
-        var events = await _mediator.Send(new GetEventListRequest());
-        return Ok(events);
+        var {entities} = await _mediator.Send(new Get{Entity}ListRequest());
+        return Ok({entities});
     }
 
-    // GET: api/v1/event/{id}
+    // GET: api/v1/{entity}/{id}
     [HttpGet("{id}")]
-    [EndpointSummary("Get Event Details")]
-    [EndpointDescription("Returns event details.")]
+    [EndpointSummary("Get {Entity} Details")]
+    [EndpointDescription("Returns {entity} details.")]
     [AllowAnonymous]
-    [ProducesResponseType(typeof(EventDto), Status200OK)]
+    [ProducesResponseType(typeof({Entity}Dto), Status200OK)]
     [ProducesResponseType(Status404NotFound)]
-    public async Task<ActionResult<EventDto>> GetById(Guid id)
+    public async Task<ActionResult<{Entity}Dto>> GetById({IdType} id)
     {
-        var @event = await _mediator.Send(new GetEventDetailsRequest { Id = id });
-        
-        if (@event == null)
+        var {entity} = await _mediator.Send(new Get{Entity}DetailsRequest { Id = id });
+
+        if ({entity} == null)
         {
-            return NotFound(new { error = "Event not found" });
+            return NotFound(new { error = "{Entity} not found" });
         }
 
-        return Ok(@event);
+        return Ok({entity});
     }
 
-    // GET: api/v1/event/my
+    // GET: api/v1/{entity}/my
     [HttpGet("my")]
-    [EndpointSummary("List My Events")]
-    [EndpointDescription("Returns events owned by the current user (direct actor ownership or organization membership).")]
+    [EndpointSummary("List My {Entities}")]
+    [EndpointDescription("Returns {entities} owned by the current user.")]
     [Authorize]
-    [ProducesResponseType(typeof(List<EventListDto>), Status200OK)]
+    [ProducesResponseType(typeof(List<{Entity}ListDto>), Status200OK)]
     [ProducesResponseType(Status401Unauthorized)]
-    public async Task<ActionResult<List<EventListDto>>> GetMyEvents()
+    public async Task<ActionResult<List<{Entity}ListDto>>> GetMy{Entities}()
     {
         // CRITICAL: UserId extraction with fallback pattern
         var userId = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
@@ -475,255 +451,221 @@ public class EventController : ControllerBase
             return Unauthorized(new { error = "User ID not found in token" });
         }
 
-        var events = await _mediator.Send(new GetMyEventsRequest { UserId = userId });
-        return Ok(events);
+        var {entities} = await _mediator.Send(new GetMy{Entities}Request { UserId = userId });
+        return Ok({entities});
     }
 }
 ```
 
 ---
 
-<h2>2. Get Event List - Full Query Flow</h2>
+## 2. Get Entity List - Full Query Flow
 
-<h3>List DTO (Optimized for Display)</h3>
+### List DTO (Optimized for Display)
 
-**File**: `Explore.Application/DTOs/Event/EventListDto.cs`
+**File**: `{Project}.Application/DTOs/{Entity}/{Entity}ListDto.cs`
 
 ```csharp
 using System;
 
-namespace Explore.Application.DTOs.Event;
+namespace {Project}.Application.DTOs.{Entity};
 
-public class EventListDto
+public class {Entity}ListDto
 {
-    public Guid Id { get; set; }
+    public {IdType} Id { get; set; }
     public string Title { get; set; }
     public string? Description { get; set; }
     public string? Slug { get; set; }
 
-    // Event Type
-    public int EventTypeId { get; set; }
-    public string EventTypeFullName { get; set; }
+    // Lookup entity
+    public {LookupIdType} {LookupEntity}Id { get; set; }
+    public string {LookupEntity}FullName { get; set; }
 
-    // Audience
-    public int AudienceGenderId { get; set; }
-    public string AudienceGenderFullName { get; set; }
-    public int AudienceAgeId { get; set; }
-    public string AudienceAgeFullName { get; set; }
-    public int? AudienceAgeMinAge { get; set; }
-    public int? AudienceAgeMaxAge { get; set; }
+    // Related entities
+    public {LookupIdType} {RelatedEntity1}Id { get; set; }
+    public string {RelatedEntity1}FullName { get; set; }
+    public {LookupIdType} {RelatedEntity2}Id { get; set; }
+    public string {RelatedEntity2}FullName { get; set; }
 
-    // Actor (Owner)
-    public Guid ActorId { get; set; }
-    public string ActorDisplayName { get; set; }
-    public int ActorTypeId { get; set; }
-    public string ActorTypeFullName { get; set; }
+    // Parent entity (Owner)
+    public {IdType} {ParentEntity}Id { get; set; }
+    public string {ParentEntity}DisplayName { get; set; }
 
     // Pricing
     public decimal? Price { get; set; }
     public string? CurrencyCode { get; set; }
 
     // Featured Image
-    public Guid FeaturedImageId { get; set; }
+    public {IdType} FeaturedImageId { get; set; }
     public string? FeaturedImageUri { get; set; }
 
-    // Registration
-    public bool IsRegistrationRequired { get; set; }
-    public string? ExternalRegistrationUrl { get; set; }
+    // Configuration
+    public bool IsActive { get; set; }
+    public string? ExternalUrl { get; set; }
 
     // Status & Visibility
-    public int EventStatusId { get; set; }
-    public string EventStatusFullName { get; set; }
-    public int VisibilityTypeId { get; set; }
-    public string VisibilityTypeFullName { get; set; }
+    public {LookupIdType} StatusId { get; set; }
+    public string StatusFullName { get; set; }
+    public {LookupIdType} VisibilityId { get; set; }
+    public string VisibilityFullName { get; set; }
 
-    // Format
-    public int EventFormatId { get; set; }
-    public string EventFormatFullName { get; set; }
-
-    // Islamic Context
-    public int? MadhabId { get; set; }
-    public string? MadhabFullName { get; set; }
-
-    // Session Info
-    public int? SessionCount { get; set; }
-    public DateOnly? FirstSessionDate { get; set; }
-    public DateOnly? LastSessionDate { get; set; }
+    // Date range
+    public DateOnly? StartDate { get; set; }
+    public DateOnly? EndDate { get; set; }
     public string? Timezone { get; set; }
 
     // Metadata
-    public int TotalViews { get; set; }
-    public string? EventUrl { get; set; }
+    public int ViewCount { get; set; }
 
     // Tenant
-    public Guid TenantId { get; set; }
-
-    public Guid? AtprotoRecordId { get; set; }
-    public string? AtprotoRecordUri { get; set; }
-    public string? AtprotoRecordCid { get; set; }
+    public {IdType} TenantId { get; set; }
 }
 ```
 
-<h3>Query Request</h3>
+### Query Request
 
-**File**: `Explore.Application/Features/Events/Requests/Queries/GetEventListRequest.cs`
+**File**: `{Project}.Application/Features/{Entities}/Requests/Queries/Get{Entity}ListRequest.cs`
 
 ```csharp
 using System.Collections.Generic;
-using Explore.Application.DTOs.Event;
+using {Project}.Application.DTOs.{Entity};
 using MediatR;
 
-namespace Explore.Application.Features.Events.Requests.Queries;
+namespace {Project}.Application.Features.{Entities}.Requests.Queries;
 
-public class GetEventListRequest : IRequest<List<EventListDto>>
+public class Get{Entity}ListRequest : IRequest<List<{Entity}ListDto>>
 {
-    // No parameters - returns all events
+    // No parameters - returns all entities
 }
 ```
 
-<h3>Query Handler (Shows Repository → DTO Mapping)</h3>
+### Query Handler (Shows Repository → DTO Mapping)
 
-**File**: `Explore.Application/Features/Events/Handlers/Queries/GetEventListRequestHandler.cs`
+**File**: `{Project}.Application/Features/{Entities}/Handlers/Queries/Get{Entity}ListRequestHandler.cs`
 
 ```csharp
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
-using Explore.Application.Contracts.Persistence;
-using Explore.Application.DTOs.Event;
-using Explore.Application.Features.Events.Requests.Queries;
+using {Project}.Application.Contracts.Persistence;
+using {Project}.Application.DTOs.{Entity};
+using {Project}.Application.Features.{Entities}.Requests.Queries;
 using MediatR;
 
-namespace Explore.Application.Features.Events.Handlers.Queries;
+namespace {Project}.Application.Features.{Entities}.Handlers.Queries;
 
-public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, List<EventListDto>>
+public class Get{Entity}ListRequestHandler : IRequestHandler<Get{Entity}ListRequest, List<{Entity}ListDto>>
 {
-    private readonly IEventRepository _eventRepository;
+    private readonly I{Entity}Repository _{entity}Repository;
     private readonly IMapper _mapper;
 
-    public GetEventListRequestHandler(IEventRepository eventRepository, IMapper mapper)
+    public Get{Entity}ListRequestHandler(I{Entity}Repository {entity}Repository, IMapper mapper)
     {
-        _eventRepository = eventRepository;
+        _{entity}Repository = {entity}Repository;
         _mapper = mapper;
     }
 
-    public async Task<List<EventListDto>> Handle(GetEventListRequest request, CancellationToken cancellationToken)
+    public async Task<List<{Entity}ListDto>> Handle(Get{Entity}ListRequest request, CancellationToken cancellationToken)
     {
         // CRITICAL: Repository returns ENTITIES (not DTOs)
-        var events = await _eventRepository.GetEventsWithDetails();
+        var {entities} = await _{entity}Repository.Get{Entities}WithDetails();
 
         // CRITICAL: AutoMapper maps entities to DTOs
-        return _mapper.Map<List<EventListDto>>(events);
+        return _mapper.Map<List<{Entity}ListDto>>({entities});
     }
 }
 ```
 
-<h3>Repository Interface</h3>
+### Repository Interface
 
-**File**: `Explore.Application/Contracts/Persistence/IEventRepository.cs`
+**File**: `{Project}.Application/Contracts/Persistence/I{Entity}Repository.cs`
 
 ```csharp
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Explore.Domain;
+using {Project}.Domain;
 
-namespace Explore.Application.Contracts.Persistence;
+namespace {Project}.Application.Contracts.Persistence;
 
-public interface IEventRepository : IGenericRepository<Event, Guid>
+public interface I{Entity}Repository : IGenericRepository<{Entity}, {IdType}>
 {
-    Task<Event?> GetEventWithDetails(Guid id);
-    Task<List<Event>> GetEventsWithDetails();
-    Task<List<Event>> GetMyEventsWithDetails(string userId);
+    Task<{Entity}?> Get{Entity}WithDetails({IdType} id);
+    Task<List<{Entity}>> Get{Entities}WithDetails();
+    Task<List<{Entity}>> GetMy{Entities}WithDetails(string userId);
 }
 ```
 
-<h3>Repository Implementation (Complex Include Chains)</h3>
+### Repository Implementation (Complex Include Chains)
 
-**File**: `Explore.Persistence/Repositories/EventRepository.cs`
+**File**: `{Project}.Persistence/Repositories/{Entity}Repository.cs`
 
 ```csharp
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Explore.Application.Contracts.Persistence;
-using Explore.Domain;
+using {Project}.Application.Contracts.Persistence;
+using {Project}.Domain;
 using Microsoft.EntityFrameworkCore;
 
-namespace Explore.Persistence.Repositories;
+namespace {Project}.Persistence.Repositories;
 
-public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
+public class {Entity}Repository : GenericRepository<{Entity}, {IdType}>, I{Entity}Repository
 {
-    private readonly ExploreDbContext _dbContext;
+    private readonly {DbContext} _dbContext;
 
-    public EventRepository(ExploreDbContext dbContext) : base(dbContext)
+    public {Entity}Repository({DbContext} dbContext) : base(dbContext)
     {
         _dbContext = dbContext;
     }
 
-    public async Task<List<Event>> GetEventsWithDetails()
+    public async Task<List<{Entity}>> Get{Entities}WithDetails()
     {
-        return await _dbContext.Events
-            .Include(e => e.EventType)
-            .Include(e => e.AudienceGender)
-            .Include(e => e.AudienceAge)
-            .Include(e => e.Actor)
-                .ThenInclude(a => a.ActorType)
-            .Include(e => e.EventStatus)
-            .Include(e => e.VisibilityType)
-            .Include(e => e.EventFormat)
-            .Include(e => e.Madhab)
+        return await _dbContext.{Entities}
+            .Include(e => e.{LookupEntity})
+            .Include(e => e.{RelatedEntity1})
+            .Include(e => e.{RelatedEntity2})
+            .Include(e => e.{ParentEntity})
+            .Include(e => e.Status)
+            .Include(e => e.Visibility)
             .Include(e => e.FeaturedImage)
-            .Include(e => e.AtprotoRecord)
             .ToListAsync();
     }
 
-    public async Task<Event?> GetEventWithDetails(Guid id)
+    public async Task<{Entity}?> Get{Entity}WithDetails({IdType} id)
     {
-        return await _dbContext.Events
-            .Include(e => e.EventType)
-            .Include(e => e.AudienceGender)
-            .Include(e => e.AudienceAge)
-            .Include(e => e.Actor)
-                .ThenInclude(a => a.ActorType)
-            .Include(e => e.Actor)
-                .ThenInclude(a => a.ProfilePicture)
+        return await _dbContext.{Entities}
+            .Include(e => e.{LookupEntity})
+            .Include(e => e.{RelatedEntity1})
+            .Include(e => e.{RelatedEntity2})
+            .Include(e => e.{ParentEntity})
+            .Include(e => e.Status)
+            .Include(e => e.Visibility)
             .Include(e => e.FeaturedImage)
-            .Include(e => e.EventStatus)
-            .Include(e => e.VisibilityType)
-            .Include(e => e.EventFormat)
-            .Include(e => e.Madhab)
-            .Include(e => e.AtprotoRecord)
             .FirstOrDefaultAsync(e => e.Id == id);
     }
 
-    public async Task<List<Event>> GetMyEventsWithDetails(string userId)
+    public async Task<List<{Entity}>> GetMy{Entities}WithDetails(string userId)
     {
-        Guid userGuid;
-        var isGuid = Guid.TryParse(userId, out userGuid);
+        {IdType} userIdParsed;
+        var isValid = {IdType}.TryParse(userId, out userIdParsed);
 
-        var query = _dbContext.Events
-            .Include(e => e.EventType)
-            .Include(e => e.AudienceGender)
-            .Include(e => e.AudienceAge)
-            .Include(e => e.Actor)
-                .ThenInclude(a => a.ActorType)
+        var query = _dbContext.{Entities}
+            .Include(e => e.{LookupEntity})
+            .Include(e => e.{RelatedEntity1})
+            .Include(e => e.{RelatedEntity2})
+            .Include(e => e.{ParentEntity})
+            .Include(e => e.Status)
+            .Include(e => e.Visibility)
             .Include(e => e.FeaturedImage)
-            .Include(e => e.EventStatus)
-            .Include(e => e.VisibilityType)
-            .Include(e => e.EventFormat)
-            .Include(e => e.Madhab)
             .AsQueryable();
 
-        if (isGuid)
+        if (isValid)
         {
             query = query.Where(e =>
-                _dbContext.Users.Any(u => u.Id == userGuid && u.ActorId == e.ActorId) ||
-                _dbContext.OrganizationMembers.Any(om =>
-                    om.UserId == userGuid &&
-                    _dbContext.Organizations.Any(o => o.Id == om.OrganizationId && o.ActorId == e.ActorId)));
+                _dbContext.Users.Any(u => u.Id == userIdParsed && u.{ParentEntity}Id == e.{ParentEntity}Id));
         }
 
         return await query.ToListAsync();
@@ -731,31 +673,31 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
 }
 ```
 
-<h3>AutoMapper Profile</h3>
+### AutoMapper Profile
 
-**File**: `Explore.Application/Profiles/MappingProfile.cs` (excerpt)
+**File**: `{Project}.Application/Profiles/MappingProfile.cs` (excerpt)
 
 ```csharp
 using AutoMapper;
-using Explore.Application.DTOs.Event;
-using Explore.Domain;
+using {Project}.Application.DTOs.{Entity};
+using {Project}.Domain;
 
-namespace Explore.Application.Profiles;
+namespace {Project}.Application.Profiles;
 
 public class MappingProfile : Profile
 {
     public MappingProfile()
     {
-        // Event mappings
-        CreateMap<Event, EventDto>()
+        // {Entity} mappings
+        CreateMap<{Entity}, {Entity}Dto>()
             .ReverseMap();
 
-        CreateMap<Event, EventListDto>();
+        CreateMap<{Entity}, {Entity}ListDto>();
 
-        CreateMap<CreateEventDto, Event>();
+        CreateMap<Create{Entity}Dto, {Entity}>();
 
-        CreateMap<UpdateEventDto, Event>();
-        
+        CreateMap<Update{Entity}Dto, {Entity}>();
+
         // ... other entity mappings
     }
 }
@@ -763,37 +705,37 @@ public class MappingProfile : Profile
 
 ---
 
-<h2>Key Patterns Demonstrated</h2>
+## Key Patterns Demonstrated
 
-<h3>1. **Manual Validator Instantiation** ⚠️</h3>
+### 1. **Manual Validator Instantiation** ⚠️
 ```csharp
 // CRITICAL: Validators are instantiated with dependencies in handlers
-var validator = new CreateEventDtoValidator(
-    _audienceAgeRepository, 
-    _audienceGenderRepository, 
-    _eventTypeRepository, 
-    _organizationRepository, 
+var validator = new Create{Entity}DtoValidator(
+    _{relatedEntity1}Repository,
+    _{relatedEntity2}Repository,
+    _{lookupEntity}Repository,
+    _{parentEntity}Repository,
     _storageObjectRepository);
 ```
 
-<h3>2. **Repository Returns Entities, Not DTOs** ⚠️</h3>
+### 2. **Repository Returns Entities, Not DTOs** ⚠️
 ```csharp
 // Repository returns entities
-var events = await _eventRepository.GetEventsWithDetails();
+var {entities} = await _{entity}Repository.Get{Entities}WithDetails();
 
 // Handler maps to DTOs using AutoMapper
-return _mapper.Map<List<EventListDto>>(events);
+return _mapper.Map<List<{Entity}ListDto>>({entities});
 ```
 
-<h3>3. **BaseCommandResponse<Guid> for Commands** ⚠️</h3>
+### 3. **BaseCommandResponse<{IdType}> for Commands** ⚠️
 ```csharp
-public class CreateEventCommand : IRequest<BaseCommandResponse<Guid>>
+public class Create{Entity}Command : IRequest<BaseCommandResponse<{IdType}>>
 {
-    public CreateEventDto EventDto { get; set; }
+    public Create{Entity}Dto {Entity}Dto { get; set; }
 }
 ```
 
-<h3>4. **Authorization Pattern** ⚠️</h3>
+### 4. **Authorization Pattern** ⚠️
 ```csharp
 [HttpGet]
 [AllowAnonymous]  // Public read access
@@ -802,22 +744,22 @@ public class CreateEventCommand : IRequest<BaseCommandResponse<Guid>>
 [Authorize]  // Authenticated write access
 ```
 
-<h3>5. **UserId Extraction with Fallback** ⚠️</h3>
+### 5. **UserId Extraction with Fallback** ⚠️
 ```csharp
 var userId = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
     ?? _httpContextAccessor.HttpContext?.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
     ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sid")?.Value;
 ```
 
-<h3>6. **Complex EF Core Include Chains** ⚠️</h3>
+### 6. **Complex EF Core Include Chains** ⚠️
 ```csharp
-return await _dbContext.Events
-    .Include(e => e.Actor)
-        .ThenInclude(a => a.ActorType)
+return await _dbContext.{Entities}
+    .Include(e => e.{ParentEntity})
+    .Include(e => e.{LookupEntity})
     .Include(e => e.FeaturedImage)
     .ToListAsync();
 ```
 
 ---
 
-This complete example shows **every layer** of the CQRS cycle in the ISLAMU Event codebase, from domain entity to API controller, with all critical patterns highlighted.
+This complete example shows **every layer** of the CQRS cycle, from domain entity to API controller, with all critical patterns highlighted.

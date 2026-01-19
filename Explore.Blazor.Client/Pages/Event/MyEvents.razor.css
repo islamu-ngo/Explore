@@ -210,6 +210,7 @@
         rgba(0, 0, 0, 0) 50%,
         rgba(0, 0, 0, 0.25) 100%
     );
+    pointer-events: none;
 }
 
 /* ===== Element: my-events__card-image ===== */
@@ -278,6 +279,28 @@
     align-items: center;
     gap: 4px;
     opacity: 0.85;
+}
+
+/* ===== Element: my-events__card-footer ===== */
+::deep .my-events__card-footer {
+    /* Wrapper for footer content */
+}
+
+/* ===== Element: my-events__card-organizer ===== */
+::deep .my-events__card-organizer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    opacity: 0.9;
+}
+
+/* ===== Element: my-events__organizer-avatar ===== */
+::deep .my-events__organizer-avatar {
+    flex-shrink: 0;
+}
+
+::deep .my-events__organizer-avatar .mud-avatar-img {
+    object-fit: cover;
 }
 
 /* ===== Element: my-events__actions-menu ===== */

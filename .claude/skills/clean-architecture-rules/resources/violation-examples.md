@@ -1,19 +1,23 @@
 # Common Violations and Error Messages
 
+> **Project-Agnostic Violation Examples**
+>
+> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../../docs/TEMPLATE_GLOSSARY.md).
+
 ## Violation #1: Domain Referencing Infrastructure
 
-### ❌ The Problem
+### The Problem
 
 ```csharp
-// File: Explore.Domain/Event.cs
-namespace Explore.Domain;
+// File: {Project}.Domain/{Entity}.cs
+namespace {Project}.Domain;
 
 using Microsoft.EntityFrameworkCore;  // ❌ VIOLATION!
 
-public class Event
+public class {Entity}
 {
     [Key]  // ❌ Data annotation from EF Core
-    public Guid Id { get; set; }
+    public {IdType} Id { get; set; }
 
     public string Title { get; set; } = string.Empty;
 }
@@ -24,7 +28,7 @@ public class Event
 ⚠️ CLEAN ARCHITECTURE VIOLATION DETECTED
 
 Layer: Domain
-File: Explore.Domain/Event.cs
+File: {Project}.Domain/{Entity}.cs
 Violation: Domain layer cannot reference Microsoft.EntityFrameworkCore
 
 REASON:
@@ -36,28 +40,28 @@ FIX:
 3. Configure constraints in Persistence layer using Fluent API
 ```
 
-### ✅ The Fix
+### The Fix
 
 ```csharp
-// File: Explore.Domain/Event.cs
-namespace Explore.Domain;
+// File: {Project}.Domain/{Entity}.cs
+namespace {Project}.Domain;
 
 using System;
 using System.ComponentModel.DataAnnotations.Schema;  // ✅ Only for [ForeignKey]
 
-public class Event
+public class {Entity}
 {
-    public Guid Id { get; set; }  // ✅ Plain C# property
+    public {IdType} Id { get; set; }  // ✅ Plain C# property
     public string Title { get; set; } = string.Empty;
-    
+
     // ✅ OK - Specifies relationship metadata
-    [ForeignKey("EventType")]
-    public int EventTypeId { get; set; }
-    public EventType EventType { get; set; }
-    
-    [ForeignKey("AudienceGender")]
-    public int AudienceGenderId { get; set; }
-    public AudienceGender AudienceGender { get; set; }
+    [ForeignKey("{LookupEntity}")]
+    public {LookupIdType} {LookupEntity}Id { get; set; }
+    public {LookupEntity} {LookupEntity} { get; set; }
+
+    [ForeignKey("{RelatedEntity}")]
+    public {IdType} {RelatedEntity}Id { get; set; }
+    public {RelatedEntity} {RelatedEntity} { get; set; }
 }
 ```
 
@@ -65,24 +69,24 @@ public class Event
 
 ## Violation #2: Application Referencing DbContext Directly
 
-### ❌ The Problem
+### The Problem
 
 ```csharp
-// File: Explore.Application/Features/Events/Handlers/Queries/GetEventListRequestHandler.cs
-namespace Explore.Application.Features.Events.Handlers.Queries;
+// File: {Project}.Application/Features/{Entities}/Handlers/Queries/Get{Entity}ListRequestHandler.cs
+namespace {Project}.Application.Features.{Entities}.Handlers.Queries;
 
-using Explore.Persistence;  // ❌ VIOLATION!
+using {Project}.Persistence;  // ❌ VIOLATION!
 using Microsoft.EntityFrameworkCore;  // ❌ VIOLATION!
 
-public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, List<EventListDto>>
+public class Get{Entity}ListRequestHandler : IRequestHandler<Get{Entity}ListRequest, List<{Entity}ListDto>>
 {
-    private readonly ExploreDbContext _context;  // ❌ Concrete class
+    private readonly {DbContext} _context;  // ❌ Concrete class
 
-    public async Task<List<EventListDto>> Handle(GetEventListRequest request, CancellationToken cancellationToken)
+    public async Task<List<{Entity}ListDto>> Handle(Get{Entity}ListRequest request, CancellationToken cancellationToken)
     {
-        return await _context.Events  // ❌ Direct DbSet access
-            .Include(e => e.EventType)
-            .Where(e => e.EventStatusId == 2)
+        return await _context.{Entities}  // ❌ Direct DbSet access
+            .Include(e => e.{LookupEntity})
+            .Where(e => e.StatusId == 2)
             .ToListAsync(cancellationToken);
     }
 }
@@ -93,8 +97,8 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, L
 ⚠️ CLEAN ARCHITECTURE VIOLATION DETECTED
 
 Layer: Application
-File: Explore.Application/Features/Events/Handlers/Queries/GetEventListRequestHandler.cs
-Violation: Application layer cannot reference Explore.Persistence or Microsoft.EntityFrameworkCore
+File: {Project}.Application/Features/{Entities}/Handlers/Queries/Get{Entity}ListRequestHandler.cs
+Violation: Application layer cannot reference {Project}.Persistence or Microsoft.EntityFrameworkCore
 
 REASON:
 Application should not depend on concrete database implementation.
@@ -104,121 +108,111 @@ This makes it impossible to:
 - Mock data for testing
 
 FIX:
-1. Create IEventRepository interface in Application layer
+1. Create I{Entity}Repository interface in Application layer
 2. Use interface instead of concrete DbContext
 3. Implement repository in Persistence layer
 ```
 
-### ✅ The Fix
+### The Fix
 
 ```csharp
-// File: Explore.Application/Contracts/Persistence/IEventRepository.cs
-namespace Explore.Application.Contracts.Persistence;
+// File: {Project}.Application/Contracts/Persistence/I{Entity}Repository.cs
+namespace {Project}.Application.Contracts.Persistence;
 
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Explore.Domain;
+using {Project}.Domain;
 
-public interface IEventRepository : IGenericRepository<Event, Guid>
+public interface I{Entity}Repository : IGenericRepository<{Entity}, {IdType}>
 {
-    Task<Event?> GetEventWithDetails(Guid id);
-    Task<List<Event>> GetEventsWithDetails();
-    Task<List<Event>> GetMyEventsWithDetails(string userId);
+    Task<{Entity}?> Get{Entity}WithDetails({IdType} id);
+    Task<List<{Entity}>> Get{Entities}WithDetails();
 }
 
-// File: Explore.Persistence/Repositories/EventRepository.cs
-namespace Explore.Persistence.Repositories;
+// File: {Project}.Persistence/Repositories/{Entity}Repository.cs
+namespace {Project}.Persistence.Repositories;
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Explore.Application.Contracts.Persistence;  // ✅ Implements interface
-using Explore.Domain;
+using {Project}.Application.Contracts.Persistence;  // ✅ Implements interface
+using {Project}.Domain;
 using Microsoft.EntityFrameworkCore;
 
-public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
+public class {Entity}Repository : GenericRepository<{Entity}, {IdType}>, I{Entity}Repository
 {
-    private readonly ExploreDbContext _dbContext;
+    private readonly {DbContext} _dbContext;
 
-    public EventRepository(ExploreDbContext dbContext) : base(dbContext)
+    public {Entity}Repository({DbContext} dbContext) : base(dbContext)
     {
         _dbContext = dbContext;
     }
 
-    public async Task<List<Event>> GetEventsWithDetails()
+    public async Task<List<{Entity}>> Get{Entities}WithDetails()
     {
-        return await _dbContext.Events
-            .Include(e => e.EventType)
-            .Include(e => e.AudienceGender)
-            .Include(e => e.AudienceAge)
-            .Include(e => e.Actor)
-                .ThenInclude(a => a.ActorType)
-            .Include(e => e.EventStatus)
-            .Include(e => e.VisibilityType)
-            .Include(e => e.EventFormat)
-            .Include(e => e.Madhab)
-            .Include(e => e.FeaturedImage)
-            .Include(e => e.AtprotoRecord)
+        return await _dbContext.{Entities}
+            .Include(e => e.{LookupEntity})
+            .Include(e => e.{RelatedEntity})
             .ToListAsync();
     }
 }
 
-// File: Explore.Application/Features/Events/Handlers/Queries/GetEventListRequestHandler.cs
-namespace Explore.Application.Features.Events.Handlers.Queries;
+// File: {Project}.Application/Features/{Entities}/Handlers/Queries/Get{Entity}ListRequestHandler.cs
+namespace {Project}.Application.Features.{Entities}.Handlers.Queries;
 
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
-using Explore.Application.Contracts.Persistence;  // ✅ Interface in same layer
-using Explore.Application.DTOs.Event;
-using Explore.Application.Features.Events.Requests.Queries;
+using {Project}.Application.Contracts.Persistence;  // ✅ Interface in same layer
+using {Project}.Application.DTOs.{Entity};
+using {Project}.Application.Features.{Entities}.Requests.Queries;
 using MediatR;
 
-public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, List<EventListDto>>
+public class Get{Entity}ListRequestHandler : IRequestHandler<Get{Entity}ListRequest, List<{Entity}ListDto>>
 {
-    private readonly IEventRepository _eventRepository;  // ✅ Abstraction
+    private readonly I{Entity}Repository _{entity}Repository;  // ✅ Abstraction
     private readonly IMapper _mapper;
 
-    public GetEventListRequestHandler(IEventRepository eventRepository, IMapper mapper)
+    public Get{Entity}ListRequestHandler(I{Entity}Repository {entity}Repository, IMapper mapper)
     {
-        _eventRepository = eventRepository;
+        _{entity}Repository = {entity}Repository;
         _mapper = mapper;
     }
 
-    public async Task<List<EventListDto>> Handle(GetEventListRequest request, CancellationToken cancellationToken)
+    public async Task<List<{Entity}ListDto>> Handle(Get{Entity}ListRequest request, CancellationToken cancellationToken)
     {
-        var events = await _eventRepository.GetEventsWithDetails();  // ✅ Returns entities
-        return _mapper.Map<List<EventListDto>>(events);  // ✅ Maps to DTOs
+        var {entities} = await _{entity}Repository.Get{Entities}WithDetails();  // ✅ Returns entities
+        return _mapper.Map<List<{Entity}ListDto>>({entities});  // ✅ Maps to DTOs
     }
 }
 
-// File: Explore.API/Program.cs (DI Registration)
-builder.Services.AddScoped<IEventRepository, EventRepository>();
+// File: {Project}.API/Program.cs (DI Registration)
+builder.Services.AddScoped<I{Entity}Repository, {Entity}Repository>();
 ```
 
 ---
 
 ## Violation #3: Application Using ASP.NET Core Types
 
-### ❌ The Problem
+### The Problem
 
 ```csharp
-// File: Explore.Application/Features/Events/Handlers/Commands/CreateEventCommandHandler.cs
-namespace Explore.Application.Features.Events.Handlers.Commands;
+// File: {Project}.Application/Features/{Entities}/Handlers/Commands/Create{Entity}CommandHandler.cs
+namespace {Project}.Application.Features.{Entities}.Handlers.Commands;
 
 using Microsoft.AspNetCore.Http;  // ❌ VIOLATION!
 using Microsoft.AspNetCore.Mvc;   // ❌ VIOLATION!
 
-public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, ActionResult<Guid>>
+public class Create{Entity}CommandHandler : IRequestHandler<Create{Entity}Command, ActionResult<{IdType}>>
 {
-    public async Task<ActionResult<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
+    public async Task<ActionResult<{IdType}>> Handle(Create{Entity}Command request, CancellationToken cancellationToken)
     {
-        // ... create event logic
+        // ... create {entity} logic
 
-        return new CreatedAtActionResult("GetById", "Event", new { id = eventId }, eventId);
+        return new CreatedAtActionResult("GetById", "{Entity}", new { id = {entity}Id }, {entity}Id);
         // ❌ Returning ASP.NET Core type
     }
 }
@@ -229,7 +223,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Act
 ⚠️ CLEAN ARCHITECTURE VIOLATION DETECTED
 
 Layer: Application
-File: Explore.Application/Features/Events/Handlers/Commands/CreateEventCommandHandler.cs
+File: {Project}.Application/Features/{Entities}/Handlers/Commands/Create{Entity}CommandHandler.cs
 Violation: Application layer cannot reference Microsoft.AspNetCore.*
 
 REASON:
@@ -241,92 +235,90 @@ Application should be framework-agnostic. It should work with:
 Returning ActionResult ties it to ASP.NET Core.
 
 FIX:
-1. Return BaseCommandResponse<Guid> (or plain Guid)
+1. Return BaseCommandResponse<{IdType}> (or plain {IdType})
 2. Let Controller map to ActionResult
 ```
 
-### ✅ The Fix
+### The Fix
 
 ```csharp
-// File: Explore.Application/Features/Events/Requests/Commands/CreateEventCommand.cs
-namespace Explore.Application.Features.Events.Requests.Commands;
+// File: {Project}.Application/Features/{Entities}/Requests/Commands/Create{Entity}Command.cs
+namespace {Project}.Application.Features.{Entities}.Requests.Commands;
 
-using Explore.Application.DTOs.Event;
-using Explore.Application.Responses;
+using {Project}.Application.DTOs.{Entity};
+using {Project}.Application.Responses;
 using MediatR;
 
-public class CreateEventCommand : IRequest<BaseCommandResponse<Guid>>  // ✅ Framework-agnostic
+public class Create{Entity}Command : IRequest<BaseCommandResponse<{IdType}>>  // ✅ Framework-agnostic
 {
-    public CreateEventDto EventDto { get; set; }
+    public Create{Entity}Dto {Entity}Dto { get; set; }
 }
 
-// File: Explore.Application/Features/Events/Handlers/Commands/CreateEventCommandHandler.cs
-namespace Explore.Application.Features.Events.Handlers.Commands;
+// File: {Project}.Application/Features/{Entities}/Handlers/Commands/Create{Entity}CommandHandler.cs
+namespace {Project}.Application.Features.{Entities}.Handlers.Commands;
 
 using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
-using Explore.Application.Contracts.Persistence;
-using Explore.Application.DTOs.Event.Validators;
-using Explore.Application.Features.Events.Requests.Commands;
-using Explore.Application.Responses;
-using Explore.Domain;
+using {Project}.Application.Contracts.Persistence;
+using {Project}.Application.DTOs.{Entity}.Validators;
+using {Project}.Application.Features.{Entities}.Requests.Commands;
+using {Project}.Application.Responses;
+using {Project}.Domain;
 using MediatR;
 
-public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<Guid>>
+public class Create{Entity}CommandHandler : IRequestHandler<Create{Entity}Command, BaseCommandResponse<{IdType}>>
 {
-    private readonly IEventRepository _eventRepository;
+    private readonly I{Entity}Repository _{entity}Repository;
     private readonly IMapper _mapper;
-    // ... other dependencies
 
-    public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
+    public async Task<BaseCommandResponse<{IdType}>> Handle(Create{Entity}Command request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
+        var response = new BaseCommandResponse<{IdType}>();
 
         // Validation...
-        var @event = _mapper.Map<Event>(request.EventDto);
-        @event.TotalViews = 0;
-        @event = await _eventRepository.Create(@event);
+        var {entity} = _mapper.Map<{Entity}>(request.{Entity}Dto);
+        {entity} = await _{entity}Repository.Create({entity});
 
         response.Success = true;
-        response.Id = @event.Id;
-        response.Message = "Event created successfully.";
+        response.Id = {entity}.Id;
+        response.Message = "{Entity} created successfully.";
 
         return response;  // ✅ Framework-agnostic response
     }
 }
 
-// File: Explore.API/Controllers/EventController.cs
-namespace Explore.API.Controllers;
+// File: {Project}.API/Controllers/{Entity}Controller.cs
+namespace {Project}.API.Controllers;
 
 using System;
 using System.Threading.Tasks;
-using Explore.Application.DTOs.Event;
-using Explore.Application.Features.Events.Requests.Commands;
-using Explore.Application.Responses;
+using {Project}.Application.DTOs.{Entity};
+using {Project}.Application.Features.{Entities}.Requests.Commands;
+using {Project}.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;  // ✅ OK in API layer
 
 [Route("api/v1/[controller]")]
 [ApiController]
-public class EventController : ControllerBase
+public class {Entity}Controller : ControllerBase
 {
     private readonly IMediator _mediator;
 
-    public EventController(IMediator mediator) => _mediator = mediator;
+    public {Entity}Controller(IMediator mediator) => _mediator = mediator;
 
     [HttpPost]
     [Authorize]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventDto dto)
+    public async Task<ActionResult<BaseCommandResponse<{IdType}>>> Create([FromBody] Create{Entity}Dto dto)
     {
-        var command = new CreateEventCommand { EventDto = dto };
+        var command = new Create{Entity}Command { {Entity}Dto = dto };
         var response = await _mediator.Send(command);
 
         // ✅ Controller handles HTTP-specific concerns
-        return Ok(response);
+        return response.Success ? Ok(response) : BadRequest(response);
     }
 }
 ```
@@ -335,24 +327,24 @@ public class EventController : ControllerBase
 
 ## Violation #4: Domain Using Data Annotations for Validation
 
-### ❌ The Problem
+### The Problem
 
 ```csharp
-// File: Explore.Domain/Event.cs
-namespace Explore.Domain;
+// File: {Project}.Domain/{Entity}.cs
+namespace {Project}.Domain;
 
 using System.ComponentModel.DataAnnotations;  // ❌ VIOLATION!
 
-public class Event
+public class {Entity}
 {
-    public Guid Id { get; set; }
+    public {IdType} Id { get; set; }
 
     [Required]  // ❌ Presentation concern
     [MaxLength(500)]  // ❌ Database concern
     public string Title { get; set; } = string.Empty;
 
     [Range(1, 10000)]  // ❌ Validation belongs in Application
-    public int? MaxAudienceAttendees { get; set; }
+    public int? MaxAttendees { get; set; }
 }
 ```
 
@@ -361,7 +353,7 @@ public class Event
 ⚠️ CLEAN ARCHITECTURE VIOLATION DETECTED
 
 Layer: Domain
-File: Explore.Domain/Event.cs
+File: {Project}.Domain/{Entity}.cs
 Violation: Domain layer should not use System.ComponentModel.DataAnnotations for validation
 
 REASON:
@@ -370,7 +362,7 @@ Data annotations mix concerns:
 - [MaxLength] = Database constraint (belongs in Persistence)
 
 Validation rules can differ by use case:
-- Creating an event might require Title
+- Creating might require Title
 - Updating might allow partial updates
 Domain should be pure business entities.
 
@@ -379,61 +371,52 @@ FIX:
 2. Add FluentValidation in Application layer
 ```
 
-### ✅ The Fix
+### The Fix
 
 ```csharp
-// File: Explore.Domain/Event.cs
-namespace Explore.Domain;
+// File: {Project}.Domain/{Entity}.cs
+namespace {Project}.Domain;
 
 using System;
 using System.ComponentModel.DataAnnotations.Schema;
 
 // ✅ NO validation annotations
-public class Event
+public class {Entity}
 {
-    public Guid Id { get; set; }
+    public {IdType} Id { get; set; }
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public decimal? Price { get; set; }
     public int TotalViews { get; set; }
-    
-    // ✅ Only [ForeignKey] is acceptable
-    [ForeignKey("EventType")]
-    public int EventTypeId { get; set; }
-    public EventType EventType { get; set; }
 
-    [ForeignKey("AudienceGender")]
-    public int AudienceGenderId { get; set; }
-    public AudienceGender AudienceGender { get; set; }
+    // ✅ Only [ForeignKey] is acceptable
+    [ForeignKey("{LookupEntity}")]
+    public {LookupIdType} {LookupEntity}Id { get; set; }
+    public {LookupEntity} {LookupEntity} { get; set; }
+
+    [ForeignKey("{RelatedEntity}")]
+    public {IdType} {RelatedEntity}Id { get; set; }
+    public {RelatedEntity} {RelatedEntity} { get; set; }
 }
 
-// File: Explore.Application/DTOs/Event/Validators/CreateEventDtoValidator.cs
-namespace Explore.Application.DTOs.Event.Validators;
+// File: {Project}.Application/DTOs/{Entity}/Validators/Create{Entity}DtoValidator.cs
+namespace {Project}.Application.DTOs.{Entity}.Validators;
 
 using FluentValidation;
-using Explore.Application.Contracts.Persistence;
+using {Project}.Application.Contracts.Persistence;
 
 // ✅ Application layer validates INPUT
-public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
+public class Create{Entity}DtoValidator : AbstractValidator<Create{Entity}Dto>
 {
-    private readonly IAudienceAgeRepository _audienceAgeRepository;
-    private readonly IAudienceGenderRepository _audienceGenderRepository;
-    private readonly IEventTypeRepository _eventTypeRepository;
-    private readonly IOrganizationRepository _organizationRepository;
-    private readonly IStorageObjectRepository _storageObjectRepository;
+    private readonly I{LookupEntity}Repository _{lookupEntity}Repository;
+    private readonly I{RelatedEntity}Repository _{relatedEntity}Repository;
 
-    public CreateEventDtoValidator(
-        IAudienceAgeRepository audienceAgeRepository,
-        IAudienceGenderRepository audienceGenderRepository,
-        IEventTypeRepository eventTypeRepository,
-        IOrganizationRepository organizationRepository,
-        IStorageObjectRepository storageObjectRepository)
+    public Create{Entity}DtoValidator(
+        I{LookupEntity}Repository {lookupEntity}Repository,
+        I{RelatedEntity}Repository {relatedEntity}Repository)
     {
-        _audienceAgeRepository = audienceAgeRepository;
-        _audienceGenderRepository = audienceGenderRepository;
-        _eventTypeRepository = eventTypeRepository;
-        _organizationRepository = organizationRepository;
-        _storageObjectRepository = storageObjectRepository;
+        _{lookupEntity}Repository = {lookupEntity}Repository;
+        _{relatedEntity}Repository = {relatedEntity}Repository;
 
         RuleFor(x => x.Title)
             .NotEmpty().WithMessage("Title is required")
@@ -443,41 +426,23 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
             .MaximumLength(5000).When(x => !string.IsNullOrEmpty(x.Description))
             .WithMessage("Description must not exceed 5000 characters");
 
-        RuleFor(x => x.EventTypeId)
-            .NotEmpty().WithMessage("Event type is required")
+        RuleFor(x => x.{LookupEntity}Id)
+            .NotEmpty().WithMessage("{LookupEntity} is required")
             .MustAsync(async (id, cancellation) =>
             {
-                var exists = await _eventTypeRepository.Exists(id);
+                var exists = await _{lookupEntity}Repository.Exists(id);
                 return exists;
             })
-            .WithMessage("Event type not found");
+            .WithMessage("{LookupEntity} not found");
 
-        RuleFor(x => x.AudienceGenderId)
-            .NotEmpty().WithMessage("Audience gender is required")
-            .MustAsync(async (id, cancellation) =>
-            {
-                var exists = await _audienceGenderRepository.Exists(id);
-                return exists;
-            })
-            .WithMessage("Audience gender not found");
-
-        RuleFor(x => x.OrganizationId)
+        RuleFor(x => x.{RelatedEntity}Id)
             .MustAsync(async (id, cancellation) =>
             {
                 if (!id.HasValue) return true;
-                return await _organizationRepository.Exists(id.Value);
+                return await _{relatedEntity}Repository.Exists(id.Value);
             })
-            .When(x => x.OrganizationId.HasValue)
-            .WithMessage("Organization does not exist.");
-
-        RuleFor(x => x.FeaturedImageId)
-            .MustAsync(async (id, cancellation) =>
-            {
-                if (!id.HasValue) return true;
-                return await _storageObjectRepository.Exists(id.Value);
-            })
-            .When(x => x.FeaturedImageId.HasValue)
-            .WithMessage("FeaturedImageId does not exist.");
+            .When(x => x.{RelatedEntity}Id.HasValue)
+            .WithMessage("{RelatedEntity} not found");
     }
 }
 ```
@@ -486,22 +451,22 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
 
 ## Violation #5: Infrastructure Referencing API/Blazor
 
-### ❌ The Problem
+### The Problem
 
 ```csharp
-// File: Explore.Infrastructure/Email/EmailService.cs
-namespace Explore.Infrastructure.Email;
+// File: {Project}.Infrastructure/Email/EmailService.cs
+namespace {Project}.Infrastructure.Email;
 
-using Explore.API.Controllers;  // ❌ VIOLATION!
+using {Project}.API.Controllers;  // ❌ VIOLATION!
 using Microsoft.AspNetCore.Mvc;  // ❌ VIOLATION!
 
 public class EmailService : IEmailService
 {
-    public async Task SendEventNotificationAsync(Guid eventId)
+    public async Task Send{Entity}NotificationAsync({IdType} {entity}Id)
     {
         // ❌ Calling controller directly
-        var controller = new EventController();
-        var result = await controller.GetById(eventId);
+        var controller = new {Entity}Controller();
+        var result = await controller.GetById({entity}Id);
 
         // ... send email
     }
@@ -513,23 +478,23 @@ public class EmailService : IEmailService
 ⚠️ CLEAN ARCHITECTURE VIOLATION DETECTED
 
 Layer: Infrastructure
-File: Explore.Infrastructure/Email/EmailService.cs
-Violation: Infrastructure layer cannot reference Explore.API or presentation layers
+File: {Project}.Infrastructure/Email/EmailService.cs
+Violation: Infrastructure layer cannot reference {Project}.API or presentation layers
 
 REASON:
 Infrastructure is below Presentation in the architecture.
 Controllers should call Infrastructure, not the other way around.
 
 FIX:
-1. Pass event data as parameters to EmailService
+1. Pass data as parameters to EmailService
 2. Or use Application layer to orchestrate data retrieval
 ```
 
-### ✅ The Fix
+### The Fix
 
 ```csharp
-// File: Explore.Application/Contracts/Infrastructure/IEmailService.cs
-namespace Explore.Application.Contracts.Infrastructure;
+// File: {Project}.Application/Contracts/Infrastructure/IEmailService.cs
+namespace {Project}.Application.Contracts.Infrastructure;
 
 using System;
 using System.Threading;
@@ -537,20 +502,20 @@ using System.Threading.Tasks;
 
 public interface IEmailService
 {
-    Task SendEventCreatedNotificationAsync(
-        Guid eventId,
-        string eventTitle,
-        string organizerEmail,
+    Task Send{Entity}CreatedNotificationAsync(
+        {IdType} {entity}Id,
+        string {entity}Title,
+        string recipientEmail,
         CancellationToken cancellationToken = default);
 }
 
-// File: Explore.Infrastructure/Email/EmailService.cs
-namespace Explore.Infrastructure.Email;
+// File: {Project}.Infrastructure/Email/EmailService.cs
+namespace {Project}.Infrastructure.Email;
 
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Explore.Application.Contracts.Infrastructure;  // ✅ Application interface only
+using {Project}.Application.Contracts.Infrastructure;  // ✅ Application interface only
 using Microsoft.Extensions.Logging;
 using SendGrid;
 using SendGrid.Helpers.Mail;
@@ -560,50 +525,30 @@ public class SendGridEmailService : IEmailService
     private readonly ISendGridClient _client;
     private readonly ILogger<SendGridEmailService> _logger;
 
-    public async Task SendEventCreatedNotificationAsync(
-        Guid eventId,
-        string eventTitle,
-        string organizerEmail,
+    public async Task Send{Entity}CreatedNotificationAsync(
+        {IdType} {entity}Id,
+        string {entity}Title,
+        string recipientEmail,
         CancellationToken cancellationToken = default)
     {
         // ✅ Uses passed data, doesn't fetch it itself
-        var from = new EmailAddress("noreply@islamu.org", "ISLAMU Event");
-        var to = new EmailAddress(organizerEmail);
-        var subject = $"Event Created: {eventTitle}";
-        var htmlContent = $"<p>Your event <strong>{eventTitle}</strong> has been created successfully.</p>";
+        var from = new EmailAddress("noreply@example.org", "{Project}");
+        var to = new EmailAddress(recipientEmail);
+        var subject = $"{Entity} Created: {{entity}Title}";
+        var htmlContent = $"<p>Your {entity} <strong>{{entity}Title}</strong> has been created successfully.</p>";
 
         var msg = MailHelper.CreateSingleEmail(from, to, subject, null, htmlContent);
-        await _client.SendEmailAsync(msg, cancellationToken);
-        
-        _logger.LogInformation("Email sent to {Email} for event {EventId}", organizerEmail, eventId);
-    }
-}
 
-// File: Explore.Application/Features/Events/Handlers/Commands/CreateEventCommandHandler.cs
-public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<Guid>>
-{
-    private readonly IEventRepository _eventRepository;
-    private readonly IEmailService _emailService;
-
-    public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
-    {
-        var @event = _mapper.Map<Event>(request.EventDto);
-        @event.TotalViews = 0;
-        @event = await _eventRepository.Create(@event);
-
-        // ✅ Application orchestrates: gets data and calls Infrastructure
-        await _emailService.SendEventCreatedNotificationAsync(
-            @event.Id,
-            @event.Title,
-            request.EventDto.OrganizerEmail,
-            cancellationToken);
-
-        return new BaseCommandResponse<Guid>
+        try
         {
-            Success = true,
-            Id = @event.Id,
-            Message = "Event created successfully."
-        };
+            var response = await _client.SendEmailAsync(msg, cancellationToken);
+            _logger.LogInformation("Email sent to {Email} for {entity} {{Entity}Id}", recipientEmail, {entity}Id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send email for {entity} {{Entity}Id}", {entity}Id);
+            throw;
+        }
     }
 }
 ```
@@ -612,19 +557,19 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
 
 ## Violation #6: Circular References Between Projects
 
-### ❌ The Problem
+### The Problem
 
 ```xml
-<!-- File: Explore.Application/Explore.Application.csproj -->
+<!-- File: {Project}.Application/{Project}.Application.csproj -->
 <ItemGroup>
-  <ProjectReference Include="..\Explore.Domain\Explore.Domain.csproj" />
-  <ProjectReference Include="..\Explore.Infrastructure\Explore.Infrastructure.csproj" />
+  <ProjectReference Include="..\{Project}.Domain\{Project}.Domain.csproj" />
+  <ProjectReference Include="..\{Project}.Infrastructure\{Project}.Infrastructure.csproj" />
   <!-- ❌ VIOLATION! -->
 </ItemGroup>
 
-<!-- File: Explore.Infrastructure/Explore.Infrastructure.csproj -->
+<!-- File: {Project}.Infrastructure/{Project}.Infrastructure.csproj -->
 <ItemGroup>
-  <ProjectReference Include="..\Explore.Application\Explore.Application.csproj" />
+  <ProjectReference Include="..\{Project}.Application\{Project}.Application.csproj" />
   <!-- ❌ Creates circular reference! -->
 </ItemGroup>
 ```
@@ -645,28 +590,28 @@ FIX:
 3. Use dependency injection to wire up concrete implementations
 ```
 
-### ✅ The Fix
+### The Fix
 
 ```xml
-<!-- File: Explore.Application/Explore.Application.csproj -->
+<!-- File: {Project}.Application/{Project}.Application.csproj -->
 <ItemGroup>
   <!-- ✅ ONLY reference Domain -->
-  <ProjectReference Include="..\Explore.Domain\Explore.Domain.csproj" />
+  <ProjectReference Include="..\{Project}.Domain\{Project}.Domain.csproj" />
 </ItemGroup>
 
-<!-- File: Explore.Infrastructure/Explore.Infrastructure.csproj -->
+<!-- File: {Project}.Infrastructure/{Project}.Infrastructure.csproj -->
 <ItemGroup>
   <!-- ✅ References Application and Domain -->
-  <ProjectReference Include="..\Explore.Application\Explore.Application.csproj" />
-  <ProjectReference Include="..\Explore.Domain\Explore.Domain.csproj" />
+  <ProjectReference Include="..\{Project}.Application\{Project}.Application.csproj" />
+  <ProjectReference Include="..\{Project}.Domain\{Project}.Domain.csproj" />
 </ItemGroup>
 
-<!-- File: Explore.API/Explore.API.csproj -->
+<!-- File: {Project}.API/{Project}.API.csproj -->
 <ItemGroup>
   <!-- ✅ API references all (Composition Root) -->
-  <ProjectReference Include="..\Explore.Application\Explore.Application.csproj" />
-  <ProjectReference Include="..\Explore.Infrastructure\Explore.Infrastructure.csproj" />
-  <ProjectReference Include="..\Explore.Persistence\Explore.Persistence.csproj" />
+  <ProjectReference Include="..\{Project}.Application\{Project}.Application.csproj" />
+  <ProjectReference Include="..\{Project}.Infrastructure\{Project}.Infrastructure.csproj" />
+  <ProjectReference Include="..\{Project}.Persistence\{Project}.Persistence.csproj" />
 </ItemGroup>
 ```
 
@@ -677,34 +622,34 @@ FIX:
 ### Search for Domain Violations
 ```bash
 # Find prohibited using statements in Domain
-rg "using (Microsoft\.(EntityFrameworkCore|AspNetCore)|Explore\.(Application|Infrastructure|API|Blazor))" Explore.Domain/
+rg "using (Microsoft\.(EntityFrameworkCore|AspNetCore)|{Project}\.(Application|Infrastructure|API|Blazor))" {Project}.Domain/
 
 # Find validation annotations in Domain (except [ForeignKey])
-rg "\[Required\]|\[MaxLength\]|\[Range\]|\[StringLength\]" Explore.Domain/
+rg "\[Required\]|\[MaxLength\]|\[Range\]|\[StringLength\]" {Project}.Domain/
 ```
 
 ### Search for Application Violations
 ```bash
 # Find prohibited using statements in Application
-rg "using (Microsoft\.EntityFrameworkCore|Explore\.(Infrastructure|Persistence|API|Blazor))" Explore.Application/
+rg "using (Microsoft\.EntityFrameworkCore|{Project}\.(Infrastructure|Persistence|API|Blazor))" {Project}.Application/
 
 # Find direct DbContext usage
-rg "ExploreDbContext" Explore.Application/
+rg "{DbContext}" {Project}.Application/
 
 # Find ASP.NET Core types in Application
-rg "ActionResult|IActionResult|HttpContext" Explore.Application/
+rg "ActionResult|IActionResult|HttpContext" {Project}.Application/
 ```
 
 ### Verify Project References
 ```bash
 # Domain should have NO project references
-dotnet list Explore.Domain/Explore.Domain.csproj reference
+dotnet list {Project}.Domain/{Project}.Domain.csproj reference
 
 # Application should ONLY reference Domain
-dotnet list Explore.Application/Explore.Application.csproj reference
+dotnet list {Project}.Application/{Project}.Application.csproj reference
 
 # Persistence should reference Domain + Application
-dotnet list Explore.Persistence/Explore.Persistence.csproj reference
+dotnet list {Project}.Persistence/{Project}.Persistence.csproj reference
 ```
 
 ### Check for circular references

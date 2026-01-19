@@ -1,6 +1,8 @@
 # DbContext Patterns
 
-DbContext configuration and best practices for ISLAMU Event.
+> **Project-Agnostic DbContext Patterns**
+>
+> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../../docs/TEMPLATE_GLOSSARY.md).
 
 ---
 
@@ -12,13 +14,13 @@ The DbContext is the central class for Entity Framework Core data access.
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
-using Explore.Domain;
+using {Project}.Domain;
 
-namespace Explore.Persistence;
+namespace {Project}.Persistence;
 
-public class ExploreDbContext : DbContext
+public class {DbContext} : DbContext
 {
-    public ExploreDbContext(DbContextOptions<ExploreDbContext> options)
+    public {DbContext}(DbContextOptions<{DbContext}> options)
         : base(options)
     {
     }
@@ -28,12 +30,12 @@ public class ExploreDbContext : DbContext
         base.OnModelCreating(modelBuilder);
 
         // Apply all IEntityTypeConfiguration<T> from assembly
-        modelBuilder.ApplyConfigurationsFromAssembly(typeof(ExploreDbContext).Assembly);
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof({DbContext}).Assembly);
     }
 
     // DbSet properties for each entity
-    public DbSet<Event> Events { get; set; }
-    public DbSet<Organization> Organizations { get; set; }
+    public DbSet<{Entity}> {Entities} { get; set; }
+    public DbSet<{ParentEntity}> {ParentEntities} { get; set; }
     public DbSet<User> Users { get; set; }
 }
 ```
@@ -45,15 +47,15 @@ public class ExploreDbContext : DbContext
 DbSets represent tables in the database.
 
 ```csharp
-public class ExploreDbContext : DbContext
+public class {DbContext} : DbContext
 {
     // ✅ Public DbSet properties
-    public DbSet<Event> Events { get; set; }
-    public DbSet<Organization> Organizations { get; set; }
-    public DbSet<EventRegistration> EventRegistrations { get; set; }
+    public DbSet<{Entity}> {Entities} { get; set; }
+    public DbSet<{ParentEntity}> {ParentEntities} { get; set; }
+    public DbSet<{LinkEntity}> {LinkEntities} { get; set; }
 
     // ⚠️ Nullable for optional entities
-    public DbSet<EventCategories>? ProgramCategories { get; set; }
+    public DbSet<{Entity}Categories>? {Entity}Categories { get; set; }
 
     // ✅ Non-nullable for required entities (compiler nullability)
     public DbSet<User> Users { get; set; } = null!;
@@ -61,7 +63,7 @@ public class ExploreDbContext : DbContext
 ```
 
 **Naming Convention**:
-- Plural form: `Events`, `Organizations`, `Users`
+- Plural form: `{Entities}`, `{ParentEntities}`, `Users`
 - PascalCase
 - Descriptive names matching domain language
 
@@ -71,7 +73,7 @@ public class ExploreDbContext : DbContext
 
 ### Apply Configurations from Assembly
 
-**✅ Recommended** (ISLAMU Event pattern):
+**✅ Recommended** (project standard pattern):
 
 ```csharp
 protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -79,7 +81,7 @@ protected override void OnModelCreating(ModelBuilder modelBuilder)
     base.OnModelCreating(modelBuilder);
 
     // ✅ Automatically applies all IEntityTypeConfiguration<T> in assembly
-    modelBuilder.ApplyConfigurationsFromAssembly(typeof(ExploreDbContext).Assembly);
+    modelBuilder.ApplyConfigurationsFromAssembly(typeof({DbContext}).Assembly);
 }
 ```
 
@@ -91,8 +93,8 @@ protected override void OnModelCreating(ModelBuilder modelBuilder)
     base.OnModelCreating(modelBuilder);
 
     // ❌ Manual (not recommended - use ApplyConfigurationsFromAssembly)
-    modelBuilder.ApplyConfiguration(new EventConfiguration());
-    modelBuilder.ApplyConfiguration(new OrganizationConfiguration());
+    modelBuilder.ApplyConfiguration(new {Entity}Configuration());
+    modelBuilder.ApplyConfiguration(new {ParentEntity}Configuration());
     // ... many more
 }
 ```
@@ -191,7 +193,7 @@ public override Task<int> SaveChangesAsync(CancellationToken cancellationToken =
 // Program.cs
 using Npgsql.EntityFrameworkCore.PostgreSQL;
 
-builder.Services.AddDbContext<ExploreDbContext>(options =>
+builder.Services.AddDbContext<{DbContext}>(options =>
 {
     options.UseNpgsql(
         builder.Configuration.GetConnectionString("DefaultConnection"),
@@ -225,7 +227,7 @@ builder.Services.AddDbContext<ExploreDbContext>(options =>
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Port=5432;Database=islamu_event;Username=postgres;Password=yourpassword;Include Error Detail=true"
+    "DefaultConnection": "Host=localhost;Port=5432;Database={project}_db;Username=postgres;Password=yourpassword;Include Error Detail=true"
   }
 }
 ```
@@ -234,7 +236,7 @@ builder.Services.AddDbContext<ExploreDbContext>(options =>
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Port=5432;Database=islamu_event_dev;Username=postgres;Password=dev;Include Error Detail=true"
+    "DefaultConnection": "Host=localhost;Port=5432;Database={project}_dev;Username=postgres;Password=dev;Include Error Detail=true"
   }
 }
 ```
@@ -247,7 +249,7 @@ builder.Services.AddDbContext<ExploreDbContext>(options =>
 
 ```csharp
 // ✅ Scoped (one instance per HTTP request)
-builder.Services.AddDbContext<ExploreDbContext>(options =>
+builder.Services.AddDbContext<{DbContext}>(options =>
     options.UseNpgsql(connectionString));
 ```
 
@@ -261,7 +263,7 @@ builder.Services.AddDbContext<ExploreDbContext>(options =>
 
 ```csharp
 // ❌ DON'T use Transient for DbContext
-builder.Services.AddDbContext<ExploreDbContext>(
+builder.Services.AddDbContext<{DbContext}>(
     options => options.UseNpgsql(connectionString),
     ServiceLifetime.Transient);
 ```
@@ -275,7 +277,7 @@ builder.Services.AddDbContext<ExploreDbContext>(
 
 ```csharp
 // ❌ NEVER use Singleton for DbContext
-builder.Services.AddDbContext<ExploreDbContext>(
+builder.Services.AddDbContext<{DbContext}>(
     options => options.UseNpgsql(connectionString),
     ServiceLifetime.Singleton);
 ```
@@ -308,7 +310,7 @@ public override Task<int> SaveChangesAsync(CancellationToken cancellationToken =
         .Where(e => e.State == EntityState.Modified);
 
     // Filter by type
-    var events = ChangeTracker.Entries<Event>();
+    var {entities} = ChangeTracker.Entries<{Entity}>();
 
     return base.SaveChangesAsync(cancellationToken);
 }
@@ -328,13 +330,13 @@ public override Task<int> SaveChangesAsync(CancellationToken cancellationToken =
 
 ```csharp
 // Attach existing entity and mark as modified
-var existingEvent = new Event { Id = eventId };
-_dbContext.Attach(existingEvent);
-_dbContext.Entry(existingEvent).State = EntityState.Modified;
+var existing{Entity} = new {Entity} { Id = {entity}Id };
+_dbContext.Attach(existing{Entity});
+_dbContext.Entry(existing{Entity}).State = EntityState.Modified;
 
 // Mark specific properties as modified
-_dbContext.Entry(existingEvent).Property(e => e.Title).IsModified = true;
-_dbContext.Entry(existingEvent).Property(e => e.Description).IsModified = true;
+_dbContext.Entry(existing{Entity}).Property(e => e.Title).IsModified = true;
+_dbContext.Entry(existing{Entity}).Property(e => e.Description).IsModified = true;
 
 await _dbContext.SaveChangesAsync();
 ```
@@ -353,10 +355,10 @@ protected override void OnModelCreating(ModelBuilder modelBuilder)
     base.OnModelCreating(modelBuilder);
 
     // Apply soft delete filter to all ISoftDeletable entities
-    modelBuilder.Entity<Event>()
+    modelBuilder.Entity<{Entity}>()
         .HasQueryFilter(e => !e.IsDeleted);
 
-    modelBuilder.Entity<Organization>()
+    modelBuilder.Entity<{ParentEntity}>()
         .HasQueryFilter(o => !o.IsDeleted);
 }
 ```
@@ -369,7 +371,7 @@ protected override void OnModelCreating(ModelBuilder modelBuilder)
     base.OnModelCreating(modelBuilder);
 
     // Apply tenant filter (requires current tenant from DI)
-    modelBuilder.Entity<Event>()
+    modelBuilder.Entity<{Entity}>()
         .HasQueryFilter(e => e.TenantId == _currentTenantId);
 }
 ```
@@ -378,7 +380,7 @@ protected override void OnModelCreating(ModelBuilder modelBuilder)
 
 ```csharp
 // Include soft-deleted entities
-var allEvents = await _dbContext.Events
+var all{Entities} = await _dbContext.{Entities}
     .IgnoreQueryFilters()
     .ToListAsync();
 ```
@@ -391,27 +393,27 @@ var allEvents = await _dbContext.Events
 
 ```csharp
 // ✅ No tracking (faster for read-only)
-var events = await _dbContext.Events
+var {entities} = await _dbContext.{Entities}
     .AsNoTracking()
     .ToListAsync();
 
 // ❌ With tracking (unnecessary for read-only)
-var events = await _dbContext.Events.ToListAsync();
+var {entities} = await _dbContext.{Entities}.ToListAsync();
 ```
 
 ### Split Queries for Large Includes
 
 ```csharp
 // ✅ Split into multiple queries (avoids cartesian explosion)
-var organizations = await _dbContext.Organizations
-    .Include(o => o.Events)
+var {parentEntities} = await _dbContext.{ParentEntities}
+    .Include(o => o.{Entities})
     .Include(o => o.Members)
     .AsSplitQuery()
     .ToListAsync();
 
 // ❌ Single query (can cause performance issues with multiple includes)
-var organizations = await _dbContext.Organizations
-    .Include(o => o.Events)
+var {parentEntities} = await _dbContext.{ParentEntities}
+    .Include(o => o.{Entities})
     .Include(o => o.Members)
     .ToListAsync();
 ```

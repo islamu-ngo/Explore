@@ -1,22 +1,19 @@
-@using Explore.Blazor.Client.Clients
+@page "/settings"
+@using MudBlazor
 @using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Components
-@inject IUserService UserService
-@inject IImageStorageService ImageStorageService
-@inject ISnackbar Snackbar
-@inject NavigationManager Navigation
-@inject IDialogService DialogService
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
 
-<PageTitle>Settings</PageTitle>
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <MudText Typo="Typo.h4" GutterBottom="true">Settings</MudText>
 
-<MudContainer MaxWidth="MaxWidth.Medium" Class="settings">
-    <MudText Typo="Typo.h4" Class="mb-6">Account Settings</MudText>
-
-    @if (_isLoading)
+    @if (_loading)
     {
-        <div class="d-flex justify-center my-4">
-            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
-        </div>
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Class="d-block mx-auto" />
     }
     else if (_user == null)
     {
@@ -74,106 +71,3 @@
         </MudCard>
     }
 </MudContainer>
-
-@code {
-    private UserDto? _user;
-    private bool _isLoading = true;
-    private bool _isSaving = false;
-    private bool _success;
-    private MudForm _form = default!;
-
-    // Local image fields
-    private IBrowserFile? _selectedProfileImage;
-    private string? _profileImagePreview;
-
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadUser();
-    }
-
-    private void OnProfileImageSelected(IBrowserFile? file)
-    {
-        _selectedProfileImage = file;
-    }
-
-    private async Task LoadUser()
-    {
-        _isLoading = true;
-        try
-        {
-            _user = await UserService.GetCurrentUserAsync();
-            if (_user != null)
-            {
-                // Initialize the preview with the user's current profile picture if it exists.
-                // This assumes UserDto has a property like ProfilePictureUri.
-                // If not, this part needs adjustment based on how the current image URL is fetched.
-                // For now, we'll just ensure it's null if no new image is selected.
-                _profileImagePreview = null;
-            }
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error loading user: {ex.Message}", Severity.Error);
-        }
-        finally
-        {
-            _isLoading = false;
-        }
-    }
-
-    private async Task SaveSettings()
-    {
-        if (_user == null) return;
-
-        _isSaving = true;
-        try
-        {
-            Guid? profilePictureStorageId = null;
-
-            // Upload a new profile picture if one was selected
-            if (_selectedProfileImage != null)
-            {
-                var uploadResult = await ImageStorageService.UploadImageAndCreateRecordAsync(_selectedProfileImage);
-                if (uploadResult?.Success == true)
-                {
-                    profilePictureStorageId = uploadResult.StorageObjectId;
-                }
-                else
-                {
-                    Snackbar.Add(uploadResult?.ErrorMessage ?? "Failed to upload profile picture.", Severity.Error);
-                    _isSaving = false;
-                    return; // Stop if upload fails
-                }
-            }
-
-            var updateDto = new UpdateUserDto
-            {
-                Id = _user.Id,
-                FirstName = _user.FirstName,
-                LastName = _user.LastName,
-                Email = _user.Email,
-                Username = _user.Username,
-                ProfilePictureId = profilePictureStorageId
-            };
-
-            var result = await UserService.UpdateUserAsync(updateDto);
-            if (result?.Success == true)
-            {
-                Snackbar.Add("Settings saved successfully", Severity.Success);
-                await LoadUser(); // Refresh user data
-            }
-            else
-            {
-                Snackbar.Add(result?.Message ?? "Failed to save settings", Severity.Error);
-            }
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error saving settings: {ex.Message}", Severity.Error);
-        }
-        finally
-        {
-            _isSaving = false;
-        }
-    }
-}

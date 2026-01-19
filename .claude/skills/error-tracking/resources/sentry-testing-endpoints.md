@@ -1,27 +1,31 @@
 # Testing Sentry Integration
 
-This document provides example endpoints for testing the Sentry integration in the `Explore.API` project, allowing you to verify that errors and performance metrics are correctly being captured by Sentry.
+> **Project-Agnostic Sentry Testing Patterns**
+>
+> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../../docs/TEMPLATE_GLOSSARY.md).
+
+This document provides example endpoints for testing the Sentry integration in the `{Project}.API` project, allowing you to verify that errors and performance metrics are correctly being captured by Sentry.
 
 ---
 
 ## 1. API Test Endpoints
 
-These endpoints can be added temporarily to your `EventController` or a dedicated test controller to trigger specific Sentry events. **Remember to remove these endpoints before deploying to production.**
+These endpoints can be added temporarily to your `{Entity}Controller` or a dedicated test controller to trigger specific Sentry events. **Remember to remove these endpoints before deploying to production.**
 
-**File**: `Explore.API/Controllers/EventController.cs` (Temporary addition)
+**File**: `{Project}.API/Controllers/{Entity}Controller.cs` (Temporary addition)
 
 ```csharp
 using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Sentry; // Required for SentrySdk, SpanStatus, SentryLevel
+using Sentry;
 
-namespace Explore.API.Controllers;
+namespace {Project}.API.Controllers;
 
 [Route("api/v1/[controller]")]
 [ApiController]
-public class EventController : ControllerBase
+public class {Entity}Controller : ControllerBase
 {
     // ... existing constructor and methods ...
 
@@ -35,7 +39,6 @@ public class EventController : ControllerBase
     {
         try
         {
-            // Simulate an operation that causes an exception
             throw new InvalidOperationException("This is a test Sentry exception from the API!");
         }
         catch (Exception ex)
@@ -47,9 +50,9 @@ public class EventController : ControllerBase
                 scope.SetTag("endpoint", "sentry/test-error");
                 scope.User = new User { Id = "test-user-123", Email = "test@example.com", Username = "sentry-tester" };
                 scope.SetContext("request_info", new { RequestPath = HttpContext.Request.Path });
-                scope.Level = SentryLevel.Error; // Explicitly set level
+                scope.Level = SentryLevel.Error;
             });
-            throw; // Re-throw to ensure it's caught by the UseExceptionHandler middleware (if configured)
+            throw;
         }
     }
 
@@ -67,26 +70,25 @@ public class EventController : ControllerBase
 
         try
         {
-            // Simulate some work with a delay
-            await Task.Delay(1500); // 1.5 second delay
+            await Task.Delay(1500);
 
             // ✅ Add a child span for a specific part of the operation
             var dbSpan = transaction.StartChild("db.query", "simulate_db_call");
-            await Task.Delay(500); // Simulate a database call
-            dbSpan.Finish(SpanStatus.Ok); // Mark child span as successful
+            await Task.Delay(500);
+            dbSpan.Finish(SpanStatus.Ok);
 
-            transaction.Status = SpanStatus.Ok; // Mark transaction as successful
+            transaction.Status = SpanStatus.Ok;
             return Ok(new { message = "Sentry performance test completed successfully." });
         }
         catch (Exception ex)
         {
-            transaction.Status = SpanStatus.InternalError; // Mark transaction as an error
-            SentrySdk.CaptureException(ex, scope => scope.Transaction = transaction); // Link exception to transaction
+            transaction.Status = SpanStatus.InternalError;
+            SentrySdk.CaptureException(ex, scope => scope.Transaction = transaction);
             return StatusCode(500, new { message = "Sentry performance test failed.", error = ex.Message });
         }
         finally
         {
-            transaction.Finish(); // ✅ Always finish the transaction
+            transaction.Finish();
         }
     }
 }
@@ -101,7 +103,7 @@ Use `curl` or your preferred HTTP client to hit these endpoints. Replace `https:
 ### Test Error Capture
 
 ```bash
-curl -v https://localhost:7001/api/v1/event/sentry/test-error
+curl -v https://localhost:7001/api/v1/{entity}/sentry/test-error
 ```
 
 *Expected Sentry Outcome*: An error event should appear in your Sentry dashboard, with tags like `test:true` and `endpoint:sentry/test-error`, and the message "This is a test Sentry exception from the API!". If you have `UseExceptionHandler` configured, the client will receive a `ProblemDetails` response.
@@ -109,7 +111,7 @@ curl -v https://localhost:7001/api/v1/event/sentry/test-error
 ### Test Performance Tracking
 
 ```bash
-curl -v https://localhost:7001/api/v1/event/sentry/test-performance
+curl -v https://localhost:7001/api/v1/{entity}/sentry/test-performance
 ```
 
 *Expected Sentry Outcome*: A transaction named `test.performance` with operation `manual-api-endpoint` should appear in your Sentry dashboard's "Performance" section. The duration should be around 1.5 seconds, and you should see a child span named `db.query` (simulate_db_call) within it.

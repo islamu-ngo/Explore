@@ -1,6 +1,10 @@
 # Sentry Middleware Configuration (Conceptual)
 
-This document provides conceptual guidance on integrating Sentry into ASP.NET Core applications within the ISLAMU Event project. This integration aims to automatically capture exceptions, log messages, and collect performance data.
+> **Project-Agnostic Sentry Integration Patterns**
+>
+> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../../docs/TEMPLATE_GLOSSARY.md).
+
+This document provides conceptual guidance on integrating Sentry into ASP.NET Core applications. This integration aims to automatically capture exceptions, log messages, and collect performance data.
 
 ---
 
@@ -8,16 +12,16 @@ This document provides conceptual guidance on integrating Sentry into ASP.NET Co
 
 Sentry integration typically involves configuring the Sentry SDK early in your application's `Program.cs` file. This setup enables automatic error capturing and performance monitoring for your ASP.NET Core application.
 
-**File**: `Explore.API/Program.cs` (or `Explore.Blazor/Program.cs` for Blazor Server)
+**File**: `{Project}.API/Program.cs` (or `{Project}.Blazor/Program.cs` for Blazor Server)
 
 ```csharp
 // Example: Add Sentry NuGet packages
 // <PackageReference Include="Sentry.AspNetCore" Version="4.0.0" />
-// <PackageReference Include="Sentry.Extensions.Logging" Version="4.0.0" /> // If using ILogger
+// <PackageReference Include="Sentry.Extensions.Logging" Version="4.0.0" />
 // <PackageReference Include="Sentry.Serilog" Version="4.0.0" /> // If using Serilog
 
-using Sentry; // For SentrySdk, SentryLevel, SpanStatus
-using Sentry.AspNetCore; // For UseSentry
+using Sentry;
+using Sentry.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,29 +29,23 @@ var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseSentry(options =>
 {
     // Configure your DSN (Data Source Name) - this is crucial!
-    // Get this from your Sentry project settings.
     options.Dsn = builder.Configuration["Sentry:Dsn"];
 
-    // Set the application environment (e.g., "production", "development", "staging")
+    // Set the application environment
     options.Environment = builder.Environment.EnvironmentName;
 
     // Set the release version for better tracking in Sentry
-    // options.Release = "my-app@1.0.0"; // Consider using Assembly.GetEntryAssembly().GetName().Version.ToString()
+    // options.Release = "my-app@1.0.0";
 
     // Performance Monitoring configuration
-    // Sample rate for transactions (0.0 to 1.0) - e.g., 0.1 means 10% of requests are sampled
     options.TracesSampleRate = 0.1;
-    // Sample rate for profiling (0.0 to 1.0)
     options.ProfilesSampleRate = 0.1;
 
     // Optional: Enable automatic session tracking
     options.AutoSessionTracking = true;
 
-    // Optional: Enables Sentry to capture more global context (e.g., AppDomain exceptions)
+    // Optional: Enables Sentry to capture more global context
     options.IsGlobalModeEnabled = true;
-
-    // Optional: Set a maximum number of breadcrumbs to record. Default is 100.
-    // options.MaxBreadcrumbs = 50;
 
     // Optional: Custom filtering or data modification before sending to Sentry
     options.BeforeSend = (sentryEvent) =>
@@ -57,38 +55,19 @@ builder.WebHost.UseSentry(options =>
         {
             sentryEvent.Request.Headers.Remove("Authorization");
             sentryEvent.Request.Headers.Remove("Cookie");
-            // Add any other sensitive headers to remove
         }
-        // ✅ Add custom tags or context based on the event
-        // sentryEvent.SetTag("custom_tag", "value");
 
         return sentryEvent;
     };
-
-    // Optional: Custom filtering or modification for transactions
-    // options.BeforeSendTransaction = (transaction) => { /* ... */ return transaction; };
-
-    // Optional: If you want to filter out certain types of events or messages
-    // options.SetBeforeBreadcrumb((breadcrumb) => { /* ... */ return breadcrumb; });
-
-    // Optional: Set the minimum event level to send to Sentry
-    // options.MinimumEventLevel = LogLevel.Warning; // e.g., only send Warning and above
 });
 
 var app = builder.Build();
 
 // ✅ Add Sentry middleware EARLY in the pipeline for comprehensive tracking
-// This middleware captures unhandled exceptions and HTTP request information.
-app.UseSentryTracing(); // For performance monitoring (must be before UseRouting)
-app.UseSentryTracing().UseSentryRequestErrorCatching(); // Combines both
+app.UseSentryTracing();
+app.UseSentryTracing().UseSentryRequestErrorCatching();
 
 // ... rest of your application's middleware pipeline ...
-// app.UseHttpsRedirection();
-// app.UseStaticFiles();
-// app.UseRouting();
-// app.UseAuthentication();
-// app.UseAuthorization();
-// app.MapControllers();
 ```
 
 ---
@@ -100,7 +79,7 @@ For manual error capturing, adding custom context, or performance monitoring out
 ### Capturing Exceptions
 
 ```csharp
-using Sentry; // For SentrySdk, SentryLevel
+using Sentry;
 
 try
 {
@@ -114,12 +93,12 @@ catch (Exception ex)
     {
         // ✅ Add additional context to the error report
         scope.User = new User { Id = "user-123", Email = "user@example.com" };
-        scope.SetTag("feature", "event-creation");
+        scope.SetTag("feature", "{entity}-creation");
         scope.SetTag("tenant_id", "tenant-abc");
-        scope.SetContext("request_data", new { EventTitle = "My Event", UserAgent = "..." });
-        scope.Level = SentryLevel.Error; // Set custom severity level
+        scope.SetContext("request_data", new { Title = "My {Entity}", UserAgent = "..." });
+        scope.Level = SentryLevel.Error;
     });
-    throw; // Re-throw to maintain the application's normal error flow
+    throw;
 }
 ```
 
@@ -140,55 +119,53 @@ SentrySdk.CaptureMessage("Low disk space warning on server.", SentryLevel.Warnin
 For background jobs or specific code blocks where you want to track performance, you can create manual Sentry transactions and spans.
 
 ```csharp
-using Sentry; // For SentrySdk, SpanStatus
+using Sentry;
 
 public class BackgroundSyncService
 {
     public async Task SyncDataAsync()
     {
         // ✅ Start a new Sentry transaction for the background operation
-        var transaction = SentrySdk.StartTransaction("background.job.sync_events", "sync");
-        transaction.Description = "Synchronizing events from external API";
+        var transaction = SentrySdk.StartTransaction("background.job.sync_{entities}", "sync");
+        transaction.Description = "Synchronizing {entities} from external API";
 
         try
         {
             // ✅ Start a child span for a specific part of the operation
-            var fetchSpan = transaction.StartChild("http.client", "fetch_external_events");
+            var fetchSpan = transaction.StartChild("http.client", "fetch_external_{entities}");
             try
             {
-                // Simulate external API call
                 await Task.Delay(500);
-                fetchSpan.SetTag("http.url", "https://external.api/events");
+                fetchSpan.SetTag("http.url", "https://external.api/{entities}");
                 fetchSpan.SetTag("http.method", "GET");
             }
             finally
             {
-                fetchSpan.Finish(SpanStatus.Ok); // Finish the child span
+                fetchSpan.Finish(SpanStatus.Ok);
             }
 
-            var dbSpan = transaction.StartChild("db.query", "save_events_to_db");
+            var dbSpan = transaction.StartChild("db.query", "save_{entities}_to_db");
             try
             {
-                // Simulate database operation
                 await Task.Delay(800);
             }
             finally
             {
-                dbSpan.Finish(SpanStatus.Ok); // Finish the child span
+                dbSpan.Finish(SpanStatus.Ok);
             }
 
-            transaction.Status = SpanStatus.Ok; // Set transaction status to OK on success
+            transaction.Status = SpanStatus.Ok;
         }
         catch (Exception ex)
         {
-            transaction.Status = SpanStatus.InternalError; // Set transaction status to error
+            transaction.Status = SpanStatus.InternalError;
             transaction.SetTag("error", "true");
-            SentrySdk.CaptureException(ex, scope => scope.Transaction = transaction); // Link exception to transaction
+            SentrySdk.CaptureException(ex, scope => scope.Transaction = transaction);
             throw;
         }
         finally
         {
-            transaction.Finish(); // ✅ Finish the transaction
+            transaction.Finish();
         }
     }
 }
@@ -204,43 +181,43 @@ Sentry settings are typically managed through `appsettings.json`, allowing easy 
 {
   "Sentry": {
     "Dsn": "https://your-public-key@o000000.ingest.sentry.io/0000000",
-    "Environment": "Development", // Automatically overridden by builder.Environment.EnvironmentName
-    "Release": "1.0.0", // Optional: specify app version
-    "Debug": false, // Enables internal Sentry SDK logging
-    "DiagnosticLevel": "Error", // Minimum log level for Sentry's internal logging
-    "TracesSampleRate": 1.0, // Sample 100% of transactions in development/testing
-    "ProfilesSampleRate": 1.0, // Sample 100% of profiles in development/testing
-    "SendDefaultPii": false, // Do not send personally identifiable information by default
-    "AttachStackTraces": true // Attach stack traces to log messages
+    "Environment": "Development",
+    "Release": "1.0.0",
+    "Debug": false,
+    "DiagnosticLevel": "Error",
+    "TracesSampleRate": 1.0,
+    "ProfilesSampleRate": 1.0,
+    "SendDefaultPii": false,
+    "AttachStackTraces": true
   }
 }
 ```
 
 ---
 
-## 4. Nuget Packages
+## 4. NuGet Packages
 
 Ensure the necessary Sentry NuGet packages are installed in the relevant projects.
 
-### `Explore.API`
+### `{Project}.API`
 ```xml
 <PackageReference Include="Sentry.AspNetCore" Version="4.0.0" />
 <PackageReference Include="Sentry.Extensions.Logging" Version="4.0.0" />
 ```
 
-### `Explore.Blazor` (for Blazor Server)
+### `{Project}.Blazor` (for Blazor Server)
 ```xml
 <PackageReference Include="Sentry.AspNetCore" Version="4.0.0" />
 <PackageReference Include="Sentry.Extensions.Logging" Version="4.0.0" />
 ```
 
-### `Explore.Blazor.Client` (for Blazor WebAssembly)
+### `{Project}.Blazor.Client` (for Blazor WebAssembly)
 ```xml
 <PackageReference Include="Sentry.Blazor.WebAssembly" Version="4.0.0" />
 <PackageReference Include="Sentry.Extensions.Logging" Version="4.0.0" />
 ```
 
-### `Explore.Application` (Optional, if using `SentrySdk` for business logic exceptions)
+### `{Project}.Application` (Optional, if using `SentrySdk` for business logic exceptions)
 ```xml
 <PackageReference Include="Sentry" Version="4.0.0" />
 ```

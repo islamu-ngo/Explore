@@ -8,11 +8,15 @@ priority: critical
 
 # Clean Architecture Dependency Rules
 
-## 🎯 Purpose
+> **Project-Agnostic Clean Architecture Guidelines**
+>
+> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../docs/TEMPLATE_GLOSSARY.md).
+
+## Purpose
 
 This is a **CRITICAL GUARDRAIL** that enforces Clean Architecture's fundamental dependency rule: **dependencies flow inward only**. Violations are **BLOCKED** to prevent architectural degradation.
 
-## ⚡ When This Skill Activates
+## When This Skill Activates
 
 **Automatically BLOCKS when**:
 - Attempting to add wrong project references
@@ -22,18 +26,18 @@ This is a **CRITICAL GUARDRAIL** that enforces Clean Architecture's fundamental 
 **Triggered by**:
 - Keywords: "dependency", "reference", "architecture", "layer", "add project"
 - File patterns: Domain/**/*.cs, Application/**/*.cs
-- Content patterns: `using Explore.Infrastructure`, `using Microsoft.EntityFrameworkCore` in Domain
+- Content patterns: `using {Project}.Infrastructure`, `using Microsoft.EntityFrameworkCore` in Domain
 
-## 🚨 The Dependency Rule
+## The Dependency Rule
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│              ISLAMU EVENT ARCHITECTURE LAYERS                │
+│              CLEAN ARCHITECTURE LAYERS                       │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  ┌─────────────────────────────────────────────────────┐   │
 │  │              1. DOMAIN (Core)                       │   │
-│  │              Explore.Domain                         │   │
+│  │              {Project}.Domain                       │   │
 │  │              ↑ NO DEPENDENCIES                      │   │
 │  │  • Entities, Enums, Value Objects, Domain Events    │   │
 │  │  • Pure C# - No framework dependencies             │   │
@@ -42,7 +46,7 @@ This is a **CRITICAL GUARDRAIL** that enforces Clean Architecture's fundamental 
 │                         │ References                        │
 │  ┌─────────────────────────────────────────────────────┐   │
 │  │         2. APPLICATION (Use Cases)                  │   │
-│  │         Explore.Application                         │   │
+│  │         {Project}.Application                       │   │
 │  │         ↑ References: Domain ONLY                   │   │
 │  │  • CQRS Commands/Queries, DTOs, Interfaces          │   │
 │  │  • MediatR, FluentValidation, AutoMapper            │   │
@@ -51,25 +55,25 @@ This is a **CRITICAL GUARDRAIL** that enforces Clean Architecture's fundamental 
 │                         │ References                        │
 │  ┌─────────────────────────────────────────────────────┐   │
 │  │    3. INFRASTRUCTURE (Implementation)               │   │
-│  │    Explore.Persistence + Explore.Infrastructure     │   │
+│  │    {Project}.Persistence + {Project}.Infrastructure │   │
 │  │    ↑ References: Application, Domain                │   │
 │  │  • DbContext, Repositories, External APIs           │   │
-│  │  • EF Core, PostgreSQL, Email, File Storage         │   │
+│  │  • EF Core, Database Provider, Email, File Storage  │   │
 │  └─────────────────────────────────────────────────────┘   │
 │                         ▲                                   │
 │                         │ References                        │
 │  ┌─────────────────────────────────────────────────────┐   │
 │  │       4. PRESENTATION (Entry Points)                │   │
-│  │       Explore.API + Explore.Blazor                  │   │
+│  │       {Project}.API + {Project}.Blazor              │   │
 │  │       ↑ References: ALL (Composition Root)          │   │
 │  │  • Controllers, Pages, Dependency Registration      │   │
-│  │  • ASP.NET Core, MudBlazor, SignalR                 │   │
+│  │  • ASP.NET Core, Blazor, SignalR                    │   │
 │  └─────────────────────────────────────────────────────┘   │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## 📚 Resources
+## Resources
 
 | Resource | Description |
 |----------|-------------|
@@ -78,128 +82,128 @@ This is a **CRITICAL GUARDRAIL** that enforces Clean Architecture's fundamental 
 | [violation-examples.md](resources/violation-examples.md) | Common violations and error messages |
 | [fix-patterns.md](resources/fix-patterns.md) | How to fix violations using interfaces and DI |
 
-## ✅ Valid Dependency Examples
+## Valid Dependency Examples
 
 ```csharp
 // ✅ VALID: Application references Domain
-namespace Explore.Application.Features.Events.Commands;
+namespace {Project}.Application.Features.{Entities}.Commands;
 
-using Explore.Domain.Entities;  // ✅ OK - App can reference Domain
-using Explore.Domain.Enums;     // ✅ OK
-using MediatR;                  // ✅ OK - Framework dependency
+using {Project}.Domain.Entities;  // ✅ OK - App can reference Domain
+using {Project}.Domain.Enums;     // ✅ OK
+using MediatR;                    // ✅ OK - Framework dependency
 
 // ✅ VALID: Infrastructure references Application and Domain
-namespace Explore.Persistence.Repositories;
+namespace {Project}.Persistence.Repositories;
 
-using Explore.Application.Interfaces;  // ✅ OK - Implements interfaces
-using Explore.Domain.Entities;         // ✅ OK - Works with entities
-using Microsoft.EntityFrameworkCore;   // ✅ OK - Infrastructure can use EF Core
+using {Project}.Application.Interfaces;  // ✅ OK - Implements interfaces
+using {Project}.Domain.Entities;         // ✅ OK - Works with entities
+using Microsoft.EntityFrameworkCore;     // ✅ OK - Infrastructure can use EF Core
 
 // ✅ VALID: API references all layers
-namespace Explore.API.Controllers;
+namespace {Project}.API.Controllers;
 
-using Explore.Application.Features.Events.Commands;  // ✅ OK
-using Explore.Infrastructure.Services;               // ✅ OK
-using MediatR;                                        // ✅ OK
+using {Project}.Application.Features.{Entities}.Commands;  // ✅ OK
+using {Project}.Infrastructure.Services;                   // ✅ OK
+using MediatR;                                             // ✅ OK
 ```
 
-## ❌ BLOCKED Violations
+## BLOCKED Violations
 
 ```csharp
 // ❌ BLOCKED: Domain referencing ANYTHING
-namespace Explore.Domain.Entities;
+namespace {Project}.Domain.Entities;
 
-using Microsoft.EntityFrameworkCore;  // ❌ BLOCKED! Domain must be pure
-using Explore.Application.DTOs;       // ❌ BLOCKED! Dependency flows wrong way
+using Microsoft.EntityFrameworkCore;    // ❌ BLOCKED! Domain must be pure
+using {Project}.Application.DTOs;       // ❌ BLOCKED! Dependency flows wrong way
 
 // ❌ BLOCKED: Application referencing Infrastructure
-namespace Explore.Application.Features.Events.Queries;
+namespace {Project}.Application.Features.{Entities}.Queries;
 
-using Explore.Infrastructure.Persistence;  // ❌ BLOCKED! Use interfaces instead
-using Explore.API.Controllers;             // ❌ BLOCKED! Wrong direction
+using {Project}.Infrastructure.Persistence;  // ❌ BLOCKED! Use interfaces instead
+using {Project}.API.Controllers;             // ❌ BLOCKED! Wrong direction
 
 // ❌ BLOCKED: Application referencing Presentation
-namespace Explore.Application.Commands;
+namespace {Project}.Application.Commands;
 
 using Microsoft.AspNetCore.Mvc;  // ❌ BLOCKED! Application must be framework-agnostic
 ```
 
-## 🔧 Quick Fix: Use Dependency Inversion
+## Quick Fix: Use Dependency Inversion
 
 **Problem**: Application needs database access (Infrastructure)
 
 **❌ Wrong - Direct dependency**:
 ```csharp
-// In Explore.Application
-using Explore.Infrastructure.Persistence;  // ❌ BLOCKED
+// In {Project}.Application
+using {Project}.Infrastructure.Persistence;  // ❌ BLOCKED
 
-public class GetEventsHandler
+public class Get{Entities}Handler
 {
-    private readonly ApplicationDbContext _context;  // ❌ Concrete class
+    private readonly {DbContext} _context;  // ❌ Concrete class
 }
 ```
 
 **✅ Correct - Interface in Application, Implementation in Infrastructure**:
 ```csharp
 // Step 1: Define interface in Application layer
-// File: Explore.Application/Interfaces/IEventRepository.cs
-namespace Explore.Application.Interfaces;
+// File: {Project}.Application/Contracts/Persistence/I{Entity}Repository.cs
+namespace {Project}.Application.Contracts.Persistence;
 
-public interface IEventRepository
+public interface I{Entity}Repository
 {
-    Task<List<Event>> GetAllAsync(CancellationToken cancellationToken);
+    Task<List<{Entity}>> GetAllAsync(CancellationToken cancellationToken);
 }
 
 // Step 2: Use interface in Application
-// File: Explore.Application/Features/Events/Queries/GetEventListHandler.cs
-namespace Explore.Application.Features.Events.Queries;
+// File: {Project}.Application/Features/{Entities}/Handlers/Queries/Get{Entity}ListRequestHandler.cs
+namespace {Project}.Application.Features.{Entities}.Handlers.Queries;
 
-using Explore.Application.Interfaces;  // ✅ OK - Same layer
+using {Project}.Application.Contracts.Persistence;  // ✅ OK - Same layer
 
-public class GetEventListHandler : IRequestHandler<GetEventListQuery, List<EventDto>>
+public class Get{Entity}ListRequestHandler : IRequestHandler<Get{Entity}ListRequest, List<{Entity}ListDto>>
 {
-    private readonly IEventRepository _repository;  // ✅ Abstraction
+    private readonly I{Entity}Repository _repository;  // ✅ Abstraction
 
-    public GetEventListHandler(IEventRepository repository)
+    public Get{Entity}ListRequestHandler(I{Entity}Repository repository)
     {
         _repository = repository;
     }
 
-    public async Task<List<EventDto>> Handle(GetEventListQuery request, CancellationToken cancellationToken)
+    public async Task<List<{Entity}ListDto>> Handle(Get{Entity}ListRequest request, CancellationToken cancellationToken)
     {
-        var events = await _repository.GetAllAsync(cancellationToken);
-        return events.Select(e => e.ToDto()).ToList();
+        var {entities} = await _repository.GetAllAsync(cancellationToken);
+        return {entities}.Select(e => e.ToDto()).ToList();
     }
 }
 
 // Step 3: Implement in Infrastructure layer
-// File: Explore.Persistence/Repositories/EventRepository.cs
-namespace Explore.Persistence.Repositories;
+// File: {Project}.Persistence/Repositories/{Entity}Repository.cs
+namespace {Project}.Persistence.Repositories;
 
-using Explore.Application.Interfaces;      // ✅ OK - Implements interface
-using Explore.Domain.Entities;             // ✅ OK - Works with entities
-using Microsoft.EntityFrameworkCore;       // ✅ OK - Infrastructure can use EF Core
+using {Project}.Application.Contracts.Persistence;  // ✅ OK - Implements interface
+using {Project}.Domain.Entities;                    // ✅ OK - Works with entities
+using Microsoft.EntityFrameworkCore;                // ✅ OK - Infrastructure can use EF Core
 
-public class EventRepository : IEventRepository
+public class {Entity}Repository : I{Entity}Repository
 {
-    private readonly ApplicationDbContext _context;
+    private readonly {DbContext} _context;
 
-    public async Task<List<Event>> GetAllAsync(CancellationToken cancellationToken)
+    public async Task<List<{Entity}>> GetAllAsync(CancellationToken cancellationToken)
     {
-        return await _context.Events.ToListAsync(cancellationToken);
+        return await _context.{Entities}.ToListAsync(cancellationToken);
     }
 }
 
 // Step 4: Register in API/Blazor (Composition Root)
-// File: Explore.API/Program.cs or Explore.AppHost/Program.cs
-builder.Services.AddScoped<IEventRepository, EventRepository>();  // ✅ DI binding
+// File: {Project}.API/Program.cs
+builder.Services.AddScoped<I{Entity}Repository, {Entity}Repository>();  // ✅ DI binding
 ```
 
-## 🎓 Why This Matters
+## Why This Matters
 
 **Benefits of Clean Architecture**:
 1. **Testability**: Domain and Application can be tested without database
-2. **Flexibility**: Swap PostgreSQL for SQL Server without changing business logic
+2. **Flexibility**: Swap database providers without changing business logic
 3. **Maintainability**: Business logic isolated from framework changes
 4. **Team Scalability**: Clear boundaries for parallel development
 5. **Deployment Options**: Domain can be reused across API, Blazor, CLI, etc.
@@ -210,15 +214,7 @@ builder.Services.AddScoped<IEventRepository, EventRepository>();  // ✅ DI bind
 - Cannot reuse domain logic across projects
 - Circular dependencies cause build failures
 
-## 📖 Deep Dive
-
-For comprehensive guidance:
-- **Dependency Matrix**: [dependency-rules.md](resources/dependency-rules.md)
-- **Layer Responsibilities**: [layer-responsibilities.md](resources/layer-responsibilities.md)
-- **Common Violations**: [violation-examples.md](resources/violation-examples.md)
-- **Fix Patterns**: [fix-patterns.md](resources/fix-patterns.md)
-
-## 🔑 CRITICAL: Validator Manual Instantiation Pattern
+## CRITICAL: Validator Manual Instantiation Pattern
 
 ### Rule: Validators Must Be Instantiated Manually, NOT DI Injected
 
@@ -226,21 +222,21 @@ For comprehensive guidance:
 
 ```csharp
 // ❌ BLOCKED: DI injection of validators
-public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<Guid>>
+public class Create{Entity}CommandHandler : IRequestHandler<Create{Entity}Command, BaseCommandResponse<{IdType}>>
 {
-    private readonly IValidator<CreateEventDto> _validator;  // ❌ BLOCKED!
+    private readonly IValidator<Create{Entity}Dto> _validator;  // ❌ BLOCKED!
 
-    public CreateEventCommandHandler(
-        IEventRepository eventRepository,
+    public Create{Entity}CommandHandler(
+        I{Entity}Repository {entity}Repository,
         IMapper mapper,
-        IValidator<CreateEventDto> validator)  // ❌ BLOCKED - DI injection
+        IValidator<Create{Entity}Dto> validator)  // ❌ BLOCKED - DI injection
     {
         _validator = validator;  // ❌ BLOCKED
     }
 
-    public async Task<BaseCommandResponse<Guid>> Handle(...)
+    public async Task<BaseCommandResponse<{IdType}>> Handle(...)
     {
-        var validationResult = await _validator.ValidateAsync(request.EventDto);  // ❌ BLOCKED
+        var validationResult = await _validator.ValidateAsync(request.{Entity}Dto);  // ❌ BLOCKED
         ...
     }
 }
@@ -248,82 +244,68 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
 
 **✅ Correct Pattern**: Validator instantiated with dependencies passed to constructor
 
-**Real Example from Explore.Application/Features/Events/Handlers/Commands/CreateEventCommandHandler.cs:**
 ```csharp
 // ✅ CORRECT: Manual instantiation with dependencies
-namespace Explore.Application.Features.Events.Handlers.Commands;
+namespace {Project}.Application.Features.{Entities}.Handlers.Commands;
 
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
-using Explore.Application.Contracts.Persistence;
-using Explore.Application.DTOs.Event.Validators;
-using Explore.Application.Features.Events.Requests.Commands;
-using Explore.Application.Responses;
-using Explore.Domain;
+using {Project}.Application.Contracts.Persistence;
+using {Project}.Application.DTOs.{Entity}.Validators;
+using {Project}.Application.Features.{Entities}.Requests.Commands;
+using {Project}.Application.Responses;
+using {Project}.Domain;
 using MediatR;
 
-public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<Guid>>
+public class Create{Entity}CommandHandler : IRequestHandler<Create{Entity}Command, BaseCommandResponse<{IdType}>>
 {
-    private readonly IEventRepository _eventRepository;
-    private readonly IAudienceAgeRepository _audienceAgeRepository;
-    private readonly IAudienceGenderRepository _audienceGenderRepository;
-    private readonly IEventTypeRepository _eventTypeRepository;
-    private readonly IOrganizationRepository _organizationRepository;
-    private readonly IStorageObjectRepository _storageObjectRepository;
+    private readonly I{Entity}Repository _{entity}Repository;
+    private readonly I{RelatedEntity1}Repository _{relatedEntity1}Repository;
+    private readonly I{RelatedEntity2}Repository _{relatedEntity2}Repository;
     private readonly IMapper _mapper;
 
-    public CreateEventCommandHandler(
-        IEventRepository eventRepository, 
-        IAudienceAgeRepository audienceAgeRepository,
-        IAudienceGenderRepository audienceGenderRepository,
-        IEventTypeRepository eventTypeRepository,
-        IOrganizationRepository organizationRepository,
-        IStorageObjectRepository storageObjectRepository, 
+    public Create{Entity}CommandHandler(
+        I{Entity}Repository {entity}Repository,
+        I{RelatedEntity1}Repository {relatedEntity1}Repository,
+        I{RelatedEntity2}Repository {relatedEntity2}Repository,
         IMapper mapper)
     {
-        _eventRepository = eventRepository;
-        _audienceAgeRepository = audienceAgeRepository;
-        _audienceGenderRepository = audienceGenderRepository;
-        _eventTypeRepository = eventTypeRepository;
-        _organizationRepository = organizationRepository;
-        _storageObjectRepository = storageObjectRepository;
+        _{entity}Repository = {entity}Repository;
+        _{relatedEntity1}Repository = {relatedEntity1}Repository;
+        _{relatedEntity2}Repository = {relatedEntity2}Repository;
         _mapper = mapper;
     }
 
-    public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
+    public async Task<BaseCommandResponse<{IdType}>> Handle(Create{Entity}Command request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
+        var response = new BaseCommandResponse<{IdType}>();
 
         // ✅ CORRECT: Validator instantiated manually with all dependencies
-        var validator = new CreateEventDtoValidator(
-            _audienceAgeRepository, 
-            _audienceGenderRepository, 
-            _eventTypeRepository, 
-            _organizationRepository, 
-            _storageObjectRepository);
-        
-        var validationResult = await validator.ValidateAsync(request.EventDto, cancellationToken);
+        var validator = new Create{Entity}DtoValidator(
+            _{relatedEntity1}Repository,
+            _{relatedEntity2}Repository);
+
+        var validationResult = await validator.ValidateAsync(request.{Entity}Dto, cancellationToken);
 
         if (!validationResult.IsValid)
         {
             response.Success = false;
-            response.Message = "Event creation failed.";
+            response.Message = "{Entity} creation failed.";
             response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
             return response;
         }
 
         // Map DTO to Entity
-        var @event = _mapper.Map<Event>(request.EventDto);
-        @event.TotalViews = 0;  // Set non-mapped properties
+        var {entity} = _mapper.Map<{Entity}>(request.{Entity}Dto);
 
         // Save through repository
-        @event = await _eventRepository.Create(@event);
+        {entity} = await _{entity}Repository.Create({entity});
 
         response.Success = true;
-        response.Id = @event.Id;
-        response.Message = "Event created successfully.";
+        response.Id = {entity}.Id;
+        response.Message = "{Entity} created successfully.";
 
         return response;
     }
@@ -335,40 +317,29 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
 1. **Fine-grained dependency control**: Each validator receives specific repositories it needs
 2. **Prevents DI configuration issues**: No need to register validators in DI container
 3. **Simplifies testing**: Easy to create test validators with mocked repositories
-4. **Follows dbml-sync pattern**: Consistent with 45+ entity implementations
+4. **Follows established pattern**: Consistent across all entity implementations
 
 ### Validator Constructor Pattern
 
 Validators MUST accept repositories in constructor for FK validation.
 
-**Real Example from Explore.Application/DTOs/Event/Validators/CreateEventDtoValidator.cs:**
-
 ```csharp
-namespace Explore.Application.DTOs.Event.Validators;
+namespace {Project}.Application.DTOs.{Entity}.Validators;
 
 using FluentValidation;
-using Explore.Application.Contracts.Persistence;
+using {Project}.Application.Contracts.Persistence;
 
-public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
+public class Create{Entity}DtoValidator : AbstractValidator<Create{Entity}Dto>
 {
-    private readonly IAudienceAgeRepository _audienceAgeRepository;
-    private readonly IAudienceGenderRepository _audienceGenderRepository;
-    private readonly IEventTypeRepository _eventTypeRepository;
-    private readonly IOrganizationRepository _organizationRepository;
-    private readonly IStorageObjectRepository _storageObjectRepository;
+    private readonly I{RelatedEntity1}Repository _{relatedEntity1}Repository;
+    private readonly I{RelatedEntity2}Repository _{relatedEntity2}Repository;
 
-    public CreateEventDtoValidator(
-        IAudienceAgeRepository audienceAgeRepository,
-        IAudienceGenderRepository audienceGenderRepository,
-        IEventTypeRepository eventTypeRepository,
-        IOrganizationRepository organizationRepository,
-        IStorageObjectRepository storageObjectRepository)
+    public Create{Entity}DtoValidator(
+        I{RelatedEntity1}Repository {relatedEntity1}Repository,
+        I{RelatedEntity2}Repository {relatedEntity2}Repository)
     {
-        _audienceAgeRepository = audienceAgeRepository;
-        _audienceGenderRepository = audienceGenderRepository;
-        _eventTypeRepository = eventTypeRepository;
-        _organizationRepository = organizationRepository;
-        _storageObjectRepository = storageObjectRepository;
+        _{relatedEntity1}Repository = {relatedEntity1}Repository;
+        _{relatedEntity2}Repository = {relatedEntity2}Repository;
 
         // Standard validation rules
         RuleFor(x => x.Title)
@@ -380,47 +351,38 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
             .When(x => !string.IsNullOrEmpty(x.Description));
 
         // Foreign key validation with repository
-        RuleFor(x => x.AudienceAgeId)
-            .NotEmpty().WithMessage("Audience Age is required")
+        RuleFor(x => x.{RelatedEntity1}Id)
+            .NotEmpty().WithMessage("{RelatedEntity1} is required")
             .MustAsync(async (id, cancellation) =>
             {
-                var exists = await _audienceAgeRepository.Exists(id);
+                var exists = await _{relatedEntity1}Repository.Exists(id);
                 return exists;
             })
-            .WithMessage("Audience Age not found");
+            .WithMessage("{RelatedEntity1} not found");
 
-        RuleFor(x => x.EventTypeId)
-            .NotEmpty().WithMessage("Event Type is required")
-            .MustAsync(async (id, cancellation) =>
-            {
-                var exists = await _eventTypeRepository.Exists(id);
-                return exists;
-            })
-            .WithMessage("Event Type not found");
-
-        RuleFor(x => x.OrganizationId)
+        RuleFor(x => x.{RelatedEntity2}Id)
             .MustAsync(async (id, cancellation) =>
             {
                 if (!id.HasValue) return true;
-                return await _organizationRepository.Exists(id.Value);
+                return await _{relatedEntity2}Repository.Exists(id.Value);
             })
-            .When(x => x.OrganizationId.HasValue)
-            .WithMessage("Organization does not exist.");
-
-        // Optional FK validation
-        RuleFor(x => x.FeaturedImageId)
-            .MustAsync(async (id, cancellation) =>
-            {
-                if (!id.HasValue) return true;
-                var exists = await _storageObjectRepository.Exists(id.Value);
-                return exists;
-            })
-            .WithMessage("Featured Image not found");
+            .When(x => x.{RelatedEntity2}Id.HasValue)
+            .WithMessage("{RelatedEntity2} not found");
     }
 }
 ```
 
 ---
 
-**Enforcement Level**: 🚨 BLOCK (Violations are prevented)
+## Deep Dive
+
+For comprehensive guidance:
+- **Dependency Matrix**: [dependency-rules.md](resources/dependency-rules.md)
+- **Layer Responsibilities**: [layer-responsibilities.md](resources/layer-responsibilities.md)
+- **Common Violations**: [violation-examples.md](resources/violation-examples.md)
+- **Fix Patterns**: [fix-patterns.md](resources/fix-patterns.md)
+
+---
+
+**Enforcement Level**: BLOCK (Violations are prevented)
 **Override**: Add `@skip-architecture-check` comment in file (use sparingly)

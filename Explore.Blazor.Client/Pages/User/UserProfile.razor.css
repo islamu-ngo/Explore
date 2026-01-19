@@ -47,6 +47,7 @@
         rgba(0, 0, 0, 0.08),
         rgba(0, 0, 0, 0.18)
     );
+    pointer-events: none;
 }
 
 /* ===== Element: user-profile__header ===== */

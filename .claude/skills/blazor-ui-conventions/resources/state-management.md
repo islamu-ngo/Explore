@@ -1,6 +1,10 @@
 # State Management - Blazor Application
 
-This document provides a comprehensive overview of state management patterns and best practices for Blazor applications within the ISLAMU Event project. Effective state management is crucial for building responsive, scalable, and maintainable Blazor UIs.
+> **Project-Agnostic State Management Patterns**
+>
+> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../../docs/TEMPLATE_GLOSSARY.md).
+
+This document provides a comprehensive overview of state management patterns and best practices for Blazor applications. Effective state management is crucial for building responsive, scalable, and maintainable Blazor UIs.
 
 ---
 
@@ -11,7 +15,7 @@ Blazor offers several approaches to manage component state, each suited for diff
 | Approach | Use Case | Scope | Mutability | Examples |
 |----------|----------|-------|------------|----------|
 | **Component State** | Simple, isolated data within a single component. | Single component instance | Mutable | Counter, form input values |
-| **Parameters** | Passing data from a parent component to a child component. | Parent to immediate child | Read-only (child perspective) | Event data to a card component |
+| **Parameters** | Passing data from a parent component to a child component. | Parent to immediate child | Read-only (child perspective) | {Entity} data to a card component |
 | **EventCallback** | Notifying a parent component of events or changes from a child. | Child to immediate parent | N/A (event notification) | Button click, form submission |
 | **CascadingValue** | Sharing data down a deeply nested component hierarchy without prop-drilling. | Component tree | Read-only (typically) | Authentication state, theme settings |
 | **Scoped Services** | Sharing mutable state across multiple, unrelated components within the same user session (Blazor Server) or application instance (Blazor WebAssembly). | User session / App instance | Mutable | Filter criteria, shopping cart |
@@ -25,29 +29,29 @@ This is the most basic form of state management, where data is stored directly w
 
 ```razor
 @code {
-    private List<EventListDto> _events = new(); // Private field for component's data
+    private List<{Entity}ListDto> _{entities} = new(); // Private field for component's data
     private bool _isLoading = false;
     private string _searchTerm = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
         _isLoading = true;
-        // Fetch events
+        // Fetch {entities}
         _isLoading = false;
     }
 
     private void HandleSearch(string newSearchTerm)
     {
         _searchTerm = newSearchTerm;
-        // Re-filter events
+        // Re-filter {entities}
     }
 }
 ```
 
 **Best Practices**:
-*   ✅ Use private fields (often prefixed with `_`) for internal component state.
-*   ✅ Initialize collections (`new List<T>()`) to prevent null reference exceptions.
-*   ✅ Use nullable types (`?`) for optional data.
+*   Use private fields (often prefixed with `_`) for internal component state.
+*   Initialize collections (`new List<T>()`) to prevent null reference exceptions.
+*   Use nullable types (`?`) for optional data.
 
 ---
 
@@ -57,35 +61,35 @@ Parameters are used to pass data from a parent component to its direct child com
 
 **Parent Component Example**:
 ```razor
-<EventCard Event="@selectedEvent"
+<{Entity}Card {Entity}="@selected{Entity}"
            ShowDetails="true"
-           OnEventSelected="HandleEventSelected" /> @* OnEventSelected is an EventCallback *@
+           On{Entity}Selected="Handle{Entity}Selected" /> @* On{Entity}Selected is an EventCallback *@
 
 @code {
-    private EventDto? selectedEvent; // Data held by the parent
+    private {Entity}Dto? selected{Entity}; // Data held by the parent
 
-    private void HandleEventSelected(Guid eventId)
+    private void Handle{Entity}Selected({IdType} {entity}Id)
     {
         // Logic to update parent state based on child action
     }
 }
 ```
 
-**Child Component (`EventCard.razor`) Example**:
+**Child Component (`{Entity}Card.razor`) Example**:
 ```razor
 <MudCard>
     <MudCardContent>
-        <MudText Typo="Typo.h6">@Event.Title</MudText>
+        <MudText Typo="Typo.h6">@{Entity}.Title</MudText>
         @if (ShowDetails)
         {
-            <MudText Typo="Typo.body2">@Event.Description</MudText>
+            <MudText Typo="Typo.body2">@{Entity}.Description</MudText>
         }
     </MudCardContent>
 </MudCard>
 
 @code {
     [Parameter] // Marks this property as a parameter
-    public EventDto Event { get; set; } = null!; // Parent passes Event object
+    public {Entity}Dto {Entity} { get; set; } = null!; // Parent passes {Entity} object
 
     [Parameter]
     public bool ShowDetails { get; set; } // Parent passes a boolean flag
@@ -122,23 +126,23 @@ Parameters are used to pass data from a parent component to its direct child com
 @* Child Component *@
 @code {
     [Parameter]
-    public EventCallback<Guid> OnEventDeleted { get; set; } // Pass a Guid (eventId) to parent
+    public EventCallback<{IdType}> On{Entity}Deleted { get; set; } // Pass a {IdType} ({entity}Id) to parent
 
-    private async Task DeleteEvent()
+    private async Task Delete{Entity}()
     {
         // ... deletion logic ...
-        await OnEventDeleted.InvokeAsync(eventId); // Notify parent with the deleted event's ID
+        await On{Entity}Deleted.InvokeAsync({entity}Id); // Notify parent with the deleted {entity}'s ID
     }
 }
 
 @* Parent Component *@
-<EventList OnEventDeleted="HandleEventDeleted" />
+<{Entity}List On{Entity}Deleted="Handle{Entity}Deleted" />
 
 @code {
-    private async Task HandleEventDeleted(Guid eventId)
+    private async Task Handle{Entity}Deleted({IdType} {entity}Id)
     {
-        Snackbar.Add($"Event {eventId} deleted successfully", Severity.Success);
-        await LoadEvents(); // Parent reloads its list of events
+        Snackbar.Add($"{Entity} {{entity}Id} deleted successfully", Severity.Success);
+        await Load{Entities}(); // Parent reloads its list of {entities}
     }
 }
 ```
@@ -196,7 +200,7 @@ Parameters are used to pass data from a parent component to its direct child com
 }
 ```
 
-### ISLAMU Event Specific Pattern - Theme Management
+### Theme Management Pattern
 
 The application's dark/light theme setting is cascaded from `App.razor` based on a cookie, then consumed in `MainLayout.razor`.
 
@@ -255,25 +259,25 @@ Scoped services are excellent for managing shared, mutable state that needs to p
 ### Create a State Service
 
 ```csharp
-// Services/EventStateService.cs
+// Services/{Entity}StateService.cs
 using System;
 using System.Collections.Generic;
 
-public class EventStateService
+public class {Entity}StateService
 {
-    private Guid? _selectedEventId; // The shared state
+    private {IdType}? _selected{Entity}Id; // The shared state
 
     // Event to notify subscribers when state changes
     public event Action? OnChange;
 
-    public Guid? SelectedEventId
+    public {IdType}? Selected{Entity}Id
     {
-        get => _selectedEventId;
+        get => _selected{Entity}Id;
         set
         {
-            if (_selectedEventId != value) // Only update if value changed
+            if (_selected{Entity}Id != value) // Only update if value changed
             {
-                _selectedEventId = value;
+                _selected{Entity}Id = value;
                 NotifyStateChanged(); // Notify subscribers
             }
         }
@@ -285,47 +289,47 @@ public class EventStateService
 
 ### Register the Service
 
-Register scoped services in `Program.cs` for both `Explore.Blazor` (Server) and `Explore.Blazor.Client` (WebAssembly).
+Register scoped services in `Program.cs` for both `{Project}.Blazor` (Server) and `{Project}.Blazor.Client` (WebAssembly).
 
 **`Program.cs` (Blazor Server or WASM)**:
 ```csharp
-builder.Services.AddScoped<EventStateService>();
+builder.Services.AddScoped<{Entity}StateService>();
 ```
 
 ### Use the Service in Components
 
 **Component A (Sets State)**:
 ```razor
-@inject EventStateService EventState // Inject the service
+@inject {Entity}StateService {Entity}State // Inject the service
 
-<MudButton OnClick="SelectEvent">Select This Event</MudButton>
+<MudButton OnClick="Select{Entity}">Select This {Entity}</MudButton>
 
 @code {
-    [Parameter] public Guid EventId { get; set; }
+    [Parameter] public {IdType} {Entity}Id { get; set; }
 
-    private void SelectEvent()
+    private void Select{Entity}()
     {
-        EventState.SelectedEventId = EventId; // Update the shared state
+        {Entity}State.Selected{Entity}Id = {Entity}Id; // Update the shared state
     }
 }
 ```
 
 **Component B (Reacts to State)**:
 ```razor
-@inject EventStateService EventState
+@inject {Entity}StateService {Entity}State
 @implements IDisposable // Implement IDisposable for event cleanup
 
-<MudText Typo="Typo.h6">Currently Selected Event: @EventState.SelectedEventId</MudText>
+<MudText Typo="Typo.h6">Currently Selected {Entity}: @{Entity}State.Selected{Entity}Id</MudText>
 
 @code {
     protected override void OnInitialized()
     {
-        EventState.OnChange += StateHasChanged; // Subscribe to state changes, force re-render
+        {Entity}State.OnChange += StateHasChanged; // Subscribe to state changes, force re-render
     }
 
     public void Dispose()
     {
-        EventState.OnChange -= StateHasChanged; // ✅ Unsubscribe to prevent memory leaks
+        {Entity}State.OnChange -= StateHasChanged; // Unsubscribe to prevent memory leaks
     }
 }
 ```
@@ -335,43 +339,43 @@ builder.Services.AddScoped<EventStateService>();
 Services can also encapsulate logic for fetching or updating state using `IMediator`.
 
 ```csharp
-// Services/OrganizationStateService.cs
+// Services/{ParentEntity}StateService.cs
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using MediatR;
-using Explore.Application.DTOs.Organization; // Assume this DTO exists
-using Explore.Application.Features.Organizations.Requests.Queries; // Assume this query exists
+using {Project}.Application.DTOs.{ParentEntity};
+using {Project}.Application.Features.{ParentEntities}.Requests.Queries;
 
-public class OrganizationStateService
+public class {ParentEntity}StateService
 {
     private readonly IMediator _mediator;
-    private List<OrganizationDto> _organizations = new();
+    private List<{ParentEntity}Dto> _{parentEntities} = new();
     private bool _isLoaded;
 
-    public OrganizationStateService(IMediator mediator)
+    public {ParentEntity}StateService(IMediator mediator)
     {
         _mediator = mediator;
     }
 
     public event Action? OnChange;
 
-    public IReadOnlyList<OrganizationDto> Organizations => _organizations.AsReadOnly(); // Read-only access
+    public IReadOnlyList<{ParentEntity}Dto> {ParentEntities} => _{parentEntities}.AsReadOnly(); // Read-only access
 
-    public async Task LoadOrganizationsAsync()
+    public async Task Load{ParentEntities}Async()
     {
         if (_isLoaded) return; // Load only once per session/instance
 
-        var request = new GetOrganizationListRequest();
-        _organizations = await _mediator.Send(request);
+        var request = new Get{ParentEntity}ListRequest();
+        _{parentEntities} = await _mediator.Send(request);
         _isLoaded = true;
         NotifyStateChanged();
     }
 
-    public async Task RefreshOrganizationsAsync()
+    public async Task Refresh{ParentEntities}Async()
     {
         _isLoaded = false; // Force reload
-        await LoadOrganizationsAsync();
+        await Load{ParentEntities}Async();
     }
 
     private void NotifyStateChanged() => OnChange?.Invoke();
@@ -406,7 +410,7 @@ builder.Services.AddSingleton<ApplicationConfigService>();
 <MudText>App Version: @Config.AppVersion</MudText>
 ```
 
-**⚠️ Warning**: In Blazor Server, a singleton service is shared across *all users*. Any mutable state in a singleton will be visible and modifiable by every connected user, potentially leading to critical bugs and security vulnerabilities. Use `AddScoped` for per-user state.
+**Warning**: In Blazor Server, a singleton service is shared across *all users*. Any mutable state in a singleton will be visible and modifiable by every connected user, potentially leading to critical bugs and security vulnerabilities. Use `AddScoped` for per-user state.
 
 ---
 
@@ -418,18 +422,18 @@ The parent component holds the shared state and passes it down to children via p
 
 ```razor
 @* Parent Component *@
-<EventList Events="@_events" OnEventSelected="HandleSelection" />
-<EventDetails Event="@_selectedEvent" />
+<{Entity}List {Entities}="@_{entities}" On{Entity}Selected="HandleSelection" />
+<{Entity}Details {Entity}="@_selected{Entity}" />
 
 @code {
-    private List<EventListDto> _events = new();
-    private EventDto? _selectedEvent;
+    private List<{Entity}ListDto> _{entities} = new();
+    private {Entity}Dto? _selected{Entity};
 
-    private async Task HandleSelection(Guid eventId)
+    private async Task HandleSelection({IdType} {entity}Id)
     {
-        // Parent fetches details and updates state, which re-renders EventDetails
-        var request = new GetEventDetailRequest { Id = eventId };
-        _selectedEvent = await Mediator.Send(request);
+        // Parent fetches details and updates state, which re-renders {Entity}Details
+        var request = new Get{Entity}DetailRequest { Id = {entity}Id };
+        _selected{Entity} = await Mediator.Send(request);
     }
 }
 ```
@@ -440,20 +444,20 @@ A scoped service holds the shared state, and components inject the service to re
 
 ```csharp
 // Component A (Publishes change)
-@inject EventStateService State
+@inject {Entity}StateService State
 
-<MudButton OnClick="Select">Select Event</MudButton>
+<MudButton OnClick="Select">Select {Entity}</MudButton>
 
 @code {
-    [Parameter] public Guid EventId { get; set; }
-    private void Select() => State.SelectedEventId = EventId;
+    [Parameter] public {IdType} {Entity}Id { get; set; }
+    private void Select() => State.Selected{Entity}Id = {Entity}Id;
 }
 
 // Component B (Subscribes to change)
-@inject EventStateService State
+@inject {Entity}StateService State
 @implements IDisposable
 
-<MudText>Currently Selected Event: @State.SelectedEventId</MudText>
+<MudText>Currently Selected {Entity}: @State.Selected{Entity}Id</MudText>
 
 @code {
     protected override void OnInitialized() => State.OnChange += StateHasChanged;
@@ -474,10 +478,10 @@ Blazor provides robust built-in mechanisms for managing user authentication and 
     <AuthorizeView>
         <Authorized>
             <MudText>Welcome, @context.User.Identity?.Name!</MudText>
-            <MudButton OnClick="CreateEvent">Create Event</MudButton>
+            <MudButton OnClick="Create{Entity}">Create {Entity}</MudButton>
         </Authorized>
         <NotAuthorized>
-            <MudButton Href="/login">Login to Create Events</MudButton>
+            <MudButton Href="/login">Login to Create {Entities}</MudButton>
         </NotAuthorized>
         <Authorizing>
             <MudProgressCircular Indeterminate="true" Size="Size.Small" /> Loading authentication...
@@ -506,7 +510,7 @@ Blazor provides robust built-in mechanisms for managing user authentication and 
         {
             _currentUser = new UserDto
             {
-                Id = Guid.TryParse(user.FindFirst("sub")?.Value, out var id) ? id : Guid.Empty,
+                Id = {IdType}.TryParse(user.FindFirst("sub")?.Value, out var id) ? id : default,
                 Email = user.FindFirst("email")?.Value ?? string.Empty,
                 Name = user.Identity.Name ?? string.Empty,
                 // Extract other claims as needed
@@ -519,9 +523,9 @@ Blazor provides robust built-in mechanisms for managing user authentication and 
 ### Role-Based Authorization
 
 ```razor
-<AuthorizeView Roles="Admin,Organizer"> @* Only visible to users with Admin OR Organizer role *@
+<AuthorizeView Roles="Admin,{ParentEntity}Manager"> @* Only visible to users with Admin OR {ParentEntity}Manager role *@
     <Authorized>
-        <MudButton>Delete Event</MudButton>
+        <MudButton>Delete {Entity}</MudButton>
     </Authorized>
     <NotAuthorized>
         <MudText Color="Color.Error">Access Denied: Insufficient Permissions</MudText>

@@ -99,10 +99,42 @@
    Center navigation links container
    ======================================== */
 .navbar__links {
-    flex: 1;
+    flex: 0 0 auto; /* Stop it from growing to make space for search */
     display: flex;
     justify-content: center;
     gap: 6px;
+}
+
+/* ========================================
+   Element: navbar__search
+   Global Search in Navbar
+   ======================================== */
+.navbar__search {
+    flex: 1;
+    max-width: 500px; /* Constrain search width */
+    margin: 0 24px;
+    display: flex;
+    justify-content: center;
+}
+
+/* Element: navbar__search-input */
+::deep .navbar__search-input .mud-input-control {
+    margin: 0 !important;
+}
+
+::deep .navbar__search-input .mud-input-outlined-border {
+    border-radius: 999px !important;
+    background-color: color-mix(in srgb, var(--mud-palette-surface) 50%, transparent);
+    transition: all 0.2s ease;
+}
+
+::deep .navbar__search-input .mud-input-control:hover .mud-input-outlined-border {
+    background-color: var(--mud-palette-surface);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+::deep .navbar__search-input .mud-input-slot {
+    padding-inline: 16px !important;
 }
 
 /* Element: navbar__link */

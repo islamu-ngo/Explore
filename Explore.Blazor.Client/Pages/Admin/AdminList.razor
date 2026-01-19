@@ -1,14 +1,9 @@
+@page "/admin"
 @using MudBlazor
-@using Explore.Blazor.Client.Clients;
-@using Explore.Blazor.Client.Services
-@using Microsoft.AspNetCore.Components
-@using Microsoft.Extensions.Logging
-@inject IDialogService DialogService
-@inject ISnackbar Snackbar
-@inject NavigationManager Nav
-@inject IAdminService AdminService
-@inject IUserService UserService
-@inject ILogger<AdminList> Logger
+@using Explore.Blazor.Client.Components.Admin
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin")]
+
 <div class="admin-list">
 
     <!-- HERO -->
@@ -288,16 +283,36 @@
                          Border="true"
                          ApplyEffectsToContainer="true">
                     <MudTabPanel Text="@($"All ({_organizationRequests.Count})")">
-                        @TableMarkup(GetFilteredAndSorted(null))
+                        <AdminOrganizationTable Items="GetFilteredAndSorted(null)"
+                                                OnApprove="Approve"
+                                                OnReject="Reject"
+                                                OnRevert="RevertToPending"
+                                                OnViewDetails="ViewDetails"
+                                                OnClearFilters="ClearFilters" />
                     </MudTabPanel>
                     <MudTabPanel Text="@($"Pending ({PendingCount})")">
-                        @TableMarkup(GetFilteredAndSorted(RequestStatus.Pending))
+                        <AdminOrganizationTable Items="GetFilteredAndSorted(RequestStatus.Pending)"
+                                                OnApprove="Approve"
+                                                OnReject="Reject"
+                                                OnRevert="RevertToPending"
+                                                OnViewDetails="ViewDetails"
+                                                OnClearFilters="ClearFilters" />
                     </MudTabPanel>
                     <MudTabPanel Text="@($"Approved ({ApprovedCount})")">
-                        @TableMarkup(GetFilteredAndSorted(RequestStatus.Approved))
+                        <AdminOrganizationTable Items="GetFilteredAndSorted(RequestStatus.Approved)"
+                                                OnApprove="Approve"
+                                                OnReject="Reject"
+                                                OnRevert="RevertToPending"
+                                                OnViewDetails="ViewDetails"
+                                                OnClearFilters="ClearFilters" />
                     </MudTabPanel>
                     <MudTabPanel Text="@($"Rejected ({RejectedCount})")">
-                        @TableMarkup(GetFilteredAndSorted(RequestStatus.Rejected))
+                        <AdminOrganizationTable Items="GetFilteredAndSorted(RequestStatus.Rejected)"
+                                                OnApprove="Approve"
+                                                OnReject="Reject"
+                                                OnRevert="RevertToPending"
+                                                OnViewDetails="ViewDetails"
+                                                OnClearFilters="ClearFilters" />
                     </MudTabPanel>
                 </MudTabs>
             </MudPaper>
@@ -305,420 +320,3 @@
     }
 
 </div>
-
-@code {
-    // Status mapping from API to local enum
-    private enum RequestStatus { Pending = 1, Approved = 2, Rejected = 3 }
-
-    private ICollection<OrganizationListDto> _organizationRequests = new List<OrganizationListDto>();
-    private string _search = string.Empty;
-    private int _activeTab = 0;
-    private bool _isLoading = true;
-    private string? _errorMessage;
-    private HashSet<RequestStatus> _selectedStatuses = new();
-    private enum SortOption { OldestFirst, NewestFirst, Name, Status }
-    private SortOption _sort = SortOption.OldestFirst;
-
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadOrganizationRequests();
-    }
-
-    private async Task LoadOrganizationRequests()
-    {
-        _isLoading = true;
-        _errorMessage = null;
-
-        try
-        {
-            Logger.LogDebug("Loading organizations from API");
-            var tempOrgs = await AdminService.GetOrganizationRequestsAsync();
-
-            if (tempOrgs != null)
-            {
-                _organizationRequests = tempOrgs;
-                Logger.LogDebug("Loaded {OrganizationCount} organizations", _organizationRequests.Count);
-            }
-            else
-            {
-                _organizationRequests = new List<OrganizationListDto>();
-            }
-        }
-        catch (Exception ex)
-        {
-            _errorMessage = $"Failed to load organizations: {ex.Message}";
-            Logger.LogError(ex, "Failed to load organizations");
-            Snackbar.Add(_errorMessage, Severity.Error);
-            _organizationRequests = new List<OrganizationListDto>();
-        }
-        finally
-        {
-            _isLoading = false;
-        }
-    }
-
-    private int PendingCount  => _organizationRequests.Count(r => r.ApprovalStatusId == (int)RequestStatus.Pending);
-    private int ApprovedCount => _organizationRequests.Count(r => r.ApprovalStatusId == (int)RequestStatus.Approved);
-    private int RejectedCount => _organizationRequests.Count(r => r.ApprovalStatusId == (int)RequestStatus.Rejected);
-
-    // filter + sorteer (oudste bovenaan)
-    private IEnumerable<OrganizationListDto> GetFilteredAndSorted(RequestStatus? status)
-    {
-        IEnumerable<OrganizationListDto> q = _organizationRequests;
-
-        if (status.HasValue)
-            q = q.Where(r => r.ApprovalStatusId == (int)status.Value);
-
-        // apply chip filters if any selected
-        if (_selectedStatuses.Count > 0)
-        {
-            var allowed = _selectedStatuses.Select(s => (int)s).ToHashSet();
-            q = q.Where(r => allowed.Contains(r.ApprovalStatusId));
-        }
-
-        if (!string.IsNullOrWhiteSpace(_search))
-        {
-            var s = _search.Trim().ToLowerInvariant();
-            q = q.Where(r =>
-                (r.FullName?.ToLowerInvariant().Contains(s) ?? false) ||
-                (r.Id.ToString().ToLowerInvariant().Contains(s)) ||
-                (r.Email?.ToLowerInvariant().Contains(s) ?? false) ||
-                (r.City?.ToLowerInvariant().Contains(s) ?? false) ||
-                (r.Country?.ToLowerInvariant().Contains(s) ?? false));
-        }
-
-        // sorting
-        q = _sort switch
-        {
-            SortOption.NewestFirst => q.OrderByDescending(r => r.CreatedAt),
-            SortOption.Name        => q.OrderBy(r => r.FullName),
-            SortOption.Status      => q.OrderBy(r => r.ApprovalStatusId),
-            _ => q.OrderBy(r => r.CreatedAt)
-        };
-
-        return q;
-    }
-
-    // ====== TABLE (UI modernisée, logique identique) ======
-    private RenderFragment TableMarkup(IEnumerable<OrganizationListDto> items) => @<div>
-        <MudPaper Class="admin-list__table" Elevation="0" Style="margin-top:12px;">
-            <MudTable Items="items" Hover="true" Breakpoint="Breakpoint.Sm" Dense="true">
-                <HeaderContent>
-                    <MudTh style="width:190px">Submitted</MudTh>
-                    <MudTh style="width:150px">ID</MudTh>
-                    <MudTh>Organization</MudTh>
-                    <MudTh style="width:170px">Status</MudTh>
-                    <MudTh style="text-align:center; width:170px">Actions</MudTh>
-                    <MudTh style="text-align:center; width:140px">Details</MudTh>
-                </HeaderContent>
-
-                <RowTemplate>
-                    <MudTd DataLabel="Submitted">
-                        <MudText Typo="Typo.body2" Style="font-weight:650;">
-                            @context.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
-                        </MudText>
-                        <MudText Typo="Typo.caption" Class="muted">@GetRelative(context.CreatedAt)</MudText>
-                    </MudTd>
-
-                    <MudTd DataLabel="ID">
-                        <MudText Class="admin-list__id">@context.Id.ToString()[..8]…</MudText>
-                    </MudTd>
-
-                    <MudTd DataLabel="Organization">
-                        <div class="admin-list__org-row">
-                            <MudAvatar Size="Size.Medium" Variant="Variant.Filled" Style="border-radius:14px;">
-                                <MudIcon Icon="@Icons.Material.Filled.Business" />
-                            </MudAvatar>
-
-                            <div class="admin-list__org-meta">
-                                <MudText Typo="Typo.subtitle2" Style="font-weight:750;">
-                                    @context.FullName
-                                </MudText>
-                                <MudText Typo="Typo.caption" Class="admin-list__muted">
-                                    @(context.City ?? "Unknown"), @(context.Country ?? "Unknown") • @context.Email
-                                </MudText>
-                            </div>
-                        </div>
-                    </MudTd>
-
-                    <MudTd DataLabel="Status">
-                        <MudChip T="string"
-                                 Color="@StatusColor((RequestStatus)context.ApprovalStatusId)"
-                                 Variant="Variant.Filled"
-                                 Class="admin-list__status-pill">
-                            @context.StatusTypeFullName
-                        </MudChip>
-                    </MudTd>
-
-                    <MudTd DataLabel="Actions" Style="text-align:center">
-                        <div class="admin-list__actions">
-                            @if (context.ApprovalStatusId == (int)RequestStatus.Pending)
-                            {
-                                <MudTooltip Text="Approve">
-                                    <MudIconButton Icon="@Icons.Material.Filled.CheckCircle"
-                                                   Color="Color.Success"
-                                                   Variant="Variant.Filled"
-                                                   OnClick="@(() => Approve(context))"
-                                                   Style="border-radius:14px;" />
-                                </MudTooltip>
-                                <MudTooltip Text="Reject">
-                                    <MudIconButton Icon="@Icons.Material.Filled.Cancel"
-                                                   Color="Color.Error"
-                                                   Variant="Variant.Filled"
-                                                   OnClick="@(() => Reject(context))"
-                                                   Style="border-radius:14px;" />
-                                </MudTooltip>
-                            }
-                            else if (context.ApprovalStatusId == (int)RequestStatus.Approved)
-                            {
-                                <MudTooltip Text="Revoke approval">
-                                    <MudIconButton Icon="@Icons.Material.Filled.Restore"
-                                                   Color="Color.Warning"
-                                                   Variant="Variant.Filled"
-                                                   OnClick="@(() => RevertToPending(context))"
-                                                   Style="border-radius:14px;" />
-                                </MudTooltip>
-                            }
-                            else if (context.ApprovalStatusId == (int)RequestStatus.Rejected)
-                            {
-                                <MudTooltip Text="Move back to pending">
-                                    <MudIconButton Icon="@Icons.Material.Filled.Restore"
-                                                   Color="Color.Info"
-                                                   Variant="Variant.Filled"
-                                                   OnClick="@(() => RevertToPending(context))"
-                                                   Style="border-radius:14px;" />
-                                </MudTooltip>
-                            }
-                        </div>
-                    </MudTd>
-
-                    <MudTd DataLabel="Details" Style="text-align:center">
-                        <MudButton Variant="Variant.Filled"
-                                   Color="Color.Primary"
-                                   Size="Size.Small"
-                                   Class="admin-list__details-btn"
-                                   StartIcon="@Icons.Material.Filled.Visibility"
-                                   OnClick="@(() => Nav.NavigateTo($"/admin/organization/{context.Id}"))">
-                            Details
-                        </MudButton>
-                    </MudTd>
-                </RowTemplate>
-
-                <NoRecordsContent>
-                    <div class="admin-list__empty">
-                        <MudIcon Icon="@Icons.Material.Filled.Inbox" Size="Size.Large" />
-                        <MudText Typo="Typo.h6" Style="margin-top:10px; font-weight:800;">No matching requests</MudText>
-                        <MudText Typo="Typo.body2" Class="admin-list__muted">Try clearing filters or changing your search.</MudText>
-                        <MudButton Variant="Variant.Outlined"
-                                   Color="Color.Primary"
-                                   OnClick="ClearFilters"
-                                   Style="margin-top:12px; border-radius:999px;">
-                            Clear filters
-                        </MudButton>
-                    </div>
-                </NoRecordsContent>
-            </MudTable>
-        </MudPaper>
-
-        <!-- Mobile cards view -->
-        <div class="admin-list__mobile" style="margin-top:12px;">
-            @foreach (var org in items)
-            {
-                <div class="admin-list__card">
-                    <div class="admin-list__card-header">
-                        <div class="admin-list__card-title">
-                            <MudAvatar Size="Size.Small" Variant="Variant.Filled" Style="border-radius:10px;">
-                                <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" />
-                            </MudAvatar>
-                            <div>
-                                <MudText Typo="Typo.body2" Style="font-weight:700;">@org.FullName</MudText>
-                                <div class="admin-list__card-meta">
-                                    @(org.City ?? "Unknown"), @(org.Country ?? "Unknown")
-                                </div>
-                            </div>
-                        </div>
-                        <div class="admin-list__card-status">
-                            <MudChip T="string"
-                                     Color="@StatusColor((RequestStatus)org.ApprovalStatusId)"
-                                     Variant="Variant.Filled"
-                                     Style="font-size:0.75rem; padding:2px 8px !important; border-radius:6px !important;">
-                                @org.StatusTypeFullName
-                            </MudChip>
-                        </div>
-                    </div>
-
-                    <div class="admin-list__card-body">
-                        <div class="admin-list__card-row">
-                            <span class="admin-list__card-label">Email:</span>
-                            <span class="admin-list__card-value">@org.Email</span>
-                        </div>
-                        <div class="admin-list__card-row">
-                            <span class="admin-list__card-label">ID:</span>
-                            <span class="admin-list__card-value">@org.Id.ToString()[..8]…</span>
-                        </div>
-                        <div class="admin-list__card-row">
-                            <span class="admin-list__card-label">Submitted:</span>
-                            <span class="admin-list__card-value">@GetRelative(org.CreatedAt)</span>
-                        </div>
-                    </div>
-
-                    <div class="admin-list__card-actions">
-                        @if (org.ApprovalStatusId == (int)RequestStatus.Pending)
-                        {
-                            <MudButton Variant="Variant.Filled"
-                                       Color="Color.Success"
-                                       Size="Size.Small"
-                                       StartIcon="@Icons.Material.Filled.CheckCircle"
-                                       OnClick="@(() => Approve(org))">
-                                Approve
-                            </MudButton>
-                            <MudButton Variant="Variant.Filled"
-                                       Color="Color.Error"
-                                       Size="Size.Small"
-                                       StartIcon="@Icons.Material.Filled.Cancel"
-                                       OnClick="@(() => Reject(org))">
-                                Reject
-                            </MudButton>
-                        }
-                        else if (org.ApprovalStatusId == (int)RequestStatus.Approved)
-                        {
-                            <MudButton Variant="Variant.Filled"
-                                       Color="Color.Warning"
-                                       Size="Size.Small"
-                                       StartIcon="@Icons.Material.Filled.Restore"
-                                       OnClick="@(() => RevertToPending(org))">
-                                Revoke
-                            </MudButton>
-                        }
-                        else if (org.ApprovalStatusId == (int)RequestStatus.Rejected)
-                        {
-                            <MudButton Variant="Variant.Filled"
-                                       Color="Color.Info"
-                                       Size="Size.Small"
-                                       StartIcon="@Icons.Material.Filled.Restore"
-                                       OnClick="@(() => RevertToPending(org))">
-                                Revert
-                            </MudButton>
-                        }
-                        <MudButton Variant="Variant.Outlined"
-                                   Color="Color.Primary"
-                                   Size="Size.Small"
-                                   StartIcon="@Icons.Material.Filled.Visibility"
-                                   OnClick="@(() => Nav.NavigateTo($"/admin/organization/{org.Id}"))">
-                            Details
-                        </MudButton>
-                    </div>
-                </div>
-            }
-            @if (!items.Any())
-            {
-                <div class="admin-list__empty">
-                    <MudIcon Icon="@Icons.Material.Filled.Inbox" Size="Size.Large" />
-                    <MudText Typo="Typo.h6" Style="margin-top:10px; font-weight:800;">No matching requests</MudText>
-                    <MudText Typo="Typo.body2" Class="admin-list__muted">Try clearing filters or changing your search.</MudText>
-                    <MudButton Variant="Variant.Outlined"
-                               Color="Color.Primary"
-                               OnClick="ClearFilters"
-                               Style="margin-top:12px; border-radius:999px;">
-                        Clear filters
-                    </MudButton>
-                </div>
-            }
-        </div>
-    </div>;
-
-    // filter helpers
-    private bool IsStatusSelected(RequestStatus s) => _selectedStatuses.Contains(s);
-
-    private void ToggleStatus(RequestStatus s)
-    {
-        if (_selectedStatuses.Contains(s)) _selectedStatuses.Remove(s); else _selectedStatuses.Add(s);
-        StateHasChanged();
-    }
-
-    private void ClearFilters()
-    {
-        _selectedStatuses.Clear();
-        _search = string.Empty;
-        _sort = SortOption.OldestFirst;
-        StateHasChanged();
-    }
-
-    // status-kleur
-    private Color StatusColor(RequestStatus s) => s switch
-    {
-        RequestStatus.Pending  => Color.Info,
-        RequestStatus.Approved => Color.Success,
-        RequestStatus.Rejected => Color.Error,
-        _ => Color.Default
-    };
-
-    // relatieve tijdsweergave
-    private string GetRelative(DateTimeOffset utc)
-    {
-        var ts = DateTimeOffset.UtcNow - utc;
-        if (ts.TotalDays    >= 1) return $"{(int)ts.TotalDays}d ago";
-        if (ts.TotalHours   >= 1) return $"{(int)ts.TotalHours}h ago";
-        if (ts.TotalMinutes >= 1) return $"{(int)ts.TotalMinutes}m ago";
-        return "just now";
-    }
-
-    // acties (met ShowMessageBox en API calls)
-    private async Task Approve(OrganizationListDto req)
-    {
-        bool? ok = await DialogService.ShowMessageBox(
-            "Confirm approval",
-            $"Approve {req.FullName}?",
-            yesText: "Approve", cancelText: "Cancel");
-
-        if (ok == true)
-        {
-            var success = await AdminService.ApproveOrganizationAsync(req.Id);
-            if (success)
-            {
-                Snackbar.Add($"Approved {req.FullName}", Severity.Success);
-                await LoadOrganizationRequests(); // Reload data
-            }
-            else
-            {
-                Snackbar.Add($"Failed to approve {req.FullName}", Severity.Error);
-            }
-        }
-    }
-
-    private async Task Reject(OrganizationListDto req)
-    {
-        bool? ok = await DialogService.ShowMessageBox(
-            "Confirm rejection",
-            $"Reject {req.FullName}?",
-            yesText: "Reject", cancelText: "Cancel");
-
-        if (ok == true)
-        {
-            var success = await AdminService.RejectOrganizationAsync(req.Id);
-            if (success)
-            {
-                Snackbar.Add($"Rejected {req.FullName}", Severity.Error);
-                await LoadOrganizationRequests(); // Reload data
-            }
-            else
-            {
-                Snackbar.Add($"Failed to reject {req.FullName}", Severity.Error);
-            }
-        }
-    }
-
-    private async Task RevertToPending(OrganizationListDto req)
-    {
-        var success = await AdminService.RevertToPendingAsync(req.Id);
-        if (success)
-        {
-            Snackbar.Add($"Moved {req.FullName} back to Pending", Severity.Info);
-            await LoadOrganizationRequests(); // Reload data
-        }
-        else
-        {
-            Snackbar.Add($"Failed to revert {req.FullName} to pending", Severity.Error);
-        }
-    }
-}

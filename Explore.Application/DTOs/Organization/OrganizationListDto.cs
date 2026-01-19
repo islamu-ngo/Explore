@@ -22,5 +22,9 @@ namespace Explore.Application.DTOs.Organization
         public string StatusTypeFullName => ApprovalStatusFullName; // Alias for backward compatibility
         public DateTime CreatedAt { get; set; }
         public OrganizationRoleEnum? CurrentUserRole { get; set; }
+
+        // Profile Picture (resolved to presigned URL)
+        public Guid? ActorProfilePictureId { get; set; }
+        public string? ActorProfilePictureUri { get; set; }
     }
 }

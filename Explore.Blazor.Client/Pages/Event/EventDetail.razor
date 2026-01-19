@@ -1,3 +1,4 @@
+@page "/event/detail/{id}"
 @using MudBlazor
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Services
@@ -9,14 +10,16 @@
     <MudGrid>
 
         <!-- Back and Actions -->
-        <MudItem xs="12" Class="mb-2">
-            <div class="event-detail__header">
+        <MudItem xs="12">
+            <div class="event-detail__top-nav">
                 <MudButton StartIcon="@Icons.Material.Filled.ArrowBack"
                            Variant="Variant.Text"
-                           Color="Color.Primary"
-                           OnClick="@(() => Navigation.NavigateTo("/"))">
+                           Color="Color.Secondary"
+                           Href="/events"
+                           Class="event-detail__back-btn">
                     Back to Events
                 </MudButton>
+                
                 @if (_eventDetails != null)
                 {
                     <div class="event-detail__actions">
@@ -24,7 +27,7 @@
                                    Variant="Variant.Outlined"
                                    Color="Color.Primary"
                                    Size="Size.Small"
-                                   OnClick="@(() => Navigation.NavigateTo($"/event/edit/{EventId}"))">
+                                   Href="@($"/event/edit/{EventId}")">
                             Edit
                         </MudButton>
                         <MudButton StartIcon="@Icons.Material.Filled.Delete"
@@ -41,219 +44,131 @@
 
         @if (_eventDetails != null)
         {
-            <!-- HERO -->
-            <MudItem xs="12">
-                <div class="event-detail__hero">
-                    @if (!string.IsNullOrEmpty(_eventDetails.FeaturedImageUri))
-                    {
-                        <img src="@_eventDetails.FeaturedImageUri"
-                             alt="@_eventDetails.Title"
-                             style="width: 100%; height: 320px; object-fit: cover;" />
-                    }
-                    else
-                    {
-                        <img src="@($"https://dummyimage.com/1600x900/{GetEventColor()}/ffffff&text={Uri.EscapeDataString(_eventDetails.Title)}")" alt="@_eventDetails.Title" />
-                    }
-                    <div class="event-detail__hero-content">
-                        <div class="event-detail__hero-badges">
-                            <MudChip T="string"
-                                     Color="Color.Primary"
-                                     StartIcon="@Icons.Material.Filled.Category"
-                                     Size="Size.Small"
-                                     Style="background-color: rgba(33, 150, 243, 0.9); color: white; font-weight: 500;">
+            <!-- Main Content Area -->
+            <MudItem xs="12" md="8">
+                <MudStack Spacing="4">
+                    
+                    <!-- Header Section (Title & Badges) -->
+                    <div class="event-detail__header-section">
+                        <div class="event-detail__badges mb-3">
+                            <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Filled">
                                 @(_eventDetails.EventTypeFullName ?? "Event")
                             </MudChip>
-                            <MudChip T="string"
-                                     Color="Color.Secondary"
-                                     StartIcon="@Icons.Material.Filled.Place"
-                                     Size="Size.Small"
-                                     Style="background-color: rgba(255, 255, 255, 0.9); color: #333; font-weight: 500;">
+                            <MudChip T="string" Color="Color.Surface" Variant="Variant.Outlined" Size="Size.Small">
                                 @(_eventDetails.EventFormatFullName ?? "Online")
                             </MudChip>
-                            @if (_eventDetails.Price.HasValue && _eventDetails.Price > 0)
-                            {
-                                <MudChip T="string"
-                                         Color="Color.Success"
-                                         StartIcon="@Icons.Material.Filled.Euro"
-                                         Size="Size.Small"
-                                         Style="background-color: rgba(76, 175, 80, 0.9); color: white; font-weight: 500;">
-                                    @($"{_eventDetails.CurrencyCode ?? "€"}{_eventDetails.Price:F2}")
-                                </MudChip>
-                            }
-                            else
-                            {
-                                <MudChip T="string"
-                                         Color="Color.Success"
-                                         StartIcon="@Icons.Material.Filled.CardGiftcard"
-                                         Size="Size.Small"
-                                         Style="background-color: rgba(76, 175, 80, 0.9); color: white; font-weight: 500;">
-                                    Free
-                                </MudChip>
-                            }
                         </div>
-                        <MudText Typo="Typo.h4" Class="event-detail__hero-title">@_eventDetails.Title</MudText>
+                        <MudText Typo="Typo.h3" Class="event-detail__title mb-2">@_eventDetails.Title</MudText>
+                        
+                        <div class="event-detail__organizer-row mt-2">
+                            <MudAvatar Size="Size.Small" Class="mr-2">
+                                <MudImage Src="@GetOrganizerProfilePicture()" />
+                            </MudAvatar>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                Hosted by <strong>@GetOrganizerName()</strong>
+                            </MudText>
+                        </div>
                     </div>
-                </div>
+
+                    <!-- Featured Image -->
+                    <div class="event-detail__image-wrapper">
+                        @if (!string.IsNullOrEmpty(_eventDetails.FeaturedImageUri))
+                        {
+                            <MudImage Src="@_eventDetails.FeaturedImageUri" Alt="@_eventDetails.Title" Class="event-detail__image" ObjectFit="ObjectFit.Cover" />
+                        }
+                        else
+                        {
+                            <MudImage Src="@($"https://dummyimage.com/1600x900/{GetEventColor()}/ffffff&text={Uri.EscapeDataString(_eventDetails.Title)}")" Alt="@_eventDetails.Title" Class="event-detail__image" ObjectFit="ObjectFit.Cover" />
+                        }
+                    </div>
+
+                    <!-- Description -->
+                    <MudPaper Elevation="0" Class="event-detail__section-card pa-6">
+                        <MudText Typo="Typo.h5" Class="mb-4">About this event</MudText>
+                        <MudText Typo="Typo.body1" Class="event-detail__description">
+                            @_eventDetails.Description
+                        </MudText>
+                    </MudPaper>
+
+                    <!-- Sessions / Agenda (Only if multiple) -->
+                    @if (_eventSessions != null && _eventSessions.Count > 1)
+                    {
+                        <MudPaper Elevation="0" Class="event-detail__section-card pa-6">
+                            <MudText Typo="Typo.h5" Class="mb-4">Sessions</MudText>
+                            <EventSessionManager EventId="EventId" ShowRegisterButton="true" OnRegisterClick="RegisterForSession" />
+                        </MudPaper>
+                    }
+
+                </MudStack>
             </MudItem>
 
-            <!-- CONTENT -->
-            <MudItem xs="12">
-                <div class="event-detail__content">
-
-                    <!-- LEFT: description & details -->
-                    <div class="event-detail__main">
-                        <MudPaper Elevation="0" Class="event-detail__card">
-                            <div class="event-detail__section">
-                                <MudText Typo="Typo.h6" Class="mb-1">About this event</MudText>
-                                <MudText Typo="Typo.body1">
-                                    @_eventDetails.Description
-                                </MudText>
-                            </div>
-
-                            <div class="event-detail__section">
-                                <MudText Typo="Typo.h6" Class="mb-2">Details</MudText>
-                                <div class="event-detail__details">
-                                    <div class="event-detail__detail-row">
-                                        <MudIcon Icon="@Icons.Material.Filled.Category" />
-                                        <MudText>@GetEventTypeName()</MudText>
-                                    </div>
-                                    <div class="event-detail__detail-row">
-                                        <MudIcon Icon="@Icons.Material.Filled.CalendarToday" />
-                                        <MudText>@GetDateDisplay()</MudText>
-                                    </div>
-                                    <div class="event-detail__detail-row">
-                                        <MudIcon Icon="@Icons.Material.Filled.LocationOn" />
-                                        <MudText>@GetFullLocation()</MudText>
-                                    </div>
-                                    <div class="event-detail__detail-row">
-                                        <MudIcon Icon="@Icons.Material.Filled.Euro" />
-                                        <MudText>@(_eventDetails.Price.HasValue && _eventDetails.Price > 0 ? $"{_eventDetails.CurrencyCode ?? "€"}{_eventDetails.Price:F2}" : "Free")</MudText>
-                                    </div>
-                                    <div class="event-detail__detail-row">
-                                        <MudIcon Icon="@(_eventDetails.IsRegistrationRequired ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Info)" />
-                                        <MudText>@(_eventDetails.IsRegistrationRequired ? "Registration required" : "No registration required")</MudText>
-                                    </div>
-                                    <div class="event-detail__detail-row">
-                                        <MudIcon Icon="@Icons.Material.Filled.Visibility" />
-                                        <MudText>@_eventDetails.TotalViews views</MudText>
-                                    </div>
-                                    @if (!string.IsNullOrWhiteSpace(_eventDetails.EventUrl))
-                                    {
-                                        <div class="event-detail__detail-row">
-                                            <MudIcon Icon="@Icons.Material.Filled.Link" />
-                                            <MudLink Href="@_eventDetails.EventUrl" Target="_blank">Event website</MudLink>
-                                        </div>
-                                    }
-                                </div>
-                            </div>
-
-                            <div class="event-detail__section">
-                                <MudText Typo="Typo.h6" Class="mb-2">Share</MudText>
-                                <MudStack Row="true" Spacing="1">
-                                    <MudIconButton Icon="@Icons.Custom.Brands.Facebook" Color="Color.Default" Size="Size.Small" aria-label="Share on Facebook" />
-                                    <MudIconButton Icon="@Icons.Custom.Brands.Twitter" Color="Color.Default" Size="Size.Small" aria-label="Share on X" />
-                                    <MudIconButton Icon="@Icons.Custom.Brands.WhatsApp" Color="Color.Default" Size="Size.Small" aria-label="Share on WhatsApp" />
-                                    <MudIconButton Icon="@Icons.Custom.Brands.LinkedIn" Color="Color.Default" Size="Size.Small" aria-label="Share on LinkedIn" />
-                                </MudStack>
-                            </div>
-                        </MudPaper>
-
-                        <div class="event-detail__section">
-                            <EventSessionManager EventId="EventId" />
+            <!-- Sidebar (Sticky) -->
+            <MudItem xs="12" md="4">
+                <div class="event-detail__sidebar">
+                    <MudPaper Elevation="0" Class="event-detail__ticket-card pa-6">
+                        <div class="d-flex justify-space-between align-center mb-6">
+                            <MudText Typo="Typo.h4" Color="Color.Primary" Style="font-weight: 700;">
+                                @(_eventDetails.Price.HasValue && _eventDetails.Price > 0 ? $"{_eventDetails.CurrencyCode ?? "€"}{_eventDetails.Price:F2}" : "Free")
+                            </MudText>
+                            @if (_eventDetails.IsRegistrationRequired)
+                            {
+                                <MudChip T="string" Color="Color.Info" Size="Size.Small" Variant="Variant.Text">Registration Required</MudChip>
+                            }
                         </div>
-                    </div>
 
-                    <!-- RIGHT: sticky actions -->
-                    <div class="event-detail__sidebar">
-                        <MudPaper Elevation="0" Class="event-detail__sidebar-card">
-                            <MudStack Spacing="2">
-                                <MudText Typo="Typo.subtitle1">Attend this event</MudText>
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Size="Size.Large"
+                                   FullWidth="true"
+                                   Class="mb-6 py-3"
+                                   OnClick="OpenRegistrationDialog"
+                                   Disabled="IsButtonDisabled()"
+                                   StartIcon="@(_isUserRegistered ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.ConfirmationNumber)">
+                            @GetButtonText()
+                        </MudButton>
 
-                                <div class="event-detail__sidebar-row">
-                                    <MudIcon Icon="@Icons.Material.Filled.Place" />
-                                    <MudText>@GetLocationDisplay()</MudText>
+                        @if (_isUserRegistered)
+                        {
+                            <MudAlert Severity="Severity.Success" Variant="Variant.Text" Dense="true" Class="mb-4">
+                                You are registered for this event!
+                            </MudAlert>
+                        }
+
+                        <MudDivider Class="mb-6" />
+
+                        <div class="event-detail__sidebar-info">
+                            <div class="sidebar-info__item mb-4">
+                                <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Color="Color.Secondary" Class="mr-3" />
+                                <div>
+                                    <MudText Typo="Typo.subtitle2">Date & Time</MudText>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">@GetDateDisplay()</MudText>
                                 </div>
-                                <div class="event-detail__sidebar-row">
-                                    <MudIcon Icon="@Icons.Material.Filled.Euro" />
-                                    <MudText>@(_eventDetails.Price > 0 ? $"€{_eventDetails.Price:F2}" : "Free")</MudText>
-                                </div>
+                            </div>
 
-                                <MudDivider Class="event-detail__divider" />
-
-                                @* Display organizer info from Actor data in EventDto *@
-                                <div class="event-detail__organizer">
-                                    <MudAvatar Size="Size.Medium">
-                                        <MudImage Src="@GetOrganizerProfilePicture()" />
-                                    </MudAvatar>
-                                    <div>
-                                        <MudText Typo="Typo.caption">
-                                            @(IsOrganizedByOrganization() ? "Organized by" : "Created by")
-                                        </MudText>
-                                        <MudText Typo="Typo.subtitle2">@GetOrganizerName()</MudText>
-                                    </div>
-                                </div>
-
-                                <MudDivider Class="event-detail__divider" />
-
-                                <div class="event-detail__cta">
-                                    <MudButton Variant="Variant.Filled"
-                                               Color="GetButtonColor()"
-                                               Size="Size.Large"
-                                               FullWidth="true"
-                                               Disabled="IsButtonDisabled()"
-                                               StartIcon="@(_isUserRegistered ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Event)"
-                                               OnClick="OpenRegistrationDialog">
-                                        @GetButtonText()
-                                    </MudButton>
-                                    @if (_isUserRegistered)
+                            <div class="sidebar-info__item mb-4">
+                                <MudIcon Icon="@Icons.Material.Filled.LocationOn" Color="Color.Secondary" Class="mr-3" />
+                                <div>
+                                    <MudText Typo="Typo.subtitle2">Location</MudText>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">@GetLocationDisplay()</MudText>
+                                    @if (_eventDetails.EventFormatId == 2)
                                     {
-                                        <MudText Typo="Typo.caption" Align="Align.Center" Style="margin-top: 8px; color: var(--mud-palette-success);">
-                                            You're all set for this event!
-                                        </MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">(Online Event)</MudText>
                                     }
                                 </div>
+                            </div>
+                        </div>
+                        
+                        <MudDivider Class="my-4" />
+                        
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Share with friends</MudText>
+                        <div class="d-flex gap-2">
+                            <MudIconButton Icon="@Icons.Custom.Brands.Facebook" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default" />
+                            <MudIconButton Icon="@Icons.Custom.Brands.Twitter" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default" />
+                            <MudIconButton Icon="@Icons.Custom.Brands.LinkedIn" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default" />
+                            <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default" Title="Copy Link" />
+                        </div>
 
-                                <MudDivider Class="event-detail__divider" />
-
-                                <div>
-                                    <MudMenu Icon="@Icons.Material.Filled.CalendarMonth"
-                                             Label="Add to Calendar"
-                                             Variant="Variant.Outlined"
-                                             Color="Color.Default"
-                                             FullWidth="true"
-                                             Style="border-radius: 10px;"
-                                             AnchorOrigin="Origin.BottomLeft"
-                                             TransformOrigin="Origin.TopLeft">
-                                        <MudMenuItem Icon="@Icons.Custom.Brands.Google" OnClick="@(() => AddToGoogleCalendar())">
-                                            Google Calendar
-                                        </MudMenuItem>
-                                        <MudMenuItem Icon="@Icons.Material.Filled.CalendarToday" OnClick="@(() => AddToAppleCalendar())">
-                                            Apple .ics
-                                        </MudMenuItem>
-                                        <MudMenuItem Icon="@Icons.Custom.Brands.Microsoft" OnClick="@(() => AddToOutlookCalendar())">
-                                            Outlook .ics
-                                        </MudMenuItem>
-                                    </MudMenu>
-                                </div>
-
-                                <MudDivider Class="event-detail__divider" />
-
-                                @if (_eventDetails.EventFormatId == 1) @* In-Person *@
-                                {
-                                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true">
-                                        Location details will be provided by the organizer.
-                                    </MudAlert>
-                                }
-                                else if (_eventDetails.EventFormatId == 2) @* Online *@
-                                {
-                                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true">
-                                        This is an online event. Details will be provided by the organizer.
-                                    </MudAlert>
-                                }
-                            </MudStack>
-                        </MudPaper>
-                    </div>
-
+                    </MudPaper>
                 </div>
             </MudItem>
         }

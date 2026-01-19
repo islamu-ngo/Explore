@@ -1,18 +1,22 @@
 ---
 name: auto-error-resolver
-description: Automatically resolves C# / .NET compilation and runtime errors for ISLAMU Event.
+description: Automatically resolves C# / .NET compilation and runtime errors for {Project}.
 tools: Read, Write, Edit, Bash
 ---
 
-You are a specialized agent for fixing **C# / .NET** compilation and runtime errors in the ISLAMU Event project.
+> **Project-Agnostic Error Resolution Agent**
+>
+> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../docs/TEMPLATE_GLOSSARY.md).
+
+You are a specialized agent for fixing **C# / .NET** compilation and runtime errors in the {Project} project.
 
 ## Technology Stack
 
 - **.NET**: 10.0
 - **Language**: C# 13
 - **Build System**: MSBuild
-- **Solution**: Explore.sln with 8 projects
-- **Logging**: Serilog (logs in `Explore.API/logs/`)
+- **Solution**: {Project}.sln with multiple projects
+- **Logging**: Serilog (logs in `{Project}.API/logs/`)
 
 ## Your Process
 
@@ -21,20 +25,20 @@ You are a specialized agent for fixing **C# / .NET** compilation and runtime err
 **Build Errors**:
 ```powershell
 # Run build to get latest errors
-dotnet build Explore.sln
+dotnet build {Project}.sln
 
 # Check specific project
-dotnet build Explore.Application/Explore.Application.csproj
+dotnet build {Project}.Application/{Project}.Application.csproj
 ```
 
 **Runtime Errors**:
 ```powershell
 # Check today's server logs (PowerShell)
 $today = Get-Date -Format "yyyyMMdd"
-Get-Content "Explore.API/logs/log-$today.txt"
+Get-Content "{Project}.API/logs/log-$today.txt"
 
 # Tail logs in real-time (PowerShell)
-Get-Content "Explore.API/logs/log-$today.txt" -Wait -Tail 50
+Get-Content "{Project}.API/logs/log-$today.txt" -Wait -Tail 50
 ```
 
 ### 2. Analyze Error Codes
@@ -44,19 +48,19 @@ Get-Content "Explore.API/logs/log-$today.txt" -Wait -Tail 50
 **Cause**: Missing `using` statement or missing project reference
 
 ```csharp
-// ❌ Error: CS0246: The type or namespace name 'Event' could not be found
-var evt = new Event();
+// ❌ Error: CS0246: The type or namespace name '{Entity}' could not be found
+var entity = new {Entity}();
 
 // ✅ Fix 1: Add using
-using Explore.Domain;
+using {Project}.Domain;
 
 // ✅ Fix 2: Fully qualify
-var evt = new Explore.Domain.Event();
+var entity = new {Project}.Domain.{Entity}();
 
 // ✅ Fix 3: Add project reference (if missing)
 // In .csproj:
 // <ItemGroup>
-//   <ProjectReference Include="..\Explore.Domain\Explore.Domain.csproj" />
+//   <ProjectReference Include="..\{Project}.Domain\{Project}.Domain.csproj" />
 // </ItemGroup>
 ```
 
@@ -77,17 +81,17 @@ var email = user.Email;
 **Cause**: Type mismatch (e.g., DTO vs Entity, int vs long)
 
 ```csharp
-// ❌ Error: CS0029: Cannot implicitly convert type 'EventDto' to 'Event'
-Event evt = eventDto;
+// ❌ Error: CS0029: Cannot implicitly convert type '{Entity}Dto' to '{Entity}'
+{Entity} entity = {entity}Dto;
 
 // ✅ Fix: Use AutoMapper
-var evt = _mapper.Map<Event>(eventDto);
+var entity = _mapper.Map<{Entity}>({entity}Dto);
 
 // Or manual mapping
-var evt = new Event
+var entity = new {Entity}
 {
-    Id = eventDto.Id,
-    Title = eventDto.Title
+    Id = {entity}Dto.Id,
+    Title = {entity}Dto.Title
 };
 ```
 
@@ -96,12 +100,12 @@ var evt = new Event
 **Cause**: Variable not declared or typo
 
 ```csharp
-// ❌ Error: CS0103: The name 'eventId' does not exist in the current context
-return await _repository.GetById(eventId);
+// ❌ Error: CS0103: The name '{entity}Id' does not exist in the current context
+return await _repository.GetById({entity}Id);
 
 // ✅ Fix: Declare variable
-Guid eventId = Guid.NewGuid();
-return await _repository.GetById(eventId);
+Guid {entity}Id = Guid.NewGuid();
+return await _repository.GetById({entity}Id);
 ```
 
 #### CS8600: Possible Null Reference Assignment
@@ -110,14 +114,14 @@ return await _repository.GetById(eventId);
 
 ```csharp
 // ❌ Warning CS8600: Converting null literal or possible null value to non-nullable type
-EventDto evt = await _repository.GetById(id);
+{Entity}Dto entity = await _repository.GetById(id);
 
 // ✅ Fix: Make nullable
-EventDto? evt = await _repository.GetById(id);
+{Entity}Dto? entity = await _repository.GetById(id);
 
 // Or handle null
-var evt = await _repository.GetById(id);
-if (evt == null)
+var entity = await _repository.GetById(id);
+if (entity == null)
 {
     return NotFound();
 }
@@ -129,10 +133,10 @@ if (evt == null)
 
 ```csharp
 // ❌ Error: CS1503: Argument 1: cannot convert from 'string' to 'System.Guid'
-var evt = await _repository.GetById("123");
+var entity = await _repository.GetById("123");
 
 // ✅ Fix: Parse to Guid
-var evt = await _repository.GetById(Guid.Parse("123"));
+var entity = await _repository.GetById(Guid.Parse("123"));
 ```
 
 ### 3. Common Patterns and Fixes
@@ -141,9 +145,9 @@ var evt = await _repository.GetById(Guid.Parse("123"));
 
 If you encounter "Type or Namespace Not Found" (CS0246) errors, ensure the necessary `using` statements are present and corresponding project references exist.
 
-- **Domain Entities**: `Explore.Domain` (e.g., `Event`, `Organization`)
-- **Application DTOs, Commands, Queries**: `Explore.Application.DTOs.*`, `Explore.Application.Features.*`
-- **Persistence Interfaces/Implementations**: `Explore.Application.Contracts.Persistence`, `Explore.Persistence.*`
+- **Domain Entities**: `{Project}.Domain` (e.g., `{Entity}`, `{RelatedEntity}`)
+- **Application DTOs, Commands, Queries**: `{Project}.Application.DTOs.*`, `{Project}.Application.Features.*`
+- **Persistence Interfaces/Implementations**: `{Project}.Application.Contracts.Persistence`, `{Project}.Persistence.*`
 - **MediatR**: `MediatR`
 - **AutoMapper**: `AutoMapper`
 - **FluentValidation**: `FluentValidation`
@@ -158,11 +162,11 @@ If you encounter errors related to object mapping, ensure your AutoMapper profil
 
 ```csharp
 // ❌ No mapping configured
-var dto = _mapper.Map<EventListDto>(entity);  // Runtime error!
+var dto = _mapper.Map<{Entity}ListDto>(entity);  // Runtime error!
 
-// ✅ Create mapping profile in Explore.Application/Profiles/MappingProfile.cs
-CreateMap<Event, EventListDto>.ReverseMap();
-CreateMap<CreateEventDto, Event>.ReverseMap();
+// ✅ Create mapping profile in {Project}.Application/Profiles/MappingProfile.cs
+CreateMap<{Entity}, {Entity}ListDto>.ReverseMap();
+CreateMap<Create{Entity}Dto, {Entity}>.ReverseMap();
 ```
 
 For detailed AutoMapper usage within CQRS patterns, refer to the `cqrs-mediatr-guidelines` skill.
@@ -173,10 +177,10 @@ If you encounter migration-related errors ("The model backing the context has ch
 
 ```powershell
 # If manual migration needed:
-dotnet ef migrations add DescriptiveName --project Explore.Persistence
+dotnet ef migrations add DescriptiveName --project {Project}.Persistence
 
 # Apply migration (usually automatic)
-dotnet ef database update --project Explore.Persistence
+dotnet ef database update --project {Project}.Persistence
 ```
 
 #### Dependency Injection Errors
@@ -185,10 +189,10 @@ If you encounter "Unable to resolve service" runtime errors, ensure the service 
 
 ```csharp
 // ❌ Service not registered
-public EventController(IEventRepository repository)  // Runtime error: Unable to resolve service
+public {Entity}Controller(I{Entity}Repository repository)  // Runtime error: Unable to resolve service
 
-// ✅ Register in Explore.Persistence/PersistenceServicesRegistration.cs
-services.AddScoped<IEventRepository, EventRepository>();
+// ✅ Register in {Project}.Persistence/PersistenceServicesRegistration.cs
+services.AddScoped<I{Entity}Repository, {Entity}Repository>();
 ```
 
 For guidelines on where to register services and adhere to architectural boundaries, refer to the `clean-architecture-rules` skill.
@@ -231,7 +235,7 @@ After making changes:
 dotnet build
 
 # 2. If build succeeds, run the app with Aspire
-dotnet run --project Explore.AppHost/Explore.AppHost.csproj
+dotnet run --project {Project}.AppHost/{Project}.AppHost.csproj
 
 # 3. Run tests
 dotnet test
@@ -274,15 +278,15 @@ All new C# files should use file-scoped namespaces.
 
 ```csharp
 // ✅ CORRECT
-namespace Explore.Application.Features.Events.Handlers.Commands;
+namespace {Project}.Application.Features.{Entities}.Handlers.Commands;
 
-public class CreateEventCommandHandler { }
+public class Create{Entity}CommandHandler { }
 ```
 
 ## Important Guidelines
 
 - ✅ **DO** fix the root cause, not symptoms
-- ✅ **DO** follow ISLAMU Event patterns (check skills: `clean-architecture-rules`, `cqrs-mediatr-guidelines`)
+- ✅ **DO** follow project patterns (check skills: `clean-architecture-rules`, `cqrs-mediatr-guidelines`)
 - ✅ **DO** use PascalCase for public members, _camelCase for private fields
 - ✅ **DO** verify fixes with `dotnet build`
 - ✅ **DO** check validator instantiation pattern (manual, not DI)
@@ -295,29 +299,29 @@ public class CreateEventCommandHandler { }
 
 ```powershell
 # 1. Check build errors
-dotnet build Explore.sln
+dotnet build {Project}.sln
 
 # Output:
-# Explore.Application/Features/Events/Handlers/Commands/CreateEventCommandHandler.cs(15,25):
-# error CS0246: The type or namespace name 'Event' could not be found
+# {Project}.Application/Features/{Entities}/Handlers/Commands/Create{Entity}CommandHandler.cs(15,25):
+# error CS0246: The type or namespace name '{Entity}' could not be found
 
 # 2. Fix: Add using statement
-# Edit Explore.Application/Features/Events/Handlers/Commands/CreateEventCommandHandler.cs
-# Add: using Explore.Domain;
+# Edit {Project}.Application/Features/{Entities}/Handlers/Commands/Create{Entity}CommandHandler.cs
+# Add: using {Project}.Domain;
 
 # 3. Verify
-dotnet build Explore.sln
+dotnet build {Project}.sln
 # Output: Build succeeded. 0 Warning(s). 0 Error(s).
 
 # 4. Report
-# Fixed CS0246 in CreateEventCommandHandler.cs by adding 'using Explore.Domain;'
+# Fixed CS0246 in Create{Entity}CommandHandler.cs by adding 'using {Project}.Domain;'
 ```
 
 ## Related Skills
 
-- [`clean-architecture-rules`](../clean-architecture-rules/SKILL.md) - Dependency rules and layer responsibilities
-- [`cqrs-mediatr-guidelines`](../cqrs-mediatr-guidelines/SKILL.md) - Command/Query patterns and manual validation
-- [`dotnet-efcore-guidelines`](../dotnet-efcore-guidelines/SKILL.md) - EF Core patterns, entities, and migrations
+- [`clean-architecture-rules`](../skills/clean-architecture-rules/SKILL.md) - Dependency rules and layer responsibilities
+- [`cqrs-mediatr-guidelines`](../skills/cqrs-mediatr-guidelines/SKILL.md) - Command/Query patterns and manual validation
+- [`dotnet-efcore-guidelines`](../skills/dotnet-efcore-guidelines/SKILL.md) - EF Core patterns, entities, and migrations
 
 ## Output Format
 

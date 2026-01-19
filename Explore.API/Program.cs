@@ -5,8 +5,10 @@ using Explore.Application;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Infrastructure;
 using Explore.Persistence;
+using Explore.Persistence.Seed;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 //using Microsoft.OpenApi.Models;
 using Scalar.AspNetCore;
@@ -19,37 +21,19 @@ using Microsoft.OpenApi;
 using Polly.Bulkhead;
 using static Microsoft.AspNetCore.Http.StatusCodes;
 
+// Graceful shutdown tracking for zero-downtime deployments
+var isShuttingDown = false;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
-
-builder.Services.AddHttpContextAccessor();
+builder.Configuration.AddInfisicalCompatibility();
 
 var authority = builder.Configuration["Keycloak:Authority"];
 var realm = builder.Configuration["Keycloak:Realm"];
-var audience = builder.Configuration["Keycloak:Audience"];
+var audience = builder.Configuration["Keycloak:Audience"]; // Should be "explore-api"
 
-// 1. Lire les variables d’environnement S3
-var s3Region = builder.Configuration["ISLAMU_EVENT_REGION"]; // si tu en as une
-var s3BucketName = builder.Configuration["ISLAMU_EVENT_PRIVATE_BUCKET_NAME"];
-var s3AccessKeyId = builder.Configuration["ISLAMU_EVENT_PRIVATE_ACCESS_KEY_ID"];
-var s3SecretAccessKey = builder.Configuration["ISLAMU_EVENT_PRIVATE_SECRET_ACCESS_KEY_ID"];
-var s3Endpoint = builder.Configuration["ISLAMU_EVENT_S3_ENDPOINT"];
-
-// 2. Ajouter une source de configuration en mémoire qui expose une section "S3Settings"
-var s3SettingsDict = new Dictionary<string, string?>
-{
-    ["S3Settings:Region"] = s3Region,
-    ["S3Settings:BucketName"] = s3BucketName,
-    ["S3Settings:AccessKeyId"] = s3AccessKeyId,
-    ["S3Settings:SecretAccessKey"] = s3SecretAccessKey,
-    ["S3Settings:Endpoint"] = s3Endpoint
-};
-
-builder.Configuration.AddInMemoryCollection(
-    s3SettingsDict.Where(kv => !string.IsNullOrEmpty(kv.Value))
-        .ToDictionary(kv => kv.Key, kv => kv.Value)!
-);
+builder.Services.AddHttpContextAccessor();
 
 //AddSwaggerDoc(builder.Services); moved to AddSwaggerGenWithAuth extension method
 
@@ -297,7 +281,52 @@ builder.Services.AddHttpsRedirection(options =>
     }
 });
 
+// Shutdown-aware health check for zero-downtime deployments (Coolify rolling updates)
+// When SIGTERM is received, health checks return unhealthy so load balancer stops routing traffic
+builder.Services.AddHealthChecks()
+    .AddCheck("shutdown", () =>
+    {
+        if (isShuttingDown)
+            return HealthCheckResult.Unhealthy("Application is shutting down");
+        return HealthCheckResult.Healthy();
+    }, tags: ["live", "ready"]);
+
 var app = builder.Build();
+
+// Register graceful shutdown handler for zero-downtime deployments
+// When Coolify sends SIGTERM, we set isShuttingDown to true
+// This causes health checks to return 503, so load balancer stops routing traffic
+app.Lifetime.ApplicationStopping.Register(() =>
+{
+    isShuttingDown = true;
+    app.Logger.LogInformation("Application is shutting down, health checks will return unhealthy...");
+});
+
+// Apply database migrations before starting the application
+// EF Core 9+ has built-in locking for concurrent migration protection (safe for multiple replicas)
+// Migrations run before API accepts traffic - if they fail, the container doesn't start
+if (!builder.Environment.IsEnvironment("Testing"))
+{
+    using var scope = app.Services.CreateScope();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    var db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+
+    try
+    {
+        logger.LogInformation("Applying database migrations...");
+        db.Database.Migrate();
+        logger.LogInformation("Database migrations completed successfully.");
+
+        // Run seeding (most data uses HasData(), this is for runtime scenarios)
+        DatabaseSeeder.SeedAsync(db).GetAwaiter().GetResult();
+        logger.LogInformation("Database seeding completed.");
+    }
+    catch (Exception ex)
+    {
+        logger.LogCritical(ex, "Database migration failed. Application cannot start.");
+        throw; // Prevent app from starting with failed migration
+    }
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

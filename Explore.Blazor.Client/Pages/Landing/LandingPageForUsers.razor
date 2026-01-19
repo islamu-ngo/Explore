@@ -1,217 +1,164 @@
 @using MudBlazor
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Clients
-@using Microsoft.AspNetCore.Components
-@using Microsoft.Extensions.Logging
-@inject IJSRuntime JS
-@inject ILandingPageService LandingPageService
-@inject ILogger<LandingPageForUsers> Logger
-<!-- HERO - Full width -->
-<section class="hero">
-    <MudContainer MaxWidth="MaxWidth.Large">
-        <MudGrid Spacing="3" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
-            <MudItem xs="12" md="7">
-                <MudText Typo="Typo.overline" Class="kicker">Community � Events � Knowledge</MudText>
-                <MudText Typo="Typo.h3" Class="mb-1">Never miss<br />knowledge again</MudText>
-                <MudText Typo="Typo.subtitle1" Class="hero-sub">
-                    �Seeking knowledge is an obligation upon every Muslim.�
-                </MudText>
 
-                <div class="cta-row">
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Event" Href="/events" Class="cta-primary">
-                        Discover community events
-                    </MudButton>
-                    <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Explore" Href="#explore">
-                        Explore categories
-                    </MudButton>
+<div class="landing-users">
+    <!-- HERO - Full width -->
+    <section class="landing-users__hero">
+        <MudContainer MaxWidth="MaxWidth.Large">
+            <MudGrid Spacing="3" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                <MudItem xs="12" md="7">
+                    <MudText Typo="Typo.overline" Class="landing-users__kicker">Community • Events • Knowledge</MudText>
+                    <MudText Typo="Typo.h3" Class="landing-users__hero-title">Never miss<br />knowledge again</MudText>
+                    <MudText Typo="Typo.subtitle1" Class="landing-users__hero-sub">
+                        "Seeking knowledge is an obligation upon every Muslim."
+                    </MudText>
+
+                    <div class="landing-users__cta-row">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Event" Href="/events" Class="cta-primary" Size="Size.Large">
+                            Discover community events
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Explore" Href="#explore" Size="Size.Large">
+                            Explore categories
+                        </MudButton>
+                    </div>
+                </MudItem>
+
+                <MudItem xs="12" md="5">
+                    <div class="landing-users__hero-image-box">
+                        <img src="image/Icon_landingpage.png" alt="Landing page illustration" class="landing-users__hero-image" fetchpriority="high" width="170" height="170" />
+                    </div>
+                </MudItem>
+            </MudGrid>
+        </MudContainer>
+    </section>
+
+    <MudContainer MaxWidth="MaxWidth.Large" Class="content">
+
+        <!-- EXPLORE -->
+        <section class="landing-users__section" id="explore">
+            <MudText Typo="Typo.h5" Class="landing-users__section-title">Explore</MudText>
+            <MudText Typo="Typo.subtitle2" Class="landing-users__section-subtitle">Find what fits you best – near you, online, or on-demand.</MudText>
+
+            <MudGrid Spacing="3">
+                <MudItem xs="12" sm="4">
+                    <MudLink Href="/events?mode=local" Class="landing-users__tile-link" aria-label="Browse local events">
+                        <div class="landing-users__tile" role="button" tabindex="0">
+                            <div class="landing-users__tile-content">
+                                <MudIcon Icon="@Icons.Material.Filled.Place" Size="Size.Large" Class="landing-users__tile-icon" />
+                                <MudText Typo="Typo.h6">Local</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Find near you</MudText>
+                            </div>
+                        </div>
+                    </MudLink>
+                </MudItem>
+
+                <MudItem xs="12" sm="4">
+                    <MudLink Href="/events?mode=digital" Class="landing-users__tile-link" aria-label="Browse digital events">
+                        <div class="landing-users__tile" role="button" tabindex="0">
+                            <div class="landing-users__tile-content">
+                                <MudIcon Icon="@Icons.Material.Filled.DesktopWindows" Size="Size.Large" Class="landing-users__tile-icon" />
+                                <MudText Typo="Typo.h6">Digital</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Find online</MudText>
+                            </div>
+                        </div>
+                    </MudLink>
+                </MudItem>
+
+                <MudItem xs="12" sm="4">
+                    <MudLink Href="/archive" Class="landing-users__tile-link" aria-label="Browse archive">
+                        <div class="landing-users__tile" role="button" tabindex="0">
+                            <div class="landing-users__tile-content">
+                                <MudIcon Icon="@Icons.Material.Filled.Download" Size="Size.Large" Class="landing-users__tile-icon" />
+                                <MudText Typo="Typo.h6">Archive</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Watch recordings</MudText>
+                            </div>
+                        </div>
+                    </MudLink>
+                </MudItem>
+            </MudGrid>
+        </section>
+
+        <!-- THIS WEEK - Carousel -->
+        <section class="landing-users__section">
+            <div class="landing-users__header">
+                <div>
+                    <MudText Typo="Typo.h5" Class="landing-users__section-title">Featured Events</MudText>
+                    <MudText Typo="Typo.subtitle2" Class="landing-users__section-subtitle">Discover upcoming events from our community.</MudText>
                 </div>
-            </MudItem>
-
-            <MudItem xs="12" md="5">
-                <MudPaper Elevation="0" Class="logoBox glass" Style="padding:18px;">
-                    <img src="image/Icon_landingpage.png" alt="Landing page illustration" class="landing-image" fetchpriority="high" width="170" height="170" />
-                </MudPaper>
-            </MudItem>
-        </MudGrid>
-    </MudContainer>
-</section>
-
-<MudContainer MaxWidth="MaxWidth.Large" Class="content">
-
-    <!-- EXPLORE -->
-    <section class="section" id="explore">
-        <MudText Typo="Typo.h5" Class="mb-2">Explore</MudText>
-        <MudText Typo="Typo.subtitle2" Class="muted mb-3">Find what fits you best � near you, online, or on-demand.</MudText>
-
-        <MudGrid Spacing="3">
-            <MudItem xs="12" sm="4">
-                <MudLink Href="/events?mode=local" Class="tile-link" aria-label="Browse local events">
-                    <MudPaper Class="tile" Elevation="1" role="button" tabindex="0">
-                        <div class="tile-content">
-                            <MudIcon Icon="@Icons.Material.Filled.Place" Size="Size.Large" />
-                            <MudText Typo="Typo.h6">Local</MudText>
-                            <MudText Typo="Typo.caption" Class="mud-text-secondary">Find near you</MudText>
-                        </div>
-                    </MudPaper>
-                </MudLink>
-            </MudItem>
-
-            <MudItem xs="12" sm="4">
-                <MudLink Href="/events?mode=digital" Class="tile-link" aria-label="Browse digital events">
-                    <MudPaper Class="tile" Elevation="1" role="button" tabindex="0">
-                        <div class="tile-content">
-                            <MudIcon Icon="@Icons.Material.Filled.DesktopWindows" Size="Size.Large" />
-                            <MudText Typo="Typo.h6">Digital</MudText>
-                            <MudText Typo="Typo.caption" Class="mud-text-secondary">Find online</MudText>
-                        </div>
-                    </MudPaper>
-                </MudLink>
-            </MudItem>
-
-            <MudItem xs="12" sm="4">
-                <MudLink Href="/archive" Class="tile-link" aria-label="Browse archive">
-                    <MudPaper Class="tile" Elevation="1" role="button" tabindex="0">
-                        <div class="tile-content">
-                            <MudIcon Icon="@Icons.Material.Filled.Download" Size="Size.Large" />
-                            <MudText Typo="Typo.h6">Archive</MudText>
-                            <MudText Typo="Typo.caption" Class="mud-text-secondary">Watch recordings</MudText>
-                        </div>
-                    </MudPaper>
-                </MudLink>
-            </MudItem>
-        </MudGrid>
-    </section>
-
-    <!-- THIS WEEK - Carousel -->
-    <section class="section">
-        <div class="featured-events-header">
-            <div>
-                <MudText Typo="Typo.h5">Featured Events</MudText>
-                <MudText Typo="Typo.subtitle2" Class="muted">Discover upcoming events from our community.</MudText>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/events" StartIcon="@Icons.Material.Filled.PlaylistAddCheck">
+                    View All Events
+                </MudButton>
             </div>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/events" StartIcon="@Icons.Material.Filled.PlaylistAddCheck">
-                View All Events
-            </MudButton>
-        </div>
 
-        <div class="carousel-wrap">
-            @if (_isLoading)
-            {
-                <MudPaper Class="pa-6" Style="text-align: center;">
-                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
-                    <MudText Class="mt-2">Loading events...</MudText>
-                </MudPaper>
-            }
-            else if (_events.Any())
-            {
-                <MudCarousel TData="object" AutoCycle="true" CycleInterval="6000" ShowArrows="true" FullHeight="false" Style="height: auto; min-height: 400px;">
-                    @foreach (var chunk in Chunk(_events, 3))
-                    {
-                        <MudCarouselItem Style="height: auto; padding: 20px 0;">
-                            <MudStack Row="true" Gap="16px" Justify="Justify.Center" AlignItems="AlignItems.Stretch" Style="flex-wrap:wrap; height: 100%;">
-                                @foreach (var evt in chunk)
-                                {
-                                    <MudCard Elevation="0" Class="card" Style="width: 340px; max-width: 92vw;">
-                                        <MudCardMedia Class="card-media">
-                                            <div style="position: relative; z-index: 2;">@evt.Title</div>
-                                        </MudCardMedia>
-                                        <MudCardContent Class="event-body">
-                                            <div class="event-chips">
-                                                <MudChip T="string" Color="Color.Secondary" Variant="Variant.Filled" Size="Size.Small" Style="background: #8b5cf6; color: white;">
-                                                    @(evt.EventTypeFullName ?? "Event")
-                                                </MudChip>
-                                                <MudChip T="string" Color="Color.Info" Variant="Variant.Outlined" Size="Size.Small" Style="border-color: #3b82f6; color: #60a5fa;">
-                                                    @(evt.EventFormatFullName ?? "Online")
-                                                </MudChip>
-                                                <MudChip T="string" Color="Color.Success" Variant="Variant.Outlined" Size="Size.Small" Style="border-color: #10b981; color: #34d399;">
-                                                    @(evt.Price.HasValue && evt.Price > 0 ? $"{evt.CurrencyCode ?? "�"}{evt.Price:F2}" : "Free")
-                                                </MudChip>
+            <div class="landing-users__carousel-wrap">
+                @if (_isLoading)
+                {
+                    <div class="landing-users__loading-state">
+                        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                        <MudText Class="mt-2">Loading events...</MudText>
+                    </div>
+                }
+                else if (_events.Any())
+                {
+                    <MudCarousel TData="object" AutoCycle="true" CycleInterval="6000" ShowArrows="true" FullHeight="false" Style="height: auto; min-height: 400px;">
+                        @foreach (var chunk in Chunk(_events, 3))
+                        {
+                            <MudCarouselItem Style="height: auto; padding: 20px 0;">
+                                <MudStack Row="true" Gap="4" Justify="Justify.Center" AlignItems="AlignItems.Stretch" Style="flex-wrap:wrap; height: 100%;">
+                                    @foreach (var evt in chunk)
+                                    {
+                                        <div class="landing-users__event-card">
+                                            <div class="landing-users__card-media">
+                                                <div class="landing-users__media-title">@evt.Title</div>
                                             </div>
-                                            <MudText Typo="Typo.h6" Class="mb-2" Style="color: #f8fafc; font-weight: 600;">@evt.Title</MudText>
-                                            <MudText Typo="Typo.body2" Class="mb-3" Style="color: #cbd5e1; line-height: 1.5; flex: 1;">@(TruncateText(evt.Description, 150))</MudText>
+                                            <div class="landing-users__card-content">
+                                                <div class="landing-users__chips">
+                                                    <MudChip T="string" Variant="Variant.Filled" Size="Size.Small" Class="landing-users__chip--type">
+                                                        @(evt.EventTypeFullName ?? "Event")
+                                                    </MudChip>
+                                                    <MudChip T="string" Variant="Variant.Outlined" Size="Size.Small" Class="landing-users__chip--format">
+                                                        @(evt.EventFormatFullName ?? "Online")
+                                                    </MudChip>
+                                                    <MudChip T="string" Variant="Variant.Outlined" Size="Size.Small" Class="landing-users__chip--price">
+                                                        @(evt.Price.HasValue && evt.Price > 0 ? $"{evt.CurrencyCode ?? "€"}{evt.Price:F2}" : "Free")
+                                                    </MudChip>
+                                                </div>
+                                                <MudText Typo="Typo.h6" Class="landing-users__card-title">@evt.Title</MudText>
+                                                <MudText Typo="Typo.body2" Class="landing-users__card-desc">@(TruncateText(evt.Description, 150))</MudText>
 
-                                            <div class="d-flex align-center mb-2" style="color: #f472b6; font-size: 0.875rem;">
-                                                <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Class="mr-1" />
-                                                <span>@(evt.TotalViews > 0 ? $"{evt.TotalViews} views" : "Join community event")</span>
+                                                <div class="landing-users__card-views">
+                                                    <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" />
+                                                    <span>@(evt.TotalViews > 0 ? $"{evt.TotalViews} views" : "Join community event")</span>
+                                                </div>
                                             </div>
-                                        </MudCardContent>
-                                        <MudCardActions Style="padding: 16px 20px; margin-top: auto; border-top: 1px solid #2a2a3a;">
-                                            <MudButton Color="Color.Primary" Variant="Variant.Text" Href="@($"/event/detail/{evt.Id}")" EndIcon="@Icons.Material.Filled.ArrowForward" Style="color: #60a5fa; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">
-                                                VIEW DETAILS
-                                            </MudButton>
-                                            <MudSpacer />
-                                            <div class="d-flex align-center" style="color: #94a3b8; font-size: 0.875rem;">
-                                                <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" Class="mr-1" />
-                                                <span>@(evt.ActorDisplayName ?? "Community")</span>
+                                            <div class="landing-users__card-actions">
+                                                <MudButton Color="Color.Primary" Variant="Variant.Text" Href="@($"/event/detail/{evt.Id}")" EndIcon="@Icons.Material.Filled.ArrowForward" Class="landing-users__action-btn">
+                                                    VIEW DETAILS
+                                                </MudButton>
+                                                <div class="landing-users__organizer">
+                                                    <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" />
+                                                    <span>@(evt.ActorDisplayName ?? "Community")</span>
+                                                </div>
                                             </div>
-                                        </MudCardActions>
-                                    </MudCard>
-                                }
-                            </MudStack>
-                                </MudCarouselItem>
-                    }
-                </MudCarousel>
-            }
-            else
-            {
-                <MudPaper Class="pa-6" Style="text-align: center;">
-                    <MudIcon Icon="@Icons.Material.Filled.EventNote" Size="Size.Large" Color="Color.Default" Style="opacity: 0.5;" />
-                    <MudText Class="mt-2">No events available at the moment</MudText>
-                    <MudButton Href="/events" Variant="Variant.Outlined" Class="mt-2">
-                        Browse All Events
-                    </MudButton>
-                </MudPaper>
-            }
-        </div>
-    </section>
-</MudContainer>
-
-@code {
-    private ICollection<EventListDto> _events = new List<EventListDto>();
-    private bool _isLoading = true;
-
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadDataAsync();
-    }
-
-    private async Task LoadDataAsync()
-    {
-        _isLoading = true;
-        try
-        {
-            _events = await LandingPageService.GetFeaturedEventsAsync(9);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error loading landing page events");
-        }
-        finally
-        {
-            _isLoading = false;
-        }
-    }
-
-    private IEnumerable<List<T>> Chunk<T>(IEnumerable<T> source, int size)
-    {
-        var bucket = new List<T>(size);
-        foreach (var item in source)
-        {
-            bucket.Add(item);
-            if (bucket.Count == size)
-            {
-                yield return bucket;
-                bucket = new List<T>(size);
-            }
-        }
-        if (bucket.Count > 0) yield return bucket;
-    }
-
-    private string TruncateText(string? text, int maxLength)
-    {
-        if (string.IsNullOrEmpty(text) || text.Length <= maxLength)
-            return text ?? "";
-
-        return text.Substring(0, maxLength) + "...";
-    }
-}
+                                        </div>
+                                    }
+                                </MudStack>
+                            </MudCarouselItem>
+                        }
+                    </MudCarousel>
+                }
+                else
+                {
+                    <div class="landing-users__empty-state">
+                        <MudIcon Icon="@Icons.Material.Filled.EventNote" Size="Size.Large" Color="Color.Default" Style="opacity: 0.5;" />
+                        <MudText>No events available at the moment</MudText>
+                        <MudButton Href="/events" Variant="Variant.Outlined">
+                            Browse All Events
+                        </MudButton>
+                    </div>
+                }
+            </div>
+        </section>
+    </MudContainer>
+</div>

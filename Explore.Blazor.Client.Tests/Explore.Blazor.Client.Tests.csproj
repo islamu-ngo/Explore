@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <!-- Allow version downgrades for transitive dependencies -->
+    <NoWarn>$(NoWarn);NU1605</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Explore.Blazor.Client\Explore.Blazor.Client.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Testing Framework -->
+    <PackageReference Include="TUnit" Version="1.11.18" />
+
+    <!-- BUnit for Blazor Component Testing -->
+    <PackageReference Include="bunit" Version="1.35.10" />
+
+    <!-- Mocking -->
+    <PackageReference Include="NSubstitute" Version="5.3.0" />
+
+    <!-- Data Generation -->
+    <PackageReference Include="Bogus" Version="35.6.5" />
+
+    <!-- MudBlazor Testing Support (same version as client) -->
+    <PackageReference Include="MudBlazor" Version="8.13.0" />
+  </ItemGroup>
+
+</Project>

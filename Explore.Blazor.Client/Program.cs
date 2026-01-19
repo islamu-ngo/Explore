@@ -76,11 +76,16 @@ builder.Services.AddScoped<IActorService, ActorService>();
 // Register AuthStateService for centralized auth context
 builder.Services.AddScoped<IAuthStateService, AuthStateService>();
 
+// Register message handler for S3 cross-origin uploads
+builder.Services.AddTransient<S3UploadMessageHandler>();
+
 // Register named HTTP client for S3 uploads (ImageStorageService)
+// Uses S3UploadMessageHandler to set CORS mode for cross-origin PUT requests to Hetzner Object Storage
 builder.Services.AddHttpClient("S3Upload", client =>
 {
     client.Timeout = TimeSpan.FromMinutes(5); // Allow large file uploads
-});
+})
+.AddHttpMessageHandler<S3UploadMessageHandler>();
 
 builder.Services.AddScoped<BffClient>();
 

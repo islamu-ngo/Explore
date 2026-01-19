@@ -9,14 +9,17 @@
 @using Blazouter.Services
 @using static Explore.Blazor.Client.Components.Event.EventSessionEditor
 @using Explore.Blazor.Client.Helpers
+@using Explore.Blazor.Client.Components
 @inject IEventService EventService
 @inject IOrganizationService OrganizationService
 @inject IAdminService AdminService
 @inject ICategoryService CategoryService
 @inject ITagService TagService
+@inject IImageStorageService ImageStorageService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 @inject RouterStateService RouterState
+@inject ILogger<EventEdit> Logger
 
 <PageTitle>Edit Event</PageTitle>
 
@@ -51,16 +54,25 @@ else if (currentEvent != null && updateDto != null)
                         <div class="mb-4">
                             <MudText Typo="Typo.h6" Class="mb-3">Event Image</MudText>
                             <MudPaper Class="pa-4" Style="background-color: var(--mud-palette-background-grey);">
-                                <ImageUpload ImageKey="@_imageObjectKey"
-                                             ImageKeyChanged="OnImageKeyChanged"
-                                             PreviewUrl="@_previewImageUrl"
-                                             PreviewUrlChanged="OnPreviewUrlChanged"
-                                             StorageObjectId="@_uploadedStorageObjectId"
-                                             StorageObjectIdChanged="OnStorageObjectIdChanged"
-                                            Width="100%"
-                                            Height="300px"
-                                            PlaceholderText="Update event image"
-                                            HintText="Upload a new image or keep the existing one (JPG, PNG, GIF, WebP - Max 5MB)" />
+                                <ImageUpload @ref="_imageUploadComponent"
+                                             @bind-PreviewUrl="_previewImageUrl"
+                                             FileDataSelected="OnImageFileDataSelected"
+                                             IsProcessing="_isUploadingImage"
+                                             Width="100%"
+                                             Height="300px"
+                                             PlaceholderText="Update event image"
+                                             HintText="Upload a new image or keep the existing one (JPG, PNG, GIF, WebP - Max 5MB)" />
+                                @if (_isUploadingImage)
+                                {
+                                    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mt-2" />
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Align="Align.Center">Uploading image...</MudText>
+                                }
+                                @if (_uploadError != null)
+                                {
+                                    <MudAlert Severity="Severity.Error" Class="mt-2" ShowCloseIcon="true" CloseIconClicked="@(() => _uploadError = null)">
+                                        @_uploadError
+                                    </MudAlert>
+                                }
                             </MudPaper>
                         </div>
 
@@ -373,10 +385,13 @@ else
     // Sessions
     private List<SessionEditorModel> sessions = new();
 
-    // Local image upload state
-    private string? _imageObjectKey;
+    // Image upload state
+    private FileUploadData? _selectedFileData;
     private string? _previewImageUrl;
+    private bool _isUploadingImage = false;
     private Guid? _uploadedStorageObjectId;
+    private ImageUpload? _imageUploadComponent;
+    private string? _uploadError;
 
     protected override async Task OnInitializedAsync()
     {
@@ -527,46 +542,16 @@ else
         };
     }
 
-    private async Task OnImageSelected(InputFileChangeEventArgs e)
-    {
-        var file = e.File;
-        if (file != null && updateDto != null)
-        {
-            if (file.Size > 10 * 1024 * 1024)
-            {
-                Snackbar.Add("File size must be less than 10MB", Severity.Error);
-                return;
-            }
-
-            var allowedTypes = new[] { "image/jpeg", "image/png", "image/gif", "image/webp" };
-            if (!allowedTypes.Contains(file.ContentType.ToLower()))
-            {
-                Snackbar.Add("Only image files are allowed", Severity.Error);
-                return;
-            }
-
-            try
-            {
-                using var stream = file.OpenReadStream(10 * 1024 * 1024);
-                var buffer = new byte[file.Size];
-                await stream.ReadAsync(buffer, 0, (int)file.Size);
-
-                _previewImageUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(buffer)}";
-
-                // TODO: Upload to server and get FeaturedImageId
-                // For now, keep existing image
-                StateHasChanged();
-            }
-            catch (Exception ex)
-            {
-                Snackbar.Add($"Error uploading image: {ex.Message}", Severity.Error);
-            }
-        }
-    }
-
     private async Task HandleValidSubmit()
     {
         if (updateDto == null) return;
+
+        // Don't allow submit while image is uploading
+        if (_isUploadingImage)
+        {
+            Snackbar.Add("Please wait for the image upload to complete.", Severity.Warning);
+            return;
+        }
 
         try
         {
@@ -603,22 +588,100 @@ else
         Navigation.NavigateTo("/myevents");
     }
 
-    private async Task OnImageKeyChanged(string? value)
+    /// <summary>
+    /// Handles file selection with FileUploadData (bytes already in memory).
+    /// This is the preferred method for reliable uploads in Blazor WASM.
+    /// </summary>
+    private async Task OnImageFileDataSelected(FileUploadData? fileData)
     {
-        _imageObjectKey = value;
-        await Task.CompletedTask;
+        Logger.LogInformation("[EventEdit] OnImageFileDataSelected called with fileData={HasData}", fileData != null);
+
+        _selectedFileData = fileData;
+        _uploadError = null;
+
+        if (fileData == null)
+        {
+            // File was removed - keep existing image unless user explicitly removes
+            Logger.LogInformation("[EventEdit] Image selection cleared");
+            return;
+        }
+
+        _isUploadingImage = true;
+        Logger.LogInformation("[EventEdit] Setting _isUploadingImage=true, calling StateHasChanged...");
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            Logger.LogInformation("[EventEdit] Starting upload for {FileName} ({Size} bytes)", fileData.FileName, fileData.Size);
+
+            // Upload the image using the bytes-based method (avoids stream issues)
+            Logger.LogInformation("[EventEdit] Calling ImageStorageService.UploadAndCreateRecordFromBytesAsync...");
+            var uploadResult = await ImageStorageService.UploadAndCreateRecordFromBytesAsync(fileData);
+            Logger.LogInformation("[EventEdit] Upload result: Success={Success}, StorageObjectId={Id}, Error={Error}",
+                uploadResult?.Success, uploadResult?.StorageObjectId, uploadResult?.ErrorMessage);
+
+            if (uploadResult?.Success == true)
+            {
+                _uploadedStorageObjectId = uploadResult.StorageObjectId;
+                _uploadError = null;
+                Logger.LogInformation("[EventEdit] Featured image uploaded successfully. StorageObjectId: {StorageObjectId}", uploadResult.StorageObjectId);
+                Snackbar.Add("Image uploaded successfully!", Severity.Success);
+            }
+            else
+            {
+                var errorMsg = uploadResult?.ErrorMessage ?? "Failed to upload image. Please try again.";
+                Logger.LogWarning("[EventEdit] Image upload failed: {ErrorMessage}", errorMsg);
+                _uploadError = errorMsg;
+                Snackbar.Add(errorMsg, Severity.Error);
+
+                // Clear the preview and selected file on failure
+                await ClearUploadState();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Exception during image upload for {FileName}", fileData.FileName);
+            _uploadError = $"Upload error: {ex.Message}";
+            Snackbar.Add("An error occurred while uploading the image", Severity.Error);
+
+            // Clear on error
+            await ClearUploadState();
+        }
+        finally
+        {
+            _isUploadingImage = false;
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
-    private async Task OnPreviewUrlChanged(string? value)
+    /// <summary>
+    /// Clears the upload state on error or cancellation.
+    /// </summary>
+    private async Task ClearUploadState()
     {
-        _previewImageUrl = value;
-        await Task.CompletedTask;
-    }
+        try
+        {
+            if (_imageUploadComponent != null)
+            {
+                await _imageUploadComponent.RemoveImage();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error clearing image upload component");
+        }
 
-    private async Task OnStorageObjectIdChanged(Guid? value)
-    {
-        _uploadedStorageObjectId = value;
-        await Task.CompletedTask;
+        _selectedFileData = null;
+        // Don't clear _uploadedStorageObjectId - keep existing image ID if there was one
+        // Only set _previewImageUrl back to existing image
+        if (currentEvent != null && !string.IsNullOrEmpty(currentEvent.FeaturedImageUri))
+        {
+            _previewImageUrl = currentEvent.FeaturedImageUri;
+        }
+        else
+        {
+            _previewImageUrl = GeneratePlaceholderImage();
+        }
     }
 
     // Session management methods

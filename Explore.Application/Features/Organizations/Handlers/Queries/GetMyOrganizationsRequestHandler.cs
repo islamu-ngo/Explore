@@ -1,10 +1,12 @@
 using AutoMapper;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Organization;
 using Explore.Application.Features.Organizations.Requests.Queries;
 using Explore.Application.Responses;
 using Explore.Domain.Enums;
 using MediatR;
+using Microsoft.Extensions.Logging;
 
 namespace Explore.Application.Features.Organizations.Handlers.Queries;
 
@@ -13,15 +15,21 @@ public class GetMyOrganizationsRequestHandler : IRequestHandler<GetMyOrganizatio
     private readonly IOrganizationRepository _organizationRepository;
     private readonly IOrganizationMemberRepository _organizationMemberRepository;
     private readonly IMapper _mapper;
+    private readonly IObjectStorageService _objectStorageService;
+    private readonly ILogger<GetMyOrganizationsRequestHandler> _logger;
 
     public GetMyOrganizationsRequestHandler(
         IOrganizationRepository organizationRepository,
         IOrganizationMemberRepository organizationMemberRepository,
-        IMapper mapper)
+        IMapper mapper,
+        IObjectStorageService objectStorageService,
+        ILogger<GetMyOrganizationsRequestHandler> logger)
     {
         _organizationRepository = organizationRepository;
         _organizationMemberRepository = organizationMemberRepository;
         _mapper = mapper;
+        _objectStorageService = objectStorageService;
+        _logger = logger;
     }
 
     public async Task<PaginatedResult<OrganizationListDto>> Handle(GetMyOrganizationsRequest request, CancellationToken cancellationToken)
@@ -47,9 +55,43 @@ public class GetMyOrganizationsRequestHandler : IRequestHandler<GetMyOrganizatio
             {
                 dto.CurrentUserRole = (OrganizationRoleEnum)roleId;
             }
+            // Resolve presigned URL for profile picture
+            dto.ActorProfilePictureUri = ResolveImageUrl(dto.ActorProfilePictureUri);
             dtos.Add(dto);
         }
 
         return PaginatedResult<OrganizationListDto>.Create(dtos, totalCount, request.PageNumber, request.PageSize);
+    }
+
+    /// <summary>
+    /// Resolves an image object key to a presigned URL for viewing.
+    /// </summary>
+    private string? ResolveImageUrl(string? objectKeyOrUri)
+    {
+        if (string.IsNullOrEmpty(objectKeyOrUri))
+            return null;
+
+        try
+        {
+            // Check if it's already a full URL (legacy data)
+            if (objectKeyOrUri.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                objectKeyOrUri.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                if (Uri.TryCreate(objectKeyOrUri, UriKind.Absolute, out var uri))
+                {
+                    var objectKey = uri.AbsolutePath.TrimStart('/');
+                    return _objectStorageService.GeneratePresignedDownloadUrl(objectKey, 60);
+                }
+                return objectKeyOrUri;
+            }
+
+            // It's an object key - generate presigned URL
+            return _objectStorageService.GeneratePresignedDownloadUrl(objectKeyOrUri, 60);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to generate presigned URL for object key: {ObjectKey}", objectKeyOrUri);
+            return null;
+        }
     }
 }
