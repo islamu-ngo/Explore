@@ -23,6 +23,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Server;
 using Yarp.ReverseProxy.Configuration;
 using Yarp.ReverseProxy.Transforms;
+using Microsoft.AspNetCore.Http.Extensions;
 
 // Graceful shutdown tracking for zero-downtime deployments
 // SIGTERM: 25 second grace period (health returns 503, still accepts requests)
@@ -142,6 +143,28 @@ builder.Services.AddHttpClient<IEventApiClient, EventApiClient>(client =>
 
 builder.Services.AddOptions();
 
+// Log Keycloak configuration (without secrets)
+var keycloakAuthority = builder.Configuration["Keycloak:Authority"];
+var keycloakClientId = builder.Configuration["Keycloak:ClientId"];
+var keycloakClientSecret = builder.Configuration["Keycloak:ClientSecret"];
+
+builder.Services.AddLogging(logging =>
+{
+    logging.AddConsole();
+    logging.AddDebug();
+});
+
+var logger = LoggerFactory.Create(config => config.AddConsole()).CreateLogger("Startup");
+logger.LogInformation("Keycloak Configuration:");
+logger.LogInformation("  Authority: {Authority}", keycloakAuthority ?? "(not set)");
+logger.LogInformation("  ClientId: {ClientId}", keycloakClientId ?? "(not set)");
+logger.LogInformation("  ClientSecret: {HasSecret}", string.IsNullOrEmpty(keycloakClientSecret) ? "NO" : "YES");
+
+if (string.IsNullOrEmpty(keycloakAuthority) || string.IsNullOrEmpty(keycloakClientId) || string.IsNullOrEmpty(keycloakClientSecret))
+{
+    logger.LogError("CRITICAL: Keycloak configuration is incomplete! Authentication will not work.");
+}
+
 builder.Services.AddAuthentication(options =>
     {
         options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
@@ -164,9 +187,9 @@ builder.Services.AddAuthentication(options =>
     .AddOpenIdConnect(options =>
     {
         // From configuration/Infisical
-        options.Authority = builder.Configuration["Keycloak:Authority"];
-        options.ClientId = builder.Configuration["Keycloak:ClientId"];
-        options.ClientSecret = builder.Configuration["Keycloak:ClientSecret"];
+        options.Authority = keycloakAuthority;
+        options.ClientId = keycloakClientId;
+        options.ClientSecret = keycloakClientSecret;
         options.ResponseType = "code";
         options.UsePkce = true;
         options.SaveTokens = true;
@@ -381,23 +404,45 @@ app.MapControllers();
 // Authentication endpoints
 app.MapGet("/login", async ctx =>
 {
+    app.Logger.LogInformation("Login endpoint hit. Request URL: {Url}", ctx.Request.GetDisplayUrl());
     var returnUrl = ctx.Request.Query["returnUrl"].ToString();
-    await ctx.ChallengeAsync(
-        OpenIdConnectDefaults.AuthenticationScheme,
-        new AuthenticationProperties
-        {
-            RedirectUri = string.IsNullOrEmpty(returnUrl) ? "/" : returnUrl
-        }
-    );
+    app.Logger.LogInformation("Return URL: {ReturnUrl}", string.IsNullOrEmpty(returnUrl) ? "/" : returnUrl);
+
+    try
+    {
+        await ctx.ChallengeAsync(
+            OpenIdConnectDefaults.AuthenticationScheme,
+            new AuthenticationProperties
+            {
+                RedirectUri = string.IsNullOrEmpty(returnUrl) ? "/" : returnUrl
+            }
+        );
+        app.Logger.LogInformation("ChallengeAsync completed successfully");
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError(ex, "Error during login challenge");
+        throw;
+    }
 });
 
 app.MapGet("/logout", async ctx =>
 {
-    await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-    await ctx.SignOutAsync(
-        OpenIdConnectDefaults.AuthenticationScheme,
-        new AuthenticationProperties { RedirectUri = "/" }
-    );
+    app.Logger.LogInformation("Logout endpoint hit");
+    try
+    {
+        await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        await ctx.SignOutAsync(
+            OpenIdConnectDefaults.AuthenticationScheme,
+            new AuthenticationProperties { RedirectUri = "/" }
+        );
+        app.Logger.LogInformation("Logout completed successfully");
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError(ex, "Error during logout");
+        throw;
+    }
 });
 
 // Public endpoint to check authentication status

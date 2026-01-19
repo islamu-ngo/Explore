@@ -109,7 +109,7 @@
                                     <MudIcon Icon="@Icons.Material.Filled.Settings" Size="Size.Small" />
                                     Settings
                                 </a>
-                                <a href="/logout" class="navbar__dropdown-item navbar__dropdown-item--danger" @onclick="CloseDropdown">
+                                <a href="/logout" data-enhance-nav="false" class="navbar__dropdown-item navbar__dropdown-item--danger" @onclick="CloseDropdown">
                                     <MudIcon Icon="@Icons.Material.Filled.Logout" Size="Size.Small" />
                                     Logout
                                 </a>
@@ -118,13 +118,14 @@
                     </div>
                 </Authorized>
                 <NotAuthorized>
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               Href="/login"
-                               Class="navbar__login-btn"
-                               StartIcon="@Icons.Material.Filled.Login">
-                        Login
-                    </MudButton>
+                    <a href="/login" data-enhance-nav="false" style="text-decoration: none;">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Class="navbar__login-btn"
+                                   StartIcon="@Icons.Material.Filled.Login">
+                            Login
+                        </MudButton>
+                    </a>
                 </NotAuthorized>
             </AuthorizeView>
         </div>
