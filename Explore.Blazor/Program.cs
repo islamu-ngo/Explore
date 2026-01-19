@@ -24,6 +24,7 @@ using Microsoft.AspNetCore.Components.Server;
 using Yarp.ReverseProxy.Configuration;
 using Yarp.ReverseProxy.Transforms;
 using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.AspNetCore.HttpOverrides;
 
 // Graceful shutdown tracking for zero-downtime deployments
 // SIGTERM: 25 second grace period (health returns 503, still accepts requests)
@@ -296,6 +297,48 @@ builder.Services.AddHealthChecks()
     }, tags: ["live", "ready"]);
 
 var app = builder.Build();
+
+// ============================================================================
+// CRITICAL: Forwarded Headers for Reverse Proxy / SSL Termination (Coolify)
+// ============================================================================
+// When running behind a reverse proxy (Nginx, Coolify, cloud load balancers),
+// the proxy terminates TLS and forwards requests to the app via HTTP internally.
+// Without this, the app sees HTTP and generates http:// redirect URIs, causing
+// OIDC "Invalid parameter: redirect_uri" errors because Keycloak expects https://.
+//
+// This middleware reads the X-Forwarded-Proto and X-Forwarded-For headers
+// set by the proxy to restore the original request scheme and client IP.
+// ============================================================================
+
+// Configure forwarded headers options
+var forwardedHeadersOptions = new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+    // Clear the default known networks/proxies to trust all proxies
+    // This is required for containerized environments like Coolify/Docker
+};
+forwardedHeadersOptions.KnownNetworks.Clear();
+forwardedHeadersOptions.KnownProxies.Clear();
+
+app.UseForwardedHeaders(forwardedHeadersOptions);
+
+// Log the detected scheme for debugging
+app.Use(async (context, next) =>
+{
+    // Only log on specific paths to avoid log spam
+    if (context.Request.Path.StartsWithSegments("/auth") ||
+        context.Request.Path.StartsWithSegments("/login") ||
+        context.Request.Path.StartsWithSegments("/logout"))
+    {
+        app.Logger.LogInformation(
+            "[ForwardedHeaders] Path: {Path}, Scheme: {Scheme}, Host: {Host}, Proto Header: {Proto}",
+            context.Request.Path,
+            context.Request.Scheme,
+            context.Request.Host,
+            context.Request.Headers["X-Forwarded-Proto"].ToString());
+    }
+    await next();
+});
 
 // Register graceful shutdown handlers for zero-downtime deployments
 // SIGTERM: Start graceful shutdown with 25 second grace period
