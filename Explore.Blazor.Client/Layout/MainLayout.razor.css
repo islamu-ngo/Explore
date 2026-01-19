@@ -55,6 +55,7 @@
     display: flex;
     flex-direction: column;
     padding-top: 0; /* Sticky header handles spacing */
+    background-color: var(--mud-palette-background-grey); /* Ensure distinct background from surface (cards) */
 }
 
 /* Element: main-layout__footer

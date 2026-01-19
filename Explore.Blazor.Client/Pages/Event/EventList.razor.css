@@ -47,19 +47,20 @@
     height: 100%;
     display: flex;
     flex-direction: column;
-    border: 1px solid var(--mud-palette-lines-default);
-    border-radius: 12px; /* Slightly reduced radius for cleaner look */
+    /* Stronger border for light mode visibility */
+    border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 80%, #000 10%);
+    border-radius: 12px;
     background-color: var(--mud-palette-surface);
     transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
                 box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1),
                 border-color 0.2s ease;
     overflow: hidden;
-    min-height: 420px; /* Ensure consistent height */
+    min-height: 420px;
 }
 
 ::deep .event-list__card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08); /* Slightly stronger shadow on hover */
     border-color: var(--mud-palette-primary);
 }
 

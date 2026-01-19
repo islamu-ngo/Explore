@@ -1,5 +1,7 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
@@ -109,18 +111,78 @@ public static class Extensions
     public static WebApplication MapDefaultEndpoints(this WebApplication app)
     {
         // Health check endpoints for container orchestration (Coolify, K8s, etc.)
-        // These endpoints return 200 OK when healthy, 503 Service Unavailable when unhealthy
+        // Returns: 200 OK when healthy, 503 Service Unavailable when unhealthy
         // Required for zero-downtime rolling deployments
 
-        // All health checks must pass for app to be considered ready to accept traffic after starting
-        app.MapHealthChecks(HealthEndpointPath);
+        var healthCheckOptions = new HealthCheckOptions
+        {
+            ResponseWriter = WriteHealthCheckResponse,
+            ResultStatusCodes =
+            {
+                [HealthStatus.Healthy] = StatusCodes.Status200OK,
+                [HealthStatus.Degraded] = StatusCodes.Status200OK,
+                [HealthStatus.Unhealthy] = StatusCodes.Status503ServiceUnavailable
+            }
+        };
+
+        // All health checks must pass for app to be considered ready to accept traffic
+        app.MapHealthChecks(HealthEndpointPath, healthCheckOptions);
 
         // Only health checks tagged with the "live" tag must pass for app to be considered alive
         app.MapHealthChecks(AlivenessEndpointPath, new HealthCheckOptions
         {
-            Predicate = r => r.Tags.Contains("live")
+            Predicate = r => r.Tags.Contains("live"),
+            ResponseWriter = WriteHealthCheckResponse,
+            ResultStatusCodes =
+            {
+                [HealthStatus.Healthy] = StatusCodes.Status200OK,
+                [HealthStatus.Degraded] = StatusCodes.Status200OK,
+                [HealthStatus.Unhealthy] = StatusCodes.Status503ServiceUnavailable
+            }
         });
 
         return app;
+    }
+
+    private static async Task WriteHealthCheckResponse(HttpContext context, HealthReport report)
+    {
+        // Set headers for load balancer compatibility
+        context.Response.ContentType = "application/json; charset=utf-8";
+        context.Response.Headers["Connection"] = "close";
+        context.Response.Headers["Access-Control-Allow-Origin"] = "*";
+        context.Response.Headers["X-Health-Status"] = report.Status.ToString();
+        context.Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
+        context.Response.Headers["Pragma"] = "no-cache";
+
+        var response = new
+        {
+            status = report.Status.ToString(),
+            message = report.Status switch
+            {
+                HealthStatus.Healthy => "Ok",
+                HealthStatus.Degraded => "Degraded",
+                HealthStatus.Unhealthy => "Service Unavailable",
+                _ => "Unknown"
+            },
+            totalDuration = report.TotalDuration.TotalMilliseconds,
+            checks = report.Entries.Select(e => new
+            {
+                name = e.Key,
+                status = e.Value.Status.ToString(),
+                description = e.Value.Description,
+                duration = e.Value.Duration.TotalMilliseconds,
+                error = e.Value.Exception?.Message,
+                data = e.Value.Data.Count > 0 ? e.Value.Data : null
+            })
+        };
+
+        var jsonOptions = new JsonSerializerOptions
+        {
+            WriteIndented = true,
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+        };
+
+        await context.Response.WriteAsync(JsonSerializer.Serialize(response, jsonOptions));
     }
 }
