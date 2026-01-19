@@ -1,0 +1,31 @@
+@page "/logout"
+@using MudBlazor
+@inject NavigationManager Navigation
+
+<PageTitle>Signing out...</PageTitle>
+
+<MudContainer Class="d-flex justify-center align-center" Style="min-height: 60vh;">
+    <MudStack AlignItems="AlignItems.Center" Spacing="3">
+        <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+        <MudText Typo="Typo.h6">Signing you out...</MudText>
+    </MudStack>
+</MudContainer>
+
+@code {
+    private bool _hasNavigated;
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (!firstRender || _hasNavigated)
+        {
+            return;
+        }
+
+        _hasNavigated = true;
+
+        // Navigate to the server signout endpoint (not /logout which is this Blazor component)
+        var query = new Uri(Navigation.Uri).Query;
+        var signoutUrl = string.IsNullOrWhiteSpace(query) ? "/auth/signout" : $"/auth/signout{query}";
+        Navigation.NavigateTo(signoutUrl, forceLoad: true);
+    }
+}

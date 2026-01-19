@@ -3,6 +3,7 @@
 @using Blazouter.Interfaces
 @using Explore.Blazor.Client.Layout
 @using Explore.Blazor.Client.Pages
+@using Explore.Blazor.Client.Pages.Auth
 @using Explore.Blazor.Client.Pages.Event
 @using Explore.Blazor.Client.Pages.User
 @using Explore.Blazor.Client.Pages.Organization
@@ -52,6 +53,8 @@
             new RouteConfig { Path = "/loading", Component = typeof(Loading), Transition = RouteTransition.None },
             new RouteConfig { Path = "/counter", Component = typeof(Counter), Transition = RouteTransition.Fade },
             new RouteConfig { Path = "/weather", Component = typeof(Weather), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/login", Component = typeof(LoginRedirect), Transition = RouteTransition.None },
+            new RouteConfig { Path = "/logout", Component = typeof(LogoutRedirect), Transition = RouteTransition.None },
 
             // User authenticated routes
             new RouteConfig { Path = "/dashboard", Component = typeof(UsersHome), Transition = RouteTransition.Fade },
