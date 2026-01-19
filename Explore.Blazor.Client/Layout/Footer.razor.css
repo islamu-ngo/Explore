@@ -24,7 +24,7 @@
 ::deep .site-footer {
     background-color: var(--mud-palette-surface);
     border-top: 1px solid var(--mud-palette-lines-default);
-    padding: 64px 0 32px;
+    padding: 64px 0 64px;
     margin-top: auto;
     position: relative;
     overflow: hidden;

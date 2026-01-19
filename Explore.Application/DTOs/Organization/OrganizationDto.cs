@@ -26,5 +26,9 @@ namespace Explore.Application.DTOs.Organization
         public Guid? ActorId { get; set; }
         public string? ActorDisplayName { get; set; }
         public string? ActorHandle { get; set; }
+
+        // Profile Picture (resolved to presigned URL)
+        public Guid? ActorProfilePictureId { get; set; }
+        public string? ActorProfilePictureUri { get; set; }
     }
 }

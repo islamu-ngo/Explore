@@ -1,29 +1,12 @@
-@using System.ComponentModel.DataAnnotations
+@page "/organization/{organizationId}/create-event"
 @using MudBlazor
-@using Microsoft.AspNetCore.Components.Forms
-@using Explore.Blazor.Client.Services
-@using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Components
 @using Explore.Blazor.Client.Components.Event
+@using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Authorization
-@using Blazouter.Services
-@inject IEventService EventService
-@inject IOrganizationService OrganizationService
-@inject IUserService UserService
-@inject IAdminService AdminService
-@inject IImageStorageService ImageStorageService
-@inject ICategoryService CategoryService
-@inject ITagService TagService
-@inject ILocationService LocationService
-@inject NavigationManager Navigation
-@inject ISnackbar Snackbar
-@inject RouterStateService RouterState
-@inject ILogger<CreateEvent> Logger
 @attribute [Authorize]
-@using Explore.Blazor.Client.Models.Enums
-@using static Explore.Blazor.Client.Components.Event.EventSessionEditor
-@using Explore.Blazor.Client.Helpers
 
+<PageTitle>Create Event</PageTitle>
 <MudContainer Class="create-event" DisableGutters="true">
     @if (isLoading)
     {
@@ -37,28 +20,9 @@
             <MudAlert Severity="Severity.Error" Class="mb-4">
                 Organization not found or you do not have permission to create events for this organization.
             </MudAlert>
-            <div class="create-event__debug">
-                <MudText Typo="Typo.body2" Class="mb-2">
-                    <strong>Debug Info:</strong>
-                </MudText>
-                <MudText Typo="Typo.body2" Class="mb-1">
-                    • Requested OrganizationId: @OrganizationId
-                </MudText>
-                <MudText Typo="Typo.body2" Class="mb-1">
-                    • Current User ID: @(_currentUserId?.ToString() ?? "Not loaded")
-                </MudText>
-                <MudText Typo="Typo.body2">
-                    • Organizations loaded: @_loadedOrgsCount
-                </MudText>
-            </div>
-            <div class="d-flex gap-2">
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@RetryLoad">
-                    Retry
-                </MudButton>
-                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="@(() => Navigation.NavigateTo("/organization/my"))">
-                    Back to My Organizations
-                </MudButton>
-            </div>
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="@(() => Navigation.NavigateTo("/organization/my"))">
+                Back to My Organizations
+            </MudButton>
         </MudPaper>
     }
     else if (!canCreateEvent && !_isRetrying)
@@ -66,7 +30,6 @@
         <MudPaper Class="isl-status-card" Elevation="1">
             <MudAlert Severity="Severity.Warning" Class="mb-4">
                 You do not have permission to create events for <strong>@organization?.FullName</strong>.
-                You must be a <strong>Creator</strong>, <strong>Co-Owner</strong> or <strong>Admin</strong> of this organization.
             </MudAlert>
             <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo($"/organization/{OrganizationId}"))">
                 Back to Organization
@@ -78,51 +41,25 @@
         <MudButton StartIcon="@Icons.Material.Filled.ArrowBack"
                    Color="Color.Primary"
                    Variant="Variant.Text"
-                   OnClick="@HandleBackNavigation"
+                   OnClick="@(() => Navigation.NavigateTo($"/organization/{OrganizationId}"))"
                    Class="create-event__back-button">
-            @GetBackButtonText()
+            Back to Organization
         </MudButton>
 
         <MudPaper Class="isl-card isl-form-card" Elevation="1">
             <MudCardHeader>
                 <CardHeaderContent>
                     <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
-                        <MudIcon Icon="Icons.Material.Filled.Event" Size="Size.Large" Color="Color.Primary" />
+                        <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Large" Color="Color.Primary" />
                         <div>
-                            <MudText Typo="Typo.h5">Create Event for @organization?.FullName</MudText>
+                            <MudText Typo="Typo.h5">Create Event</MudText>
                             <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                @GetStepDescription()
+                                Create a new event for @organization?.FullName
                             </MudText>
                         </div>
                     </MudStack>
                 </CardHeaderContent>
             </MudCardHeader>
-
-            <!-- Stepper UI -->
-            <div class="create-event__stepper">
-                <div class="create-event__step-container">
-                    <div class="create-event__step-line">
-                        <div class="create-event__step-progress" style="width: @GetProgressWidth()"></div>
-                    </div>
-
-                    @foreach (var stepInfo in steps)
-                    {
-                        <div class="create-event__step @GetStepClass(stepInfo.Step)">
-                            <div class="create-event__step-circle">
-                                @if (IsStepCompleted(stepInfo.Step))
-                                {
-                                    <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" />
-                                }
-                                else
-                                {
-                                    @(stepInfo.Step + 1)
-                                }
-                            </div>
-                            <div class="create-event__step-title">@stepInfo.Title</div>
-                        </div>
-                    }
-                </div>
-            </div>
 
             <MudCardContent>
                 @if (!string.IsNullOrWhiteSpace(errorMessage))
@@ -132,941 +69,212 @@
                     </MudAlert>
                 }
 
-                @switch (currentStep)
-                {
-                    case 0:
-                        <!-- Step 1: Event Information -->
-                        <EditForm Model="createDto" OnValidSubmit="@(() => {})">
-                            <DataAnnotationsValidator />
+                <EditForm Model="createDto" OnValidSubmit="@HandleSubmit">
+                    <DataAnnotationsValidator />
 
-                            <!-- Event Title -->
-                            <MudTextField @bind-Value="createDto.Title"
-                                        Label="Event Title"
-                                        Variant="Variant.Outlined"
-                                        Required
-                                        FullWidth
-                                        Class="mb-3"
-                                        Adornment="Adornment.Start"
-                                        AdornmentIcon="@Icons.Material.Filled.Title" />
-
-                            <!-- Event Description -->
-                            <MudTextField @bind-Value="createDto.Description"
-                                        Label="Event Description"
-                                        Variant="Variant.Outlined"
-                                        Lines="4"
-                                        FullWidth
-                                        Class="mb-3" />
-
-                            <!-- Organization (Read-only display) -->
-                            <MudAlert Severity="Severity.Info" Class="mb-3" Dense="true">
-                                <strong>Organization:</strong> @organization?.FullName
-                            </MudAlert>
-
-                            <!-- Event Type Selection -->
-                            <MudSelect @bind-Value="createDto.EventTypeId"
-                                      Label="Event Type"
-                                      Variant="Variant.Outlined"
-                                      FullWidth
-                                      Required
-                                      Class="mb-3"
-                                      Adornment="Adornment.Start"
-                                      AdornmentIcon="@Icons.Material.Filled.Category">
-                                @if (eventTypes != null)
-                                {
-                                    @foreach (var eventType in eventTypes)
-                                    {
-                                        <MudSelectItem Value="@eventType.Id">@eventType.FullName</MudSelectItem>
-                                    }
-                                }
-                            </MudSelect>
-
-                            <!-- Event Image Upload -->
-                            <MudText Class="isl-form__section-title mb-3">Event Image</MudText>
-                            <MudPaper Class="isl-form-section">
-                                <ImageUpload @bind-PreviewUrl="imagePreviewUrl"
-                                             FileSelected="OnImageFileSelected"
-                                             Width="400px"
-                                             Height="250px"
-                                             PlaceholderText="Upload a featured image for your event"
-                                             UploadButtonText="Select Featured Image"
-                                             HintText="Recommended: 1200x630px for optimal display. Max 5MB." />
-
-                                @if (selectedImageFile != null)
-                                {
-                                    <MudAlert Severity="Severity.Info" Class="mt-2" Dense="true">
-                                        Image '<strong>@selectedImageFile.Name</strong>' is selected and will be uploaded when you create the event.
-                                    </MudAlert>
-                                }
-                            </MudPaper>
-
-                            <!-- Date and Time -->
-                            <MudText Class="isl-form__section-title mb-3">Date and Time</MudText>
-                            <MudPaper Class="isl-form-section">
-                                <MudGrid Spacing="3">
-                                    <MudItem xs="12" sm="6">
-                                        <MudDatePicker Label="Start Date" @bind-Date="_startDate" Variant="Variant.Outlined" />
-                                    </MudItem>
-                                    <MudItem xs="12" sm="6">
-                                        <MudTimePicker Label="Start Time" @bind-Time="_startTime" Variant="Variant.Outlined" />
-                                    </MudItem>
-                                    <MudItem xs="12" sm="6">
-                                        <MudDatePicker Label="End Date" @bind-Date="_endDate" Variant="Variant.Outlined" />
-                                    </MudItem>
-                                    <MudItem xs="12" sm="6">
-                                        <MudTimePicker Label="End Time" @bind-Time="_endTime" Variant="Variant.Outlined" />
-                                    </MudItem>
-                                </MudGrid>
-                            </MudPaper>
-
-                            <!-- Event Format -->
-                            <MudText Class="isl-form__section-title mb-3">Event Format</MudText>
-                            <MudPaper Class="isl-form-section">
-                                <MudSelect @bind-Value="createDto.EventFormatId"
-                                          Label="Event Format"
-                                          Variant="Variant.Outlined">
-                                    @if (eventFormats != null)
-                                    {
-                                        @foreach (var format in eventFormats)
-                                        {
-                                            <MudSelectItem Value="@format.Id">@format.FullName</MudSelectItem>
-                                        }
-                                    }
-                                </MudSelect>
-
-                                @if (createDto.EventFormatId == 2 || createDto.EventFormatId == 3)
-                                {
-                                    <MudTextField @bind-Value="createDto.ExternalRegistrationUrl"
-                                                Label="Online Meeting/Registration Link"
-                                                Variant="Variant.Outlined"
-                                                FullWidth
-                                                Class="mt-3"
-                                                Adornment="Adornment.Start"
-                                                AdornmentIcon="@Icons.Material.Filled.Link"
-                                                HelperText="Link to online meeting or registration page" />
-                                }
-                            </MudPaper>
-
-                            <!-- Visibility & Madhab -->
-                            <MudText Class="isl-form__section-title mb-3">Visibility & Religious Settings</MudText>
-                            <MudPaper Class="isl-form-section">
-                                <MudGrid Spacing="3">
-                                    <MudItem xs="12" sm="6">
-                                        <MudSelect @bind-Value="createDto.VisibilityTypeId"
-                                                  Label="Visibility"
+                    <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4">
+                        <MudTabPanel Text="General Info" Icon="@Icons.Material.Filled.Info">
+                            <MudGrid>
+                                <MudItem xs="12">
+                                    <MudTextField @bind-Value="createDto.Title"
+                                                  Label="Event Title"
                                                   Variant="Variant.Outlined"
+                                                  Required
                                                   FullWidth
-                                                  Required>
-                                            @if (visibilityTypes != null)
-                                            {
-                                                @foreach (var visibility in visibilityTypes)
-                                                {
-                                                    <MudSelectItem Value="@visibility.Id">@visibility.FullName</MudSelectItem>
-                                                }
-                                            }
-                                        </MudSelect>
-                                    </MudItem>
-                                    <MudItem xs="12" sm="6">
-                                        <MudSelect T="int?"
-                                                  @bind-Value="selectedMadhabId"
-                                                  Label="Madhab (Optional)"
+                                                  Class="mb-4" />
+
+                                    <MudTextField @bind-Value="createDto.Description"
+                                                  Label="Description"
                                                   Variant="Variant.Outlined"
+                                                  Lines="6"
                                                   FullWidth
-                                                  Clearable="true">
-                                            @if (madhabs != null)
-                                            {
-                                                @foreach (var madhab in madhabs)
-                                                {
-                                                    <MudSelectItem T="int?" Value="@((int?)madhab.Id)">@madhab.FullName</MudSelectItem>
-                                                }
-                                            }
-                                        </MudSelect>
-                                    </MudItem>
-                                    <MudItem xs="12">
-                                        <MudTextField @bind-Value="createDto.Timezone"
-                                                     Label="Timezone (Optional)"
-                                                     Variant="Variant.Outlined"
-                                                     FullWidth
-                                                     Placeholder="e.g., Europe/Paris, America/New_York"
-                                                     HelperText="Enter IANA timezone identifier" />
-                                    </MudItem>
-                                </MudGrid>
-                            </MudPaper>
+                                                  Class="mb-4" />
 
-                            <!-- Audience Info -->
-                            <MudText Class="isl-form__section-title mb-3">Audience</MudText>
-                            <MudPaper Class="isl-form-section">
-                                <MudGrid Spacing="3">
-                                    <MudItem xs="12" sm="6">
-                                        <MudSelect @bind-Value="createDto.AudienceGenderId"
-                                                  Label="Target Gender"
-                                                  Variant="Variant.Outlined"
-                                                  FullWidth>
-                                            @if (audienceGenders != null)
-                                            {
-                                                @foreach (var gender in audienceGenders)
-                                                {
-                                                    <MudSelectItem Value="@gender.Id">@gender.FullName</MudSelectItem>
-                                                }
-                                            }
-                                        </MudSelect>
-                                    </MudItem>
-                                    <MudItem xs="12" sm="6">
-                                        <MudSelect @bind-Value="createDto.AudienceAgeId"
-                                                  Label="Target Age Group"
-                                                  Variant="Variant.Outlined"
-                                                  FullWidth>
-                                            @if (audienceAges != null)
-                                            {
-                                                @foreach (var age in audienceAges)
-                                                {
-                                                    <MudSelectItem Value="@age.Id">@age.FullName</MudSelectItem>
-                                                }
-                                            }
-                                        </MudSelect>
-                                    </MudItem>
-                                </MudGrid>
-                            </MudPaper>
-
-                            <!-- Price & Registration -->
-                            <MudText Class="isl-form__section-title mb-3">Pricing</MudText>
-                            <MudPaper Class="isl-form-section">
-                                <MudGrid Spacing="3">
-                                    <MudItem xs="12" sm="6">
-                                        <MudNumericField @bind-Value="createDto.Price"
-                                                       Label="Price (optional)"
-                                                       Variant="Variant.Outlined"
-                                                       FullWidth
-                                                       Min="0"
-                                                       Adornment="Adornment.Start"
-                                                       AdornmentIcon="@Icons.Material.Filled.Euro" />
-                                    </MudItem>
-                                    <MudItem xs="12" sm="6">
-                                        <MudTextField @bind-Value="createDto.CurrencyCode"
-                                                     Label="Currency Code"
-                                                     Variant="Variant.Outlined"
-                                                     FullWidth
-                                                     Placeholder="EUR" />
-                                    </MudItem>
-                                </MudGrid>
-                            </MudPaper>
-
-                            <!-- Registration Settings -->
-                            <MudText Class="isl-form__section-title mb-3">Registration</MudText>
-                            <MudPaper Class="isl-form-section">
-                                <MudSwitch @bind-Value="createDto.IsRegistrationRequired"
-                                          Label="Registration Required"
-                                          Color="Color.Primary" />
-                            </MudPaper>
-
-                            <!-- Categories -->
-                            <MudText Class="isl-form__section-title mb-3">Categories</MudText>
-                            <MudPaper Class="isl-form-section">
-                                @if (allCategories != null && allCategories.Any())
-                                {
-                                    <MudSelect T="Guid"
-                                               MultiSelection="true"
-                                               @bind-SelectedValues="selectedCategoryIds"
-                                               Label="Select Categories"
+                                    <MudSelect @bind-Value="createDto.EventTypeId"
+                                               Label="Event Type"
                                                Variant="Variant.Outlined"
-                                               FullWidth
-                                               MultiSelectionTextFunc="@(new Func<List<string>, string>(GetCategorySelectionText))">
-                                        @foreach (var category in allCategories)
+                                               Required
+                                               Class="mb-4">
+                                        @if (eventTypes != null)
                                         {
-                                            <MudSelectItem Value="@category.Id">@category.FullName</MudSelectItem>
+                                            @foreach (var type in eventTypes)
+                                            {
+                                                <MudSelectItem Value="@type.Id">@type.FullName</MudSelectItem>
+                                            }
                                         }
                                     </MudSelect>
-                                }
-                                else
-                                {
-                                    <MudText Typo="Typo.body2" Color="Color.Secondary">No categories available</MudText>
-                                }
-                            </MudPaper>
+                                    
+                                    <MudText Class="isl-form__section-title mb-2 mt-2">Audience</MudText>
+                                    <MudGrid>
+                                        <MudItem xs="12" md="6">
+                                            <MudSelect @bind-Value="createDto.AudienceGenderId" Label="Gender" Variant="Variant.Outlined">
+                                                @if (audienceGenders != null)
+                                                {
+                                                    @foreach (var g in audienceGenders)
+                                                    {
+                                                        <MudSelectItem Value="@g.Id">@g.FullName</MudSelectItem>
+                                                    }
+                                                }
+                                            </MudSelect>
+                                        </MudItem>
+                                        <MudItem xs="12" md="6">
+                                            <MudSelect @bind-Value="createDto.AudienceAgeId" Label="Age Group" Variant="Variant.Outlined">
+                                                @if (audienceAges != null)
+                                                {
+                                                    @foreach (var a in audienceAges)
+                                                    {
+                                                        <MudSelectItem Value="@a.Id">@a.FullName</MudSelectItem>
+                                                    }
+                                                }
+                                            </MudSelect>
+                                        </MudItem>
+                                    </MudGrid>
+                                </MudItem>
+                            </MudGrid>
+                        </MudTabPanel>
 
-                            <!-- Tags -->
-                            <MudText Class="isl-form__section-title mb-3">Tags</MudText>
-                            <MudPaper Class="isl-form-section">
-                                @if (allTags != null && allTags.Any())
+                        <MudTabPanel Text="Media" Icon="@Icons.Material.Filled.Image">
+                            <div class="d-flex justify-center">
+                                <div style="max-width: 600px; width: 100%;">
+                                    <MudText Class="isl-form__section-title mb-3 text-center">Event Image</MudText>
+                                    <ImageUpload @ref="_imageUploadComponent"
+                                                 @bind-PreviewUrl="imagePreviewUrl"
+                                                 FileDataSelected="OnImageFileDataSelected"
+                                                 IsProcessing="_isUploadingImage"
+                                                 Width="100%"
+                                                 Height="300px"
+                                                 PlaceholderText="Upload featured image" />
+                                    @if (_isUploadingImage)
+                                    {
+                                        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mt-2" />
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary" Align="Align.Center">Uploading image...</MudText>
+                                    }
+                                    @if (_uploadError != null)
+                                    {
+                                        <MudAlert Severity="Severity.Error" Class="mt-2" ShowCloseIcon="true" CloseIconClicked="@(() => _uploadError = null)">
+                                            @_uploadError
+                                        </MudAlert>
+                                    }
+                                </div>
+                            </div>
+                        </MudTabPanel>
+
+                        <MudTabPanel Text="Sessions" Icon="@Icons.Material.Filled.EventAvailable">
+                            <MudText Class="isl-form__section-title mb-3">
+                                Event Sessions
+                                <MudText Typo="Typo.caption" Color="Color.Default" Class="ml-2">(Minimum 1 required)</MudText>
+                            </MudText>
+
+                            <div class="d-flex flex-column gap-4">
+                                @for (int i = 0; i < sessions.Count; i++)
                                 {
-                                    <MudSelect T="Guid"
-                                               MultiSelection="true"
-                                               @bind-SelectedValues="selectedTagIds"
-                                               Label="Select Tags"
-                                               Variant="Variant.Outlined"
-                                               FullWidth
-                                               MultiSelectionTextFunc="@(new Func<List<string>, string>(GetTagSelectionText))">
-                                        @foreach (var tag in allTags)
+                                    var index = i;
+                                    <MudCard Elevation="0" Class="pa-4 border-solid border-1 mud-border-lines-default rounded-lg">
+                                        <div class="d-flex justify-space-between align-center mb-4">
+                                            <MudText Typo="Typo.h6">Session @(index + 1)</MudText>
+                                            @if (sessions.Count > 1)
+                                            {
+                                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveSession(index))" />
+                                            }
+                                        </div>
+                                        
+                                        <EventSessionEditor Session="sessions[index]"
+                                                            SessionChanged="@((s) => OnSessionChanged(index, s))"
+                                                            Index="index"
+                                                            ShowRemoveButton="false"
+                                                            ShowLocationSelector="true"
+                                                            Locations="locations"
+                                                            RegistrationModes="registrationModes"
+                                                            ShowLanguageSelector="true"
+                                                            Languages="languages" />
+                                    </MudCard>
+                                }
+                            </div>
+
+                            <div class="d-flex justify-center mt-4">
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Primary"
+                                           StartIcon="@Icons.Material.Filled.Add"
+                                           OnClick="AddSession">
+                                    Add Another Session
+                                </MudButton>
+                            </div>
+                        </MudTabPanel>
+
+                        <MudTabPanel Text="Settings" Icon="@Icons.Material.Filled.Settings">
+                            <MudGrid>
+                                <MudItem xs="12" md="6">
+                                    <MudText Class="isl-form__section-title mb-3">Format & Visibility</MudText>
+                                    <MudSelect @bind-Value="createDto.EventFormatId" Label="Format" Variant="Variant.Outlined" Class="mb-3">
+                                        @if (eventFormats != null)
                                         {
-                                            <MudSelectItem Value="@tag.Id">@tag.FullName</MudSelectItem>
+                                            @foreach (var f in eventFormats)
+                                            {
+                                                <MudSelectItem Value="@f.Id">@f.FullName</MudSelectItem>
+                                            }
                                         }
                                     </MudSelect>
-                                }
-                                else
-                                {
-                                    <MudText Typo="Typo.body2" Color="Color.Secondary">No tags available</MudText>
-                                }
-                            </MudPaper>
-                        </EditForm>
-                        break;
+                                    <MudSelect @bind-Value="createDto.VisibilityTypeId" Label="Visibility" Variant="Variant.Outlined">
+                                        @if (visibilityTypes != null)
+                                        {
+                                            @foreach (var v in visibilityTypes)
+                                            {
+                                                <MudSelectItem Value="@v.Id">@v.FullName</MudSelectItem>
+                                            }
+                                        }
+                                    </MudSelect>
+                                </MudItem>
 
-                    case 1:
-                        <!-- Step 2: Event Sessions -->
-                        <MudAlert Severity="Severity.Success" Class="mb-4" Dense="true">
-                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Class="mr-2" />
-                            Event "<strong>@createDto.Title</strong>" created successfully! Now add sessions to your event.
-                        </MudAlert>
+                                <MudItem xs="12" md="6">
+                                    <MudText Class="isl-form__section-title mb-3">Categorization</MudText>
+                                    <MudSelect T="Guid" Label="Categories" MultiSelection="true" @bind-SelectedValues="selectedCategoryIds" Variant="Variant.Outlined" Class="mb-3">
+                                        @if (allCategories != null)
+                                        {
+                                            @foreach (var c in allCategories)
+                                            {
+                                                <MudSelectItem Value="@c.Id">@c.FullName</MudSelectItem>
+                                            }
+                                        }
+                                    </MudSelect>
+                                    <MudSelect T="Guid" Label="Tags" MultiSelection="true" @bind-SelectedValues="selectedTagIds" Variant="Variant.Outlined">
+                                        @if (allTags != null)
+                                        {
+                                            @foreach (var t in allTags)
+                                            {
+                                                <MudSelectItem Value="@t.Id">@t.FullName</MudSelectItem>
+                                            }
+                                        }
+                                    </MudSelect>
+                                </MudItem>
+                            </MudGrid>
+                        </MudTabPanel>
+                    </MudTabs>
 
-                        <MudText Class="isl-form__section-title mb-3">
-                            Sessions
-                            <MudText Typo="Typo.caption" Class="ml-2" Color="Color.Warning">Add at least one session to complete event setup</MudText>
-                        </MudText>
-                        <MudPaper Class="isl-form-section">
-                            @if (sessions.Count == 0)
-                            {
-                                <MudAlert Severity="Severity.Info" Class="mb-3">
-                                    No sessions added yet. Add your first session below.
-                                </MudAlert>
-                            }
-
-                            @for (int i = 0; i < sessions.Count; i++)
-                            {
-                                var index = i;
-                                <EventSessionEditor Session="sessions[index]"
-                                                    SessionChanged="@((s) => OnSessionChanged(index, s))"
-                                                    Index="index"
-                                                    ShowRemoveButton="@(sessions.Count > 0)"
-                                                    OnRemove="@(() => RemoveSession(index))"
-                                                    ShowLocationSelector="true"
-                                                    Locations="locations"
-                                                    RegistrationModes="registrationModes"
-                                                    ShowLanguageSelector="true"
-                                                    Languages="languages" />
-                            }
-
-                            <MudButton Variant="Variant.Outlined"
-                                       Color="Color.Primary"
-                                       StartIcon="@Icons.Material.Filled.Add"
-                                       OnClick="AddSession"
-                                       Class="mt-2">
-                                Add @(sessions.Count == 0 ? "Session" : "Another Session")
-                            </MudButton>
-                        </MudPaper>
-
-                        <MudAlert Severity="Severity.Info" Class="mt-4" Dense="true">
-                            <strong>Tip:</strong> You can add more sessions later from the Event Details page.
-                        </MudAlert>
-                        break;
-                }
-            </MudCardContent>
-
-            <!-- Action Buttons -->
-            <MudCardActions Class="justify-space-between pa-4">
-                <MudButton Variant="Variant.Text"
-                           StartIcon="@Icons.Material.Filled.ArrowBack"
-                           OnClick="@HandlePreviousStep"
-                           Disabled="@(isProcessing)">
-                    @(currentStep == 0 ? "Cancel" : "Back")
-                </MudButton>
-
-                @if (currentStep == 0)
-                {
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               EndIcon="@Icons.Material.Filled.ArrowForward"
-                               OnClick="@HandleCreateEventAndNext"
-                               Disabled="@isProcessing">
-                        @if (isProcessing)
-                        {
-                            <MudProgressCircular Size="Size.Small" Indeterminate />
-                            <span class="ml-2">Creating Event...</span>
-                        }
-                        else
-                        {
-                            <span>Create Event & Add Sessions</span>
-                        }
-                    </MudButton>
-                }
-                else
-                {
-                    <MudStack Row Spacing="2">
-                        @if (sessions.Count == 0)
-                        {
-                            <MudButton Variant="Variant.Text"
-                                       Color="Color.Secondary"
-                                       OnClick="@HandleSkipSessions"
-                                       Disabled="@isProcessing">
-                                Skip Sessions
-                            </MudButton>
-                        }
-                        <MudButton Variant="Variant.Filled"
+                    <div class="d-flex justify-end mt-6 gap-2">
+                        <MudButton Variant="Variant.Text" OnClick="@(() => Navigation.NavigateTo($"/organization/{OrganizationId}"))">Cancel</MudButton>
+                        <MudButton ButtonType="ButtonType.Submit"
+                                   Variant="Variant.Filled"
                                    Color="Color.Primary"
-                                   StartIcon="@(isProcessing ? null : Icons.Material.Filled.Done)"
-                                   OnClick="@HandleFinish"
-                                   Disabled="@isProcessing">
+                                   Disabled="@(isProcessing || _isUploadingImage)"
+                                   StartIcon="@(isProcessing || _isUploadingImage ? null : Icons.Material.Filled.Save)">
                             @if (isProcessing)
                             {
-                                <MudProgressCircular Size="Size.Small" Indeterminate />
-                                <span class="ml-2">Saving Sessions...</span>
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                <span>Creating...</span>
+                            }
+                            else if (_isUploadingImage)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                <span>Uploading image...</span>
                             }
                             else
                             {
-                                <span>@(sessions.Count > 0 ? "Save Sessions & Finish" : "Finish Without Sessions")</span>
+                                <span>Create Event</span>
                             }
                         </MudButton>
-                    </MudStack>
-                }
-            </MudCardActions>
+                    </div>
+                </EditForm>
+            </MudCardContent>
         </MudPaper>
     }
 </MudContainer>
-
-@code {
-    private Guid OrganizationId { get; set; }
-
-    private Guid? _currentUserId;
-    private int _loadedOrgsCount = 0;
-    private CreateEventDto createDto = new();
-    private OrganizationListDto? organization;
-    private ICollection<EventTypeListDto>? eventTypes;
-    private ICollection<AudienceGenderListDto>? audienceGenders;
-    private ICollection<AudienceAgeListDto>? audienceAges;
-    private ICollection<EventFormatListDto>? eventFormats;
-    private ICollection<VisibilityTypeListDto>? visibilityTypes;
-    private ICollection<MadhabListDto>? madhabs;
-    private ICollection<CategoryListDto>? allCategories;
-    private ICollection<TagListDto>? allTags;
-    private ICollection<LocationListDto>? locations;
-    private ICollection<RegistrationModeListDto>? registrationModes;
-    private ICollection<LanguageListDto>? languages;
-    private bool isLoading = true;
-    private bool _isRetrying = false;
-    private bool canCreateEvent = false;
-    private bool _dataLoaded = false;
-    private int? selectedMadhabId;
-    private string errorMessage = string.Empty;
-
-    // Image upload state
-    private IBrowserFile? selectedImageFile;
-    private string? imagePreviewUrl;
-
-    private DateTime? _startDate = DateTime.Today;
-    private TimeSpan? _startTime = new TimeSpan(9, 0, 0);
-    private DateTime? _endDate = DateTime.Today;
-    private TimeSpan? _endTime = new TimeSpan(17, 0, 0);
-
-    // Categories and Tags selection
-    private IEnumerable<Guid> selectedCategoryIds = new HashSet<Guid>();
-    private IEnumerable<Guid> selectedTagIds = new HashSet<Guid>();
-
-    // Sessions
-    private List<SessionEditorModel> sessions = new();
-
-    // Wizard state
-    private int currentStep = 0;
-    private bool isProcessing = false;
-    private Guid createdEventId = Guid.Empty;
-
-    // Step definitions
-    private class StepInfo
-    {
-        public int Step { get; set; }
-        public string Title { get; set; } = string.Empty;
-        public string Icon { get; set; } = string.Empty;
-    }
-
-    private readonly StepInfo[] steps = new[]
-    {
-        new StepInfo { Step = 0, Title = "Event Details", Icon = Icons.Material.Filled.Event },
-        new StepInfo { Step = 1, Title = "Add Sessions", Icon = Icons.Material.Filled.Schedule }
-    };
-
-    private string GetStepClass(int step)
-    {
-        if (step < currentStep) return "completed";
-        if (step == currentStep) return "active";
-        return "";
-    }
-
-    private bool IsStepCompleted(int step) => step < currentStep;
-
-    private string GetProgressWidth() => currentStep switch
-    {
-        0 => "0%",
-        1 => "100%",
-        _ => "0%"
-    };
-
-    private string GetStepDescription() => currentStep switch
-    {
-        0 => "Fill in the event details below. Sessions will be added in the next step.",
-        1 => "Add sessions to your event. Each session can have its own time, location, and speakers.",
-        _ => ""
-    };
-
-    private string GetBackButtonText() => currentStep switch
-    {
-        0 => $"Back to {organization?.FullName}",
-        1 => "Back to Event Details",
-        _ => "Back"
-    };
-
-    private void OnImageFileSelected(IBrowserFile? file)
-    {
-        selectedImageFile = file;
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        // Get route parameter from Blazouter
-        var orgIdStr = RouterState.GetParam("organizationId");
-        if (Guid.TryParse(orgIdStr, out var id))
-        {
-            OrganizationId = id;
-        }
-
-        Logger.LogInformation("OnInitializedAsync starting for organization {OrganizationId}", OrganizationId);
-        await LoadFormData();
-    }
-
-    private void SetDefaultValues()
-    {
-        if (eventTypes?.Any() == true && createDto.EventTypeId == 0)
-        {
-            createDto.EventTypeId = eventTypes.First().Id;
-        }
-        if (audienceGenders?.Any() == true && createDto.AudienceGenderId == 0)
-        {
-            createDto.AudienceGenderId = audienceGenders.First().Id;
-        }
-        if (audienceAges?.Any() == true && createDto.AudienceAgeId == 0)
-        {
-            createDto.AudienceAgeId = audienceAges.First().Id;
-        }
-        if (eventFormats?.Any() == true && createDto.EventFormatId == 0)
-        {
-            createDto.EventFormatId = eventFormats.First().Id;
-        }
-        if (visibilityTypes?.Any() == true && createDto.VisibilityTypeId == 0)
-        {
-            createDto.VisibilityTypeId = visibilityTypes.First().Id;
-        }
-        if (createDto.EventFormatId == 0)
-        {
-            createDto.IsRegistrationRequired = true;
-            createDto.EventFormatId = 1; // Default: In-Person
-        }
-    }
-
-    private async Task RetryLoad()
-    {
-        _isRetrying = true;
-        _dataLoaded = false;
-        StateHasChanged();
-
-        await Task.Delay(100);
-        await LoadFormData();
-
-        _isRetrying = false;
-        StateHasChanged();
-    }
-
-    private async Task LoadFormData()
-    {
-        if (_dataLoaded) return;
-
-        try
-        {
-            isLoading = true;
-
-            Logger.LogInformation("Loading form data for organization {OrganizationId}", OrganizationId);
-
-            // Get current user ID first
-            if (!_currentUserId.HasValue)
-            {
-                try
-                {
-                    var currentUser = await UserService.GetCurrentUserAsync();
-                    if (currentUser != null)
-                    {
-                        _currentUserId = currentUser.Id;
-                        Logger.LogInformation("Current user ID: {UserId}", _currentUserId);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogError(ex, "Error getting current user");
-                }
-            }
-
-            // Load organization data and verify user has permission
-            ICollection<OrganizationListDto>? allOrgs = null;
-
-            if (_currentUserId.HasValue)
-            {
-                allOrgs = await OrganizationService.GetOrganizationsByUserAsync(_currentUserId.Value);
-                Logger.LogInformation("Got {Count} organizations for user {UserId}", allOrgs?.Count ?? 0, _currentUserId);
-            }
-
-            // Fallback to old method if no orgs found
-            if ((allOrgs == null || allOrgs.Count == 0))
-            {
-                Logger.LogInformation("Trying fallback GetMyOrganizationsAsync");
-                allOrgs = await OrganizationService.GetMyOrganizationsAsync();
-                Logger.LogInformation("Fallback got {Count} organizations", allOrgs?.Count ?? 0);
-            }
-
-            _loadedOrgsCount = allOrgs?.Count ?? 0;
-            organization = allOrgs?.FirstOrDefault(o => o.Id == OrganizationId);
-
-            if (organization != null)
-            {
-                Logger.LogInformation("Found organization: {OrgName}, CurrentUserRole: {Role}", organization.FullName, organization.CurrentUserRole);
-
-                // Check if user can create events
-                canCreateEvent = organization.CurrentUserRole.HasValue &&
-                    (organization.CurrentUserRole.Value == 1 || organization.CurrentUserRole.Value == 2 || organization.CurrentUserRole.Value == 3);
-
-                // Fallback: if user is a member of the org, allow event creation
-                if (!canCreateEvent)
-                {
-                    Logger.LogInformation("User is member but role not admin-level, allowing as fallback");
-                    canCreateEvent = true;
-                }
-
-                if (canCreateEvent)
-                {
-                    createDto.OrganizationId = OrganizationId;
-                }
-            }
-
-            // Load dropdown data
-            var eventTypesTask = AdminService.GetEventTypesAsync();
-            var audienceGendersTask = AdminService.GetAudienceGendersAsync();
-            var audienceAgesTask = AdminService.GetAudienceAgesAsync();
-            var eventFormatsTask = AdminService.GetEventFormatsAsync();
-            var visibilityTypesTask = AdminService.GetVisibilityTypesAsync();
-            var madhabsTask = AdminService.GetMadhabsAsync();
-            var categoriesTask = CategoryService.GetAllCategoriesAsync();
-            var tagsTask = TagService.GetAllTagsAsync();
-            var locationsTask = LocationService.GetAllLocationsAsync();
-            var registrationModesTask = AdminService.GetRegistrationModesAsync();
-            var languagesTask = AdminService.GetLanguagesAsync();
-
-            await Task.WhenAll(eventTypesTask, audienceGendersTask, audienceAgesTask, eventFormatsTask, visibilityTypesTask, madhabsTask, categoriesTask, tagsTask, locationsTask, registrationModesTask, languagesTask);
-
-            eventTypes = await eventTypesTask;
-            audienceGenders = await audienceGendersTask;
-            audienceAges = await audienceAgesTask;
-            eventFormats = await eventFormatsTask;
-            visibilityTypes = await visibilityTypesTask;
-            madhabs = await madhabsTask;
-            allCategories = await categoriesTask;
-            allTags = await tagsTask;
-            locations = await locationsTask;
-            registrationModes = await registrationModesTask;
-            languages = await languagesTask;
-
-            Logger.LogDebug("Loaded reference data: {EventTypes} event types, {Genders} genders, {Ages} ages, {Formats} formats, {Visibility} visibility types, {Madhabs} madhabs, {Categories} categories, {Tags} tags, {Locations} locations, {RegModes} registration modes, {Languages} languages",
-                eventTypes?.Count ?? 0, audienceGenders?.Count ?? 0, audienceAges?.Count ?? 0, eventFormats?.Count ?? 0, visibilityTypes?.Count ?? 0, madhabs?.Count ?? 0, allCategories?.Count ?? 0, allTags?.Count ?? 0, locations?.Count ?? 0, registrationModes?.Count ?? 0, languages?.Count ?? 0);
-
-            SetDefaultValues();
-            _dataLoaded = true;
-
-            Logger.LogInformation("Form data loaded. canCreateEvent: {CanCreate}, organization: {OrgName}", canCreateEvent, organization?.FullName ?? "null");
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error loading form data");
-        }
-        finally
-        {
-            isLoading = false;
-        }
-    }
-
-    private void HandleBackNavigation()
-    {
-        if (currentStep == 0)
-        {
-            Navigation.NavigateTo($"/organization/{OrganizationId}");
-        }
-        else
-        {
-            // Can't go back after event is created - just stay on step 2
-            // Event is already created, so we show a message
-            Snackbar.Add("Event has already been created. Complete session setup or click Finish.", Severity.Info);
-        }
-    }
-
-    private void HandlePreviousStep()
-    {
-        if (currentStep == 0)
-        {
-            Navigation.NavigateTo($"/organization/{OrganizationId}");
-        }
-        else
-        {
-            // Can't go back after event is created
-            Snackbar.Add("Event has already been created. Complete session setup or click Finish.", Severity.Info);
-        }
-    }
-
-    private bool ValidateStep1()
-    {
-        errorMessage = string.Empty;
-
-        if (string.IsNullOrWhiteSpace(createDto.Title))
-        {
-            errorMessage = "Event title is required.";
-            return false;
-        }
-
-        if (createDto.EventTypeId == 0)
-        {
-            errorMessage = "Please select an event type.";
-            return false;
-        }
-
-        if (createDto.AudienceGenderId == 0)
-        {
-            errorMessage = "Please select target gender.";
-            return false;
-        }
-
-        if (createDto.AudienceAgeId == 0)
-        {
-            errorMessage = "Please select target age group.";
-            return false;
-        }
-
-        if (createDto.VisibilityTypeId == 0)
-        {
-            errorMessage = "Please select visibility type.";
-            return false;
-        }
-
-        return true;
-    }
-
-    private async Task HandleCreateEventAndNext()
-    {
-        if (!ValidateStep1())
-        {
-            StateHasChanged();
-            return;
-        }
-
-        if (isProcessing) return;
-        isProcessing = true;
-        errorMessage = string.Empty;
-        StateHasChanged();
-
-        try
-        {
-            Guid? featuredImageId = null;
-
-            // Step 1: Upload image if one is selected
-            if (selectedImageFile != null)
-            {
-                Logger.LogInformation("Uploading selected image: {FileName}", selectedImageFile.Name);
-                var uploadResult = await ImageStorageService.UploadImageAndCreateRecordAsync(selectedImageFile);
-                if (uploadResult?.Success == true)
-                {
-                    featuredImageId = uploadResult.StorageObjectId;
-                    Logger.LogInformation("Image uploaded. StorageObjectId: {StorageObjectId}", featuredImageId);
-                }
-                else
-                {
-                    errorMessage = uploadResult?.ErrorMessage ?? "Failed to upload image. Please try again.";
-                    isProcessing = false;
-                    StateHasChanged();
-                    return;
-                }
-            }
-
-            // Step 2: Set DTO properties
-            createDto.OrganizationId = OrganizationId;
-            createDto.FeaturedImageId = featuredImageId;
-            createDto.MadhabId = selectedMadhabId;
-
-            // Use DateTimeHelper for consistent UTC conversion
-            createDto.FirstSessionDate = DateTimeHelper.CombineDateTimeToUtc(_startDate, _startTime);
-            createDto.LastSessionDate = DateTimeHelper.CombineDateTimeToUtc(_endDate, _endTime);
-
-            // Step 3: Create the event
-            Logger.LogInformation("Creating event record");
-            var response = await EventService.CreateEventAsync(createDto);
-
-            if (response?.Success == true && response.Id != Guid.Empty)
-            {
-                createdEventId = response.Id;
-                Logger.LogInformation("Event created with ID: {EventId}", createdEventId);
-
-                // Step 4: Assign categories
-                // TODO: PHASE 2.1 - Replace with AuthStateService.GetCurrentTenantIdAsync()
-                var tenantId = Guid.Parse("00000000-0000-0000-0000-000000000001"); // TEMPORARY - Default tenant
-                foreach (var categoryId in selectedCategoryIds)
-                {
-                    var eventCategoryDto = new CreateEventCategoriesDto
-                    {
-                        EventId = createdEventId,
-                        CategoryId = categoryId,
-                        TenantId = tenantId
-                    };
-                    await CategoryService.AssignCategoryToEventAsync(eventCategoryDto);
-                }
-
-                // Step 5: Assign tags
-                foreach (var tagId in selectedTagIds)
-                {
-                    var eventTagDto = new CreateEventTagsDto
-                    {
-                        EventId = createdEventId,
-                        TagId = tagId,
-                        TenantId = tenantId
-                    };
-                    await TagService.AssignTagToEventAsync(eventTagDto);
-                }
-
-                // Initialize first session with event dates
-                sessions.Add(new SessionEditorModel
-                {
-                    StartTime = _startDate?.Date.Add(_startTime ?? TimeSpan.Zero) ?? DateTime.Today.AddHours(9),
-                    EndTime = _endDate?.Date.Add(_endTime ?? TimeSpan.Zero) ?? DateTime.Today.AddHours(17)
-                });
-
-                Snackbar.Add("Event created successfully! Now add sessions.", Severity.Success);
-
-                // Move to step 2
-                currentStep = 1;
-            }
-            else
-            {
-                var errorMsg = response?.Message ?? "Failed to create event. Please try again.";
-                if (response?.Errors != null && response.Errors.Any())
-                {
-                    errorMsg += " Errors: " + string.Join(", ", response.Errors);
-                }
-                errorMessage = errorMsg;
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Exception during event creation");
-            errorMessage = $"Error creating event: {ex.Message}";
-        }
-        finally
-        {
-            isProcessing = false;
-            StateHasChanged();
-        }
-    }
-
-    private async Task HandleFinish()
-    {
-        if (isProcessing) return;
-        isProcessing = true;
-        StateHasChanged();
-
-        try
-        {
-            // TODO: PHASE 2.1 - Replace with AuthStateService.GetCurrentTenantIdAsync()
-            var tenantId = Guid.Parse("00000000-0000-0000-0000-000000000001"); // TEMPORARY - Default tenant
-
-            // Save all sessions
-            foreach (var session in sessions)
-            {
-                var sessionDto = session.ToCreateDto(createdEventId, tenantId);
-                var sessionResponse = await EventService.CreateSessionAsync(sessionDto);
-                if (sessionResponse?.Success == true)
-                {
-                    Logger.LogInformation("Session created: {SessionId}", sessionResponse.Id);
-
-                    // Assign languages to session
-                    if (session.LanguageIds.Any() && sessionResponse.Id != Guid.Empty)
-                    {
-                        foreach (var languageId in session.LanguageIds)
-                        {
-                            var languageDto = new CreateEventSessionLanguageDto
-                            {
-                                EventSessionId = sessionResponse.Id,
-                                LanguageId = languageId,
-                                TenantId = tenantId
-                            };
-                            await EventService.AssignLanguageToSessionAsync(languageDto);
-                        }
-                    }
-                }
-                else
-                {
-                    Logger.LogWarning("Failed to create session: {Message}", sessionResponse?.Message);
-                }
-            }
-
-            var sessionCount = sessions.Count;
-            Snackbar.Add($"Event setup complete! {sessionCount} session{(sessionCount != 1 ? "s" : "")} created.", Severity.Success);
-
-            // Navigate to event details
-            Navigation.NavigateTo($"/event/detail/{createdEventId}");
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Exception during session creation");
-            errorMessage = $"Error saving sessions: {ex.Message}";
-            Snackbar.Add(errorMessage, Severity.Error);
-        }
-        finally
-        {
-            isProcessing = false;
-            StateHasChanged();
-        }
-    }
-
-    private void HandleSkipSessions()
-    {
-        Snackbar.Add("Event created! You can add sessions later from the event details page.", Severity.Info);
-        Navigation.NavigateTo($"/event/detail/{createdEventId}");
-    }
-
-    // Session management methods
-    private void AddSession()
-    {
-        sessions.Add(new SessionEditorModel
-        {
-            StartTime = _startDate?.Date.Add(_startTime ?? TimeSpan.Zero) ?? DateTime.Today.AddHours(9),
-            EndTime = _endDate?.Date.Add(_endTime ?? TimeSpan.Zero) ?? DateTime.Today.AddHours(17)
-        });
-    }
-
-    private void RemoveSession(int index)
-    {
-        if (index >= 0 && index < sessions.Count)
-        {
-            sessions.RemoveAt(index);
-        }
-    }
-
-    private void OnSessionChanged(int index, SessionEditorModel session)
-    {
-        if (index >= 0 && index < sessions.Count)
-        {
-            sessions[index] = session;
-        }
-    }
-
-    // Category/Tag selection text helpers
-    private string GetCategorySelectionText(List<string> selectedValues)
-    {
-        if (selectedValues == null || !selectedValues.Any())
-            return "Select categories";
-
-        return $"{selectedValues.Count} categor{(selectedValues.Count == 1 ? "y" : "ies")} selected";
-    }
-
-    private string GetTagSelectionText(List<string> selectedValues)
-    {
-        if (selectedValues == null || !selectedValues.Any())
-            return "Select tags";
-
-        return $"{selectedValues.Count} tag{(selectedValues.Count == 1 ? "" : "s")} selected";
-    }
-}

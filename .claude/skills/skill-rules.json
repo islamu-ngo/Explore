@@ -1,12 +1,14 @@
 {
-  "version": "1.0",
-  "description": "Skill activation triggers for ASP.NET Core & Blazor Clean Architecture context.",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "2.0",
+  "description": "Skill activation triggers for ISLAMU Event - ASP.NET Core, Blazor, and Clean Architecture context.",
+  "lastUpdated": "2026-01-16",
   "skills": {
     "clean-architecture-rules": {
       "type": "guardrail",
       "enforcement": "block",
       "priority": "critical",
-      "description": "Enforces Clean Architecture dependency rules (Domain -> Application -> Infrastructure -> API)",
+      "description": "Enforces Clean Architecture dependency rules (Domain → Application → Infrastructure → API/Blazor). Blocks violations to maintain architectural integrity.",
       "promptTriggers": {
         "keywords": [
           "dependency",
@@ -16,7 +18,8 @@
           "clean architecture",
           "domain logic",
           "ef core",
-          "dbcontext"
+          "dbcontext",
+          "violation"
         ],
         "intentPatterns": [
           "(add|create|reference).*?(dependency|project|layer)",
@@ -25,14 +28,17 @@
         ]
       },
       "fileTriggers": {
-        "pathPatterns": ["**/*.Domain/**/*.cs", "**/*.Application/**/*.cs"],
+        "pathPatterns": [
+          "**/Explore.Domain/**/*.cs",
+          "**/Explore.Application/**/*.cs"
+        ],
         "contentPatterns": [
           "using.*Infrastructure",
           "using.*Api",
           "using.*Microsoft.AspNetCore.Mvc"
         ]
       },
-      "blockMessage": "⚠️ BLOCKED - Clean Architecture Violation\n\n📋 VIOLATION DETECTED:\nIt appears you are trying to add a reference that violates the Dependency Rule.\n\n1. **Domain** cannot reference ANYTHING.\n2. **Application** can only reference **Domain**.\n3. **Infrastructure** references **Application** and **Domain**.\n4. **API** references **Application** and **Infrastructure**.\n\nREQUIRED ACTION:\n1. Use Skill: `clean-architecture-rules` to review where code belongs.\n2. Move logic to the correct layer (e.g., interfaces in Application, implementation in Infra).",
+      "blockMessage": "⚠️ BLOCKED - Clean Architecture Violation\n\n📋 VIOLATION DETECTED:\nYou are attempting to add a reference that violates the Dependency Rule.\n\n**Allowed Dependencies:**\n1. **Domain** → Cannot reference ANY other layer\n2. **Application** → Can only reference **Domain**\n3. **Infrastructure** → References **Application** and **Domain**\n4. **API/Blazor** → References **Application** and **Infrastructure**\n\n**Required Action:**\n1. Review the `clean-architecture-rules` skill\n2. Move logic to the correct layer (interfaces in Application, implementations in Infrastructure)",
       "skipConditions": {
         "sessionSkillUsed": true,
         "fileMarkers": ["@skip-architecture-check"]
@@ -42,7 +48,7 @@
       "type": "domain",
       "enforcement": "suggest",
       "priority": "high",
-      "description": "Best practices for CQRS commands/queries and FluentValidation",
+      "description": "CQRS (Command Query Responsibility Segregation) patterns with MediatR. Covers commands, queries, handlers, validation, and pipeline behaviors.",
       "promptTriggers": {
         "keywords": [
           "command",
@@ -53,7 +59,9 @@
           "validation",
           "validator",
           "pipeline",
-          "behavior"
+          "behavior",
+          "feature",
+          "use case"
         ],
         "intentPatterns": [
           "(create|add|implement).*?(feature|endpoint|use case)",
@@ -63,24 +71,26 @@
       },
       "fileTriggers": {
         "pathPatterns": [
-          "**/*.Application/**/*Handler.cs",
-          "**/*.Application/**/*Command.cs",
-          "**/*.Application/**/*Query.cs",
-          "**/*.Application/**/*Validator.cs"
+          "**/Explore.Application/**/*Handler.cs",
+          "**/Explore.Application/**/*Command.cs",
+          "**/Explore.Application/**/*Query.cs",
+          "**/Explore.Application/**/*Validator.cs",
+          "**/Explore.Application/**/*Request.cs"
         ],
         "contentPatterns": [
           "IRequest",
           "IRequestHandler",
           "AbstractValidator",
-          "FluentValidation"
+          "FluentValidation",
+          "BaseCommandResponse"
         ]
       }
     },
-    "blazor-mudblazor-guidelines": {
+    "blazor-ui-conventions": {
       "type": "domain",
       "enforcement": "suggest",
       "priority": "high",
-      "description": "Blazor component best practices and MudBlazor usage",
+      "description": "Comprehensive Blazor UI conventions including MudBlazor components, BEM CSS methodology, theming, render modes, state management, and component patterns.",
       "promptTriggers": {
         "keywords": [
           "blazor",
@@ -92,30 +102,80 @@
           "dialog",
           "render",
           "parameter",
-          "eventcallback"
+          "eventcallback",
+          "theme",
+          "css",
+          "state",
+          "lifecycle"
         ],
         "intentPatterns": [
-          "(create|fix|style).*?(component|page|ui|button|grid)",
+          "(create|fix|style).*?(component|page|ui|button|grid|form)",
           "(how to).*?(blazor|mudblazor)",
-          "(render|lifecycle).*?(issue|bug)"
+          "(render|lifecycle).*?(issue|bug|mode)"
         ]
       },
       "fileTriggers": {
-        "pathPatterns": ["**/*.razor", "**/*.razor.cs", "**/*.Client/**/*.cs"],
+        "pathPatterns": [
+          "**/*.razor",
+          "**/*.razor.cs",
+          "**/Explore.Blazor/**/*.cs",
+          "**/Explore.Blazor.Client/**/*.cs",
+          "**/*.css",
+          "**/*.scss"
+        ],
         "contentPatterns": [
           "<Mud",
           "@page",
           "@inject",
-          "Parameter",
-          "CascadingValue"
+          "[Parameter]",
+          "CascadingValue",
+          "EventCallback",
+          "@rendermode"
         ]
       }
     },
-    "keycloak-auth-debugger": {
+    "blazor-bff-patterns": {
       "type": "domain",
       "enforcement": "suggest",
-      "priority": "medium",
-      "description": "Helper for debugging OIDC, Claims, and Keycloak BFF issues",
+      "priority": "high",
+      "description": "Backend-for-Frontend (BFF) patterns for Blazor including YARP proxy, token forwarding, cookie management, and service layer patterns.",
+      "promptTriggers": {
+        "keywords": [
+          "bff",
+          "yarp",
+          "proxy",
+          "token forwarding",
+          "cookie",
+          "api client",
+          "service layer",
+          "nswag"
+        ],
+        "intentPatterns": [
+          "(configure|setup).*?(bff|proxy|yarp)",
+          "(forward|pass).*?(token|auth)",
+          "(call|consume).*?api"
+        ]
+      },
+      "fileTriggers": {
+        "pathPatterns": [
+          "**/Explore.Blazor/Program.cs",
+          "**/Explore.Blazor/Services/**/*.cs",
+          "**/Explore.Blazor.Client/Services/**/*.cs",
+          "**/Explore.Blazor.Client/Clients/**/*.cs"
+        ],
+        "contentPatterns": [
+          "AddReverseProxy",
+          "AccessTokenForwardingHandler",
+          "IEventApiClient",
+          "HttpClient"
+        ]
+      }
+    },
+    "auth-patterns": {
+      "type": "domain",
+      "enforcement": "suggest",
+      "priority": "high",
+      "description": "Authentication and authorization patterns for ISLAMU Event including Keycloak OIDC, JWT validation, user ID extraction, and controller authorization.",
       "promptTriggers": {
         "keywords": [
           "auth",
@@ -129,13 +189,12 @@
           "role",
           "policy",
           "cookies",
-          "bff",
-          "yarp"
+          "user id"
         ],
         "intentPatterns": [
           "(login|logout|auth).*?(issue|fail|error)",
-          "(check|verify|debug).*?(token|claim|role)",
-          "(configure).*?(keycloak|oidc)"
+          "(check|verify|debug|extract).*?(token|claim|role|user)",
+          "(configure).*?(keycloak|oidc|auth)"
         ]
       },
       "fileTriggers": {
@@ -146,10 +205,12 @@
         ],
         "contentPatterns": [
           "AddAuthentication",
-          "AddKeycloak",
-          "Authorize",
+          "AddOpenIdConnect",
+          "[Authorize]",
+          "[AllowAnonymous]",
           "ClaimTypes",
-          "JwtBearer"
+          "JwtBearer",
+          "GetRequiredUserId"
         ]
       }
     },
@@ -157,47 +218,102 @@
       "type": "domain",
       "enforcement": "suggest",
       "priority": "medium",
-      "description": "EF Core configuration, Migrations and Postgres patterns",
+      "description": "EF Core patterns for PostgreSQL including DbContext configuration, entity mappings, migrations, repository pattern, and querying best practices.",
       "promptTriggers": {
         "keywords": [
           "database",
           "postgres",
+          "postgresql",
           "migration",
           "dbcontext",
           "entity",
           "relationship",
           "foreign key",
           "index",
-          "seeding"
+          "seeding",
+          "repository",
+          "include",
+          "navigation"
         ],
         "intentPatterns": [
-          "(add|modify).*?(table|column|entity)",
+          "(add|modify|create).*?(table|column|entity|migration)",
           "(run|create|apply).*?(migration)",
-          "(configure).*?(db|context|connection)"
+          "(configure).*?(db|context|connection|relationship)"
         ]
       },
       "fileTriggers": {
         "pathPatterns": [
-          "**/*.Infrastructure/**/*.cs",
+          "**/Explore.Persistence/**/*.cs",
           "**/*DbContext.cs",
-          "**/*Configuration.cs"
+          "**/*Configuration.cs",
+          "**/*Repository.cs"
         ],
         "contentPatterns": [
           "DbSet<",
           "IEntityTypeConfiguration",
           "OnModelCreating",
-          "UseNpgsql"
+          "UseNpgsql",
+          "HasQueryFilter",
+          "Include("
+        ]
+      }
+    },
+    "error-tracking": {
+      "type": "domain",
+      "enforcement": "suggest",
+      "priority": "medium",
+      "description": "Error tracking and Sentry integration for ISLAMU Event including API exception handling, Blazor error boundaries, and performance monitoring.",
+      "promptTriggers": {
+        "keywords": [
+          "error",
+          "exception",
+          "sentry",
+          "logging",
+          "monitoring",
+          "error boundary",
+          "performance"
+        ],
+        "intentPatterns": [
+          "(track|log|capture).*?(error|exception)",
+          "(add|configure).*?(sentry|error handling)",
+          "(monitor).*?(performance)"
+        ]
+      },
+      "fileTriggers": {
+        "pathPatterns": [
+          "**/Program.cs",
+          "**/*Controller.cs",
+          "**/*Handler.cs"
+        ],
+        "contentPatterns": [
+          "SentrySdk",
+          "try.*catch",
+          "ILogger",
+          "ErrorBoundary"
         ]
       }
     }
   },
-  "notes": {
-    "architecture_layers": {
-      "Domain": "Core logic, Entities, ValueObjects. No external deps.",
-      "Application": "Use Cases, Interfaces, DTOs. Depends on Domain.",
-      "Infrastructure": "Db, FileSys, API implementations. Depends on App/Domain.",
-      "API": "Controllers, SignalR. Entry point.",
-      "Blazor": "UI. Depends on Client SDKs or Shared DTOs."
+  "architectureLayers": {
+    "Domain": {
+      "project": "Explore.Domain",
+      "description": "Core business logic, entities, enums, value objects. No external dependencies.",
+      "allowedDependencies": []
+    },
+    "Application": {
+      "project": "Explore.Application",
+      "description": "Use cases, CQRS handlers, DTOs, interfaces, validation. Orchestrates domain logic.",
+      "allowedDependencies": ["Domain"]
+    },
+    "Infrastructure": {
+      "projects": ["Explore.Persistence", "Explore.Infrastructure"],
+      "description": "Database access, external services, repository implementations.",
+      "allowedDependencies": ["Application", "Domain"]
+    },
+    "Presentation": {
+      "projects": ["Explore.API", "Explore.Blazor", "Explore.Blazor.Client"],
+      "description": "REST API controllers, Blazor UI components. Entry points to the application.",
+      "allowedDependencies": ["Application", "Infrastructure"]
     }
   }
 }

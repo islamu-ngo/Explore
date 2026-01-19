@@ -1,6 +1,8 @@
 # Repository Pattern
 
-Repository pattern implementation for ISLAMU Event project.
+> **Project-Agnostic Repository Patterns**
+>
+> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../../docs/TEMPLATE_GLOSSARY.md).
 
 ---
 
@@ -29,8 +31,8 @@ Base repository with common CRUD operations.
 ### Interface (Application Layer)
 
 ```csharp
-// File: Explore.Application/Contracts/Persistence/IGenericRepository.cs
-namespace Explore.Application.Contracts.Persistence;
+// File: {Project}.Application/Contracts/Persistence/IGenericRepository.cs
+namespace {Project}.Application.Contracts.Persistence;
 
 public interface IGenericRepository<T, TKey> where T : class
 {
@@ -46,19 +48,19 @@ public interface IGenericRepository<T, TKey> where T : class
 ### Implementation (Persistence Layer)
 
 ```csharp
-// File: Explore.Persistence/Repositories/GenericRepository.cs
+// File: {Project}.Persistence/Repositories/GenericRepository.cs
 using System;
-using Explore.Application.Contracts.Persistence;
+using {Project}.Application.Contracts.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
-namespace Explore.Persistence.Repositories;
+namespace {Project}.Persistence.Repositories;
 
 public class GenericRepository<T, TKey> : IGenericRepository<T, TKey> where T : class
 {
-    private readonly ExploreDbContext _dbContext;
+    private readonly {DbContext} _dbContext;
 
-    public GenericRepository(ExploreDbContext dbContext)
+    public GenericRepository({DbContext} dbContext)
     {
         _dbContext = dbContext;
     }
@@ -120,96 +122,84 @@ Inherit from GenericRepository and add custom methods.
 ### Interface (Application Layer)
 
 ```csharp
-// File: Explore.Application/Contracts/Persistence/IEventRepository.cs
-using Explore.Domain;
+// File: {Project}.Application/Contracts/Persistence/I{Entity}Repository.cs
+using {Project}.Domain;
 
-namespace Explore.Application.Contracts.Persistence;
+namespace {Project}.Application.Contracts.Persistence;
 
-public interface IEventRepository : IGenericRepository<Event, Guid>
+public interface I{Entity}Repository : IGenericRepository<{Entity}, {IdType}>
 {
-    Task<List<Event>> GetEventsWithDetails();
-    Task<Event?> GetEventWithDetails(Guid id);
-    Task<List<Event>> GetMyEventsWithDetails(string userId);
+    Task<List<{Entity}>> Get{Entities}WithDetails();
+    Task<{Entity}?> Get{Entity}WithDetails({IdType} id);
+    Task<List<{Entity}>> GetMy{Entities}WithDetails(string userId);
 }
 ```
 
 ### Implementation (Persistence Layer)
 
 ```csharp
-// File: Explore.Persistence/Repositories/EventRepository.cs
+// File: {Project}.Persistence/Repositories/{Entity}Repository.cs
 using Microsoft.EntityFrameworkCore;
-using Explore.Application.Contracts.Persistence;
-using Explore.Application.DTOs.Event;
-using Explore.Domain;
+using {Project}.Application.Contracts.Persistence;
+using {Project}.Domain;
 
-namespace Explore.Persistence.Repositories;
+namespace {Project}.Persistence.Repositories;
 
-public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
+public class {Entity}Repository : GenericRepository<{Entity}, {IdType}>, I{Entity}Repository
 {
-    private readonly ExploreDbContext _dbContext;
+    private readonly {DbContext} _dbContext;
 
-    public EventRepository(ExploreDbContext dbContext) : base(dbContext)
+    public {Entity}Repository({DbContext} dbContext) : base(dbContext)
     {
         _dbContext = dbContext;
     }
 
     // ✅ REPOSITORIES RETURN ENTITIES, NOT DTOs
-    public async Task<List<Event>> GetEventsWithDetails()
+    public async Task<List<{Entity}>> Get{Entities}WithDetails()
     {
-        return await _dbContext.Events
-            .Include(e => e.EventType)
-            .Include(e => e.AudienceGender)
-            .Include(e => e.AudienceAge)
-            .Include(e => e.Actor)
-            .Include(e => e.EventStatus)
-            .Include(e => e.VisibilityType)
-            .Include(e => e.EventFormat)
-            .Include(e => e.Madhab)
+        return await _dbContext.{Entities}
+            .Include(e => e.{LookupEntity})
+            .Include(e => e.{RelatedEntity1})
+            .Include(e => e.{RelatedEntity2})
+            .Include(e => e.{ParentEntity})
+            .Include(e => e.Status)
+            .Include(e => e.Visibility)
             .Include(e => e.FeaturedImage)
             .ToListAsync();
     }
 
-    public async Task<Event?> GetEventWithDetails(Guid id)
+    public async Task<{Entity}?> Get{Entity}WithDetails({IdType} id)
     {
-        return await _dbContext.Events
-            .Include(e => e.EventType)
-            .Include(e => e.AudienceGender)
-            .Include(e => e.AudienceAge)
-            .Include(e => e.Actor)
-            .Include(e => e.EventStatus)
-            .Include(e => e.VisibilityType)
-            .Include(e => e.EventFormat)
-            .Include(e => e.Madhab)
+        return await _dbContext.{Entities}
+            .Include(e => e.{LookupEntity})
+            .Include(e => e.{RelatedEntity1})
+            .Include(e => e.{RelatedEntity2})
+            .Include(e => e.{ParentEntity})
+            .Include(e => e.Status)
+            .Include(e => e.Visibility)
             .Include(e => e.FeaturedImage)
-            .Include(e => e.AtprotoRecord)
             .FirstOrDefaultAsync(e => e.Id == id);
     }
 
-    public async Task<List<Event>> GetMyEventsWithDetails(string userId)
+    public async Task<List<{Entity}>> GetMy{Entities}WithDetails(string userId)
     {
-        Guid userGuid;
-        var isGuid = Guid.TryParse(userId, out userGuid);
+        {IdType} userIdParsed;
+        var isValid = {IdType}.TryParse(userId, out userIdParsed);
 
-        var query = _dbContext.Events
-            .Include(e => e.EventType)
-            .Include(e => e.AudienceGender)
-            .Include(e => e.AudienceAge)
-            .Include(e => e.Actor)
-                .ThenInclude(a => a.ActorType)
+        var query = _dbContext.{Entities}
+            .Include(e => e.{LookupEntity})
+            .Include(e => e.{RelatedEntity1})
+            .Include(e => e.{RelatedEntity2})
+            .Include(e => e.{ParentEntity})
+            .Include(e => e.Status)
+            .Include(e => e.Visibility)
             .Include(e => e.FeaturedImage)
-            .Include(e => e.EventStatus)
-            .Include(e => e.VisibilityType)
-            .Include(e => e.EventFormat)
-            .Include(e => e.Madhab)
             .AsQueryable();
 
-        if (isGuid)
+        if (isValid)
         {
             query = query.Where(e =>
-                _dbContext.Users.Any(u => u.Id == userGuid && u.ActorId == e.ActorId) ||
-                _dbContext.OrganizationMembers.Any(om =>
-                    om.UserId == userGuid &&
-                    _dbContext.Organizations.Any(o => o.Id == om.OrganizationId && o.ActorId == e.ActorId)));
+                _dbContext.Users.Any(u => u.Id == userIdParsed && u.{ParentEntity}Id == e.{ParentEntity}Id));
         }
 
         return await query.ToListAsync();
@@ -217,13 +207,13 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
 
     // NOTE: In the Application layer handler, entities are mapped to DTOs:
     //
-    // public async Task<List<EventListDto>> Handle(GetEventListRequest request, CancellationToken cancellationToken)
+    // public async Task<List<{Entity}ListDto>> Handle(Get{Entity}ListRequest request, CancellationToken cancellationToken)
     // {
     //     // Repository returns ENTITIES
-    //     var events = await _eventRepository.GetEventsWithDetails();
+    //     var {entities} = await _{entity}Repository.Get{Entities}WithDetails();
     //
     //     // AutoMapper maps ENTITIES to DTOs
-    //     return _mapper.Map<List<EventListDto>>(events);
+    //     return _mapper.Map<List<{Entity}ListDto>>({entities});
     // }
 }
 ```
@@ -233,12 +223,12 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
 ## Repository Registration (DI)
 
 ```csharp
-// File: Explore.Persistence/PersistenceServicesRegistration.cs
+// File: {Project}.Persistence/PersistenceServicesRegistration.cs
 using Microsoft.Extensions.DependencyInjection;
-using Explore.Application.Contracts.Persistence;
-using Explore.Persistence.Repositories;
+using {Project}.Application.Contracts.Persistence;
+using {Project}.Persistence.Repositories;
 
-namespace Explore.Persistence;
+namespace {Project}.Persistence;
 
 public static class PersistenceServicesRegistration
 {
@@ -249,10 +239,10 @@ public static class PersistenceServicesRegistration
         services.AddScoped(typeof(IGenericRepository<,>), typeof(GenericRepository<,>));
 
         // Register specific repositories
-        services.AddScoped<IEventRepository, EventRepository>();
-        services.AddScoped<IOrganizationRepository, OrganizationRepository>();
+        services.AddScoped<I{Entity}Repository, {Entity}Repository>();
+        services.AddScoped<I{ParentEntity}Repository, {ParentEntity}Repository>();
         services.AddScoped<IUserRepository, UserRepository>();
-        services.AddScoped<IEventRegistrationRepository, EventRegistrationRepository>();
+        services.AddScoped<I{LinkEntity}Repository, {LinkEntity}Repository>();
 
         return services;
     }
@@ -274,29 +264,29 @@ builder.Services.AddPersistenceServices();
 
 ```csharp
 // ✅ CORRECT: Repository returns entities
-public async Task<List<Event>> GetEventsWithDetails()
+public async Task<List<{Entity}>> Get{Entities}WithDetails()
 {
-    return await _dbContext.Events
-        .Include(e => e.EventType)
-        .Include(e => e.AudienceGender)
-        .Include(e => e.AudienceAge)
-        .Include(e => e.Actor)
+    return await _dbContext.{Entities}
+        .Include(e => e.{LookupEntity})
+        .Include(e => e.{RelatedEntity1})
+        .Include(e => e.{RelatedEntity2})
+        .Include(e => e.{ParentEntity})
         .ToListAsync();
 }
 
 // ✅ CORRECT: Handler maps entities to DTOs
-public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, List<EventListDto>>
+public class Get{Entity}ListRequestHandler : IRequestHandler<Get{Entity}ListRequest, List<{Entity}ListDto>>
 {
-    private readonly IEventRepository _eventRepository;
+    private readonly I{Entity}Repository _{entity}Repository;
     private readonly IMapper _mapper;
 
-    public async Task<List<EventListDto>> Handle(GetEventListRequest request, CancellationToken cancellationToken)
+    public async Task<List<{Entity}ListDto>> Handle(Get{Entity}ListRequest request, CancellationToken cancellationToken)
     {
         // Repository returns ENTITIES
-        var events = await _eventRepository.GetEventsWithDetails();
+        var {entities} = await _{entity}Repository.Get{Entities}WithDetails();
 
         // AutoMapper maps ENTITIES to DTOs
-        return _mapper.Map<List<EventListDto>>(events);
+        return _mapper.Map<List<{Entity}ListDto>>({entities});
     }
 }
 ```
@@ -310,13 +300,13 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, L
 ### AsNoTracking for Read-Only Queries
 
 ```csharp
-public async Task<List<Event>> GetEventsReadOnly()
+public async Task<List<{Entity}>> Get{Entities}ReadOnly()
 {
     // ✅ No change tracking (faster for read-only)
-    return await _dbContext.Events
+    return await _dbContext.{Entities}
         .AsNoTracking()
-        .Include(e => e.EventType)
-        .Include(e => e.Organization)
+        .Include(e => e.{LookupEntity})
+        .Include(e => e.{ParentEntity})
         .ToListAsync();
 }
 ```
@@ -335,27 +325,27 @@ public interface ISpecification<T>
     List<Expression<Func<T, object>>> Includes { get; }
 }
 
-// File: Application/Specifications/EventSpecification.cs
-public class EventsByActorSpec : ISpecification<Event>
+// File: Application/Specifications/{Entity}Specification.cs
+public class {Entities}By{ParentEntity}Spec : ISpecification<{Entity}>
 {
-    public EventsByActorSpec(Guid actorId)
+    public {Entities}By{ParentEntity}Spec({IdType} {parentEntity}Id)
     {
-        Criteria = e => e.ActorId == actorId;
-        Includes = new List<Expression<Func<Event, object>>>
+        Criteria = e => e.{ParentEntity}Id == {parentEntity}Id;
+        Includes = new List<Expression<Func<{Entity}, object>>>
         {
-            e => e.Actor,
-            e => e.EventType
+            e => e.{ParentEntity},
+            e => e.{LookupEntity}
         };
     }
 
-    public Expression<Func<Event, bool>> Criteria { get; }
-    public List<Expression<Func<Event, object>>> Includes { get; }
+    public Expression<Func<{Entity}, bool>> Criteria { get; }
+    public List<Expression<Func<{Entity}, object>>> Includes { get; }
 }
 
 // Repository method
-public async Task<List<Event>> Find(ISpecification<Event> spec)
+public async Task<List<{Entity}>> Find(ISpecification<{Entity}> spec)
 {
-    var query = _dbContext.Events.Where(spec.Criteria);
+    var query = _dbContext.{Entities}.Where(spec.Criteria);
 
     query = spec.Includes
         .Aggregate(query, (current, include) => current.Include(include));
@@ -367,14 +357,14 @@ public async Task<List<Event>> Find(ISpecification<Event> spec)
 ### Pagination
 
 ```csharp
-public async Task<List<Event>> GetEventsPaginated(
+public async Task<List<{Entity}>> Get{Entities}Paginated(
     int page,
     int pageSize,
     string? searchTerm)
 {
-    var query = _dbContext.Events
-        .Include(e => e.Actor)
-        .Include(e => e.EventType)
+    var query = _dbContext.{Entities}
+        .Include(e => e.{ParentEntity})
+        .Include(e => e.{LookupEntity})
         .AsQueryable();
 
     if (!string.IsNullOrWhiteSpace(searchTerm))
@@ -395,7 +385,6 @@ public async Task<List<Event>> GetEventsPaginated(
     return items;
 }
 ```
-```
 
 ---
 
@@ -405,7 +394,7 @@ public async Task<List<Event>> GetEventsPaginated(
 |----------|--------|
 | ✅ Interface in Application, implementation in Persistence | Clean Architecture |
 | ✅ Inherit from GenericRepository | Code reuse |
-| ✅ Project to DTOs with `Select` | Performance |
+| ✅ Return entities, not DTOs | Separation of concerns |
 | ✅ Use `AsNoTracking()` for read-only | No unnecessary tracking |
 | ✅ Include related entities with `Include` | Avoid N+1 queries |
 | ✅ Register repositories in DI | Dependency injection |

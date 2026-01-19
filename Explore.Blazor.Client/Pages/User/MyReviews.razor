@@ -1,92 +1,52 @@
-@using Explore.Blazor.Client.Clients
+@page "/user/reviews"
+@using MudBlazor
 @using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Clients
 @using Microsoft.AspNetCore.Components
-@using Microsoft.Extensions.Logging
-@inject IOrganizationReviewService OrganizationReviewService
-@inject IUserService UserService
-@inject AuthenticationStateProvider AuthenticationStateProvider
-@inject ILogger<MyReviews> Logger
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
 
-<PageTitle>My Reviews</PageTitle>
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <div class="d-flex justify-space-between align-center mb-4">
+        <MudText Typo="Typo.h4">My Reviews</MudText>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ArrowBack" Href="/user/profile">
+            Back to Profile
+        </MudButton>
+    </div>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="my-reviews">
-    <MudText Typo="Typo.h4" Class="mb-4">My Reviews</MudText>
+    <MudTextField @bind-Value="_searchString" Placeholder="Search reviews..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="mb-4" />
 
-    @if (IsLoading)
+    @if (_loading)
     {
-        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Class="d-block mx-auto" />
     }
-    else if (Reviews == null || !Reviews.Any())
+    else if (!FilteredReviews.Any())
     {
-        <MudAlert Severity="Severity.Info">You haven't given any reviews yet.</MudAlert>
+        <MudText Typo="Typo.body1" Align="Align.Center">No reviews found.</MudText>
     }
     else
     {
         <MudGrid>
-            @foreach (var review in Reviews)
+            @foreach (var review in FilteredReviews)
             {
                 <MudItem xs="12">
-                    <MudPaper Class="pa-4" Elevation="2">
-                        <MudStack Spacing="2">
-                            <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                    <MudCard>
+                        <MudCardHeader>
+                            <CardHeaderContent>
                                 <MudText Typo="Typo.h6">@review.OrganizationFullName</MudText>
-                                <div class="d-flex">
-                                    @for (int i = 1; i <= 5; i++)
-                                    {
-                                        if (i <= review.Rating)
-                                        {
-                                            <MudIcon Icon="@Icons.Material.Filled.Star" Color="Color.Warning" />
-                                        }
-                                        else
-                                        {
-                                            <MudIcon Icon="@Icons.Material.Outlined.StarBorder" Color="Color.Warning" />
-                                        }
-                                    }
-                                </div>
-                            </MudStack>
-                            <MudText Typo="Typo.caption">@review.CreatedAt.ToString("MMM dd, yyyy")</MudText>
-                            <MudText Typo="Typo.body1">@review.Comment</MudText>
-                        </MudStack>
-                    </MudPaper>
+                                <MudRating ReadOnly="true" SelectedValue="@review.Rating" />
+                            </CardHeaderContent>
+                            <CardHeaderActions>
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => DeleteReview(review))" />
+                            </CardHeaderActions>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            <MudText>@review.Comment</MudText>
+                            <MudText Typo="Typo.caption" Class="mt-2">@review.CreatedAt.ToString("g")</MudText>
+                        </MudCardContent>
+                    </MudCard>
                 </MudItem>
             }
         </MudGrid>
     }
 </MudContainer>
-
-@code {
-    private List<OrganizationReviewDto> Reviews { get; set; } = new();
-    private bool IsLoading { get; set; } = true;
-
-    // No prerender persistence. Load reviews on the client in OnInitializedAsync.
-
-    protected override async Task OnInitializedAsync()
-    {
-        try
-        {
-            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-            var user = authState.User;
-
-            if (user.Identity?.IsAuthenticated == true)
-            {
-                var userData = await UserService.GetCurrentUserAsync();
-                if (userData != null)
-                {
-                    Reviews = (await OrganizationReviewService.GetReviewsByUserId(userData.Id)).ToList();
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error loading reviews");
-        }
-        finally
-        {
-            IsLoading = false;
-        }
-    }
-
-    // PersistData removed - no PersistentComponentState usage in client-only rendering mode.
-
-    // Dispose removed - no subscriptions to dispose for persistence.
-}

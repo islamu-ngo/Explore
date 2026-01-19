@@ -4,10 +4,6 @@
 @using Explore.Blazor.Client.Components.Admin
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize(Roles = "Admin")]
-@inject ITagService TagService
-@inject IDialogService DialogService
-@inject ISnackbar Snackbar
-@inject NavigationManager Nav
 
 <div class="admin-tags">
     <!-- Hero Section -->
@@ -18,7 +14,7 @@
                     <MudIcon Icon="@Icons.Material.Filled.LocalOffer" Color="Color.Primary" />
                 </div>
                 <div>
-                    <MudText Typo="Typo.h4" Style="font-weight:800; letter-spacing:.2px;">
+                    <MudText Typo="Typo.h4" Class="admin-tags__title-text">
                         Tags Management
                     </MudText>
                     <MudText Typo="Typo.body2" Class="admin-tags__hero-subtitle">
@@ -32,14 +28,14 @@
                            Color="Color.Default"
                            StartIcon="@Icons.Material.Filled.ArrowBack"
                            OnClick="@(() => Nav.NavigateTo("/admin"))"
-                           Style="border-radius:999px; padding:10px 16px;">
+                           Class="admin-tags__action-btn">
                     Back to Admin
                 </MudButton>
                 <MudButton Variant="Variant.Filled"
                            Color="Color.Primary"
                            StartIcon="@Icons.Material.Filled.Refresh"
                            OnClick="LoadTags"
-                           Style="border-radius:999px; padding:10px 16px;">
+                           Class="admin-tags__action-btn">
                     Refresh
                 </MudButton>
             </MudStack>
@@ -63,7 +59,7 @@
 
     @if (_isLoading)
     {
-        <MudPaper Class="admin-tags__panel" Elevation="0" Style="margin-top:14px;">
+        <MudPaper Class="admin-tags__panel" Elevation="0">
             <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="py-4">
                 <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
                 <MudText Typo="Typo.body1">Loading tags…</MudText>
@@ -74,7 +70,7 @@
     {
         <div class="admin-tags__section">
             <!-- Toolbar -->
-            <MudPaper Class="admin-tags__panel" Elevation="0" Style="margin-top:14px;">
+            <MudPaper Class="admin-tags__panel" Elevation="0">
                 <div class="admin-tags__toolbar">
                     <MudTextField @bind-Value="_searchString"
                                   Placeholder="Search tags..."
@@ -84,7 +80,7 @@
                                   Immediate="true"
                                   Clearable="true"
                                   Margin="Margin.Dense"
-                                  Style="min-width:280px; border-radius:999px;" />
+                                  Class="admin-tags__search-field" />
 
                     <MudSpacer />
 
@@ -99,7 +95,7 @@
             </MudPaper>
 
             <!-- Table -->
-            <MudPaper Class="admin-tags__table-panel" Elevation="0" Style="margin-top:12px;">
+            <MudPaper Class="admin-tags__table-panel" Elevation="0">
                 <MudTable Items="@FilteredTags"
                           Dense="true"
                           Hover="true"
@@ -108,10 +104,10 @@
                           Loading="@_isLoading"
                           LoadingProgressColor="Color.Primary">
                     <HeaderContent>
-                        <MudTh Style="width:50px">#</MudTh>
+                        <MudTh Class="admin-tags__col-id">#</MudTh>
                         <MudTh>Name</MudTh>
                         <MudTh>Master Code</MudTh>
-                        <MudTh Style="text-align:center; width:150px">Actions</MudTh>
+                        <MudTh Class="admin-tags__col-actions">Actions</MudTh>
                     </HeaderContent>
                     <RowTemplate>
                         <MudTd DataLabel="#">
@@ -120,7 +116,7 @@
                         <MudTd DataLabel="Name">
                             <div class="admin-tags__name-cell">
                                 <MudIcon Icon="@Icons.Material.Filled.LocalOffer" Size="Size.Small" Color="Color.Primary" />
-                                <MudText Typo="Typo.body2" Style="font-weight:600;">@context.FullName</MudText>
+                                <MudText Typo="Typo.body2" Class="admin-tags__name-text">@context.FullName</MudText>
                             </div>
                         </MudTd>
                         <MudTd DataLabel="Code">
@@ -128,7 +124,7 @@
                                 @context.MasterCode
                             </MudChip>
                         </MudTd>
-                        <MudTd DataLabel="Actions" Style="text-align:center">
+                        <MudTd DataLabel="Actions" Class="admin-tags__cell-actions">
                             <div class="admin-tags__actions">
                                 <MudTooltip Text="Edit">
                                     <MudIconButton Icon="@Icons.Material.Filled.Edit"
@@ -148,7 +144,7 @@
                     <NoRecordsContent>
                         <div class="admin-tags__empty">
                             <MudIcon Icon="@Icons.Material.Filled.LocalOffer" Size="Size.Large" />
-                            <MudText Typo="Typo.h6" Style="margin-top:10px; font-weight:800;">No tags found</MudText>
+                            <MudText Typo="Typo.h6" Class="admin-tags__empty-title">No tags found</MudText>
                             <MudText Typo="Typo.body2" Class="admin-tags__muted">
                                 @if (string.IsNullOrWhiteSpace(_searchString))
                                 {
@@ -162,7 +158,7 @@
                             <MudButton Variant="Variant.Filled"
                                        Color="Color.Primary"
                                        OnClick="OpenCreateDialog"
-                                       Style="margin-top:12px; border-radius:999px;">
+                                       Class="admin-tags__empty-btn">
                                 Create Tag
                             </MudButton>
                         </div>
@@ -175,130 +171,3 @@
         </div>
     }
 </div>
-
-@code {
-    private ICollection<TagListDto> _tags = new List<TagListDto>();
-    private string _searchString = string.Empty;
-    private bool _isLoading = true;
-
-    private IEnumerable<TagListDto> FilteredTags => string.IsNullOrWhiteSpace(_searchString)
-        ? _tags
-        : _tags.Where(t =>
-            (t.FullName?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
-            (t.MasterCode?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false));
-
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadTags();
-    }
-
-    private async Task LoadTags()
-    {
-        _isLoading = true;
-        try
-        {
-            _tags = await TagService.GetTags();
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Failed to load tags: {ex.Message}", Severity.Error);
-            _tags = new List<TagListDto>();
-        }
-        finally
-        {
-            _isLoading = false;
-        }
-    }
-
-    private async Task OpenCreateDialog()
-    {
-        var options = new DialogOptions
-        {
-            CloseButton = true,
-            MaxWidth = MaxWidth.Small,
-            FullWidth = true
-        };
-
-        var dialog = await DialogService.ShowAsync<CreateTagDialog>("Create Tag", options);
-        var result = await dialog.Result;
-
-        if (result is { Canceled: false, Data: CreateTagDto createDto })
-        {
-            var response = await TagService.CreateTagAsync(createDto);
-            if (response?.Success == true)
-            {
-                Snackbar.Add($"Tag '{createDto.FullName}' created successfully", Severity.Success);
-                await LoadTags();
-            }
-            else
-            {
-                var errors = response?.Errors != null ? string.Join(", ", response.Errors) : "Unknown error";
-                Snackbar.Add($"Failed to create tag: {errors}", Severity.Error);
-            }
-        }
-    }
-
-    private async Task OpenEditDialog(TagListDto tag)
-    {
-        // First, get the full tag details
-        var tagDetails = await TagService.GetTagByIdAsync(tag.Id);
-        if (tagDetails == null)
-        {
-            Snackbar.Add("Failed to load tag details", Severity.Error);
-            return;
-        }
-
-        var parameters = new DialogParameters<EditTagDialog>
-        {
-            { x => x.ExistingTag, tagDetails }
-        };
-
-        var options = new DialogOptions
-        {
-            CloseButton = true,
-            MaxWidth = MaxWidth.Small,
-            FullWidth = true
-        };
-
-        var dialog = await DialogService.ShowAsync<EditTagDialog>("Edit Tag", parameters, options);
-        var result = await dialog.Result;
-
-        if (result is { Canceled: false, Data: UpdateTagDto updateDto })
-        {
-            var response = await TagService.UpdateTagAsync(updateDto.Id, updateDto);
-            if (response?.Success == true)
-            {
-                Snackbar.Add($"Tag '{updateDto.FullName}' updated successfully", Severity.Success);
-                await LoadTags();
-            }
-            else
-            {
-                var errors = response?.Errors != null ? string.Join(", ", response.Errors) : "Unknown error";
-                Snackbar.Add($"Failed to update tag: {errors}", Severity.Error);
-            }
-        }
-    }
-
-    private async Task DeleteTag(TagListDto tag)
-    {
-        bool? confirm = await DialogService.ShowMessageBox(
-            "Confirm Delete",
-            $"Are you sure you want to delete the tag '{tag.FullName}'? This action cannot be undone.",
-            yesText: "Delete",
-            cancelText: "Cancel");
-
-        if (confirm == true)
-        {
-            var success = await TagService.DeleteTagAsync(tag.Id);
-            if (success)
-            {
-                Snackbar.Add($"Tag '{tag.FullName}' deleted successfully", Severity.Success);
-                await LoadTags();
-            }
-            else
-            {
-                Snackbar.Add($"Failed to delete tag '{tag.FullName}'", Severity.Error);
-            }
-        }
-    }
-}

@@ -1,28 +1,30 @@
 # Centralized API Exception Handling
 
+> **Project-Agnostic Exception Handling Patterns**
+>
+> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../../docs/TEMPLATE_GLOSSARY.md).
+
 This pattern ensures that all unhandled exceptions occurring within the API are caught centrally, logged, and presented to the client in a standardized, RFC 7807 `ProblemDetails` format. This avoids repetitive `try-catch` blocks in every controller action and provides a consistent error experience.
 
 ---
 
 ## 1. Configuration in `Program.cs`
 
-The primary setup for centralized exception handling in ASP.NET Core involves `UseExceptionHandler` and `AddProblemDetails` in the `Program.cs` file of the `Explore.API` project.
+The primary setup for centralized exception handling in ASP.NET Core involves `UseExceptionHandler` and `AddProblemDetails` in the `Program.cs` file of the `{Project}.API` project.
 
-**File**: `Explore.API/Program.cs`
+**File**: `{Project}.API/Program.cs`
 
 ```csharp
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Http; // Required for StatusCodes
+using Microsoft.AspNetCore.Http;
 
 // Add ProblemDetails services to the DI container
-// This enables the use of IProblemDetailsService and provides default ProblemDetails configurations.
 builder.Services.AddProblemDetails();
 
 // Configure the exception handling middleware
 app.UseExceptionHandler(exceptionHandlerApp =>
 {
-    // Define how to handle exceptions when they occur
     exceptionHandlerApp.Run(async context =>
     {
         // Set the HTTP status code to 500 Internal Server Error
@@ -46,22 +48,13 @@ app.UseExceptionHandler(exceptionHandlerApp =>
             ProblemDetails = new ProblemDetails
             {
                 Title = "An unexpected error occurred.",
-                // Provide a general message to avoid exposing sensitive details.
-                // In development, you might include feature?.Error.Message for debugging.
                 Detail = "Please try again later. If the problem persists, contact support.",
                 Status = StatusCodes.Status500InternalServerError,
-                Instance = context.Request.Path // Include the request path for context
+                Instance = context.Request.Path
             }
         });
     });
 });
-
-// Ensure app.UseRouting() and app.UseAuthorization() are correctly placed
-// in the middleware pipeline.
-// app.UseRouting();
-// app.UseAuthentication();
-// app.UseAuthorization();
-// app.MapControllers();
 ```
 
 ---
@@ -81,11 +74,11 @@ The `ProblemDetails` object conforms to RFC 7807, providing a structured way to 
 
 ```json
 {
-  "type": "https://tools.ietf.org/html/rfc7231#section-6.6.1", // Link to RFC for 500 status
+  "type": "https://tools.ietf.org/html/rfc7231#section-6.6.1",
   "title": "An unexpected error occurred.",
   "status": 500,
   "detail": "Please try again later. If the problem persists, contact support.",
-  "instance": "/api/v1/event/some-failing-endpoint"
+  "instance": "/api/v1/{entity}/some-failing-endpoint"
 }
 ```
 
@@ -108,24 +101,23 @@ The order of middleware in `Program.cs` is crucial:
 // Example middleware pipeline order
 if (app.Environment.IsDevelopment())
 {
-    app.UseDeveloperExceptionPage(); // Catches exceptions in development with detailed info
+    app.UseDeveloperExceptionPage();
 }
 else
 {
-    app.UseExceptionHandler("/Error"); // Production-friendly error page/ProblemDetails
-    // The actual ProblemDetails context is configured in app.UseExceptionHandler(...) block
+    app.UseExceptionHandler("/Error");
 }
 
-app.UseHsts(); // Important for security in production
+app.UseHsts();
 app.UseHttpsRedirection();
 app.UseStaticFiles();
-app.UseRouting(); // Enables endpoint routing
+app.UseRouting();
 
 // Sentry tracing middleware (if integrated) should be here
 // app.UseSentryTracing();
 
-app.UseAuthentication(); // Must be before UseAuthorization
+app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers(); // Maps controller routes
+app.MapControllers();
 ```

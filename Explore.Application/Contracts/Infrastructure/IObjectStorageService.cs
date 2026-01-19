@@ -16,6 +16,14 @@ public interface IObjectStorageService
     Task<UploadUrlResponseDto> GeneratePresignedUploadUrl(string fileName, string contentType);
 
     /// <summary>
+    /// Generates a pre-signed URL for downloading/viewing a file from S3-compatible storage
+    /// </summary>
+    /// <param name="objectKey">The key of the object to retrieve</param>
+    /// <param name="expirationMinutes">URL expiration time in minutes (default: 60)</param>
+    /// <returns>The presigned download URL</returns>
+    string GeneratePresignedDownloadUrl(string objectKey, int expirationMinutes = 60);
+
+    /// <summary>
     /// Retrieves a file stream from S3-compatible storage
     /// </summary>
     /// <param name="fileKey">The key of the file to retrieve</param>

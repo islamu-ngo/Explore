@@ -1,0 +1,152 @@
+using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Services;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
+using MudBlazor;
+using Blazouter.Services;
+
+namespace Explore.Blazor.Client.Pages.Organization;
+
+public partial class OrganizationMembers
+{
+    [Inject] protected IOrganizationMemberService MemberService { get; set; } = null!;
+    [Inject] protected IOrganizationService OrganizationService { get; set; } = null!;
+    [Inject] protected ISnackbar Snackbar { get; set; } = null!;
+    [Inject] protected IDialogService DialogService { get; set; } = null!;
+    [Inject] protected NavigationManager Navigation { get; set; } = null!;
+    [Inject] protected AuthenticationStateProvider AuthenticationStateProvider { get; set; } = null!;
+    [Inject] protected RouterStateService RouterState { get; set; } = null!;
+
+    private Guid Id { get; set; }
+    private List<OrganizationMemberDto> Members = new();
+    private bool _loading = true;
+    private string? currentUserId;
+    private int? currentUserRole;
+
+    private string _searchString = "";
+    private int? _roleFilter;
+
+    private IEnumerable<OrganizationMemberDto> FilteredMembers =>
+        Members
+            .Where(x => string.IsNullOrWhiteSpace(_searchString) ||
+                        (x.UserFullName?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                        (x.UserEmail?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false))
+            .Where(x => _roleFilter == null || x.OrganizationRoleId == _roleFilter);
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Get route parameter from Blazouter
+        var idStr = RouterState.GetParam("id");
+        if (Guid.TryParse(idStr, out var id))
+        {
+            Id = id;
+        }
+
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        currentUserId = user.FindFirst("sub")?.Value
+            ?? user.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
+            ?? user.FindFirst("oid")?.Value;
+
+        await LoadMembers();
+    }
+
+    private void DetermineCurrentUserRole()
+    {
+        if (currentUserId != null)
+        {
+            var me = Members.FirstOrDefault(m => m.UserId.ToString().Equals(currentUserId, StringComparison.OrdinalIgnoreCase));
+            if (me != null)
+            {
+                currentUserRole = me.OrganizationRoleId;
+            }
+        }
+    }
+
+    private async Task LoadMembers()
+    {
+        _loading = true;
+        try
+        {
+            Members = (await MemberService.GetMembersAsync(Id))?.ToList() ?? new List<OrganizationMemberDto>();
+            DetermineCurrentUserRole();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading members: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private Color GetRoleColor(int role)
+    {
+        return role switch
+        {
+            1 => Color.Warning, // Creator
+            2 => Color.Success, // Co-Owner
+            3 => Color.Info,    // Admin
+            _ => Color.Default
+        };
+    }
+
+    private string GetRoleName(int role)
+    {
+        return role switch
+        {
+            1 => "Creator",
+            2 => "Co-Owner",
+            3 => "Admin",
+            4 => "Member",
+            _ => "Unknown"
+        };
+    }
+
+    private async Task OpenInviteDialog()
+    {
+        var parameters = new DialogParameters { ["OrganizationId"] = Id };
+        var dialog = await DialogService.ShowAsync<InviteMemberDialog>("Invite Member", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadMembers();
+        }
+    }
+
+    private async Task OpenEditRoleDialog(OrganizationMemberDto member)
+    {
+        var parameters = new DialogParameters { ["Member"] = member, ["OrganizationId"] = Id };
+        var dialog = await DialogService.ShowAsync<EditMemberRoleDialog>("Edit Role", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadMembers();
+        }
+    }
+
+    private async Task RemoveMember(OrganizationMemberDto member)
+    {
+        bool? result = await DialogService.ShowMessageBox(
+            "Remove Member",
+            $"Are you sure you want to remove {member.UserEmail} from the organization?",
+            yesText: "Remove", cancelText: "Cancel");
+
+        if (result == true)
+        {
+            try
+            {
+                await MemberService.DeleteMemberAsync(member.Id);
+                Snackbar.Add("Member removed.", Severity.Success);
+                await LoadMembers();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error removing member: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}

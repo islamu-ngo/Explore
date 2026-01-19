@@ -1,6 +1,10 @@
 # MudBlazor Usage - Components and Best Practices
 
-This document provides a comprehensive guide to commonly used MudBlazor components in ISLAMU Event applications, along with best practices for their implementation.
+> **Project-Agnostic MudBlazor Patterns**
+>
+> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../../docs/TEMPLATE_GLOSSARY.md).
+
+This document provides a comprehensive guide to commonly used MudBlazor components in Blazor applications, along with best practices for their implementation.
 
 ---
 
@@ -42,26 +46,26 @@ MudBlazor uses a powerful 12-column grid system that facilitates responsive layo
 </MudGrid>
 ```
 
-### Event Card Grid Example (ISLAMU Pattern)
+### {Entity} Card Grid Example
 
 ```razor
 <MudGrid Spacing="3"> @* `Spacing` property controls gutter size (0-10) *@
-    @foreach (var evt in _events)
+    @foreach (var item in _{entities})
     {
         <MudItem xs="12" sm="6" md="4" lg="3"> @* Responsive sizing: 1 column on mobile, 2 on small, 3 on medium, 4 on large *@
             <MudCard Elevation="2"> @* Add elevation for a subtle shadow effect *@
-                <MudCardMedia Image="@evt.CoverImageUrl" Height="200" />
+                <MudCardMedia Image="@item.CoverImageUrl" Height="200" />
                 <MudCardContent>
-                    <MudText Typo="Typo.h6">@evt.Title</MudText>
+                    <MudText Typo="Typo.h6">@item.Title</MudText>
                     <MudText Typo="Typo.body2" Color="Color.Secondary">
-                        @evt.StartDate.ToShortDateString()
+                        @item.StartDate.ToShortDateString()
                     </MudText>
-                    <MudText Typo="Typo.body2">@evt.Location</MudText>
+                    <MudText Typo="Typo.body2">@item.Location</MudText>
                 </MudCardContent>
                 <MudCardActions Class="d-flex justify-end"> @* Align actions to the end *@
                     <MudButton Variant="Variant.Text"
                                Color="Color.Primary"
-                               OnClick="@(() => ViewDetails(evt.Id))">
+                               OnClick="@(() => ViewDetails(item.Id))">
                         View Details
                     </MudButton>
                 </MudCardActions>
@@ -81,8 +85,8 @@ MudButton offers various styles, colors, and functionalities for user interactio
 
 ```razor
 @* Filled (Default - has elevation and solid background) *@
-<MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateEvent">
-    Create Event
+<MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Create{Entity}">
+    Create {Entity}
 </MudButton>
 
 @* Outlined (border, transparent background) *@
@@ -124,8 +128,8 @@ Utilize the predefined color palette for consistent branding.
 <MudButton Variant="Variant.Filled"
            Color="Color.Primary"
            StartIcon="@Filled.Add" @* Use Material Design Icons *@
-           OnClick="CreateEvent">
-    Create Event
+           OnClick="Create{Entity}">
+    Create {Entity}
 </MudButton>
 
 <MudButton Variant="Variant.Outlined"
@@ -140,7 +144,7 @@ Utilize the predefined color palette for consistent branding.
 <MudIconButton Icon="@Filled.Edit"
                Color="Color.Primary"
                Size="Size.Small"
-               OnClick="@(() => Edit(eventId))" />
+               OnClick="@(() => Edit({entity}Id))" />
 
 <MudIconButton Icon="@Filled.Delete"
                Color="Color.Error"
@@ -166,9 +170,9 @@ MudTextField is the standard component for single and multi-line text input.
 
 ```razor
 <MudTextField @bind-Value="title"
-              Label="Event Title"
+              Label="{Entity} Title"
               Variant="Variant.Outlined"
-              Placeholder="e.g., Islamic Jurisprudence Seminar" />
+              Placeholder="e.g., Sample {Entity} Title" />
 
 @code {
     private string title = string.Empty;
@@ -262,7 +266,7 @@ Useful for search inputs to prevent excessive API calls.
 
 ```razor
 <MudTextField @bind-Value="searchTerm"
-              Label="Search Events"
+              Label="Search {Entities}"
               Immediate="true" @* Triggers OnDebounceIntervalElapsed immediately on first input *@
               DebounceInterval="300" @* Wait 300ms after last keystroke *@
               OnDebounceIntervalElapsed="OnSearchChanged"
@@ -275,7 +279,7 @@ Useful for search inputs to prevent excessive API calls.
     private async Task OnSearchChanged()
     {
         // Search logic executes 300ms after user stops typing
-        await LoadEvents(searchTerm);
+        await Load{Entities}(searchTerm);
     }
 }
 ```
@@ -289,19 +293,19 @@ The standard component for single and multiple item selection from a list.
 ### Basic Select
 
 ```razor
-<MudSelect @bind-Value="selectedAudienceAgeId"
-           Label="Audience Age"
+<MudSelect @bind-Value="selected{LookupEntity}Id"
+           Label="{LookupEntity}"
            Required="true"
-           RequiredError="Audience Age is required">
-    @foreach (var age in _audienceAges)
+           RequiredError="{LookupEntity} is required">
+    @foreach (var item in _{lookupEntities})
     {
-        <MudSelectItem Value="@age.Id">@age.Name</MudSelectItem>
+        <MudSelectItem Value="@item.Id">@item.FullName</MudSelectItem>
     }
 </MudSelect>
 
 @code {
-    private int selectedAudienceAgeId;
-    private List<AudienceAgeDto> _audienceAges = new(); // Assume AudienceAgeDto has Id and Name properties
+    private {LookupIdType} selected{LookupEntity}Id;
+    private List<{LookupEntity}Dto> _{lookupEntities} = new();
 }
 ```
 
@@ -310,19 +314,19 @@ The standard component for single and multiple item selection from a list.
 When you need to bind directly to a complex object instead of just its ID.
 
 ```razor
-<MudSelect @bind-Value="selectedOrganization"
-           Label="Organization"
-           ToStringFunc="@(org => org?.Name ?? string.Empty)" @* How the selected item is displayed *@
+<MudSelect @bind-Value="selected{ParentEntity}"
+           Label="{ParentEntity}"
+           ToStringFunc="@(item => item?.FullName ?? string.Empty)" @* How the selected item is displayed *@
            Clearable="true"> @* Allows clearing the selection *@
-    @foreach (var org in _organizations)
+    @foreach (var item in _{parentEntities})
     {
-        <MudSelectItem Value="@org">@org.Name</MudSelectItem>
+        <MudSelectItem Value="@item">@item.FullName</MudSelectItem>
     }
 </MudSelect>
 
 @code {
-    private OrganizationDto? selectedOrganization;
-    private List<OrganizationDto> _organizations = new();
+    private {ParentEntity}Dto? selected{ParentEntity};
+    private List<{ParentEntity}Dto> _{parentEntities} = new();
 }
 ```
 
@@ -343,7 +347,7 @@ For selecting multiple items from a list.
 
 @code {
     private IEnumerable<string> selectedTags = new List<string>();
-    private List<string> _availableTags = new() { "Tafsir", "Fiqh", "Hadith" };
+    private List<string> _availableTags = new() { "Tag A", "Tag B", "Tag C" };
 }
 ```
 
@@ -378,7 +382,7 @@ Components designed to be hosted directly inside a `MudDialog`.
 
 @code {
     [CascadingParameter]
-    private MudDialogInstance MudDialog { get; set; } = null!; // ✅ Injected by IDialogService
+    private MudDialogInstance MudDialog { get; set; } = null!; // Injected by IDialogService
 
     [Parameter]
     public string ContentText { get; set; } = "Are you sure?";
@@ -402,14 +406,14 @@ Use `IDialogService` to show dialogs from any component.
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 
-<MudButton OnClick="DeleteEvent">Delete Event</MudButton>
+<MudButton OnClick="Delete{Entity}">Delete {Entity}</MudButton>
 
 @code {
-    private async Task DeleteEvent()
+    private async Task Delete{Entity}()
     {
         var parameters = new DialogParameters
         {
-            ["ContentText"] = "Delete this event? This action cannot be undone.",
+            ["ContentText"] = "Delete this {entity}? This action cannot be undone.",
             ["ButtonText"] = "Delete",
             ["Color"] = Color.Error
         };
@@ -424,7 +428,7 @@ Use `IDialogService` to show dialogs from any component.
         if (!result.Canceled)
         {
             // User confirmed, proceed with deletion
-            Snackbar.Add("Event deleted", Severity.Success);
+            Snackbar.Add("{Entity} deleted", Severity.Success);
             // ... deletion logic
         }
         else
@@ -440,17 +444,17 @@ Use `IDialogService` to show dialogs from any component.
 You can host complex forms inside dialogs, returning their results.
 
 ```razor
-@* CreateEventDialog.razor *@
+@* Create{Entity}Dialog.razor *@
 @inject IMediator Mediator
 @inject ISnackbar Snackbar
 
 <MudDialog>
     <TitleContent>
-        <MudText Typo="Typo.h6">Create Event</MudText>
+        <MudText Typo="Typo.h6">Create {Entity}</MudText>
     </TitleContent>
     <DialogContent>
         <MudTextField @bind-Value="_dto.Title"
-                      Label="Event Title"
+                      Label="{Entity} Title"
                       Required="true" />
         @* ... other form fields ... *@
         <MudDatePicker @bind-Date="_startDate"
@@ -472,7 +476,7 @@ You can host complex forms inside dialogs, returning their results.
     [CascadingParameter]
     private MudDialogInstance MudDialog { get; set; } = null!;
 
-    private CreateEventDto _dto = new();
+    private Create{Entity}Dto _dto = new();
     private DateTime? _startDate;
     private bool _isSubmitting;
 
@@ -484,17 +488,17 @@ You can host complex forms inside dialogs, returning their results.
         try
         {
             // ... validation and API call ...
-            var command = new CreateEventCommand { EventDto = _dto };
+            var command = new Create{Entity}Command { {Entity}Dto = _dto };
             var result = await Mediator.Send(command);
 
             if (result.Success)
             {
-                Snackbar.Add("Event created", Severity.Success);
-                MudDialog.Close(DialogResult.Ok(result.Id)); // ✅ Return the new event ID
+                Snackbar.Add("{Entity} created", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(result.Id)); // Return the new {entity} ID
             }
             else
             {
-                Snackbar.Add("Failed to create event", Severity.Error);
+                Snackbar.Add("Failed to create {entity}", Severity.Error);
                 MudDialog.Close(DialogResult.Cancel()); // Or pass back errors
             }
         }
@@ -515,7 +519,7 @@ MudTable is a versatile component for displaying tabular data, offering sorting,
 ### Simple Table
 
 ```razor
-<MudTable Items="@_events" Hover="true" Breakpoint="Breakpoint.Sm">
+<MudTable Items="@_{entities}" Hover="true" Breakpoint="Breakpoint.Sm">
     <HeaderContent>
         <MudTh>Title</MudTh>
         <MudTh>Date</MudTh>
@@ -534,25 +538,25 @@ MudTable is a versatile component for displaying tabular data, offering sorting,
 </MudTable>
 
 @code {
-    private List<EventListDto> _events = new();
+    private List<{Entity}ListDto> _{entities} = new();
 }
 ```
 
 ### Table with Sorting
 
 ```razor
-<MudTable Items="@_events"
+<MudTable Items="@_{entities}"
           Hover="true"
           SortLabel="Sort By" @* Accessibility label for sorting *@
           Breakpoint="Breakpoint.Sm">
     <HeaderContent>
         <MudTh>
-            <MudTableSortLabel SortBy="new Func<EventListDto, object>(x => x.Title)"> @* Sort by Title property *@
+            <MudTableSortLabel SortBy="new Func<{Entity}ListDto, object>(x => x.Title)"> @* Sort by Title property *@
                 Title
             </MudTableSortLabel>
         </MudTh>
         <MudTh>
-            <MudTableSortLabel SortBy="new Func<EventListDto, object>(x => x.StartDate)"> @* Sort by StartDate property *@
+            <MudTableSortLabel SortBy="new Func<{Entity}ListDto, object>(x => x.StartDate)"> @* Sort by StartDate property *@
                 Date
             </MudTableSortLabel>
         </MudTh>
@@ -573,12 +577,12 @@ For large datasets, fetching and processing data on the server is more efficient
 ```razor
 @inject IMediator Mediator
 
-<MudTable ServerData="@LoadServerData" @* ✅ Key for server-side operations *@
+<MudTable ServerData="@LoadServerData" @* Key for server-side operations *@
           Dense="true"
           Hover="true"
           @ref="_table"> @* Ref to component instance for programmatic control *@
     <ToolBarContent>
-        <MudText Typo="Typo.h6">Events</MudText>
+        <MudText Typo="Typo.h6">{Entities}</MudText>
         <MudSpacer />
         <MudTextField @bind-Value="_searchString"
                       Placeholder="Search"
@@ -592,12 +596,12 @@ For large datasets, fetching and processing data on the server is more efficient
     </ToolBarContent>
     <HeaderContent>
         <MudTh>
-            <MudTableSortLabel SortLabel="title" T="EventListDto"> @* SortLabel is key for ServerData *@
+            <MudTableSortLabel SortLabel="title" T="{Entity}ListDto"> @* SortLabel is key for ServerData *@
                 Title
             </MudTableSortLabel>
         </MudTh>
         <MudTh>
-            <MudTableSortLabel SortLabel="date" T="EventListDto">
+            <MudTableSortLabel SortLabel="date" T="{Entity}ListDto">
                 Date
             </MudTableSortLabel>
         </MudTh>
@@ -609,7 +613,7 @@ For large datasets, fetching and processing data on the server is more efficient
         <MudTd DataLabel="Location">@context.Location</MudTd>
     </RowTemplate>
     <NoRecordsContent>
-        <MudText>No events found</MudText>
+        <MudText>No {entities} found</MudText>
     </NoRecordsContent>
     <LoadingContent>
         <MudProgressCircular Indeterminate="true" />
@@ -620,16 +624,16 @@ For large datasets, fetching and processing data on the server is more efficient
 </MudTable>
 
 @code {
-    private MudTable<EventListDto>? _table;
+    private MudTable<{Entity}ListDto>? _table;
     private string _searchString = string.Empty;
 
-    // ✅ This method is called by MudTable for server-side data fetching
-    private async Task<TableData<EventListDto>> LoadServerData(
+    // This method is called by MudTable for server-side data fetching
+    private async Task<TableData<{Entity}ListDto>> LoadServerData(
         TableState state,
         CancellationToken token)
     {
         // Build request for backend (e.g., CQRS Query)
-        var request = new GetEventListRequest
+        var request = new Get{Entity}ListRequest
         {
             Page = state.Page + 1,  // MudTable is 0-indexed, API is 1-indexed
             PageSize = state.PageSize,
@@ -638,11 +642,11 @@ For large datasets, fetching and processing data on the server is more efficient
             SortDescending = state.SortDirection == SortDirection.Descending
         };
 
-        var response = await Mediator.Send(request, token); // Assume response has Events and TotalCount
+        var response = await Mediator.Send(request, token); // Assume response has {Entities} and TotalCount
 
-        return new TableData<EventListDto>
+        return new TableData<{Entity}ListDto>
         {
-            Items = response.Events,
+            Items = response.{Entities},
             TotalItems = response.TotalCount
         };
     }
@@ -662,18 +666,18 @@ MudCard is a flexible content container with options for media, header, content,
 
 ```razor
 <MudCard Elevation="4" Class="my-4">
-    <MudCardMedia Image="@eventImageUrl" Height="200" />
+    <MudCardMedia Image="@{entity}ImageUrl" Height="200" />
     <MudCardHeader>
         <CardHeaderContent>
-            <MudText Typo="Typo.h5">@eventTitle</MudText>
+            <MudText Typo="Typo.h5">@{entity}Title</MudText>
             <MudText Typo="Typo.body2" Color="Color.Secondary">
-                @eventDate.ToShortDateString()
+                @{entity}Date.ToShortDateString()
             </MudText>
         </CardHeaderContent>
     </MudCardHeader>
     <MudCardContent>
         <MudText Typo="Typo.body2" Class="mt-2">
-            @eventDescription
+            @{entity}Description
         </MudText>
     </MudCardContent>
     <MudCardActions Class="d-flex justify-end">
@@ -704,7 +708,7 @@ MudSnackbar provides transient messages to users, used for success, error, warni
 @code {
     private void ShowSuccess()
     {
-        Snackbar.Add("Event created successfully!", Severity.Success, config =>
+        Snackbar.Add("{Entity} created successfully!", Severity.Success, config =>
         {
             config.ShowCloseIcon = false; // Custom config for this snackbar
         });
@@ -712,27 +716,27 @@ MudSnackbar provides transient messages to users, used for success, error, warni
 
     private void ShowError()
     {
-        Snackbar.Add("Failed to delete event", Severity.Error);
+        Snackbar.Add("Failed to delete {entity}", Severity.Error);
     }
 
     private void ShowWarning()
     {
-        Snackbar.Add("Event capacity almost full", Severity.Warning);
+        Snackbar.Add("{Entity} capacity almost full", Severity.Warning);
     }
 
     private void ShowInfo()
     {
-        Snackbar.Add("Event updated", Severity.Info);
+        Snackbar.Add("{Entity} updated", Severity.Info);
     }
 }
 ```
 
 ### Snackbar Configuration
 
-Configure global Snackbar behavior in `Explore.Blazor/Program.cs`.
+Configure global Snackbar behavior in `{Project}.Blazor/Program.cs`.
 
 ```csharp
-// File: Explore.Blazor/Program.cs
+// File: {Project}.Blazor/Program.cs
 builder.Services.AddMudServices(config =>
 {
     config.SnackbarConfiguration.PositionClass = Defaults.Classes.Position.BottomRight; // Position
@@ -754,7 +758,7 @@ Used to center and constrain content within a page, providing consistent margins
 
 ```razor
 <MudContainer MaxWidth="MaxWidth.Large" Class="my-4"> @* MaxWidth constrains content, my-4 adds vertical margin *@
-    <MudText Typo="Typo.h4">Events Overview</MudText>
+    <MudText Typo="Typo.h4">{Entities} Overview</MudText>
     @* All your page content goes here *@
 </MudContainer>
 ```

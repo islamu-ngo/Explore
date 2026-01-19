@@ -55,7 +55,17 @@
 @code {
     [Parameter] public string? PreviewUrl { get; set; }
     [Parameter] public EventCallback<string?> PreviewUrlChanged { get; set; }
+
+    /// <summary>
+    /// Legacy callback that passes IBrowserFile. Prefer using FileDataSelected for reliable WASM uploads.
+    /// </summary>
     [Parameter] public EventCallback<IBrowserFile?> FileSelected { get; set; }
+
+    /// <summary>
+    /// Preferred callback that passes FileUploadData (bytes read into memory).
+    /// This prevents stream exhaustion issues in Blazor WASM.
+    /// </summary>
+    [Parameter] public EventCallback<FileUploadData?> FileDataSelected { get; set; }
 
     // Customization parameters
     [Parameter] public string Width { get; set; } = "100%";
@@ -68,7 +78,13 @@
     [Parameter] public string AcceptedFormats { get; set; } = ".jpg,.jpeg,.png,.gif,.webp";
     [Parameter] public long MaxFileSize { get; set; } = 5 * 1024 * 1024; // 5MB default
 
+    /// <summary>
+    /// Set to true to show a loading indicator while processing the file.
+    /// </summary>
+    [Parameter] public bool IsProcessing { get; set; }
+
     private MudFileUpload<IBrowserFile>? _fileUpload;
+    private bool _isReadingFile;
     private bool HasImage => !string.IsNullOrEmpty(PreviewUrl);
 
     private async Task OnFileSelected(IBrowserFile? file)
@@ -91,21 +107,113 @@
             return;
         }
 
+        _isReadingFile = true;
+        StateHasChanged();
+
         try
         {
-            // Generate local preview
-            var localPreview = await ImageStorageService.GenerateLocalPreviewAsync(file, MaxFileSize);
-            PreviewUrl = localPreview;
-            await PreviewUrlChanged.InvokeAsync(localPreview);
+            Logger.LogInformation("[ImageUpload] Starting file processing for {FileName} ({Size} bytes)", file.Name, file.Size);
 
-            // Pass the selected file to the parent
-            await FileSelected.InvokeAsync(file);
+            // STEP 1: Read the file bytes FIRST - this is reliable
+            // We'll generate the preview from these bytes (skip browser-side resizing which can hang)
+            Logger.LogInformation("[ImageUpload] Step 1: Reading file {FileName} ({Size} bytes) into memory...", file.Name, file.Size);
+            var fileData = await ImageStorageService.ReadFileAsync(file, MaxFileSize);
+
+            if (fileData == null)
+            {
+                Logger.LogError("[ImageUpload] ReadFileAsync returned null for {FileName}", file.Name);
+                Snackbar.Add("Failed to read the selected file. Please try again.", Severity.Error);
+                await RemoveImage();
+                return;
+            }
+
+            Logger.LogInformation("[ImageUpload] Step 1a: Successfully read {ByteCount} bytes from {FileName}", fileData.Size, fileData.FileName);
+
+            // STEP 2: Generate preview from the bytes we just read
+            // Use full-size bytes directly - browser-side resizing (RequestImageFileAsync) can hang in WASM
+            Logger.LogInformation("[ImageUpload] Step 2: Generating preview from bytes...");
+            string localPreview = ImageStorageService.GenerateLocalPreviewFromBytes(fileData);
+
+            if (string.IsNullOrEmpty(localPreview))
+            {
+                Logger.LogWarning("[ImageUpload] Failed to generate preview for {FileName}", fileData.FileName);
+                Snackbar.Add("Failed to generate image preview", Severity.Warning);
+                // Continue anyway - the upload might still work
+            }
+            else
+            {
+                Logger.LogInformation("[ImageUpload] Step 2a: Preview generated successfully");
+            }
+
+            // STEP 3: Update preview URL and notify parent
+            // Yield to allow UI thread to process before heavy operations
+            await Task.Yield();
+            Logger.LogInformation("[ImageUpload] Step 3: Setting preview URL (length={Length} chars)...", localPreview?.Length ?? 0);
+            try
+            {
+                PreviewUrl = localPreview;
+                Logger.LogInformation("[ImageUpload] Step 3a: PreviewUrl property set");
+
+                // Use InvokeAsync to ensure we're on the correct sync context
+                await InvokeAsync(() =>
+                {
+                    Logger.LogInformation("[ImageUpload] Step 3b: Inside InvokeAsync, calling StateHasChanged...");
+                    StateHasChanged();
+                });
+                Logger.LogInformation("[ImageUpload] Step 3c: StateHasChanged completed");
+
+                // Yield again after render to let browser process
+                await Task.Yield();
+
+                if (PreviewUrlChanged.HasDelegate)
+                {
+                    Logger.LogInformation("[ImageUpload] Step 3d: Invoking PreviewUrlChanged callback...");
+                    await PreviewUrlChanged.InvokeAsync(localPreview);
+                    Logger.LogInformation("[ImageUpload] Step 3e: PreviewUrlChanged callback completed");
+                }
+                else
+                {
+                    Logger.LogWarning("[ImageUpload] Step 3d: PreviewUrlChanged has no delegate");
+                }
+            }
+            catch (Exception previewEx)
+            {
+                Logger.LogError(previewEx, "[ImageUpload] Error during preview URL update: {Message}", previewEx.Message);
+                // Continue - don't fail the entire upload just because preview failed
+            }
+
+            // STEP 4: Pass the file data to the parent component for upload
+            Logger.LogInformation("[ImageUpload] Step 4: Checking FileDataSelected delegate (HasDelegate={HasDelegate})...", FileDataSelected.HasDelegate);
+            if (FileDataSelected.HasDelegate)
+            {
+                Logger.LogInformation("[ImageUpload] Step 4a: Invoking FileDataSelected callback with {Size} bytes...", fileData.Size);
+                await FileDataSelected.InvokeAsync(fileData);
+                Logger.LogInformation("[ImageUpload] Step 4b: FileDataSelected callback completed successfully");
+            }
+            else
+            {
+                Logger.LogWarning("[ImageUpload] FileDataSelected has no delegate - parent callback not configured!");
+            }
+
+            // STEP 5: Also invoke legacy callback for backward compatibility
+            if (FileSelected.HasDelegate)
+            {
+                Logger.LogInformation("[ImageUpload] Step 5: Invoking legacy FileSelected callback...");
+                await FileSelected.InvokeAsync(file);
+            }
+
+            Logger.LogInformation("[ImageUpload] ✓ File processing completed successfully for {FileName}", file.Name);
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Preview generation error");
-            Snackbar.Add("An error occurred while generating the image preview", Severity.Error);
+            Logger.LogError(ex, "Error processing selected file {FileName}", file.Name);
+            Snackbar.Add($"An error occurred while processing the image: {ex.Message}", Severity.Error);
             await RemoveImage();
+        }
+        finally
+        {
+            _isReadingFile = false;
+            StateHasChanged();
         }
     }
 
@@ -113,20 +221,31 @@
     {
         PreviewUrl = null;
         await PreviewUrlChanged.InvokeAsync(null);
-        await FileSelected.InvokeAsync(null);
+
+        // Notify parent that file was removed
+        if (FileDataSelected.HasDelegate)
+        {
+            await FileDataSelected.InvokeAsync(null);
+        }
+        if (FileSelected.HasDelegate)
+        {
+            await FileSelected.InvokeAsync(null);
+        }
 
         // Clear the file upload component
         if (_fileUpload != null)
         {
             await _fileUpload.ClearAsync();
         }
+
+        StateHasChanged();
     }
 
-    protected override async Task OnParametersSetAsync()
-    {
-        if (!string.IsNullOrEmpty(PreviewUrl))
-        {
-            await PreviewUrlChanged.InvokeAsync(PreviewUrl);
-        }
-    }
+    // NOTE: Removed OnParametersSetAsync that was invoking PreviewUrlChanged
+    // This was causing an infinite loop:
+    // 1. ImageUpload invokes PreviewUrlChanged
+    // 2. Parent updates bound property
+    // 3. Blazor re-renders ImageUpload with new PreviewUrl
+    // 4. OnParametersSetAsync invokes PreviewUrlChanged AGAIN -> infinite loop -> crash
+    // The callback should ONLY be invoked when the user actively selects a file.
 }

@@ -3,23 +3,20 @@
 @using Explore.Blazor.Client.Services.Contracts
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize(Roles = "Admin")]
-@inject IEventTypeService EventTypeService
-@inject ISnackbar Snackbar
-@inject NavigationManager Nav
 
-<div class="admin-lookup">
+<div class="admin-event-types">
     <!-- Hero Section -->
-    <MudPaper Class="admin-lookup__hero admin-lookup__hero--event-type" Elevation="0">
-        <div class="admin-lookup__hero-top">
-            <div class="admin-lookup__hero-title">
-                <div class="admin-lookup__hero-badge admin-lookup__hero-badge--event-type">
+    <MudPaper Class="admin-event-types__hero" Elevation="0">
+        <div class="admin-event-types__hero-top">
+            <div class="admin-event-types__hero-title">
+                <div class="admin-event-types__hero-badge">
                     <MudIcon Icon="@Icons.Material.Filled.Event" Color="Color.Primary" />
                 </div>
                 <div>
-                    <MudText Typo="Typo.h4" Style="font-weight:800; letter-spacing:.2px;">
+                    <MudText Typo="Typo.h4" Class="admin-event-types__title-text">
                         Event Types
                     </MudText>
-                    <MudText Typo="Typo.body2" Class="admin-lookup__hero-subtitle">
+                    <MudText Typo="Typo.body2" Class="admin-event-types__hero-subtitle">
                         Event type classifications (read-only lookup table)
                     </MudText>
                 </div>
@@ -30,29 +27,29 @@
                            Color="Color.Default"
                            StartIcon="@Icons.Material.Filled.ArrowBack"
                            OnClick="@(() => Nav.NavigateTo("/admin"))"
-                           Style="border-radius:999px; padding:10px 16px;">
+                           Class="admin-event-types__action-btn">
                     Back to Admin
                 </MudButton>
                 <MudButton Variant="Variant.Filled"
                            Color="Color.Primary"
                            StartIcon="@Icons.Material.Filled.Refresh"
                            OnClick="LoadData"
-                           Style="border-radius:999px; padding:10px 16px;">
+                           Class="admin-event-types__action-btn">
                     Refresh
                 </MudButton>
             </MudStack>
         </div>
 
         <!-- Stats -->
-        <div class="admin-lookup__stats">
-            <div class="admin-lookup__stat">
-                <div class="admin-lookup__stat-row">
-                    <div class="admin-lookup__stat-icon admin-lookup__stat-icon--event-type">
+        <div class="admin-event-types__stats">
+            <div class="admin-event-types__stat">
+                <div class="admin-event-types__stat-row">
+                    <div class="admin-event-types__stat-icon">
                         <MudIcon Icon="@Icons.Material.Filled.Event" Color="Color.Primary" />
                     </div>
                     <div>
-                        <div class="admin-lookup__stat-label">Total Event Types</div>
-                        <div class="admin-lookup__stat-value">@_items.Count</div>
+                        <div class="admin-event-types__stat-label">Total Event Types</div>
+                        <div class="admin-event-types__stat-value">@_items.Count</div>
                     </div>
                 </div>
             </div>
@@ -61,7 +58,7 @@
 
     @if (_isLoading)
     {
-        <MudPaper Class="admin-lookup__panel" Elevation="0" Style="margin-top:14px;">
+        <MudPaper Class="admin-event-types__panel" Elevation="0">
             <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="py-4">
                 <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
                 <MudText Typo="Typo.body1">Loading event types…</MudText>
@@ -70,9 +67,9 @@
     }
     else
     {
-        <div class="admin-lookup__section">
-            <!-- Info Banner -->
-            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-3" Style="border-radius:14px;">
+        <div class="admin-event-types__section">
+            <!-- Info Banner (kept as it provides useful info) -->
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="admin-event-types__alert mb-3">
                 <MudText Typo="Typo.body2">
                     <strong>Read-only lookup table.</strong> Event types are system-defined values.
                     Contact system administrator if changes are needed.
@@ -80,7 +77,7 @@
             </MudAlert>
 
             <!-- Table -->
-            <MudPaper Class="admin-lookup__table-panel" Elevation="0">
+            <MudPaper Class="admin-event-types__table-panel" Elevation="0">
                 <MudTable Items="@_items"
                           Dense="true"
                           Hover="true"
@@ -89,7 +86,7 @@
                           Loading="@_isLoading"
                           LoadingProgressColor="Color.Primary">
                     <HeaderContent>
-                        <MudTh Style="width:80px">ID</MudTh>
+                        <MudTh Class="admin-event-types__col-id">ID</MudTh>
                         <MudTh>Name</MudTh>
                         <MudTh>Master Code</MudTh>
                         <MudTh>Description</MudTh>
@@ -101,9 +98,9 @@
                             </MudChip>
                         </MudTd>
                         <MudTd DataLabel="Name">
-                            <div class="admin-lookup__name-cell">
+                            <div class="admin-event-types__name-cell">
                                 <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Small" Color="Color.Primary" />
-                                <MudText Typo="Typo.body2" Style="font-weight:600;">@context.FullName</MudText>
+                                <MudText Typo="Typo.body2" Class="admin-event-types__name-text">@context.FullName</MudText>
                             </div>
                         </MudTd>
                         <MudTd DataLabel="Code">
@@ -112,16 +109,16 @@
                             </MudChip>
                         </MudTd>
                         <MudTd DataLabel="Description">
-                            <MudText Typo="Typo.body2" Class="admin-lookup__muted">
+                            <MudText Typo="Typo.body2" Class="admin-event-types__muted">
                                 @(context.Description ?? "—")
                             </MudText>
                         </MudTd>
                     </RowTemplate>
                     <NoRecordsContent>
-                        <div class="admin-lookup__empty">
+                        <div class="admin-event-types__empty">
                             <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Large" />
-                            <MudText Typo="Typo.h6" Style="margin-top:10px; font-weight:800;">No event types found</MudText>
-                            <MudText Typo="Typo.body2" Class="admin-lookup__muted">
+                            <MudText Typo="Typo.h6" Class="admin-event-types__empty-title">No event types found</MudText>
+                            <MudText Typo="Typo.body2" Class="admin-event-types__muted">
                                 The lookup table is empty.
                             </MudText>
                         </div>
@@ -131,31 +128,3 @@
         </div>
     }
 </div>
-
-@code {
-    private ICollection<EventTypeListDto> _items = new List<EventTypeListDto>();
-    private bool _isLoading = true;
-
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadData();
-    }
-
-    private async Task LoadData()
-    {
-        _isLoading = true;
-        try
-        {
-            _items = await EventTypeService.GetEventTypesAsync();
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Failed to load event types: {ex.Message}", Severity.Error);
-            _items = new List<EventTypeListDto>();
-        }
-        finally
-        {
-            _isLoading = false;
-        }
-    }
-}

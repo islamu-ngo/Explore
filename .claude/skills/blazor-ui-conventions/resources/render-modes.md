@@ -1,18 +1,22 @@
 # Render Modes - Blazor Interactive Modes
 
-This document explains the various Blazor render modes and provides guidance on when to use each in the ISLAMU Event hybrid application. Understanding render modes is crucial for optimizing performance, user experience, and resource usage.
+> **Project-Agnostic Blazor Render Mode Patterns**
+>
+> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../../docs/TEMPLATE_GLOSSARY.md).
+
+This document explains the various Blazor render modes and provides guidance on when to use each in hybrid Blazor applications. Understanding render modes is crucial for optimizing performance, user experience, and resource usage.
 
 ---
 
-## 1. ISLAMU Event Blazor Hybrid Architecture
+## 1. Blazor Hybrid Architecture
 
-The ISLAMU Event application utilizes a **hybrid Blazor architecture** combining Blazor Server for initial page loads and server-side logic, and Blazor WebAssembly for client-side interactivity and offline capabilities. This is achieved primarily through the `InteractiveAuto` render mode.
+A typical hybrid Blazor application combines Blazor Server for initial page loads and server-side logic, and Blazor WebAssembly for client-side interactivity and offline capabilities. This is achieved primarily through the `InteractiveAuto` render mode.
 
 ```mermaid
 graph TD
     subgraph Blazor Hybrid Application
-        A[Explore.Blazor (Server Project)] -- Initial Render / Server Interactivity --> B[Browser (Client)]
-        C[Explore.Blazor.Client (WASM Project)] -- Client-side Interactivity --> B
+        A[{Project}.Blazor (Server Project)] -- Initial Render / Server Interactivity --> B[Browser (Client)]
+        C[{Project}.Blazor.Client (WASM Project)] -- Client-side Interactivity --> B
     end
 
     subgraph Key Characteristics
@@ -22,7 +26,7 @@ graph TD
     end
 
     B -- Downloads WASM in background --> C
-    BFF -- Forwards API calls --> API_Backend[Explore.API (Backend)]
+    BFF -- Forwards API calls --> API_Backend[{Project}.API (Backend)]
 
     S2 --- S1
     W2 --- W1
@@ -37,10 +41,10 @@ Blazor provides four primary render modes, each with distinct characteristics re
 
 | Render Mode | Execution Location | Interactivity | Initial Load Time | Server Load | Offline Support | Use Case |
 |-------------|--------------------|---------------|-------------------|-------------|-----------------|----------|
-| **Static Server Rendering (SSR)** | Server | ❌ No | Fastest | Low | ❌ No | Static pages (About, Privacy) |
-| **Interactive Server** | Server (via SignalR) | ✅ Yes | Fast | High | ❌ No | Server-dependent logic (HttpContext), administrative dashboards |
-| **Interactive WebAssembly** | Browser (WASM) | ✅ Yes | Slow (initial) | Low | ✅ Yes | Highly interactive, offline-capable features (games, rich editors) |
-| **Interactive Auto** | Server (initially) then Browser (WASM) | ✅ Yes | Fast | Medium (initially) | ⚠️ Partial | Default for most interactive pages in hybrid apps |
+| **Static Server Rendering (SSR)** | Server | No | Fastest | Low | No | Static pages (About, Privacy) |
+| **Interactive Server** | Server (via SignalR) | Yes | Fast | High | No | Server-dependent logic (HttpContext), administrative dashboards |
+| **Interactive WebAssembly** | Browser (WASM) | Yes | Slow (initial) | Low | Yes | Highly interactive, offline-capable features (games, rich editors) |
+| **Interactive Auto** | Server (initially) then Browser (WASM) | Yes | Fast | Medium (initially) | Partial | Default for most interactive pages in hybrid apps |
 
 ---
 
@@ -60,13 +64,13 @@ Blazor provides four primary render modes, each with distinct characteristics re
 Apply `InteractiveAuto` to routable components (`@page` directive) or individual interactive components.
 
 ```razor
-@page "/events"
+@page "/{entities}"
 @rendermode InteractiveAuto @* Apply to the root component of the interactive part *@
 
-<PageTitle>Events</PageTitle>
+<PageTitle>{Entities}</PageTitle>
 
 <MudContainer>
-    <MudText Typo="Typo.h4">Upcoming Events</MudText>
+    <MudText Typo="Typo.h4">Upcoming {Entities}</MudText>
     @* Your interactive component content here *@
 </MudContainer>
 
@@ -81,14 +85,14 @@ Apply `InteractiveAuto` to routable components (`@page` directive) or individual
 
 ### When to Use InteractiveAuto:
 
-*   ✅ **Default for Interactive Components**: When you need client-side interactivity (buttons, forms, dynamic content).
-*   ✅ **Optimized User Experience**: Provides a fast initial page load (server-rendered) and low-latency interactivity (client-rendered).
-*   ✅ **Most Pages**: Suitable for most application pages where interactivity is key.
+*   **Default for Interactive Components**: When you need client-side interactivity (buttons, forms, dynamic content).
+*   **Optimized User Experience**: Provides a fast initial page load (server-rendered) and low-latency interactivity (client-rendered).
+*   **Most Pages**: Suitable for most application pages where interactivity is key.
 
 ### When NOT to Use InteractiveAuto:
 
-*   ❌ **Server-Only Dependencies**: If a component *must* access server-side resources like `HttpContext` or the file system (use `InteractiveServer`).
-*   ❌ **Very Small Static Content**: For purely static pages, `Static Server Rendering` is more efficient (no WASM download overhead).
+*   **Server-Only Dependencies**: If a component *must* access server-side resources like `HttpContext` or the file system (use `InteractiveServer`).
+*   **Very Small Static Content**: For purely static pages, `Static Server Rendering` is more efficient (no WASM download overhead).
 
 ---
 
@@ -109,7 +113,7 @@ Apply `InteractiveAuto` to routable components (`@page` directive) or individual
 @page "/admin/system-status"
 @rendermode InteractiveServer
 
-@inject IHttpContextAccessor HttpContextAccessor @* ✅ Access to HttpContext is server-only *@
+@inject IHttpContextAccessor HttpContextAccessor @* Access to HttpContext is server-only *@
 
 <MudContainer>
     <MudText Typo="Typo.h6">Server Time: @_serverTime</MudText>
@@ -123,7 +127,7 @@ Apply `InteractiveAuto` to routable components (`@page` directive) or individual
 
     protected override void OnInitialized()
     {
-        // ✅ Can directly access server-side resources like HttpContext
+        // Can directly access server-side resources like HttpContext
         _serverTime = DateTime.Now.ToString("F");
         _userIp = HttpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
     }
@@ -138,15 +142,15 @@ Apply `InteractiveAuto` to routable components (`@page` directive) or individual
 
 ### When to Use InteractiveServer:
 
-*   ✅ **Server-Side Access**: When a component *needs* direct access to server-side APIs, `HttpContext` (for cookies, IP address, headers), or the server's file system.
-*   ✅ **Heavy Dependencies**: For components that rely on large server-side libraries or perform computationally intensive tasks.
-*   ✅ **Real-Time Updates**: Ideal for applications requiring frequent, low-latency updates from the server (e.g., chat applications, dashboards).
+*   **Server-Side Access**: When a component *needs* direct access to server-side APIs, `HttpContext` (for cookies, IP address, headers), or the server's file system.
+*   **Heavy Dependencies**: For components that rely on large server-side libraries or perform computationally intensive tasks.
+*   **Real-Time Updates**: Ideal for applications requiring frequent, low-latency updates from the server (e.g., chat applications, dashboards).
 
 ### When NOT to Use InteractiveServer:
 
-*   ❌ **High Latency Concerns**: Each user interaction involves a round trip to the server, which can introduce noticeable latency for users geographically distant from the server.
-*   ❌ **High Server Load**: Maintaining SignalR connections and rendering components server-side for many concurrent users can consume significant server resources.
-*   ❌ **Offline Functionality**: Components in this mode cannot function offline.
+*   **High Latency Concerns**: Each user interaction involves a round trip to the server, which can introduce noticeable latency for users geographically distant from the server.
+*   **High Server Load**: Maintaining SignalR connections and rendering components server-side for many concurrent users can consume significant server resources.
+*   **Offline Functionality**: Components in this mode cannot function offline.
 
 ---
 
@@ -169,18 +173,18 @@ Apply `InteractiveAuto` to routable components (`@page` directive) or individual
 @inject HttpClient Http
 
 <MudContainer>
-    <MudText Typo="Typo.h4">Offline Event Editor</MudText>
-    <MudTextField @bind-Value="eventTitle" Label="Event Title" />
+    <MudText Typo="Typo.h4">Offline {Entity} Editor</MudText>
+    <MudTextField @bind-Value="{entity}Title" Label="{Entity} Title" />
     <MudButton OnClick="SaveDraft">Save Draft Locally</MudButton>
     <MudButton OnClick="SyncToServer">Sync to Server</MudButton>
 </MudContainer>
 
 @code {
-    private string eventTitle = string.Empty;
+    private string {entity}Title = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
-        // ✅ Runs entirely in the browser (low interaction latency)
+        // Runs entirely in the browser (low interaction latency)
         // Can access browser storage APIs for offline persistence
     }
 
@@ -192,22 +196,22 @@ Apply `InteractiveAuto` to routable components (`@page` directive) or individual
     private async Task SyncToServer()
     {
         // Make HTTP call to backend API
-        // await Http.PostAsJsonAsync("api/v1/events/drafts", draftEvent);
+        // await Http.PostAsJsonAsync("api/v1/{entities}/drafts", draft{Entity});
     }
 }
 ```
 
 ### When to Use InteractiveWebAssembly:
 
-*   ✅ **Offline Functionality**: Essential for applications that need to work fully or partially offline (e.g., using service workers).
-*   ✅ **Low Interaction Latency**: Ideal for highly interactive components (e.g., rich text editors, games, interactive diagrams) where immediate UI feedback is crucial.
-*   ✅ **Reduced Server Load**: Once downloaded, the client handles all processing, significantly reducing the load on the server.
+*   **Offline Functionality**: Essential for applications that need to work fully or partially offline (e.g., using service workers).
+*   **Low Interaction Latency**: Ideal for highly interactive components (e.g., rich text editors, games, interactive diagrams) where immediate UI feedback is crucial.
+*   **Reduced Server Load**: Once downloaded, the client handles all processing, significantly reducing the load on the server.
 
 ### When NOT to Use InteractiveWebAssembly:
 
-*   ❌ **Large Initial Download**: The initial download of the .NET runtime and application DLLs can be substantial (several MBs), leading to a slower initial page load.
-*   ❌ **No Server-Side Access**: Components cannot directly access server-side resources (`HttpContext`, file system).
-*   ❌ **SEO Concerns**: Prerendering helps, but dynamic content might still pose SEO challenges compared to pure server-rendered pages.
+*   **Large Initial Download**: The initial download of the .NET runtime and application DLLs can be substantial (several MBs), leading to a slower initial page load.
+*   **No Server-Side Access**: Components cannot directly access server-side resources (`HttpContext`, file system).
+*   **SEO Concerns**: Prerendering helps, but dynamic content might still pose SEO challenges compared to pure server-rendered pages.
 
 ---
 
@@ -229,19 +233,19 @@ For static pages like "About Us" or "Privacy Policy," where no client-side inter
 @page "/about"
 @* No @rendermode directive means Static SSR by default *@
 
-<PageTitle>About ISLAMU Event</PageTitle>
+<PageTitle>About {Project}</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Medium">
     <MudText Typo="Typo.h4" Class="mb-4">About Us</MudText>
     <MudText Class="mb-3">
-        ISLAMU Event is a federated event discovery platform designed to connect
-        communities with engaging Islamic events worldwide.
+        {Project} is a platform designed to connect
+        communities with engaging content.
     </MudText>
     <MudText Class="mb-3">
         Our mission is to foster knowledge, strengthen bonds, and facilitate access
-        to high-quality educational and spiritual gatherings.
+        to high-quality resources.
     </MudText>
-    <MudLink Href="https://islamu.org" Target="_blank">Learn more at ISLAMU.org</MudLink>
+    <MudLink Href="https://example.org" Target="_blank">Learn more</MudLink>
 </MudContainer>
 
 @code {
@@ -251,13 +255,13 @@ For static pages like "About Us" or "Privacy Policy," where no client-side inter
 
 ### When to Use Static SSR:
 
-*   ✅ **Static Content**: Ideal for pages with purely static content that doesn't require any client-side interaction.
-*   ✅ **SEO Optimization**: Best for search engine optimization (SEO) as the full content is available in the initial HTML.
-*   ✅ **Fastest Initial Load**: Since no WebAssembly runtime or SignalR connection is involved, these pages load extremely quickly.
+*   **Static Content**: Ideal for pages with purely static content that doesn't require any client-side interaction.
+*   **SEO Optimization**: Best for search engine optimization (SEO) as the full content is available in the initial HTML.
+*   **Fastest Initial Load**: Since no WebAssembly runtime or SignalR connection is involved, these pages load extremely quickly.
 
 ### When NOT to Use Static SSR:
 
-*   ❌ **Any Interactivity**: Not suitable for pages that require any form of user interaction (buttons, forms, dynamic updates).
+*   **Any Interactivity**: Not suitable for pages that require any form of user interaction (buttons, forms, dynamic updates).
 
 ---
 
@@ -270,7 +274,7 @@ You can use different render modes for different components within the same appl
 Apply `@rendermode` to the `@page` directive for the entire page's interactivity.
 
 ```razor
-@page "/events"
+@page "/{entities}"
 @rendermode InteractiveAuto @* This page and its children are InteractiveAuto *@
 ```
 
@@ -312,39 +316,39 @@ Apply `@rendermode` to individual component tags to override the page's render m
 Move logic with side effects to `OnAfterRenderAsync(true)` or ensure your code handles duplicate execution gracefully.
 
 ```csharp
-@page "/events"
+@page "/{entities}"
 @rendermode @(new InteractiveAutoRenderMode(prerender: true)) @* Prerendering enabled *@
 
 <MudContainer>
-    @if (_events == null)
+    @if (_{entities} == null)
     {
         <MudProgressCircular Indeterminate="true" />
     }
     else
     {
-        @foreach (var evt in _events)
+        @foreach (var item in _{entities})
         {
-            <MudCard>@evt.Title</MudCard>
+            <MudCard>@item.Title</MudCard>
         }
     }
 </MudContainer>
 
 @code {
-    private List<EventListDto>? _events;
+    private List<{Entity}ListDto>? _{entities};
 
     protected override async Task OnInitializedAsync()
     {
-        // ✅ Only fetch data once if it's not going to be part of the prerendered HTML or if side effects are handled
+        // Only fetch data once if it's not going to be part of the prerendered HTML or if side effects are handled
         // For data that is not critical for prerendering, consider fetching it only client-side.
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && OperatingSystem.IsBrowser()) // ✅ Ensure this only runs once on the client-side
+        if (firstRender && OperatingSystem.IsBrowser()) // Ensure this only runs once on the client-side
         {
             // Fetch data here if it shouldn't run on the server prerender,
             // or if it's dependent on client-side state.
-            // _events = await Http.GetFromJsonAsync<List<EventListDto>>("api/v1/events");
+            // _{entities} = await Http.GetFromJsonAsync<List<{Entity}ListDto>>("api/v1/{entities}");
             // StateHasChanged(); // Required if you update state after async operation in OnAfterRenderAsync
         }
     }
@@ -359,12 +363,12 @@ It's critical to understand the differences in environment when developing Blazo
 
 | Feature | Blazor Server | Blazor WebAssembly |
 |---------|---------------|--------------------|
-| **`HttpContext`** | ✅ Available | ❌ Not available |
-| **File System Access** | ✅ Full server access | ❌ No direct access |
-| **Database Access** | ✅ Direct via ORM | ❌ Via API calls only |
-| **Environment Variables** | ✅ Server's variables | ❌ No direct access |
-| **`IJSRuntime`** | ✅ Via SignalR (latency) | ✅ Direct browser access (low latency) |
-| **`localStorage`/`sessionStorage`** | ❌ Via JS interop | ✅ Via JS interop (direct) |
+| **`HttpContext`** | Available | Not available |
+| **File System Access** | Full server access | No direct access |
+| **Database Access** | Direct via ORM | Via API calls only |
+| **Environment Variables** | Server's variables | No direct access |
+| **`IJSRuntime`** | Via SignalR (latency) | Direct browser access (low latency) |
+| **`localStorage`/`sessionStorage`** | Via JS interop | Via JS interop (direct) |
 | **Network Latency** | Higher (server round-trips) | Lower (client-side execution) |
 | **CPU-Intensive Tasks** | On server | On client browser |
 
@@ -378,7 +382,7 @@ It's critical to understand the differences in environment when developing Blazo
 
     protected override void OnInitialized()
     {
-        // ✅ This code will only run correctly in Blazor Server or during server prerendering
+        // This code will only run correctly in Blazor Server or during server prerendering
         _userAgent = HttpContextAccessor.HttpContext?.Request.Headers.UserAgent.ToString() ?? "Unknown";
     }
 }
@@ -396,7 +400,7 @@ It's critical to understand the differences in environment when developing Blazo
     {
         if (firstRender && OperatingSystem.IsBrowser())
         {
-            // ✅ This code is specifically for the browser environment
+            // This code is specifically for the browser environment
             _themePreference = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "theme");
             StateHasChanged();
         }
@@ -408,20 +412,20 @@ It's critical to understand the differences in environment when developing Blazo
 
 ## Best Practices for Render Modes
 
-### ✅ DO:
+### DO:
 
-*   ✅ **Default to `InteractiveAuto`**: For most interactive components, `InteractiveAuto` provides the best balance of performance and user experience in a hybrid app.
-*   ✅ **Use `InteractiveServer` for Server-Specific Needs**: Reserve `InteractiveServer` for components that genuinely require direct server-side access (e.g., `HttpContext`, file system).
-*   ✅ **Use `InteractiveWebAssembly` for Offline/High Interactivity**: Leverage `InteractiveWebAssembly` for parts of the application that benefit from offline capabilities or extremely low interaction latency.
-*   ✅ **Use Static SSR for Non-Interactive Content**: Optimize SEO and initial load times for purely static pages.
-*   ✅ **Handle Prerendering Carefully**: Be aware of `OnInitializedAsync` running twice; move side effects to `OnAfterRenderAsync(firstRender && OperatingSystem.IsBrowser())` if they should only happen once on the client.
-*   ✅ **Conditional Code Execution**: Use `OperatingSystem.IsBrowser()` or `OperatingSystem.IsOSPlatform("BROWSER")` to execute client-side specific code when needed.
+*   **Default to `InteractiveAuto`**: For most interactive components, `InteractiveAuto` provides the best balance of performance and user experience in a hybrid app.
+*   **Use `InteractiveServer` for Server-Specific Needs**: Reserve `InteractiveServer` for components that genuinely require direct server-side access (e.g., `HttpContext`, file system).
+*   **Use `InteractiveWebAssembly` for Offline/High Interactivity**: Leverage `InteractiveWebAssembly` for parts of the application that benefit from offline capabilities or extremely low interaction latency.
+*   **Use Static SSR for Non-Interactive Content**: Optimize SEO and initial load times for purely static pages.
+*   **Handle Prerendering Carefully**: Be aware of `OnInitializedAsync` running twice; move side effects to `OnAfterRenderAsync(firstRender && OperatingSystem.IsBrowser())` if they should only happen once on the client.
+*   **Conditional Code Execution**: Use `OperatingSystem.IsBrowser()` or `OperatingSystem.IsOSPlatform("BROWSER")` to execute client-side specific code when needed.
 
-### ❌ DON'T:
+### DON'T:
 
-*   ❌ **Don't Overuse `InteractiveServer`**: Avoid using `InteractiveServer` unnecessarily due to its higher server resource consumption and potential latency.
-*   ❌ **Don't Assume `HttpContext` Availability**: Components in `InteractiveAuto` or `InteractiveWebAssembly` modes cannot reliably access `HttpContext`. Use the BFF pattern or server-side services for such needs.
-*   ❌ **Don't Put Server-Side Logic in WASM**: Business logic that requires server resources (database, external APIs directly) should remain on the server (API project) and be accessed via HTTP calls from WASM.
+*   **Don't Overuse `InteractiveServer`**: Avoid using `InteractiveServer` unnecessarily due to its higher server resource consumption and potential latency.
+*   **Don't Assume `HttpContext` Availability**: Components in `InteractiveAuto` or `InteractiveWebAssembly` modes cannot reliably access `HttpContext`. Use the BFF pattern or server-side services for such needs.
+*   **Don't Put Server-Side Logic in WASM**: Business logic that requires server resources (database, external APIs directly) should remain on the server (API project) and be accessed via HTTP calls from WASM.
 
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: blazor-ui-conventions
-description: Comprehensive UI conventions for ISLAMU Event Blazor applications. Covers MudBlazor usage, BEM methodology, theming, component structure, state management, and render modes.
+description: Comprehensive UI conventions for Blazor applications. Covers MudBlazor usage, BEM methodology, theming, component structure, state management, and render modes.
 type: ui
 enforcement: suggest
 priority: high
@@ -8,24 +8,28 @@ priority: high
 
 # Blazor UI Conventions & MudBlazor Guidelines
 
-## 🎯 Purpose
+> **Project-Agnostic Blazor UI Patterns**
+>
+> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../../docs/TEMPLATE_GLOSSARY.md).
 
-This skill provides comprehensive guidelines and best practices for developing UI components in ISLAMU Event Blazor applications. It covers MudBlazor usage, BEM methodology for CSS, theming, component structure, lifecycle, state management, and render modes to ensure consistency, maintainability, and optimal user experience.
+## Purpose
 
-## ⚡ When This Skill Activates
+This skill provides comprehensive guidelines and best practices for developing UI components in Blazor applications. It covers MudBlazor usage, BEM methodology for CSS, theming, component structure, lifecycle, state management, and render modes to ensure consistency, maintainability, and optimal user experience.
+
+## When This Skill Activates
 
 **Triggered by**:
 - Keywords: "blazor", "component", "razor", "mudblazor", "ui", "page", "dialog", "render", "parameter", "css", "theme", "state", "lifecycle"
 - File patterns: `**/*.razor`, `**/*.razor.cs`, `**/*.Client/**/*.cs`, `**/*.css`, `**/*.scss`
 - Content patterns: `@page`, `@inject`, `<Mud`, `Parameter`, `EventCallback`, `::deep`, `::part`, `BEM` class names.
 
-## 🏗️ ISLAMU Event Blazor Architecture
+## Blazor Hybrid Architecture
 
 ```mermaid
 graph TD
     subgraph Blazor Hybrid App
-        BFF[Explore.Blazor (Server-side BFF)]
-        WASM[Explore.Blazor.Client (WebAssembly)]
+        BFF[{Project}.Blazor (Server-side BFF)]
+        WASM[{Project}.Blazor.Client (WebAssembly)]
         Router[Router / InteractiveAuto]
     end
 
@@ -42,7 +46,7 @@ graph TD
     WASM -- Communicates with --> BFF
 ```
 
-## 📚 Resources
+## Resources
 
 | Resource | Description |
 |----------|-------------|
@@ -54,28 +58,28 @@ graph TD
 | [theming.md](resources/theming.md) | Customizing MudBlazor themes, dark/light mode switching, and consistent styling. |
 | [common-patterns.md](resources/common-patterns.md) | Real-world Blazor implementation patterns for forms, dialogs, tables, navigation, loading states, error handling, search/filter, and infinite scroll. |
 
-## ⚡ Quick Reference
+## Quick Reference
 
 ### 1. BEM Methodology
 
 **Rule**: All custom CSS should follow the BEM (Block, Element, Modifier) naming convention.
 
 ```css
-/* Block: .event-card */
-.event-card {
+/* Block: .{entity}-card */
+.{entity}-card {
     border: 1px solid var(--mud-palette-lines-default);
     border-radius: var(--mud-default-border-radius);
     box-shadow: var(--mud-shadow-1);
 }
 
-/* Element: .event-card__title */
-.event-card__title {
+/* Element: .{entity}-card__title */
+.{entity}-card__title {
     font-size: var(--mud-typography-h6-size);
     color: var(--mud-palette-primary);
 }
 
-/* Modifier: .event-card--featured */
-.event-card--featured {
+/* Modifier: .{entity}-card--featured */
+.{entity}-card--featured {
     border-color: var(--mud-palette-success);
     box-shadow: var(--mud-shadow-2);
 }
@@ -91,9 +95,9 @@ graph TD
 <MudGrid Spacing="3">
     <MudItem xs="12" sm="6" md="4" lg="3">
         <MudCard>
-            <MudCardMedia Image="@evt.CoverImageUrl" Height="200" />
+            <MudCardMedia Image="@item.CoverImageUrl" Height="200" />
             <MudCardContent>
-                <MudText Typo="Typo.h6">@evt.Title</MudText>
+                <MudText Typo="Typo.h6">@item.Title</MudText>
             </MudCardContent>
         </MudCard>
     </MudItem>
@@ -101,13 +105,13 @@ graph TD
 
 @* Buttons *@
 <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add">
-    Create Event
+    Create {Entity}
 </MudButton>
 
 @* Forms *@
-<MudTextField @bind-Value="title" Label="Event Title" Required="true" />
-<MudSelect @bind-Value="selectedAge" Label="Audience Age">
-    <MudSelectItem Value="1">Adults</MudSelectItem>
+<MudTextField @bind-Value="title" Label="{Entity} Title" Required="true" />
+<MudSelect @bind-Value="selectedId" Label="{LookupEntity}">
+    <MudSelectItem Value="1">Option 1</MudSelectItem>
 </MudSelect>
 ```
 *For more details, see [mudblazor-usage.md](resources/mudblazor-usage.md).*
@@ -152,7 +156,7 @@ graph TD
 **Rule**: Use the code-behind pattern for complex components. Use `OnInitializedAsync` for data fetching, `OnParametersSetAsync` for reacting to parameter changes, and `EventCallback` for child-to-parent communication.
 
 ```razor
-@* Child Component: EventCard.razor *@
+@* Child Component: {Entity}Card.razor *@
 <MudCard>
     <MudCardActions>
         <MudButton OnClick="DeleteClicked">Delete</MudButton>
@@ -161,14 +165,14 @@ graph TD
 
 @code {
     [Parameter]
-    public EventDto Event { get; set; } = null!;
+    public {Entity}Dto {Entity} { get; set; } = null!;
 
     [Parameter]
-    public EventCallback<Guid> OnDelete { get; set; }
+    public EventCallback<{IdType}> OnDelete { get; set; }
 
     private async Task DeleteClicked()
     {
-        await OnDelete.InvokeAsync(Event.Id);
+        await OnDelete.InvokeAsync({Entity}.Id);
     }
 }
 ```
@@ -191,7 +195,7 @@ graph TD
 **Rule**: Use `InteractiveAuto` as the default render mode for interactive components. Use `InteractiveServer` for server-only features (e.g., `HttpContext` access) and `InteractiveWebAssembly` for offline-first or highly client-side interactive components.
 
 ```razor
-@page "/events"
+@page "/{entities}"
 @rendermode InteractiveAuto // Default for interactive pages
 ```
 *For more details, see [render-modes.md](resources/render-modes.md).*
@@ -204,10 +208,10 @@ graph TD
 @* Confirmation Dialog *@
 @inject IDialogService DialogService
 
-<MudButton OnClick="DeleteEvent">Delete</MudButton>
+<MudButton OnClick="Delete{Entity}">Delete</MudButton>
 
 @code {
-    private async Task DeleteEvent()
+    private async Task Delete{Entity}()
     {
         var dialog = await DialogService.ShowAsync<ConfirmDialog>("Confirm Delete");
         var result = await dialog.Result;
@@ -217,26 +221,26 @@ graph TD
 ```
 *For more details, see [common-patterns.md](resources/common-patterns.md).*
 
-## ✅ Do's
+## Do's
 
--   ✅ **DO** use `@rendermode="InteractiveAuto"` as the default for interactive pages.
--   ✅ **DO** prefer MudBlazor components over custom HTML for consistency.
--   ✅ **DO** follow the BEM methodology for all custom CSS classes.
--   ✅ **DO** use `[Parameter]` for inputs and `EventCallback<T>` for child-to-parent events.
--   ✅ **DO** load data in `OnInitializedAsync` for initial setup.
--   ✅ **DO** use `IDialogService` for modals and `ISnackbar` for notifications.
--   ✅ **DO** implement `IDisposable` for event clean-up in services and components.
--   ✅ **DO** use scoped services for state management across components within a user session.
--   ✅ **DO** centralize theme customization in `wwwroot/css/site.css` and `wwwroot/css/variables.css`.
+-   **DO** use `@rendermode="InteractiveAuto"` as the default for interactive pages.
+-   **DO** prefer MudBlazor components over custom HTML for consistency.
+-   **DO** follow the BEM methodology for all custom CSS classes.
+-   **DO** use `[Parameter]` for inputs and `EventCallback<T>` for child-to-parent events.
+-   **DO** load data in `OnInitializedAsync` for initial setup.
+-   **DO** use `IDialogService` for modals and `ISnackbar` for notifications.
+-   **DO** implement `IDisposable` for event clean-up in services and components.
+-   **DO** use scoped services for state management across components within a user session.
+-   **DO** centralize theme customization in `wwwroot/css/site.css` and `wwwroot/css/variables.css`.
 
-## ❌ Don'ts
+## Don'ts
 
--   ❌ **DON'T** use raw HTML when a suitable MudBlazor component exists.
--   ❌ **DON'T** modify `[Parameter]` properties directly from within a child component.
--   ❌ **DON'T** access `HttpContext` in components rendered with `InteractiveAuto` or `InteractiveWebAssembly` (use `InteractiveServer` or BFF pattern).
--   ❌ **DON'T** use JavaScript interop for tasks that MudBlazor or Blazor itself can handle.
--   ❌ **DON'T** call `StateHasChanged()` unnecessarily (can lead to performance issues).
--   ❌ **DON'T** use static state in Blazor Server apps (can cause data leakage between users).
+-   **DON'T** use raw HTML when a suitable MudBlazor component exists.
+-   **DON'T** modify `[Parameter]` properties directly from within a child component.
+-   **DON'T** access `HttpContext` in components rendered with `InteractiveAuto` or `InteractiveWebAssembly` (use `InteractiveServer` or BFF pattern).
+-   **DON'T** use JavaScript interop for tasks that MudBlazor or Blazor itself can handle.
+-   **DON'T** call `StateHasChanged()` unnecessarily (can lead to performance issues).
+-   **DON'T** use static state in Blazor Server apps (can cause data leakage between users).
 
 ---
 

@@ -153,18 +153,9 @@
                     <MudItem xs="12" sm="6" md="4">
                         <MudCard Elevation="0" Class="my-events__card">
                             <!-- Card Media -->
-                            <MudCardMedia Class="my-events__card-media">
-                                @if (!string.IsNullOrEmpty(evt.FeaturedImageUri))
-                                {
-                                    <img src="@evt.FeaturedImageUri" alt="@evt.Title" class="my-events__card-image" />
-                                }
-                                else
-                                {
-                                    <div class="my-events__card-placeholder" style="background-color: #@GetEventColorCode(evt);">
-                                        <MudIcon Icon="@Icons.Material.Filled.Event" Class="my-events__placeholder-icon" />
-                                    </div>
-                                }
-                            </MudCardMedia>
+                            <MudCardMedia Image="@GetEventImageUrl(evt)"
+                                          Height="200"
+                                          Class="my-events__card-media" />
 
                             <!-- Actions Menu -->
                             <div class="my-events__actions-menu">
@@ -231,6 +222,23 @@
                                     <MudText Typo="Typo.caption">@(evt.EventFormatFullName ?? "Online")</MudText>
                                 </div>
                             </MudCardActions>
+                            <div class="my-events__card-footer pa-4 pt-0">
+                                <div class="my-events__card-organizer">
+                                    @if (!string.IsNullOrEmpty(evt.ActorProfilePictureUri))
+                                    {
+                                        <MudAvatar Size="Size.Small" Class="my-events__organizer-avatar">
+                                            <MudImage Src="@evt.ActorProfilePictureUri" Alt="@evt.ActorDisplayName" />
+                                        </MudAvatar>
+                                    }
+                                    else
+                                    {
+                                        <MudAvatar Size="Size.Small" Color="Color.Primary" Class="my-events__organizer-avatar">
+                                            @GetActorInitials(evt.ActorDisplayName)
+                                        </MudAvatar>
+                                    }
+                                    <MudText Typo="Typo.caption">@(evt.ActorDisplayName ?? "Community")</MudText>
+                                </div>
+                            </div>
                         </MudCard>
                     </MudItem>
                 }

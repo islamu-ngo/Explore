@@ -1,6 +1,8 @@
 # Migrations
 
-Entity Framework Core migrations for schema management in ISLAMU Event.
+> **Project-Agnostic Migration Patterns**
+>
+> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../../docs/TEMPLATE_GLOSSARY.md).
 
 ---
 
@@ -34,7 +36,7 @@ Migrations are version-controlled schema changes that allow you to evolve your d
 
 ```bash
 # Basic migration
-dotnet ef migrations add AddEventEntity --project Explore.Persistence
+dotnet ef migrations add Add{Entity}Entity --project {Project}.Persistence
 ```
 
 ### Migration Naming Conventions
@@ -55,31 +57,31 @@ dotnet ef migrations add AddEventEntity --project Explore.Persistence
 A migration consists of two methods:
 
 ```csharp
-public partial class AddEventEntity : Migration
+public partial class Add{Entity}Entity : Migration
 {
     // Applied when migrating up (forward)
     protected override void Up(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.CreateTable(
-            name: "Events",
+            name: "{Entities}",
             columns: table => new
             {
                 Id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
                 Title = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                 Description = table.Column<string>(type: "text", nullable: true),
                 StartDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                TotalViews = table.Column<int>(type: "integer", nullable: false, defaultValue: 0)
+                ViewCount = table.Column<int>(type: "integer", nullable: false, defaultValue: 0)
             },
             constraints: table =>
             {
-                table.PrimaryKey("PK_Events", x => x.Id);
+                table.PrimaryKey("PK_{Entities}", x => x.Id);
             });
     }
 
     // Applied when rolling back (backward)
     protected override void Down(MigrationBuilder migrationBuilder)
     {
-        migrationBuilder.DropTable(name: "Events");
+        migrationBuilder.DropTable(name: "{Entities}");
     }
 }
 ```
@@ -92,16 +94,16 @@ public partial class AddEventEntity : Migration
 
 ```bash
 # Apply all pending migrations
-dotnet ef database update --project Explore.Persistence
+dotnet ef database update --project {Project}.Persistence
 
 # Apply to specific migration
-dotnet ef database update AddEventEntity --project Explore.Persistence
+dotnet ef database update Add{Entity}Entity --project {Project}.Persistence
 
 # Rollback to previous migration
-dotnet ef database update PreviousMigrationName --project Explore.Persistence
+dotnet ef database update PreviousMigrationName --project {Project}.Persistence
 
 # Rollback all migrations
-dotnet ef database update 0 --project Explore.Persistence
+dotnet ef database update 0 --project {Project}.Persistence
 ```
 
 ### Generate SQL Script
@@ -109,22 +111,22 @@ dotnet ef database update 0 --project Explore.Persistence
 ```bash
 # Generate SQL for all migrations
 dotnet ef migrations script \
-  --project Explore.Persistence \
+  --project {Project}.Persistence \
   --output migration.sql
 
 # Generate SQL for specific migration
-dotnet ef migrations script AddEventEntity \
-  --project Explore.Persistence \
-  --output add-event.sql
+dotnet ef migrations script Add{Entity}Entity \
+  --project {Project}.Persistence \
+  --output add-{entity}.sql
 
 # Generate SQL from specific migration to another
 dotnet ef migrations script Migration1 Migration2 \
-  --project Explore.Persistence \
+  --project {Project}.Persistence \
   --output migration-1-to-2.sql
 
 # Idempotent script (can run multiple times)
 dotnet ef migrations script \
-  --project Explore.Persistence \
+  --project {Project}.Persistence \
   --idempotent \
   --output migration.sql
 ```
@@ -166,15 +168,15 @@ protected override void Up(MigrationBuilder migrationBuilder)
 {
     // ✅ Create index
     migrationBuilder.CreateIndex(
-        name: "IX_Events_StartDate",
-        table: "Events",
+        name: "IX_{Entities}_StartDate",
+        table: "{Entities}",
         column: "StartDate");
 
     // ✅ Create composite index
     migrationBuilder.CreateIndex(
-        name: "IX_Events_OrganizationId_StartDate",
-        table: "Events",
-        columns: new[] { "OrganizationId", "StartDate" });
+        name: "IX_{Entities}_{ParentEntity}Id_StartDate",
+        table: "{Entities}",
+        columns: new[] { "{ParentEntity}Id", "StartDate" });
 
     // ✅ Create unique index
     migrationBuilder.CreateIndex(
@@ -193,7 +195,7 @@ protected override void Up(MigrationBuilder migrationBuilder)
     // ✅ Add nullable column (safe)
     migrationBuilder.AddColumn<string>(
         name: "Subtitle",
-        table: "Events",
+        table: "{Entities}",
         type: "character varying(200)",
         maxLength: 200,
         nullable: true);
@@ -201,7 +203,7 @@ protected override void Up(MigrationBuilder migrationBuilder)
     // ⚠️ Add non-nullable column (requires default)
     migrationBuilder.AddColumn<int>(
         name: "Priority",
-        table: "Events",
+        table: "{Entities}",
         type: "integer",
         nullable: false,
         defaultValue: 0);
@@ -216,7 +218,7 @@ protected override void Up(MigrationBuilder migrationBuilder)
     // ✅ Change column type
     migrationBuilder.AlterColumn<string>(
         name: "Title",
-        table: "Events",
+        table: "{Entities}",
         type: "character varying(500)",  // Changed from 200
         maxLength: 500,
         nullable: false,
@@ -234,7 +236,7 @@ protected override void Up(MigrationBuilder migrationBuilder)
     // ✅ Rename column
     migrationBuilder.RenameColumn(
         name: "OldName",
-        table: "Events",
+        table: "{Entities}",
         newName: "NewName");
 
     // ✅ Rename table
@@ -255,14 +257,13 @@ protected override void Up(MigrationBuilder migrationBuilder)
 {
     // ✅ Insert seed data
     migrationBuilder.InsertData(
-        table: "AudienceAges",
-        columns: new[] { "Id", "FullName", "MinAge", "MaxAge" },
+        table: "{LookupEntity}s",
+        columns: new[] { "Id", "FullName", "Description" },
         values: new object[,]
         {
-            { 1, "Children", 0, 12 },
-            { 2, "Youth", 13, 17 },
-            { 3, "Adults", 18, 64 },
-            { 4, "Seniors", 65, 150 }
+            { 1, "Type A", "Description for Type A" },
+            { 2, "Type B", "Description for Type B" },
+            { 3, "Type C", "Description for Type C" }
         });
 }
 
@@ -270,9 +271,9 @@ protected override void Down(MigrationBuilder migrationBuilder)
 {
     // ✅ Remove seed data
     migrationBuilder.DeleteData(
-        table: "AudienceAges",
+        table: "{LookupEntity}s",
         keyColumn: "Id",
-        keyValues: new object[] { 1, 2, 3, 4 });
+        keyValues: new object[] { 1, 2, 3 });
 }
 ```
 
@@ -283,7 +284,7 @@ protected override void Up(MigrationBuilder migrationBuilder)
 {
     // ✅ Transform existing data
     migrationBuilder.Sql(@"
-        UPDATE ""Events""
+        UPDATE ""{Entities}""
         SET ""Title"" = UPPER(""Title"")
         WHERE ""Title"" IS NOT NULL;
     ");
@@ -304,7 +305,7 @@ protected override void Up(MigrationBuilder migrationBuilder)
 
     migrationBuilder.AddColumn<NetTopologySuite.Geometries.Point>(
         name: "Location",
-        table: "Events",
+        table: "{Entities}",
         type: "geography(point)",
         nullable: true);
 }
@@ -318,14 +319,14 @@ protected override void Up(MigrationBuilder migrationBuilder)
     // ✅ Add JSONB column
     migrationBuilder.AddColumn<string>(
         name: "Metadata",
-        table: "Events",
+        table: "{Entities}",
         type: "jsonb",
         nullable: true);
 
     // ✅ Create GIN index for JSONB
     migrationBuilder.Sql(@"
-        CREATE INDEX IX_Events_Metadata
-        ON ""Events"" USING GIN (""Metadata"");
+        CREATE INDEX IX_{Entities}_Metadata
+        ON ""{Entities}"" USING GIN (""Metadata"");
     ");
 }
 ```
@@ -338,7 +339,7 @@ protected override void Up(MigrationBuilder migrationBuilder)
     // ✅ Add array column
     migrationBuilder.AddColumn<string[]>(
         name: "Tags",
-        table: "Events",
+        table: "{Entities}",
         type: "text[]",
         nullable: true);
 }
@@ -352,14 +353,14 @@ protected override void Up(MigrationBuilder migrationBuilder)
 
 ```bash
 # List all migrations
-dotnet ef migrations list --project Explore.Persistence
+dotnet ef migrations list --project {Project}.Persistence
 ```
 
 ### Remove Last Migration
 
 ```bash
 # ⚠️ ONLY if not applied to database
-dotnet ef migrations remove --project Explore.Persistence
+dotnet ef migrations remove --project {Project}.Persistence
 
 # ❌ DON'T remove if already applied - create a new migration instead
 ```
@@ -381,7 +382,7 @@ if (pendingMigrations.Any())
 ```csharp
 // Program.cs - Apply migrations on startup
 using var scope = app.Services.CreateScope();
-var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+var dbContext = scope.ServiceProvider.GetRequiredService<{DbContext}>();
 
 // ✅ Apply pending migrations
 await dbContext.Database.MigrateAsync();
@@ -415,7 +416,7 @@ await dbContext.Database.MigrateAsync();
 # Error: "The migration '20240101120000_MigrationName' has already been applied to the database."
 
 # ✅ Solution: Create a new migration for changes
-dotnet ef migrations add UpdateMigration --project Explore.Persistence
+dotnet ef migrations add UpdateMigration --project {Project}.Persistence
 ```
 
 ### Conflicting Migrations
@@ -428,7 +429,7 @@ git pull origin main
 dotnet ef migrations remove  # If not yet applied
 
 # ✅ Solution 2: Create new migration
-dotnet ef migrations add ResolveMergeConflict --project Explore.Persistence
+dotnet ef migrations add ResolveMergeConflict --project {Project}.Persistence
 ```
 
 ### Connection String Not Found
@@ -438,8 +439,8 @@ dotnet ef migrations add ResolveMergeConflict --project Explore.Persistence
 
 # ✅ Solution: Specify connection string
 dotnet ef database update \
-  --project Explore.Persistence \
-  --connection "Host=localhost;Database=islamu_event;Username=postgres;Password=password"
+  --project {Project}.Persistence \
+  --connection "Host=localhost;Database={project}_db;Username=postgres;Password=password"
 ```
 
 ---
@@ -451,7 +452,7 @@ dotnet ef database update \
 ```bash
 # ✅ Generate idempotent SQL script
 dotnet ef migrations script \
-  --project Explore.Persistence \
+  --project {Project}.Persistence \
   --idempotent \
   --output migrations/release-1.0.0.sql
 ```
@@ -473,7 +474,7 @@ dotnet ef migrations script --idempotent --output release.sql
 if (app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
-    var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+    var dbContext = scope.ServiceProvider.GetRequiredService<{DbContext}>();
     await dbContext.Database.MigrateAsync();  // ✅ Auto-apply in dev only
 }
 ```

@@ -26,6 +26,7 @@ public interface IEventService
     Task<ICollection<EventRegistrationListDto>> GetRegistrationsByUserAsync(Guid userId);
     Task<BaseCommandResponseOfGuid?> UpdateRegistrationAsync(UpdateEventRegistrationDto registration);
     Task<bool> CancelEventRegistrationAsync(Guid registrationId);
+    Task<EventSessionDto?> GetSessionByIdAsync(Guid sessionId);
 }
 
 public partial class EventService : IEventService
@@ -233,6 +234,30 @@ public partial class EventService : IEventService
                 Message = ex.Message,
                 Errors = new List<string> { ex.Message }
             };
+        }
+    }
+
+    public async Task<EventSessionDto?> GetSessionByIdAsync(Guid sessionId)
+    {
+        try
+        {
+            if (_apiClient == null)
+            {
+                _logger.LogWarning("[EVENT SERVICE] API client is null");
+                return null;
+            }
+
+            return await _apiClient.EventSessionGET2Async(sessionId);
+        }
+        catch (ApiException ex) when (ex.StatusCode == 404)
+        {
+            _logger.LogWarning("[EVENT SERVICE] Session not found: {SessionId}", sessionId);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[EVENT SERVICE] Error fetching session {SessionId}", sessionId);
+            return null;
         }
     }
 }

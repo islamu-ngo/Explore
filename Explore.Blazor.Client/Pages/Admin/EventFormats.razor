@@ -3,23 +3,20 @@
 @using Explore.Blazor.Client.Services.Contracts
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize(Roles = "Admin")]
-@inject IEventFormatService EventFormatService
-@inject ISnackbar Snackbar
-@inject NavigationManager Nav
 
-<div class="admin-lookup">
+<div class="admin-event-formats">
     <!-- Hero Section -->
-    <MudPaper Class="admin-lookup__hero admin-lookup__hero--event-format" Elevation="0">
-        <div class="admin-lookup__hero-top">
-            <div class="admin-lookup__hero-title">
-                <div class="admin-lookup__hero-badge admin-lookup__hero-badge--event-format">
+    <MudPaper Class="admin-event-formats__hero" Elevation="0">
+        <div class="admin-event-formats__hero-top">
+            <div class="admin-event-formats__hero-title">
+                <div class="admin-event-formats__hero-badge">
                     <MudIcon Icon="@Icons.Material.Filled.Videocam" Color="Color.Secondary" />
                 </div>
                 <div>
-                    <MudText Typo="Typo.h4" Style="font-weight:800; letter-spacing:.2px;">
+                    <MudText Typo="Typo.h4" Class="admin-event-formats__title-text">
                         Event Formats
                     </MudText>
-                    <MudText Typo="Typo.body2" Class="admin-lookup__hero-subtitle">
+                    <MudText Typo="Typo.body2" Class="admin-event-formats__hero-subtitle">
                         Event format options: In-person, Online, Hybrid (read-only lookup table)
                     </MudText>
                 </div>
@@ -30,29 +27,29 @@
                            Color="Color.Default"
                            StartIcon="@Icons.Material.Filled.ArrowBack"
                            OnClick="@(() => Nav.NavigateTo("/admin"))"
-                           Style="border-radius:999px; padding:10px 16px;">
+                           Class="admin-event-formats__action-btn">
                     Back to Admin
                 </MudButton>
                 <MudButton Variant="Variant.Filled"
                            Color="Color.Secondary"
                            StartIcon="@Icons.Material.Filled.Refresh"
                            OnClick="LoadData"
-                           Style="border-radius:999px; padding:10px 16px;">
+                           Class="admin-event-formats__action-btn">
                     Refresh
                 </MudButton>
             </MudStack>
         </div>
 
         <!-- Stats -->
-        <div class="admin-lookup__stats">
-            <div class="admin-lookup__stat">
-                <div class="admin-lookup__stat-row">
-                    <div class="admin-lookup__stat-icon admin-lookup__stat-icon--event-format">
+        <div class="admin-event-formats__stats">
+            <div class="admin-event-formats__stat">
+                <div class="admin-event-formats__stat-row">
+                    <div class="admin-event-formats__stat-icon">
                         <MudIcon Icon="@Icons.Material.Filled.Videocam" Color="Color.Secondary" />
                     </div>
                     <div>
-                        <div class="admin-lookup__stat-label">Total Formats</div>
-                        <div class="admin-lookup__stat-value">@_items.Count</div>
+                        <div class="admin-event-formats__stat-label">Total Formats</div>
+                        <div class="admin-event-formats__stat-value">@_items.Count</div>
                     </div>
                 </div>
             </div>
@@ -61,7 +58,7 @@
 
     @if (_isLoading)
     {
-        <MudPaper Class="admin-lookup__panel" Elevation="0" Style="margin-top:14px;">
+        <MudPaper Class="admin-event-formats__panel" Elevation="0">
             <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="py-4">
                 <MudProgressCircular Color="Color.Secondary" Size="Size.Large" Indeterminate="true" />
                 <MudText Typo="Typo.body1">Loading event formats…</MudText>
@@ -70,9 +67,9 @@
     }
     else
     {
-        <div class="admin-lookup__section">
+        <div class="admin-event-formats__section">
             <!-- Info Banner -->
-            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-3" Style="border-radius:14px;">
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="admin-event-formats__alert mb-3">
                 <MudText Typo="Typo.body2">
                     <strong>Read-only lookup table.</strong> Event formats are system-defined values (In-person, Online, Hybrid).
                     Contact system administrator if changes are needed.
@@ -80,7 +77,7 @@
             </MudAlert>
 
             <!-- Table -->
-            <MudPaper Class="admin-lookup__table-panel" Elevation="0">
+            <MudPaper Class="admin-event-formats__table-panel" Elevation="0">
                 <MudTable Items="@_items"
                           Dense="true"
                           Hover="true"
@@ -89,7 +86,7 @@
                           Loading="@_isLoading"
                           LoadingProgressColor="Color.Secondary">
                     <HeaderContent>
-                        <MudTh Style="width:80px">ID</MudTh>
+                        <MudTh Class="admin-event-formats__col-id">ID</MudTh>
                         <MudTh>Name</MudTh>
                         <MudTh>Master Code</MudTh>
                         <MudTh>Description</MudTh>
@@ -101,9 +98,9 @@
                             </MudChip>
                         </MudTd>
                         <MudTd DataLabel="Name">
-                            <div class="admin-lookup__name-cell">
+                            <div class="admin-event-formats__name-cell">
                                 <MudIcon Icon="@GetFormatIcon(context.MasterCode)" Size="Size.Small" Color="Color.Secondary" />
-                                <MudText Typo="Typo.body2" Style="font-weight:600;">@context.FullName</MudText>
+                                <MudText Typo="Typo.body2" Class="admin-event-formats__name-text">@context.FullName</MudText>
                             </div>
                         </MudTd>
                         <MudTd DataLabel="Code">
@@ -112,16 +109,16 @@
                             </MudChip>
                         </MudTd>
                         <MudTd DataLabel="Description">
-                            <MudText Typo="Typo.body2" Class="admin-lookup__muted">
+                            <MudText Typo="Typo.body2" Class="admin-event-formats__muted">
                                 @(context.Description ?? "—")
                             </MudText>
                         </MudTd>
                     </RowTemplate>
                     <NoRecordsContent>
-                        <div class="admin-lookup__empty">
+                        <div class="admin-event-formats__empty">
                             <MudIcon Icon="@Icons.Material.Filled.Videocam" Size="Size.Large" />
-                            <MudText Typo="Typo.h6" Style="margin-top:10px; font-weight:800;">No event formats found</MudText>
-                            <MudText Typo="Typo.body2" Class="admin-lookup__muted">
+                            <MudText Typo="Typo.h6" Class="admin-event-formats__empty-title">No event formats found</MudText>
+                            <MudText Typo="Typo.body2" Class="admin-event-formats__muted">
                                 The lookup table is empty.
                             </MudText>
                         </div>
@@ -131,42 +128,3 @@
         </div>
     }
 </div>
-
-@code {
-    private ICollection<EventFormatListDto> _items = new List<EventFormatListDto>();
-    private bool _isLoading = true;
-
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadData();
-    }
-
-    private async Task LoadData()
-    {
-        _isLoading = true;
-        try
-        {
-            _items = await EventFormatService.GetEventFormatsAsync();
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Failed to load event formats: {ex.Message}", Severity.Error);
-            _items = new List<EventFormatListDto>();
-        }
-        finally
-        {
-            _isLoading = false;
-        }
-    }
-
-    private string GetFormatIcon(string? masterCode)
-    {
-        return masterCode?.ToUpperInvariant() switch
-        {
-            "LOCAL" or "IN_PERSON" or "INPERSON" => Icons.Material.Filled.Place,
-            "DIGITAL" or "ONLINE" or "VIRTUAL" => Icons.Material.Filled.Videocam,
-            "HYBRID" => Icons.Material.Filled.Sync,
-            _ => Icons.Material.Filled.Event
-        };
-    }
-}

@@ -19,7 +19,12 @@
       "mcp__acp__Bash",
       "mcp__acp__Write",
       "mcp__acp__Edit",
-      "Bash(dotnet build:*)"
+      "Bash(dotnet build:*)",
+      "WebSearch",
+      "WebFetch(domain:www.anthropic.com)",
+      "WebFetch(domain:github.com)",
+      "mcp__mcp-server-context7__resolve-library-id",
+      "mcp__mcp-server-context7__query-docs"
     ]
   }
 }

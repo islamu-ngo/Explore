@@ -1,18 +1,17 @@
 @using MudBlazor
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Components
+@using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.Extensions.Logging
-@inject NavigationManager NavigationManager
-@inject IOrganizationService OrganizationService
-@inject ILogger<CreateOrganization> Logger
 
 <PageTitle>Create Organization</PageTitle>
-<MudContainer Class="create-organization">
-    <MudCard Class="mx-auto" Style="max-width: 900px;">
+<MudContainer Class="org-create">
+    <MudCard Class="org-create__card mx-auto">
         <MudCardHeader>
             <CardHeaderContent>
                 <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
-                    <MudIcon Icon="Icons.Material.Filled.Business" Size="Size.Large" Color="Color.Primary" />
+                    <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Large" Color="Color.Primary" />
                     <div>
                         <MudText Typo="Typo.h4">Create Organization</MudText>
                         <MudText Typo="Typo.body2" Color="Color.Secondary">
@@ -23,16 +22,16 @@
             </CardHeaderContent>
         </MudCardHeader>
 
-        <div class="create-organization__stepper">
-            <div class="create-organization__step-container">
-                <div class="create-organization__step-line">
-                    <div class="create-organization__step-progress" style="width: @GetProgressWidth()"></div>
+        <div class="org-create__stepper">
+            <div class="org-create__step-container">
+                <div class="org-create__step-line">
+                    <div class="org-create__step-progress" style="width: @GetProgressWidth()"></div>
                 </div>
 
                 @foreach (var stepInfo in steps)
                 {
-                    <div class="create-organization__step @GetStepClass(stepInfo.Step)">
-                        <div class="create-organization__step-circle">
+                    <div class="org-create__step @GetStepClass(stepInfo.Step)">
+                        <div class="org-create__step-circle">
                             @if (IsStepCompleted(stepInfo.Step))
                             {
                                 <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" />
@@ -42,7 +41,7 @@
                                 @(stepInfo.Step + 1)
                             }
                         </div>
-                        <div class="create-organization__step-title">@stepInfo.Title</div>
+                        <div class="org-create__step-title">@stepInfo.Title</div>
                     </div>
                 }
             </div>
@@ -53,19 +52,31 @@
                 @switch (currentStep)
                 {
                     case 0:
-                        <MudPaper Class="pa-4 mb-6" Style="background-color: var(--mud-palette-background-grey);">
+                        <MudPaper Class="org-create__section pa-4 mb-6">
                             <MudText Typo="Typo.h6" Class="mb-3">Organization Logo</MudText>
                             <MudText Typo="Typo.body2" Class="mb-2 mud-text-secondary">
-                                Logo upload will be available after organization creation.
+                                Upload a logo for your organization. This will be displayed on your organization profile and events.
                             </MudText>
-                            @if (!string.IsNullOrWhiteSpace(logoPreview))
+                            <ImageUpload @ref="_imageUpload"
+                                         PreviewUrl="@logoPreview"
+                                         PreviewUrlChanged="OnLogoPreviewUrlChanged"
+                                         FileDataSelected="OnLogoFileDataSelected"
+                                         IsProcessing="_isUploadingLogo"
+                                         Width="150px"
+                                         Height="150px"
+                                         PlaceholderText="No logo selected"
+                                         UploadButtonText="Select Logo"
+                                         HintText="Supported formats: JPG, PNG, WebP (Max 5MB)"
+                                         Icon="@Icons.Material.Filled.Business" />
+                            @if (_isUploadingLogo)
                             {
-                                <img src="@logoPreview" alt="Logo preview" style="width: 120px; height: 120px; object-fit: cover;" />
+                                <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mt-2" />
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Uploading logo...</MudText>
                             }
                         </MudPaper>
 
                         <MudText Typo="Typo.h6" Class="mb-4">
-                            <MudIcon Icon="Icons.Material.Filled.Info" Class="mr-2" />
+                            <MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-2" />
                             Basic Information
                         </MudText>
 
@@ -96,7 +107,7 @@
 
                     case 1:
                         <MudText Typo="Typo.h6" Class="mb-4">
-                            <MudIcon Icon="Icons.Material.Filled.ContactMail" Class="mr-2" />
+                            <MudIcon Icon="@Icons.Material.Filled.ContactMail" Class="mr-2" />
                             Contact Information
                         </MudText>
 
@@ -113,7 +124,7 @@
                         </MudGrid>
 
                         <MudText Typo="Typo.h6" Class="mb-4">
-                            <MudIcon Icon="Icons.Material.Filled.LocationOn" Class="mr-2" />
+                            <MudIcon Icon="@Icons.Material.Filled.LocationOn" Class="mr-2" />
                             Address Information
                         </MudText>
 
@@ -128,12 +139,11 @@
                             </MudItem>
 
                             <MudItem xs="12" md="4">
-                                <MudNumericField @bind-Value="organization.Postcode"
+                                <MudTextField @bind-Value="organization.Postcode"
                                                  Label="Postal Code"
                                                  Variant="Variant.Outlined"
                                                  HelperText="Postal/ZIP code"
                                                  Required
-                                                 Min="0" Max="99999"
                                                  Adornment="Adornment.Start"
                                                  AdornmentIcon="@Icons.Material.Filled.Pin" />
                             </MudItem>
@@ -164,14 +174,14 @@
                     case 2:
                         <MudText Typo="Typo.h6" Class="mb-4">Review Your Information</MudText>
 
-                        <MudPaper Class="pa-4 mb-4" Style="background: var(--mud-palette-background-grey);">
+                        <MudPaper Class="org-create__section pa-4 mb-4">
                             <MudText Typo="Typo.subtitle1" Class="mb-3">Logo</MudText>
                             @if (!string.IsNullOrWhiteSpace(logoPreview))
                             {
                                 <MudStack Row AlignItems="AlignItems.Center" Spacing="3">
                                     <MudImage Src="@logoPreview"
                                               Alt="Organization Logo"
-                                              Style="width: 120px; height: 120px; object-fit: cover; border-radius: 8px;" />
+                                              Class="org-create__logo-preview" />
                                     <MudText Typo="Typo.caption" Color="Color.Secondary">
                                         This will be the logo used for your organization.
                                     </MudText>
@@ -197,7 +207,7 @@
                             </MudAlert>
                         }
 
-                        <MudPaper Class="pa-4 mb-4" Style="background: var(--mud-palette-background-grey);">
+                        <MudPaper Class="org-create__section pa-4 mb-4">
                             <MudStack Spacing="2">
                                 <MudText Typo="Typo.subtitle1">Organization Information</MudText>
                                 <MudText><b>Name:</b> @organization.FullName</MudText>
@@ -277,183 +287,3 @@
         </MudCardActions>
     </MudCard>
 </MudContainer>
-
-@code {
-    // Organization data for the API
-    private CreateOrganizationDto organization = new();
-    private bool acceptTerms = false;
-    private bool confirmInformation = false;
-    private bool isSubmitting = false;
-    private string logoPreview = string.Empty;
-    private int currentStep = 0;
-
-    // Extra velden die niet in de API zitten maar wel in de UI
-    // (Geen extra velden nodig - alle velden komen uit de database)
-
-    // API response handling
-    private bool submitSuccess = false;
-    private string errorMessage = string.Empty;
-
-    private class StepInfo
-    {
-        public int Step { get; set; }
-        public string Title { get; set; } = string.Empty;
-        public string Icon { get; set; } = string.Empty;
-    }
-
-    private readonly StepInfo[] steps = new[]
-    {
-        new StepInfo { Step = 0, Title = "Basic Information", Icon = Icons.Material.Filled.Edit },
-        new StepInfo { Step = 1, Title = "Contact & Address",  Icon = Icons.Material.Filled.Description },
-        new StepInfo { Step = 2, Title = "Review & Submit",    Icon = Icons.Material.Filled.Done }
-    };
-
-    private string GetStepClass(int step)
-    {
-        if (step < currentStep) return "completed";
-        if (step == currentStep) return "active";
-        return "";
-    }
-
-    private bool IsStepCompleted(int step) => step < currentStep;
-
-    private string GetProgressWidth() => currentStep switch
-    {
-        0 => "0%",
-        1 => "50%",
-        2 => "100%",
-        _ => "0%"
-    };
-
-    private Task GoToNextStep()
-    {
-        // Stap-validatie: controleer verplichte velden stap per stap
-        if (currentStep == 0)
-        {
-            if (string.IsNullOrWhiteSpace(organization.FullName))
-            {
-                errorMessage = "Vul de organisatienaam in.";
-                return Task.CompletedTask;
-            }
-        }
-        else if (currentStep == 1)
-        {
-            if (string.IsNullOrWhiteSpace(organization.Email)
-                || string.IsNullOrWhiteSpace(organization.Address)
-                || string.IsNullOrWhiteSpace(organization.City)
-                || string.IsNullOrWhiteSpace(organization.Country)
-                || organization.Postcode <= 0)
-            {
-                errorMessage = "Vul alle vereiste velden in.";
-                return Task.CompletedTask;
-            }
-        }
-
-        errorMessage = string.Empty;
-        if (currentStep < steps.Length - 1) currentStep++;
-        return Task.CompletedTask;
-    }
-
-    private Task GoToPreviousStep()
-    {
-        if (currentStep > 0)
-        {
-            currentStep--;
-            StateHasChanged();
-        }
-        return Task.CompletedTask;
-    }
-
-    // Voeg een succespagina toe voor het resultaat
-    protected override async Task OnInitializedAsync()
-    {
-        // Initialiseer de organisatie met standaard waarden
-        organization = new CreateOrganizationDto();
-        await base.OnInitializedAsync();
-    }
-
-    private async Task HandleSubmit()
-    {
-        if (!CanSubmit()) return;
-
-        isSubmitting = true;
-        errorMessage = string.Empty;
-
-        try
-        {
-            // Roep de API aan om de organisatie te maken
-            var createdOrganization = await OrganizationService.CreateOrganizationAsync(organization);
-
-            if (createdOrganization != null)
-            {
-                submitSuccess = true;
-                Logger.LogInformation("Organization successfully created with ID: {OrganizationId}", createdOrganization.Id);
-
-                // Wacht een moment en navigeer naar een succespagina
-                await Task.Delay(1500);
-                NavigationManager.NavigateTo("/organization/success");
-            }
-            else
-            {
-                errorMessage = "Er is een fout opgetreden bij het aanmaken van de organisatie. Probeer het opnieuw.";
-                Logger.LogWarning("API returned null for organization creation");
-            }
-        }
-        catch (Exception ex)
-        {
-            errorMessage = $"Fout bij het aanmaken van de organisatie: {ex.Message}";
-            Logger.LogError(ex, "Exception during organization creation");
-        }
-        finally
-        {
-            isSubmitting = false;
-            StateHasChanged();
-        }
-    }
-
-    // Logo handling is now done by the ImageUpload component
-    // These methods can be removed or kept for backward compatibility
-    private async Task OnLogoSelected(IBrowserFile? file)
-    {
-        // This is now handled by ImageUpload component
-        // Kept for backward compatibility if needed
-    }
-
-    private Task RemoveLogo()
-    {
-        // This is now handled by ImageUpload component
-        logoPreview = string.Empty;
-        return Task.CompletedTask;
-    }
-
-    private async Task GoBack()
-    {
-        if (currentStep == 0)
-            NavigationManager.NavigateTo("/");
-        else
-            await GoToPreviousStep();
-    }
-
-    private bool CanSubmit()
-    {
-        return acceptTerms &&
-               confirmInformation &&
-               !string.IsNullOrWhiteSpace(organization.FullName) &&
-               !string.IsNullOrWhiteSpace(organization.Email) &&
-               !string.IsNullOrWhiteSpace(organization.Address) &&
-               !string.IsNullOrWhiteSpace(organization.City) &&
-               !string.IsNullOrWhiteSpace(organization.Country) &&
-               organization.Postcode > 0;
-    }
-
-    private void OnLogoImageKeyChanged(string? value)
-    {
-        // Logo will be handled after organization creation
-        logoPreview = value ?? string.Empty;
-    }
-
-    private void OnLogoPreviewUrlChanged(string? value)
-    {
-        logoPreview = value ?? string.Empty;
-    }
-}

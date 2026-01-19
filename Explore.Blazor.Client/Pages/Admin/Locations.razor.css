@@ -55,6 +55,11 @@
     align-items: center;
 }
 
+::deep .admin-locations__title-text {
+    font-weight: 800;
+    letter-spacing: 0.2px;
+}
+
 /* ===== Element: admin-locations__hero-badge ===== */
 ::deep .admin-locations__hero-badge {
     width: 44px;
@@ -69,6 +74,11 @@
 /* ===== Element: admin-locations__hero-subtitle ===== */
 ::deep .admin-locations__hero-subtitle {
     opacity: 0.85;
+}
+
+::deep .admin-locations__action-btn {
+    border-radius: 999px;
+    padding: 10px 16px;
 }
 
 /* ===== Element: admin-locations__stats ===== */
@@ -151,6 +161,12 @@
     background: rgba(255, 255, 255, 0.03);
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
     padding: 14px;
+    margin-top: 14px;
+}
+
+::deep .admin-locations__search-field {
+    min-width: 280px;
+    border-radius: 999px;
 }
 
 /* ===== Element: admin-locations__toolbar ===== */
@@ -176,6 +192,16 @@
     border: 1px solid rgba(255, 255, 255, 0.06);
     background: rgba(255, 255, 255, 0.02);
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+    margin-top: 12px;
+}
+
+::deep .admin-locations__col-id {
+    width: 50px;
+}
+
+::deep .admin-locations__col-actions {
+    text-align: center;
+    width: 150px;
 }
 
 /* ===== Element: admin-locations__id ===== */
@@ -192,11 +218,19 @@
     gap: 8px;
 }
 
+::deep .admin-locations__name-text {
+    font-weight: 600;
+}
+
 /* ===== Element: admin-locations__actions ===== */
 ::deep .admin-locations__actions {
     display: flex;
     gap: 4px;
     justify-content: center;
+}
+
+::deep .admin-locations__cell-actions {
+    text-align: center;
 }
 
 /* ===== Element: admin-locations__empty ===== */
@@ -206,6 +240,16 @@
     align-items: center;
     padding: 48px 24px;
     text-align: center;
+}
+
+::deep .admin-locations__empty-title {
+    margin-top: 10px;
+    font-weight: 800;
+}
+
+::deep .admin-locations__empty-btn {
+    margin-top: 12px;
+    border-radius: 999px;
 }
 
 /* ===== Element: admin-locations__muted ===== */

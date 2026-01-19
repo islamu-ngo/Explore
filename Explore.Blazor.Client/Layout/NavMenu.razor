@@ -8,9 +8,6 @@
               __dropdown-item, __dropdown-overlay
     Modifiers: __link--active, __dropdown-menu--open, __dropdown-item--danger
 *@
-@using Microsoft.AspNetCore.Components.Authorization
-@inject NavigationManager Nav
-@inject AuthenticationStateProvider AuthStateProvider
 
 <div class="navbar">
     <div class="navbar__content">
@@ -19,6 +16,20 @@
             <MudIcon Icon="@Icons.Material.Filled.Explore" Color="Color.Primary" Size="Size.Large" Class="navbar__brand-icon" />
             <div class="navbar__brand-text">ISLAMU<span class="navbar__brand-highlight">Explore</span></div>
         </a>
+
+        <!-- Global Search -->
+        <div class="navbar__search">
+            <MudTextField T="string"
+                          Placeholder="Search events..."
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          IconSize="Size.Medium"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Class="navbar__search-input"
+                          @bind-Value="SearchQuery"
+                          @onkeyup="@HandleSearchKeyPress" />
+        </div>
 
         <!-- Center Navigation -->
         <div class="navbar__links">
@@ -40,9 +51,18 @@
                     <!-- User Dropdown -->
                     <div class="navbar__user-dropdown">
                         <div class="navbar__user-btn" @onclick="ToggleDropdown" @onclick:stopPropagation>
-                            <MudAvatar Color="Color.Primary" Size="Size.Small" Class="navbar__user-avatar">
-                                @GetInitials(context.User.Identity?.Name)
-                            </MudAvatar>
+                            @if (!string.IsNullOrEmpty(_currentUser?.ProfileImageUri))
+                            {
+                                <MudAvatar Size="Size.Small" Class="navbar__user-avatar">
+                                    <MudImage Src="@_currentUser.ProfileImageUri" Alt="Profile" />
+                                </MudAvatar>
+                            }
+                            else
+                            {
+                                <MudAvatar Color="Color.Primary" Size="Size.Small" Class="navbar__user-avatar">
+                                    @GetInitials(context.User.Identity?.Name)
+                                </MudAvatar>
+                            }
                             <span class="navbar__user-name">@context.User.Identity?.Name</span>
                             <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" Size="Size.Small" Class="navbar__user-arrow" />
                         </div>
@@ -79,50 +99,9 @@
                                     <div class="navbar__dropdown-section-label">Admin</div>
                                     <a href="/admin" class="navbar__dropdown-item" @onclick="CloseDropdown">
                                         <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Size="Size.Small" />
-                                        Organizations
+                                        Admin Dashboard
                                     </a>
-                                    <a href="/admin/categories" class="navbar__dropdown-item" @onclick="CloseDropdown">
-                                        <MudIcon Icon="@Icons.Material.Filled.Category" Size="Size.Small" />
-                                        Categories
-                                    </a>
-                                                                        <a href="/admin/tags" class="navbar__dropdown-item" @onclick="CloseDropdown">
-                                                                            <MudIcon Icon="@Icons.Material.Filled.Tag" Size="Size.Small" />
-                                                                            Tags
-                                                                        </a>
-                                                                                                             <a href="/admin/audience-genders" class="navbar__dropdown-item" @onclick="CloseDropdown">
-                                                                                                                <MudIcon Icon="@Icons.Material.Filled.Wc" Size="Size.Small" />
-                                                                                                                Audience Genders
-                                                                                                            </a>
-                                                                                                                                                 <a href="/admin/event-formats" class="navbar__dropdown-item" @onclick="CloseDropdown">
-                                                                                                                                                    <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Small" />
-                                                                                                                                                    Event Formats
-                                                                                                                                                </a>
-                                                                                                                                                                                     <a href="/admin/event-statuses" class="navbar__dropdown-item" @onclick="CloseDropdown">
-                                                                                                                                                                                        <MudIcon Icon="@Icons.Material.Filled.Sync" Size="Size.Small" />
-                                                                                                                                                                                        Event Statuses
-                                                                                                                                                                                    </a>
-                                                                                                                                                                                                                         <a href="/admin/event-types" class="navbar__dropdown-item" @onclick="CloseDropdown">
-                                                                                                                                                                                                                            <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Small" />
-                                                                                                                                                                                                                            Event Types
-                                                                                                                                                                                                                        </a>
-                                                                                                                                                                                                                                                             <a href="/admin/languages" class="navbar__dropdown-item" @onclick="CloseDropdown">
-                                                                                                                                                                                                                                                                <MudIcon Icon="@Icons.Material.Filled.Language" Size="Size.Small" />
-                                                                                                                                                                                                                                                                Languages
-                                                                                                                                                                                                                                                            </a>
-                                                                                                                                                                                                                                                            <a href="/admin/madhabs" class="navbar__dropdown-item" @onclick="CloseDropdown">
-                                                                                                                                                                                                                                                                <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Small" />
-                                                                                                                                                                                                                                                                Madhabs
-                                                                                                                                                                                                                                                            </a>                                                                        <a href="/admin/locations" class="navbar__dropdown-item" @onclick="CloseDropdown">
-                                                                            <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" />
-                                                                            Locations
-                                                                        </a>                                                                                                             <a href="/admin/audience-ages" class="navbar__dropdown-item" @onclick="CloseDropdown">
-                                                                                                                <MudIcon Icon="@Icons.Material.Filled.Accessibility" Size="Size.Small" />
-                                                                                                                Audience Ages
-                                                                                                            </a>
-                                                                                                            <a href="/admin/audience-genders" class="navbar__dropdown-item" @onclick="CloseDropdown">
-                                                                                                                <MudIcon Icon="@Icons.Material.Filled.Wc" Size="Size.Small" />
-                                                                                                                Audience Genders
-                                                                                                            </a>                                }
+                                }
 
                                 <div class="navbar__dropdown-divider"></div>
 
@@ -156,36 +135,4 @@
 @if (_dropdownOpen)
 {
     <div class="navbar__dropdown-overlay" @onclick="CloseDropdown"></div>
-}
-
-@code {
-    [Parameter] public EventCallback OnToggleTheme { get; set; }
-
-    private bool _dropdownOpen = false;
-
-    private void ToggleDropdown()
-    {
-        _dropdownOpen = !_dropdownOpen;
-    }
-
-    private void CloseDropdown()
-    {
-        _dropdownOpen = false;
-    }
-
-    private string GetInitials(string? name)
-    {
-        if (string.IsNullOrWhiteSpace(name)) return "?";
-        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length >= 2)
-            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
-        return name.Length >= 2 ? name[..2].ToUpper() : name.ToUpper();
-    }
-
-    private bool IsAdmin(System.Security.Claims.ClaimsPrincipal user)
-    {
-        return user.IsInRole("Admin") ||
-               user.HasClaim(c => c.Type == "role" && c.Value == "Admin") ||
-               user.HasClaim(c => c.Type == "roles" && c.Value.Contains("Admin"));
-    }
 }

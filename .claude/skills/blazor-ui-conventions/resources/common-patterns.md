@@ -1,6 +1,10 @@
 # Common Blazor UI Patterns
 
-This document describes frequently used UI implementation patterns in the ISLAMU Event Blazor application, covering forms, dialogs, tables, navigation, loading states, error handling, search/filter functionalities, and infinite scroll. These patterns ensure consistency, reusability, and maintainability across the user interface.
+> **Project-Agnostic UI Implementation Patterns**
+>
+> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../../docs/TEMPLATE_GLOSSARY.md).
+
+This document describes frequently used UI implementation patterns in Blazor applications, covering forms, dialogs, tables, navigation, loading states, error handling, search/filter functionalities, and infinite scroll. These patterns ensure consistency, reusability, and maintainability across the user interface.
 
 ---
 
@@ -17,11 +21,11 @@ Forms are central to data input. They are typically built using MudBlazor compon
 
 <MudCard>
     <MudCardHeader>
-        <MudText Typo="Typo.h5">Create New Event</MudText>
+        <MudText Typo="Typo.h5">Create New {Entity}</MudText>
     </MudCardHeader>
     <MudCardContent>
         <MudTextField @bind-Value="_dto.Title"
-                      Label="Event Title"
+                      Label="{Entity} Title"
                       Required="true"
                       RequiredError="Title is required"
                       MaxLength="200"
@@ -40,14 +44,14 @@ Forms are central to data input. They are typically built using MudBlazor compon
                        MinDate="DateTime.Today"
                        Class="mb-4" />
 
-        <MudSelect @bind-Value="_dto.AudienceAgeId"
-                   Label="Audience Age"
+        <MudSelect @bind-Value="_dto.{LookupEntity}Id"
+                   Label="{LookupEntity}"
                    Required="true"
-                   RequiredError="Audience Age is required"
+                   RequiredError="{LookupEntity} is required"
                    Class="mb-4">
-            @foreach (var age in _audienceAges)
+            @foreach (var item in _{lookupEntities})
             {
-                <MudSelectItem Value="@age.Id">@age.Name</MudSelectItem>
+                <MudSelectItem Value="@item.Id">@item.FullName</MudSelectItem>
             }
         </MudSelect>
     </MudCardContent>
@@ -65,22 +69,22 @@ Forms are central to data input. They are typically built using MudBlazor compon
             }
             else
             {
-                <text>Create Event</text>
+                <text>Create {Entity}</text>
             }
         </MudButton>
     </MudCardActions>
 </MudCard>
 
 @code {
-    private CreateEventDto _dto = new();
+    private Create{Entity}Dto _dto = new();
     private DateTime? _startDate;
     private bool _isSubmitting;
-    private List<AudienceAgeDto> _audienceAges = new(); // Assume this is loaded from a service/mediator
+    private List<{LookupEntity}Dto> _{lookupEntities} = new();
 
     protected override async Task OnInitializedAsync()
     {
         // Load dropdown data
-        // _audienceAges = await Mediator.Send(new GetAudienceAgeListRequest());
+        // _{lookupEntities} = await Mediator.Send(new Get{LookupEntity}ListRequest());
     }
 
     private async Task Submit()
@@ -92,22 +96,21 @@ Forms are central to data input. They are typically built using MudBlazor compon
             return;
         }
 
-        _dto.FirstSessionDate = DateOnly.FromDateTime(_startDate.Value); // Map DateTime? to DateOnly?
+        _dto.FirstSessionDate = DateOnly.FromDateTime(_startDate.Value);
         _isSubmitting = true;
 
         try
         {
-            var command = new CreateEventCommand { EventDto = _dto };
-            var result = await Mediator.Send(command); // Send command via MediatR
+            var command = new Create{Entity}Command { {Entity}Dto = _dto };
+            var result = await Mediator.Send(command);
 
             if (result.Success)
             {
-                Snackbar.Add("Event created successfully", Severity.Success);
-                NavigationManager.NavigateTo($"/events/{result.Id}"); // Navigate on success
+                Snackbar.Add("{Entity} created successfully", Severity.Success);
+                NavigationManager.NavigateTo($"/{entities}/{result.Id}");
             }
             else
             {
-                // Display validation errors from the backend
                 foreach (var error in result.Errors)
                 {
                     Snackbar.Add(error, Severity.Error);
@@ -116,7 +119,7 @@ Forms are central to data input. They are typically built using MudBlazor compon
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating event.");
+            _logger.LogError(ex, "Error creating {entity}.");
             Snackbar.Add("An unexpected error occurred.", Severity.Error);
         }
         finally
@@ -127,7 +130,7 @@ Forms are central to data input. They are typically built using MudBlazor compon
 
     private void Cancel()
     {
-        NavigationManager.NavigateTo("/events"); // Navigate away from the form
+        NavigationManager.NavigateTo("/{entities}");
     }
 }
 ```
@@ -137,19 +140,19 @@ Forms are central to data input. They are typically built using MudBlazor compon
 For more complex validation rules, especially those involving cross-field or asynchronous checks, FluentValidation is integrated with Blazor's `EditForm`.
 
 ```razor
-@using FluentValidation // Need to install FluentValidation.AspNetCore for this
-@using Microsoft.AspNetCore.Components.Forms // For EditForm and ValidationSummary
+@using FluentValidation
+@using Microsoft.AspNetCore.Components.Forms
 
 <EditForm Model="@_dto" OnValidSubmit="HandleValidSubmit" OnInvalidSubmit="HandleInvalidSubmit">
-    <FluentValidationValidator @ref="_validator" /> @* Provides component-level access to validation state *@
-    <ValidationSummary /> @* Displays all validation messages *@
+    <FluentValidationValidator @ref="_validator" />
+    <ValidationSummary />
 
     <MudCard>
         <MudCardContent>
             <MudTextField @bind-Value="_dto.Title"
-                          For="@(() => _dto.Title)" @* Links to the property for validation *@
-                          Label="Event Title"
-                          Immediate="true" /> @* Validates on blur or keyup *@
+                          For="@(() => _dto.Title)"
+                          Label="{Entity} Title"
+                          Immediate="true" />
 
             <MudTextField @bind-Value="_dto.Email"
                           For="@(() => _dto.Email)"
@@ -167,16 +170,12 @@ For more complex validation rules, especially those involving cross-field or asy
 </EditForm>
 
 @code {
-    private CreateEventDto _dto = new(); // The model being validated
-    private FluentValidationValidator? _validator; // Reference to the validator component
-    
-    // An instance of your FluentValidation validator for the DTO
-    // private CreateEventDtoValidator _dtoValidator = new CreateEventDtoValidator(); 
+    private Create{Entity}Dto _dto = new();
+    private FluentValidationValidator? _validator;
 
     private async Task HandleValidSubmit()
     {
-        // Form is valid based on FluentValidation rules, proceed with submission
-        var command = new CreateEventCommand { EventDto = _dto };
+        var command = new Create{Entity}Command { {Entity}Dto = _dto };
         await Mediator.Send(command);
         Snackbar.Add("Form submitted successfully!", Severity.Success);
     }
@@ -216,7 +215,7 @@ A reusable component for displaying a confirmation message with customizable tex
 
 @code {
     [CascadingParameter]
-    private MudDialogInstance MudDialog { get; set; } = null!; // ✅ Injected by IDialogService
+    private MudDialogInstance MudDialog { get; set; } = null!;
 
     [Parameter]
     public string ContentText { get; set; } = "Are you sure?";
@@ -227,8 +226,8 @@ A reusable component for displaying a confirmation message with customizable tex
     [Parameter]
     public Color Color { get; set; } = Color.Primary;
 
-    private void Submit() => MudDialog.Close(DialogResult.Ok(true)); // Return true on confirm
-    private void Cancel() => MudDialog.Cancel(); // Return canceled result
+    private void Submit() => MudDialog.Close(DialogResult.Ok(true));
+    private void Cancel() => MudDialog.Cancel();
 }
 ```
 
@@ -237,14 +236,14 @@ A reusable component for displaying a confirmation message with customizable tex
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 
-<MudButton OnClick="DeleteEvent">Delete Event</MudButton>
+<MudButton OnClick="Delete{Entity}">Delete {Entity}</MudButton>
 
 @code {
-    private async Task DeleteEvent()
+    private async Task Delete{Entity}()
     {
-        var parameters = new DialogParameters // Pass parameters to the ConfirmDialog component
+        var parameters = new DialogParameters
         {
-            ["ContentText"] = "Are you sure you want to delete this event? This action cannot be undone.",
+            ["ContentText"] = "Are you sure you want to delete this {entity}? This action cannot be undone.",
             ["ButtonText"] = "Delete",
             ["Color"] = Color.Error
         };
@@ -252,16 +251,15 @@ A reusable component for displaying a confirmation message with customizable tex
         var dialogOptions = new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true };
 
         var dialog = await DialogService.ShowAsync<ConfirmDialog>(
-            "Confirm Deletion", // Dialog title
+            "Confirm Deletion",
             parameters,
             dialogOptions);
 
-        var result = await dialog.Result; // Wait for the dialog to close
+        var result = await dialog.Result;
 
-        if (!result.Canceled && (bool)(result.Data ?? false)) // Check if not canceled and data is true
+        if (!result.Canceled && (bool)(result.Data ?? false))
         {
-            // User confirmed, perform deletion
-            Snackbar.Add("Event deleted successfully", Severity.Success);
+            Snackbar.Add("{Entity} deleted successfully", Severity.Success);
             // ... Call backend to delete ...
         }
         else
@@ -272,22 +270,22 @@ A reusable component for displaying a confirmation message with customizable tex
 }
 ```
 
-### Form Dialog (`CreateEventDialog.razor`)
+### Form Dialog (`Create{Entity}Dialog.razor`)
 
 Embedding a form within a dialog for data input.
 
 ```razor
-@* CreateEventDialog.razor *@
+@* Create{Entity}Dialog.razor *@
 @inject IMediator Mediator
 @inject ISnackbar Snackbar
 
 <MudDialog>
     <TitleContent>
-        <MudText Typo="Typo.h6">Create New Event</MudText>
+        <MudText Typo="Typo.h6">Create New {Entity}</MudText>
     </TitleContent>
     <DialogContent>
         <MudTextField @bind-Value="_dto.Title"
-                      Label="Event Title"
+                      Label="{Entity} Title"
                       Required="true" />
         <MudDatePicker @bind-Date="_startDate"
                        Label="Start Date"
@@ -309,7 +307,7 @@ Embedding a form within a dialog for data input.
     [CascadingParameter]
     private MudDialogInstance MudDialog { get; set; } = null!;
 
-    private CreateEventDto _dto = new();
+    private Create{Entity}Dto _dto = new();
     private DateTime? _startDate;
     private bool _isSubmitting;
 
@@ -323,12 +321,12 @@ Embedding a form within a dialog for data input.
 
         try
         {
-            var command = new CreateEventCommand { EventDto = _dto };
+            var command = new Create{Entity}Command { {Entity}Dto = _dto };
             var result = await Mediator.Send(command);
 
             if (result.Success)
             {
-                Snackbar.Add("Event created successfully", Severity.Success);
+                Snackbar.Add("{Entity} created successfully", Severity.Success);
                 MudDialog.Close(DialogResult.Ok(result.Id)); // ✅ Close with the new entity ID
             }
             else
@@ -357,15 +355,15 @@ A common pattern for displaying a list of entities with actions for viewing, edi
 @inject ISnackbar Snackbar
 @inject NavigationManager NavigationManager
 
-<MudTable Items="@_events" Hover="true" Loading="@_isLoading" LoadingProgressColor="Color.Info">
+<MudTable Items="@_{entities}" Hover="true" Loading="@_isLoading" LoadingProgressColor="Color.Info">
     <ToolBarContent>
-        <MudText Typo="Typo.h6">Events List</MudText>
+        <MudText Typo="Typo.h6">{Entities} List</MudText>
         <MudSpacer />
         <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
                    StartIcon="@Icons.Material.Filled.Add"
-                   OnClick="CreateNewEvent">
-            Create Event
+                   OnClick="CreateNew{Entity}">
+            Create {Entity}
         </MudButton>
     </ToolBarContent>
     <HeaderContent>
@@ -378,25 +376,25 @@ A common pattern for displaying a list of entities with actions for viewing, edi
     <RowTemplate>
         <MudTd DataLabel="Title">@context.Title</MudTd>
         <MudTd DataLabel="Date">@context.FirstSessionDate?.ToShortDateString()</MudTd>
-        <MudTd DataLabel="Location">@context.Location</MudTd> @* Assuming Location is a property in EventListDto *@
+        <MudTd DataLabel="Location">@context.LocationFullName</MudTd>
         <MudTd DataLabel="Status">
             <MudChip Size="Size.Small"
-                     Color="@GetStatusColor(context.EventStatusFullName)">
-                @context.EventStatusFullName
+                     Color="@GetStatusColor(context.StatusFullName)">
+                @context.StatusFullName
             </MudChip>
         </MudTd>
         <MudTd DataLabel="Actions">
             <MudIconButton Icon="@Icons.Material.Filled.Visibility"
                            Size="Size.Small"
-                           OnClick="@(() => ViewEvent(context.Id))" />
+                           OnClick="@(() => View{Entity}(context.Id))" />
             <MudIconButton Icon="@Icons.Material.Filled.Edit"
                            Size="Size.Small"
                            Color="Color.Primary"
-                           OnClick="@(() => EditEvent(context.Id))" />
+                           OnClick="@(() => Edit{Entity}(context.Id))" />
             <MudIconButton Icon="@Icons.Material.Filled.Delete"
                            Size="Size.Small"
                            Color="Color.Error"
-                           OnClick="@(() => DeleteEvent(context.Id))" />
+                           OnClick="@(() => Delete{Entity}(context.Id))" />
         </MudTd>
     </RowTemplate>
     <PagerContent>
@@ -405,25 +403,25 @@ A common pattern for displaying a list of entities with actions for viewing, edi
 </MudTable>
 
 @code {
-    private List<EventListDto> _events = new();
+    private List<{Entity}ListDto> _{entities} = new();
     private bool _isLoading;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadEvents();
+        await Load{Entities}();
     }
 
-    private async Task LoadEvents()
+    private async Task Load{Entities}()
     {
         _isLoading = true;
         try
         {
-            _events = await Mediator.Send(new GetEventListRequest());
+            _{entities} = await Mediator.Send(new Get{Entity}ListRequest());
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load events.");
-            Snackbar.Add("Failed to load events.", Severity.Error);
+            _logger.LogError(ex, "Failed to load {entities}.");
+            Snackbar.Add("Failed to load {entities}.", Severity.Error);
         }
         finally
         {
@@ -439,26 +437,26 @@ A common pattern for displaying a list of entities with actions for viewing, edi
         _ => Color.Default
     };
 
-    private async Task CreateNewEvent()
+    private async Task CreateNew{Entity}()
     {
-        var dialog = await DialogService.ShowAsync<CreateEventDialog>("Create Event");
+        var dialog = await DialogService.ShowAsync<Create{Entity}Dialog>("Create {Entity}");
         var result = await dialog.Result;
 
-        if (!result.Canceled && result.Data is Guid eventId)
+        if (!result.Canceled && result.Data is {IdType} {entity}Id)
         {
-            Snackbar.Add($"Event created with ID: {eventId}", Severity.Success);
-            await LoadEvents(); // Refresh table data
+            Snackbar.Add($"{Entity} created with ID: {{entity}Id}", Severity.Success);
+            await Load{Entities}();
         }
     }
 
-    private void ViewEvent(Guid id) => NavigationManager.NavigateTo($"/events/{id}");
-    private void EditEvent(Guid id) => NavigationManager.NavigateTo($"/events/{id}/edit");
+    private void View{Entity}({IdType} id) => NavigationManager.NavigateTo($"/{entities}/{id}");
+    private void Edit{Entity}({IdType} id) => NavigationManager.NavigateTo($"/{entities}/{id}/edit");
 
-    private async Task DeleteEvent(Guid id)
+    private async Task Delete{Entity}({IdType} id)
     {
         var parameters = new DialogParameters
         {
-            ["ContentText"] = "Are you sure you want to delete this event? This action is irreversible.",
+            ["ContentText"] = "Are you sure you want to delete this {entity}? This action is irreversible.",
             ["ButtonText"] = "Delete",
             ["Color"] = Color.Error
         };
@@ -468,17 +466,17 @@ A common pattern for displaying a list of entities with actions for viewing, edi
 
         if (!result.Canceled && (bool)(result.Data ?? false))
         {
-            var deleteCommand = new DeleteEventCommand { Id = id };
+            var deleteCommand = new Delete{Entity}Command { Id = id };
             var deleteResult = await Mediator.Send(deleteCommand);
 
-            if (deleteResult) // Assuming DeleteEventCommand returns bool
+            if (deleteResult)
             {
-                Snackbar.Add("Event deleted successfully", Severity.Success);
-                await LoadEvents(); // Refresh table data
+                Snackbar.Add("{Entity} deleted successfully", Severity.Success);
+                await Load{Entities}();
             }
             else
             {
-                Snackbar.Add("Failed to delete event.", Severity.Error);
+                Snackbar.Add("Failed to delete {entity}.", Severity.Error);
             }
         }
     }
@@ -497,19 +495,19 @@ Using `NavigationManager` for dynamic page routing.
 @inject NavigationManager NavigationManager
 
 @code {
-    private void NavigateToEventDetails(Guid eventId)
+    private void NavigateTo{Entity}Details({IdType} {entity}Id)
     {
-        NavigationManager.NavigateTo($"/events/{eventId}");
+        NavigationManager.NavigateTo($"/{entities}/{{entity}Id}");
     }
 
-    private void NavigateToEventsList()
+    private void NavigateTo{Entities}List()
     {
-        NavigationManager.NavigateTo("/events");
+        NavigationManager.NavigateTo("/{entities}");
     }
 
     private void OpenExternalLink(string url)
     {
-        NavigationManager.NavigateTo(url, forceLoad: true); // forceLoad reloads the page
+        NavigationManager.NavigateTo(url, forceLoad: true);
     }
 }
 ```
@@ -520,25 +518,24 @@ For filtering, sorting, or complex state that needs to be reflected in the URL.
 
 ```razor
 @inject NavigationManager NavigationManager
-@using Microsoft.AspNetCore.WebUtilities // Required for QueryHelpers
+@using Microsoft.AspNetCore.WebUtilities
 
 @code {
-    private Guid? _organizationIdFilter;
-    private int? _audienceAgeFilter;
+    private {IdType}? _{parentEntity}IdFilter;
+    private {LookupIdType}? _{lookupEntity}Filter;
 
     protected override void OnInitialized()
     {
-        // Read query parameters on component initialization
         var uri = new Uri(NavigationManager.Uri);
         var query = QueryHelpers.ParseQuery(uri.Query);
 
-        if (query.TryGetValue("organizationId", out var orgIdValue) && Guid.TryParse(orgIdValue, out var parsedOrgId))
+        if (query.TryGetValue("{parentEntity}Id", out var parentIdValue) && {IdType}.TryParse(parentIdValue, out var parsedParentId))
         {
-            _organizationIdFilter = parsedOrgId;
+            _{parentEntity}IdFilter = parsedParentId;
         }
-        if (query.TryGetValue("audienceAge", out var ageValue) && int.TryParse(ageValue, out var parsedAge))
+        if (query.TryGetValue("{lookupEntity}Id", out var lookupValue) && {LookupIdType}.TryParse(lookupValue, out var parsedLookup))
         {
-            _audienceAgeFilter = parsedAge;
+            _{lookupEntity}Filter = parsedLookup;
         }
     }
 
@@ -546,9 +543,9 @@ For filtering, sorting, or complex state that needs to be reflected in the URL.
     {
         var queryParams = new Dictionary<string, object?>
         {
-            ["organizationId"] = _organizationIdFilter,
-            ["audienceAge"] = _audienceAgeFilter,
-            ["page"] = 1 // Reset to first page when filters change
+            ["{parentEntity}Id"] = _{parentEntity}IdFilter,
+            ["{lookupEntity}Id"] = _{lookupEntity}Filter,
+            ["page"] = 1
         };
 
         var uri = NavigationManager.GetUriWithQueryParameters(queryParams);
@@ -569,20 +566,20 @@ Providing visual feedback during data loading is crucial for good UX.
 @if (_isLoading)
 {
     <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
-    <MudText Class="ml-2">Loading events...</MudText>
+    <MudText Class="ml-2">Loading {entities}...</MudText>
 }
-else if (_events.Any())
+else if (_{entities}.Any())
 {
-    @* Display events *@
+    @* Display {entities} *@
 }
 else
 {
-    <MudText>No events found matching your criteria.</MudText>
+    <MudText>No {entities} found matching your criteria.</MudText>
 }
 
 @code {
     private bool _isLoading;
-    private List<EventListDto> _events = new();
+    private List<{Entity}ListDto> _{entities} = new();
 }
 ```
 
@@ -594,7 +591,7 @@ Mimics the layout of the content that is about to be loaded, providing a better 
 @if (_isLoading)
 {
     <MudGrid>
-        @for (int i = 0; i < 6; i++) // Show 6 skeleton cards
+        @for (int i = 0; i < 6; i++)
         {
             <MudItem xs="12" sm="6" md="4" lg="3">
                 <MudCard Elevation="1">
@@ -610,7 +607,7 @@ Mimics the layout of the content that is about to be loaded, providing a better 
 }
 else
 {
-    @* Actual event cards *@
+    @* Actual {entity} cards *@
 }
 ```
 
@@ -644,7 +641,7 @@ Wrap API calls or critical operations in `try-catch` blocks to handle exceptions
 
 ```razor
 @inject ISnackbar Snackbar
-@inject ILogger<MyComponent> _logger // Inject ILogger for server-side logging
+@inject ILogger<MyComponent> _logger
 
 @code {
     private async Task LoadData()
@@ -652,16 +649,16 @@ Wrap API calls or critical operations in `try-catch` blocks to handle exceptions
         _isLoading = true;
         try
         {
-            _events = await Mediator.Send(new GetEventListRequest());
+            _{entities} = await Mediator.Send(new Get{Entity}ListRequest());
         }
-        catch (HttpRequestException ex) // Handle network-related or API call errors
+        catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "HTTP Request failed during event load.");
+            _logger.LogError(ex, "HTTP Request failed during {entity} load.");
             Snackbar.Add("Network error. Please check your connection or try again.", Severity.Error);
         }
-        catch (Exception ex) // Catch any other unexpected errors
+        catch (Exception ex)
         {
-            _logger.LogError(ex, "An unexpected error occurred during event load.");
+            _logger.LogError(ex, "An unexpected error occurred during {entity} load.");
             Snackbar.Add("An unexpected error occurred. Please try again later.", Severity.Error);
         }
         finally
@@ -679,12 +676,12 @@ The `ErrorBoundary` component catches unhandled exceptions in its child content 
 ```razor
 <ErrorBoundary>
     <ChildContent>
-        <EventList /> @* Component that might throw an exception *@
+        <{Entity}List />
     </ChildContent>
     <ErrorContent Context="exception">
         <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mt-4">
             <MudText Typo="Typo.h6">Something went wrong!</MudText>
-            <MudText>An error occurred while rendering the event list.</MudText>
+            <MudText>An error occurred while rendering the {entity} list.</MudText>
             <MudText Class="mt-2">Error details: @exception.Message</MudText>
             <MudButton OnClick="@(() => exception.Recover())" Color="Color.Warning" Class="mt-3">
                 Try Again
@@ -700,19 +697,18 @@ For command (write) operations, the backend returns a `BaseCommandResponse` whic
 
 ```razor
 @code {
-    private async Task CreateNewEvent()
+    private async Task CreateNew{Entity}()
     {
-        var command = new CreateEventCommand { EventDto = _dto };
+        var command = new Create{Entity}Command { {Entity}Dto = _dto };
         var result = await Mediator.Send(command);
 
         if (result.Success)
         {
-            Snackbar.Add("Event created successfully", Severity.Success);
-            NavigationManager.NavigateTo($"/events/{result.Id}");
+            Snackbar.Add("{Entity} created successfully", Severity.Success);
+            NavigationManager.NavigateTo($"/{entities}/{result.Id}");
         }
         else
         {
-            // Display specific errors returned from the backend validator/handler
             foreach (var error in result.Errors)
             {
                 Snackbar.Add(error, Severity.Error);
@@ -738,45 +734,44 @@ Prevents excessive updates or API calls by waiting for a pause in user typing.
 
 ```razor
 <MudTextField @bind-Value="_searchTerm"
-              Label="Search Events"
-              Immediate="true" @* Triggers ValueChanged/OnDebounceIntervalElapsed on every keypress *@
-              DebounceInterval="300" @* Wait 300ms after last keypress before invoking OnDebounceIntervalElapsed *@
+              Label="Search {Entities}"
+              Immediate="true"
+              DebounceInterval="300"
               OnDebounceIntervalElapsed="OnSearch"
               Adornment="Adornment.End"
               AdornmentIcon="@Icons.Material.Filled.Search" />
 
 <MudGrid>
-    @foreach (var evt in _filteredEvents)
+    @foreach (var item in _filtered{Entities})
     {
         <MudItem xs="12" md="6" lg="4">
-            <EventCard Event="@evt" />
+            <{Entity}Card {Entity}="@item" />
         </MudItem>
     }
 </MudGrid>
 
 @code {
     private string _searchTerm = string.Empty;
-    private List<EventListDto> _events = new(); // Full list of events
-    private List<EventListDto> _filteredEvents = new(); // List displayed to user
+    private List<{Entity}ListDto> _{entities} = new();
+    private List<{Entity}ListDto> _filtered{Entities} = new();
 
     protected override async Task OnInitializedAsync()
     {
-        _events = await Mediator.Send(new GetEventListRequest()); // Load all events
-        _filteredEvents = _events; // Initially show all
+        _{entities} = await Mediator.Send(new Get{Entity}ListRequest());
+        _filtered{Entities} = _{entities};
     }
 
     private void OnSearch()
     {
-        // Apply client-side filtering based on _searchTerm
         if (string.IsNullOrWhiteSpace(_searchTerm))
         {
-            _filteredEvents = _events;
+            _filtered{Entities} = _{entities};
         }
         else
         {
-            _filteredEvents = _events
+            _filtered{Entities} = _{entities}
                 .Where(e => e.Title.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
-                           e.Description.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase))
+                           (e.Description?.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ?? false))
                 .ToList();
         }
     }
@@ -789,28 +784,28 @@ A dedicated section for applying multiple filter criteria.
 
 ```razor
 <MudGrid>
-    <MudItem xs="12" md="3"> @* Occupy 1/4 width on medium screens and up *@
+    <MudItem xs="12" md="3">
         <MudPaper Class="pa-4">
             <MudText Typo="Typo.h6" Class="mb-4">Filters</MudText>
 
-            <MudSelect @bind-Value="_filters.OrganizationId"
-                       Label="Organization"
+            <MudSelect @bind-Value="_filters.{ParentEntity}Id"
+                       Label="{ParentEntity}"
                        Clearable="true"
-                       OnClearButtonClick="ClearOrganization"
+                       OnClearButtonClick="Clear{ParentEntity}"
                        Class="mb-3">
-                @foreach (var org in _organizations)
+                @foreach (var item in _{parentEntities})
                 {
-                    <MudSelectItem Value="@org.Id">@org.Name</MudSelectItem>
+                    <MudSelectItem Value="@item.Id">@item.FullName</MudSelectItem>
                 }
             </MudSelect>
 
-            <MudSelect @bind-Value="_filters.AudienceAgeId"
-                       Label="Audience Age"
+            <MudSelect @bind-Value="_filters.{LookupEntity}Id"
+                       Label="{LookupEntity}"
                        Clearable="true"
                        Class="mb-4">
-                @foreach (var age in _audienceAges)
+                @foreach (var item in _{lookupEntities})
                 {
-                    <MudSelectItem Value="@age.Id">@age.Name</MudSelectItem>
+                    <MudSelectItem Value="@item.Id">@item.FullName</MudSelectItem>
                 }
             </MudSelect>
 
@@ -830,12 +825,12 @@ A dedicated section for applying multiple filter criteria.
         </MudPaper>
     </MudItem>
 
-    <MudItem xs="12" md="9"> @* Occupy 3/4 width on medium screens and up *@
+    <MudItem xs="12" md="9">
         <MudGrid>
-            @foreach (var evt in _filteredEvents)
+            @foreach (var item in _filtered{Entities})
             {
                 <MudItem xs="12" sm="6" lg="4">
-                    <EventCard Event="@evt" />
+                    <{Entity}Card {Entity}="@item" />
                 </MudItem>
             }
         </MudGrid>
@@ -843,41 +838,39 @@ A dedicated section for applying multiple filter criteria.
 </MudGrid>
 
 @code {
-    private EventFilterDto _filters = new(); // DTO for holding filter values
-    private List<EventListDto> _filteredEvents = new();
-    private List<OrganizationDto> _organizations = new();
-    private List<AudienceAgeDto> _audienceAges = new();
+    private {Entity}FilterDto _filters = new();
+    private List<{Entity}ListDto> _filtered{Entities} = new();
+    private List<{ParentEntity}Dto> _{parentEntities} = new();
+    private List<{LookupEntity}Dto> _{lookupEntities} = new();
 
     protected override async Task OnInitializedAsync()
     {
-        // Load initial filter options (organizations, audience ages)
         await LoadFilterOptions();
-        await ApplyFilters(); // Apply initial filters
+        await ApplyFilters();
     }
 
     private async Task LoadFilterOptions() { /* ... */ }
 
     private async Task ApplyFilters()
     {
-        var request = new GetEventListRequest // Assume GetEventListRequest accepts filter DTO
+        var request = new Get{Entity}ListRequest
         {
-            OrganizationId = _filters.OrganizationId,
-            AudienceAgeId = _filters.AudienceAgeId,
-            // ... other filters
+            {ParentEntity}Id = _filters.{ParentEntity}Id,
+            {LookupEntity}Id = _filters.{LookupEntity}Id,
         };
 
-        _filteredEvents = await Mediator.Send(request);
+        _filtered{Entities} = await Mediator.Send(request);
     }
 
     private async Task ClearAllFilters()
     {
-        _filters = new EventFilterDto(); // Reset filter DTO
+        _filters = new {Entity}FilterDto();
         await ApplyFilters();
     }
 
-    private void ClearOrganization()
+    private void Clear{ParentEntity}()
     {
-        _filters.OrganizationId = null; // Clear specific filter
+        _filters.{ParentEntity}Id = null;
     }
 }
 ```
@@ -893,10 +886,10 @@ Loads more data as the user scrolls to the bottom of a list, improving performan
 
 <div @ref="_scrollContainer" style="height: 600px; overflow-y: auto;">
     <MudGrid>
-        @foreach (var evt in _events)
+        @foreach (var item in _{entities})
         {
             <MudItem xs="12" md="6" lg="4">
-                <EventCard Event="@evt" />
+                <{Entity}Card {Entity}="@item" />
             </MudItem>
         }
     </MudGrid>
@@ -908,62 +901,59 @@ Loads more data as the user scrolls to the bottom of a list, improving performan
             <MudText Class="ml-2">Loading more...</MudText>
         </div>
     }
-    else if (_events.Any())
+    else if (_{entities}.Any())
     {
         <div class="d-flex justify-center py-4">
-            <MudText Color="Color.Secondary">No more events to load.</MudText>
+            <MudText Color="Color.Secondary">No more {entities} to load.</MudText>
         </div>
     }
 </div>
 
 @code {
     private ElementReference _scrollContainer;
-    private ElementReference _loadMoreTrigger; // A placeholder element at the bottom to observe
-    private List<EventListDto> _events = new();
+    private ElementReference _loadMoreTrigger;
+    private List<{Entity}ListDto> _{entities} = new();
     private int _currentPage = 1;
-    private bool _hasMore = true; // Indicates if there's more data to load
+    private bool _hasMore = true;
     private bool _isLoading = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            // Initialize the Intersection Observer via JS interop
-            // This JS function will invoke 'LoadMore' when '_loadMoreTrigger' becomes visible
             await JS.InvokeVoidAsync("app.registerIntersectionObserver", _loadMoreTrigger, DotNetObjectReference.Create(this), nameof(LoadMore));
-            await LoadMoreEvents(); // Load initial set
+            await LoadMore{Entities}();
         }
     }
 
-    [JSInvokable] // Mark method as invokable from JavaScript
+    [JSInvokable]
     public async Task LoadMore()
     {
-        if (_isLoading || !_hasMore) return; // Prevent multiple loads or loading if no more data
+        if (_isLoading || !_hasMore) return;
 
         _isLoading = true;
         _currentPage++;
 
-        await LoadMoreEvents();
+        await LoadMore{Entities}();
 
         _isLoading = false;
-        StateHasChanged(); // Force re-render after data is loaded
+        StateHasChanged();
     }
 
-    private async Task LoadMoreEvents()
+    private async Task LoadMore{Entities}()
     {
-        var request = new GetEventListRequest
+        var request = new Get{Entity}ListRequest
         {
             Page = _currentPage,
-            PageSize = 12 // Number of items to load per scroll
+            PageSize = 12
         };
 
-        // Assume this request returns a PagedResultDto with a list of events and a TotalCount or HasMore flag
-        var result = await Mediator.Send(request); 
-        
-        if (result?.Events != null && result.Events.Any())
+        var result = await Mediator.Send(request);
+
+        if (result?.{Entities} != null && result.{Entities}.Any())
         {
-            _events.AddRange(result.Events);
-            _hasMore = result.HasMore; // Update hasMore based on backend response
+            _{entities}.AddRange(result.{Entities});
+            _hasMore = result.HasMore;
         }
         else
         {
@@ -971,7 +961,6 @@ Loads more data as the user scrolls to the bottom of a list, improving performan
         }
     }
 
-    // Don't forget to dispose of the Intersection Observer
     public void Dispose()
     {
         JS.InvokeVoidAsync("app.disposeIntersectionObserver", _loadMoreTrigger);
@@ -982,7 +971,6 @@ Loads more data as the user scrolls to the bottom of a list, improving performan
 **`wwwroot/js/site.js` (for Intersection Observer)**:
 ```javascript
 window.app = {
-    // Stores observers by element to clean them up later
     _intersectionObservers: new Map(),
 
     registerIntersectionObserver: (element, dotnetHelper, methodName) => {
@@ -992,9 +980,9 @@ window.app = {
         }
 
         const options = {
-            root: element.parentElement, // Observe relative to parent scroll container
+            root: element.parentElement,
             rootMargin: '0px',
-            threshold: 0.1 // Trigger when 10% of target is visible
+            threshold: 0.1
         };
 
         const observer = new IntersectionObserver(entries => {
@@ -1018,6 +1006,236 @@ window.app = {
         }
     }
 };
+```
+
+---
+
+## 9. Pagination Patterns
+
+Client-side pagination using `MudPagination` for filtered data with page info display.
+
+### Client-Side Pagination with MudPagination
+
+```razor
+<MudContainer>
+    <!-- Filters Section -->
+    <div class="filters mb-4">
+        <MudTextField @bind-Value="searchText"
+                      Placeholder="Search"
+                      Immediate="true"
+                      DebounceInterval="500"
+                      TextChanged="OnSearch" />
+    </div>
+
+    <!-- Data Grid -->
+    <MudGrid>
+        @if (isLoading)
+        {
+            @for (int i = 0; i < 6; i++)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
+                </MudItem>
+            }
+        }
+        else if (!Filtered{Entities}.Any())
+        {
+            <MudItem xs="12" Class="d-flex justify-center align-center pa-8">
+                <div class="text-center">
+                    <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Color="Color.Secondary" />
+                    <MudText Typo="Typo.h6" Color="Color.Secondary">No {entities} found</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">
+                        Try adjusting your filters or search query
+                    </MudText>
+                </div>
+            </MudItem>
+        }
+        else
+        {
+            @foreach (var item in Filtered{Entities})
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <{Entity}Card {Entity}="@item" />
+                </MudItem>
+            }
+        }
+    </MudGrid>
+
+    <!-- Pagination Controls -->
+    <div class="pagination-wrapper d-flex justify-center mt-4">
+        <MudPagination Count="@TotalPages"
+                       Selected="@currentPage"
+                       SelectedChanged="@((int page) => OnPageChanged(page))"
+                       Color="Color.Primary"
+                       ShowFirstButton="true"
+                       ShowLastButton="true" />
+    </div>
+
+    <!-- Results Info -->
+    <div class="results-info d-flex justify-center mt-2">
+        <MudText Typo="Typo.body2" Color="Color.Surface">
+            Showing @((currentPage - 1) * itemsPerPage + 1) - @(Math.Min(currentPage * itemsPerPage, AllFiltered{Entities}.Count)) of @AllFiltered{Entities}.Count {entities} (Page @currentPage of @TotalPages)
+        </MudText>
+    </div>
+</MudContainer>
+
+@code {
+    private int currentPage = 1;
+    private int itemsPerPage = 6;
+    private string searchText = "";
+    private {IdType}? selectedCategoryId;
+    private bool isLoading = true;
+    private ICollection<{Entity}ListDto> all{Entities} = new List<{Entity}ListDto>();
+
+    /// <summary>
+    /// All {entities} after applying filters (before pagination).
+    /// </summary>
+    private List<{Entity}ListDto> AllFiltered{Entities}
+    {
+        get
+        {
+            var filtered{Entities} = all{Entities}.AsEnumerable();
+
+            if (!string.IsNullOrEmpty(searchText))
+            {
+                filtered{Entities} = filtered{Entities}.Where(e =>
+                    e.Title.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+                    (e.Description?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false));
+            }
+
+            if (selectedCategoryId.HasValue)
+            {
+                filtered{Entities} = filtered{Entities}.Where(e => e.CategoryId == selectedCategoryId.Value);
+            }
+
+            return filtered{Entities}.ToList();
+        }
+    }
+
+    /// <summary>
+    /// Paginated subset of filtered {entities} for current page display.
+    /// </summary>
+    private List<{Entity}ListDto> Filtered{Entities}
+    {
+        get
+        {
+            return AllFiltered{Entities}
+                .Skip((currentPage - 1) * itemsPerPage)
+                .Take(itemsPerPage)
+                .ToList();
+        }
+    }
+
+    private int TotalPages
+    {
+        get
+        {
+            var count = AllFiltered{Entities}.Count;
+            return count > 0 ? (int)Math.Ceiling((double)count / itemsPerPage) : 1;
+        }
+    }
+
+    private void OnPageChanged(int page)
+    {
+        currentPage = page;
+    }
+
+    /// <summary>
+    /// CRITICAL: Always reset currentPage = 1 when any filter changes.
+    /// </summary>
+    private void OnSearch(string value)
+    {
+        searchText = value;
+        currentPage = 1; // ✅ Reset pagination on filter change
+    }
+
+    private void OnCategoryChanged({IdType}? categoryId)
+    {
+        selectedCategoryId = categoryId;
+        currentPage = 1; // ✅ Reset pagination on filter change
+    }
+}
+```
+
+### Key Pagination Patterns
+
+| Pattern | Description |
+|---------|-------------|
+| `AllFiltered{Entities}` | Property that applies all filters but NO pagination |
+| `Filtered{Entities}` | Property that applies Skip/Take for current page |
+| `TotalPages` | Computed from `AllFiltered{Entities}.Count / itemsPerPage` |
+| `currentPage = 1` | **Always reset** when any filter changes |
+
+### MudPagination Component Properties
+
+```razor
+<MudPagination
+    Count="@TotalPages"               @* Total number of pages *@
+    Selected="@currentPage"           @* Current selected page (1-indexed) *@
+    SelectedChanged="OnPageChanged"   @* Event callback when page changes *@
+    Color="Color.Primary"             @* Button color *@
+    ShowFirstButton="true"            @* Show |< button *@
+    ShowLastButton="true"             @* Show >| button *@
+    ShowPreviousButton="true"         @* Show < button (default true) *@
+    ShowNextButton="true"             @* Show > button (default true) *@
+    BoundaryCount="1"                 @* Pages shown at start/end *@
+    MiddleCount="3"                   @* Pages shown around current *@
+/>
+```
+
+### Results Info Pattern
+
+Always show pagination context to users:
+
+```razor
+<MudText Typo="Typo.body2">
+    Showing @StartItem - @EndItem of @TotalItems results
+</MudText>
+
+@code {
+    private int StartItem => (currentPage - 1) * itemsPerPage + 1;
+    private int EndItem => Math.Min(currentPage * itemsPerPage, AllFiltered{Entities}.Count);
+    private int TotalItems => AllFiltered{Entities}.Count;
+}
+```
+
+### Server-Side Pagination (Alternative)
+
+For large datasets, use server-side pagination with `PaginatedResult<T>`:
+
+```razor
+@code {
+    private PaginatedResult<{Entity}ListDto>? _pagedResult;
+    private int _currentPage = 1;
+    private int _pageSize = 20;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPageAsync(_currentPage);
+    }
+
+    private async Task LoadPageAsync(int page)
+    {
+        isLoading = true;
+        try
+        {
+            _pagedResult = await {Entity}Service.Get{Entities}PagedAsync(page, _pageSize);
+            _currentPage = page;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task OnPageChanged(int page)
+    {
+        await LoadPageAsync(page);
+    }
+
+    private int TotalPages => _pagedResult?.TotalPages ?? 1;
+    private IEnumerable<{Entity}ListDto> Items => _pagedResult?.Items ?? Enumerable.Empty<{Entity}ListDto>();
+}
 ```
 
 ---

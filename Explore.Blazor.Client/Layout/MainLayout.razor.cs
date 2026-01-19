@@ -1,0 +1,150 @@
+using Explore.Blazor.Client.Services;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.Extensions.Logging;
+using Microsoft.JSInterop;
+using MudBlazor;
+
+namespace Explore.Blazor.Client.Layout;
+
+public partial class MainLayout : LayoutComponentBase
+{
+    private bool _isDarkMode = false;
+    private bool _isInitialized = false;
+    private MudTheme? _theme;
+
+    [Inject]
+    protected IUserService UserService { get; set; } = null!;
+
+    [Inject]
+    protected AuthenticationStateProvider AuthenticationStateProvider { get; set; } = null!;
+
+    [Inject]
+    protected IJSRuntime JSRuntime { get; set; } = null!;
+
+    [Inject]
+    protected ILogger<MainLayout> Logger { get; set; } = null!;
+
+    [CascadingParameter(Name = "InitialTheme")]
+    public bool? InitialTheme { get; set; }
+
+    public string DarkLightModeButtonIcon => _isDarkMode switch
+    {
+        true => Icons.Material.Rounded.AutoMode,
+        false => Icons.Material.Outlined.DarkMode,
+    };
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        // Use the cascaded initial theme from cookie if available
+        if (InitialTheme.HasValue)
+        {
+            _isDarkMode = InitialTheme.Value;
+        }
+
+        _theme = new()
+        {
+            PaletteLight = _lightPalette,
+            PaletteDark = _darkPalette,
+            LayoutProperties = new LayoutProperties()
+        };
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Sync user in background after first render to improve perceived performance
+            try
+            {
+                var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+                if (authState.User.Identity?.IsAuthenticated == true)
+                {
+                    await UserService.SyncUserAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Error syncing user");
+            }
+
+            // Read theme from localStorage (client-side source of truth)
+            try
+            {
+                var storedTheme = await JSRuntime.InvokeAsync<string>("ExploreTheme.getStoredTheme");
+                if (!string.IsNullOrEmpty(storedTheme))
+                {
+                    var isDarkStorage = storedTheme == "dark";
+                    if (_isDarkMode != isDarkStorage)
+                    {
+                        _isDarkMode = isDarkStorage;
+                        StateHasChanged();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Error reading theme from localStorage");
+            }
+
+            _isInitialized = true;
+        }
+    }
+
+    private async Task DarkModeToggle()
+    {
+        _isDarkMode = !_isDarkMode;
+        var themeValue = _isDarkMode ? "dark" : "light";
+
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("ExploreTheme.setStoredTheme", themeValue);
+            await JSRuntime.InvokeVoidAsync("ExploreTheme.setThemeCookie", themeValue);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error saving theme");
+        }
+    }
+
+    private readonly PaletteLight _lightPalette = new()
+    {
+        Black = "#110e2d",
+        AppbarText = "#424242",
+        AppbarBackground = "rgba(255,255,255,0.8)",
+        DrawerBackground = "#ffffff",
+        GrayLight = "#e8e8e8",
+        GrayLighter = "#f9f9f9",
+    };
+
+    private readonly PaletteDark _darkPalette = new()
+    {
+        Primary = "#7e6fff",
+        Surface = "#1e1e2d",
+        Background = "#1a1a27",
+        BackgroundGray = "#151521",
+        AppbarText = "#92929f",
+        AppbarBackground = "rgba(26,26,39,0.8)",
+        DrawerBackground = "#1a1a27",
+        ActionDefault = "#74718e",
+        ActionDisabled = "#9999994d",
+        ActionDisabledBackground = "#605f6d4d",
+        TextPrimary = "#b2b0bf",
+        TextSecondary = "#92929f",
+        TextDisabled = "#ffffff33",
+        DrawerIcon = "#92929f",
+        DrawerText = "#92929f",
+        GrayLight = "#2a2833",
+        GrayLighter = "#1e1e2d",
+        Info = "#4a86ff",
+        Success = "#3dcb6c",
+        Warning = "#ffb545",
+        Error = "#ff3f5f",
+        LinesDefault = "#33323e",
+        TableLines = "#33323e",
+        Divider = "#292838",
+        OverlayLight = "#1e1e2d80",
+    };
+}

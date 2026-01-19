@@ -3,23 +3,20 @@
 @using Explore.Blazor.Client.Services.Contracts
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize(Roles = "Admin")]
-@inject ILanguageService LanguageService
-@inject ISnackbar Snackbar
-@inject NavigationManager Nav
 
-<div class="admin-lookup">
+<div class="admin-languages">
     <!-- Hero Section -->
-    <MudPaper Class="admin-lookup__hero admin-lookup__hero--language" Elevation="0">
-        <div class="admin-lookup__hero-top">
-            <div class="admin-lookup__hero-title">
-                <div class="admin-lookup__hero-badge admin-lookup__hero-badge--language">
+    <MudPaper Class="admin-languages__hero" Elevation="0">
+        <div class="admin-languages__hero-top">
+            <div class="admin-languages__hero-title">
+                <div class="admin-languages__hero-badge">
                     <MudIcon Icon="@Icons.Material.Filled.Language" Color="Color.Success" />
                 </div>
                 <div>
-                    <MudText Typo="Typo.h4" Style="font-weight:800; letter-spacing:.2px;">
+                    <MudText Typo="Typo.h4" Class="admin-languages__title-text">
                         Languages
                     </MudText>
-                    <MudText Typo="Typo.body2" Class="admin-lookup__hero-subtitle">
+                    <MudText Typo="Typo.body2" Class="admin-languages__hero-subtitle">
                         Supported languages for events (read-only lookup table)
                     </MudText>
                 </div>
@@ -30,29 +27,29 @@
                            Color="Color.Default"
                            StartIcon="@Icons.Material.Filled.ArrowBack"
                            OnClick="@(() => Nav.NavigateTo("/admin"))"
-                           Style="border-radius:999px; padding:10px 16px;">
+                           Class="admin-languages__action-btn">
                     Back to Admin
                 </MudButton>
                 <MudButton Variant="Variant.Filled"
                            Color="Color.Success"
                            StartIcon="@Icons.Material.Filled.Refresh"
                            OnClick="LoadData"
-                           Style="border-radius:999px; padding:10px 16px;">
+                           Class="admin-languages__action-btn">
                     Refresh
                 </MudButton>
             </MudStack>
         </div>
 
         <!-- Stats -->
-        <div class="admin-lookup__stats">
-            <div class="admin-lookup__stat">
-                <div class="admin-lookup__stat-row">
-                    <div class="admin-lookup__stat-icon admin-lookup__stat-icon--language">
+        <div class="admin-languages__stats">
+            <div class="admin-languages__stat">
+                <div class="admin-languages__stat-row">
+                    <div class="admin-languages__stat-icon">
                         <MudIcon Icon="@Icons.Material.Filled.Language" Color="Color.Success" />
                     </div>
                     <div>
-                        <div class="admin-lookup__stat-label">Total Languages</div>
-                        <div class="admin-lookup__stat-value">@_items.Count</div>
+                        <div class="admin-languages__stat-label">Total Languages</div>
+                        <div class="admin-languages__stat-value">@_items.Count</div>
                     </div>
                 </div>
             </div>
@@ -61,7 +58,7 @@
 
     @if (_isLoading)
     {
-        <MudPaper Class="admin-lookup__panel" Elevation="0" Style="margin-top:14px;">
+        <MudPaper Class="admin-languages__panel" Elevation="0">
             <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="py-4">
                 <MudProgressCircular Color="Color.Success" Size="Size.Large" Indeterminate="true" />
                 <MudText Typo="Typo.body1">Loading languages…</MudText>
@@ -70,9 +67,9 @@
     }
     else
     {
-        <div class="admin-lookup__section">
+        <div class="admin-languages__section">
             <!-- Info Banner -->
-            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-3" Style="border-radius:14px;">
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="admin-languages__alert mb-3">
                 <MudText Typo="Typo.body2">
                     <strong>Read-only lookup table.</strong> Languages are system-defined values.
                     Contact system administrator if changes are needed.
@@ -80,7 +77,7 @@
             </MudAlert>
 
             <!-- Table -->
-            <MudPaper Class="admin-lookup__table-panel" Elevation="0">
+            <MudPaper Class="admin-languages__table-panel" Elevation="0">
                 <MudTable Items="@_items"
                           Dense="true"
                           Hover="true"
@@ -89,7 +86,7 @@
                           Loading="@_isLoading"
                           LoadingProgressColor="Color.Success">
                     <HeaderContent>
-                        <MudTh Style="width:80px">ID</MudTh>
+                        <MudTh Class="admin-languages__col-id">ID</MudTh>
                         <MudTh>Name</MudTh>
                         <MudTh>Code</MudTh>
                         <MudTh>Description</MudTh>
@@ -101,9 +98,9 @@
                             </MudChip>
                         </MudTd>
                         <MudTd DataLabel="Name">
-                            <div class="admin-lookup__name-cell">
+                            <div class="admin-languages__name-cell">
                                 <MudIcon Icon="@Icons.Material.Filled.Language" Size="Size.Small" Color="Color.Success" />
-                                <MudText Typo="Typo.body2" Style="font-weight:600;">@context.FullName</MudText>
+                                <MudText Typo="Typo.body2" Class="admin-languages__name-text">@context.FullName</MudText>
                             </div>
                         </MudTd>
                         <MudTd DataLabel="Code">
@@ -112,16 +109,16 @@
                             </MudChip>
                         </MudTd>
                         <MudTd DataLabel="Description">
-                            <MudText Typo="Typo.body2" Class="admin-lookup__muted">
+                            <MudText Typo="Typo.body2" Class="admin-languages__muted">
                                 @(context.Description ?? "—")
                             </MudText>
                         </MudTd>
                     </RowTemplate>
                     <NoRecordsContent>
-                        <div class="admin-lookup__empty">
+                        <div class="admin-languages__empty">
                             <MudIcon Icon="@Icons.Material.Filled.Language" Size="Size.Large" />
-                            <MudText Typo="Typo.h6" Style="margin-top:10px; font-weight:800;">No languages found</MudText>
-                            <MudText Typo="Typo.body2" Class="admin-lookup__muted">
+                            <MudText Typo="Typo.h6" Class="admin-languages__empty-title">No languages found</MudText>
+                            <MudText Typo="Typo.body2" Class="admin-languages__muted">
                                 The lookup table is empty.
                             </MudText>
                         </div>
@@ -131,31 +128,3 @@
         </div>
     }
 </div>
-
-@code {
-    private ICollection<LanguageListDto> _items = new List<LanguageListDto>();
-    private bool _isLoading = true;
-
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadData();
-    }
-
-    private async Task LoadData()
-    {
-        _isLoading = true;
-        try
-        {
-            _items = await LanguageService.GetLanguagesAsync();
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Failed to load languages: {ex.Message}", Severity.Error);
-            _items = new List<LanguageListDto>();
-        }
-        finally
-        {
-            _isLoading = false;
-        }
-    }
-}

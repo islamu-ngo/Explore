@@ -21,6 +21,7 @@ namespace Explore.Persistence.Repositories
             return await _dbContext.Organizations
                 .Include(o => o.ApprovalStatus)
                 .Include(o => o.Actor)
+                    .ThenInclude(a => a!.ProfilePicture)
                 .Include(o => o.Tenant)
                 .ToListAsync();
         }
@@ -30,6 +31,7 @@ namespace Explore.Persistence.Repositories
             return await _dbContext.Organizations
                 .Include(o => o.ApprovalStatus)
                 .Include(o => o.Actor)
+                    .ThenInclude(a => a!.ProfilePicture)
                 .Include(o => o.Tenant)
                 .Include(o => o.Members)
                     .ThenInclude(m => m.User)
@@ -45,6 +47,7 @@ namespace Explore.Persistence.Repositories
             return await _dbContext.Organizations
                 .Include(o => o.ApprovalStatus)
                 .Include(o => o.Actor)
+                    .ThenInclude(a => a!.ProfilePicture)
                 .Include(o => o.Members)
                     .ThenInclude(m => m.OrganizationRole)
                 .Where(o => o.Members.Any(m => m.UserId == userId))
@@ -57,6 +60,7 @@ namespace Explore.Persistence.Repositories
                 .AsNoTracking()
                 .Include(o => o.ApprovalStatus)
                 .Include(o => o.Actor)
+                    .ThenInclude(a => a!.ProfilePicture)
                 .Include(o => o.Tenant)
                 .OrderBy(o => o.FullName);
 
@@ -75,6 +79,7 @@ namespace Explore.Persistence.Repositories
                 .AsNoTracking()
                 .Include(o => o.ApprovalStatus)
                 .Include(o => o.Actor)
+                    .ThenInclude(a => a!.ProfilePicture)
                 .Include(o => o.Members)
                     .ThenInclude(m => m.OrganizationRole)
                 .Where(o => o.Members.Any(m => m.UserId == userId))

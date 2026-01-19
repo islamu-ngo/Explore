@@ -2,6 +2,7 @@ using Explore.Blazor.Client.Configuration;
 using Explore.Blazor.Client.Pages;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Extensions;
 using Explore.Blazor.Components;
 using Blazouter.Extensions;
 using Blazouter.Server.Extensions;
@@ -12,6 +13,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using MudBlazor.Services;
@@ -22,7 +24,12 @@ using Microsoft.AspNetCore.Components.Server;
 using Yarp.ReverseProxy.Configuration;
 using Yarp.ReverseProxy.Transforms;
 
+// Graceful shutdown tracking for zero-downtime deployments
+var isShuttingDown = false;
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Configuration.AddInfisicalBlazorCompatibility();
 
 builder.AddServiceDefaults();
 
@@ -52,6 +59,28 @@ builder.Services.AddScoped<IAuthStateService, AuthStateService>();
 builder.Services.AddHttpClient("S3Upload", client =>
 {
     client.Timeout = TimeSpan.FromMinutes(5); // Allow large file uploads
+});
+
+// Register named HTTP client for BFF API calls from server-side Blazor
+// This is used by ImageStorageService to get presigned URLs
+builder.Services.AddHttpClient("BffClient", client =>
+{
+    // In server-side mode, we call the API directly with access token forwarding
+    client.BaseAddress = new Uri(builder.Configuration["ExploreApi:BaseUrl"] ?? "https://localhost:7039/");
+})
+.AddHttpMessageHandler<AccessTokenForwardingHandler>()
+.ConfigurePrimaryHttpMessageHandler(() =>
+{
+    var handler = new HttpClientHandler();
+    if (builder.Environment.IsDevelopment())
+    {
+        handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
+        {
+            var isLocalhost = message.RequestUri?.Host.Contains("localhost") ?? false;
+            return isLocalhost || errors == System.Net.Security.SslPolicyErrors.None;
+        };
+    }
+    return handler;
 });
 
 // Blazor
@@ -217,7 +246,26 @@ builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddControllersWithViews(options =>
     options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()));
 
+// Shutdown-aware health check for zero-downtime deployments (Coolify rolling updates)
+// When SIGTERM is received, health checks return unhealthy so load balancer stops routing traffic
+builder.Services.AddHealthChecks()
+    .AddCheck("shutdown", () =>
+    {
+        if (isShuttingDown)
+            return HealthCheckResult.Unhealthy("Application is shutting down");
+        return HealthCheckResult.Healthy();
+    }, tags: ["live", "ready"]);
+
 var app = builder.Build();
+
+// Register graceful shutdown handler for zero-downtime deployments
+// When Coolify sends SIGTERM, we set isShuttingDown to true
+// This causes health checks to return 503, so load balancer stops routing traffic
+app.Lifetime.ApplicationStopping.Register(() =>
+{
+    isShuttingDown = true;
+    app.Logger.LogInformation("Application is shutting down, health checks will return unhealthy...");
+});
 
 app.MapDefaultEndpoints();
 

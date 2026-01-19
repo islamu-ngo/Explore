@@ -1,14 +1,18 @@
 ---
 name: code-refactor-master
-description: Enforces Clean Architecture and CQRS patterns for ISLAMU Event. Reviews code for compliance with architectural rules.
+description: Enforces Clean Architecture and CQRS patterns for {Project}. Reviews code for compliance with architectural rules.
 tools: All tools
 ---
+
+> **Project-Agnostic Code Refactoring Agent**
+>
+> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../docs/TEMPLATE_GLOSSARY.md).
 
 # Code Refactor Master Agent
 
 ## Purpose
 
-Enforces Clean Architecture and CQRS patterns for ISLAMU Event project. Reviews code for architectural compliance and suggests refactoring improvements.
+Enforces Clean Architecture and CQRS patterns for {Project} project. Reviews code for architectural compliance and suggests refactoring improvements.
 
 ## When This Agent Activates
 
@@ -115,7 +119,7 @@ This checklist helps identify architectural violations and ensure compliance wit
 ### Step 1: Identify Violations
 
 Use `dotnet build` to find compilation errors. For pattern-specific violations, leverage search commands.
-- **Example**: Search for DI validator injection: `Select-String -Path "Explore.Application/**/*.cs" -Pattern "IValidator<" -Recurse`
+- **Example**: Search for DI validator injection: `Select-String -Path "{Project}.Application/**/*.cs" -Pattern "IValidator<" -Recurse`
 
 ### Step 2: Fix Pattern Violations
 
@@ -125,7 +129,7 @@ Refer to the relevant skills for the correct implementation patterns and example
 
 ```powershell
 # Build the solution
-dotnet build Explore.sln
+dotnet build {Project}.sln
 
 # Run tests
 dotnet test
@@ -134,10 +138,10 @@ dotnet test
 ---
 
 **Related Skills**:
-- [`clean-architecture-rules`](../clean-architecture-rules/SKILL.md) - **CRITICAL**: Dependency rules, layer boundaries, and manual validator instantiation.
-- [`cqrs-mediatr-guidelines`](../cqrs-mediatr-guidelines/SKILL.md) - **CRITICAL**: CQRS patterns, handler logic, DTO mapping, and FluentValidation integration.
-- [`dotnet-efcore-guidelines`](../dotnet-efcore-guidelines/SKILL.md) - **CRITICAL**: EF Core conventions, repository patterns, entity configurations, and data type usage.
-- [`auth-patterns`](../auth-patterns/SKILL.md) - Authentication and authorization rules, including user ID extraction.
-- [`error-tracking`](../error-tracking/SKILL.md) - Guidance on logging and error handling.
+- [`clean-architecture-rules`](../skills/clean-architecture-rules/SKILL.md) - **CRITICAL**: Dependency rules, layer boundaries, and manual validator instantiation.
+- [`cqrs-mediatr-guidelines`](../skills/cqrs-mediatr-guidelines/SKILL.md) - **CRITICAL**: CQRS patterns, handler logic, DTO mapping, and FluentValidation integration.
+- [`dotnet-efcore-guidelines`](../skills/dotnet-efcore-guidelines/SKILL.md) - **CRITICAL**: EF Core conventions, repository patterns, entity configurations, and data type usage.
+- [`auth-patterns`](../skills/auth-patterns/SKILL.md) - Authentication and authorization rules, including user ID extraction.
+- [`error-tracking`](../skills/error-tracking/SKILL.md) - Guidance on logging and error handling.
 
 **Enforcement Level**: ENFORCE (Blocks violations during review)

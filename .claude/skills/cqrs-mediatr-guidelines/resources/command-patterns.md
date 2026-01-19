@@ -1,136 +1,139 @@
-# Command Patterns - ISLAMU Event Conventions
+# Command Patterns - Project Conventions
+
+> **Project-Agnostic Command Patterns**
+>
+> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../../docs/TEMPLATE_GLOSSARY.md).
 
 ## Key Pattern: BaseCommandResponse + DTO + Manual Validation
 
-Commands in ISLAMU Event use a specific pattern different from standard MediatR CQRS.
+Commands in Clean Architecture projects use a specific pattern different from standard MediatR CQRS.
 
 ## Structure
 
 ```
-Explore.Application/Features/Events/
+{Project}.Application/Features/{Entities}/
 ├── Requests/Commands/
-│   ├── CreateEventCommand.cs        # Contains DTO property
-│   ├── UpdateEventCommand.cs
-│   └── DeleteEventCommand.cs
+│   ├── Create{Entity}Command.cs        # Contains DTO property
+│   ├── Update{Entity}Command.cs
+│   └── Delete{Entity}Command.cs
 └── Handlers/Commands/
-    ├── CreateEventCommandHandler.cs  # Manual validation inside
-    ├── UpdateEventCommandHandler.cs
-    └── DeleteEventCommandHandler.cs
+    ├── Create{Entity}CommandHandler.cs  # Manual validation inside
+    ├── Update{Entity}CommandHandler.cs
+    └── Delete{Entity}CommandHandler.cs
 
-Explore.Application/DTOs/Event/
-├── CreateEventDto.cs
-├── UpdateEventDto.cs
+{Project}.Application/DTOs/{Entity}/
+├── Create{Entity}Dto.cs
+├── Update{Entity}Dto.cs
 └── Validators/
-    ├── CreateEventDtoValidator.cs   # FluentValidation validators
-    └── UpdateEventDtoValidator.cs
+    ├── Create{Entity}DtoValidator.cs   # FluentValidation validators
+    └── Update{Entity}DtoValidator.cs
 ```
 
 ## Create Command Pattern
 
 ### 1. Command (Request)
 
-**Real Example from Event**:
+**Example**:
 ```csharp
-// File: Explore.Application/Features/Events/Requests/Commands/CreateEventCommand.cs
-namespace Explore.Application.Features.Events.Requests.Commands;
+// File: {Project}.Application/Features/{Entities}/Requests/Commands/Create{Entity}Command.cs
+namespace {Project}.Application.Features.{Entities}.Requests.Commands;
 
-using Explore.Application.DTOs.Event;
-using Explore.Application.Responses;
+using {Project}.Application.DTOs.{Entity};
+using {Project}.Application.Responses;
 using MediatR;
 
-public class CreateEventCommand : IRequest<BaseCommandResponse<Guid>>
+public class Create{Entity}Command : IRequest<BaseCommandResponse<{IdType}>>
 {
-    public CreateEventDto EventDto { get; set; }
+    public Create{Entity}Dto {Entity}Dto { get; set; } = null!;
 }
 ```
 
 **Key Points**:
 - ✅ Command wraps a DTO, not individual properties
-- ✅ Returns `BaseCommandResponse<Guid>`, not plain `Guid`
+- ✅ Returns `BaseCommandResponse<{IdType}>`, not plain `{IdType}`
 - ✅ Uses MediatR's `IRequest<TResponse>`
 
 ### 2. DTO (Create Payload)
 
-**Real Example from Event**:
+**Example**:
 ```csharp
-// File: Explore.Application/DTOs/Event/CreateEventDto.cs
-namespace Explore.Application.DTOs.Event;
+// File: {Project}.Application/DTOs/{Entity}/Create{Entity}Dto.cs
+namespace {Project}.Application.DTOs.{Entity};
 
 using System;
 
-public class CreateEventDto
+public class Create{Entity}Dto
 {
-    public string Title { get; set; }
+    public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public string? Slug { get; set; }
 
-    public int EventTypeId { get; set; }
-    public int AudienceGenderId { get; set; }
-    public int AudienceAgeId { get; set; }
+    public {LookupIdType} {LookupEntity}Id { get; set; }
+    public {LookupIdType} {RelatedEntity1}Id { get; set; }
+    public {LookupIdType} {RelatedEntity2}Id { get; set; }
 
     /// <summary>
-    /// Optional: the organization that owns this event.
+    /// Optional: the parent entity that owns this entity.
     /// If provided, the handler enforces admin membership.
     /// </summary>
-    public Guid? OrganizationId { get; set; }
+    public {IdType}? {ParentEntity}Id { get; set; }
 
     public decimal? Price { get; set; }
     public string? CurrencyCode { get; set; }
 
     // Featured Image (optional)
-    public Guid? FeaturedImageId { get; set; }
+    public {IdType}? FeaturedImageId { get; set; }
 
-    public bool IsRegistrationRequired { get; set; }
-    public string? ExternalRegistrationUrl { get; set; }
+    public bool IsActive { get; set; }
+    public string? ExternalUrl { get; set; }
 
     // Defaults (DTO-level defaults are OK; do NOT add defaults in Domain entities)
-    public int EventStatusId { get; set; } = 1;
-    public int VisibilityTypeId { get; set; } = 1;
-    public int EventFormatId { get; set; } = 1;
+    public {LookupIdType} StatusId { get; set; } = 1;
+    public {LookupIdType} VisibilityTypeId { get; set; } = 1;
+    public {LookupIdType} FormatId { get; set; } = 1;
 
-    public int? MadhabId { get; set; }
-    public DateTimeOffset? FirstSessionDate { get; set; }
-    public DateTimeOffset? LastSessionDate { get; set; }
+    public {LookupIdType}? OptionalLookupId { get; set; }
+    public DateTimeOffset? StartDate { get; set; }
+    public DateTimeOffset? EndDate { get; set; }
     public string? Timezone { get; set; }
-    public string? EventUrl { get; set; }
 }
 ```
 
 **Conventions**:
 - ❌ No `Id` property (generated by system)
-- ✅ Foreign keys as IDs (e.g., `EventTypeId`, not `EventType`)
+- ✅ Foreign keys as IDs (e.g., `{LookupEntity}Id`, not `{LookupEntity}`)
 - ✅ All properties settable (no readonly)
 
 ### 3. Validator (Manual Instantiation)
 
-**Real Example from Event**:
+**Example**:
 ```csharp
-// File: Explore.Application/DTOs/Event/Validators/CreateEventDtoValidator.cs
-namespace Explore.Application.DTOs.Event.Validators;
+// File: {Project}.Application/DTOs/{Entity}/Validators/Create{Entity}DtoValidator.cs
+namespace {Project}.Application.DTOs.{Entity}.Validators;
 
 using FluentValidation;
-using Explore.Application.Contracts.Persistence;
+using {Project}.Application.Contracts.Persistence;
 
-public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
+public class Create{Entity}DtoValidator : AbstractValidator<Create{Entity}Dto>
 {
-    private readonly IAudienceAgeRepository _audienceAgeRepository;
-    private readonly IAudienceGenderRepository _audienceGenderRepository;
-    private readonly IEventTypeRepository _eventTypeRepository;
-    private readonly IOrganizationRepository _organizationRepository;
-    private readonly IStorageObjectRepository _storageObjectRepository;
+    private readonly I{RelatedEntity1}Repository _{relatedEntity1}Repository;
+    private readonly I{RelatedEntity2}Repository _{relatedEntity2}Repository;
+    private readonly I{LookupEntity}Repository _{lookupEntity}Repository;
+    private readonly I{ParentEntity}Repository _{parentEntity}Repository;
+    private readonly I{RelatedEntity3}Repository _{relatedEntity3}Repository;
 
-    public CreateEventDtoValidator(
-        IAudienceAgeRepository audienceAgeRepository,
-        IAudienceGenderRepository audienceGenderRepository,
-        IEventTypeRepository eventTypeRepository,
-        IOrganizationRepository organizationRepository,
-        IStorageObjectRepository storageObjectRepository)
+    public Create{Entity}DtoValidator(
+        I{RelatedEntity1}Repository {relatedEntity1}Repository,
+        I{RelatedEntity2}Repository {relatedEntity2}Repository,
+        I{LookupEntity}Repository {lookupEntity}Repository,
+        I{ParentEntity}Repository {parentEntity}Repository,
+        I{RelatedEntity3}Repository {relatedEntity3}Repository)
     {
-        _audienceAgeRepository = audienceAgeRepository;
-        _audienceGenderRepository = audienceGenderRepository;
-        _eventTypeRepository = eventTypeRepository;
-        _organizationRepository = organizationRepository;
-        _storageObjectRepository = storageObjectRepository;
+        _{relatedEntity1}Repository = {relatedEntity1}Repository;
+        _{relatedEntity2}Repository = {relatedEntity2}Repository;
+        _{lookupEntity}Repository = {lookupEntity}Repository;
+        _{parentEntity}Repository = {parentEntity}Repository;
+        _{relatedEntity3}Repository = {relatedEntity3}Repository;
 
         RuleFor(x => x.Title)
             .NotEmpty().WithMessage("Title is required")
@@ -139,52 +142,52 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
         RuleFor(x => x.Description)
             .MaximumLength(5000).When(x => !string.IsNullOrEmpty(x.Description));
 
-        RuleFor(x => x.EventTypeId)
-            .NotEmpty().WithMessage("Event type is required")
+        RuleFor(x => x.{LookupEntity}Id)
+            .NotEmpty().WithMessage("{LookupEntity} is required")
             .MustAsync(async (id, cancellation) =>
             {
-                var exists = await _eventTypeRepository.Exists(id);
+                var exists = await _{lookupEntity}Repository.Exists(id);
                 return exists;
             })
-            .WithMessage("Event type not found");
+            .WithMessage("{LookupEntity} not found");
 
-        RuleFor(x => x.AudienceGenderId)
-            .NotEmpty().WithMessage("Audience gender is required")
+        RuleFor(x => x.{RelatedEntity2}Id)
+            .NotEmpty().WithMessage("{RelatedEntity2} is required")
             .MustAsync(async (id, cancellation) =>
             {
-                var exists = await _audienceGenderRepository.Exists(id);
+                var exists = await _{relatedEntity2}Repository.Exists(id);
                 return exists;
             })
-            .WithMessage("Audience gender not found");
+            .WithMessage("{RelatedEntity2} not found");
 
-        RuleFor(x => x.AudienceAgeId)
-            .NotEmpty().WithMessage("Audience age is required")
+        RuleFor(x => x.{RelatedEntity1}Id)
+            .NotEmpty().WithMessage("{RelatedEntity1} is required")
             .MustAsync(async (id, cancellation) =>
             {
-                var exists = await _audienceAgeRepository.Exists(id);
+                var exists = await _{relatedEntity1}Repository.Exists(id);
                 return exists;
             })
-            .WithMessage("Audience age not found");
+            .WithMessage("{RelatedEntity1} not found");
 
-        // OrganizationId is optional: validate only if provided
-        RuleFor(x => x.OrganizationId)
+        // {ParentEntity}Id is optional: validate only if provided
+        RuleFor(x => x.{ParentEntity}Id)
             .MustAsync(async (id, cancellation) =>
             {
                 if (!id.HasValue) return true;
-                return await _organizationRepository.Exists(id.Value);
+                return await _{parentEntity}Repository.Exists(id.Value);
             })
-            .When(x => x.OrganizationId.HasValue)
-            .WithMessage("Organization does not exist.");
+            .When(x => x.{ParentEntity}Id.HasValue)
+            .WithMessage("{ParentEntity} does not exist.");
 
         // FeaturedImageId is optional: validate only if provided
         RuleFor(x => x.FeaturedImageId)
             .MustAsync(async (id, cancellation) =>
             {
                 if (!id.HasValue) return true;
-                return await _storageObjectRepository.Exists(id.Value);
+                return await _{relatedEntity3}Repository.Exists(id.Value);
             })
             .When(x => x.FeaturedImageId.HasValue)
-            .WithMessage("FeaturedImageId does not exist.");
+            .WithMessage("Featured image does not exist.");
     }
 }
 ```
@@ -196,10 +199,10 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
 
 ### 4. Handler (Manual Validation + Mapping)
 
-**Real Example from Event**:
+**Example**:
 ```csharp
-// File: Explore.Application/Features/Events/Handlers/Commands/CreateEventCommandHandler.cs
-namespace Explore.Application.Features.Events.Handlers.Commands;
+// File: {Project}.Application/Features/{Entities}/Handlers/Commands/Create{Entity}CommandHandler.cs
+namespace {Project}.Application.Features.{Entities}.Handlers.Commands;
 
 using System;
 using System.Collections.Generic;
@@ -207,95 +210,86 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
-using Explore.Application.Contracts.Persistence;
-using Explore.Application.DTOs.Event.Validators;
-using Explore.Application.Features.Events.Requests.Commands;
-using Explore.Application.Responses;
-using Explore.Domain;
+using {Project}.Application.Contracts.Persistence;
+using {Project}.Application.DTOs.{Entity}.Validators;
+using {Project}.Application.Features.{Entities}.Requests.Commands;
+using {Project}.Application.Responses;
+using {Project}.Domain;
 using MediatR;
 
-public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, BaseCommandResponse<Guid>>
+public class Create{Entity}CommandHandler : IRequestHandler<Create{Entity}Command, BaseCommandResponse<{IdType}>>
 {
-    private readonly IEventRepository _eventRepository;
-    private readonly IEventSessionRepository _eventSessionRepository;
-    private readonly IActorRepository _actorRepository;
-    private readonly IOrganizationRepository _organizationRepository;
-    private readonly IOrganizationMemberRepository _organizationMemberRepository;
-    private readonly IAudienceAgeRepository _audienceAgeRepository;
-    private readonly IAudienceGenderRepository _audienceGenderRepository;
-    private readonly IEventTypeRepository _eventTypeRepository;
-    private readonly IStorageObjectRepository _storageObjectRepository;
+    private readonly I{Entity}Repository _{entity}Repository;
+    private readonly I{RelatedEntity1}Repository _{relatedEntity1}Repository;
+    private readonly I{RelatedEntity2}Repository _{relatedEntity2}Repository;
+    private readonly I{LookupEntity}Repository _{lookupEntity}Repository;
+    private readonly I{ParentEntity}Repository _{parentEntity}Repository;
+    private readonly I{RelatedEntity3}Repository _{relatedEntity3}Repository;
     private readonly IUserContext _userContext;
     private readonly ITenantContext _tenantContext;
     private readonly IMapper _mapper;
 
-    public CreateEventCommandHandler(
-        IEventRepository eventRepository,
-        IEventSessionRepository eventSessionRepository,
-        IAudienceAgeRepository audienceAgeRepository,
-        IAudienceGenderRepository audienceGenderRepository,
-        IEventTypeRepository eventTypeRepository,
-        IActorRepository actorRepository,
-        IOrganizationRepository organizationRepository,
-        IOrganizationMemberRepository organizationMemberRepository,
-        IStorageObjectRepository storageObjectRepository,
+    public Create{Entity}CommandHandler(
+        I{Entity}Repository {entity}Repository,
+        I{RelatedEntity1}Repository {relatedEntity1}Repository,
+        I{RelatedEntity2}Repository {relatedEntity2}Repository,
+        I{LookupEntity}Repository {lookupEntity}Repository,
+        I{ParentEntity}Repository {parentEntity}Repository,
+        I{RelatedEntity3}Repository {relatedEntity3}Repository,
         IUserContext userContext,
         ITenantContext tenantContext,
         IMapper mapper)
     {
-        _eventRepository = eventRepository;
-        _eventSessionRepository = eventSessionRepository;
-        _audienceAgeRepository = audienceAgeRepository;
-        _audienceGenderRepository = audienceGenderRepository;
-        _eventTypeRepository = eventTypeRepository;
-        _actorRepository = actorRepository;
-        _organizationRepository = organizationRepository;
-        _organizationMemberRepository = organizationMemberRepository;
-        _storageObjectRepository = storageObjectRepository;
+        _{entity}Repository = {entity}Repository;
+        _{relatedEntity1}Repository = {relatedEntity1}Repository;
+        _{relatedEntity2}Repository = {relatedEntity2}Repository;
+        _{lookupEntity}Repository = {lookupEntity}Repository;
+        _{parentEntity}Repository = {parentEntity}Repository;
+        _{relatedEntity3}Repository = {relatedEntity3}Repository;
         _userContext = userContext;
         _tenantContext = tenantContext;
         _mapper = mapper;
     }
 
-    public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
+    public async Task<BaseCommandResponse<{IdType}>> Handle(Create{Entity}Command request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
+        var response = new BaseCommandResponse<{IdType}>();
 
         // ✅ CRITICAL: Manual validator instantiation with dependencies
-        var validator = new CreateEventDtoValidator(
-            _audienceAgeRepository,
-            _audienceGenderRepository,
-            _eventTypeRepository,
-            _organizationRepository,
-            _storageObjectRepository);
+        var validator = new Create{Entity}DtoValidator(
+            _{relatedEntity1}Repository,
+            _{relatedEntity2}Repository,
+            _{lookupEntity}Repository,
+            _{parentEntity}Repository,
+            _{relatedEntity3}Repository);
 
-        var validationResult = await validator.ValidateAsync(request.EventDto, cancellationToken);
+        var validationResult = await validator.ValidateAsync(request.{Entity}Dto, cancellationToken);
 
         if (!validationResult.IsValid)
         {
             response.Success = false;
-            response.Message = "Event creation failed.";
+            response.Message = "{Entity} creation failed.";
             response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
             return response;
         }
 
         // ✅ Map DTO to entity using AutoMapper
-        var @event = _mapper.Map<Event>(request.EventDto);
-        
+        var {entity} = _mapper.Map<{Entity}>(request.{Entity}Dto);
+
         // ✅ Set server-side values (never from client)
-        @event.TotalViews = 0;
-        @event.TenantId = _tenantContext.TenantId;
+        {entity}.ViewCount = 0;
+        {entity}.TenantId = _tenantContext.TenantId;
 
         // NOTE: Ownership is enforced by resolving ActorId based on the current user
         // (organization context requires admin membership).
 
         // ✅ Save through repository
-        @event = await _eventRepository.Create(@event);
+        {entity} = await _{entity}Repository.Create({entity});
 
         // ✅ Success response
         response.Success = true;
-        response.Id = @event.Id;
-        response.Message = "Event created successfully.";
+        response.Id = {entity}.Id;
+        response.Message = "{Entity} created successfully.";
 
         return response;
     }
@@ -303,24 +297,24 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
 ```
 
 **Critical Patterns**:
-- ✅ Validator instantiated manually: `new CreateEventDtoValidator(...)`
+- ✅ Validator instantiated manually: `new Create{Entity}DtoValidator(...)`
 - ✅ All repositories passed to validator constructor
 - ✅ Map DTO → Entity with AutoMapper
-- ✅ Set default values (like `TotalViews = 0`) in handler
-- ✅ Return `BaseCommandResponse<Guid>` with Success/Message/Errors
+- ✅ Set default values (like `ViewCount = 0`) in handler
+- ✅ Return `BaseCommandResponse<{IdType}>` with Success/Message/Errors
 
-<h2>BaseCommandResponse Structure</h2>
+## BaseCommandResponse Structure
 
-**Real Example**:
+**Example**:
 ```csharp
-// File: Explore.Application/Responses/BaseCommandResponse.cs
-namespace Explore.Application.Responses;
+// File: {Project}.Application/Responses/BaseCommandResponse.cs
+namespace {Project}.Application.Responses;
 
 using System.Collections.Generic;
 
 public class BaseCommandResponse<T>
 {
-    public T Id { get; set; }
+    public T? Id { get; set; }
     public bool Success { get; set; } = true;
     public string Message { get; set; } = string.Empty;
     public List<string> Errors { get; set; } = new List<string>();
@@ -333,7 +327,7 @@ public class BaseCommandResponse<T>
 {
   "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
   "success": true,
-  "message": "Event created successfully.",
+  "message": "{Entity} created successfully.",
   "errors": []
 }
 
@@ -341,82 +335,82 @@ public class BaseCommandResponse<T>
 {
   "id": "00000000-0000-0000-0000-000000000000",
   "success": false,
-  "message": "Event creation failed.",
+  "message": "{Entity} creation failed.",
   "errors": [
     "Title is required",
-    "Event type not found"
+    "{LookupEntity} not found"
   ]
 }
 ```
 
 ## Update Command Pattern
 
-**Real Example from Event**:
+**Example**:
 ```csharp
-// File: Explore.Application/Features/Events/Requests/Commands/UpdateEventCommand.cs
-namespace Explore.Application.Features.Events.Requests.Commands;
+// File: {Project}.Application/Features/{Entities}/Requests/Commands/Update{Entity}Command.cs
+namespace {Project}.Application.Features.{Entities}.Requests.Commands;
 
-using Explore.Application.DTOs.Event;
-using Explore.Application.Responses;
+using {Project}.Application.DTOs.{Entity};
+using {Project}.Application.Responses;
 using MediatR;
 
-public class UpdateEventCommand : IRequest<BaseCommandResponse<Guid>>
+public class Update{Entity}Command : IRequest<BaseCommandResponse<{IdType}>>
 {
-    public UpdateEventDto EventDto { get; set; }
+    public Update{Entity}Dto {Entity}Dto { get; set; } = null!;
 }
 
-// File: Explore.Application/DTOs/Event/UpdateEventDto.cs
-public class UpdateEventDto
+// File: {Project}.Application/DTOs/{Entity}/Update{Entity}Dto.cs
+public class Update{Entity}Dto
 {
-    public Guid Id { get; set; }  // ✅ Required for updates
+    public {IdType} Id { get; set; }  // ✅ Required for updates
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
-    public int EventTypeId { get; set; }
-    public int AudienceGenderId { get; set; }
-    public int AudienceAgeId { get; set; }
+    public {LookupIdType} {LookupEntity}Id { get; set; }
+    public {LookupIdType} {RelatedEntity1}Id { get; set; }
+    public {LookupIdType} {RelatedEntity2}Id { get; set; }
     // ... other updatable properties
 }
 
-// File: Explore.Application/Features/Events/Handlers/Commands/UpdateEventCommandHandler.cs
-public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, BaseCommandResponse<Guid>>
+// File: {Project}.Application/Features/{Entities}/Handlers/Commands/Update{Entity}CommandHandler.cs
+public class Update{Entity}CommandHandler : IRequestHandler<Update{Entity}Command, BaseCommandResponse<{IdType}>>
 {
-    private readonly IEventRepository _eventRepository;
+    private readonly I{Entity}Repository _{entity}Repository;
     private readonly IMapper _mapper;
     // ... other repositories
 
-    public async Task<BaseCommandResponse<Guid>> Handle(UpdateEventCommand request, CancellationToken cancellationToken)
+    public async Task<BaseCommandResponse<{IdType}>> Handle(Update{Entity}Command request, CancellationToken cancellationToken)
     {
-        var response = new BaseCommandResponse<Guid>();
+        var response = new BaseCommandResponse<{IdType}>();
 
         // Validate
-        var validator = new UpdateEventDtoValidator(/* repositories */);
-        var validationResult = await validator.ValidateAsync(request.EventDto);
+        var validator = new Update{Entity}DtoValidator(/* repositories */);
+        var validationResult = await validator.ValidateAsync(request.{Entity}Dto);
 
         if (!validationResult.IsValid)
         {
             response.Success = false;
-            response.Message = "Event update failed.";
+            response.Message = "{Entity} update failed.";
             response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
             return response;
         }
 
         // Get existing entity
-        var @event = await _eventRepository.GetById(request.EventDto.Id);
+        var {entity} = await _{entity}Repository.GetById(request.{Entity}Dto.Id);
 
-        if (@event == null)
+        if ({entity} == null)
         {
             response.Success = false;
-            response.Message = "Event not found.";
+            response.Message = "{Entity} not found.";
             return response;
         }
 
         // Update entity
-        _mapper.Map(request.EventDto, @event);
-        await _eventRepository.Update(@event);
+        _mapper.Map(request.{Entity}Dto, {entity});
+        await _{entity}Repository.Update({entity});
 
         response.Success = true;
-        response.Id = @event.Id;
-        response.Message = "Event updated successfully.";
+        response.Id = {entity}.Id;
+        response.Message = "{Entity} updated successfully.";
 
         return response;
     }
@@ -425,96 +419,96 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
 
 ## Delete Command Pattern
 
-**Real Example from Event**:
+**Example**:
 ```csharp
-// File: Explore.Application/Features/Events/Requests/Commands/DeleteEventCommand.cs
-namespace Explore.Application.Features.Events.Requests.Commands;
+// File: {Project}.Application/Features/{Entities}/Requests/Commands/Delete{Entity}Command.cs
+namespace {Project}.Application.Features.{Entities}.Requests.Commands;
 
 using MediatR;
 
-public class DeleteEventCommand : IRequest<bool>  // ✅ Returns bool, not BaseCommandResponse
+public class Delete{Entity}Command : IRequest<bool>  // ✅ Returns bool, not BaseCommandResponse
 {
-    public Guid Id { get; set; }
+    public {IdType} Id { get; set; }
 }
 
-// File: Explore.Application/Features/Events/Handlers/Commands/DeleteEventCommandHandler.cs
-namespace Explore.Application.Features.Events.Handlers.Commands;
+// File: {Project}.Application/Features/{Entities}/Handlers/Commands/Delete{Entity}CommandHandler.cs
+namespace {Project}.Application.Features.{Entities}.Handlers.Commands;
 
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Explore.Application.Contracts.Persistence;
-using Explore.Application.Features.Events.Requests.Commands;
+using {Project}.Application.Contracts.Persistence;
+using {Project}.Application.Features.{Entities}.Requests.Commands;
 using MediatR;
 
-public class DeleteEventCommandHandler : IRequestHandler<DeleteEventCommand, bool>
+public class Delete{Entity}CommandHandler : IRequestHandler<Delete{Entity}Command, bool>
 {
-    private readonly IEventRepository _eventRepository;
+    private readonly I{Entity}Repository _{entity}Repository;
 
-    public DeleteEventCommandHandler(IEventRepository eventRepository)
+    public Delete{Entity}CommandHandler(I{Entity}Repository {entity}Repository)
     {
-        _eventRepository = eventRepository;
+        _{entity}Repository = {entity}Repository;
     }
 
-    public async Task<bool> Handle(DeleteEventCommand request, CancellationToken cancellationToken)
+    public async Task<bool> Handle(Delete{Entity}Command request, CancellationToken cancellationToken)
     {
-        var @event = await _eventRepository.GetById(request.Id);
+        var {entity} = await _{entity}Repository.GetById(request.Id);
 
-        if (@event == null)
+        if ({entity} == null)
             return false;
 
-        await _eventRepository.Delete(@event);
+        await _{entity}Repository.Delete({entity});
         return true;
     }
 }
 ```
 
-**Note**: Delete commands return `bool` instead of `BaseCommandResponse<Guid>`.
+**Note**: Delete commands return `bool` instead of `BaseCommandResponse<{IdType}>`.
 
 ## Controller Usage
 
-**Real Example from EventController.cs**:
+**Example**:
 ```csharp
-// File: Explore.API/Controllers/EventController.cs
-namespace Explore.API.Controllers;
+// File: {Project}.API/Controllers/{Entity}Controller.cs
+namespace {Project}.API.Controllers;
 
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Explore.Application.DTOs.Event;
-using Explore.Application.Features.Events.Requests.Commands;
-using Explore.Application.Responses;
+using {Project}.Application.DTOs.{Entity};
+using {Project}.Application.Features.{Entities}.Requests.Commands;
+using {Project}.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 [Route("api/v1/[controller]")]
 [ApiController]
-public class EventController : ControllerBase
+public class {Entity}Controller : ControllerBase
 {
     private readonly IMediator _mediator;
 
-    public EventController(IMediator mediator) => _mediator = mediator;
+    public {Entity}Controller(IMediator mediator) => _mediator = mediator;
 
     [HttpPost]
     [Authorize]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventDto dto)
+    public async Task<ActionResult<BaseCommandResponse<{IdType}>>> Create([FromBody] Create{Entity}Dto dto)
     {
-        var command = new CreateEventCommand { EventDto = dto };
+        var command = new Create{Entity}Command { {Entity}Dto = dto };
         var response = await _mediator.Send(command);
         return Ok(response);
     }
 
     [HttpPut("{id}")]
     [Authorize]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventDto dto)
+    public async Task<ActionResult<BaseCommandResponse<{IdType}>>> Update({IdType} id, [FromBody] Update{Entity}Dto dto)
     {
         if (id != dto.Id)
         {
-            return BadRequest(new { error = "Event ID mismatch" });
+            return BadRequest(new { error = "{Entity} ID mismatch" });
         }
 
-        var command = new UpdateEventCommand { EventDto = dto };
+        var command = new Update{Entity}Command { {Entity}Dto = dto };
         var response = await _mediator.Send(command);
 
         if (!response.Success)
@@ -527,14 +521,14 @@ public class EventController : ControllerBase
 
     [HttpDelete("{id}")]
     [Authorize]
-    public async Task<ActionResult> Delete(Guid id)
+    public async Task<ActionResult> Delete({IdType} id)
     {
-        var command = new DeleteEventCommand { Id = id };
+        var command = new Delete{Entity}Command { Id = id };
         var result = await _mediator.Send(command);
 
         if (!result)
         {
-            return NotFound(new { error = "Event not found or you don't have permission to delete it" });
+            return NotFound(new { error = "{Entity} not found or you don't have permission to delete it" });
         }
 
         return NoContent();
@@ -544,10 +538,10 @@ public class EventController : ControllerBase
 
 ## Key Differences from Standard CQRS
 
-| Aspect | Standard MediatR CQRS | ISLAMU Event Pattern |
+| Aspect | Standard MediatR CQRS | This Pattern |
 |--------|----------------------|---------------------|
 | **Command properties** | Direct on command | Wrapped in DTO |
-| **Response** | Direct type (Guid) | BaseCommandResponse<Guid> (except Delete) |
+| **Response** | Direct type ({IdType}) | BaseCommandResponse<{IdType}> (except Delete) |
 | **Validation** | Pipeline behavior | Manual in handler |
 | **Success/Failure** | Exceptions | Success flag + errors list |
 | **Validator location** | Behaviors folder | DTOs/Validators |
@@ -555,11 +549,11 @@ public class EventController : ControllerBase
 
 ## Benefits of This Pattern
 
-✅ **Explicit success/failure**: No exceptions for business validation failures  
-✅ **Reusable DTOs**: Same DTO for API requests and commands  
-✅ **Consistent responses**: All commands return same structure  
-✅ **Flexible validation**: Validators can have repository dependencies  
-✅ **Clear error messages**: List of validation errors returned to client  
+✅ **Explicit success/failure**: No exceptions for business validation failures
+✅ **Reusable DTOs**: Same DTO for API requests and commands
+✅ **Consistent responses**: All commands return same structure
+✅ **Flexible validation**: Validators can have repository dependencies
+✅ **Clear error messages**: List of validation errors returned to client
 
 ---
 

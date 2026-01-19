@@ -294,11 +294,44 @@ public partial class MyEvents : ComponentBase
     }
 
     /// <summary>
+    /// Gets the image URL for an event (either the presigned URL or a placeholder).
+    /// </summary>
+    private static string GetEventImageUrl(EventListDto evt)
+    {
+        if (!string.IsNullOrEmpty(evt.FeaturedImageUri))
+            return evt.FeaturedImageUri;
+
+        // Generate placeholder with event title and color
+        var encodedTitle = Uri.EscapeDataString(evt.Title.Length > 30
+            ? evt.Title.Substring(0, 30) + "..."
+            : evt.Title);
+        var color = GetEventColorCode(evt);
+        return $"https://placehold.co/600x400/{color}/ffffff?text={encodedTitle}";
+    }
+
+    /// <summary>
     /// Gets organization name for dropdown display.
     /// </summary>
     private string GetSelectedOrganizationName()
     {
         if (_selectedOrganizationId == Guid.Empty) return "All Organizations";
         return _myOrganizations.FirstOrDefault(o => o.Id == _selectedOrganizationId)?.FullName ?? "All Organizations";
+    }
+
+    /// <summary>
+    /// Gets initials from a display name for avatar fallback.
+    /// </summary>
+    private static string GetActorInitials(string? displayName)
+    {
+        if (string.IsNullOrWhiteSpace(displayName))
+            return "?";
+
+        var words = displayName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length >= 2)
+            return $"{words[0][0]}{words[1][0]}".ToUpperInvariant();
+
+        return displayName.Length >= 2
+            ? displayName.Substring(0, 2).ToUpperInvariant()
+            : displayName.ToUpperInvariant();
     }
 }

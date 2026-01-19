@@ -4,63 +4,76 @@
 @inject IEventService EventService
 @inject ISnackbar Snackbar
 
-@using MudBlazor
-
-<MudPaper Class="event-session-manager">
-    <MudText Typo="Typo.h5" Class="event-session-manager__title">Event Sessions</MudText>
-
+<div class="event-session-manager">
     @if (_isLoading)
     {
-        <div style="display: flex; justify-content: center; padding: 2rem;">
+        <div class="d-flex justify-center pa-4">
             <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
         </div>
     }
-    else if (!sessions.Any())
+    else if (Sessions.Count > 1)
     {
-        <MudAlert Severity="Severity.Info" Class="mb-4">
-            No sessions have been created for this event yet.
-        </MudAlert>
+        <MudStack Spacing="3">
+            @foreach (var session in Sessions)
+            {
+                <MudPaper Elevation="0" Class="pa-4 border-solid border-1 mud-border-lines-default rounded-lg">
+                    <div class="d-flex flex-wrap gap-4 justify-space-between align-center">
+                        <div>
+                            <MudText Typo="Typo.h6">@session.Title</MudText>
+                            <div class="d-flex align-center gap-4 mt-1">
+                                <div class="d-flex align-center gap-1">
+                                    <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" Color="Color.Secondary" />
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                        @session.StartTime.ToString("f")
+                                    </MudText>
+                                </div>
+                                <div class="d-flex align-center gap-1">
+                                    <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Color="Color.Secondary" />
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                        @session.LocationFullName
+                                    </MudText>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            @if (ShowRegisterButton)
+                            {
+                                <MudButton Variant="Variant.Outlined" 
+                                           Color="Color.Primary" 
+                                           OnClick="@(() => OnRegisterClick.InvokeAsync(session))">
+                                    Register
+                                </MudButton>
+                            }
+                        </div>
+                    </div>
+                </MudPaper>
+            }
+        </MudStack>
+    }
+    else if (Sessions.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">No sessions available.</MudAlert>
     }
     else
     {
-        <MudDataGrid T="EventSessionListDto" Items="@sessions" ReadOnly="false" EditMode="DataGridEditMode.Cell"
-                     Bordered="true" Dense="true" Hover="true" Class="event-session-manager__grid">
-        <Columns>
-            <PropertyColumn Property="x => x.Title" />
-            <PropertyColumn Property="x => x.StartTime" Format="s" />
-            <PropertyColumn Property="x => x.EndTime" Format="s" />
-            <PropertyColumn Property="x => x.LocationFullName" />
-            <PropertyColumn Property="x => x.MaxAudienceAttendees" Title="Max Audience" />
-            <TemplateColumn>
-                <CellTemplate>
-                    <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => OpenSpeakerDialog(context.Item))">Manage Speakers</MudButton>
-                </CellTemplate>
-            </TemplateColumn>
-            <TemplateColumn StickyRight="true">
-                <CellTemplate>
-                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => OpenEditDialog(context.Item))" />
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="@(() => DeleteSession(context.Item))" />
-                </CellTemplate>
-            </TemplateColumn>
-        </Columns>
-        </MudDataGrid>
+        // Single session case - intentionally empty or minimal if desired
+        // The parent component handles the display for single session
     }
-
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog" Class="event-session-manager__create-btn">
-        Create Session
-    </MudButton>
-</MudPaper>
+</div>
 
 @code {
     [Parameter] public Guid EventId { get; set; }
+    [Parameter] public bool ShowRegisterButton { get; set; } = false;
+    [Parameter] public EventCallback<EventSessionListDto> OnRegisterClick { get; set; }
 
-    private List<EventSessionListDto> sessions = new();
+    public List<EventSessionListDto> Sessions { get; private set; } = new();
+    
     private Guid _previousEventId;
     private bool _isLoading = true;
 
     protected override async Task OnParametersSetAsync()
     {
-        // Only reload if EventId changed and is valid
         if (EventId != Guid.Empty && EventId != _previousEventId)
         {
             _previousEventId = EventId;
@@ -68,122 +81,23 @@
         }
     }
 
-    private async Task LoadSessions()
+    public async Task LoadSessions()
     {
         _isLoading = true;
         try
         {
             var result = await EventService.GetSessionsByEventAsync(EventId);
-            sessions = result.ToList();
+            Sessions = result.OrderBy(s => s.StartTime).ToList();
         }
         catch (Exception ex)
         {
             Snackbar.Add($"Error loading sessions: {ex.Message}", Severity.Error);
-            sessions = new List<EventSessionListDto>();
+            Sessions = new List<EventSessionListDto>();
         }
         finally
         {
             _isLoading = false;
             StateHasChanged();
-        }
-    }
-
-    private async Task OpenCreateDialog()
-    {
-        var parameters = new DialogParameters { ["EventId"] = EventId };
-        var dialog = await DialogService.Show<CreateSessionDialog>("Create New Session", parameters).Result;
-
-        if (!dialog.Canceled)
-        {
-            var newSession = (CreateEventSessionDto)dialog.Data;
-            try
-            {
-                var response = await EventService.CreateSessionAsync(newSession);
-                if (response?.Success == true)
-                {
-                    Snackbar.Add("Session created successfully.", Severity.Success);
-                    await LoadSessions();
-                }
-                else
-                {
-                    Snackbar.Add(response?.Message ?? "Failed to create session.", Severity.Error);
-                }
-            }
-            catch (Exception ex)
-            {
-                Snackbar.Add($"Error creating session: {ex.Message}", Severity.Error);
-            }
-        }
-    }
-
-    private async Task OpenEditDialog(EventSessionListDto session)
-    {
-        var parameters = new DialogParameters { ["ExistingSession"] = session };
-        var dialog = await DialogService.Show<EditSessionDialog>("Edit Session", parameters).Result;
-
-        if (!dialog.Canceled)
-        {
-            var updatedSession = (UpdateEventSessionDto)dialog.Data;
-            try
-            {
-                var response = await EventService.UpdateSessionAsync(updatedSession);
-                if (response?.Success == true)
-                {
-                    Snackbar.Add("Session updated successfully.", Severity.Success);
-                    await LoadSessions();
-                }
-                else
-                {
-                    Snackbar.Add(response?.Message ?? "Failed to update session.", Severity.Error);
-                }
-            }
-            catch (Exception ex)
-            {
-                Snackbar.Add($"Error updating session: {ex.Message}", Severity.Error);
-            }
-        }
-    }
-
-    private async Task DeleteSession(EventSessionListDto session)
-    {
-        var confirmed = await DialogService.ShowMessageBox(
-            "Delete Session",
-            $"Do you really want to delete the session '{session.Title}'?",
-            yesText: "Delete",
-            cancelText: "Cancel",
-            options: new DialogOptions { FullWidth = false, MaxWidth = MaxWidth.ExtraSmall }
-        );
-
-        if (confirmed == true)
-        {
-            try
-            {
-                var deleted = await EventService.DeleteSessionAsync(session.Id);
-                if (deleted)
-                {
-                    Snackbar.Add("Session deleted successfully.", Severity.Success);
-                    await LoadSessions();
-                }
-                else
-                {
-                    Snackbar.Add("Failed to delete session.", Severity.Error);
-                }
-            }
-            catch (Exception ex)
-            {
-                Snackbar.Add($"Error deleting session: {ex.Message}", Severity.Error);
-            }
-        }
-    }
-
-    private async Task OpenSpeakerDialog(EventSessionListDto session)
-    {
-        var parameters = new DialogParameters { ["SessionId"] = session.Id };
-        var dialog = await DialogService.Show<ManageSpeakersDialog>("Manage Speakers", parameters).Result;
-
-        if (!dialog.Canceled)
-        {
-            await LoadSessions();
         }
     }
 }

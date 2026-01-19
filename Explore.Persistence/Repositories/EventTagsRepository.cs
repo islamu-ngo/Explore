@@ -18,10 +18,25 @@ namespace Explore.Persistence.Repositories
 
         public async Task<List<Event>> GetEventsByTag(Guid tagId)
         {
-            return await _dbContext.EventTags
-                .Include(et => et.Event)
+            var eventIds = await _dbContext.EventTags
                 .Where(et => et.TagId == tagId)
-                .Select(et => et.Event)
+                .Select(et => et.EventId)
+                .ToListAsync();
+
+            return await _dbContext.Events
+                .Include(e => e.EventType)
+                .Include(e => e.AudienceGender)
+                .Include(e => e.AudienceAge)
+                .Include(e => e.Actor)
+                    .ThenInclude(a => a.ActorType)
+                .Include(e => e.Actor)
+                    .ThenInclude(a => a!.ProfilePicture)
+                .Include(e => e.FeaturedImage)
+                .Include(e => e.EventStatus)
+                .Include(e => e.VisibilityType)
+                .Include(e => e.EventFormat)
+                .Include(e => e.Madhab)
+                .Where(e => eventIds.Contains(e.Id))
                 .ToListAsync();
         }
 

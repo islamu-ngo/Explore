@@ -1,5 +1,9 @@
 # Component Design - Structure, Lifecycle, and Communication
 
+> **Project-Agnostic Blazor Component Patterns**
+>
+> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../../docs/TEMPLATE_GLOSSARY.md).
+
 This document outlines best practices for designing and structuring Blazor components, covering component anatomy, lifecycle, parameters, `EventCallback` for communication, and the code-behind pattern.
 
 ---
@@ -13,12 +17,12 @@ Blazor components are primarily defined in `.razor` files, which combine HTML ma
 Convenient for simpler components or prototyping where C# logic is minimal.
 
 ```razor
-@page "/events" @* Makes this component routable *@
+@page "/{entities}" @* Makes this component routable *@
 @using MudBlazor @* Common using directives *@
 @inject IMediator Mediator @* Inject dependencies *@
 @inject ISnackbar Snackbar
 
-<PageTitle>Events List</PageTitle> @* Sets browser tab title *@
+<PageTitle>{Entities} List</PageTitle> @* Sets browser tab title *@
 
 <MudContainer MaxWidth="MaxWidth.Large">
     <MudText Typo="Typo.h4">@Title</MudText> @* Access C# properties in markup *@
@@ -29,25 +33,25 @@ Convenient for simpler components or prototyping where C# logic is minimal.
     }
     else
     {
-        <MudButton OnClick="LoadEvents">Refresh Events</MudButton> @* Event handler *@
+        <MudButton OnClick="Load{Entities}">Refresh {Entities}</MudButton> @* Event handler *@
     }
 </MudContainer>
 
 @code { @* C# code block *@
-    private string Title { get; set; } = "Event List";
+    private string Title { get; set; } = "{Entity} List";
     private bool _isLoading;
 
     protected override async Task OnInitializedAsync() @* Lifecycle method *@
     {
         _isLoading = true;
-        await LoadEvents();
+        await Load{Entities}();
         _isLoading = false;
     }
 
-    private async Task LoadEvents()
+    private async Task Load{Entities}()
     {
-        // Logic to load event data
-        // _events = await Mediator.Send(new GetEventListRequest());
+        // Logic to load {entity} data
+        // _{entities} = await Mediator.Send(new Get{Entity}ListRequest());
     }
 }
 ```
@@ -56,43 +60,43 @@ Convenient for simpler components or prototyping where C# logic is minimal.
 
 Recommended for more complex components, pages, or when separating UI from logic improves readability and testability.
 
-**`EventList.razor`**:
+**`{Entity}List.razor`**:
 ```razor
-@page "/events"
+@page "/{entities}"
 @using MudBlazor
-@inherits EventListBase @* Inherit from the code-behind class *@
+@inherits {Entity}ListBase @* Inherit from the code-behind class *@
 
 <MudContainer MaxWidth="MaxWidth.Large">
     <MudText Typo="Typo.h4">@Title</MudText>
-    <MudButton OnClick="LoadEvents">Refresh Events</MudButton>
+    <MudButton OnClick="Load{Entities}">Refresh {Entities}</MudButton>
 </MudContainer>
 ```
 
-**`EventList.razor.cs`**:
+**`{Entity}List.razor.cs`**:
 ```csharp
 using Microsoft.AspNetCore.Components; // Base component functionality
 using MediatR; // Example dependency
 using MudBlazor; // Example dependency
 
-namespace Explore.Blazor.Components.Pages; // Namespace matching component location
+namespace {Project}.Blazor.Components.Pages; // Namespace matching component location
 
-// ✅ The code-behind class must inherit from ComponentBase or another base class
-public partial class EventListBase : ComponentBase
+// The code-behind class must inherit from ComponentBase or another base class
+public partial class {Entity}ListBase : ComponentBase
 {
-    // ✅ Injected properties are available in markup and code-behind
+    // Injected properties are available in markup and code-behind
     [Inject] protected IMediator Mediator { get; set; } = null!;
     [Inject] protected ISnackbar Snackbar { get; set; } = null!;
 
     // Protected properties are accessible from the .razor file
-    protected string Title { get; set; } = "Event List";
+    protected string Title { get; set; } = "{Entity} List";
 
     protected override async Task OnInitializedAsync()
     {
         // Initialization logic
-        await LoadEvents();
+        await Load{Entities}();
     }
 
-    protected async Task LoadEvents()
+    protected async Task Load{Entities}()
     {
         // Data loading logic
     }
@@ -127,9 +131,9 @@ graph TD
     H -- Component Removed --> K[Dispose]
 
     subgraph Notes
-        D_Note[✅ Data fetching here]
-        G_Note[✅ JS interop here]
-        K_Note[✅ Resource cleanup]
+        D_Note[Data fetching here]
+        G_Note[JS interop here]
+        K_Note[Resource cleanup]
     end
 
     D --- D_Note
@@ -145,7 +149,7 @@ Use this method to fetch initial data for the component. It's called only **once
 
 ```csharp
 @code {
-    private List<EventListDto>? _events;
+    private List<{Entity}ListDto>? _{entities};
     private bool _isLoading = true;
 
     protected override async Task OnInitializedAsync()
@@ -153,8 +157,8 @@ Use this method to fetch initial data for the component. It's called only **once
         _isLoading = true;
         try
         {
-            var request = new GetEventListRequest();
-            _events = await Mediator.Send(request); // Fetch data from API/service
+            var request = new Get{Entity}ListRequest();
+            _{entities} = await Mediator.Send(request); // Fetch data from API/service
         }
         finally
         {
@@ -171,19 +175,19 @@ This method is called every time parameters supplied by the parent component cha
 ```csharp
 @code {
     [Parameter]
-    public Guid OrganizationId { get; set; }
+    public {IdType} {ParentEntity}Id { get; set; }
 
-    private List<EventListDto>? _events;
-    private Guid _currentOrganizationId; // Track previous parameter value
+    private List<{Entity}ListDto>? _{entities};
+    private {IdType} _current{ParentEntity}Id; // Track previous parameter value
 
     protected override async Task OnParametersSetAsync()
     {
-        // ✅ Only reload data if OrganizationId has actually changed
-        if (OrganizationId != _currentOrganizationId && OrganizationId != Guid.Empty)
+        // Only reload data if {ParentEntity}Id has actually changed
+        if ({ParentEntity}Id != _current{ParentEntity}Id && {ParentEntity}Id != default)
         {
-            _currentOrganizationId = OrganizationId; // Update tracking variable
-            var request = new GetEventListRequest { OrganizationId = OrganizationId };
-            _events = await Mediator.Send(request);
+            _current{ParentEntity}Id = {ParentEntity}Id; // Update tracking variable
+            var request = new Get{Entity}ListRequest { {ParentEntity}Id = {ParentEntity}Id };
+            _{entities} = await Mediator.Send(request);
         }
     }
 }
@@ -203,7 +207,7 @@ Use this method for tasks that require the component's HTML to be rendered in th
     {
         if (firstRender)
         {
-            // ✅ Initialize JavaScript libraries or interact with the DOM here
+            // Initialize JavaScript libraries or interact with the DOM here
             await JS.InvokeVoidAsync("initializeMap", _mapElement);
         }
     }
@@ -229,7 +233,7 @@ Implement `IDisposable` to release resources when the component is removed from 
 
     public void Dispose()
     {
-        // ✅ Clean up resources to prevent memory leaks
+        // Clean up resources to prevent memory leaks
         _timer?.Dispose();
         _timer = null;
     }
@@ -240,7 +244,7 @@ Implement `IDisposable` to release resources when the component is removed from 
 
 ## 3. Parameters - Parent to Child Communication
 
-Parameters are the primary mechanism for passing data from a parent component to a child component.
+Parameters are the primary mechanism for passing data from a parent component to its direct child component.
 
 ### Declaring Parameters
 
@@ -249,13 +253,13 @@ Use the `[Parameter]` attribute on public properties with `get; set;`.
 ```csharp
 @code {
     [Parameter]
-    public string Title { get; set; } = string.Empty; // ✅ Good practice to provide a default value
+    public string Title { get; set; } = string.Empty; // Good practice to provide a default value
 
     [Parameter]
-    public EventDto Event { get; set; } = null!; // ✅ Use null-forgiving operator for required complex objects
+    public {Entity}Dto {Entity} { get; set; } = null!; // Use null-forgiving operator for required complex objects
 
     [Parameter]
-    public int? MaxItems { get; set; } // ✅ Use nullable types for optional parameters
+    public int? MaxItems { get; set; } // Use nullable types for optional parameters
 }
 ```
 
@@ -266,13 +270,13 @@ It's good practice to validate critical parameters in `OnParametersSet` or `OnPa
 ```csharp
 @code {
     [Parameter]
-    public Guid EventId { get; set; }
+    public {IdType} {Entity}Id { get; set; }
 
     protected override void OnParametersSet()
     {
-        if (EventId == Guid.Empty)
+        if ({Entity}Id == default)
         {
-            throw new ArgumentException("EventId parameter cannot be an empty GUID.", nameof(EventId));
+            throw new ArgumentException("{Entity}Id parameter cannot be an empty value.", nameof({Entity}Id));
         }
     }
 }
@@ -280,7 +284,7 @@ It's good practice to validate critical parameters in `OnParametersSet` or `OnPa
 
 ### Parameter Best Practices:
 
-*   **✅ DO: Store Parameter in Private Field for Local Modification**: If a parameter needs to be modified locally within the child component, copy its value to a private field first.
+*   **DO: Store Parameter in Private Field for Local Modification**: If a parameter needs to be modified locally within the child component, copy its value to a private field first.
 
     ```csharp
     @code {
@@ -302,7 +306,7 @@ It's good practice to validate critical parameters in `OnParametersSet` or `OnPa
     }
     ```
 
-*   **❌ DON'T: Modify Parameter Directly**: Parameters are typically read-only from the child's perspective. Modifying them directly will often be overwritten on the next render cycle by the parent's value, or lead to unexpected behavior.
+*   **DON'T: Modify Parameter Directly**: Parameters are typically read-only from the child's perspective. Modifying them directly will often be overwritten on the next render cycle by the parent's value, or lead to unexpected behavior.
 
     ```csharp
     @code {
@@ -311,7 +315,7 @@ It's good practice to validate critical parameters in `OnParametersSet` or `OnPa
 
         private void Toggle()
         {
-            Expanded = !Expanded; // ❌ This change might be overwritten by the parent
+            Expanded = !Expanded; // This change might be overwritten by the parent
         }
     }
     ```
@@ -324,22 +328,22 @@ It's good practice to validate critical parameters in `OnParametersSet` or `OnPa
 
 ### Basic EventCallback
 
-**Parent Component (`EventList.razor`)**:
+**Parent Component (`{Entity}List.razor`)**:
 ```razor
-<EventCard Event="@selectedEvent" OnDelete="HandleDelete" />
+<{Entity}Card {Entity}="@selected{Entity}" OnDelete="HandleDelete" />
 
 @code {
-    private EventDto? selectedEvent;
+    private {Entity}Dto? selected{Entity};
 
-    private async Task HandleDelete(Guid eventId) // Method in parent to handle the event
+    private async Task HandleDelete({IdType} {entity}Id) // Method in parent to handle the event
     {
         // Perform deletion logic
-        Snackbar.Add($"Event {eventId} deleted", Severity.Success);
+        Snackbar.Add($"{Entity} {{entity}Id} deleted", Severity.Success);
     }
 }
 ```
 
-**Child Component (`EventCard.razor`)**:
+**Child Component (`{Entity}Card.razor`)**:
 ```razor
 <MudCard>
     <MudCardActions>
@@ -349,15 +353,15 @@ It's good practice to validate critical parameters in `OnParametersSet` or `OnPa
 
 @code {
     [Parameter]
-    public EventDto Event { get; set; } = null!;
+    public {Entity}Dto {Entity} { get; set; } = null!;
 
     [Parameter]
-    public EventCallback<Guid> OnDelete { get; set; } // EventCallback to notify parent
+    public EventCallback<{IdType}> OnDelete { get; set; } // EventCallback to notify parent
 
     private async Task DeleteClicked()
     {
-        // ✅ Invoke the parent's registered method, passing the Event.Id
-        await OnDelete.InvokeAsync(Event.Id);
+        // Invoke the parent's registered method, passing the {Entity}.Id
+        await OnDelete.InvokeAsync({Entity}.Id);
     }
 }
 ```
@@ -369,16 +373,16 @@ It's good practice to validate critical parameters in `OnParametersSet` or `OnPa
 
 @code {
     [Parameter]
-    public EventCallback<Guid> OnDelete { get; set; }
+    public EventCallback<{IdType}> OnDelete { get; set; }
 
     [Parameter]
-    public EventDto Event { get; set; } = null!;
+    public {Entity}Dto {Entity} { get; set; } = null!;
 
     private async Task DeleteClicked()
     {
         var parameters = new DialogParameters
         {
-            ["ContentText"] = $"Are you sure you want to delete '{Event.Title}'?",
+            ["ContentText"] = $"Are you sure you want to delete '{{Entity}.Title}'?",
             ["ButtonText"] = "Delete",
             ["Color"] = Color.Error
         };
@@ -388,7 +392,7 @@ It's good practice to validate critical parameters in `OnParametersSet` or `OnPa
 
         if (!result.Canceled)
         {
-            await OnDelete.InvokeAsync(Event.Id); // Only invoke if user confirmed
+            await OnDelete.InvokeAsync({Entity}.Id); // Only invoke if user confirmed
         }
     }
 }
@@ -437,7 +441,7 @@ Blazor's `@bind-PropertyName` syntax is a shorthand for a parameter and an `Even
 
     private async Task OnSearchChanged()
     {
-        // ✅ Invoke the EventCallback to update the parent's SearchTerm property
+        // Invoke the EventCallback to update the parent's SearchTerm property
         await SearchTermChanged.InvokeAsync(_localSearchTerm);
     }
 }
@@ -460,15 +464,15 @@ The parent component acts as an intermediary, managing state shared between sibl
 
 ```razor
 @* Parent Component *@
-<EventList OnEventSelected="HandleEventSelected" /> @* Child 1 notifies parent *@
-<EventDetails EventId="@_selectedEventId" /> @* Parent updates Child 2 *@
+<{Entity}List On{Entity}Selected="Handle{Entity}Selected" /> @* Child 1 notifies parent *@
+<{Entity}Details {Entity}Id="@_selected{Entity}Id" /> @* Parent updates Child 2 *@
 
 @code {
-    private Guid _selectedEventId;
+    private {IdType} _selected{Entity}Id;
 
-    private void HandleEventSelected(Guid eventId)
+    private void Handle{Entity}Selected({IdType} {entity}Id)
     {
-        _selectedEventId = eventId; // Parent updates its state, which re-renders EventDetails
+        _selected{Entity}Id = {entity}Id; // Parent updates its state, which re-renders {Entity}Details
     }
 }
 ```
@@ -501,59 +505,59 @@ Use `CascadingValue` and `[CascadingParameter]` to efficiently pass data down a 
     }
 }
 ```
-*For more details, see [state-management.md](resources/state-management.md).*
+*For more details, see [state-management.md](state-management.md).*
 
 ### 5.3. Service-Based Communication
 
 For more complex scenarios, especially when components are unrelated or when state needs to be globally accessible, use a shared service.
 
 ```csharp
-// Shared service: EventStateService.cs
-public class EventStateService
+// Shared service: {Entity}StateService.cs
+public class {Entity}StateService
 {
-    public event Action<Guid>? OnEventSelected; // Event for subscribers
+    public event Action<{IdType}>? On{Entity}Selected; // Event for subscribers
 
-    public void SelectEvent(Guid eventId)
+    public void Select{Entity}({IdType} {entity}Id)
     {
-        OnEventSelected?.Invoke(eventId); // Notify all subscribers
+        On{Entity}Selected?.Invoke({entity}Id); // Notify all subscribers
     }
 }
 
 // Component A (publishes event)
-@inject EventStateService EventState
+@inject {Entity}StateService {Entity}State
 
-<MudButton OnClick="Select">Select Event</MudButton>
+<MudButton OnClick="Select">Select {Entity}</MudButton>
 
 @code {
     private void Select()
     {
-        EventState.SelectEvent(eventId);
+        {Entity}State.Select{Entity}({entity}Id);
     }
 }
 
 // Component B (subscribes to event)
-@inject EventStateService EventState
+@inject {Entity}StateService {Entity}State
 @implements IDisposable
 
 @code {
     protected override void OnInitialized()
     {
-        EventState.OnEventSelected += HandleEventSelected; // Subscribe
+        {Entity}State.On{Entity}Selected += Handle{Entity}Selected; // Subscribe
     }
 
-    private void HandleEventSelected(Guid eventId)
+    private void Handle{Entity}Selected({IdType} {entity}Id)
     {
-        // React to selected event
+        // React to selected {entity}
         StateHasChanged(); // Force UI update if necessary
     }
 
     public void Dispose()
     {
-        EventState.OnEventSelected -= HandleEventSelected; // ✅ Unsubscribe to prevent memory leaks
+        {Entity}State.On{Entity}Selected -= Handle{Entity}Selected; // Unsubscribe to prevent memory leaks
     }
 }
 ```
-*For more details, see [state-management.md](resources/state-management.md).*
+*For more details, see [state-management.md](state-management.md).*
 
 ---
 
@@ -577,7 +581,7 @@ Call `StateHasChanged()` when the component's state changes **outside of Blazor'
     {
         _timer = new System.Timers.Timer(1000);
         // The Elapsed event handler is not part of Blazor's event system
-        _timer.Elapsed += (sender, e) => InvokeAsync(StateHasChanged); // ✅ Use InvokeAsync to marshal to UI thread
+        _timer.Elapsed += (sender, e) => InvokeAsync(StateHasChanged); // Use InvokeAsync to marshal to UI thread
         _timer.Start();
     }
 
@@ -594,18 +598,18 @@ Avoid calling `StateHasChanged()` unnecessarily, as it can impact performance. B
 
 ```csharp
 @code {
-    private List<EventDto>? _data;
+    private List<{Entity}Dto>? _data;
 
     private async Task LoadData()
     {
-        _data = await Http.GetFromJsonAsync<List<EventDto>>("api/v1/events");
-        // ❌ StateHasChanged() NOT needed - Blazor will re-render after this async method completes
+        _data = await Http.GetFromJsonAsync<List<{Entity}Dto>>("api/v1/{entities}");
+        // StateHasChanged() NOT needed - Blazor will re-render after this async method completes
     }
 
     private void HandleClick()
     {
         _counter++;
-        // ❌ StateHasChanged() NOT needed - UI updates automatically after event handler
+        // StateHasChanged() NOT needed - UI updates automatically after event handler
     }
 }
 ```
@@ -616,20 +620,20 @@ Avoid calling `StateHasChanged()` unnecessarily, as it can impact performance. B
 
 | Practice | Explanation |
 |----------|-------------|
-| ✅ **Code-Behind for Complexity** | Use `.razor.cs` files for components with significant C# logic. |
-| ✅ **`OnInitializedAsync` for Data** | Fetch initial data here. It runs once. |
-| ✅ **`OnParametersSetAsync` for Parameter Reactions** | Use to reload data or update state when parameters change. |
-| ✅ **`OnAfterRenderAsync` for JS Interop/DOM** | Perform operations that require the DOM to be ready. |
-| ✅ **`IDisposable` for Cleanup** | Release resources (timers, event subscriptions) to prevent memory leaks. |
-| ✅ **Parameters for Parent → Child** | Always use `[Parameter]` for inputs. |
-| ✅ **`EventCallback<T>` for Child → Parent** | Use for notifying parents of events. For two-way binding, use `PropertyNameChanged`. |
-| ✅ **Store Parameters Locally for Edits** | Copy parameter values to private fields if they need to be modified in the child. |
-| ✅ **Cascading Values for Deep State** | Avoid prop-drilling by using `CascadingValue` for application-wide or theme-related data. |
-| ✅ **Scoped Services for Shared State** | Manage shared state between unrelated components within a user session. |
-| ❌ **Don't Modify Parameters Directly** | Changes will likely be overwritten by the parent. |
-| ❌ **Don't Overuse `StateHasChanged()`** | Only call when state changes outside Blazor's event flow. |
-| ❌ **Don't Forget to Dispose** | Unsubscribe from events to prevent memory leaks in long-running applications. |
-| ❌ **Don't Use Static State in Blazor Server** | Static fields can be shared across users, leading to data leakage. |
+| **Code-Behind for Complexity** | Use `.razor.cs` files for components with significant C# logic. |
+| **`OnInitializedAsync` for Data** | Fetch initial data here. It runs once. |
+| **`OnParametersSetAsync` for Parameter Reactions** | Use to reload data or update state when parameters change. |
+| **`OnAfterRenderAsync` for JS Interop/DOM** | Perform operations that require the DOM to be ready. |
+| **`IDisposable` for Cleanup** | Release resources (timers, event subscriptions) to prevent memory leaks. |
+| **Parameters for Parent → Child** | Always use `[Parameter]` for inputs. |
+| **`EventCallback<T>` for Child → Parent** | Use for notifying parents of events. For two-way binding, use `PropertyNameChanged`. |
+| **Store Parameters Locally for Edits** | Copy parameter values to private fields if they need to be modified in the child. |
+| **Cascading Values for Deep State** | Avoid prop-drilling by using `CascadingValue` for application-wide or theme-related data. |
+| **Scoped Services for Shared State** | Manage shared state between unrelated components within a user session. |
+| **Don't Modify Parameters Directly** | Changes will likely be overwritten by the parent. |
+| **Don't Overuse `StateHasChanged()`** | Only call when state changes outside Blazor's event flow. |
+| **Don't Forget to Dispose** | Unsubscribe from events to prevent memory leaks in long-running applications. |
+| **Don't Use Static State in Blazor Server** | Static fields can be shared across users, leading to data leakage. |
 
 ---
 

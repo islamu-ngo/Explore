@@ -6,10 +6,10 @@
   },
   "servers": [
     {
-      "url": "https://localhost:63583"
+      "url": "https://localhost:64233"
     },
     {
-      "url": "http://localhost:63584"
+      "url": "http://localhost:64234"
     }
   ],
   "paths": {
@@ -2401,6 +2401,92 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/Event/with-sessions": {
+      "post": {
+        "tags": [
+          "Event"
+        ],
+        "summary": "Create Event with Sessions",
+        "description": "Creates a new event along with its sessions in a single transaction. At least one session is required. FirstSessionDate and LastSessionDate are computed automatically from the sessions.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventWithSessionsDto"
+              }
+            },
+            "application/*\u002Bjson": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventWithSessionsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -7193,6 +7279,147 @@
         }
       }
     },
+    "/api/v1/StorageObject/{id}/presigned-url": {
+      "get": {
+        "tags": [
+          "StorageObject"
+        ],
+        "summary": "Get Presigned Download URL",
+        "description": "Generate a time-limited presigned URL for viewing/downloading a file from S3-compatible storage",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "expirationMinutes",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 60
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresignedDownloadUrlResponseDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresignedDownloadUrlResponseDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresignedDownloadUrlResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/StorageObject/presigned-url-by-key/{objectKey}": {
+      "get": {
+        "tags": [
+          "StorageObject"
+        ],
+        "summary": "Get Presigned Download URL by Key",
+        "description": "Generate a time-limited presigned URL for viewing/downloading a file using its object key",
+        "parameters": [
+          {
+            "name": "objectKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "expirationMinutes",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 60
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresignedDownloadUrlResponseDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresignedDownloadUrlResponseDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresignedDownloadUrlResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/StorageObject/generate-upload-url": {
       "post": {
         "tags": [
@@ -10940,6 +11167,49 @@
           }
         }
       },
+      "CreateEventSessionForEventDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "startTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "locationId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "maxAudienceAttendees": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "registrationModeId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "languageIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        }
+      },
       "CreateEventSessionLanguageDto": {
         "type": "object",
         "properties": {
@@ -10988,6 +11258,91 @@
           "tenantId": {
             "type": "string",
             "format": "uuid"
+          }
+        }
+      },
+      "CreateEventWithSessionsDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "slug": {
+            "type": "string",
+            "nullable": true
+          },
+          "eventTypeId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "audienceGenderId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "audienceAgeId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "organizationId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "price": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "currencyCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "featuredImageId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "isRegistrationRequired": {
+            "type": "boolean"
+          },
+          "externalRegistrationUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "eventStatusId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "visibilityTypeId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "eventFormatId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "madhabId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "timezone": {
+            "type": "string",
+            "nullable": true
+          },
+          "eventUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "sessions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateEventSessionForEventDto"
+            }
           }
         }
       },
@@ -11085,6 +11440,11 @@
           },
           "address": {
             "type": "string"
+          },
+          "profilePictureId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
           }
         }
       },
@@ -11700,6 +12060,15 @@
           "actorTypeFullName": {
             "type": "string"
           },
+          "actorProfilePictureId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "actorProfilePictureUri": {
+            "type": "string",
+            "nullable": true
+          },
           "price": {
             "type": "number",
             "format": "double",
@@ -11868,6 +12237,23 @@
           },
           "eventSessionTitle": {
             "type": "string",
+            "nullable": true
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "eventFeaturedImageUri": {
+            "type": "string",
+            "nullable": true
+          },
+          "eventStartTime": {
+            "type": "string",
+            "format": "date-time",
             "nullable": true
           },
           "approvalStatusId": {
@@ -12652,6 +13038,15 @@
           "actorHandle": {
             "type": "string",
             "nullable": true
+          },
+          "actorProfilePictureId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "actorProfilePictureUri": {
+            "type": "string",
+            "nullable": true
           }
         }
       },
@@ -12723,6 +13118,15 @@
           },
           "currentUserRole": {
             "$ref": "#/components/schemas/NullableOfOrganizationRoleEnum"
+          },
+          "actorProfilePictureId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "actorProfilePictureUri": {
+            "type": "string",
+            "nullable": true
           }
         }
       },
@@ -13281,6 +13685,21 @@
           },
           "hasNextPage": {
             "type": "boolean"
+          }
+        }
+      },
+      "PresignedDownloadUrlResponseDto": {
+        "type": "object",
+        "properties": {
+          "presignedUrl": {
+            "type": "string"
+          },
+          "objectKey": {
+            "type": "string"
+          },
+          "expiresInMinutes": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },

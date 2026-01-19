@@ -1,38 +1,43 @@
-# Validation Integration - ISLAMU Event Conventions
+# Validation Integration - Complete Reference
 
-## ISLAMU Event Validation Pattern
+> **Project-Agnostic Validation Patterns**
+>
+> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../../docs/TEMPLATE_GLOSSARY.md).
+
+## Validation Pattern Overview
 
 **CRITICAL**: Validation is **manual in handlers** (not automated pipeline behavior).
 
-<h2>Validator Structure</h2>
+---
 
-**Real Example from Event**:
+## Validator Structure
+
 ```csharp
-// File: Explore.Application/DTOs/Event/Validators/CreateEventDtoValidator.cs
-namespace Explore.Application.DTOs.Event.Validators;
+// File: {Project}.Application/DTOs/{Entity}/Validators/Create{Entity}DtoValidator.cs
+namespace {Project}.Application.DTOs.{Entity}.Validators;
 
 using FluentValidation;
-using Explore.Application.Contracts.Persistence;
+using {Project}.Application.Contracts.Persistence;
 
-public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
+public class Create{Entity}DtoValidator : AbstractValidator<Create{Entity}Dto>
 {
-    private readonly IAudienceAgeRepository _audienceAgeRepository;
-    private readonly IAudienceGenderRepository _audienceGenderRepository;
-    private readonly IEventTypeRepository _eventTypeRepository;
-    private readonly IOrganizationRepository _organizationRepository;
+    private readonly I{RelatedEntity1}Repository _{relatedEntity1}Repository;
+    private readonly I{RelatedEntity2}Repository _{relatedEntity2}Repository;
+    private readonly I{LookupEntity}Repository _{lookupEntity}Repository;
+    private readonly I{ParentEntity}Repository _{parentEntity}Repository;
     private readonly IStorageObjectRepository _storageObjectRepository;
 
-    public CreateEventDtoValidator(
-        IAudienceAgeRepository audienceAgeRepository,
-        IAudienceGenderRepository audienceGenderRepository,
-        IEventTypeRepository eventTypeRepository,
-        IOrganizationRepository organizationRepository,
+    public Create{Entity}DtoValidator(
+        I{RelatedEntity1}Repository {relatedEntity1}Repository,
+        I{RelatedEntity2}Repository {relatedEntity2}Repository,
+        I{LookupEntity}Repository {lookupEntity}Repository,
+        I{ParentEntity}Repository {parentEntity}Repository,
         IStorageObjectRepository storageObjectRepository)
     {
-        _audienceAgeRepository = audienceAgeRepository;
-        _audienceGenderRepository = audienceGenderRepository;
-        _eventTypeRepository = eventTypeRepository;
-        _organizationRepository = organizationRepository;
+        _{relatedEntity1}Repository = {relatedEntity1}Repository;
+        _{relatedEntity2}Repository = {relatedEntity2}Repository;
+        _{lookupEntity}Repository = {lookupEntity}Repository;
+        _{parentEntity}Repository = {parentEntity}Repository;
         _storageObjectRepository = storageObjectRepository;
 
         RuleFor(x => x.Title)
@@ -43,41 +48,41 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
             .MaximumLength(5000).When(x => !string.IsNullOrEmpty(x.Description))
             .WithMessage("Description must not exceed 5000 characters");
 
-        RuleFor(x => x.EventTypeId)
-            .NotEmpty().WithMessage("Event type is required")
+        RuleFor(x => x.{LookupEntity}Id)
+            .NotEmpty().WithMessage("{LookupEntity} is required")
             .MustAsync(async (id, cancellation) =>
             {
-                var exists = await _eventTypeRepository.Exists(id);
+                var exists = await _{lookupEntity}Repository.Exists(id);
                 return exists;
             })
-            .WithMessage("Event type not found");
+            .WithMessage("{LookupEntity} not found");
 
-        RuleFor(x => x.AudienceGenderId)
-            .NotEmpty().WithMessage("Audience gender is required")
+        RuleFor(x => x.{RelatedEntity1}Id)
+            .NotEmpty().WithMessage("{RelatedEntity1} is required")
             .MustAsync(async (id, cancellation) =>
             {
-                var exists = await _audienceGenderRepository.Exists(id);
+                var exists = await _{relatedEntity1}Repository.Exists(id);
                 return exists;
             })
-            .WithMessage("Audience gender not found");
+            .WithMessage("{RelatedEntity1} not found");
 
-        RuleFor(x => x.AudienceAgeId)
-            .NotEmpty().WithMessage("Audience age is required")
+        RuleFor(x => x.{RelatedEntity2}Id)
+            .NotEmpty().WithMessage("{RelatedEntity2} is required")
             .MustAsync(async (id, cancellation) =>
             {
-                var exists = await _audienceAgeRepository.Exists(id);
+                var exists = await _{relatedEntity2}Repository.Exists(id);
                 return exists;
             })
-            .WithMessage("Audience age not found");
+            .WithMessage("{RelatedEntity2} not found");
 
-        RuleFor(x => x.OrganizationId)
+        RuleFor(x => x.{ParentEntity}Id)
             .MustAsync(async (id, cancellation) =>
             {
                 if (!id.HasValue) return true;
-                return await _organizationRepository.Exists(id.Value);
+                return await _{parentEntity}Repository.Exists(id.Value);
             })
-            .When(x => x.OrganizationId.HasValue)
-            .WithMessage("Organization does not exist.");
+            .When(x => x.{ParentEntity}Id.HasValue)
+            .WithMessage("{ParentEntity} does not exist.");
 
         RuleFor(x => x.FeaturedImageId)
             .MustAsync(async (id, cancellation) =>
@@ -97,44 +102,45 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
 - ✅ Check foreign key existence with repository
 - ✅ Custom error messages with `.WithMessage()`
 
-<h2>Handler Validation Pattern</h2>
+---
 
-**Real Example from CreateEventCommandHandler**:
+## Handler Validation Pattern
+
 ```csharp
-// File: Explore.Application/Features/Events/Handlers/Commands/CreateEventCommandHandler.cs
-public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
+// File: {Project}.Application/Features/{Entities}/Handlers/Commands/Create{Entity}CommandHandler.cs
+public async Task<BaseCommandResponse<{IdType}>> Handle(Create{Entity}Command request, CancellationToken cancellationToken)
 {
-    var response = new BaseCommandResponse<Guid>();
+    var response = new BaseCommandResponse<{IdType}>();
 
     // 1. Create validator instance (manual instantiation)
-    var validator = new CreateEventDtoValidator(
-        _audienceAgeRepository,
-        _audienceGenderRepository,
-        _eventTypeRepository,
-        _organizationRepository,
+    var validator = new Create{Entity}DtoValidator(
+        _{relatedEntity1}Repository,
+        _{relatedEntity2}Repository,
+        _{lookupEntity}Repository,
+        _{parentEntity}Repository,
         _storageObjectRepository);
 
     // 2. Validate DTO
-    var validationResult = await validator.ValidateAsync(request.EventDto, cancellationToken);
+    var validationResult = await validator.ValidateAsync(request.{Entity}Dto, cancellationToken);
 
     // 3. Check result
     if (!validationResult.IsValid)
     {
         response.Success = false;
-        response.Message = "Event creation failed.";
+        response.Message = "{Entity} creation failed.";
         response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
         return response;
     }
 
     // 4. Proceed with business logic
-    var @event = _mapper.Map<Event>(request.EventDto);
-    @event.TotalViews = 0;
-    @event.TenantId = _tenantContext.TenantId;
-    @event = await _eventRepository.Create(@event);
+    var {entity} = _mapper.Map<{Entity}>(request.{Entity}Dto);
+    {entity}.ViewCount = 0;
+    {entity}.TenantId = _tenantContext.TenantId;
+    {entity} = await _{entity}Repository.Create({entity});
 
     response.Success = true;
-    response.Id = @event.Id;
-    response.Message = "Event created successfully.";
+    response.Id = {entity}.Id;
+    response.Message = "{Entity} created successfully.";
 
     return response;
 }
@@ -147,15 +153,17 @@ public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, 
 4. **Return errors** in `BaseCommandResponse.Errors` list
 5. **Early return** if validation fails
 
-<h2>Common Validation Rules</h2>
+---
 
-<h3>Required Field</h3>
+## Common Validation Rules
+
+### Required Field
 ```csharp
 RuleFor(x => x.Title)
     .NotEmpty().WithMessage("Title is required");
 ```
 
-<h3>String Length</h3>
+### String Length
 ```csharp
 RuleFor(x => x.Title)
     .MaximumLength(200).WithMessage("Title must not exceed 200 characters");
@@ -165,39 +173,39 @@ RuleFor(x => x.Description)
     .MaximumLength(5000);
 ```
 
-<h3>Numeric Range</h3>
+### Numeric Range
 ```csharp
 RuleFor(x => x.Price)
     .GreaterThanOrEqualTo(0).WithMessage("Price must be non-negative");
 
-RuleFor(x => x.MaxAudienceAttendees)
+RuleFor(x => x.MaxAttendees)
     .InclusiveBetween(1, 10000).WithMessage("Max attendees must be between 1 and 10000");
 ```
 
-<h3>Email Validation</h3>
+### Email Validation
 ```csharp
 RuleFor(x => x.Email)
     .EmailAddress().WithMessage("Invalid email address");
 ```
 
-<h3>Async Database Validation (Foreign Keys)</h3>
+### Async Database Validation (Foreign Keys)
 ```csharp
-RuleFor(x => x.EventTypeId)
-    .NotEmpty().WithMessage("Event type is required")
+RuleFor(x => x.{LookupEntity}Id)
+    .NotEmpty().WithMessage("{LookupEntity} is required")
     .MustAsync(async (id, cancellation) =>
     {
-        var exists = await _eventTypeRepository.Exists(id);
+        var exists = await _{lookupEntity}Repository.Exists(id);
         return exists;
     })
-    .WithMessage("Event type not found");
+    .WithMessage("{LookupEntity} not found");
 ```
 
-<h3>Conditional Validation</h3>
+### Conditional Validation
 ```csharp
-RuleFor(x => x.ExternalRegistrationUrl)
+RuleFor(x => x.ExternalUrl)
     .NotEmpty()
-    .When(x => x.IsRegistrationRequired)
-    .WithMessage("External registration URL is required when registration is enabled");
+    .When(x => x.IsExternalEnabled)
+    .WithMessage("External URL is required when external option is enabled");
 
 RuleFor(x => x.Price)
     .GreaterThan(0)
@@ -205,38 +213,40 @@ RuleFor(x => x.Price)
     .WithMessage("Price must be greater than 0 when currency is specified");
 ```
 
-<h3>Custom Validation Logic</h3>
+### Custom Validation Logic
 ```csharp
 RuleFor(x => x.Slug)
     .MustAsync(async (dto, slug, cancellation) =>
     {
-        // Custom logic: slug must be unique.
-        // Implement using a repository method if/when one exists (e.g., GetBySlug).
-        return true;
+        // Custom logic: slug must be unique
+        var existing = await _{entity}Repository.GetBySlug(slug);
+        return existing == null;
     })
     .WithMessage("Slug must be unique");
 ```
 
-<h3>Complex Validation (Multiple Properties)</h3>
+### Complex Validation (Multiple Properties)
 ```csharp
 RuleFor(x => x)
-    .Must(x => x.FirstSessionDate <= x.LastSessionDate)
-    .WithMessage("First session date must be before or equal to last session date")
-    .When(x => x.FirstSessionDate.HasValue && x.LastSessionDate.HasValue);
+    .Must(x => x.StartDate <= x.EndDate)
+    .WithMessage("Start date must be before or equal to end date")
+    .When(x => x.StartDate.HasValue && x.EndDate.HasValue);
 ```
 
-<h2>Update DTO Validation</h2>
+---
+
+## Update DTO Validation
 
 **Different from Create**:
 ```csharp
-// File: Explore.Application/DTOs/Event/Validators/UpdateEventDtoValidator.cs
-public class UpdateEventDtoValidator : AbstractValidator<UpdateEventDto>
+// File: {Project}.Application/DTOs/{Entity}/Validators/Update{Entity}DtoValidator.cs
+public class Update{Entity}DtoValidator : AbstractValidator<Update{Entity}Dto>
 {
-    public UpdateEventDtoValidator()
+    public Update{Entity}DtoValidator()
     {
         // ID is required for updates
         RuleFor(x => x.Id)
-            .NotEmpty().WithMessage("Event ID is required");
+            .NotEmpty().WithMessage("{Entity} ID is required");
 
         // Title might be optional for partial updates
         RuleFor(x => x.Title)
@@ -256,18 +266,20 @@ public class UpdateEventDtoValidator : AbstractValidator<UpdateEventDto>
 - ⚠️ Some fields might be optional (partial updates)
 - ✅ Validation rules can be less strict than create
 
-<h2>Error Response Format</h2>
+---
+
+## Error Response Format
 
 **Validation Failure Response**:
 ```json
 {
   "id": "00000000-0000-0000-0000-000000000000",
   "success": false,
-  "message": "Event creation failed.",
+  "message": "{Entity} creation failed.",
   "errors": [
     "Title is required",
-    "Event type not found",
-    "Audience gender is required"
+    "{LookupEntity} not found",
+    "{RelatedEntity1} is required"
   ]
 }
 ```
@@ -277,15 +289,17 @@ public class UpdateEventDtoValidator : AbstractValidator<UpdateEventDto>
 {
   "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
   "success": true,
-  "message": "Event created successfully.",
+  "message": "{Entity} created successfully.",
   "errors": []
 }
 ```
 
-<h2>Why Manual Validation?</h2>
+---
 
-| Approach | ISLAMU Event Pattern | Pipeline Behavior |
-|----------|---------------------|-------------------|
+## Why Manual Validation?
+
+| Approach | Manual Pattern | Pipeline Behavior |
+|----------|---------------|-------------------|
 | **When runs** | Manually in handler | Automatically before handler |
 | **Validator creation** | Manual instantiation | DI injection |
 | **Dependencies** | Passed to constructor | Must be registered in DI |
@@ -300,7 +314,58 @@ public class UpdateEventDtoValidator : AbstractValidator<UpdateEventDto>
 - ✅ Clear and explicit validation flow
 - ✅ Easy to understand for new developers
 
-<h2>FluentValidation NuGet Package</h2>
+---
+
+## Self-Referencing Entity Validation
+
+For entities with parent relationships (e.g., hierarchical categories):
+
+```csharp
+public class Create{Entity}DtoValidator : AbstractValidator<Create{Entity}Dto>
+{
+    private readonly I{Entity}Repository _{entity}Repository;
+
+    public Create{Entity}DtoValidator(I{Entity}Repository {entity}Repository)
+    {
+        _{entity}Repository = {entity}Repository;
+
+        // Prevent self-reference (relevant for Update scenarios where Id exists)
+        RuleFor(x => x.ParentId)
+            .NotEqual(x => x.Id)
+            .When(x => x.ParentId.HasValue && x.Id != default)
+            .WithMessage("{Entity} cannot be its own parent");
+
+        // Validate parent exists
+        RuleFor(x => x.ParentId)
+            .MustAsync(async (id, cancellation) =>
+            {
+                if (!id.HasValue) return true;
+                return await _{entity}Repository.Exists(id.Value);
+            })
+            .When(x => x.ParentId.HasValue)
+            .WithMessage("Parent {Entity} not found");
+
+        // Prevent circular reference (for update)
+        RuleFor(x => x.ParentId)
+            .MustAsync(NotCreateCircularReference)
+            .When(x => x.ParentId.HasValue && x.Id != default)
+            .WithMessage("Would create circular reference");
+    }
+
+    private async Task<bool> NotCreateCircularReference(
+        Create{Entity}Dto dto,
+        {IdType}? parentId,
+        CancellationToken cancellation)
+    {
+        // Implementation depends on business logic
+        return true;
+    }
+}
+```
+
+---
+
+## FluentValidation NuGet Package
 
 ```xml
 <PackageReference Include="FluentValidation" Version="11.9.0" />

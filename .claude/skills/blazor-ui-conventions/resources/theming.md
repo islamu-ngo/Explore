@@ -1,6 +1,10 @@
 # Theming - Consistent UI Styling
 
-This document outlines the theming strategy for the ISLAMU Event Blazor application, focusing on customizing MudBlazor, managing dark/light modes, and ensuring a consistent visual identity.
+> **Project-Agnostic Theming Patterns**
+>
+> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../../docs/TEMPLATE_GLOSSARY.md).
+
+This document outlines the theming strategy for Blazor applications using MudBlazor, focusing on customizing themes, managing dark/light modes, and ensuring a consistent visual identity.
 
 ---
 
@@ -26,7 +30,7 @@ MudBlazor uses a theming system that allows customization of colors, typography,
     </MudAppBar>
     <MudDrawer @bind-Open="@_drawerOpen" Elevation="1">
         <MudDrawerHeader>
-            <MudText Typo="Typo.h6">ISLAMU Event</MudText>
+            <MudText Typo="Typo.h6">{Project}</MudText>
         </MudDrawerHeader>
         <NavMenu />
     </MudDrawer>
@@ -48,7 +52,7 @@ MudBlazor uses a theming system that allows customization of colors, typography,
     protected override void OnInitialized()
     {
         _isDarkMode = InitialIsDarkTheme; // Initialize from cascaded value
-        _currentTheme = ISLAMUTheme.CreateTheme(); // Load custom theme
+        _currentTheme = {Project}Theme.CreateTheme(); // Load custom theme
     }
 
     private void DrawerToggle()
@@ -60,15 +64,15 @@ MudBlazor uses a theming system that allows customization of colors, typography,
 
 ### Custom `MudTheme` Definition
 
-Define your custom theme settings in a static class or a dedicated file (e.g., `Shared/ISLAMUTheme.cs`).
+Define your custom theme settings in a static class or a dedicated file (e.g., `Shared/{Project}Theme.cs`).
 
-**`Shared/ISLAMUTheme.cs`**:
+**`Shared/{Project}Theme.cs`**:
 ```csharp
 using MudBlazor;
 
-namespace Explore.Blazor.Shared;
+namespace {Project}.Blazor.Shared;
 
-public static class ISLAMUTheme
+public static class {Project}Theme
 {
     public static MudTheme CreateTheme()
     {
@@ -76,9 +80,9 @@ public static class ISLAMUTheme
         {
             Palette = new Palette()
             {
-                Primary = "#34685D", // Dark teal
-                Secondary = "#E0BBE4", // Light purple
-                Tertiary = "#957DAD", // Medium purple
+                Primary = "#34685D", // Primary brand color
+                Secondary = "#E0BBE4", // Secondary accent color
+                Tertiary = "#957DAD", // Tertiary color
                 Info = "#2196F3",
                 Success = "#4CAF50",
                 Warning = "#FFC107",
@@ -96,7 +100,7 @@ public static class ISLAMUTheme
             },
             PaletteDark = new Palette()
             {
-                Primary = "#58A293", // Lighter teal for dark mode
+                Primary = "#58A293", // Lighter primary for dark mode
                 Secondary = "#FFD700", // Gold for accent
                 Tertiary = "#BB86FC",
                 Info = "#90CAF9",
@@ -142,7 +146,7 @@ The application supports dynamic dark/light mode switching, with the preference 
 The `App.razor` component, running on the server initially, reads the theme preference from a cookie and cascades it down to `MainLayout.razor`.
 
 ```razor
-// File: Explore.Blazor/App.razor
+// File: {Project}.Blazor/App.razor
 @inject IHttpContextAccessor HttpContextAccessor // Provides access to HttpContext
 
 @code {
@@ -166,7 +170,7 @@ The `App.razor` component, running on the server initially, reads the theme pref
 `MainLayout.razor` consumes the cascaded theme value and includes a `MudSwitch` to allow users to toggle dark/light mode. The choice is then saved to a cookie.
 
 ```razor
-// File: Explore.Blazor/Shared/MainLayout.razor
+// File: {Project}.Blazor/Shared/MainLayout.razor
 @inject IJSRuntime JS
 
 @code {
@@ -179,7 +183,7 @@ The `App.razor` component, running on the server initially, reads the theme pref
     protected override void OnInitialized()
     {
         _isDarkMode = InitialIsDarkTheme;
-        _currentTheme = ISLAMUTheme.CreateTheme(); // Load custom theme
+        _currentTheme = {Project}Theme.CreateTheme(); // Load custom theme
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -256,29 +260,29 @@ This file is for global styles and overrides.
 ```css
 /* Custom properties for consistency, e.g., for BEM blocks */
 :root {
-    --islamu-primary-color: #34685D;
-    --islamu-secondary-color: #E0BBE4;
-    --islamu-font-family: 'Roboto', sans-serif;
+    --{project}-primary-color: #34685D;
+    --{project}-secondary-color: #E0BBE4;
+    --{project}-font-family: 'Roboto', sans-serif;
 }
 
 /* Override MudBlazor default typography */
 body {
-    font-family: var(--islamu-font-family);
+    font-family: var(--{project}-font-family);
 }
 
 h1.mud-typography-h1 {
-    color: var(--islamu-primary-color);
+    color: var(--{project}-primary-color);
 }
 
 /* Custom styles for components */
-.event-card {
+.{entity}-card {
     border: 1px solid var(--mud-palette-lines-default);
     border-radius: var(--mud-default-border-radius);
     box-shadow: var(--mud-shadow-1);
 }
 
-.event-card__title {
-    color: var(--islamu-primary-color);
+.{entity}-card__title {
+    color: var(--{project}-primary-color);
 }
 ```
 
@@ -290,21 +294,21 @@ This file can define CSS variables for colors, spacing, etc., making them easily
 /* Global CSS variables */
 :root {
     /* Colors */
-    --islamu-color-teal: #34685D;
-    --islamu-color-purple-light: #E0BBE4;
-    --islamu-color-gold: #FFD700;
+    --{project}-color-primary: #34685D;
+    --{project}-color-secondary: #E0BBE4;
+    --{project}-color-accent: #FFD700;
 
     /* Spacing */
-    --islamu-spacing-unit: 8px;
-    --islamu-spacing-xs: var(--islamu-spacing-unit);
-    --islamu-spacing-sm: calc(var(--islamu-spacing-unit) * 2);
+    --{project}-spacing-unit: 8px;
+    --{project}-spacing-xs: var(--{project}-spacing-unit);
+    --{project}-spacing-sm: calc(var(--{project}-spacing-unit) * 2);
     /* ... */
 }
 
 /* Use in other CSS files */
 .my-component {
-    padding: var(--islamu-spacing-sm);
-    background-color: var(--islamu-color-teal);
+    padding: var(--{project}-spacing-sm);
+    background-color: var(--{project}-color-primary);
 }
 ```
 
@@ -312,8 +316,8 @@ This file can define CSS variables for colors, spacing, etc., making them easily
 
 ## 4. Best Practices for Theming
 
-*   **Centralize `MudTheme`**: Define your primary light and dark themes in a dedicated static class (e.g., `ISLAMUTheme.cs`).
-*   **Use CSS Variables**: Leverage MudBlazor's CSS variables (e.g., `var(--mud-palette-primary)`) and define your own (`--islamu-primary-color`) for consistent styling.
+*   **Centralize `MudTheme`**: Define your primary light and dark themes in a dedicated static class (e.g., `{Project}Theme.cs`).
+*   **Use CSS Variables**: Leverage MudBlazor's CSS variables (e.g., `var(--mud-palette-primary)`) and define your own (`--{project}-primary-color`) for consistent styling.
 *   **BEM for Custom CSS**: Combine theming with BEM methodology for maintainable custom component styles.
 *   **Minimal Global Overrides**: Keep `site.css` lean, focusing on broad overrides and global utilities.
 *   **Test Dark/Light Mode**: Always test your application thoroughly in both dark and light modes to ensure readability and visual harmony.

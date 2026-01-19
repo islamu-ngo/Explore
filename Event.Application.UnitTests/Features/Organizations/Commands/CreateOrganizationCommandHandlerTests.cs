@@ -18,6 +18,7 @@ public class CreateOrganizationCommandHandlerTests
     private readonly IOrganizationRepository _organizationRepository;
     private readonly IOrganizationMemberRepository _organizationMemberRepository;
     private readonly IActorRepository _actorRepository;
+    private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly IUserContext _userContext;
     private readonly ITenantContext _tenantContext;
     private readonly IMapper _mapper;
@@ -28,6 +29,7 @@ public class CreateOrganizationCommandHandlerTests
         _organizationRepository = Substitute.For<IOrganizationRepository>();
         _organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
         _actorRepository = Substitute.For<IActorRepository>();
+        _storageObjectRepository = Substitute.For<IStorageObjectRepository>();
         _userContext = Substitute.For<IUserContext>();
         _mapper = Substitute.For<IMapper>();
         _tenantContext = Substitute.For<ITenantContext>();
@@ -36,6 +38,7 @@ public class CreateOrganizationCommandHandlerTests
             _organizationRepository,
             _organizationMemberRepository,
             _actorRepository,
+            _storageObjectRepository,
             _userContext,
             _mapper,
             _tenantContext

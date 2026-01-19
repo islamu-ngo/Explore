@@ -1,37 +1,41 @@
 # Dependency Rules - Complete Reference
 
+> **Project-Agnostic Dependency Rules**
+>
+> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../../docs/TEMPLATE_GLOSSARY.md).
+
 ## Dependency Matrix
 
 | Layer | Can Reference | Cannot Reference | Framework Dependencies Allowed |
 |-------|---------------|------------------|-------------------------------|
-| **Explore.Domain** | Nothing | Everything | None (pure C#) |
-| **Explore.Application** | Domain | Infrastructure, Persistence, API, Blazor | MediatR, FluentValidation, AutoMapper |
-| **Explore.Persistence** | Application, Domain | API, Blazor | EF Core, Npgsql, NetTopologySuite |
-| **Explore.Infrastructure** | Application, Domain | API, Blazor | Any (email, file storage, external APIs) |
-| **Explore.API** | All | None (top layer) | ASP.NET Core, Swashbuckle, Serilog |
-| **Explore.Blazor** | All | None (top layer) | Blazor, MudBlazor, SignalR |
-| **Explore.Blazor.Client** | Shared DTOs | Server components | Blazor WebAssembly, MudBlazor |
+| **{Project}.Domain** | Nothing | Everything | None (pure C#) |
+| **{Project}.Application** | Domain | Infrastructure, Persistence, API, Blazor | MediatR, FluentValidation, AutoMapper |
+| **{Project}.Persistence** | Application, Domain | API, Blazor | EF Core, Database Provider, PostGIS |
+| **{Project}.Infrastructure** | Application, Domain | API, Blazor | Any (email, file storage, external APIs) |
+| **{Project}.API** | All | None (top layer) | ASP.NET Core, Swashbuckle, Serilog |
+| **{Project}.Blazor** | All | None (top layer) | Blazor, MudBlazor, SignalR |
+| **{Project}.Blazor.Client** | Shared DTOs | Server components | Blazor WebAssembly, MudBlazor |
 
 ## Visual Dependency Flow
 
 ```mermaid
 graph TD
     subgraph Presentation Layer
-        A[Explore.API]
-        B[Explore.Blazor]
+        A[{Project}.API]
+        B[{Project}.Blazor]
     end
 
     subgraph Infrastructure Layer
-        C[Explore.Persistence]
-        D[Explore.Infrastructure]
+        C[{Project}.Persistence]
+        D[{Project}.Infrastructure]
     end
 
     subgraph Application Layer
-        E[Explore.Application]
+        E[{Project}.Application]
     end
 
     subgraph Domain Layer
-        F[Explore.Domain]
+        F[{Project}.Domain]
     end
 
     A --> E
@@ -69,63 +73,61 @@ graph TD
 Application ──────> Infrastructure
 (high-level)        (low-level, concrete)
 
-CreateEventCommandHandler → ExploreDbContext
+Create{Entity}CommandHandler → {DbContext}
 ```
 *Problem*: Application layer depends on concrete Infrastructure implementation.
 
 **✅ WITH Dependency Inversion** (Correct):
 ```
-Application ──────> IEventRepository (Interface)
+Application ──────> I{Entity}Repository (Interface)
                            ▲
                            │ implements
 Infrastructure ────────────┘
-EventRepository (implements IEventRepository)
+{Entity}Repository (implements I{Entity}Repository)
 ```
 *Solution*: Both depend on abstraction (interface) defined in Application.
 
 ## Allowed `using` Statements by Layer
 
-### Explore.Domain
+### {Project}.Domain
 
-**Example from Event.cs**:
 ```csharp
-// File: Explore.Domain/Event.cs
-namespace Explore.Domain;
+// File: {Project}.Domain/{Entity}.cs
+namespace {Project}.Domain;
 
 // ✅ ALLOWED - Pure C# only
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 
-public class Event
+public class {Entity}
 {
-    public Guid Id { get; set; }
-    
-    [ForeignKey("EventType")]
-    public int EventTypeId { get; set; }
-    public EventType EventType { get; set; }
-    
-    [ForeignKey("AudienceGender")]
-    public int AudienceGenderId { get; set; }
-    public AudienceGender AudienceGender { get; set; }
-    
-    // ... 20+ more navigation properties
+    public {IdType} Id { get; set; }
+
+    [ForeignKey("{LookupEntity}")]
+    public {LookupIdType} {LookupEntity}Id { get; set; }
+    public {LookupEntity} {LookupEntity} { get; set; }
+
+    [ForeignKey("{RelatedEntity}")]
+    public {IdType} {RelatedEntity}Id { get; set; }
+    public {RelatedEntity} {RelatedEntity} { get; set; }
+
+    // ... more navigation properties
 }
 
 // ❌ NOT ALLOWED in Domain
 using Microsoft.EntityFrameworkCore;           // Infrastructure concern
-using Explore.Application;                     // Layer above
-using Explore.Infrastructure;                  // Layer above
+using {Project}.Application;                   // Layer above
+using {Project}.Infrastructure;                // Layer above
 using Microsoft.AspNetCore.Mvc;                // Presentation concern
 using MediatR;                                 // Application concern
 ```
 
-### Explore.Application
+### {Project}.Application
 
-**Example from CreateEventCommandHandler.cs**:
 ```csharp
-// File: Explore.Application/Features/Events/Handlers/Commands/CreateEventCommandHandler.cs
-namespace Explore.Application.Features.Events.Handlers.Commands;
+// File: {Project}.Application/Features/{Entities}/Handlers/Commands/Create{Entity}CommandHandler.cs
+namespace {Project}.Application.Features.{Entities}.Handlers.Commands;
 
 // ✅ ALLOWED
 using System;
@@ -133,71 +135,67 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AutoMapper;                                      // Application framework
-using Explore.Application.Contracts.Persistence;       // Same layer
-using Explore.Application.DTOs.Event;                  // Same layer
-using Explore.Application.DTOs.Event.Validators;       // Same layer
-using Explore.Application.Features.Events.Requests.Commands;  // Same layer
-using Explore.Application.Responses;                   // Same layer
-using Explore.Domain;                                  // Domain entities
+using AutoMapper;                                       // Application framework
+using {Project}.Application.Contracts.Persistence;     // Same layer
+using {Project}.Application.DTOs.{Entity};             // Same layer
+using {Project}.Application.DTOs.{Entity}.Validators;  // Same layer
+using {Project}.Application.Features.{Entities}.Requests.Commands;  // Same layer
+using {Project}.Application.Responses;                 // Same layer
+using {Project}.Domain;                                // Domain entities
 using MediatR;                                         // CQRS framework
 
 // ❌ NOT ALLOWED
-using Explore.Persistence;                     // Infrastructure layer
-using Explore.Infrastructure;                  // Infrastructure layer
-using Explore.API;                             // Presentation layer
+using {Project}.Persistence;                   // Infrastructure layer
+using {Project}.Infrastructure;                // Infrastructure layer
+using {Project}.API;                           // Presentation layer
 using Microsoft.EntityFrameworkCore;           // Infrastructure concern
 using Microsoft.AspNetCore.Mvc;                // Presentation concern
 ```
 
-### Explore.Persistence
+### {Project}.Persistence
 
-**Example from EventRepository.cs**:
 ```csharp
-// File: Explore.Persistence/Repositories/EventRepository.cs
-namespace Explore.Persistence.Repositories;
+// File: {Project}.Persistence/Repositories/{Entity}Repository.cs
+namespace {Project}.Persistence.Repositories;
 
 // ✅ ALLOWED
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Explore.Application.Contracts.Persistence;       // Application interfaces
-using Explore.Domain;                                  // Domain entities
+using {Project}.Application.Contracts.Persistence;     // Application interfaces
+using {Project}.Domain;                                // Domain entities
 using Microsoft.EntityFrameworkCore;                   // ORM framework
-using Npgsql.EntityFrameworkCore.PostgreSQL;           // Database provider
-using NetTopologySuite;                                // PostGIS support
 
 // ❌ NOT ALLOWED
-using Explore.API;                             // Presentation layer
-using Explore.Blazor;                          // Presentation layer
+using {Project}.API;                           // Presentation layer
+using {Project}.Blazor;                        // Presentation layer
 using Microsoft.AspNetCore.Mvc;                // Presentation concern
 ```
 
-### Explore.Infrastructure
+### {Project}.Infrastructure
 
 ```csharp
-// File: Explore.Infrastructure/Email/EmailService.cs
-namespace Explore.Infrastructure.Email;
+// File: {Project}.Infrastructure/Email/EmailService.cs
+namespace {Project}.Infrastructure.Email;
 
 // ✅ ALLOWED
-using Explore.Domain;                                  // Domain entities
-using Explore.Application.Contracts.Infrastructure;    // Application interfaces
-using SendGrid;                                        // External service
-using Azure.Storage.Blobs;                             // External service
+using {Project}.Domain;                                   // Domain entities
+using {Project}.Application.Contracts.Infrastructure;     // Application interfaces
+using SendGrid;                                           // External service
+using Azure.Storage.Blobs;                                // External service
 
 // ❌ NOT ALLOWED
-using Explore.API;                             // Presentation layer
-using Explore.Blazor;                          // Presentation layer
+using {Project}.API;                           // Presentation layer
+using {Project}.Blazor;                        // Presentation layer
 using Microsoft.AspNetCore.Mvc;                // Presentation concern
 ```
 
-### Explore.API
+### {Project}.API
 
-**Example from EventController.cs**:
 ```csharp
-// File: Explore.API/Controllers/EventController.cs
-namespace Explore.API.Controllers;
+// File: {Project}.API/Controllers/{Entity}Controller.cs
+namespace {Project}.API.Controllers;
 
 // ✅ ALLOWED (Everything)
 using System;
@@ -205,21 +203,20 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
-using Explore.Application.DTOs.Event;                      // DTOs
-using Explore.Application.Features.Events.Requests.Commands;
-using Explore.Application.Features.Events.Requests.Queries;
-using Explore.Application.Responses;                        // Response wrappers
-using MediatR;                                             // CQRS
-using Microsoft.AspNetCore.Authorization;                  // Auth
-using Microsoft.AspNetCore.Http;                           // HTTP context
-using Microsoft.AspNetCore.Mvc;                            // Controllers
-using Scalar.AspNetCore;                                   // API docs
+using {Project}.Application.DTOs.{Entity};                          // DTOs
+using {Project}.Application.Features.{Entities}.Requests.Commands;
+using {Project}.Application.Features.{Entities}.Requests.Queries;
+using {Project}.Application.Responses;                              // Response wrappers
+using MediatR;                                                      // CQRS
+using Microsoft.AspNetCore.Authorization;                           // Auth
+using Microsoft.AspNetCore.Http;                                    // HTTP context
+using Microsoft.AspNetCore.Mvc;                                     // Controllers
 // ... any other dependencies
 ```
 
 ## Project Reference Rules (.csproj)
 
-### Explore.Domain.csproj
+### {Project}.Domain.csproj
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
@@ -234,12 +231,12 @@ using Scalar.AspNetCore;                                   // API docs
 </Project>
 ```
 
-### Explore.Application.csproj
+### {Project}.Application.csproj
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <!-- ✅ ALLOWED: Reference to Domain -->
-    <ProjectReference Include="..\Explore.Domain\Explore.Domain.csproj" />
+    <ProjectReference Include="..\{Project}.Domain\{Project}.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -253,32 +250,31 @@ using Scalar.AspNetCore;                                   // API docs
 </Project>
 ```
 
-### Explore.Persistence.csproj
+### {Project}.Persistence.csproj
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <!-- ✅ ALLOWED: References to Domain and Application -->
-    <ProjectReference Include="..\Explore.Domain\Explore.Domain.csproj" />
-    <ProjectReference Include="..\Explore.Application\Explore.Application.csproj" />
+    <ProjectReference Include="..\{Project}.Domain\{Project}.Domain.csproj" />
+    <ProjectReference Include="..\{Project}.Application\{Project}.Application.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <!-- ✅ ALLOWED: EF Core and database packages -->
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.0" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
-    <PackageReference Include="NetTopologySuite.IO.GeoJSON" Version="4.0.0" />
   </ItemGroup>
 </Project>
 ```
 
-### Explore.API.csproj
+### {Project}.API.csproj
 ```xml
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <ItemGroup>
     <!-- ✅ ALLOWED: References to ALL -->
-    <ProjectReference Include="..\Explore.Application\Explore.Application.csproj" />
-    <ProjectReference Include="..\Explore.Infrastructure\Explore.Infrastructure.csproj" />
-    <ProjectReference Include="..\Explore.Persistence\Explore.Persistence.csproj" />
+    <ProjectReference Include="..\{Project}.Application\{Project}.Application.csproj" />
+    <ProjectReference Include="..\{Project}.Infrastructure\{Project}.Infrastructure.csproj" />
+    <ProjectReference Include="..\{Project}.Persistence\{Project}.Persistence.csproj" />
   </ItemGroup>
 </Project>
 ```
@@ -288,41 +284,40 @@ using Scalar.AspNetCore;                                   // API docs
 ### Check Project References
 ```bash
 # Domain should have NO project references
-dotnet list Explore.Domain/Explore.Domain.csproj reference
+dotnet list {Project}.Domain/{Project}.Domain.csproj reference
 
 # Application should ONLY reference Domain
-dotnet list Explore.Application/Explore.Application.csproj reference
+dotnet list {Project}.Application/{Project}.Application.csproj reference
 
 # Persistence should reference Domain + Application
-dotnet list Explore.Persistence/Explore.Persistence.csproj reference
+dotnet list {Project}.Persistence/{Project}.Persistence.csproj reference
 ```
 
 ### Search for Violations
 ```bash
 # Find prohibited using statements in Domain
-rg "using (Microsoft\.(EntityFrameworkCore|AspNetCore)|Explore\.(Application|Infrastructure|API|Blazor))" Explore.Domain/
+rg "using (Microsoft\.(EntityFrameworkCore|AspNetCore)|{Project}\.(Application|Infrastructure|API|Blazor))" {Project}.Domain/
 
 # Find validation annotations in Domain (except [ForeignKey])
-rg "\[Required\]|\[MaxLength\]|\[Range\]|\[StringLength\]" Explore.Domain/
+rg "\[Required\]|\[MaxLength\]|\[Range\]|\[StringLength\]" {Project}.Domain/
 ```
 
 ## Common Questions
 
 ### Q: Can Domain use System.ComponentModel.DataAnnotations?
-**A**: ⚠️ LIMITED USE. Only `[ForeignKey]` is acceptable for EF Core relationships. Avoid `[Required]`, `[MaxLength]`, `[Range]` etc.
+**A**: LIMITED USE. Only `[ForeignKey]` is acceptable for EF Core relationships. Avoid `[Required]`, `[MaxLength]`, `[Range]` etc.
 
-**Real Event Entity Example**:
 ```csharp
-// File: Explore.Domain/Event.cs
-public class Event
+// File: {Project}.Domain/{Entity}.cs
+public class {Entity}
 {
-    public Guid Id { get; set; }
-    
+    public {IdType} Id { get; set; }
+
     // ✅ OK - Specifies foreign key relationship
-    [ForeignKey("EventType")]
-    public int EventTypeId { get; set; }
-    public EventType EventType { get; set; }
-    
+    [ForeignKey("{LookupEntity}")]
+    public {LookupIdType} {LookupEntity}Id { get; set; }
+    public {LookupEntity} {LookupEntity} { get; set; }
+
     // ❌ NOT OK - Validation annotations
     // [Required]
     // [MaxLength(200)]
@@ -335,18 +330,17 @@ public class Event
 ### Q: Can Application use AutoMapper?
 **A**: ✅ YES. AutoMapper is an Application-layer concern for mapping Domain entities to DTOs.
 
-**Real Example from GetEventListRequestHandler.cs**:
 ```csharp
-// File: Explore.Application/Features/Events/Handlers/Queries/GetEventListRequestHandler.cs
-public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, List<EventListDto>>
+// File: {Project}.Application/Features/{Entities}/Handlers/Queries/Get{Entity}ListRequestHandler.cs
+public class Get{Entity}ListRequestHandler : IRequestHandler<Get{Entity}ListRequest, List<{Entity}ListDto>>
 {
-    private readonly IEventRepository _eventRepository;
+    private readonly I{Entity}Repository _{entity}Repository;
     private readonly IMapper _mapper;
 
-    public async Task<List<EventListDto>> Handle(GetEventListRequest request, CancellationToken cancellationToken)
+    public async Task<List<{Entity}ListDto>> Handle(Get{Entity}ListRequest request, CancellationToken cancellationToken)
     {
-        var events = await _eventRepository.GetEventsWithDetails();  // Returns List<Event>
-        return _mapper.Map<List<EventListDto>>(events);  // ✅ Maps to DTOs
+        var {entities} = await _{entity}Repository.Get{Entities}WithDetails();  // Returns List<{Entity}>
+        return _mapper.Map<List<{Entity}ListDto>>({entities});  // ✅ Maps to DTOs
     }
 }
 ```
@@ -356,26 +350,23 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, L
 
 **Correct Pattern**:
 ```csharp
-// File: Explore.Application/Contracts/Persistence/IEventRepository.cs
-namespace Explore.Application.Contracts.Persistence;
+// File: {Project}.Application/Contracts/Persistence/I{Entity}Repository.cs
+namespace {Project}.Application.Contracts.Persistence;
 
-public interface IEventRepository : IGenericRepository<Event, Guid>
+public interface I{Entity}Repository : IGenericRepository<{Entity}, {IdType}>
 {
-    Task<Event?> GetEventWithDetails(Guid id);
-    Task<List<Event>> GetEventsWithDetails();  // ✅ Returns List<Event>, not IQueryable
-    Task<List<Event>> GetMyEventsWithDetails(string userId);
+    Task<{Entity}?> Get{Entity}WithDetails({IdType} id);
+    Task<List<{Entity}>> Get{Entities}WithDetails();  // ✅ Returns List<{Entity}>, not IQueryable
 }
 
-// File: Explore.Persistence/Repositories/EventRepository.cs
-public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
+// File: {Project}.Persistence/Repositories/{Entity}Repository.cs
+public class {Entity}Repository : GenericRepository<{Entity}, {IdType}>, I{Entity}Repository
 {
-    public async Task<List<Event>> GetEventsWithDetails()
+    public async Task<List<{Entity}>> Get{Entities}WithDetails()
     {
-        return await _dbContext.Events  // ✅ EF Core IQueryable handled here
-            .Include(e => e.EventType)
-            .Include(e => e.AudienceGender)
-            .Include(e => e.AudienceAge)
-            .Include(e => e.Actor)
+        return await _dbContext.{Entities}  // ✅ EF Core IQueryable handled here
+            .Include(e => e.{LookupEntity})
+            .Include(e => e.{RelatedEntity})
             .ToListAsync();  // ✅ Materializes to List
     }
 }
@@ -383,36 +374,36 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
 
 ### Q: Where do I put Email sending logic?
 **A**:
-- **Interface**: `Explore.Application/Contracts/Infrastructure/IEmailService.cs`
-- **Implementation**: `Explore.Infrastructure/Services/EmailService.cs`
-- **Usage**: Application layer uses `IEmailService`, Infrastructure provides SendGrid implementation
+- **Interface**: `{Project}.Application/Contracts/Infrastructure/IEmailService.cs`
+- **Implementation**: `{Project}.Infrastructure/Services/EmailService.cs`
+- **Usage**: Application layer uses `IEmailService`, Infrastructure provides concrete implementation
 
 ### Q: Can Blazor.Client reference Persistence?
 **A**: ❌ NO. Blazor.Client runs in the browser (WebAssembly) and cannot access databases directly. Use shared DTOs and API calls.
 
 **Correct Pattern**:
 ```csharp
-// Shared DTO in Explore.Application
-public record EventListDto
+// Shared DTO in {Project}.Application
+public record {Entity}ListDto
 {
-    public Guid Id { get; init; }
+    public {IdType} Id { get; init; }
     public string Title { get; init; } = string.Empty;
-    public string EventTypeName { get; init; } = string.Empty;
+    public string {LookupEntity}Name { get; init; } = string.Empty;
 }
 
-// API endpoint in Explore.API
+// API endpoint in {Project}.API
 [HttpGet]
 [AllowAnonymous]
-public async Task<ActionResult<List<EventListDto>>> GetAll()
+public async Task<ActionResult<List<{Entity}ListDto>>> GetAll()
 {
-    var events = await _mediator.Send(new GetEventListRequest());
-    return Ok(events);
+    var {entities} = await _mediator.Send(new Get{Entity}ListRequest());
+    return Ok({entities});
 }
 
 // Blazor.Client calls API
 @inject HttpClient Http
 
-var events = await Http.GetFromJsonAsync<List<EventListDto>>("/api/v1/event");
+var {entities} = await Http.GetFromJsonAsync<List<{Entity}ListDto>>("/api/v1/{entity}");
 ```
 
 ---

@@ -109,22 +109,51 @@ public class ObjectStorageService : IObjectStorageService
     Task<(Stream FileStream, string ContentType)> IObjectStorageService.GetFileStream(string fileKey)
         => GetFileStream(fileKey);
 
-    private string ConstructViewUrl(string objectKey)
+    public string GeneratePresignedDownloadUrl(string objectKey, int expirationMinutes = 60)
     {
-        // For Hetzner Object Storage, construct the public URL
-        // Format: https://{bucket}.{endpoint}/{key}
+        if (string.IsNullOrWhiteSpace(objectKey))
+            throw new ArgumentException("objectKey must be provided", nameof(objectKey));
 
-        if (string.IsNullOrEmpty(_s3Settings.Endpoint))
+        if (_s3Settings == null)
+            throw new InvalidOperationException("S3 settings are not configured.");
+
+        if (string.IsNullOrWhiteSpace(_s3Settings.BucketName))
+            throw new InvalidOperationException("S3 bucket name is not configured (S3Settings:BucketName).");
+
+        var request = new GetPreSignedUrlRequest
         {
-            throw new InvalidOperationException("S3 Endpoint must be configured for Hetzner Object Storage");
+            BucketName = _s3Settings.BucketName,
+            Key = objectKey,
+            Verb = HttpVerb.GET,
+            Expires = DateTime.UtcNow.AddMinutes(expirationMinutes)
+        };
+
+        string? downloadUrl;
+        try
+        {
+            downloadUrl = _s3Client.GetPreSignedURL(request);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException("Failed to generate pre-signed download URL. Verify S3 configuration and credentials.", ex);
         }
 
-        var endpoint = _s3Settings.Endpoint.TrimEnd('/');
+        if (string.IsNullOrWhiteSpace(downloadUrl))
+        {
+            throw new InvalidOperationException("Failed to generate pre-signed download URL: the S3 client returned an empty URL.");
+        }
 
-        var endpointHost = endpoint
-            .Replace("https://", "")
-            .Replace("http://", "");
+        return downloadUrl;
+    }
 
-        return $"https://{_s3Settings.BucketName}.{endpointHost}/{objectKey}";
+    private string ConstructViewUrl(string objectKey)
+    {
+        // Return the object key as a relative API path
+        // The Blazor app will use this to fetch images through the StorageObject/file endpoint
+        // This ensures images are always accessible (authenticated if needed) and not dependent on S3 public access
+        // Format: /api/v1/StorageObject/file/{objectKey}
+        // NOTE: We store just the object key. The full URL will be constructed at display time
+        // by either generating a presigned S3 URL or routing through the API proxy.
+        return objectKey;
     }
 }

@@ -1,10 +1,12 @@
 using AutoMapper;
 using Event.Application.UnitTests.Common;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Organization;
 using Explore.Application.Features.Organizations.Handlers.Queries;
 using Explore.Application.Features.Organizations.Requests.Queries;
 using Explore.Domain;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -15,14 +17,22 @@ public class GetOrganizationListRequestHandlerTests
 {
     private readonly IOrganizationRepository _organizationRepository;
     private readonly IMapper _mapper;
+    private readonly IObjectStorageService _objectStorageService;
+    private readonly ILogger<GetOrganizationListRequestHandler> _logger;
     private readonly GetOrganizationListRequestHandler _handler;
 
     public GetOrganizationListRequestHandlerTests()
     {
         _organizationRepository = Substitute.For<IOrganizationRepository>();
         _mapper = Substitute.For<IMapper>();
+        _objectStorageService = Substitute.For<IObjectStorageService>();
+        _logger = Substitute.For<ILogger<GetOrganizationListRequestHandler>>();
 
-        _handler = new GetOrganizationListRequestHandler(_organizationRepository, _mapper);
+        _handler = new GetOrganizationListRequestHandler(
+            _organizationRepository,
+            _mapper,
+            _objectStorageService,
+            _logger);
     }
 
     [Test]

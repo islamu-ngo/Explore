@@ -17,6 +17,7 @@ namespace Explore.Persistence.Repositories
         {
             return await _dbContext.Users
                 .Include(u => u.Actor)
+                    .ThenInclude(a => a.ProfilePicture)
                 .FirstOrDefaultAsync(u => u.Id == id);
         }
 

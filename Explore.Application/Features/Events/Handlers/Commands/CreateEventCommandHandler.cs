@@ -67,12 +67,12 @@ namespace Explore.Application.Features.Events.Handlers.Commands
 
             // Validate the DTO
             var validator = new CreateEventDtoValidator(
-                _audienceAgeRepository, 
-                _audienceGenderRepository, 
-                _eventTypeRepository, 
-                _organizationRepository, 
+                _audienceAgeRepository,
+                _audienceGenderRepository,
+                _eventTypeRepository,
+                _organizationRepository,
                 _storageObjectRepository);
-            
+
             var validationResult = await validator.ValidateAsync(request.EventDto, cancellationToken);
             if (!validationResult.IsValid)
             {
@@ -84,22 +84,22 @@ namespace Explore.Application.Features.Events.Handlers.Commands
 
             // Resolve the ActorId based on context
             Guid actorId;
-            
+
             if (request.EventDto.OrganizationId.HasValue)
             {
                 // ===== ORGANIZATION CONTEXT =====
                 // User wants to create event for an organization
                 var organizationId = request.EventDto.OrganizationId.Value;
-                
+
                 // SECURITY: Verify user has admin permissions for this organization
                 var isAdmin = await _organizationMemberRepository.IsUserAdminOfOrganization(organizationId, currentUserId);
                 if (!isAdmin)
                 {
                     response.Success = false;
                     response.Message = "You do not have permission to create events for this organization.";
-                    response.Errors = new List<string> 
-                    { 
-                        "User must be a Creator, Co-Owner, or Admin of the organization to create events." 
+                    response.Errors = new List<string>
+                    {
+                        "User must be a Creator, Co-Owner, or Admin of the organization to create events."
                     };
                     return response;
                 }
@@ -110,9 +110,9 @@ namespace Explore.Application.Features.Events.Handlers.Commands
                 {
                     response.Success = false;
                     response.Message = "Organization does not have an associated actor.";
-                    response.Errors = new List<string> 
-                    { 
-                        "The organization is not properly configured. Please contact support." 
+                    response.Errors = new List<string>
+                    {
+                        "The organization is not properly configured. Please contact support."
                     };
                     return response;
                 }
@@ -129,9 +129,9 @@ namespace Explore.Application.Features.Events.Handlers.Commands
                 {
                     response.Success = false;
                     response.Message = "Your personal actor was not found.";
-                    response.Errors = new List<string> 
-                    { 
-                        "Your account is not properly set up. Please sync your profile first." 
+                    response.Errors = new List<string>
+                    {
+                        "Your account is not properly set up. Please sync your profile first."
                     };
                     return response;
                 }
@@ -141,12 +141,12 @@ namespace Explore.Application.Features.Events.Handlers.Commands
 
             // Map DTO to entity
             var @event = _mapper.Map<Event>(request.EventDto);
-            
+
             // Set the resolved ActorId and initialize defaults
             @event.ActorId = actorId;
             @event.TotalViews = 0;
             @event.TenantId = _tenantContext.TenantId;
-            
+
             // Set defaults for status and visibility if not provided
             if (@event.EventStatusId == 0) @event.EventStatusId = 1; // Draft
             if (@event.VisibilityTypeId == 0) @event.VisibilityTypeId = 1; // Public
@@ -155,6 +155,19 @@ namespace Explore.Application.Features.Events.Handlers.Commands
             // Persist the event
             @event = await _eventRepository.Create(@event);
             Console.WriteLine($"[CREATE EVENT] Event created with ID: {@event.Id}");
+
+            // ===== UPDATE STORAGE OBJECT OWNERSHIP =====
+            // If a featured image was uploaded, update its ActorId to link it to the event's actor
+            if (request.EventDto.FeaturedImageId.HasValue)
+            {
+                var storageObject = await _storageObjectRepository.GetById(request.EventDto.FeaturedImageId.Value);
+                if (storageObject != null)
+                {
+                    storageObject.ActorId = actorId;
+                    await _storageObjectRepository.Update(storageObject);
+                    Console.WriteLine($"[CREATE EVENT] StorageObject {storageObject.Id} ActorId updated to {actorId}");
+                }
+            }
 
             // ===== CREATE DEFAULT EVENT SESSION =====
             // Each event must have at least one session

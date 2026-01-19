@@ -1,1028 +1,262 @@
+@page "/events"
 @using MudBlazor
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Components.Event
 @using Microsoft.AspNetCore.Components
 @using Microsoft.Extensions.Logging
-@inject NavigationManager Navigation
-@inject IEventService EventService
-@inject ICategoryService CategoryService
-@inject ITagService TagService
-@inject IAdminService AdminService
-@inject ILocationService LocationService
-@inject IEventRegistrationService RegistrationService
-@inject IDialogService DialogService
-@inject ISnackbar Snackbar
-@inject ILogger<EventList> Logger
+
 <PageTitle>Explore Events</PageTitle>
 
-<MudContainer Class="event-list__wrapper">
-    <div class="pa-4">
+<MudContainer Class="event-list__wrapper" MaxWidth="MaxWidth.ExtraLarge">
+    
+    <!-- Row 1: Search -->
+    <div class="event-list__search-container mb-4">
+        <MudTextField @bind-Value="searchText"
+                      Placeholder="Search events..."
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      IconSize="Size.Medium"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense" 
+                      Class="event-list__search-input"
+                      Immediate="true"
+                      DebounceInterval="500"
+                      TextChanged="OnSearch" />
+    </div>
 
-        <!-- Header -->
-        <div class="event-list__header">
-            <div>
-                <MudText Typo="Typo.overline" Class="event-list__kicker">Discover</MudText>
-                <MudText Class="isl-typo-h5">Explore Events</MudText>
-            </div>
-        </div>
+    <!-- Row 2: Filters Container - Single Row -->
+    <div class="event-list__filters-container">
+        <!-- Date -->
+        <MudSelect T="string" Value="@selectedDate" ValueChanged="@((string d) => OnDateChanged(d))" 
+                   Label="Date" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" 
+                   AnchorOrigin="Origin.BottomCenter" Class="event-list__filter-item">
+            <MudSelectItem Value="@("")">Any Time</MudSelectItem>
+            <MudSelectItem Value="@("today")">Today</MudSelectItem>
+            <MudSelectItem Value="@("tomorrow")">Tomorrow</MudSelectItem>
+            <MudSelectItem Value="@("thisweek")">This Week</MudSelectItem>
+            <MudSelectItem Value="@("thismonth")">This Month</MudSelectItem>
+        </MudSelect>
 
-        <!-- Filters -->
-        <div class="event-list__filters mb-4">
-            <!-- Date -->
-            <div class="event-list__filter-cell">
-                <MudPopover Open="@isDateOpen" Fixed="true" Class="isl-popover-menu px-4 py-3">
-                    <div class="d-flex flex-column gap-3" style="min-width:220px">
-                        <MudText Typo="Typo.subtitle2">Date</MudText>
-                        <div class="d-flex flex-column gap-1">
-                            <MudText Typo="Typo.body2"
-                                     Color="@(selectedDate == "" ? Color.Primary : Color.Default)"
-                                     Class="isl-popover-menu__option"
-                                     @onclick="@(() => OnDateChanged(""))">Any Time</MudText>
-                            <MudText Typo="Typo.body2"
-                                     Color="@(selectedDate == "today" ? Color.Primary : Color.Default)"
-                                     Class="isl-popover-menu__option"
-                                     @onclick="@(() => OnDateChanged("today"))">Today</MudText>
-                            <MudText Typo="Typo.body2"
-                                     Color="@(selectedDate == "tomorrow" ? Color.Primary : Color.Default)"
-                                     Class="isl-popover-menu__option"
-                                     @onclick="@(() => OnDateChanged("tomorrow"))">Tomorrow</MudText>
-                            <MudText Typo="Typo.body2"
-                                     Color="@(selectedDate == "thisweek" ? Color.Primary : Color.Default)"
-                                     Class="isl-popover-menu__option"
-                                     @onclick="@(() => OnDateChanged("thisweek"))">This Week</MudText>
-                            <MudText Typo="Typo.body2"
-                                     Color="@(selectedDate == "thismonth" ? Color.Primary : Color.Default)"
-                                     Class="isl-popover-menu__option"
-                                     @onclick="@(() => OnDateChanged("thismonth"))">This Month</MudText>
-                        </div>
-                    </div>
-                </MudPopover>
-                <MudPaper @onclick="@(() => isDateOpen = !isDateOpen)"
-                          Class="isl-button-pill d-flex justify-space-between align-center">
-                    <MudText Class="ml-2">
-                        @(string.IsNullOrEmpty(selectedDate) ? "Any Time" :
-                            (selectedDate == "today" ? "Today" :
-                            selectedDate == "tomorrow" ? "Tomorrow" :
-                            selectedDate == "thisweek" ? "This Week" :
-                            selectedDate == "thismonth" ? "This Month" : selectedDate))
-                    </MudText>
-                    <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" />
-                </MudPaper>
-            </div>
-
-            <!-- Category -->
-            <div class="event-list__filter-cell">
-                <MudPopover Open="@isCategoryOpen" Fixed="true" Class="isl-popover-menu px-4 py-3">
-                    <div class="d-flex flex-column gap-3" style="min-width:220px; max-height: 300px; overflow-y: auto;">
-                        <MudText Typo="Typo.subtitle2">Category</MudText>
-                        <div class="d-flex flex-column gap-1">
-                            <MudText Typo="Typo.body2"
-                                     Color="@(selectedCategoryId == null ? Color.Primary : Color.Default)"
-                                     Class="isl-popover-menu__option"
-                                     @onclick="@(() => OnCategoryChanged(null))">All Categories</MudText>
-                            @if (categories != null && categories.Any())
-                            {
-                                @foreach (var category in categories)
-                                {
-                                    <MudText Typo="Typo.body2"
-                                             Color="@(selectedCategoryId == category.Id ? Color.Primary : Color.Default)"
-                                             Class="isl-popover-menu__option"
-                                             @onclick="@(() => OnCategoryChanged(category.Id))">@category.FullName</MudText>
-                                }
-                            }
-                        </div>
-                    </div>
-                </MudPopover>
-                <MudPaper @onclick="@(() => isCategoryOpen = !isCategoryOpen)"
-                          Class="isl-button-pill d-flex justify-space-between align-center">
-                    <MudText Class="ml-2">
-                        @(selectedCategoryId == null ? "All Categories" : GetSelectedCategoryName())
-                    </MudText>
-                    <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" />
-                </MudPaper>
-            </div>
-
-            <!-- Tags -->
-            <div class="event-list__filter-cell">
-                <MudPopover Open="@isTagOpen" Fixed="true" Class="isl-popover-menu px-4 py-3">
-                    <div class="d-flex flex-column gap-3" style="min-width:220px; max-height: 300px; overflow-y: auto;">
-                        <MudText Typo="Typo.subtitle2">Tags</MudText>
-                        <div class="d-flex flex-column gap-1">
-                            <MudText Typo="Typo.body2"
-                                     Color="@(selectedTagId == null ? Color.Primary : Color.Default)"
-                                     Class="isl-popover-menu__option"
-                                     @onclick="@(() => OnTagChanged(null))">All Tags</MudText>
-                            @if (tags != null && tags.Any())
-                            {
-                                @foreach (var tag in tags)
-                                {
-                                    <MudText Typo="Typo.body2"
-                                             Color="@(selectedTagId == tag.Id ? Color.Primary : Color.Default)"
-                                             Class="isl-popover-menu__option"
-                                             @onclick="@(() => OnTagChanged(tag.Id))">@tag.FullName</MudText>
-                                }
-                            }
-                        </div>
-                    </div>
-                </MudPopover>
-                <MudPaper @onclick="@(() => isTagOpen = !isTagOpen)"
-                          Class="isl-button-pill d-flex justify-space-between align-center">
-                    <MudText Class="ml-2">
-                        @(selectedTagId == null ? "All Tags" : GetSelectedTagName())
-                    </MudText>
-                    <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" />
-                </MudPaper>
-            </div>
-
-            <!-- Format -->
-            <div class="event-list__filter-cell">
-                <MudPopover Open="@isFormatOpen" Fixed="true" Class="isl-popover-menu px-4 py-3">
-                    <div class="d-flex flex-column gap-3" style="min-width:220px; max-height: 300px; overflow-y: auto;">
-                        <MudText Typo="Typo.subtitle2">Format</MudText>
-                        <div class="d-flex flex-column gap-1">
-                            <MudText Typo="Typo.body2"
-                                     Color="@(selectedFormatId == null ? Color.Primary : Color.Default)"
-                                     Class="isl-popover-menu__option"
-                                     @onclick="@(() => OnFormatChanged(null))">All Formats</MudText>
-                            @if (eventFormats != null && eventFormats.Any())
-                            {
-                                @foreach (var format in eventFormats)
-                                {
-                                    <MudText Typo="Typo.body2"
-                                             Color="@(selectedFormatId == format.Id ? Color.Primary : Color.Default)"
-                                             Class="isl-popover-menu__option"
-                                             @onclick="@(() => OnFormatChanged(format.Id))">@format.FullName</MudText>
-                                }
-                            }
-                        </div>
-                    </div>
-                </MudPopover>
-                <MudPaper @onclick="@(() => isFormatOpen = !isFormatOpen)"
-                          Class="isl-button-pill d-flex justify-space-between align-center">
-                    <MudText Class="ml-2">
-                        @(selectedFormatId == null ? "All Formats" : GetSelectedFormatName())
-                    </MudText>
-                    <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" />
-                </MudPaper>
-            </div>
-
-            <!-- Madhab -->
-            <div class="event-list__filter-cell">
-                <MudPopover Open="@isMadhabOpen" Fixed="true" Class="isl-popover-menu px-4 py-3">
-                    <div class="d-flex flex-column gap-3" style="min-width:220px; max-height: 300px; overflow-y: auto;">
-                        <MudText Typo="Typo.subtitle2">Madhab</MudText>
-                        <div class="d-flex flex-column gap-1">
-                            <MudText Typo="Typo.body2"
-                                     Color="@(selectedMadhabId == null ? Color.Primary : Color.Default)"
-                                     Class="isl-popover-menu__option"
-                                     @onclick="@(() => OnMadhabChanged(null))">All Madhabs</MudText>
-                            @if (madhabs != null && madhabs.Any())
-                            {
-                                @foreach (var madhab in madhabs)
-                                {
-                                    <MudText Typo="Typo.body2"
-                                             Color="@(selectedMadhabId == madhab.Id ? Color.Primary : Color.Default)"
-                                             Class="isl-popover-menu__option"
-                                             @onclick="@(() => OnMadhabChanged(madhab.Id))">@madhab.FullName</MudText>
-                                }
-                            }
-                        </div>
-                    </div>
-                </MudPopover>
-                <MudPaper @onclick="@(() => isMadhabOpen = !isMadhabOpen)"
-                          Class="isl-button-pill d-flex justify-space-between align-center">
-                    <MudText Class="ml-2">
-                        @(selectedMadhabId == null ? "All Madhabs" : GetSelectedMadhabName())
-                    </MudText>
-                    <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" />
-                </MudPaper>
-            </div>
-
-            <!-- Location -->
-            <div class="event-list__filter-cell">
-                <MudPopover Open="@isLocationOpen" Fixed="true" Class="isl-popover-menu px-4 py-3">
-                    <div class="d-flex flex-column gap-3" style="min-width:220px; max-height: 300px; overflow-y: auto;">
-                        <MudText Typo="Typo.subtitle2">Location</MudText>
-                        <div class="d-flex flex-column gap-1">
-                            <MudText Typo="Typo.body2"
-                                     Color="@(selectedLocationId == null ? Color.Primary : Color.Default)"
-                                     Class="isl-popover-menu__option"
-                                     @onclick="@(() => OnLocationChanged(null))">All Locations</MudText>
-                            @if (locations != null && locations.Any())
-                            {
-                                @foreach (var location in locations)
-                                {
-                                    <MudText Typo="Typo.body2"
-                                             Color="@(selectedLocationId == location.Id ? Color.Primary : Color.Default)"
-                                             Class="isl-popover-menu__option"
-                                             @onclick="@(() => OnLocationChanged(location.Id))">
-                                        @location.FullName @(!string.IsNullOrEmpty(location.City) ? $" - {location.City}" : "")
-                                    </MudText>
-                                }
-                            }
-                        </div>
-                    </div>
-                </MudPopover>
-                <MudPaper @onclick="@(() => isLocationOpen = !isLocationOpen)"
-                          Class="isl-button-pill d-flex justify-space-between align-center">
-                    <MudText Class="ml-2">
-                        @(selectedLocationId == null ? "All Locations" : GetSelectedLocationName())
-                    </MudText>
-                    <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" />
-                </MudPaper>
-            </div>
-
-            <!-- Registration Mode -->
-            <div class="event-list__filter-cell">
-                <MudPopover Open="@isRegistrationModeOpen" Fixed="true" Class="isl-popover-menu px-4 py-3">
-                    <div class="d-flex flex-column gap-3" style="min-width:220px; max-height: 300px; overflow-y: auto;">
-                        <MudText Typo="Typo.subtitle2">Registration Mode</MudText>
-                        <div class="d-flex flex-column gap-1">
-                            <MudText Typo="Typo.body2"
-                                     Color="@(selectedRegistrationModeId == null ? Color.Primary : Color.Default)"
-                                     Class="isl-popover-menu__option"
-                                     @onclick="@(() => OnRegistrationModeChanged(null))">All Modes</MudText>
-                            @if (registrationModes != null && registrationModes.Any())
-                            {
-                                @foreach (var mode in registrationModes)
-                                {
-                                    <MudText Typo="Typo.body2"
-                                             Color="@(selectedRegistrationModeId == mode.Id ? Color.Primary : Color.Default)"
-                                             Class="isl-popover-menu__option"
-                                             @onclick="@(() => OnRegistrationModeChanged(mode.Id))">@mode.FullName</MudText>
-                                }
-                            }
-                        </div>
-                    </div>
-                </MudPopover>
-                <MudPaper @onclick="@(() => isRegistrationModeOpen = !isRegistrationModeOpen)"
-                          Class="isl-button-pill d-flex justify-space-between align-center">
-                    <MudText Class="ml-2">
-                        @(selectedRegistrationModeId == null ? "All Modes" : GetSelectedRegistrationModeName())
-                    </MudText>
-                    <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" />
-                </MudPaper>
-            </div>
-
-            <!-- Language -->
-            <div class="event-list__filter-cell">
-                <MudPopover Open="@isLanguageOpen" Fixed="true" Class="isl-popover-menu px-4 py-3">
-                    <div class="d-flex flex-column gap-3" style="min-width:220px; max-height: 300px; overflow-y: auto;">
-                        <MudText Typo="Typo.subtitle2">Language</MudText>
-                        <div class="d-flex flex-column gap-1">
-                            <MudText Typo="Typo.body2"
-                                     Color="@(selectedLanguageId == null ? Color.Primary : Color.Default)"
-                                     Class="isl-popover-menu__option"
-                                     @onclick="@(() => OnLanguageChanged(null))">All Languages</MudText>
-                            @if (languages != null && languages.Any())
-                            {
-                                @foreach (var language in languages)
-                                {
-                                    <MudText Typo="Typo.body2"
-                                             Color="@(selectedLanguageId == language.Id ? Color.Primary : Color.Default)"
-                                             Class="isl-popover-menu__option"
-                                             @onclick="@(() => OnLanguageChanged(language.Id))">@language.FullName</MudText>
-                                }
-                            }
-                        </div>
-                    </div>
-                </MudPopover>
-                <MudPaper @onclick="@(() => isLanguageOpen = !isLanguageOpen)"
-                          Class="isl-button-pill d-flex justify-space-between align-center">
-                    <MudText Class="ml-2">
-                        @(selectedLanguageId == null ? "All Languages" : GetSelectedLanguageName())
-                    </MudText>
-                    <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" />
-                </MudPaper>
-            </div>
-
-            <!-- Search -->
-            <div class="event-list__filter-cell event-list__filter-cell--search">
-                <MudTextField @bind-Value="searchText"
-                              Class="event-list__search-input"
-                              Placeholder="Search"
-                              Adornment="Adornment.Start"
-                              AdornmentIcon="@Icons.Material.Filled.Search"
-                              IconSize="Size.Medium"
-                              Immediate="true"
-                              DebounceInterval="500"
-                              TextChanged="OnSearch"
-                              Margin="Margin.Dense" />
-            </div>
-        </div>
-
-        <!-- Cards -->
-        <MudGrid>
-            @if (isLoading && !allEvents.Any() || isLoadingCategory || isLoadingTag)
+        <!-- Category -->
+        <MudSelect T="Guid?" Value="@selectedCategoryId" ValueChanged="@(async (Guid? c) => await OnCategoryChanged(c))" 
+                   Label="Category" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" 
+                   AnchorOrigin="Origin.BottomCenter" Clearable="true" Class="event-list__filter-item">
+            <MudSelectItem T="Guid?" Value="@((Guid?)null)">All Categories</MudSelectItem>
+            @if (categories != null)
             {
-                <!-- Skeleton loaders for loading feedback -->
-                @for (int i = 0; i < 6; i++)
+                @foreach (var category in categories)
                 {
-                    <MudItem xs="12" sm="6" md="4">
-                        <MudCard Elevation="0" Class="event-list__card">
-                            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
-                            <MudCardContent>
-                                <MudSkeleton Width="60%" Height="20px" Class="mb-2" />
-                                <MudSkeleton Width="40%" Height="16px" Class="mb-2" />
-                                <MudSkeleton Width="100%" Height="14px" Class="mb-1" />
-                                <MudSkeleton Width="100%" Height="14px" Class="mb-1" />
-                                <MudSkeleton Width="80%" Height="14px" />
-                            </MudCardContent>
-                        </MudCard>
-                    </MudItem>
+                    <MudSelectItem T="Guid?" Value="@category.Id">@category.FullName</MudSelectItem>
                 }
             }
-            else if (!FilteredEvents.Any())
+        </MudSelect>
+
+        <!-- Location -->
+        <MudSelect T="Guid?" Value="@selectedLocationId" ValueChanged="@((Guid? l) => OnLocationChanged(l))" 
+                   Label="Location" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" 
+                   AnchorOrigin="Origin.BottomCenter" Clearable="true" Class="event-list__filter-item">
+            <MudSelectItem T="Guid?" Value="@((Guid?)null)">All Locations</MudSelectItem>
+            @if (locations != null)
             {
-                <MudItem xs="12" Class="d-flex justify-center align-center pa-8">
-                    <div class="text-center">
-                        <MudIcon Icon="@Icons.Material.Filled.EventBusy" Size="Size.Large" Color="Color.Secondary" Class="mb-2" />
-                        <MudText Typo="Typo.h6" Color="Color.Secondary">No events found</MudText>
-                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">
-                            Try adjusting your filters or search query
-                        </MudText>
-                    </div>
+                @foreach (var location in locations)
+                {
+                    <MudSelectItem T="Guid?" Value="@location.Id">@location.FullName</MudSelectItem>
+                }
+            }
+        </MudSelect>
+
+        <!-- Format -->
+        <MudSelect T="int?" Value="@selectedFormatId" ValueChanged="@((int? f) => OnFormatChanged(f))" 
+                   Label="Format" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" 
+                   AnchorOrigin="Origin.BottomCenter" Clearable="true" Class="event-list__filter-item">
+            <MudSelectItem T="int?" Value="@((int?)null)">All Formats</MudSelectItem>
+            @if (eventFormats != null)
+            {
+                @foreach (var format in eventFormats)
+                {
+                    <MudSelectItem T="int?" Value="@format.Id">@format.FullName</MudSelectItem>
+                }
+            }
+        </MudSelect>
+        
+        <!-- Madhab -->
+        <MudSelect T="int?" Value="@selectedMadhabId" ValueChanged="@((int? m) => OnMadhabChanged(m))" 
+                   Label="Madhab" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" 
+                   AnchorOrigin="Origin.BottomCenter" Clearable="true" Class="event-list__filter-item">
+            <MudSelectItem T="int?" Value="@((int?)null)">All Madhabs</MudSelectItem>
+            @if (madhabs != null)
+            {
+                @foreach (var madhab in madhabs)
+                {
+                    <MudSelectItem T="int?" Value="@madhab.Id">@madhab.FullName</MudSelectItem>
+                }
+            }
+        </MudSelect>
+        
+        <!-- Registration Mode -->
+        <MudSelect T="int?" Value="@selectedRegistrationModeId" ValueChanged="@((int? r) => OnRegistrationModeChanged(r))" 
+                   Label="Registration" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" 
+                   AnchorOrigin="Origin.BottomCenter" Clearable="true" Class="event-list__filter-item">
+            <MudSelectItem T="int?" Value="@((int?)null)">All Modes</MudSelectItem>
+            @if (registrationModes != null)
+            {
+                @foreach (var mode in registrationModes)
+                {
+                    <MudSelectItem T="int?" Value="@mode.Id">@mode.FullName</MudSelectItem>
+                }
+            }
+        </MudSelect>
+        
+        <!-- Language -->
+        <MudSelect T="int?" Value="@selectedLanguageId" ValueChanged="@((int? l) => OnLanguageChanged(l))" 
+                   Label="Language" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" 
+                   AnchorOrigin="Origin.BottomCenter" Clearable="true" Class="event-list__filter-item">
+            <MudSelectItem T="int?" Value="@((int?)null)">All Languages</MudSelectItem>
+            @if (languages != null)
+            {
+                @foreach (var language in languages)
+                {
+                    <MudSelectItem T="int?" Value="@language.Id">@language.FullName</MudSelectItem>
+                }
+            }
+        </MudSelect>
+
+        <!-- Tags -->
+        <MudSelect T="Guid?" Value="@selectedTagId" ValueChanged="@(async (Guid? t) => await OnTagChanged(t))" 
+                   Label="Tags" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" 
+                   AnchorOrigin="Origin.BottomCenter" Clearable="true" Class="event-list__filter-item">
+            <MudSelectItem T="Guid?" Value="@((Guid?)null)">All Tags</MudSelectItem>
+            @if (tags != null)
+            {
+                @foreach (var tag in tags)
+                {
+                    <MudSelectItem T="Guid?" Value="@tag.Id">@tag.FullName</MudSelectItem>
+                }
+            }
+        </MudSelect>
+    </div>
+
+    <!-- Cards -->
+    <MudGrid Class="mt-4" Spacing="4">
+        @if (isLoading && !allEvents.Any() || isLoadingCategory || isLoadingTag)
+        {
+            <!-- Skeleton loaders for loading feedback -->
+            @for (int i = 0; i < 6; i++)
+            {
+                <MudItem xs="12" sm="6" md="6" lg="4" xl="3">
+                    <MudCard Elevation="0" Class="event-list__card">
+                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
+                        <MudCardContent>
+                            <MudSkeleton Width="60%" Height="20px" Class="mb-2" />
+                            <MudSkeleton Width="40%" Height="16px" Class="mb-2" />
+                            <MudSkeleton Width="100%" Height="14px" Class="mb-1" />
+                            <MudSkeleton Width="100%" Height="14px" Class="mb-1" />
+                            <MudSkeleton Width="80%" Height="14px" />
+                        </MudCardContent>
+                    </MudCard>
                 </MudItem>
             }
-            else
+        }
+        else if (!FilteredEvents.Any())
+        {
+            <MudItem xs="12" Class="d-flex justify-center align-center pa-8">
+                <div class="text-center">
+                    <MudIcon Icon="@Icons.Material.Filled.EventBusy" Size="Size.Large" Color="Color.Secondary" Class="mb-2" />
+                    <MudText Typo="Typo.h6" Color="Color.Secondary">No events found</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">
+                        Try adjusting your filters or search query
+                    </MudText>
+                </div>
+            </MudItem>
+        }
+        else
+        {
+            @foreach (var evt in FilteredEvents)
             {
-                @foreach (var evt in FilteredEvents)
-                {
-                    <MudItem xs="12" sm="6" md="4">
-                        <MudCard Elevation="0" Class="event-list__card">
-                            <MudCardMedia Class="event-list__card-media">
-                                @if (!string.IsNullOrEmpty(evt.FeaturedImageUri))
-                                {
-                                    <img src="@evt.FeaturedImageUri"
-                                         alt="@evt.Title"
-                                         style="width: 100%; height: 200px; object-fit: cover;" />
-                                }
-                                else
-                                {
-                                    <img src="@GetEventImage(evt)" alt="@evt.Title" style="width: 100%; height: 200px; object-fit: cover;" />
-                                }
-                            </MudCardMedia>
-                            <MudCardContent>
-                                <div class="event-list__card-badges">
-                                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Category">
-                                        @GetEventTypeName(evt)
-                                    </MudChip>
-                                    <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.LocationOn">
-                                        @GetLocationText(evt)
-                                    </MudChip>
-                                    @if (evt.Price.HasValue && evt.Price > 0)
-                                    {
-                                        <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.EuroSymbol">
-                                            @evt.CurrencyCode @evt.Price.Value.ToString("F2")
-                                        </MudChip>
-                                    }
-                                    else
-                                    {
-                                        <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">
-                                            Free
-                                        </MudChip>
-                                    }
-                                </div>
-                                <MudText Typo="Typo.h6" Class="mb-1">@evt.Title</MudText>
-                                <MudText Typo="Typo.body2" Color="Color.Surface" Style="opacity:.85; min-height: 40px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4;">
-                                    @GetTruncatedDescription(evt.Description)
-                                </MudText>
+                <!-- Adjusted Breakpoints: MD=6 (2 cols), LG=4 (3 cols - 1080p), XL=3 (4 cols - Ultrawide) -->
+                <MudItem xs="12" sm="6" md="6" lg="4" xl="3">
+                    <MudCard Elevation="0" Class="event-list__card">
+                        <MudCardMedia Image="@(string.IsNullOrEmpty(evt.FeaturedImageUri) ? GetEventImage(evt) : evt.FeaturedImageUri)"
+                                     Height="200"
+                                     Class="event-list__card-media" />
+                        <MudCardContent>
+                            <div class="event-list__card-badges">
+                                <MudChip T="string" Size="Size.Small" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Category">
+                                    @GetEventTypeName(evt)
+                                </MudChip>
+                                <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.LocationOn">
+                                    @GetLocationText(evt)
+                                </MudChip>
+                            </div>
+                            <MudText Typo="Typo.h6" Class="event-list__card-title">@evt.Title</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Surface" Class="event-list__card-description">
+                                @GetTruncatedDescription(evt.Description)
+                            </MudText>
+                            
+                            <div class="event-list__card-meta">
                                 @if (evt.TotalViews > 0)
                                 {
-                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
-                                        <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" /> @evt.TotalViews views
-                                    </MudText>
+                                    <div class="d-flex align-center gap-1">
+                                        <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Color="Color.Secondary" /> 
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@evt.TotalViews</MudText>
+                                    </div>
                                 }
-                            </MudCardContent>
-                            <MudCardActions Class="card-actions pa-4 pt-0">
-                                <div class="action-buttons">
-                                    <MudButton Variant="Variant.Text"
-                                               Size="Size.Small"
-                                               EndIcon="@Icons.Material.Filled.ArrowForward"
-                                               Color="Color.Primary"
-                                               OnClick="@(() => Navigation.NavigateTo($"/event/detail/{evt.Id}"))">
-                                        Details
-                                    </MudButton>
-                                    <MudButton Variant="Variant.Filled"
-                                               Size="Size.Small"
-                                               Color="Color.Primary"
-                                               StartIcon="@Icons.Material.Filled.EventAvailable"
-                                               OnClick="@(() => OpenQuickRegisterDialog(evt))">
-                                        Register
-                                    </MudButton>
-                                </div>
-                                <MudMenu Icon="@Icons.Material.Filled.MoreVert"
-                                         Size="Size.Small"
-                                         AnchorOrigin="Origin.BottomRight"
-                                         TransformOrigin="Origin.TopRight">
-                                    <MudMenuItem Icon="@Icons.Material.Filled.Edit"
-                                                 OnClick="@(() => Navigation.NavigateTo($"/event/edit/{evt.Id}"))">
-                                        Edit
-                                    </MudMenuItem>
-                                    <MudMenuItem Icon="@Icons.Material.Filled.Delete"
-                                                 IconColor="Color.Error"
-                                                 OnClick="@(() => OpenDeleteDialog(evt))">
-                                        Delete
-                                    </MudMenuItem>
-                                </MudMenu>
-                            </MudCardActions>
-                            <div class="event-list__card-footer pa-4 pt-0">
-                                <div class="event-list__card-location">
-                                    <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" />
-                                    <MudText Typo="Typo.caption">@(evt.ActorDisplayName ?? "Community")</MudText>
+                                <div class="d-flex align-center gap-1 ml-auto">
+                                    <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" Color="Color.Secondary" />
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@(evt.ActorDisplayName ?? "Community")</MudText>
                                 </div>
                             </div>
-                        </MudCard>
-                    </MudItem>
-                }
+                        </MudCardContent>
+                        <MudCardActions Class="card-actions pa-3 pt-0">
+                            <MudButton Variant="Variant.Text"
+                                       Size="Size.Small"
+                                       EndIcon="@Icons.Material.Filled.ArrowForward"
+                                       Color="Color.Primary"
+                                       OnClick="@(() => Navigation.NavigateTo($"/event/detail/{evt.Id}"))">
+                                Details
+                            </MudButton>
+                            <MudSpacer />
+                            @if (IsUserRegistered(evt.Id))
+                            {
+                                <MudButton Variant="Variant.Outlined"
+                                           Size="Size.Small"
+                                           Color="Color.Success"
+                                           StartIcon="@Icons.Material.Filled.CheckCircle"
+                                           OnClick="@(() => Navigation.NavigateTo($"/event/detail/{evt.Id}"))">
+                                    Registered
+                                </MudButton>
+                            }
+                            else
+                            {
+                                <MudButton Variant="Variant.Filled"
+                                           Size="Size.Small"
+                                           Color="Color.Primary"
+                                           StartIcon="@Icons.Material.Filled.EventAvailable"
+                                           OnClick="@(() => OpenQuickRegisterDialog(evt))">
+                                    Register
+                                </MudButton>
+                            }
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
             }
-        </MudGrid>
+        }
+    </MudGrid>
 
-        <!-- Pagination + info -->
-        <div class="event-list__pagination">
-            <MudPagination Count="@TotalPages"
-                           Selected="@currentPage"
-                           SelectedChanged="@((int page) => OnPageChanged(page))"
-                           Color="Color.Primary"
-                           ShowFirstButton="true"
-                           ShowLastButton="true" />
-        </div>
-        <div class="event-list__results">
-            <MudText Typo="Typo.body2" Color="Color.Surface">
-                Showing @((currentPage - 1) * itemsPerPage + 1) - @(Math.Min(currentPage * itemsPerPage, AllFilteredEvents.Count)) of @AllFilteredEvents.Count events (Page @currentPage of @TotalPages)
-            </MudText>
-        </div>
-
+    <!-- Pagination + info -->
+    <div class="event-list__pagination">
+        <MudPagination Count="@TotalPages"
+                       Selected="@currentPage"
+                       SelectedChanged="@((int page) => OnPageChanged(page))"
+                       Color="Color.Primary"
+                       ShowFirstButton="true"
+                       ShowLastButton="true" />
     </div>
+    <div class="event-list__results">
+        <MudText Typo="Typo.body2" Color="Color.Surface">
+            Showing @((currentPage - 1) * itemsPerPage + 1) - @(Math.Min(currentPage * itemsPerPage, AllFilteredEvents.Count)) of @AllFilteredEvents.Count events
+        </MudText>
+    </div>
+
 </MudContainer>
-
-@code {
-    private string searchText = "";
-    private string selectedDate = "";
-    private Guid? selectedCategoryId;
-    private Guid? selectedTagId;
-    private int? selectedFormatId;
-    private int? selectedMadhabId;
-    private Guid? selectedLocationId;
-    private int? selectedRegistrationModeId;
-    private int? selectedLanguageId;
-    private bool isDateOpen;
-    private bool isCategoryOpen;
-    private bool isTagOpen;
-    private bool isFormatOpen;
-    private bool isMadhabOpen;
-    private bool isLocationOpen;
-    private bool isRegistrationModeOpen;
-    private bool isLanguageOpen;
-    private bool isLoading = true;
-    private bool isLoadingCategory = false;
-    private bool isLoadingTag = false;
-    private bool _dataLoaded = false;
-
-    // Pagination variables
-    private int currentPage = 1;
-    private int itemsPerPage = 6;
-
-    // API Data
-    private ICollection<EventListDto> allEvents = new List<EventListDto>();
-    private ICollection<EventTypeListDto> eventTypes = new List<EventTypeListDto>();
-    private ICollection<EventFormatListDto> eventFormats = new List<EventFormatListDto>();
-    private ICollection<CategoryListDto> categories = new List<CategoryListDto>();
-    private ICollection<TagListDto> tags = new List<TagListDto>();
-    private ICollection<MadhabListDto> madhabs = new List<MadhabListDto>();
-    private ICollection<LocationListDto> locations = new List<LocationListDto>();
-    private ICollection<RegistrationModeListDto> registrationModes = new List<RegistrationModeListDto>();
-    private ICollection<LanguageListDto> languages = new List<LanguageListDto>();
-    private ICollection<EventSessionListDto> allSessions = new List<EventSessionListDto>();
-    private ICollection<EventSessionLanguageListDto> sessionLanguages = new List<EventSessionLanguageListDto>();
-    private Dictionary<int, string> eventTypeMap = new();
-    private Dictionary<int, string> eventFormatMap = new();
-
-    protected override async Task OnInitializedAsync()
-    {
-        Logger.LogDebug("OnInitializedAsync starting");
-        // Always load data - don't use any caching that can cause issues
-        await LoadDataAsync();
-    }
-
-    private void BuildLookupMaps()
-    {
-        eventTypeMap = eventTypes.Any()
-            ? eventTypes.ToDictionary(et => et.Id, et => et.FullName)
-            : new();
-        eventFormatMap = eventFormats.Any()
-            ? eventFormats.ToDictionary(pt => pt.Id, pt => pt.FullName)
-            : new();
-    }
-
-    private async Task LoadDataAsync()
-    {
-        // Prevent multiple loads
-        if (_dataLoaded) return;
-
-        isLoading = true;
-
-        try
-        {
-            Logger.LogDebug("Loading data");
-
-            // Parallel loading
-            var eventsTask = EventService.GetAllEventsAsync();
-            var eventTypesTask = EventService.GetEventTypesAsync();
-            var eventFormatsTask = EventService.GetEventFormatsAsync();
-            var categoriesTask = CategoryService.GetAllCategoriesAsync();
-            var tagsTask = TagService.GetAllTagsAsync();
-            var madhabsTask = AdminService.GetMadhabsAsync();
-            var locationsTask = LocationService.GetAllLocationsAsync();
-            var registrationModesTask = AdminService.GetRegistrationModesAsync();
-            var languagesTask = AdminService.GetLanguagesAsync();
-            var sessionsTask = EventService.GetAllSessionsAsync();
-            var sessionLanguagesTask = EventService.GetAllSessionLanguagesAsync();
-
-            await Task.WhenAll(eventsTask, eventTypesTask, eventFormatsTask, categoriesTask, tagsTask, madhabsTask, locationsTask, registrationModesTask, languagesTask, sessionsTask, sessionLanguagesTask);
-
-            allEvents = await eventsTask;
-            eventTypes = await eventTypesTask;
-            eventFormats = await eventFormatsTask;
-            categories = await categoriesTask;
-            tags = await tagsTask;
-            madhabs = await madhabsTask;
-            locations = await locationsTask;
-            registrationModes = await registrationModesTask;
-            languages = await languagesTask;
-            allSessions = await sessionsTask;
-            sessionLanguages = await sessionLanguagesTask;
-
-            Logger.LogDebug("Loaded {EventCount} events, {TypeCount} types, {FormatCount} formats, {CategoryCount} categories, {TagCount} tags, {MadhabCount} madhabs, {LocationCount} locations, {ModeCount} registration modes, {LanguageCount} languages, {SessionCount} sessions, {SessionLanguageCount} session languages",
-                allEvents.Count, eventTypes.Count, eventFormats.Count, categories.Count, tags.Count, madhabs.Count, locations.Count, registrationModes.Count, languages.Count, allSessions.Count, sessionLanguages.Count);
-
-            BuildLookupMaps();
-            _dataLoaded = true;
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "LoadDataAsync error");
-            // Keep empty lists on error - don't throw
-            allEvents = new List<EventListDto>();
-            eventTypes = new List<EventTypeListDto>();
-            eventFormats = new List<EventFormatListDto>();
-            categories = new List<CategoryListDto>();
-            tags = new List<TagListDto>();
-            madhabs = new List<MadhabListDto>();
-            locations = new List<LocationListDto>();
-            registrationModes = new List<RegistrationModeListDto>();
-            languages = new List<LanguageListDto>();
-            allSessions = new List<EventSessionListDto>();
-            sessionLanguages = new List<EventSessionLanguageListDto>();
-        }
-        finally
-        {
-            isLoading = false;
-        }
-    }
-
-    private List<EventListDto> AllFilteredEvents
-    {
-        get
-        {
-            var filteredEvents = allEvents.AsEnumerable();
-
-            // Search filter
-            if (!string.IsNullOrEmpty(searchText))
-            {
-                filteredEvents = filteredEvents.Where(e =>
-                    e.Title.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
-                    (e.Description?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false));
-            }
-
-            // Category filter - if we have events by category loaded
-            if (selectedCategoryId.HasValue)
-            {
-                if (eventsByCategory != null && eventsByCategory.Any())
-                {
-                    var categoryEventIds = eventsByCategory.Select(e => e.Id).ToHashSet();
-                    filteredEvents = filteredEvents.Where(e => categoryEventIds.Contains(e.Id));
-                }
-                else if (!isLoadingCategory)
-                {
-                    // Category selected but no events found - show empty
-                    filteredEvents = Enumerable.Empty<EventListDto>();
-                }
-            }
-
-            // Tag filter - if we have events by tag loaded
-            if (selectedTagId.HasValue)
-            {
-                if (eventsByTag != null && eventsByTag.Any())
-                {
-                    var tagEventIds = eventsByTag.Select(e => e.Id).ToHashSet();
-                    filteredEvents = filteredEvents.Where(e => tagEventIds.Contains(e.Id));
-                }
-                else if (!isLoadingTag)
-                {
-                    // Tag selected but no events found - show empty
-                    filteredEvents = Enumerable.Empty<EventListDto>();
-                }
-            }
-
-            // Format filter
-            if (selectedFormatId.HasValue)
-            {
-                filteredEvents = filteredEvents.Where(e => e.EventFormatId == selectedFormatId.Value);
-            }
-
-            // Madhab filter
-            if (selectedMadhabId.HasValue)
-            {
-                filteredEvents = filteredEvents.Where(e => e.MadhabId == selectedMadhabId.Value);
-            }
-
-            // Location filter
-            if (selectedLocationId.HasValue && allSessions != null && allSessions.Any())
-            {
-                var locationEventIds = allSessions
-                    .Where(s => s.LocationId == selectedLocationId.Value)
-                    .Select(s => s.EventId)
-                    .ToHashSet();
-                filteredEvents = filteredEvents.Where(e => locationEventIds.Contains(e.Id));
-            }
-
-            // Registration mode filter
-            if (selectedRegistrationModeId.HasValue && allSessions != null && allSessions.Any())
-            {
-                var registrationEventIds = allSessions
-                    .Where(s => s.RegistrationModeId == selectedRegistrationModeId.Value)
-                    .Select(s => s.EventId)
-                    .ToHashSet();
-                filteredEvents = filteredEvents.Where(e => registrationEventIds.Contains(e.Id));
-            }
-
-            // Language filter
-            if (selectedLanguageId.HasValue && allSessions != null && allSessions.Any() && sessionLanguages != null && sessionLanguages.Any())
-            {
-                var languageSessionIds = sessionLanguages
-                    .Where(l => l.LanguageId == selectedLanguageId.Value)
-                    .Select(l => l.EventSessionId)
-                    .ToHashSet();
-                var languageEventIds = allSessions
-                    .Where(s => languageSessionIds.Contains(s.Id))
-                    .Select(s => s.EventId)
-                    .ToHashSet();
-                filteredEvents = filteredEvents.Where(e => languageEventIds.Contains(e.Id));
-            }
-
-            // Date filter - use DateTimeOffset for proper timezone handling
-            if (!string.IsNullOrEmpty(selectedDate))
-            {
-                var today = DateTimeOffset.Now.Date;
-                filteredEvents = selectedDate switch
-                {
-                    "today" => filteredEvents.Where(e => e.FirstSessionDate.HasValue && e.FirstSessionDate.Value.LocalDateTime.Date == today),
-                    "tomorrow" => filteredEvents.Where(e => e.FirstSessionDate.HasValue && e.FirstSessionDate.Value.LocalDateTime.Date == today.AddDays(1)),
-                    "thisweek" => filteredEvents.Where(e => e.FirstSessionDate.HasValue && e.FirstSessionDate.Value.LocalDateTime.Date >= today && e.FirstSessionDate.Value.LocalDateTime.Date <= today.AddDays(7)),
-                    "thismonth" => filteredEvents.Where(e => e.FirstSessionDate.HasValue && e.FirstSessionDate.Value.LocalDateTime.Date >= today && e.FirstSessionDate.Value.LocalDateTime.Date <= today.AddDays(30)),
-                    _ => filteredEvents
-                };
-            }
-
-            return filteredEvents.ToList();
-        }
-    }
-
-    private ICollection<EventListDto>? eventsByCategory;
-    private ICollection<EventListDto>? eventsByTag;
-
-    private List<EventListDto> FilteredEvents
-    {
-        get
-        {
-            var allEvents = AllFilteredEvents;
-            return allEvents
-                .Skip((currentPage - 1) * itemsPerPage)
-                .Take(itemsPerPage)
-                .ToList();
-        }
-    }
-
-    private int TotalPages
-    {
-        get
-        {
-            var count = AllFilteredEvents.Count;
-            return count > 0 ? (int)Math.Ceiling((double)count / itemsPerPage) : 1;
-        }
-    }
-
-    private void OnSearch(string value)
-    {
-        searchText = value;
-        currentPage = 1;
-    }
-
-    private void OnDateChanged(string value)
-    {
-        selectedDate = value;
-        isDateOpen = false;
-        currentPage = 1;
-    }
-
-    private async Task OnCategoryChanged(Guid? categoryId)
-    {
-        selectedCategoryId = categoryId;
-        isCategoryOpen = false;
-        currentPage = 1;
-
-        if (categoryId.HasValue)
-        {
-            isLoadingCategory = true;
-            StateHasChanged();
-            try
-            {
-                eventsByCategory = await CategoryService.GetEventsByCategoryAsync(categoryId.Value);
-                Logger.LogDebug("Category filter: loaded {Count} events for category {CategoryId}", eventsByCategory?.Count ?? 0, categoryId);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error loading events for category {CategoryId}", categoryId);
-                eventsByCategory = new List<EventListDto>();
-            }
-            finally
-            {
-                isLoadingCategory = false;
-            }
-        }
-        else
-        {
-            eventsByCategory = null;
-        }
-        StateHasChanged();
-    }
-
-    private async Task OnTagChanged(Guid? tagId)
-    {
-        selectedTagId = tagId;
-        isTagOpen = false;
-        currentPage = 1;
-
-        if (tagId.HasValue)
-        {
-            isLoadingTag = true;
-            StateHasChanged();
-            try
-            {
-                eventsByTag = await TagService.GetEventsByTagAsync(tagId.Value);
-                Logger.LogDebug("Tag filter: loaded {Count} events for tag {TagId}", eventsByTag?.Count ?? 0, tagId);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error loading events for tag {TagId}", tagId);
-                eventsByTag = new List<EventListDto>();
-            }
-            finally
-            {
-                isLoadingTag = false;
-            }
-        }
-        else
-        {
-            eventsByTag = null;
-        }
-        StateHasChanged();
-    }
-
-    private void OnFormatChanged(int? formatId)
-    {
-        selectedFormatId = formatId;
-        isFormatOpen = false;
-        currentPage = 1;
-    }
-
-    private void OnMadhabChanged(int? madhabId)
-    {
-        selectedMadhabId = madhabId;
-        isMadhabOpen = false;
-        currentPage = 1;
-    }
-
-    private void OnLocationChanged(Guid? locationId)
-    {
-        selectedLocationId = locationId;
-        isLocationOpen = false;
-        currentPage = 1;
-    }
-
-    private void OnRegistrationModeChanged(int? modeId)
-    {
-        selectedRegistrationModeId = modeId;
-        isRegistrationModeOpen = false;
-        currentPage = 1;
-    }
-
-    private void OnLanguageChanged(int? languageId)
-    {
-        selectedLanguageId = languageId;
-        isLanguageOpen = false;
-        currentPage = 1;
-    }
-
-    private string GetSelectedCategoryName()
-    {
-        if (!selectedCategoryId.HasValue) return "All Categories";
-        return categories?.FirstOrDefault(c => c.Id == selectedCategoryId.Value)?.FullName ?? "Category";
-    }
-
-    private string GetSelectedTagName()
-    {
-        if (!selectedTagId.HasValue) return "All Tags";
-        return tags?.FirstOrDefault(t => t.Id == selectedTagId.Value)?.FullName ?? "Tag";
-    }
-
-    private string GetSelectedFormatName()
-    {
-        if (!selectedFormatId.HasValue) return "All Formats";
-        return eventFormats?.FirstOrDefault(f => f.Id == selectedFormatId.Value)?.FullName ?? "Format";
-    }
-
-    private string GetSelectedMadhabName()
-    {
-        if (!selectedMadhabId.HasValue) return "All Madhabs";
-        return madhabs?.FirstOrDefault(m => m.Id == selectedMadhabId.Value)?.FullName ?? "Madhab";
-    }
-
-    private string GetSelectedLocationName()
-    {
-        if (!selectedLocationId.HasValue) return "All Locations";
-        var location = locations?.FirstOrDefault(l => l.Id == selectedLocationId.Value);
-        if (location == null) return "Location";
-        return !string.IsNullOrEmpty(location.City)
-            ? $"{location.FullName} - {location.City}"
-            : location.FullName;
-    }
-
-    private string GetSelectedRegistrationModeName()
-    {
-        if (!selectedRegistrationModeId.HasValue) return "All Modes";
-        return registrationModes?.FirstOrDefault(m => m.Id == selectedRegistrationModeId.Value)?.FullName ?? "Mode";
-    }
-
-    private string GetSelectedLanguageName()
-    {
-        if (!selectedLanguageId.HasValue) return "All Languages";
-        return languages?.FirstOrDefault(l => l.Id == selectedLanguageId.Value)?.FullName ?? "Language";
-    }
-
-    private void OnPageChanged(int page)
-    {
-        currentPage = page;
-    }
-
-    private async Task OpenDeleteDialog(EventListDto evt)
-    {
-        var parameters = new DialogParameters
-        {
-            { "EventId", evt.Id },
-            { "EventTitle", evt.Title }
-        };
-
-        var options = new DialogOptions
-        {
-            CloseOnEscapeKey = true,
-            MaxWidth = MaxWidth.Small,
-            FullWidth = true
-        };
-
-        var dialog = await DialogService.ShowAsync<DeleteEventDialog>("Delete Event", parameters, options);
-        var result = await dialog.Result;
-
-        if (result != null && !result.Canceled)
-        {
-            // Refresh the list
-            allEvents = allEvents.Where(e => e.Id != evt.Id).ToList();
-            StateHasChanged();
-        }
-    }
-
-    private async Task OpenQuickRegisterDialog(EventListDto evt)
-    {
-        // First get the sessions for this event
-        var sessions = await EventService.GetSessionsByEventAsync(evt.Id);
-
-        if (sessions == null || !sessions.Any())
-        {
-            Snackbar.Add("No sessions available for this event yet.", Severity.Warning);
-            return;
-        }
-
-        var primarySession = sessions.First();
-
-        var parameters = new DialogParameters
-        {
-            { "EventSessionId", primarySession.Id },
-            { "Title", $"Register for {evt.Title}" }
-        };
-
-        var options = new DialogOptions
-        {
-            CloseOnEscapeKey = true,
-            MaxWidth = MaxWidth.Medium,
-            FullWidth = true
-        };
-
-        var dialog = await DialogService.ShowAsync<Explore.Blazor.Client.Components.EventRegistration>(
-            "Register",
-            parameters,
-            options
-        );
-
-        var result = await dialog.Result;
-
-        if (result != null && !result.Canceled)
-        {
-            Snackbar.Add("Successfully registered for event!", Severity.Success);
-        }
-    }
-
-    private string GetEventTypeName(EventListDto eventItem)
-    {
-        // Use the FullName from the DTO directly if available
-        if (!string.IsNullOrEmpty(eventItem.EventTypeFullName))
-            return eventItem.EventTypeFullName;
-
-        // Fallback to lookup
-        return eventTypeMap.TryGetValue(eventItem.EventTypeId, out var eventTypeName)
-            ? eventTypeName
-            : "Event";
-    }
-
-    private string GetLocationText(EventListDto eventItem)
-    {
-        // EventListDto doesn't have location directly - use format
-        if (eventItem.EventFormatId == 1 // Assuming 1 = Online
-            ) return "Online";
-
-        if (!string.IsNullOrEmpty(eventItem.EventFormatFullName))
-            return eventItem.EventFormatFullName;
-
-        return eventFormatMap.TryGetValue(eventItem.EventFormatId, out var formatName)
-            ? formatName
-            : "Location TBD";
-    }
-
-    private string GetEventImage(EventListDto eventItem)
-    {
-        // Use FeaturedImageUri if available
-        if (!string.IsNullOrEmpty(eventItem.FeaturedImageUri))
-            return eventItem.FeaturedImageUri;
-
-        // Fallback to placeholder
-        var encodedTitle = Uri.EscapeDataString(eventItem.Title.Length > 30
-            ? eventItem.Title.Substring(0, 30) + "..."
-            : eventItem.Title);
-        var color = GetEventColorForEvent(eventItem);
-        return $"https://placehold.co/600x400/{color}/ffffff?text={encodedTitle}";
-    }
-
-    private string GetEventColorForEvent(EventListDto eventItem)
-    {
-        // Quick color hash based on event type
-        var typeColors = new Dictionary<int, string>
-        {
-            { 1, "2196F3" }, // Lecture - Blue
-            { 2, "FF9800" }, // Workshop - Orange
-            { 3, "4CAF50" }, // Social - Green
-            { 4, "E91E63" }, // Charity - Pink
-            { 5, "9C27B0" }, // Education - Purple
-        };
-
-        if (typeColors.TryGetValue(eventItem.EventTypeId, out var color))
-            return color;
-
-        // Fallback: hash of title
-        var hash = eventItem.Title.GetHashCode();
-        var colors = new[] { "2196F3", "FF9800", "4CAF50", "E91E63", "9C27B0", "607D8B" };
-        return colors[Math.Abs(hash) % colors.Length];
-    }
-
-    private string GetTruncatedDescription(string? description)
-    {
-        if (string.IsNullOrWhiteSpace(description))
-            return "No description available.";
-
-        // Split op zinnen (. ! ?)
-        var sentences = System.Text.RegularExpressions.Regex.Split(description, @"(?<=[.!?])\s+");
-
-        // Neem maximaal 2 zinnen
-        var result = string.Join(" ", sentences.Take(2));
-
-        // Als er meer dan 2 zinnen zijn, voeg ... toe
-        if (sentences.Length > 2)
-            result += "...";
-
-        // Extra veiligheid: limiteer tot 150 karakters
-        if (result.Length > 150)
-            result = result.Substring(0, 147) + "...";
-
-        return result;
-    }
-}
