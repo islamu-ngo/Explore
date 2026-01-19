@@ -82,12 +82,12 @@ jobs:
     steps:
       - name: Trigger Coolify Deployment (API)
         run: |
-          # The token is already inside the URL (secrets.COOLIFY_DEPLOY_API_WEBHOOK)
-          # We purposefully REMOVE the headers to avoid 401 errors
-          curl --fail --request GET '${{ secrets.COOLIFY_DEPLOY_API_WEBHOOK }}'
+          echo "Triggering API deployment..."
+          curl --fail --request GET '${{ secrets.COOLIFY_DEPLOY_API_WEBHOOK }}' \
+            --header 'Authorization: Bearer ${{ secrets.COOLIFY_DEPLOY_TOKEN }}'
 
       - name: Trigger Coolify Deployment (UI)
         run: |
-          # The token is already inside the URL (secrets.COOLIFY_DEPLOY_UI_WEBHOOK)
-          # We purposefully REMOVE the headers to avoid 401 errors
-          curl --fail --request GET '${{ secrets.COOLIFY_DEPLOY_UI_WEBHOOK }}'
+          echo "Triggering UI deployment..."
+          curl --fail --request GET '${{ secrets.COOLIFY_DEPLOY_UI_WEBHOOK }}' \
+            --header 'Authorization: Bearer ${{ secrets.COOLIFY_DEPLOY_TOKEN }}'
