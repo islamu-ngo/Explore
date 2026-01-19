@@ -24,7 +24,8 @@
       "WebFetch(domain:www.anthropic.com)",
       "WebFetch(domain:github.com)",
       "mcp__mcp-server-context7__resolve-library-id",
-      "mcp__mcp-server-context7__query-docs"
+      "mcp__mcp-server-context7__query-docs",
+      "Bash(wc:*)"
     ]
   }
 }

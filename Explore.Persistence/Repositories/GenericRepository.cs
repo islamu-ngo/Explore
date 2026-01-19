@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using Explore.Application.Contracts.Persistence;
+using Explore.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -35,7 +36,33 @@ namespace Explore.Persistence.Repositories
             }
         }
 
+        /// <summary>
+        /// Deletes an entity. If entity implements ISoftDeletable, performs soft delete (sets IsDeleted=true).
+        /// Otherwise performs hard delete (permanent removal from database).
+        /// </summary>
         public async Task Delete(T entity)
+        {
+            // Check if entity supports soft delete
+            if (entity is ISoftDeletable)
+            {
+                // Soft delete: Mark entity as deleted (SaveChangesAsync override handles the rest)
+                _dbContext.Entry(entity).State = EntityState.Deleted;
+                await _dbContext.SaveChangesAsync();
+            }
+            else
+            {
+                // Hard delete: Permanently remove from database
+                _dbContext.Set<T>().Remove(entity);
+                await _dbContext.SaveChangesAsync();
+            }
+        }
+
+        /// <summary>
+        /// Performs a hard delete (permanent removal from database) regardless of ISoftDeletable.
+        /// Use with caution - this operation is irreversible.
+        /// Should only be used by system administrators for data cleanup.
+        /// </summary>
+        public async Task HardDelete(T entity)
         {
             _dbContext.Set<T>().Remove(entity);
             await _dbContext.SaveChangesAsync();

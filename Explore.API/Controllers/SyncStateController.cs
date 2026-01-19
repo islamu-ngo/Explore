@@ -25,7 +25,7 @@ namespace Explore.API.Controllers
 
         // GET: api/v1/syncstate
         [HttpGet]
-        [AllowAnonymous]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<List<SyncStateListDto>>> GetAll()
         {
             var syncStates = await _mediator.Send(new GetSyncStateListRequest());
@@ -34,7 +34,7 @@ namespace Explore.API.Controllers
 
         // GET: api/v1/syncstate/{id}
         [HttpGet("{id}")]
-        [AllowAnonymous]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<SyncStateDto>> GetById(int id)
         {
             var syncState = await _mediator.Send(new GetSyncStateDetailsRequest { Id = id });
@@ -48,7 +48,7 @@ namespace Explore.API.Controllers
 
         // POST: api/v1/syncstate
         [HttpPost]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<BaseCommandResponse<int>>> Create([FromBody] CreateSyncStateDto dto)
         {
             var command = new CreateSyncStateCommand { SyncStateDto = dto };
@@ -58,7 +58,7 @@ namespace Explore.API.Controllers
 
         // PUT: api/v1/syncstate/{id}
         [HttpPut("{id}")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<BaseCommandResponse<int>>> Update(int id, [FromBody] UpdateSyncStateDto dto)
         {
             if (id != dto.Id)
@@ -79,7 +79,7 @@ namespace Explore.API.Controllers
 
         // DELETE: api/v1/syncstate/{id}
         [HttpDelete("{id}")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult> Delete(int id)
         {
             var command = new DeleteSyncStateCommand { Id = id };

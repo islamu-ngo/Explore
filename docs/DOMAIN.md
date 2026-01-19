@@ -1,8 +1,32 @@
 # Domain Model
 
+> **Project-Specific Domain Reference**
+>
+> This document describes the domain model for the ISLAMU Event platform (Explore project).
+> While entity names are project-specific, the architectural patterns and structure can be adapted to any .NET Clean Architecture project.
+>
+> For generic architectural guidance, see [ARCHITECTURE.md](ARCHITECTURE.md) and [GOVERNANCE.md](GOVERNANCE.md).
+> Placeholders use `{Placeholder}` syntax - see [TEMPLATE_GLOSSARY.md](TEMPLATE_GLOSSARY.md).
+
+## Placeholder Substitutions
+
+| Placeholder | Replace With | Example (ISLAMU Event) |
+|-------------|--------------|------------------------|
+| `{Project}` | Your solution name | `Explore` |
+| `{Project}.Domain` | Domain layer project | `Explore.Domain` |
+
+---
+
 ## Overview
 
-The domain layer (`Explore.Domain/`) is the heart of the application, containing all business entities, enums, and value objects. It defines **what** the system is about, independent of any technical implementation details.
+The domain layer (`{Project}.Domain/`) is the heart of the application, containing all business entities, enums, and value objects. It defines **what** the system is about, independent of any technical implementation details.
+
+### Implementation Example: ISLAMU Event
+The `Explore.Domain/` layer contains entities specific to Islamic event discovery and federation, including:
+- Multi-tenant organization and event management
+- ATProto federation actors and records
+- Islamic-specific metadata (Madhab, prayer times)
+- Event registration and approval workflows
 
 For details on how these domain models are implemented using Entity Framework Core, including conventions for IDs, numeric types, default values, and link tables, refer to the **`dotnet-efcore-guidelines` skill**.
 

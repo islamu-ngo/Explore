@@ -19,14 +19,16 @@ namespace Explore.Blazor.Client.Tests.Services;
 public class EventServiceTests
 {
     private readonly IEventApiClient _apiClient;
+    private readonly IOrganizationService _organizationService;
     private readonly ILogger<EventService> _logger;
     private readonly EventService _service;
 
     public EventServiceTests()
     {
         _apiClient = Substitute.For<IEventApiClient>();
+        _organizationService = Substitute.For<IOrganizationService>();
         _logger = Substitute.For<ILogger<EventService>>();
-        _service = new EventService(_apiClient, _logger);
+        _service = new EventService(_apiClient, _organizationService, _logger);
     }
 
     #region GetAllEventsAsync Tests

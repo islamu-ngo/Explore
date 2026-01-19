@@ -33,7 +33,7 @@ namespace Explore.Persistence
                 }
 
                 // Use pooled DbContext factory for performance (EF Core recommended pattern)
-                // The scoped ExploreDbContext registration below handles TenantContext injection
+                // The scoped ExploreDbContext registration below handles scoped dependency injection
                 services.AddPooledDbContextFactory<ExploreDbContext>(options =>
                 {
                     options.UseNpgsql(connectionString)
@@ -42,14 +42,17 @@ namespace Explore.Persistence
                         .EnableDetailedErrors();
                 });
 
-                // Register scoped DbContext that sets TenantContext from DI
-                // This follows EF Core's recommended pattern for multi-tenant pooled contexts
+                // Register scoped DbContext that sets scoped dependencies from DI
+                // This follows EF Core's recommended pattern for pooled contexts with scoped dependencies
                 services.AddScoped(sp =>
                 {
                     var factory = sp.GetRequiredService<IDbContextFactory<ExploreDbContext>>();
                     var context = factory.CreateDbContext();
-                    // Set TenantContext if registered (null during migrations, populated during API requests)
+
+                    // Set scoped dependencies via property injection (null during migrations, populated during API requests)
                     context.TenantContext = sp.GetService<ITenantContext>();
+                    context.CurrentUserService = sp.GetService<ICurrentUserService>();
+
                     return context;
                 });
             }

@@ -1,5 +1,21 @@
 # Authentication State Management
 
+> **Project-Agnostic Authentication State Management**
+>
+> Placeholders use `{Placeholder}` syntax - see [../../../../docs/TEMPLATE_GLOSSARY.md](../../../../docs/TEMPLATE_GLOSSARY.md).
+>
+> **Note**: Code examples use ISLAMU Event (Explore) implementation. Replace with your project names.
+
+## Placeholder Substitutions
+
+| Placeholder | Replace With | Example (ISLAMU Event) |
+|-------------|--------------|------------------------|
+| `{Project}` | Your solution name | `Explore` |
+| `{Project}.Blazor` | Blazor Server (BFF) project | `Explore.Blazor` |
+| `{Project}.Blazor.Client` | Blazor WASM project | `Explore.Blazor.Client` |
+
+---
+
 This document describes how authentication state is managed and shared across the Blazor Hybrid application, especially between the Blazor Server (BFF) and Blazor WebAssembly (WASM) components.
 
 ---

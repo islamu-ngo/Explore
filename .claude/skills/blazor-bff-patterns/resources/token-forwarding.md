@@ -1,5 +1,21 @@
 # Token Forwarding
 
+> **Project-Agnostic Token Forwarding Patterns**
+>
+> Placeholders use `{Placeholder}` syntax - see [../../../../docs/TEMPLATE_GLOSSARY.md](../../../../docs/TEMPLATE_GLOSSARY.md).
+>
+> **Note**: Code examples use ISLAMU Event (Explore) implementation. Replace with your project names.
+
+## Placeholder Substitutions
+
+| Placeholder | Replace With | Example (ISLAMU Event) |
+|-------------|--------------|------------------------|
+| `{Project}` | Your solution name | `Explore` |
+| `{Project}.Blazor` | Blazor Server (BFF) project | `Explore.Blazor` |
+| `{Entity}` | Main entity | `Event` |
+
+---
+
 This document details how access tokens are forwarded from the Blazor BFF (Backend-for-Frontend) to the backend API, especially in the context of Blazor Hybrid rendering.
 
 ---

@@ -1,8 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "version": "2.0",
-  "description": "Skill activation triggers for ISLAMU Event - ASP.NET Core, Blazor, and Clean Architecture context.",
-  "lastUpdated": "2026-01-16",
+  "description": "Skill activation triggers for ISLAMU Event (Explore project) - ASP.NET Core, Blazor, and Clean Architecture context.",
+  "customizationNote": "File path patterns are currently Explore-specific (e.g., '**/Explore.Domain/**'). To use in other projects, replace 'Explore' with your project name (e.g., '**/YourProject.Domain/**') or use generic patterns like '**/*.Domain/**' if your project follows a different naming convention.",
+  "lastUpdated": "2026-01-19",
   "skills": {
     "clean-architecture-rules": {
       "type": "guardrail",

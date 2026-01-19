@@ -1,5 +1,20 @@
 # Contribution Workflow
 
+> **Project-Agnostic Contribution Guidelines**
+>
+> Placeholders use `{Placeholder}` syntax - see [TEMPLATE_GLOSSARY.md](TEMPLATE_GLOSSARY.md).
+
+## Placeholder Substitutions
+
+| Placeholder | Replace With | Example (ISLAMU Event) |
+|-------------|--------------|------------------------|
+| `{Project}` | Your solution name | `Explore` |
+| `{Project}.API` | API project | `{Project}.API` |
+| `{Project}.AppHost` | Aspire AppHost | `{Project}.AppHost` |
+| `{Project}ApiClient` | Generated API client | `{Project}ApiClient` |
+
+---
+
 ## Branch Strategy
 
 ```
@@ -107,11 +122,11 @@ By building **only the API project** first, you break the cycle:
 │                                                                     │
 │  1. You change a DTO in the API (add new property)                  │
 │     ↓                                                               │
-│  2. Build ONLY the API project: `dotnet build Explore.API`          │
+│  2. Build ONLY the API project: `dotnet build {Project}.API`          │
 │     ↓                                                               │
 │  3. ✅ API builds successfully (no Blazor dependency issues)        │
 │     ↓                                                               │
-│  4. Run Aspire: `dotnet run --project Explore.AppHost`              │
+│  4. Run Aspire: `dotnet run --project {Project}.AppHost`              │
 │     ↓                                                               │
 │  5. ✅ API starts and generates new swagger.json                    │
 │     ↓                                                               │
@@ -121,7 +136,7 @@ By building **only the API project** first, you break the cycle:
 │     ↓                                                               │
 │  8. NOW update Blazor services/components                           │
 │     ↓                                                               │
-│  9. ✅ Build full solution: `dotnet build Explore.sln`              │
+│  9. ✅ Build full solution: `dotnet build {Project}.sln`              │
 │                                                                     │
 │  🎉 SUCCESS - No build errors!                                      │
 │                                                                     │
@@ -145,7 +160,7 @@ A particularly frustrating mistake is updating **Blazor services that interact w
 │     ↓                                                               │
 │  3. ❌ ERROR: 'EventDto' does not contain 'Description'             │
 │     │                                                               │
-│     │   WHY? The generated client (ExploreApiClient.cs) still       │
+│     │   WHY? The generated client ({Project}ApiClient.cs) still       │
 │     │   has the OLD EventDto without Description!                   │
 │     │                                                               │
 │     │   Your service references: Generated.EventDto (OLD)           │
@@ -191,14 +206,14 @@ Follow this checklist whenever you add/modify DTO properties:
 - [ ] Update Handler if new processing logic needed
 
 ### 3. Build & Regenerate
-- [ ] Build API project only: `dotnet build Explore.API`
-- [ ] Start Aspire: `dotnet run --project Explore.AppHost`
+- [ ] Build API project only: `dotnet build {Project}.API`
+- [ ] Start Aspire: `dotnet run --project {Project}.AppHost`
 - [ ] Wait for swagger.json to regenerate (automatic on API startup)
 - [ ] NSwag regenerates client automatically (watches schema file)
 
 ### 4. Blazor UI Updates
 - [ ] NOW update Blazor components to use new properties
-- [ ] Build full solution: `dotnet build Explore.sln`
+- [ ] Build full solution: `dotnet build {Project}.sln`
 - [ ] Test the changes in browser
 ```
 
@@ -210,7 +225,7 @@ If you already updated Blazor UI before running Aspire and the generated client 
 ```powershell
 # Stop any running instances
 # Run Aspire to regenerate everything
-dotnet run --project Explore.AppHost
+dotnet run --project {Project}.AppHost
 ```
 
 **Option 2: Manual Fix (Quick Workaround)**
@@ -233,7 +248,7 @@ Manually add the missing properties to the generated client file as a temporary 
 │                                                                     │
 │  3. Blazor Project Watches                                          │
 │     └── NSwag detects swagger.json changes                          │
-│     └── Regenerates API client (ExploreApiClient.cs)                │
+│     └── Regenerates API client ({Project}ApiClient.cs)                │
 │                                                                     │
 │  4. Blazor Components                                               │
 │     └── Use the regenerated client with new properties              │

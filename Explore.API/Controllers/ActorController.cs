@@ -102,7 +102,7 @@ public class ActorController : ControllerBase
 
     // DELETE: api/v1/actor/{id}
     [HttpDelete("{id}")]
-    [Authorize]
+    [Authorize(Roles="Admin")]
     public async Task<ActionResult> Delete(Guid id)
     {
         var command = new DeleteActorCommand { Id = id };

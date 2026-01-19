@@ -6,7 +6,7 @@ using Explore.Domain.Interfaces;
 
 namespace Explore.Domain
 {
-    public class Actor : ITenantEntity
+    public class Actor : ITenantEntity, IAuditableEntity, ISoftDeletable
     {
         public Guid Id { get; set; }
         [ForeignKey("ActorType")]
@@ -44,5 +44,16 @@ namespace Explore.Domain
         public DateTime? IndexedAt { get; set; }
         public string? ProfilePictureCid { get; set; }
         public string? ProfilePictureUri { get; set; }
+
+        // Audit fields
+        public DateTime CreatedAt { get; set; }
+        public Guid? CreatedBy { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+        public Guid? UpdatedBy { get; set; }
+
+        // Soft delete fields
+        public bool IsDeleted { get; set; }
+        public DateTime? DeletedAt { get; set; }
+        public Guid? DeletedBy { get; set; }
     }
 }

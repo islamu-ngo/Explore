@@ -1,5 +1,5 @@
 name: auth-patterns
-description: Guidelines for authentication and authorization patterns in the ISLAMU Event project, covering OIDC, JWT, and BFF security.
+description: Guidelines for authentication and authorization patterns covering OIDC, JWT, and BFF security in .NET Clean Architecture projects.
 type: domain
 enforcement: suggest
 priority: critical
@@ -7,9 +7,24 @@ priority: critical
 
 # Authentication & Authorization Patterns
 
+> **Project-Agnostic Authentication & Authorization Guide**
+>
+> Placeholders use `{Placeholder}` syntax - see [../../../../docs/TEMPLATE_GLOSSARY.md](../../../../docs/TEMPLATE_GLOSSARY.md).
+
+## Placeholder Substitutions
+
+| Placeholder | Replace With | Example (ISLAMU Event) |
+|-------------|--------------|------------------------|
+| `{Project}` | Your solution name | `Explore` |
+| `{Project}.Blazor` | Blazor Server (BFF) project | `Explore.Blazor` |
+| `{Project}.Blazor.Client` | Blazor WASM project | `Explore.Blazor.Client` |
+| `{Project}.API` | API project | `Explore.API` |
+
+---
+
 ## 🎯 Purpose
 
-This skill provides the standard patterns for implementing security in the ISLAMU Event platform. It covers the OIDC/JWT authentication flow, the Backend-for-Frontend (BFF) security model, and authorization conventions.
+This skill provides the standard patterns for implementing security in .NET Clean Architecture projects. It covers the OIDC/JWT authentication flow, the Backend-for-Frontend (BFF) security model, and authorization conventions.
 
 ## ⚡ When This Skill Activates
 
@@ -48,9 +63,14 @@ sequenceDiagram
     BFF-->>-Browser: Returns data to client
 ```
 
-*   **`Explore.Blazor` (BFF)**: Is the OIDC client. It handles the redirect to Keycloak and manages the user's session via a cookie.
-*   **`Explore.Blazor.Client` (WASM)**: Is not OIDC-aware. It simply includes credentials (the cookie) with every request to its backend (the BFF).
-*   **`Explore.API`**: Is a stateless service that only trusts JWT Bearer tokens. It has no knowledge of the user's session cookie.
+*   **`{Project}.Blazor` (BFF)**: Is the OIDC client. It handles the redirect to the identity provider and manages the user's session via a cookie.
+*   **`{Project}.Blazor.Client` (WASM)**: Is not OIDC-aware. It simply includes credentials (the cookie) with every request to its backend (the BFF).
+*   **`{Project}.API`**: Is a stateless service that only trusts JWT Bearer tokens. It has no knowledge of the user's session cookie.
+
+### Implementation Example: ISLAMU Event
+- **`Explore.Blazor`**: BFF using Keycloak as the identity provider
+- **`Explore.Blazor.Client`**: Blazor WASM client
+- **`Explore.API`**: Stateless API validating Keycloak-issued JWTs
 
 ## 2. Authorization Conventions
 
@@ -59,11 +79,41 @@ sequenceDiagram
 A simple and strict convention is followed for API endpoints:
 *   **`GET` requests are public**: Decorated with `[AllowAnonymous]`.
 *   **`POST`, `PUT`, `DELETE` requests are protected**: Decorated with `[Authorize]`.
+*   **Admin-only operations**: Decorated with `[Authorize(Roles = "Admin")]`.
 
+**Generic Template:**
 ```csharp
-// Example from EventController.cs
-
 // ✅ Public read access
+[HttpGet]
+[AllowAnonymous]
+public async Task<ActionResult<List<{Entity}ListDto>>> GetAll()
+{
+    var {entities} = await _mediator.Send(new Get{Entity}ListRequest());
+    return Ok({entities});
+}
+
+// ✅ Authenticated write access
+[HttpPost]
+[Authorize]
+public async Task<ActionResult<BaseCommandResponse<{IdType}>>> Create([FromBody] Create{Entity}Dto {entity})
+{
+    var command = new Create{Entity}Command { {Entity}Dto = {entity} };
+    var response = await _mediator.Send(command);
+    return Ok(response);
+}
+
+// ✅ Admin-only access
+[HttpDelete("{id}")]
+[Authorize(Roles = "Admin")]
+public async Task<ActionResult> DeletePermanent({IdType} id)
+{
+    var result = await _mediator.Send(new Delete{Entity}PermanentlyCommand { Id = id });
+    return result ? NoContent() : NotFound();
+}
+```
+
+### Implementation Example: ISLAMU Event
+```csharp
 [HttpGet]
 [AllowAnonymous]
 public async Task<ActionResult<List<EventListDto>>> GetAll()
@@ -72,7 +122,6 @@ public async Task<ActionResult<List<EventListDto>>> GetAll()
     return Ok(events);
 }
 
-// ✅ Authenticated write access
 [HttpPost]
 [Authorize]
 public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventDto @event)

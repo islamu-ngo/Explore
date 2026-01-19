@@ -72,6 +72,7 @@ namespace Explore.Infrastructure
 
             // Identity services
             services.AddScoped<IUserContext, UserContext>();
+            services.AddScoped<ICurrentUserService, CurrentUserService>();
 
             return services;
         }

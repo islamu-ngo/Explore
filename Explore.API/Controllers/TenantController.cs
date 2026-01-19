@@ -26,7 +26,7 @@ namespace Explore.API.Controllers
         [HttpGet]
         [EndpointSummary("Get all Tenants")]
         [EndpointDescription("Retrieve a list of all tenants")]
-        [AllowAnonymous]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(List<TenantListDto>), StatusCodes.Status200OK)]
         public async Task<ActionResult<List<TenantListDto>>> GetAll()
         {
@@ -38,7 +38,7 @@ namespace Explore.API.Controllers
         [HttpGet("{id}")]
         [EndpointSummary("Get Tenant by ID")]
         [EndpointDescription("Retrieve details of a specific tenant")]
-        [AllowAnonymous]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(TenantDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<TenantDto>> GetById(Guid id)
@@ -56,7 +56,7 @@ namespace Explore.API.Controllers
         [HttpPost]
         [EndpointSummary("Create new Tenant")]
         [EndpointDescription("Create a new tenant")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateTenantDto dto)
@@ -76,7 +76,7 @@ namespace Explore.API.Controllers
         [HttpPut("{id}")]
         [EndpointSummary("Update Tenant")]
         [EndpointDescription("Update an existing tenant")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -102,7 +102,7 @@ namespace Explore.API.Controllers
         [HttpDelete("{id}")]
         [EndpointSummary("Delete Tenant")]
         [EndpointDescription("Delete a tenant")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult> Delete(Guid id)

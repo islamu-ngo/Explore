@@ -25,7 +25,7 @@ namespace Explore.API.Controllers
 
         // GET: api/v1/atprotoRecord
         [HttpGet]
-        [AllowAnonymous]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<List<AtprotoRecordListDto>>> GetAll()
         {
             var atprotoRecords = await _mediator.Send(new GetAtprotoRecordListRequest());
@@ -34,7 +34,7 @@ namespace Explore.API.Controllers
 
         // GET: api/v1/atprotoRecord/{id}
         [HttpGet("{id}")]
-        [AllowAnonymous]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<AtprotoRecordDto>> GetById(Guid id)
         {
             var atprotoRecord = await _mediator.Send(new GetAtprotoRecordDetailsRequest { Id = id });
@@ -48,7 +48,7 @@ namespace Explore.API.Controllers
 
         // POST: api/v1/atprotoRecord
         [HttpPost]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateAtprotoRecordDto dto)
         {
             var command = new CreateAtprotoRecordCommand { AtprotoRecordDto = dto };
@@ -58,7 +58,7 @@ namespace Explore.API.Controllers
 
         // PUT: api/v1/atprotoRecord/{id}
         [HttpPut("{id}")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateAtprotoRecordDto dto)
         {
             if (id != dto.Id)
@@ -79,7 +79,7 @@ namespace Explore.API.Controllers
 
         // DELETE: api/v1/atprotoRecord/{id}
         [HttpDelete("{id}")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult> Delete(Guid id)
         {
             var command = new DeleteAtprotoRecordCommand { Id = id };

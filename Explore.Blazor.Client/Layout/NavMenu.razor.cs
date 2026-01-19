@@ -37,11 +37,11 @@ public partial class NavMenu
         {
             if (!string.IsNullOrWhiteSpace(SearchQuery))
             {
-                Nav.NavigateTo($"/events?q={Uri.EscapeDataString(SearchQuery)}");
+                Nav.NavigateTo($"/?q={Uri.EscapeDataString(SearchQuery)}");
             }
             else
             {
-                Nav.NavigateTo("/events");
+                Nav.NavigateTo("/");
             }
         }
     }

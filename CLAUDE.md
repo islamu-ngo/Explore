@@ -11,7 +11,7 @@ This file is the entrypoint. Detailed docs are imported from `docs/`.
 ## Documentation Template System
 
 This project uses **project-agnostic documentation** with placeholder syntax `{Placeholder}`.
-All skills, agents, and governance docs use placeholders for reusability.
+**All documentation, skills, and agents have been refactored** to follow the template system for maximum reusability across any .NET Clean Architecture project.
 
 **Template Glossary**: [@docs/TEMPLATE_GLOSSARY.md](docs/TEMPLATE_GLOSSARY.md) - Defines all placeholders
 
@@ -22,21 +22,31 @@ All skills, agents, and governance docs use placeholders for reusability.
 | `{DbContext}` | `ExploreDbContext` |
 | `{IdType}` | `Guid` |
 | `{LookupIdType}` | `int` |
+| `{Entity}` | `Event` (primary), `Organization`, `Actor`, etc. |
+
+**Documentation Coverage**:
+- ✅ Core Docs: ARCHITECTURE.md, API.md, BLAZOR.md, GOVERNANCE.md, QUICK_REFERENCE.md
+- ✅ Operations: CONTRIBUTING.md, OPERATIONS.md, CONFIGURATION.md, TROUBLESHOOTING.md
+- ✅ Domain Reference: DOMAIN.md (project-specific with generic patterns)
+- ✅ Skills: blazor-bff-patterns (SKILL.md + 4 resources), and 7 other skills
+- ✅ All use "Generic Template + Concrete Example" pattern
 
 ## ⚠️ CRITICAL RULES - Quick Reference
 
-**MUST READ**: These 10 rules are based on 45+ entity implementations. Never violate them.
+**MUST READ**: These 12 rules are based on 45+ entity implementations. Never violate them.
 
 1. **Repositories Return ENTITIES, Never DTOs** - Map to DTOs in handlers
 2. **Validators Use Manual Instantiation (NOT DI)** - `var validator = new CreateEventDtoValidator(_repo1, _repo2);`
 3. **Navigation Properties Are Readonly** - Use repository for writes: `_memberRepository.Create(member)`
-4. **Use int Instead of long** - Except size/cursor fields or absolutly necessery
+4. **Use int Instead of long** - Except size/cursor fields or absolutely necessary
 5. **No Default Values in Entities** - Set in handler: `@event.TotalViews = 0;`
 6. **Do Not Remove Using Statements** - Keep ALL using statements (except errors or old names that were refactored)
 7. **Commands Return BaseCommandResponse<Guid>** - Not just `Guid`
-8. **GET = AllowAnonymous, Write = Authorize** - Public read, protected write
+8. **GET = AllowAnonymous, Write = Authorize, Admin = Roles** - Public read, protected write, role-based for admin operations
 9. **Extract UserId with Fallback** - `sub` → `nameidentifier` → `sid`
 10. **File-Scoped Namespaces** - `namespace Explore.Application.Features.Events;`
+11. **Entities Include Auditing Fields** - CreatedAt, CreatedBy, UpdatedAt, UpdatedBy, IsDeleted (soft delete)
+12. **Use Named Query Filters for Soft Delete** - EF Core 10+ `.HasQueryFilter(name: "SoftDelete", predicate: e => !e.IsDeleted)`
 
 **Full Details**: [@docs/QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md)
 

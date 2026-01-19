@@ -67,12 +67,12 @@ public partial class EventList
     protected override async Task OnInitializedAsync()
     {
         Logger.LogDebug("OnInitializedAsync starting");
-        
+
         if (!string.IsNullOrEmpty(SearchQuery))
         {
             searchText = SearchQuery;
         }
-        
+
         // Always load data - don't use any caching that can cause issues
         await LoadDataAsync();
         await LoadUserRegistrationsAsync();
@@ -319,14 +319,6 @@ public partial class EventList
             var count = AllFilteredEvents.Count;
             return count > 0 ? (int)Math.Ceiling((double)count / itemsPerPage) : 1;
         }
-    }
-
-    private void OnSearch(string value)
-    {
-        searchText = value;
-        currentPage = 1;
-        // Trigger a re-render/filter update if needed, though bind-value might handle it.
-        // If "OnSearch" is used in TextChanged, we might want to debounce or simply allow FilteredEvents to pick it up.
     }
 
     private void OnDateChanged(string value)
