@@ -1,0 +1,31 @@
+@page "/login"
+@using MudBlazor
+@inject NavigationManager Navigation
+
+<PageTitle>Redirecting...</PageTitle>
+
+<MudContainer Class="d-flex justify-center align-center" Style="min-height: 60vh;">
+    <MudStack AlignItems="AlignItems.Center" Spacing="3">
+        <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+        <MudText Typo="Typo.h6">Redirecting to sign-in...</MudText>
+    </MudStack>
+</MudContainer>
+
+@code {
+    private bool _hasNavigated;
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (!firstRender || _hasNavigated)
+        {
+            return;
+        }
+
+        _hasNavigated = true;
+
+        // Navigate to the server authentication endpoint (not /login which is this Blazor component)
+        var query = new Uri(Navigation.Uri).Query;
+        var challengeUrl = string.IsNullOrWhiteSpace(query) ? "/auth/challenge" : $"/auth/challenge{query}";
+        Navigation.NavigateTo(challengeUrl, forceLoad: true);
+    }
+}

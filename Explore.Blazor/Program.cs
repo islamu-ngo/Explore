@@ -377,6 +377,7 @@ app.UseRouting();
 
 app.UseAuthentication();
 
+
 app.Use(async (ctx, next) =>
 {
     if (ctx.Request.Path.StartsWithSegments("/api/v1", StringComparison.OrdinalIgnoreCase))
@@ -401,12 +402,43 @@ app.UseAuthorization();
 app.UseAntiforgery();
 app.MapControllers();
 
-// Authentication endpoints
-app.MapGet("/login", async ctx =>
+if (app.Environment.IsDevelopment())
 {
-    app.Logger.LogInformation("Login endpoint hit. Request URL: {Url}", ctx.Request.GetDisplayUrl());
+    // Test endpoint to verify routing works
+    app.MapGet("/test-endpoint", () => Results.Ok(new { message = "Server endpoint works!", timestamp = DateTime.UtcNow }))
+        .WithName("TestEndpoint");
+}
+
+static string GetSafeReturnUrl(HttpContext ctx, ILogger logger)
+{
     var returnUrl = ctx.Request.Query["returnUrl"].ToString();
-    app.Logger.LogInformation("Return URL: {ReturnUrl}", string.IsNullOrEmpty(returnUrl) ? "/" : returnUrl);
+
+    if (string.IsNullOrWhiteSpace(returnUrl))
+    {
+        return "/";
+    }
+
+    if (returnUrl.StartsWith("/", StringComparison.Ordinal) &&
+        !returnUrl.StartsWith("//", StringComparison.Ordinal) &&
+        !returnUrl.StartsWith("/\\", StringComparison.Ordinal))
+    {
+        return returnUrl;
+    }
+
+    logger.LogWarning("[AuthEndpoints] Invalid returnUrl '{ReturnUrl}' - defaulting to /", returnUrl);
+    return "/";
+}
+
+// Authentication endpoints - using /auth/* paths to avoid conflict with Blazor routes
+// The Blazor shim components at /login and /logout will force-load these server endpoints
+app.MapGet("/auth/challenge", async ctx =>
+{
+    var returnUrl = GetSafeReturnUrl(ctx, app.Logger);
+
+    app.Logger.LogInformation(
+        "[AuthEndpoints] /auth/challenge hit - Url: {Url} ReturnUrl: {ReturnUrl}",
+        ctx.Request.GetDisplayUrl(),
+        returnUrl);
 
     try
     {
@@ -414,34 +446,39 @@ app.MapGet("/login", async ctx =>
             OpenIdConnectDefaults.AuthenticationScheme,
             new AuthenticationProperties
             {
-                RedirectUri = string.IsNullOrEmpty(returnUrl) ? "/" : returnUrl
-            }
-        );
-        app.Logger.LogInformation("ChallengeAsync completed successfully");
+                RedirectUri = returnUrl
+            });
     }
     catch (Exception ex)
     {
-        app.Logger.LogError(ex, "Error during login challenge");
-        throw;
+        app.Logger.LogError(ex, "[AuthEndpoints] Error during login challenge");
+        ctx.Response.StatusCode = 500;
+        await ctx.Response.WriteAsJsonAsync(new { error = "Login failed", details = ex.Message });
     }
 });
 
-app.MapGet("/logout", async ctx =>
+app.MapGet("/auth/signout", async ctx =>
 {
-    app.Logger.LogInformation("Logout endpoint hit");
+    var returnUrl = GetSafeReturnUrl(ctx, app.Logger);
+
+    app.Logger.LogInformation(
+        "[AuthEndpoints] /auth/signout hit - Url: {Url} ReturnUrl: {ReturnUrl}",
+        ctx.Request.GetDisplayUrl(),
+        returnUrl);
+
     try
     {
         await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         await ctx.SignOutAsync(
             OpenIdConnectDefaults.AuthenticationScheme,
-            new AuthenticationProperties { RedirectUri = "/" }
-        );
-        app.Logger.LogInformation("Logout completed successfully");
+            new AuthenticationProperties { RedirectUri = returnUrl });
+        app.Logger.LogInformation("[AuthEndpoints] Signout completed");
     }
     catch (Exception ex)
     {
-        app.Logger.LogError(ex, "Error during logout");
-        throw;
+        app.Logger.LogError(ex, "[AuthEndpoints] Error during signout");
+        ctx.Response.StatusCode = 500;
+        await ctx.Response.WriteAsJsonAsync(new { error = "Logout failed", details = ex.Message });
     }
 });
 
@@ -478,15 +515,21 @@ app.MapGet("/bff/me", (HttpContext ctx) =>
 });
 
 app.MapStaticAssets();
-app.MapReverseProxy();
 
-// Map Blazor components with Blazouter routing
+// Map Blazor components with Blazouter routing BEFORE reverse proxy
 // AddAdditionalAssemblies is required for component rendering in WASM mode
 // Blazouter's Router handles client-side routing via RouteConfig
+// IMPORTANT: This is mapped BEFORE /api proxy to allow Blazor to handle all non-API routes
+// BUT authentication endpoints (/login, /logout) are mapped EARLIER with higher priority
 app.MapRazorComponents<App>()
     .AddBlazouterSupport()
     .AddInteractiveServerRenderMode()
     .AddInteractiveWebAssemblyRenderMode()
     .AddAdditionalAssemblies(typeof(Explore.Blazor.Client._Imports).Assembly);
 
+// Map reverse proxy LAST - it should only handle /api/v1/* routes
+app.MapReverseProxy();
+
 await app.RunAsync();
+
+
