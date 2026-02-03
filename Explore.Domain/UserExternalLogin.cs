@@ -1,5 +1,9 @@
+// ABOUTME: Domain entity representing an external login provider for a user.
+// Stores OAuth/OIDC provider information for user authentication.
+
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text;
 using Explore.Domain.Interfaces;
@@ -12,11 +16,13 @@ namespace Explore.Domain
 
         [ForeignKey("User")]
         public Guid UserId { get; set; }
-        public User User { get; set; }
+
+        public required User User { get; set; }
 
         [ForeignKey("Tenant")]
         public Guid TenantId { get; set; }
-        public Tenant Tenant { get; set; }
+
+        public required Tenant Tenant { get; set; }
 
         public string? Provider { get; set; }
         public string? ProviderKey { get; set; }

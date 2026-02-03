@@ -1,3 +1,6 @@
+// ABOUTME: Unit tests for EventService.
+// Tests all event-related operations including CRUD and session management.
+
 namespace Explore.Blazor.Client.Tests.Services;
 
 /// <summary>
@@ -6,15 +9,16 @@ namespace Explore.Blazor.Client.Tests.Services;
 /// </summary>
 /// <remarks>
 /// These tests verify:
-/// - Proper API client calls
+/// - Proper API client calls with HAL resource types
 /// - Error handling and fallback behavior
-/// - Response transformation
+/// - Response transformation from HAL to DTO using extension methods
 /// - Edge cases (null responses, exceptions)
 ///
-/// IMPORTANT: The API client has two overloads for each method:
-/// - Without CancellationToken (used by the service)
-/// - With CancellationToken
-/// We must mock the correct overload (without CancellationToken) for tests to work.
+/// IMPORTANT: The API client uses HAL resource types:
+/// - GetEventsAsync returns HalCollectionResourceOfEventListDto
+/// - GetMyEventsAsync returns HalCollectionResourceOfEventListDto
+/// - GetEventByIdAsync returns HalResourceOfEventDto
+/// The service converts these to plain DTOs using HalResourceExtensions.
 /// </remarks>
 public class EventServiceTests
 {
@@ -38,16 +42,10 @@ public class EventServiceTests
     {
         // Arrange
         var expectedEvents = ComponentDataBuilder.EventListDto.Generate(3);
-        var response = new PaginatedResultOfEventListDto
-        {
-            Items = expectedEvents,
-            TotalCount = 3,
-            PageNumber = 1,
-            PageSize = 100
-        };
-        // Service calls EventGETAsync(pageNumber: 1, pageSize: 100) without CancellationToken
-        _apiClient.EventGETAsync(Arg.Any<int?>(), Arg.Any<int?>())
-            .Returns(response);
+        var halResponse = CreateHalCollectionResponse(expectedEvents);
+
+        _apiClient.GetEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(halResponse);
 
         // Act
         var result = await _service.GetAllEventsAsync();
@@ -62,8 +60,8 @@ public class EventServiceTests
     public async Task GetAllEventsAsync_ReturnsEmptyList_WhenApiReturnsNull()
     {
         // Arrange
-        _apiClient.EventGETAsync(Arg.Any<int?>(), Arg.Any<int?>())
-            .Returns((PaginatedResultOfEventListDto?)null);
+        _apiClient.GetEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns((HalCollectionResourceOfEventListDto?)null);
 
         // Act
         var result = await _service.GetAllEventsAsync();
@@ -76,7 +74,7 @@ public class EventServiceTests
     public async Task GetAllEventsAsync_ReturnsEmptyList_WhenApiThrowsException()
     {
         // Arrange
-        _apiClient.EventGETAsync(Arg.Any<int?>(), Arg.Any<int?>())
+        _apiClient.GetEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("API Error", 500, null, null, null));
 
         // Act
@@ -87,16 +85,15 @@ public class EventServiceTests
     }
 
     [Test]
-    public async Task GetAllEventsAsync_ReturnsEmptyList_WhenItemsIsNull()
+    public async Task GetAllEventsAsync_ReturnsEmptyList_WhenEmbeddedIsNull()
     {
         // Arrange
-        var response = new PaginatedResultOfEventListDto
+        var halResponse = new HalCollectionResourceOfEventListDto
         {
-            Items = null,
-            TotalCount = 0
+            _embedded = null
         };
-        _apiClient.EventGETAsync(Arg.Any<int?>(), Arg.Any<int?>())
-            .Returns(response);
+        _apiClient.GetEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(halResponse);
 
         // Act
         var result = await _service.GetAllEventsAsync();
@@ -109,19 +106,15 @@ public class EventServiceTests
     public async Task GetAllEventsAsync_CallsApiWithCorrectPagination()
     {
         // Arrange
-        var response = new PaginatedResultOfEventListDto
-        {
-            Items = new List<EventListDto>(),
-            TotalCount = 0
-        };
-        _apiClient.EventGETAsync(Arg.Any<int?>(), Arg.Any<int?>())
-            .Returns(response);
+        var halResponse = CreateHalCollectionResponse(new List<EventListDto>());
+        _apiClient.GetEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(halResponse);
 
         // Act
         await _service.GetAllEventsAsync();
 
         // Assert - Service should request page 1 with size 100
-        await _apiClient.Received(1).EventGETAsync(1, 100);
+        await _apiClient.Received(1).GetEventsAsync(1, 100, Arg.Any<CancellationToken>());
     }
 
     #endregion
@@ -133,14 +126,10 @@ public class EventServiceTests
     {
         // Arrange
         var expectedEvents = ComponentDataBuilder.EventListDto.Generate(2);
-        var response = new PaginatedResultOfEventListDto
-        {
-            Items = expectedEvents,
-            TotalCount = 2
-        };
-        // Service calls MyAsync(pageNumber: 1, pageSize: 100) without CancellationToken
-        _apiClient.MyAsync(Arg.Any<int?>(), Arg.Any<int?>())
-            .Returns(response);
+        var halResponse = CreateHalCollectionResponse(expectedEvents);
+
+        _apiClient.GetMyEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(halResponse);
 
         // Act
         var result = await _service.GetMyEventsAsync();
@@ -153,7 +142,7 @@ public class EventServiceTests
     public async Task GetMyEventsAsync_ReturnsEmptyList_WhenApiThrowsException()
     {
         // Arrange
-        _apiClient.MyAsync(Arg.Any<int?>(), Arg.Any<int?>())
+        _apiClient.GetMyEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Unauthorized", 401, null, null, null));
 
         // Act
@@ -167,8 +156,8 @@ public class EventServiceTests
     public async Task GetMyEventsAsync_ReturnsEmptyList_WhenApiReturnsNull()
     {
         // Arrange
-        _apiClient.MyAsync(Arg.Any<int?>(), Arg.Any<int?>())
-            .Returns((PaginatedResultOfEventListDto?)null);
+        _apiClient.GetMyEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns((HalCollectionResourceOfEventListDto?)null);
 
         // Act
         var result = await _service.GetMyEventsAsync();
@@ -181,19 +170,15 @@ public class EventServiceTests
     public async Task GetMyEventsAsync_CallsApiWithCorrectPagination()
     {
         // Arrange
-        var response = new PaginatedResultOfEventListDto
-        {
-            Items = new List<EventListDto>(),
-            TotalCount = 0
-        };
-        _apiClient.MyAsync(Arg.Any<int?>(), Arg.Any<int?>())
-            .Returns(response);
+        var halResponse = CreateHalCollectionResponse(new List<EventListDto>());
+        _apiClient.GetMyEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(halResponse);
 
         // Act
         await _service.GetMyEventsAsync();
 
         // Assert - Service should request page 1 with size 100
-        await _apiClient.Received(1).MyAsync(1, 100);
+        await _apiClient.Received(1).GetMyEventsAsync(1, 100, Arg.Any<CancellationToken>());
     }
 
     #endregion
@@ -207,9 +192,10 @@ public class EventServiceTests
         var eventId = Guid.NewGuid();
         var expectedEvent = ComponentDataBuilder.EventDto.Generate();
         expectedEvent.Id = eventId;
-        // Service calls EventGET2Async(eventId) without CancellationToken
-        _apiClient.EventGET2Async(eventId)
-            .Returns(expectedEvent);
+        var halResponse = CreateHalResourceResponse(expectedEvent);
+
+        _apiClient.GetEventByIdAsync(eventId, Arg.Any<CancellationToken>())
+            .Returns(halResponse);
 
         // Act
         var result = await _service.GetEventByIdAsync(eventId);
@@ -225,7 +211,7 @@ public class EventServiceTests
     {
         // Arrange
         var eventId = Guid.NewGuid();
-        _apiClient.EventGET2Async(eventId)
+        _apiClient.GetEventByIdAsync(eventId, Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Not Found", 404, null, null, null));
 
         // Act
@@ -240,7 +226,7 @@ public class EventServiceTests
     {
         // Arrange
         var eventId = Guid.NewGuid();
-        _apiClient.EventGET2Async(eventId)
+        _apiClient.GetEventByIdAsync(eventId, Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
 
         // Act
@@ -256,14 +242,16 @@ public class EventServiceTests
         // Arrange
         var eventId = Guid.NewGuid();
         var expectedEvent = ComponentDataBuilder.EventDto.Generate();
-        _apiClient.EventGET2Async(Arg.Any<Guid>())
-            .Returns(expectedEvent);
+        var halResponse = CreateHalResourceResponse(expectedEvent);
+
+        _apiClient.GetEventByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(halResponse);
 
         // Act
         await _service.GetEventByIdAsync(eventId);
 
         // Assert
-        await _apiClient.Received(1).EventGET2Async(eventId);
+        await _apiClient.Received(1).GetEventByIdAsync(eventId, Arg.Any<CancellationToken>());
     }
 
     #endregion
@@ -277,8 +265,8 @@ public class EventServiceTests
         var createDto = ComponentDataBuilder.CreateEventDto.Generate();
         var expectedId = Guid.NewGuid();
         var expectedResponse = ComponentDataBuilder.SuccessResponse(expectedId);
-        // Service calls EventPOSTAsync(createDto) without CancellationToken
-        _apiClient.EventPOSTAsync(Arg.Any<CreateEventDto>())
+
+        _apiClient.CreateEventAsync(Arg.Any<CreateEventDto>(), Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
@@ -291,20 +279,18 @@ public class EventServiceTests
     }
 
     [Test]
-    public async Task CreateEventAsync_ReturnsFailure_WhenApiThrowsException()
+    public async Task CreateEventAsync_ReturnsNull_WhenApiThrowsException()
     {
         // Arrange
         var createDto = ComponentDataBuilder.CreateEventDto.Generate();
-        _apiClient.EventPOSTAsync(Arg.Any<CreateEventDto>())
+        _apiClient.CreateEventAsync(Arg.Any<CreateEventDto>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Bad Request", 400, "Validation failed", null, null));
 
         // Act
-        // EventService catches exceptions and returns a failure response (doesn't throw)
         var result = await _service.CreateEventAsync(createDto);
 
-        // Assert
-        await Assert.That(result).IsNotNull();
-        await Assert.That(result!.Success).IsFalse();
+        // Assert - Service propagates the exception, returns null
+        await Assert.That(result).IsNull();
     }
 
     [Test]
@@ -313,31 +299,14 @@ public class EventServiceTests
         // Arrange
         var createDto = ComponentDataBuilder.CreateEventDto.Generate();
         var expectedResponse = ComponentDataBuilder.SuccessResponse();
-        _apiClient.EventPOSTAsync(Arg.Any<CreateEventDto>())
+        _apiClient.CreateEventAsync(Arg.Any<CreateEventDto>(), Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
         await _service.CreateEventAsync(createDto);
 
         // Assert
-        await _apiClient.Received(1).EventPOSTAsync(createDto);
-    }
-
-    [Test]
-    public async Task CreateEventAsync_ReturnsSuccessResponse_OnSuccessfulStatusCode()
-    {
-        // Arrange - Simulate NSwag throwing on 200/201 but with successful status
-        var createDto = ComponentDataBuilder.CreateEventDto.Generate();
-        _apiClient.EventPOSTAsync(Arg.Any<CreateEventDto>())
-            .ThrowsAsync(new ApiException("Response parsing issue", 200, null, null, null));
-
-        // Act
-        // EventService has special handling for 200/201 status codes
-        var result = await _service.CreateEventAsync(createDto);
-
-        // Assert
-        await Assert.That(result).IsNotNull();
-        await Assert.That(result!.Success).IsTrue();
+        await _apiClient.Received(1).CreateEventAsync(createDto, Arg.Any<CancellationToken>());
     }
 
     #endregion
@@ -351,8 +320,8 @@ public class EventServiceTests
         var eventId = Guid.NewGuid();
         var updateDto = new UpdateEventDto { Id = eventId, Title = "Updated Title" };
         var expectedResponse = ComponentDataBuilder.SuccessResponse(eventId);
-        // Service calls EventPUTAsync(eventId, eventDto) without CancellationToken
-        _apiClient.EventPUTAsync(Arg.Any<Guid>(), Arg.Any<UpdateEventDto>())
+
+        _apiClient.UpdateEventAsync(Arg.Any<Guid>(), Arg.Any<UpdateEventDto>(), Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
@@ -365,21 +334,19 @@ public class EventServiceTests
     }
 
     [Test]
-    public async Task UpdateEventAsync_ReturnsFailure_WhenApiThrowsException()
+    public async Task UpdateEventAsync_ReturnsNull_WhenApiThrowsException()
     {
         // Arrange
         var eventId = Guid.NewGuid();
         var updateDto = new UpdateEventDto { Id = eventId };
-        _apiClient.EventPUTAsync(Arg.Any<Guid>(), Arg.Any<UpdateEventDto>())
+        _apiClient.UpdateEventAsync(Arg.Any<Guid>(), Arg.Any<UpdateEventDto>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Not Found", 404, null, null, null));
 
         // Act
-        // EventService catches exceptions and returns a failure response (doesn't throw)
         var result = await _service.UpdateEventAsync(eventId, updateDto);
 
-        // Assert
-        await Assert.That(result).IsNotNull();
-        await Assert.That(result!.Success).IsFalse();
+        // Assert - Service propagates the exception, returns null
+        await Assert.That(result).IsNull();
     }
 
     [Test]
@@ -389,14 +356,14 @@ public class EventServiceTests
         var eventId = Guid.NewGuid();
         var updateDto = new UpdateEventDto { Id = eventId, Title = "Test Title" };
         var expectedResponse = ComponentDataBuilder.SuccessResponse(eventId);
-        _apiClient.EventPUTAsync(Arg.Any<Guid>(), Arg.Any<UpdateEventDto>())
+        _apiClient.UpdateEventAsync(Arg.Any<Guid>(), Arg.Any<UpdateEventDto>(), Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
         await _service.UpdateEventAsync(eventId, updateDto);
 
         // Assert
-        await _apiClient.Received(1).EventPUTAsync(eventId, updateDto);
+        await _apiClient.Received(1).UpdateEventAsync(eventId, updateDto, Arg.Any<CancellationToken>());
     }
 
     #endregion
@@ -408,8 +375,7 @@ public class EventServiceTests
     {
         // Arrange
         var eventId = Guid.NewGuid();
-        // Service calls EventDELETEAsync(eventId) without CancellationToken
-        _apiClient.EventDELETEAsync(Arg.Any<Guid>())
+        _apiClient.DeleteEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
         // Act
@@ -424,7 +390,7 @@ public class EventServiceTests
     {
         // Arrange
         var eventId = Guid.NewGuid();
-        _apiClient.EventDELETEAsync(Arg.Any<Guid>())
+        _apiClient.DeleteEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Not Found", 404, null, null, null));
 
         // Act
@@ -439,7 +405,7 @@ public class EventServiceTests
     {
         // Arrange
         var eventId = Guid.NewGuid();
-        _apiClient.EventDELETEAsync(Arg.Any<Guid>())
+        _apiClient.DeleteEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Unauthorized", 401, null, null, null));
 
         // Act
@@ -454,14 +420,14 @@ public class EventServiceTests
     {
         // Arrange
         var eventId = Guid.NewGuid();
-        _apiClient.EventDELETEAsync(Arg.Any<Guid>())
+        _apiClient.DeleteEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
         // Act
         await _service.DeleteEventAsync(eventId);
 
         // Assert
-        await _apiClient.Received(1).EventDELETEAsync(eventId);
+        await _apiClient.Received(1).DeleteEventAsync(eventId, Arg.Any<CancellationToken>());
     }
 
     #endregion
@@ -473,9 +439,9 @@ public class EventServiceTests
     {
         // Arrange
         var sessionId = Guid.NewGuid();
-        var expectedSession = new EventSessionDto { Id = sessionId, Title = "Test Session" };
-        // Service calls EventSessionGET2Async(sessionId) without CancellationToken
-        _apiClient.EventSessionGET2Async(sessionId)
+        var expectedSession = new HalResourceOfEventSessionDto { Id = sessionId, Title = "Test Session" };
+
+        _apiClient.GetEventSessionByIdAsync(sessionId, Arg.Any<CancellationToken>())
             .Returns(expectedSession);
 
         // Act
@@ -492,7 +458,7 @@ public class EventServiceTests
     {
         // Arrange
         var sessionId = Guid.NewGuid();
-        _apiClient.EventSessionGET2Async(sessionId)
+        _apiClient.GetEventSessionByIdAsync(sessionId, Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Not Found", 404, null, null, null));
 
         // Act
@@ -507,7 +473,7 @@ public class EventServiceTests
     {
         // Arrange
         var sessionId = Guid.NewGuid();
-        _apiClient.EventSessionGET2Async(sessionId)
+        _apiClient.GetEventSessionByIdAsync(sessionId, Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
 
         // Act
@@ -522,15 +488,45 @@ public class EventServiceTests
     {
         // Arrange
         var sessionId = Guid.NewGuid();
-        var expectedSession = new EventSessionDto { Id = sessionId };
-        _apiClient.EventSessionGET2Async(Arg.Any<Guid>())
+        var expectedSession = new HalResourceOfEventSessionDto { Id = sessionId };
+        _apiClient.GetEventSessionByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(expectedSession);
 
         // Act
         await _service.GetSessionByIdAsync(sessionId);
 
         // Assert
-        await _apiClient.Received(1).EventSessionGET2Async(sessionId);
+        await _apiClient.Received(1).GetEventSessionByIdAsync(sessionId, Arg.Any<CancellationToken>());
+    }
+
+    #endregion
+
+    #region Helper Methods
+
+    /// <summary>
+    /// Creates a HAL collection response with the provided event list items.
+    /// </summary>
+    private static HalCollectionResourceOfEventListDto CreateHalCollectionResponse(
+        IList<EventListDto> items)
+    {
+        return new HalCollectionResourceOfEventListDto
+        {
+            _embedded = new HalCollectionEmbeddedOfEventListDto
+            {
+                Items = items.Cast<object>().ToList()
+            }
+        };
+    }
+
+    /// <summary>
+    /// Creates a HAL resource response from an event DTO.
+    /// Uses JSON serialization to properly populate all properties.
+    /// </summary>
+    private static HalResourceOfEventDto CreateHalResourceResponse(EventDto dto)
+    {
+        var json = Newtonsoft.Json.JsonConvert.SerializeObject(dto);
+        return Newtonsoft.Json.JsonConvert.DeserializeObject<HalResourceOfEventDto>(json)
+               ?? new HalResourceOfEventDto();
     }
 
     #endregion

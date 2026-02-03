@@ -1,3 +1,6 @@
+// ABOUTME: Component tests for EventList page.
+// Tests rendering, data loading, filtering, and user interactions.
+
 using Explore.Blazor.Client.Pages.Event;
 using MudBlazor;
 using MudBlazor.Services;
@@ -62,7 +65,8 @@ public class EventListTests : IDisposable
         _eventService.GetEventTypesAsync().Returns(new List<EventTypeListDto>());
         _eventService.GetEventFormatsAsync().Returns(new List<EventFormatListDto>());
         _eventService.GetAllSessionsAsync().Returns(new List<EventSessionListDto>());
-        _eventService.GetAllSessionLanguagesAsync().Returns(new List<EventSessionLanguageListDto>());
+        // GetAllSessionLanguagesAsync returns ICollection<object> - neutralized method
+        _eventService.GetAllSessionLanguagesAsync().Returns(new List<object>());
 
         // Category service defaults
         _categoryService.GetAllCategoriesAsync().Returns(new List<CategoryListDto>());

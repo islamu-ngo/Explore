@@ -31,7 +31,7 @@ public static class MockServiceFactory
         mock.GetEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(new HalCollectionResourceOfEventListDto
             {
-                _embedded = new HalCollectionResourceOfEventListDto_embedded
+                _embedded = new HalCollectionEmbeddedOfEventListDto
                 {
                     Items = new List<object>()
                 }
@@ -41,7 +41,7 @@ public static class MockServiceFactory
         mock.GetMyEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(new HalCollectionResourceOfEventListDto
             {
-                _embedded = new HalCollectionResourceOfEventListDto_embedded
+                _embedded = new HalCollectionEmbeddedOfEventListDto
                 {
                     Items = new List<object>()
                 }
@@ -51,7 +51,7 @@ public static class MockServiceFactory
         mock.GetOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(new HalCollectionResourceOfOrganizationListDto
             {
-                _embedded = new HalCollectionResourceOfOrganizationListDto_embedded
+                _embedded = new HalCollectionEmbeddedOfOrganizationListDto
                 {
                     Items = new List<object>()
                 }
@@ -61,7 +61,7 @@ public static class MockServiceFactory
         mock.GetMyOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(new HalCollectionResourceOfOrganizationListDto
             {
-                _embedded = new HalCollectionResourceOfOrganizationListDto_embedded
+                _embedded = new HalCollectionEmbeddedOfOrganizationListDto
                 {
                     Items = new List<object>()
                 }

@@ -447,7 +447,7 @@ public class OrganizationServiceTests
     {
         return new HalCollectionResourceOfOrganizationListDto
         {
-            _embedded = new HalCollectionResourceOfOrganizationListDto_embedded
+            _embedded = new HalCollectionEmbeddedOfOrganizationListDto
             {
                 Items = items.Cast<object>().ToList()
             }

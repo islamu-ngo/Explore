@@ -1,5 +1,9 @@
+// ABOUTME: Domain entity representing an actor in the system.
+// An actor can be either a User or an Organization and is the entity that performs actions.
+
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text;
 using Explore.Domain.Interfaces;
@@ -9,9 +13,11 @@ namespace Explore.Domain
     public class Actor : ITenantEntity, IAuditableEntity, ISoftDeletable
     {
         public Guid Id { get; set; }
+
         [ForeignKey("ActorType")]
         public int ActorTypeId { get; set; }
-        public ActorType ActorType { get; set; }
+
+        public required ActorType ActorType { get; set; }
 
         // Navigation Properties & Foreign Keys
         [ForeignKey(nameof(UserId))]
@@ -24,9 +30,10 @@ namespace Explore.Domain
 
         [ForeignKey("Tenant")]
         public Guid TenantId { get; set; }
-        public Tenant Tenant { get; set; }
 
-        public string DisplayName { get; set; }
+        public required Tenant Tenant { get; set; }
+
+        public required string DisplayName { get; set; }
 
         [ForeignKey("ProfilePictureStorage")]
         public Guid? ProfilePictureId { get; set; }
