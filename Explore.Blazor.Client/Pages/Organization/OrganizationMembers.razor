@@ -65,7 +65,7 @@
             </MudTd>
             <MudTd DataLabel="Email">@context.UserEmail</MudTd>
             <MudTd DataLabel="Role">
-                <MudChip T="string" Color="@GetRoleColor(context.OrganizationRoleId)" Size="Size.Small">@GetRoleName(context.OrganizationRoleId)</MudChip>
+                <MudChip T="string" Color="@GetRoleColor(context.OrganizationRoleId ?? 0)" Size="Size.Small">@GetRoleName(context.OrganizationRoleId ?? 0)</MudChip>
             </MudTd>
             @if (currentUserRole.HasValue && currentUserRole.Value != 4) @* 4 = Member *@
             {

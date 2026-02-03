@@ -31,6 +31,11 @@ namespace Explore.Persistence.Repositories
                 .Include(e => e.VisibilityType)
                 .Include(e => e.EventFormat)
                 .Include(e => e.Madhab)
+                .Include(e => e.IslamicAspect)
+                    .ThenInclude(a => a!.Madhab)
+                .Include(e => e.IslamicAspect)
+                    .ThenInclude(a => a!.PrimaryLanguage)
+                .Include(e => e.TechAspect)
                 .ToListAsync();
         }
 
@@ -50,6 +55,11 @@ namespace Explore.Persistence.Repositories
                 .Include(e => e.EventFormat)
                 .Include(e => e.Madhab)
                 .Include(e => e.AtprotoRecord)
+                .Include(e => e.IslamicAspect)
+                    .ThenInclude(a => a!.Madhab)
+                .Include(e => e.IslamicAspect)
+                    .ThenInclude(a => a!.PrimaryLanguage)
+                .Include(e => e.TechAspect)
                 .FirstOrDefaultAsync(e => e.Id == id);
         }
 
@@ -71,6 +81,11 @@ namespace Explore.Persistence.Repositories
                 .Include(e => e.VisibilityType)
                 .Include(e => e.EventFormat)
                 .Include(e => e.Madhab)
+                .Include(e => e.IslamicAspect)
+                    .ThenInclude(a => a!.Madhab)
+                .Include(e => e.IslamicAspect)
+                    .ThenInclude(a => a!.PrimaryLanguage)
+                .Include(e => e.TechAspect)
                 .AsQueryable();
 
             if (isGuid)
@@ -101,6 +116,11 @@ namespace Explore.Persistence.Repositories
                 .Include(e => e.VisibilityType)
                 .Include(e => e.EventFormat)
                 .Include(e => e.Madhab)
+                .Include(e => e.IslamicAspect)
+                    .ThenInclude(a => a!.Madhab)
+                .Include(e => e.IslamicAspect)
+                    .ThenInclude(a => a!.PrimaryLanguage)
+                .Include(e => e.TechAspect)
                 .OrderByDescending(e => e.FirstSessionDate);
 
             var totalCount = await query.CountAsync();
@@ -131,6 +151,11 @@ namespace Explore.Persistence.Repositories
                 .Include(e => e.VisibilityType)
                 .Include(e => e.EventFormat)
                 .Include(e => e.Madhab)
+                .Include(e => e.IslamicAspect)
+                    .ThenInclude(a => a!.Madhab)
+                .Include(e => e.IslamicAspect)
+                    .ThenInclude(a => a!.PrimaryLanguage)
+                .Include(e => e.TechAspect)
                 .AsQueryable();
 
             if (isGuid)

@@ -1,0 +1,25 @@
+{
+  "include": [
+    "Explore.AppHosting/**/*",
+    "Explore.ServiceDefaults/**/*",
+    "docker-compose.yml"
+  ],
+  "output": {
+    "style": "markdown",
+    "filePath": ".repomix/repomix-aspire.md",
+    "removeComments": true,
+    "showLineNumbers": true,
+    "topFilesLength": 20,
+    "copyToClipboard": false
+  },
+  "ignore": {
+    "customPatterns": [
+      "**/*.log",
+      ".opencode/command/**/*",
+      ".claude/commands/**/*",
+      ".claude/hooks/**/*"
+    ],
+    "useGitignore": true,
+    "useDefaultPatterns": true
+  }
+}

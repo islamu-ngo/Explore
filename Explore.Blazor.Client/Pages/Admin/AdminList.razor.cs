@@ -96,7 +96,7 @@ public partial class AdminList
         if (_selectedStatuses.Count > 0)
         {
             var allowed = _selectedStatuses.Select(s => (int)s).ToHashSet();
-            q = q.Where(r => allowed.Contains(r.ApprovalStatusId));
+            q = q.Where(r => r.ApprovalStatusId.HasValue && allowed.Contains(r.ApprovalStatusId.Value));
         }
 
         if (!string.IsNullOrWhiteSpace(_search))
@@ -124,6 +124,8 @@ public partial class AdminList
 
     private async Task Approve(OrganizationListDto req)
     {
+        if (!req.Id.HasValue) return;
+
         bool? ok = await DialogService.ShowMessageBox(
             "Confirm approval",
             $"Approve {req.FullName}?",
@@ -131,7 +133,7 @@ public partial class AdminList
 
         if (ok == true)
         {
-            var success = await AdminService.ApproveOrganizationAsync(req.Id);
+            var success = await AdminService.ApproveOrganizationAsync(req.Id.Value);
             if (success)
             {
                 Snackbar.Add($"Approved {req.FullName}", Severity.Success);
@@ -146,6 +148,8 @@ public partial class AdminList
 
     private async Task Reject(OrganizationListDto req)
     {
+        if (!req.Id.HasValue) return;
+
         bool? ok = await DialogService.ShowMessageBox(
             "Confirm rejection",
             $"Reject {req.FullName}?",
@@ -153,7 +157,7 @@ public partial class AdminList
 
         if (ok == true)
         {
-            var success = await AdminService.RejectOrganizationAsync(req.Id);
+            var success = await AdminService.RejectOrganizationAsync(req.Id.Value);
             if (success)
             {
                 Snackbar.Add($"Rejected {req.FullName}", Severity.Error);
@@ -168,7 +172,8 @@ public partial class AdminList
 
     private async Task RevertToPending(OrganizationListDto req)
     {
-        var success = await AdminService.RevertToPendingAsync(req.Id);
+        if (!req.Id.HasValue) return;
+        var success = await AdminService.RevertToPendingAsync(req.Id.Value);
         if (success)
         {
             Snackbar.Add($"Moved {req.FullName} back to Pending", Severity.Info);
@@ -182,6 +187,9 @@ public partial class AdminList
 
     private void ViewDetails(OrganizationListDto req)
     {
-        Nav.NavigateTo($"/admin/organization/{req.Id}");
+        if (req.Id.HasValue)
+        {
+            Nav.NavigateTo($"/admin/organization/{req.Id.Value}");
+        }
     }
 }

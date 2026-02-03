@@ -130,3 +130,14 @@ If you see duplicate key errors:
 
 - Check unique constraints in EF configurations/migrations.
 - Verify seed data and id generation.
+
+
+### Development URLs (Default)
+
+| Service | URL |
+|---------|-----|
+| Aspire Dashboard | `https://localhost:17225` |
+| API | `https://localhost:7001` |
+| Blazor | `https://localhost:7002` |
+| Scalar API Docs | `https://localhost:7001/scalar/v1` |
+| Swagger UI | `https://localhost:7001/swagger` |

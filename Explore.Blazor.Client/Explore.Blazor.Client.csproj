@@ -27,24 +27,82 @@
     </PackageReference>
   </ItemGroup>
 
-  <!-- 
+  <!--
     OpenAPI Client Generation (NSwag)
     ==================================
     WORKFLOW:
     1. Start Aspire → API starts and exports swagger.json (via OpenApiExportService)
-    2. Rebuild Blazor.Client → NSwag regenerates EventApiClient.g.cs from swagger.json
-    
+    2. Build Blazor.Client → NSwag regenerates EventApiClient.g.cs BEFORE compilation
+
+    KEY DESIGN: Generation happens BEFORE CoreCompile, so:
+    - If swagger.json changed, client regenerates first
+    - Then compiler sees the fresh generated code
+    - You can regenerate even if your other code has build errors
+
     The swagger.json is checked into source control for CI/CD builds.
-    In development, the API auto-exports it at startup.
-    
-    To manually regenerate after API changes:
-    - Restart Aspire (API exports fresh swagger.json)
-    - Rebuild this project (NSwag regenerates client)
+
+    To manually regenerate (bypasses build):
+      dotnet nswag run nswag.json
+
+    INPUTS/OUTPUTS: MSBuild skips generation if swagger.json hasn't changed
   -->
+
+  <!-- Custom inline task for regex text replacement (avoids PowerShell escaping issues) -->
+  <UsingTask TaskName="ReplaceFileText" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <InputFilename ParameterType="System.String" Required="true" />
+      <MatchExpression ParameterType="System.String" Required="true" />
+      <ReplacementText ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Text.RegularExpressions" />
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        if (File.Exists(InputFilename))
+        {
+            var content = File.ReadAllText(InputFilename);
+            var newContent = Regex.Replace(content, MatchExpression, ReplacementText);
+            if (content != newContent)
+            {
+                File.WriteAllText(InputFilename, newContent);
+                Log.LogMessage(MessageImportance.High, "Fixed NSwag void returns in {0}", Path.GetFileName(InputFilename));
+            }
+        }
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+  <!-- NSwag Client Generation - Runs BEFORE compilation -->
+  <Target Name="GenerateApiClient"
+          BeforeTargets="CoreCompile"
+          Inputs="..\Explore.API\swagger.json"
+          Outputs="Clients\EventApiClient.g.cs"
+          Condition="Exists('..\Explore.API\swagger.json')">
+    <Message Importance="high" Text="NSwag: Regenerating API client from swagger.json..." />
+    <Exec Command="dotnet nswag run nswag.json"
+          WorkingDirectory="$(ProjectDir)"
+          ConsoleToMSBuild="true" />
+    <!-- Fix NSwag bug: 'return default(void)!;' is invalid C# for void methods (204 No Content responses) -->
+    <ReplaceFileText InputFilename="$(MSBuildProjectDirectory)\Clients\EventApiClient.g.cs"
+                     MatchExpression="return default\(void\)!;"
+                     ReplacementText="return;" />
+    <Message Importance="high" Text="NSwag: API client regenerated and patched successfully." />
+  </Target>
+
+  <!-- Fix NSwag void return bug - ALWAYS runs before compilation (no Inputs/Outputs skip) -->
+  <Target Name="FixNSwagVoidReturns" BeforeTargets="CoreCompile">
+    <ReplaceFileText InputFilename="$(MSBuildProjectDirectory)\Clients\EventApiClient.g.cs"
+                     MatchExpression="return default\(void\)!;"
+                     ReplacementText="return;" />
+  </Target>
+
+  <!-- Exclude generated file from source analysis (it's auto-generated) -->
   <ItemGroup>
-	  <OpenApiReference Include="..\Explore.API\swagger.json" CodeGenerator="NSwagCSharp" Namespace="Explore.Blazor.Client.Clients" ClassName="EventApiClient" OutputPath="$(ProjectDir)Clients\EventApiClient.g.cs">
-		  <Options>/GenerateDtoTypes:true /GenerateClientInterfaces:true /InjectHttpClient:true /GenerateExceptionClasses:true /ExceptionClass:ApiException /UseBaseUrl:false /GenerateClientClasses:true /ClientClassAccessModifier:public /JsonLibrary:NewtonsoftJson</Options>
-	  </OpenApiReference>
+    <Compile Update="Clients\EventApiClient.g.cs">
+      <AutoGen>true</AutoGen>
+      <DependentUpon>nswag.json</DependentUpon>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Helpers\" />

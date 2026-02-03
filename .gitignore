@@ -506,5 +506,6 @@ $RECYCLE.BIN/
 .claude/hooks/.claude/build-cache/
 .claude/build-cache/
 
+dev/archive/*
 
-.mcp.json
+inbox

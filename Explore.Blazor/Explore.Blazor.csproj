@@ -4,7 +4,7 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <UserSecretsId>5e896b2d-4efd-42cc-8b6f-f6cc3c5e4c7a</UserSecretsId>
+    <UserSecretsId>event-shared-secrets</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
 	<!--<BdtSkipComponents>ItemContent;MudTimelineItem;MudDialog</BdtSkipComponents>-->
   </PropertyGroup>
@@ -19,6 +19,7 @@
     <PackageReference Include="Blazouter.Server" Version="1.0.13" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.23.0" />
     <ProjectReference Include="..\Explore.Blazor.Client\Explore.Blazor.Client.csproj" />
+    <ProjectReference Include="..\Explore.Secrets\Explore.Secrets.csproj" />
     <ProjectReference Include="..\Explore.ServiceDefaults\Explore.ServiceDefaults.csproj" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Cookies" Version="2.3.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="9.0.9" />

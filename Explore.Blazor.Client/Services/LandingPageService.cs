@@ -1,5 +1,5 @@
-using System.Net.Http.Json;
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Helpers;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;
@@ -54,8 +54,8 @@ public class LandingPageService : ILandingPageService
         try
         {
             _logger.LogDebug("Fetching featured events with count {Count}", count);
-            var response = await _apiClient.EventGETAsync(pageNumber: 1, pageSize: 100);
-            var events = response?.Items?.ToList() ?? new List<EventListDto>();
+            var response = await _apiClient.GetEventsAsync(pageNumber: 1, pageSize: 100);
+            var events = response?.GetItems() ?? new List<EventListDto>();
 
             // Filter and sort for landing page display
             var featuredEvents = events
@@ -70,11 +70,6 @@ public class LandingPageService : ILandingPageService
         catch (ApiException ex)
         {
             _logger.LogError(ex, "API error fetching featured events. StatusCode: {StatusCode}", ex.StatusCode);
-            return new List<EventListDto>();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error fetching featured events");
             return new List<EventListDto>();
         }
     }
@@ -101,7 +96,7 @@ public class LandingPageService : ILandingPageService
         try
         {
             _logger.LogDebug("Fetching upcoming events count");
-            var response = await _apiClient.EventGETAsync(pageNumber: 1, pageSize: 100);
+            var response = await _apiClient.GetEventsAsync(pageNumber: 1, pageSize: 100);
             var count = response?.TotalCount ?? 0;
             _logger.LogDebug("Retrieved {Count} upcoming events", count);
             return count;
@@ -109,11 +104,6 @@ public class LandingPageService : ILandingPageService
         catch (ApiException ex)
         {
             _logger.LogError(ex, "API error fetching events count. StatusCode: {StatusCode}", ex.StatusCode);
-            return 0;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error fetching events count");
             return 0;
         }
     }

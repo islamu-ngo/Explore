@@ -1,3 +1,0 @@
-Shared:build:dotnet build --nologo
-Shared:build:dotnet build --nologo
-Shared:build:dotnet build --nologo

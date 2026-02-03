@@ -4,6 +4,7 @@
 @using Explore.Blazor.Client.Services
 @using Microsoft.AspNetCore.Components
 @using Explore.Blazor.Client.Components.Event
+@using Explore.Blazor.Client.Services.Contracts
 
 <PageTitle>Event Detail</PageTitle>
 <MudContainer Class="event-detail">
@@ -19,7 +20,7 @@
                            Class="event-detail__back-btn">
                     Back to Events
                 </MudButton>
-                
+
                 @if (_eventDetails != null)
                 {
                     <div class="event-detail__actions">
@@ -50,7 +51,7 @@
             <!-- Main Content Area -->
             <MudItem xs="12" md="8">
                 <MudStack Spacing="4">
-                    
+
                     <!-- Header Section (Title & Badges) -->
                     <div class="event-detail__header-section">
                         <div class="event-detail__badges mb-3">
@@ -62,7 +63,7 @@
                             </MudChip>
                         </div>
                         <MudText Typo="Typo.h3" Class="event-detail__title mb-2">@_eventDetails.Title</MudText>
-                        
+
                         <div class="event-detail__organizer-row mt-2">
                             <MudAvatar Size="Size.Small" Class="mr-2">
                                 <MudImage Src="@GetOrganizerProfilePicture()" />
@@ -93,6 +94,66 @@
                         </MudText>
                     </MudPaper>
 
+                    <!-- Event Aspects (Islamic and Tech) -->
+                    @if (_islamicAspect != null || _techAspect != null || _canEdit)
+                    {
+                        <MudPaper Elevation="0" Class="event-detail__section-card pa-6">
+                            <div class="d-flex justify-space-between align-center mb-4">
+                                <MudText Typo="Typo.h5">Event Characteristics</MudText>
+                                @if (_canEdit && (_islamicAspect == null || _techAspect == null))
+                                {
+                                    <MudMenu Icon="@Icons.Material.Filled.Add" Variant="Variant.Outlined" Size="Size.Small" Color="Color.Primary">
+                                        @if (_islamicAspect == null)
+                                        {
+                                            <MudMenuItem OnClick="OpenAddIslamicAspectDialog">
+                                                <div class="d-flex align-center gap-2">
+                                                    <MudIcon Icon="@Icons.Material.Filled.Mosque" Size="Size.Small" />
+                                                    <span>Add Islamic Characteristics</span>
+                                                </div>
+                                            </MudMenuItem>
+                                        }
+                                        @if (_techAspect == null)
+                                        {
+                                            <MudMenuItem OnClick="OpenAddTechAspectDialog">
+                                                <div class="d-flex align-center gap-2">
+                                                    <MudIcon Icon="@Icons.Material.Filled.Code" Size="Size.Small" />
+                                                    <span>Add Tech Characteristics</span>
+                                                </div>
+                                            </MudMenuItem>
+                                        }
+                                    </MudMenu>
+                                }
+                            </div>
+
+                            <MudStack Spacing="3">
+                                @if (_islamicAspect != null)
+                                {
+                                    <EventIslamicAspectCard Aspect="_islamicAspect"
+                                                            EventId="EventId"
+                                                            ShowActions="_canEdit"
+                                                            OnEdit="OpenEditIslamicAspectDialog"
+                                                            OnDelete="ConfirmDeleteIslamicAspect" />
+                                }
+
+                                @if (_techAspect != null)
+                                {
+                                    <EventTechAspectCard Aspect="_techAspect"
+                                                         EventId="EventId"
+                                                         ShowActions="_canEdit"
+                                                         OnEdit="OpenEditTechAspectDialog"
+                                                         OnDelete="ConfirmDeleteTechAspect" />
+                                }
+
+                                @if (_islamicAspect == null && _techAspect == null && !_canEdit)
+                                {
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                        No special characteristics defined for this event.
+                                    </MudText>
+                                }
+                            </MudStack>
+                        </MudPaper>
+                    }
+
                     <!-- Sessions / Agenda (Only if multiple) -->
                     @if (_eventSessions != null && _eventSessions.Count > 1)
                     {
@@ -113,7 +174,7 @@
                             <MudText Typo="Typo.h4" Color="Color.Primary" Style="font-weight: 700;">
                                 @(_eventDetails.Price.HasValue && _eventDetails.Price > 0 ? $"{_eventDetails.CurrencyCode ?? "€"}{_eventDetails.Price:F2}" : "Free")
                             </MudText>
-                            @if (_eventDetails.IsRegistrationRequired)
+                            @if (_eventDetails.IsRegistrationRequired == true)
                             {
                                 <MudChip T="string" Color="Color.Info" Size="Size.Small" Variant="Variant.Text">Registration Required</MudChip>
                             }
@@ -160,9 +221,9 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <MudDivider Class="my-4" />
-                        
+
                         <MudText Typo="Typo.subtitle2" Class="mb-2">Share with friends</MudText>
                         <div class="d-flex gap-2">
                             <MudIconButton Icon="@Icons.Custom.Brands.Facebook" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default" />

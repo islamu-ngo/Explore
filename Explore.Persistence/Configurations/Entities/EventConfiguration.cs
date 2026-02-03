@@ -81,6 +81,21 @@ namespace Explore.Persistence.Configurations.Entities
                 .HasForeignKey(e => e.AtprotoRecordId)
                 .OnDelete(DeleteBehavior.SetNull);
 
+            // Configure aspect navigation properties (shared PK pattern - no FK needed)
+            builder.HasOne(e => e.IslamicAspect)
+                .WithOne(a => a.Event)
+                .HasForeignKey<EventIslamicAspect>(a => a.Id)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.HasOne(e => e.TechAspect)
+                .WithOne(a => a.Event)
+                .HasForeignKey<EventTechAspect>(a => a.Id)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // MetadataJson uses PostgreSQL jsonb for efficient JSON querying
+            builder.Property(e => e.MetadataJson)
+                .HasColumnType("jsonb");
+
             builder.HasData(
                 new Event
                 {

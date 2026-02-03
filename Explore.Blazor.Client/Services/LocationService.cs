@@ -1,4 +1,7 @@
+// ABOUTME: Service for managing location-related operations.
+
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Helpers;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;
@@ -30,33 +33,24 @@ public class LocationService : ILocationService
     {
         try
         {
-            _logger.LogInformation("[LOCATION SERVICE] Fetching all locations...");
-            var response = await _apiClient.LocationGETAsync(pageNumber: 1, pageSize: 100);
-            _logger.LogInformation("[LOCATION SERVICE] Received {Count} locations from {Total} total", response?.Items?.Count ?? 0, response?.TotalCount ?? 0);
-            return response?.Items ?? new List<LocationListDto>();
+            var result = await _apiClient.GetLocationsAsync(pageNumber: 1, pageSize: 100);
+            return result?.GetItems() ?? new List<LocationListDto>();
         }
         catch (ApiException ex)
         {
             _logger.LogError(ex, "[LOCATION SERVICE] API error fetching locations: {StatusCode}", ex.StatusCode);
             return new List<LocationListDto>();
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[LOCATION SERVICE] Error fetching locations");
-            return new List<LocationListDto>();
-        }
     }
 
-    /// <summary>
-    /// Alias for GetAllLocationsAsync() - used by admin pages.
-    /// </summary>
     public Task<ICollection<LocationListDto>> GetLocations() => GetAllLocationsAsync();
 
     public async Task<LocationDto?> GetLocationByIdAsync(Guid locationId)
     {
         try
         {
-            return await _apiClient.LocationGET2Async(locationId);
+            var result = await _apiClient.GetLocationByIdAsync(locationId);
+            return result?.ToDto();
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
         {
@@ -68,39 +62,18 @@ public class LocationService : ILocationService
             _logger.LogError(ex, "[LOCATION SERVICE] API error fetching location {LocationId}: {StatusCode}", locationId, ex.StatusCode);
             return null;
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[LOCATION SERVICE] Error fetching location {LocationId}", locationId);
-            return null;
-        }
     }
 
     public async Task<BaseCommandResponseOfGuid?> CreateLocationAsync(CreateLocationDto dto)
     {
         try
         {
-            _logger.LogInformation("[LOCATION SERVICE] Creating location: {Name}", dto.FullName);
-            return await _apiClient.LocationPOSTAsync(dto);
+            return await _apiClient.CreateLocationAsync(dto);
         }
         catch (ApiException ex)
         {
             _logger.LogError(ex, "[LOCATION SERVICE] API error creating location: {StatusCode}", ex.StatusCode);
-            return new BaseCommandResponseOfGuid
-            {
-                Success = false,
-                Message = $"API error: {ex.Message}",
-                Errors = new List<string> { ex.Response ?? ex.Message }
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[LOCATION SERVICE] Error creating location");
-            return new BaseCommandResponseOfGuid
-            {
-                Success = false,
-                Message = ex.Message,
-                Errors = new List<string> { ex.Message }
-            };
+            return new BaseCommandResponseOfGuid { Success = false, Message = $"API error: {ex.Message}", Errors = new List<string> { ex.Response ?? ex.Message } };
         }
     }
 
@@ -108,27 +81,12 @@ public class LocationService : ILocationService
     {
         try
         {
-            return await _apiClient.LocationPUTAsync(id, dto);
+            return await _apiClient.UpdateLocationAsync(id, dto);
         }
         catch (ApiException ex)
         {
             _logger.LogError(ex, "[LOCATION SERVICE] API error updating location: {StatusCode}", ex.StatusCode);
-            return new BaseCommandResponseOfGuid
-            {
-                Success = false,
-                Message = $"API error: {ex.Message}",
-                Errors = new List<string> { ex.Response ?? ex.Message }
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[LOCATION SERVICE] Error updating location");
-            return new BaseCommandResponseOfGuid
-            {
-                Success = false,
-                Message = ex.Message,
-                Errors = new List<string> { ex.Message }
-            };
+            return new BaseCommandResponseOfGuid { Success = false, Message = $"API error: {ex.Message}", Errors = new List<string> { ex.Response ?? ex.Message } };
         }
     }
 
@@ -136,17 +94,12 @@ public class LocationService : ILocationService
     {
         try
         {
-            await _apiClient.LocationDELETEAsync(locationId);
+            await _apiClient.DeleteLocationAsync(locationId);
             return true;
         }
         catch (ApiException ex)
         {
             _logger.LogError(ex, "[LOCATION SERVICE] API error deleting location: {StatusCode}", ex.StatusCode);
-            return false;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[LOCATION SERVICE] Error deleting location");
             return false;
         }
     }
@@ -155,17 +108,12 @@ public class LocationService : ILocationService
     {
         try
         {
-            var response = await _apiClient.ByCityAsync(city);
-            return response ?? new List<LocationListDto>();
+            var result = await _apiClient.GetLocationsByCityAsync(city);
+            return result?.GetItems() ?? new List<LocationListDto>();
         }
         catch (ApiException ex)
         {
             _logger.LogError(ex, "[LOCATION SERVICE] API error fetching locations by city: {StatusCode}", ex.StatusCode);
-            return new List<LocationListDto>();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[LOCATION SERVICE] Error fetching locations by city");
             return new List<LocationListDto>();
         }
     }
@@ -174,17 +122,12 @@ public class LocationService : ILocationService
     {
         try
         {
-            var response = await _apiClient.ByCountryAsync(country);
-            return response ?? new List<LocationListDto>();
+            var result = await _apiClient.GetLocationsByCountryAsync(country);
+            return result?.GetItems() ?? new List<LocationListDto>();
         }
         catch (ApiException ex)
         {
             _logger.LogError(ex, "[LOCATION SERVICE] API error fetching locations by country: {StatusCode}", ex.StatusCode);
-            return new List<LocationListDto>();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[LOCATION SERVICE] Error fetching locations by country");
             return new List<LocationListDto>();
         }
     }

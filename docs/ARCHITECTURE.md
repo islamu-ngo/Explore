@@ -93,7 +93,7 @@ graph TD
 
 -   **Domain**: Contains pure business logic, entities, and value objects. It is the core of the application and has no external dependencies.
 -   **Application**: Orchestrates the domain logic. It contains use cases (commands/queries), DTOs, and interfaces for infrastructure services. It depends only on the Domain layer.
--   **Infrastructure**: Provides concrete implementations for data access (Persistence via `{Project}.Persistence`) and external services (email, file storage via `{Project}.Infrastructure`). It depends on the Application layer to implement its interfaces.
+-   **Infrastructure**: Provides concrete implementations for data access with repository pattern (Persistence via `{Project}.Persistence`) and external services (email, file storage via `{Project}.Infrastructure`). It depends on the Application layer to implement its interfaces.
 -   **Presentation**: The entry points to the application, including the REST API (`{Project}.API`) and the Blazor UI (`{Project}.Blazor`). This layer composes the other layers and handles user interaction and HTTP requests.
 
 ### Data Flow (CQRS Pattern)

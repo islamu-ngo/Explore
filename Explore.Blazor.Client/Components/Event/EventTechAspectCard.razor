@@ -1,0 +1,191 @@
+@* ABOUTME: Component displaying Tech aspect information for an event. *@
+@* Shows skill level, GitHub repo, hackathon details, tech stack, and competition info. *@
+
+@using Explore.Blazor.Client.Clients
+@using MudBlazor
+
+<MudPaper Elevation="0" Class="tech-aspect-card pa-4">
+    <div class="tech-aspect-card__header">
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.Code" Color="Color.Secondary" />
+            <MudText Typo="Typo.h6">Tech Characteristics</MudText>
+        </div>
+        @if (ShowActions)
+        {
+            <div class="tech-aspect-card__actions">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                               Size="Size.Small"
+                               Color="Color.Primary"
+                               OnClick="@(() => OnEdit.InvokeAsync())"
+                               Title="Edit Tech Aspect" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                               Size="Size.Small"
+                               Color="Color.Error"
+                               OnClick="@(() => OnDelete.InvokeAsync())"
+                               Title="Remove Tech Aspect" />
+            </div>
+        }
+    </div>
+
+    <MudDivider Class="my-3" />
+
+    <MudGrid Spacing="2">
+        <MudItem xs="12" sm="6">
+            <div class="tech-aspect-card__field">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Skill Level</MudText>
+                <MudChip T="string" Color="@GetSkillLevelColor()" Size="Size.Small" Variant="Variant.Filled">
+                    @GetSkillLevelDisplay()
+                </MudChip>
+            </div>
+        </MudItem>
+
+        @if (!string.IsNullOrEmpty(Aspect?.GithubRepoUrl))
+        {
+            <MudItem xs="12" sm="6">
+                <div class="tech-aspect-card__field">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">GitHub Repository</MudText>
+                    <MudLink Href="@Aspect.GithubRepoUrl" Target="_blank" Typo="Typo.body2">
+                        <MudIcon Icon="@Icons.Custom.Brands.GitHub" Size="Size.Small" Class="mr-1" />
+                        @GetRepoName()
+                    </MudLink>
+                </div>
+            </MudItem>
+        }
+
+        @if (!string.IsNullOrEmpty(Aspect?.HackathonTrack))
+        {
+            <MudItem xs="12" sm="6">
+                <div class="tech-aspect-card__field">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Hackathon Track</MudText>
+                    <MudText Typo="Typo.body2">@Aspect.HackathonTrack</MudText>
+                </div>
+            </MudItem>
+        }
+
+        @if (!string.IsNullOrEmpty(Aspect?.TechStackTags))
+        {
+            <MudItem xs="12">
+                <div class="tech-aspect-card__field">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Tech Stack</MudText>
+                    <div class="d-flex flex-wrap gap-1 mt-1">
+                        @foreach (var tag in GetTechStackTags())
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Info">
+                                @tag
+                            </MudChip>
+                        }
+                    </div>
+                </div>
+            </MudItem>
+        }
+
+        @if (Aspect?.RequiresLaptop == true)
+        {
+            <MudItem xs="12" sm="6">
+                <MudChip T="string" Color="Color.Warning" Size="Size.Small" Variant="Variant.Text"
+                         Icon="@Icons.Material.Filled.Laptop">
+                    Laptop Required
+                </MudChip>
+            </MudItem>
+        }
+
+        @if (Aspect?.IsCodingCompetition == true)
+        {
+            <MudItem xs="12" sm="6">
+                <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Text"
+                         Icon="@Icons.Material.Filled.EmojiEvents">
+                    Coding Competition
+                </MudChip>
+            </MudItem>
+        }
+
+        @if (Aspect?.MaxTeamSize.HasValue == true)
+        {
+            <MudItem xs="12" sm="6">
+                <div class="tech-aspect-card__field">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Max Team Size</MudText>
+                    <MudText Typo="Typo.body2">@Aspect.MaxTeamSize members</MudText>
+                </div>
+            </MudItem>
+        }
+
+        @if (Aspect?.PrizePool.HasValue == true && Aspect.PrizePool > 0)
+        {
+            <MudItem xs="12" sm="6">
+                <div class="tech-aspect-card__field">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Prize Pool</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Success" Style="font-weight: 600;">
+                        @(Aspect.PrizeCurrencyCode ?? "USD") @Aspect.PrizePool.Value.ToString("N0")
+                    </MudText>
+                </div>
+            </MudItem>
+        }
+    </MudGrid>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public EventTechAspectDto? Aspect { get; set; }
+
+    [Parameter]
+    public Guid EventId { get; set; }
+
+    [Parameter]
+    public bool ShowActions { get; set; } = true;
+
+    [Parameter]
+    public EventCallback OnEdit { get; set; }
+
+    [Parameter]
+    public EventCallback OnDelete { get; set; }
+
+    private string GetSkillLevelDisplay()
+    {
+        return Aspect?.SkillLevel switch
+        {
+            (int)SkillLevel.AllLevels => "All Levels",
+            (int)SkillLevel.Beginner => "Beginner",
+            (int)SkillLevel.Intermediate => "Intermediate",
+            (int)SkillLevel.Advanced => "Advanced",
+            _ => "All Levels"
+        };
+    }
+
+    private Color GetSkillLevelColor()
+    {
+        return Aspect?.SkillLevel switch
+        {
+            (int)SkillLevel.Beginner => Color.Success,
+            (int)SkillLevel.Intermediate => Color.Warning,
+            (int)SkillLevel.Advanced => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private string GetRepoName()
+    {
+        if (string.IsNullOrEmpty(Aspect?.GithubRepoUrl)) return string.Empty;
+
+        try
+        {
+            var uri = new Uri(Aspect.GithubRepoUrl);
+            var path = uri.AbsolutePath.TrimStart('/');
+            return path.Length > 30 ? path.Substring(0, 27) + "..." : path;
+        }
+        catch
+        {
+            return "View Repository";
+        }
+    }
+
+    private IEnumerable<string> GetTechStackTags()
+    {
+        if (string.IsNullOrEmpty(Aspect?.TechStackTags))
+            return Enumerable.Empty<string>();
+
+        return Aspect.TechStackTags
+            .Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(t => t.Trim())
+            .Where(t => !string.IsNullOrEmpty(t));
+    }
+}

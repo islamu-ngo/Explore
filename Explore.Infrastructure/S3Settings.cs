@@ -11,5 +11,6 @@ namespace Explore.Infrastructure
         public string AccessKeyId { get; set; } = string.Empty;
         public string SecretAccessKey { get; set; } = string.Empty;
         public string Endpoint { get; set; } = string.Empty;
+        public string PublicEndpoint { get; set; } = string.Empty;
     }
 }

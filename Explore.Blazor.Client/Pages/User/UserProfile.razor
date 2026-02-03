@@ -141,9 +141,9 @@ else
                                     <div class="d-flex justify-space-between align-start mb-2">
                                         <div>
                                             <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">@(review.OrganizationFullName ?? "Organization")</MudText>
-                                            <MudText Typo="Typo.caption" Color="Color.Secondary">@review.CreatedAt.ToString("MMM dd, yyyy")</MudText>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">@(review.CreatedAt?.ToString("MMM dd, yyyy") ?? "")</MudText>
                                         </div>
-                                        <MudRating ReadOnly="true" SelectedValue="@review.Rating" Size="Size.Small" />
+                                        <MudRating ReadOnly="true" SelectedValue="@(review.Rating ?? 0)" Size="Size.Small" />
                                     </div>
                                     <MudText Typo="Typo.body2">@review.Comment</MudText>
                                 </MudPaper>

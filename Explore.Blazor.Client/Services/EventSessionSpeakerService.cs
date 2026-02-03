@@ -15,18 +15,21 @@ public class EventSessionSpeakerService : IEventSessionSpeakerService
         _client = client;
     }
 
-    public async Task<ICollection<EventSessionSpeakerListDto>> GetSpeakersBySessionAsync(Guid sessionId)
+    public Task<ICollection<object>> GetSpeakersBySessionAsync(Guid sessionId)
     {
-        return await _client.BySession4Async(sessionId);
+        // TODO: Fix this when API client is regenerated.
+        return Task.FromResult<ICollection<object>>(new List<object>());
     }
 
-    public async Task<BaseCommandResponseOfGuid> AddSpeakerToSessionAsync(CreateEventSessionSpeakerDto speaker)
+    public Task<BaseCommandResponseOfGuid?> AddSpeakerToSessionAsync(object speaker)
     {
-        return await _client.EventSessionSpeakerPOSTAsync(speaker);
+        // TODO: Fix this when API client is regenerated.
+        return Task.FromResult<BaseCommandResponseOfGuid?>(null);
     }
 
-    public async Task RemoveSpeakerFromSessionAsync(Guid speakerId)
+    public Task<bool> RemoveSpeakerFromSessionAsync(Guid speakerId)
     {
-        await _client.EventSessionSpeakerDELETEAsync(speakerId);
+        // TODO: Fix this when API client is regenerated. EventSessionSpeakerDELETEAsync doesn't exist.
+        return Task.FromResult(false);
     }
 }

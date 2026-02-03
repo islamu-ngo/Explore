@@ -1,3 +1,4 @@
+using Event.MigrationService.Extensions;
 using Explore.Persistence;
 using Npgsql.EntityFrameworkCore.PostgreSQL;
 using Aspire.Npgsql.EntityFrameworkCore.PostgreSQL;
@@ -9,6 +10,10 @@ public class Program
     public static void Main(string[] args)
     {
         var builder = Host.CreateApplicationBuilder(args);
+
+        // Load secrets from Infisical and map to connection string
+        builder.Configuration.AddInfisicalMigrationCompatibility();
+
         builder.AddServiceDefaults();
         builder.Services.AddHostedService<Worker>();
 

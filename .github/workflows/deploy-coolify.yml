@@ -1,23 +1,246 @@
-name: Build and Deploy to Coolify
+name: Build and Deploy to Coolify (Production)
 
 on:
   workflow_dispatch:
   push:
     branches:
       - main
-    # 1. ADDED: Trigger workflow on version tags (e.g., v1.0, v2.3.4)
     tags:
       - "v*"
     paths-ignore:
       - "**.md"
       - "docs/**"
+      # 1. EXPLICITLY IGNORE APPHOST (Local Dev Only)
+      - "Explore.AppHost/**"
 
 env:
   REGISTRY: atcr.io
   REGISTRY_USER: amirakrari.bsky.social
 
 jobs:
+  # JOB 1: Detect Changes
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+      ui: ${{ steps.filter.outputs.ui }}
+      both_changed: ${{ steps.check-both.outputs.both_changed }}
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check for file changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          base: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+          filters: |
+            ui:
+              - 'Explore.Blazor/**'
+              - 'Explore.Blazor.Client/**'
+              - 'Explore.Blazor.Client.Tests/**'
+              - 'Explore.ServiceDefaults/**'
+
+            api:
+              - 'Explore.API/**'
+              - 'Explore.Application/**'
+              - 'Explore.Domain/**'
+              - 'Explore.Infrastructure/**'
+              - 'Explore.Persistence/**'
+              - 'Explore.Diagnostic/**'
+              - 'Explore.Secrets/**'
+              - 'Event.API.IntegrationTests/**'
+              - 'Event.Application.UnitTests/**'
+              - 'Event.Architecture.Tests/**'
+              - 'Event.Domain.UnitTests/**'
+              - 'Event.Persistence.IntegrationTests/**'
+              - 'Explore.Secrets.UnitTests/**'
+              - 'Explore.ServiceDefaults/**'
+
+      - name: Check if both changed
+        id: check-both
+        run: |
+          API="${{ steps.filter.outputs.api }}"
+          UI="${{ steps.filter.outputs.ui }}"
+          IS_TAG="${{ github.ref_type == 'tag' }}"
+
+          # Both changed if: (api AND ui) OR it's a tag push
+          if [ "$IS_TAG" == "true" ] || ([ "$API" == "true" ] && [ "$UI" == "true" ]); then
+            echo "both_changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "both_changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate Dynamic Build Matrix
+        id: set-matrix
+        run: |
+          MATRIX_JSON="[]"
+
+          if [ "${{ steps.filter.outputs.api }}" == "true" ] || [ "${{ github.ref_type }}" == "tag" ]; then
+            MATRIX_JSON=$(echo $MATRIX_JSON | jq '. + [{"image-name": "islamu-event-api", "dockerfile": "Explore.API/Dockerfile", "context": "."}]')
+          fi
+
+          if [ "${{ steps.filter.outputs.ui }}" == "true" ] || [ "${{ github.ref_type }}" == "tag" ]; then
+            MATRIX_JSON=$(echo $MATRIX_JSON | jq '. + [{"image-name": "islamu-event-ui", "dockerfile": "Explore.Blazor/Dockerfile", "context": "."}]')
+          fi
+
+          echo "matrix=$(echo $MATRIX_JSON | tr -d '\n')" >> $GITHUB_OUTPUT
+
+  # JOB 2: Run API Tests
+  test-api:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.api == 'true' || github.ref_type == 'tag' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+          global-json-file: "./global.json"
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build solution
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Run API Unit Tests
+        run: |
+          dotnet test Event.Application.UnitTests/Event.Application.UnitTests.csproj \
+            --no-build --configuration Release \
+            --logger "console;verbosity=normal" \
+            --logger "trx;LogFileName=application-unit-tests.trx" \
+            --results-directory ./TestResults
+        env:
+          TUNIT_GITHUB_REPORTER_STYLE: collapsible
+
+      - name: Run Domain Unit Tests
+        run: |
+          dotnet test Event.Domain.UnitTests/Event.Domain.UnitTests.csproj \
+            --no-build --configuration Release \
+            --logger "console;verbosity=normal" \
+            --logger "trx;LogFileName=domain-unit-tests.trx" \
+            --results-directory ./TestResults
+        env:
+          TUNIT_GITHUB_REPORTER_STYLE: collapsible
+
+      - name: Run Architecture Tests
+        run: |
+          dotnet test Event.Architecture.Tests/Event.Architecture.Tests.csproj \
+            --no-build --configuration Release \
+            --logger "console;verbosity=normal" \
+            --logger "trx;LogFileName=architecture-tests.trx" \
+            --results-directory ./TestResults
+        env:
+          TUNIT_GITHUB_REPORTER_STYLE: collapsible
+
+      - name: Run Secrets Unit Tests
+        run: |
+          dotnet test Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj \
+            --no-build --configuration Release \
+            --logger "console;verbosity=normal" \
+            --logger "trx;LogFileName=secrets-unit-tests.trx" \
+            --results-directory ./TestResults
+        env:
+          TUNIT_GITHUB_REPORTER_STYLE: collapsible
+
+      - name: Run Persistence Integration Tests
+        run: |
+          dotnet test Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj \
+            --no-build --configuration Release \
+            --logger "console;verbosity=normal" \
+            --logger "trx;LogFileName=persistence-integration-tests.trx" \
+            --results-directory ./TestResults
+        env:
+          TUNIT_GITHUB_REPORTER_STYLE: collapsible
+
+      - name: Run API Integration Tests
+        run: |
+          dotnet test Event.API.IntegrationTests/Event.API.IntegrationTests.csproj \
+            --no-build --configuration Release \
+            --logger "console;verbosity=normal" \
+            --logger "trx;LogFileName=api-integration-tests.trx" \
+            --results-directory ./TestResults
+        env:
+          TUNIT_GITHUB_REPORTER_STYLE: collapsible
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: api-test-results
+          path: ./TestResults/*.trx
+          retention-days: 7
+
+  # JOB 3: Run Blazor/UI Tests
+  test-ui:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.ui == 'true' || github.ref_type == 'tag' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+          global-json-file: "./global.json"
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build solution
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Run Blazor Client Tests
+        run: |
+          dotnet test Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj \
+            --no-build --configuration Release \
+            --logger "console;verbosity=normal" \
+            --logger "trx;LogFileName=blazor-client-tests.trx" \
+            --results-directory ./TestResults
+        env:
+          TUNIT_GITHUB_REPORTER_STYLE: collapsible
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-test-results
+          path: ./TestResults/*.trx
+          retention-days: 7
+
+  # JOB 4: Build & Push - STRICT: If both changed, BOTH tests must pass
   build-and-push:
+    needs: [detect-changes, test-api, test-ui]
+    # CRITICAL SYNC PROTECTION:
+    # - If BOTH API and UI changed: BOTH test jobs must succeed (no partial deploys)
+    # - If ONLY API changed: Only test-api must succeed
+    # - If ONLY UI changed: Only test-ui must succeed
+    # This prevents API/UI version mismatch in production
+    if: |
+      always() &&
+      needs.detect-changes.outputs.matrix != '[]' &&
+      (
+        (needs.detect-changes.outputs.both_changed == 'true' &&
+         needs.test-api.result == 'success' &&
+         needs.test-ui.result == 'success')
+        ||
+        (needs.detect-changes.outputs.both_changed == 'false' &&
+         needs.detect-changes.outputs.api == 'true' &&
+         needs.detect-changes.outputs.ui != 'true' &&
+         needs.test-api.result == 'success')
+        ||
+        (needs.detect-changes.outputs.both_changed == 'false' &&
+         needs.detect-changes.outputs.ui == 'true' &&
+         needs.detect-changes.outputs.api != 'true' &&
+         needs.test-ui.result == 'success')
+      )
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -25,13 +248,7 @@ jobs:
 
     strategy:
       matrix:
-        include:
-          - image-name: islamu-event-api
-            dockerfile: Explore.API/Dockerfile
-            context: .
-          - image-name: islamu-event-ui
-            dockerfile: Explore.Blazor/Dockerfile
-            context: .
+        include: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
 
     steps:
       - name: Checkout
@@ -47,28 +264,31 @@ jobs:
           username: ${{ env.REGISTRY_USER }}
           password: ${{ secrets.ATCR_PASSWORD }}
 
-      # 2. UPDATED: Smart Tagging Logic
-      - name: Extract metadata for Docker
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.REGISTRY_USER }}/${{ matrix.image-name }}
-          # This config generates multiple tags automatically:
+          images: |
+            ${{ env.REGISTRY }}/${{ env.REGISTRY_USER }}/${{ matrix.image-name }}
+            ghcr.io/${{ github.repository_owner }}/${{ matrix.image-name }}
           tags: |
-            # Always tag as 'latest' (whether it's main branch or a version tag)
             type=raw,value=latest
-            # If a git tag (v1.2.3) is pushed, generate 1.2.3
             type=semver,pattern={{version}}
-            # If a git tag is pushed, also generate 1.2 (minor version alias)
             type=semver,pattern={{major}}.{{minor}}
 
-      - name: Build and push ${{ matrix.image-name }}
+      - name: Build and push
         uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
           push: true
-          # This automatically uses the list of tags generated above
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
@@ -76,17 +296,21 @@ jobs:
           build-args: |
             BUILD_CONFIGURATION=Release
 
+  # JOB 5: Deploy to Production
   deploy:
-    needs: build-and-push
+    needs: [detect-changes, test-api, test-ui, build-and-push]
+    if: always() && needs.build-and-push.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Trigger Coolify Deployment (API)
+        if: ${{ needs.detect-changes.outputs.api == 'true' || github.ref_type == 'tag' }}
         run: |
           echo "Triggering API deployment..."
           curl --fail --request GET '${{ secrets.COOLIFY_DEPLOY_API_WEBHOOK }}' \
             --header 'Authorization: Bearer ${{ secrets.COOLIFY_DEPLOY_TOKEN }}'
 
       - name: Trigger Coolify Deployment (UI)
+        if: ${{ needs.detect-changes.outputs.ui == 'true' || github.ref_type == 'tag' }}
         run: |
           echo "Triggering UI deployment..."
           curl --fail --request GET '${{ secrets.COOLIFY_DEPLOY_UI_WEBHOOK }}' \

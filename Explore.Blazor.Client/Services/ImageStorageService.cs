@@ -202,7 +202,7 @@ public class ImageStorageService : IImageStorageService
                 UploadUrl = response.UploadUrl ?? string.Empty,
                 ObjectKey = response.ObjectKey ?? string.Empty,
                 ViewUrl = response.ViewUrl ?? string.Empty,
-                ExpiresInMinutes = response.ExpiresInMinutes
+                ExpiresInMinutes = response.ExpiresInMinutes ?? 60
             };
         }
         catch (ApiException ex)
@@ -452,7 +452,7 @@ public class ImageStorageService : IImageStorageService
                 var result = new ImageUploadResult
                 {
                     Success = true,
-                    StorageObjectId = createResponse.Id,
+                    StorageObjectId = createResponse.Id ?? Guid.Empty,
                     ViewUrl = uploadResponse.ViewUrl,
                     ObjectKey = uploadResponse.ObjectKey
                 };
@@ -538,7 +538,7 @@ public class ImageStorageService : IImageStorageService
                 return new ImageUploadResult
                 {
                     Success = true,
-                    StorageObjectId = createResponse.Id,
+                    StorageObjectId = createResponse.Id ?? Guid.Empty,
                     ViewUrl = uploadResponse.ViewUrl,
                     ObjectKey = uploadResponse.ObjectKey
                 };

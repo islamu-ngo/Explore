@@ -7,7 +7,7 @@ namespace Explore.Blazor.Client.Services.Contracts;
 
 public interface IEventSessionSpeakerService
 {
-    Task<ICollection<EventSessionSpeakerListDto>> GetSpeakersBySessionAsync(Guid sessionId);
-    Task<BaseCommandResponseOfGuid> AddSpeakerToSessionAsync(CreateEventSessionSpeakerDto speaker);
-    Task RemoveSpeakerFromSessionAsync(Guid speakerId);
+    Task<ICollection<object>> GetSpeakersBySessionAsync(Guid sessionId);
+    Task<BaseCommandResponseOfGuid?> AddSpeakerToSessionAsync(object speaker);
+    Task<bool> RemoveSpeakerFromSessionAsync(Guid speakerId);
 }

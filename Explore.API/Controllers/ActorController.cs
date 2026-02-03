@@ -1,87 +1,176 @@
-using MediatR;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.Actor;
 using Explore.Application.Features.Actors.Requests.Commands;
 using Explore.Application.Features.Actors.Requests.Queries;
+using Explore.Application.Hateoas;
 using Explore.Application.Responses;
+using MediatR;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Explore.API.Controllers;
 
+/// <summary>
+/// Actor management API endpoints.
+/// All responses include HATEOAS links by default.
+/// Send "Prefer: return=minimal" header to strip links.
+/// </summary>
 [Route("api/v1/[controller]")]
 [ApiController]
+[Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public class ActorController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<ActorController> _logger;
+    private readonly IResourceAssembler<ActorDto, ActorListDto> _resourceAssembler;
 
     public ActorController(
         IMediator mediator,
         IHttpContextAccessor httpContextAccessor,
-        ILogger<ActorController> logger)
+        ILogger<ActorController> logger,
+        IResourceAssembler<ActorDto, ActorListDto> resourceAssembler)
     {
         _mediator = mediator;
         _httpContextAccessor = httpContextAccessor;
         _logger = logger;
+        _resourceAssembler = resourceAssembler;
     }
 
-    // GET: api/v1/actor
-    [HttpGet]
+    /// <summary>
+    /// Get all actors with pagination.
+    /// </summary>
+    [HttpGet(Name = RouteNames.GetActors)]
     [EndpointSummary("Get all Actors")]
-    [EndpointDescription("Retrieve a paginated list of all actors. Default page size is 20, max is 100.")]
+    [EndpointDescription("Retrieve a paginated list of all actors. " +
+        "Default page size is 20, max is 100. " +
+        "Response includes HATEOAS navigation links. " +
+        "Send 'Prefer: return=minimal' header to strip links.")]
     [AllowAnonymous]
-    [ProducesResponseType(typeof(PaginatedResult<ActorListDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<PaginatedResult<ActorListDto>>> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
+    [ProducesResponseType(typeof(HalCollectionResource<ActorListDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<HalCollectionResource<ActorListDto>>> GetAll(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20)
     {
-        var actors = await _mediator.Send(new GetActorListRequest
+        var result = await _mediator.Send(new GetActorListRequest
         {
             PageNumber = pageNumber,
             PageSize = pageSize
         });
-        return Ok(actors);
+
+        var halResource = _resourceAssembler.ToCollectionResource(
+            result,
+            RouteNames.GetActors,
+            additionalRouteValues: null,
+            HttpContext);
+
+        return Ok(halResource);
     }
 
-    // GET: api/v1/actor/{id}
-    [HttpGet("{id}")]
+    /// <summary>
+    /// Get actor details by ID.
+    /// </summary>
+    [HttpGet("{id:guid}", Name = RouteNames.GetActorById)]
+    [EndpointSummary("Get Actor Details")]
+    [EndpointDescription("Get detailed information about a specific actor. " +
+        "Response includes links to related resources (events, organization).")]
     [AllowAnonymous]
-    public async Task<ActionResult<ActorDto>> GetById(Guid id)
+    [ProducesResponseType(typeof(HalResource<ActorDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<HalResource<ActorDto>>> GetById(Guid id)
     {
         var actor = await _mediator.Send(new GetActorDetailsRequest { Id = id });
-        return Ok(actor);
+
+        if (actor is null)
+        {
+            return NotFound(new { error = "Actor not found" });
+        }
+
+        var halResource = _resourceAssembler.ToResource(actor, HttpContext);
+        return Ok(halResource);
     }
 
-    // GET: api/v1/actor/by-did/{did}
-    [HttpGet("by-did/{did}")]
+    /// <summary>
+    /// Get actor by DID (Decentralized Identifier).
+    /// </summary>
+    [HttpGet("by-did/{did}", Name = RouteNames.GetActorByDid)]
+    [EndpointSummary("Get Actor by DID")]
+    [EndpointDescription("Get actor details using their decentralized identifier (DID).")]
     [AllowAnonymous]
-    public async Task<ActionResult<ActorDto>> GetByDid(string did)
+    [ProducesResponseType(typeof(HalResource<ActorDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<HalResource<ActorDto>>> GetByDid(string did)
     {
         var actor = await _mediator.Send(new GetActorByDidRequest { Did = did });
-        return Ok(actor);
+
+        if (actor is null)
+        {
+            return NotFound(new { error = "Actor not found" });
+        }
+
+        var halResource = _resourceAssembler.ToResource(actor, HttpContext);
+        return Ok(halResource);
     }
 
-    // GET: api/v1/actor/by-tenant/{tenantId}
-    [HttpGet("by-tenant/{tenantId}")]
+    /// <summary>
+    /// Get actors by tenant.
+    /// </summary>
+    [HttpGet("by-tenant/{tenantId:guid}", Name = RouteNames.GetActorsByTenant)]
+    [EndpointSummary("Get Actors by Tenant")]
+    [EndpointDescription("Get all actors belonging to a specific tenant.")]
     [AllowAnonymous]
-    public async Task<ActionResult<List<ActorListDto>>> GetByTenant(Guid tenantId)
+    [ProducesResponseType(typeof(HalCollectionResource<ActorListDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<HalCollectionResource<ActorListDto>>> GetByTenant(Guid tenantId)
     {
         var actors = await _mediator.Send(new GetActorsByTenantRequest { TenantId = tenantId });
-        return Ok(actors);
+
+        var halResource = _resourceAssembler.ToCollectionResource(
+            actors,
+            RouteNames.GetActorsByTenant,
+            HttpContext);
+
+        return Ok(halResource);
     }
 
-    // POST: api/v1/actor
-    [HttpPost]
+    /// <summary>
+    /// Create a new actor.
+    /// </summary>
+    [HttpPost(Name = RouteNames.CreateActor)]
+    [EndpointSummary("Create Actor")]
+    [EndpointDescription("Create a new actor (user or organization profile).")]
     [Authorize]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateActorDto dto)
     {
         var command = new CreateActorCommand { ActorDto = dto };
         var response = await _mediator.Send(command);
-        return Ok(response);
+
+        if (!response.Success)
+        {
+            return BadRequest(response);
+        }
+
+        return CreatedAtRoute(
+            RouteNames.GetActorById,
+            new { id = response.Id },
+            response);
     }
 
-    // PUT: api/v1/actor/{id}
-    [HttpPut("{id}")]
+    /// <summary>
+    /// Update an existing actor.
+    /// </summary>
+    [HttpPut("{id:guid}", Name = RouteNames.UpdateActor)]
+    [EndpointSummary("Update Actor")]
+    [EndpointDescription("Update an existing actor's information.")]
     [Authorize]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateActorDto dto)
     {
         if (id != dto.Id)
@@ -100,9 +189,17 @@ public class ActorController : ControllerBase
         return Ok(response);
     }
 
-    // DELETE: api/v1/actor/{id}
-    [HttpDelete("{id}")]
-    [Authorize(Roles="Admin")]
+    /// <summary>
+    /// Delete an actor.
+    /// </summary>
+    [HttpDelete("{id:guid}", Name = RouteNames.DeleteActor)]
+    [EndpointSummary("Delete Actor")]
+    [EndpointDescription("Delete an actor. Admin only.")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(Guid id)
     {
         var command = new DeleteActorCommand { Id = id };

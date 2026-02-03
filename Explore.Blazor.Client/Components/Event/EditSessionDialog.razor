@@ -55,11 +55,17 @@
         sessionDto.EndTime = ExistingSession.EndTime;
         sessionDto.MaxAudienceAttendees = ExistingSession.MaxAudienceAttendees;
 
-        // ExistingSession.StartTime is non-nullable DateTimeOffset
-        startDate = ExistingSession.StartTime.Date.ToLocalTime();
-        startTime = ExistingSession.StartTime.TimeOfDay;
-        endDate = ExistingSession.EndTime.Date.ToLocalTime();
-        endTime = ExistingSession.EndTime.TimeOfDay;
+        // Set date/time pickers from existing session
+        if (ExistingSession.StartTime.HasValue)
+        {
+            startDate = ExistingSession.StartTime.Value.Date.ToLocalTime();
+            startTime = ExistingSession.StartTime.Value.TimeOfDay;
+        }
+        if (ExistingSession.EndTime.HasValue)
+        {
+            endDate = ExistingSession.EndTime.Value.Date.ToLocalTime();
+            endTime = ExistingSession.EndTime.Value.TimeOfDay;
+        }
     }
 
     private async Task Submit()

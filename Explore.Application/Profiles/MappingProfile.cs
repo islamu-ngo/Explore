@@ -44,6 +44,7 @@ using Explore.Application.DTOs.OrganizationMember;
 using Explore.Application.DTOs.UserRole;
 using Explore.Application.DTOs.UserAuthenticationToken;
 using Explore.Application.DTOs.UserExternalLogin;
+using Explore.Application.DTOs.EventAspects;
 
 namespace Explore.Application.Profiles
 {
@@ -132,7 +133,11 @@ namespace Explore.Application.Profiles
                 .ForMember(dest => dest.MadhabMasterCode, opt => opt.MapFrom(src => src.Madhab != null ? src.Madhab.MasterCode : null))
                 // ATProto Record
                 .ForMember(dest => dest.AtprotoRecordUri, opt => opt.MapFrom(src => src.AtprotoRecord != null ? src.AtprotoRecord.Uri : null))
-                .ForMember(dest => dest.AtprotoRecordCid, opt => opt.MapFrom(src => src.AtprotoRecord != null ? src.AtprotoRecord.Cid : null));
+                .ForMember(dest => dest.AtprotoRecordCid, opt => opt.MapFrom(src => src.AtprotoRecord != null ? src.AtprotoRecord.Cid : null))
+                // Aspects
+                .ForMember(dest => dest.AvailableAspects, opt => opt.MapFrom(src => GetAvailableAspects(src)))
+                .ForMember(dest => dest.IslamicAspect, opt => opt.MapFrom(src => src.IslamicAspect))
+                .ForMember(dest => dest.TechAspect, opt => opt.MapFrom(src => src.TechAspect));
 
             CreateMap<Event, EventListDto>()
                 // Event Type
@@ -168,9 +173,9 @@ namespace Explore.Application.Profiles
                 .ForMember(dest => dest.SessionCount, opt => opt.Ignore())
                 .ForMember(dest => dest.AtprotoRecordId, opt => opt.Ignore())
                 // Convert DateTimeOffset? to DateOnly? for session dates
-                .ForMember(dest => dest.FirstSessionDate, opt => opt.MapFrom(src => 
+                .ForMember(dest => dest.FirstSessionDate, opt => opt.MapFrom(src =>
                     src.FirstSessionDate.HasValue ? DateOnly.FromDateTime(src.FirstSessionDate.Value.DateTime) : (DateOnly?)null))
-                .ForMember(dest => dest.LastSessionDate, opt => opt.MapFrom(src => 
+                .ForMember(dest => dest.LastSessionDate, opt => opt.MapFrom(src =>
                     src.LastSessionDate.HasValue ? DateOnly.FromDateTime(src.LastSessionDate.Value.DateTime) : (DateOnly?)null));
             CreateMap<UpdateEventDto, Event>();
 
@@ -532,6 +537,30 @@ namespace Explore.Application.Profiles
             CreateMap<Domain.AtprotoRecord, AtprotoRecordListDto>();
             CreateMap<CreateAtprotoRecordDto, Domain.AtprotoRecord>();
             CreateMap<UpdateAtprotoRecordDto, Domain.AtprotoRecord>();
+
+            // ============================================
+            // ASPECT MAPPINGS
+            // ============================================
+            CreateMap<EventIslamicAspect, EventIslamicAspectDto>()
+                .ForMember(dest => dest.MadhabName, opt => opt.MapFrom(src => src.Madhab != null ? src.Madhab.FullName : null))
+                .ForMember(dest => dest.PrimaryLanguageName, opt => opt.MapFrom(src => src.PrimaryLanguage != null ? src.PrimaryLanguage.FullName : null));
+
+            CreateMap<CreateUpdateIslamicAspectDto, EventIslamicAspect>();
+
+            CreateMap<EventTechAspect, EventTechAspectDto>();
+
+            CreateMap<CreateUpdateTechAspectDto, EventTechAspect>();
+        }
+
+        /// <summary>
+        /// Gets the list of available aspect types for an event.
+        /// </summary>
+        private static List<string> GetAvailableAspects(Event src)
+        {
+            var aspects = new List<string>();
+            if (src.IslamicAspect != null) aspects.Add("Islamic");
+            if (src.TechAspect != null) aspects.Add("Tech");
+            return aspects;
         }
     }
 }

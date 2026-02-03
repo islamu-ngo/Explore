@@ -34,35 +34,41 @@ public partial class MyRegistrations
         try
         {
             var user = await UserService.GetCurrentUserAsync();
-            if (user != null)
+            if (user != null && user.Id.HasValue)
             {
-                var registrations = await EventService.GetRegistrationsByUserAsync(user.Id);
+                var registrations = await EventService.GetRegistrationsByUserAsync(user.Id.Value);
                 
-                var tasks = registrations.Select(async r => 
+                var tasks = registrations.Select(async r =>
                 {
                     var vm = new MyRegistrationViewModel
                     {
-                        RegistrationId = r.Id,
-                        EventSessionId = r.EventSessionId,
+                        RegistrationId = r.Id ?? Guid.Empty,
+                        EventSessionId = r.EventSessionId ?? Guid.Empty,
                         Status = r.ApprovalStatusFullName,
                         StatusId = r.ApprovalStatusId
                     };
 
-                    var session = await EventService.GetSessionByIdAsync(r.EventSessionId);
-                    if (session != null)
+                    if (r.EventSessionId.HasValue)
                     {
-                        vm.EventId = session.EventId;
-                        vm.EventTitle = session.EventTitle;
-                        vm.StartTime = session.StartTime;
-                        
-                        var evt = await EventService.GetEventByIdAsync(session.EventId);
-                        if (evt != null)
+                        var session = await EventService.GetSessionByIdAsync(r.EventSessionId.Value);
+                        if (session != null)
                         {
-                            vm.FeaturedImageUri = evt.FeaturedImageUri;
-                            vm.EventTitle = evt.Title;
+                            vm.EventId = session.EventId ?? Guid.Empty;
+                            vm.EventTitle = session.EventTitle;
+                            vm.StartTime = session.StartTime;
+
+                            if (session.EventId.HasValue)
+                            {
+                                var evt = await EventService.GetEventByIdAsync(session.EventId.Value);
+                                if (evt != null)
+                                {
+                                    vm.FeaturedImageUri = evt.FeaturedImageUri;
+                                    vm.EventTitle = evt.Title;
+                                }
+                            }
                         }
                     }
-                    
+
                     return vm;
                 });
 

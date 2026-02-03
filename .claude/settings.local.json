@@ -25,7 +25,13 @@
       "WebFetch(domain:github.com)",
       "mcp__mcp-server-context7__resolve-library-id",
       "mcp__mcp-server-context7__query-docs",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "mcp__perplexity__perplexity_research",
+      "mcp__tavily__tavily_search",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "mcp__tavily__tavily_research",
+      "WebFetch(domain:)",
+      "WebFetch(domain:www.nuget.org)"
     ]
   }
 }

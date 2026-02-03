@@ -26,7 +26,7 @@
     {
         <MudText Typo="Typo.h4" Class="mb-2">Reviews for @_organization.FullName</MudText>
         <MudText Typo="Typo.subtitle1" Class="mb-6" Color="Color.Secondary">
-            @_reviews.Count reviews • @(_reviews.Any() ? _reviews.Average(r => r.Rating).ToString("0.0") : "0.0")★ average rating
+            @_reviews.Count reviews • @(_reviews.Any() && _reviews.Any(r => r.Rating.HasValue) ? _reviews.Where(r => r.Rating.HasValue).Average(r => r.Rating!.Value).ToString("0.0") : "0.0")★ average rating
         </MudText>
 
         <MudGrid>
@@ -43,7 +43,7 @@
                                     </MudAvatar>
                                     <MudStack Spacing="0">
                                         <MudText Typo="Typo.subtitle2">@review.UserFullName</MudText>
-                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@review.CreatedAt.DateTime.ToShortDateString()</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@(review.CreatedAt?.DateTime.ToShortDateString() ?? "Unknown")</MudText>
                                     </MudStack>
                                 </MudStack>
 

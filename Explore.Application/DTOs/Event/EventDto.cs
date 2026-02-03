@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Explore.Application.DTOs.EventAspects;
 
 namespace Explore.Application.DTOs.Event
 {
@@ -80,6 +81,19 @@ namespace Explore.Application.DTOs.Event
         public Guid? AtprotoRecordId { get; set; }
         public string? AtprotoRecordUri { get; set; }
         public string? AtprotoRecordCid { get; set; }
+
+        // ===== Aspects =====
+        // List of active aspect types for this event (e.g., ["Islamic", "Tech"])
+        public List<string> AvailableAspects { get; set; } = new();
+
+        // Islamic Aspect (only populated if event has Islamic characteristics)
+        public EventAspects.EventIslamicAspectDto? IslamicAspect { get; set; }
+
+        // Tech Aspect (only populated if event has Tech characteristics)
+        public EventAspects.EventTechAspectDto? TechAspect { get; set; }
+
+        // Dynamic metadata JSON
+        public string? MetadataJson { get; set; }
 
         // Tenant
         public Guid TenantId { get; set; }

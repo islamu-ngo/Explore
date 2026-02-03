@@ -34,7 +34,7 @@
                         <MudCardHeader>
                             <CardHeaderContent>
                                 <MudText Typo="Typo.h6">@review.OrganizationFullName</MudText>
-                                <MudRating ReadOnly="true" SelectedValue="@review.Rating" />
+                                <MudRating ReadOnly="true" SelectedValue="@(review.Rating ?? 0)" />
                             </CardHeaderContent>
                             <CardHeaderActions>
                                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => DeleteReview(review))" />
@@ -42,7 +42,7 @@
                         </MudCardHeader>
                         <MudCardContent>
                             <MudText>@review.Comment</MudText>
-                            <MudText Typo="Typo.caption" Class="mt-2">@review.CreatedAt.ToString("g")</MudText>
+                            <MudText Typo="Typo.caption" Class="mt-2">@(review.CreatedAt?.ToString("g") ?? "")</MudText>
                         </MudCardContent>
                     </MudCard>
                 </MudItem>

@@ -60,6 +60,32 @@ namespace Explore.Persistence.Seed
         // ===== Tenant Settings =====
         public static readonly Guid DefaultTenantSettingsId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000400");
 
+        // ===== System Settings =====
+        /// <summary>Deployment mode setting (SingleTenant/MultiTenant)</summary>
+        public static readonly Guid SystemSettingDeploymentModeId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000500");
+        /// <summary>Max sessions per event setting</summary>
+        public static readonly Guid SystemSettingMaxSessionsPerEventId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000501");
+        /// <summary>Event approval required setting</summary>
+        public static readonly Guid SystemSettingRequireApprovalId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000502");
+        /// <summary>Islamic module enabled setting</summary>
+        public static readonly Guid SystemSettingIslamicModuleId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000503");
+        /// <summary>Tech module enabled setting</summary>
+        public static readonly Guid SystemSettingTechModuleId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000504");
+
+        // ===== Module Definitions =====
+        /// <summary>Core module - basic event functionality (always enabled)</summary>
+        public static readonly Guid ModuleCoreId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000600");
+        /// <summary>Islamic module - Madhab, prayer times, gender segregation</summary>
+        public static readonly Guid ModuleIslamicId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000601");
+        /// <summary>Tech module - GitHub repos, skill levels, live coding</summary>
+        public static readonly Guid ModuleTechId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000602");
+
+        // ===== Tenant Capabilities (Default Tenant) =====
+        /// <summary>Default tenant Core module capability</summary>
+        public static readonly Guid DefaultTenantCoreCapabilityId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000610");
+        /// <summary>Default tenant Islamic module capability</summary>
+        public static readonly Guid DefaultTenantIslamicCapabilityId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000611");
+
         // Note: Most lookup tables use int IDs with enums.
         // Only entities with Guid primary keys need entries here.
         // Int-based IDs are defined via enums in Domain/Enums folder.

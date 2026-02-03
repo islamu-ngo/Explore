@@ -1,3 +1,4 @@
+using Explore.API.BackgroundServices;
 using Explore.API.Extensions;
 using Explore.API.Middleware;
 using Explore.API.Services;
@@ -6,6 +7,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Infrastructure;
 using Explore.Persistence;
 using Explore.Persistence.Seed;
+using Explore.Secrets.Extensions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -45,6 +47,10 @@ builder.Host.ConfigureHostOptions(options =>
 builder.AddServiceDefaults();
 builder.Configuration.AddInfisicalCompatibility();
 
+// Add secret management services (refresh service, health checks, metrics, audit logging)
+// This adds observability and background refresh for secrets loaded via AddInfisicalCompatibility
+builder.Services.AddSecretManagement(builder.Configuration);
+
 var authority = builder.Configuration["Keycloak:Authority"];
 var realm = builder.Configuration["Keycloak:Realm"];
 var audience = builder.Configuration["Keycloak:Audience"]; // Should be "explore-api"
@@ -65,6 +71,10 @@ builder.Services.CongfigurePersistenceServices(builder.Configuration, skipDbCont
 // Register tenant context for single-tenant mode
 builder.Services.AddScoped<ITenantContext, TenantContext>();
 
+// Register HATEOAS infrastructure and resource assemblers
+builder.Services.AddHateoas();
+builder.Services.AddHateoasAssemblers();
+
 builder.Services.AddControllers();
 
 builder.Services.AddEndpointsApiExplorer();
@@ -72,14 +82,21 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGenWithAuth(builder.Configuration);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 
-// The build tool needs this to generate the JSON file
-builder.Services.AddOpenApi("explore-api");
+// Configure native OpenAPI (for /openapi/explore-api.json endpoint)
+// Register document transformer to add missing DTO schemas that are hidden inside HAL wrappers
+builder.Services.AddOpenApi("explore-api", options =>
+{
+    options.AddDocumentTransformer<Explore.API.OpenApi.HalDtoSchemaTransformer>();
+});
 
 // Add HttpClient for OpenAPI export service
 builder.Services.AddHttpClient();
 
 // Register OpenAPI export service (exports swagger.json at startup in Development)
 builder.Services.AddHostedService<OpenApiExportService>();
+
+// Register PDS sync background worker for AT Protocol federation
+builder.Services.AddHostedService<PdsSyncWorker>();
 
 builder.Services.AddCors(options =>
 {
@@ -419,6 +436,10 @@ else
 //});
 
 app.UseHttpsRedirection();
+
+// HATEOAS: Process Prefer header for RFC 7240 support (return=minimal)
+app.UseHateoas();
+
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();

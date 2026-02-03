@@ -1,0 +1,34 @@
+{
+  "include": [
+    "Explore.Blazor/**/*",
+    "Explore.Blazor.Client/**/*",
+    "Explore.Blazor.Client.Tests/**/*",
+    "Explore.ServiceDefaults/**/*",
+    "docs/**/*",
+    "_bmad-output/**/*",
+    ".claude/**/*",
+    ".opencode/**/*",
+    ".taskmaster/**/*",
+    "dev/active/**/*",
+    "CLAUDE.md",
+    "README.md"
+  ],
+  "output": {
+    "style": "markdown",
+    "filePath": ".repomix/repomix-blazor.md",
+    "removeComments": true,
+    "showLineNumbers": true,
+    "topFilesLength": 10,
+    "copyToClipboard": false
+  },
+  "ignore": {
+    "customPatterns": [
+      "**/*.log",
+      ".opencode/command/**/*",
+      ".claude/commands/**/*",
+      ".claude/hooks/**/*"
+    ],
+    "useGitignore": true,
+    "useDefaultPatterns": true
+  }
+}

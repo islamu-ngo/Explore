@@ -284,6 +284,93 @@ namespace Explore.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Explore.Domain.AppSetting", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("key");
+
+                    b.Property<string>("Category")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("category");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("description");
+
+                    b.Property<DateTime>("EncryptedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("encrypted_at");
+
+                    b.Property<Guid?>("EncryptedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("encrypted_by");
+
+                    b.Property<string>("EncryptedValue")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("encrypted_value");
+
+                    b.Property<bool>("IsSensitive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_sensitive");
+
+                    b.Property<int>("KeyVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("key_version");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("bytea")
+                        .HasColumnName("row_version");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<int>("ValueType")
+                        .HasColumnType("integer")
+                        .HasColumnName("value_type");
+
+                    b.HasKey("Key")
+                        .HasName("pk_app_settings");
+
+                    b.HasIndex("Category")
+                        .HasDatabaseName("ix_app_settings_category");
+
+                    b.HasIndex("IsSensitive")
+                        .HasDatabaseName("ix_app_settings_is_sensitive");
+
+                    b.HasIndex("KeyVersion")
+                        .HasDatabaseName("ix_app_settings_key_version");
+
+                    b.ToTable("app_settings", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_AppSettings_NoHighValueSecrets", "key NOT LIKE 'Database:%' AND key NOT LIKE 'Security:MasterKey%' AND key NOT LIKE 'ConnectionStrings:%'");
+                        });
+                });
+
             modelBuilder.Entity("Explore.Domain.ApprovalStatus", b =>
                 {
                     b.Property<int>("Id")
@@ -774,6 +861,10 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("madhab_id");
 
+                    b.Property<string>("MetadataJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("metadata_json");
+
                     b.Property<decimal?>("Price")
                         .HasColumnType("numeric")
                         .HasColumnName("price");
@@ -970,6 +1061,52 @@ namespace Explore.Persistence.Migrations
                             FullName = "Hybrid",
                             MasterCode = "HYBRID"
                         });
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventIslamicAspect", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("GenderMode")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("gender_mode");
+
+                    b.Property<bool>("IncludesQuranRecitation")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("includes_quran_recitation");
+
+                    b.Property<int?>("MadhabId")
+                        .HasColumnType("integer")
+                        .HasColumnName("madhab_id");
+
+                    b.Property<int?>("PrayerTimeOffset")
+                        .HasColumnType("integer")
+                        .HasColumnName("prayer_time_offset");
+
+                    b.Property<int?>("PrimaryLanguageId")
+                        .HasColumnType("integer")
+                        .HasColumnName("primary_language_id");
+
+                    b.Property<int?>("ReferencePrayer")
+                        .HasColumnType("integer")
+                        .HasColumnName("reference_prayer");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_islamic_aspects");
+
+                    b.HasIndex("MadhabId")
+                        .HasDatabaseName("ix_event_islamic_aspects_madhab_id");
+
+                    b.HasIndex("PrimaryLanguageId")
+                        .HasDatabaseName("ix_event_islamic_aspects_primary_language_id");
+
+                    b.ToTable("event_islamic_aspects", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventRegistration", b =>
@@ -1346,6 +1483,65 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("event_tags", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.EventTechAspect", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("GithubRepoUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("github_repo_url");
+
+                    b.Property<string>("HackathonTrack")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("hackathon_track");
+
+                    b.Property<bool>("IsCodingCompetition")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_coding_competition");
+
+                    b.Property<int?>("MaxTeamSize")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_team_size");
+
+                    b.Property<string>("PrizeCurrencyCode")
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("prize_currency_code");
+
+                    b.Property<decimal?>("PrizePool")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("prize_pool");
+
+                    b.Property<bool>("RequiresLaptop")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("requires_laptop");
+
+                    b.Property<int>("SkillLevel")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("skill_level");
+
+                    b.Property<string>("TechStackTags")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("tech_stack_tags");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_tech_aspects");
+
+                    b.ToTable("event_tech_aspects", (string)null);
+                });
+
             modelBuilder.Entity("Explore.Domain.EventType", b =>
                 {
                     b.Property<int>("Id")
@@ -1393,6 +1589,98 @@ namespace Explore.Persistence.Migrations
                             FullName = "Workshop",
                             MasterCode = "WORKSHOP"
                         });
+                });
+
+            modelBuilder.Entity("Explore.Domain.Federation.PdsSyncOutbox", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<string>("Collection")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("collection");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Did")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("did");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("last_error");
+
+                    b.Property<DateTime?>("NextRetryAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_retry_at");
+
+                    b.Property<int>("Operation")
+                        .HasColumnType("integer")
+                        .HasColumnName("operation");
+
+                    b.Property<string>("Payload")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("payload");
+
+                    b.Property<string>("PdsHost")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("pds_host");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processed_at");
+
+                    b.Property<string>("RecordKey")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("record_key");
+
+                    b.Property<int>("RetryCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("retry_count");
+
+                    b.Property<Guid?>("SourceEntityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_entity_id");
+
+                    b.Property<string>("SourceEntityType")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("source_entity_type");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pds_sync_outbox");
+
+                    b.HasIndex("Did")
+                        .HasDatabaseName("IX_PdsSyncOutbox_Did");
+
+                    b.HasIndex("SourceEntityType", "SourceEntityId")
+                        .HasDatabaseName("IX_PdsSyncOutbox_SourceEntity");
+
+                    b.HasIndex("Status", "NextRetryAt", "CreatedAt")
+                        .HasDatabaseName("IX_PdsSyncOutbox_WorkerPoll");
+
+                    b.HasIndex("Did", "Collection", "RecordKey", "Operation", "CreatedAt")
+                        .IsUnique()
+                        .HasDatabaseName("IX_PdsSyncOutbox_Unique");
+
+                    b.ToTable("pds_sync_outbox", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.FileType", b =>
@@ -1756,6 +2044,176 @@ namespace Explore.Persistence.Migrations
                             Description = "Other Islamic jurisprudence approach",
                             FullName = "Other",
                             MasterCode = "OTHER"
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.Modules.ModuleDefinition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<string>("Category")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("category");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("display_order");
+
+                    b.Property<string>("IconName")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("icon_name");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("key");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("WizardSchemaUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("wizard_schema_url");
+
+                    b.HasKey("Id")
+                        .HasName("pk_module_definitions");
+
+                    b.HasIndex("DisplayOrder")
+                        .HasDatabaseName("ix_module_definitions_display_order");
+
+                    b.HasIndex("Key")
+                        .IsUnique()
+                        .HasDatabaseName("ix_module_definitions_key");
+
+                    b.ToTable("ModuleDefinitions", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000600"),
+                            Category = "Core",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Basic event functionality - title, description, sessions, locations",
+                            DisplayOrder = 0,
+                            IconName = "Event",
+                            IsActive = true,
+                            Key = "Mod_Core",
+                            Name = "Core Events"
+                        },
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000601"),
+                            Category = "Domain",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Islamic-specific features: Madhab selection, prayer time scheduling, gender segregation",
+                            DisplayOrder = 1,
+                            IconName = "Mosque",
+                            IsActive = true,
+                            Key = "Mod_Islamic",
+                            Name = "Islamic Events"
+                        },
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000602"),
+                            Category = "Domain",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Developer event features: GitHub repositories, skill levels, live coding sessions",
+                            DisplayOrder = 2,
+                            IconName = "Code",
+                            IsActive = true,
+                            Key = "Mod_Tech",
+                            Name = "Tech Events"
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.Modules.TenantCapability", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<string>("ConfigurationJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("configuration_json");
+
+                    b.Property<DateTime>("EnabledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("enabled_at");
+
+                    b.Property<Guid?>("EnabledBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("enabled_by");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_enabled");
+
+                    b.Property<Guid>("ModuleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("module_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_tenant_capabilities");
+
+                    b.HasIndex("ModuleId")
+                        .HasDatabaseName("ix_tenant_capabilities_module_id");
+
+                    b.HasIndex("TenantId", "ModuleId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_tenant_capabilities_tenant_id_module_id");
+
+                    b.ToTable("TenantCapabilities", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000610"),
+                            EnabledAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsEnabled = true,
+                            ModuleId = new Guid("018e4e5c-7f00-7000-8000-000000000600"),
+                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
+                        },
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000611"),
+                            EnabledAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsEnabled = true,
+                            ModuleId = new Guid("018e4e5c-7f00-7000-8000-000000000601"),
+                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
                         });
                 });
 
@@ -2459,6 +2917,138 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("sync_states", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.SystemSetting", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<string>("AllowedValues")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("allowed_values");
+
+                    b.Property<string>("Category")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("category");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("description");
+
+                    b.Property<int>("DisplayOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("display_order");
+
+                    b.Property<bool>("IsLocked")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_locked");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("key");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("value");
+
+                    b.Property<int>("ValueType")
+                        .HasColumnType("integer")
+                        .HasColumnName("value_type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_system_settings");
+
+                    b.HasIndex("Key")
+                        .IsUnique()
+                        .HasDatabaseName("ix_system_settings_key");
+
+                    b.ToTable("system_settings", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000500"),
+                            AllowedValues = "[\"SingleTenant\", \"MultiTenant\"]",
+                            Category = "System",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Deployment mode of the application",
+                            DisplayOrder = 1,
+                            IsLocked = true,
+                            Key = "deployment.mode",
+                            Value = "\"MultiTenant\"",
+                            ValueType = 0
+                        },
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000501"),
+                            Category = "Events",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Maximum number of sessions allowed per event",
+                            DisplayOrder = 1,
+                            IsLocked = false,
+                            Key = "events.max_sessions_per_event",
+                            Value = "100",
+                            ValueType = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000502"),
+                            Category = "Events",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Whether events require admin approval before publishing",
+                            DisplayOrder = 2,
+                            IsLocked = false,
+                            Key = "events.require_approval",
+                            Value = "false",
+                            ValueType = 2
+                        },
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000503"),
+                            Category = "Modules",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Enable Islamic event module",
+                            DisplayOrder = 1,
+                            IsLocked = false,
+                            Key = "modules.islamic_enabled",
+                            Value = "true",
+                            ValueType = 2
+                        },
+                        new
+                        {
+                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000504"),
+                            Category = "Modules",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Enable Tech event module",
+                            DisplayOrder = 2,
+                            IsLocked = false,
+                            Key = "modules.tech_enabled",
+                            Value = "true",
+                            ValueType = 2
+                        });
+                });
+
             modelBuilder.Entity("Explore.Domain.Tag", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2677,6 +3267,57 @@ namespace Explore.Persistence.Migrations
                             IsActive = true,
                             Slug = "default"
                         });
+                });
+
+            modelBuilder.Entity("Explore.Domain.TenantSetting", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("key");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("value");
+
+                    b.HasKey("Id")
+                        .HasName("pk_tenant_setting_overrides");
+
+                    b.HasIndex("TenantId", "Key")
+                        .IsUnique()
+                        .HasDatabaseName("ix_tenant_setting_overrides_tenant_id_key");
+
+                    b.ToTable("tenant_setting_overrides", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantSettings", b =>
@@ -3303,6 +3944,34 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Tenant");
                 });
 
+            modelBuilder.Entity("Explore.Domain.EventIslamicAspect", b =>
+                {
+                    b.HasOne("Explore.Domain.Event", "Event")
+                        .WithOne("IslamicAspect")
+                        .HasForeignKey("Explore.Domain.EventIslamicAspect", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_islamic_aspects_events_id");
+
+                    b.HasOne("Explore.Domain.Madhab", "Madhab")
+                        .WithMany()
+                        .HasForeignKey("MadhabId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_event_islamic_aspects_madhabs_madhab_id");
+
+                    b.HasOne("Explore.Domain.Language", "PrimaryLanguage")
+                        .WithMany()
+                        .HasForeignKey("PrimaryLanguageId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_event_islamic_aspects_languages_primary_language_id");
+
+                    b.Navigation("Event");
+
+                    b.Navigation("Madhab");
+
+                    b.Navigation("PrimaryLanguage");
+                });
+
             modelBuilder.Entity("Explore.Domain.EventRegistration", b =>
                 {
                     b.HasOne("Explore.Domain.ApprovalStatus", "ApprovalStatus")
@@ -3502,6 +4171,18 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Tenant");
                 });
 
+            modelBuilder.Entity("Explore.Domain.EventTechAspect", b =>
+                {
+                    b.HasOne("Explore.Domain.Event", "Event")
+                        .WithOne("TechAspect")
+                        .HasForeignKey("Explore.Domain.EventTechAspect", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_tech_aspects_events_id");
+
+                    b.Navigation("Event");
+                });
+
             modelBuilder.Entity("Explore.Domain.Location", b =>
                 {
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
@@ -3510,6 +4191,27 @@ namespace Explore.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_locations_tenants_tenant_id");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.Modules.TenantCapability", b =>
+                {
+                    b.HasOne("Explore.Domain.Modules.ModuleDefinition", "Module")
+                        .WithMany()
+                        .HasForeignKey("ModuleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_tenant_capabilities_module_definitions_module_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_tenant_capabilities_tenants_tenant_id");
+
+                    b.Navigation("Module");
 
                     b.Navigation("Tenant");
                 });
@@ -3700,6 +4402,18 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Tenant");
                 });
 
+            modelBuilder.Entity("Explore.Domain.TenantSetting", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_tenant_setting_overrides_tenants_tenant_id");
+
+                    b.Navigation("Tenant");
+                });
+
             modelBuilder.Entity("Explore.Domain.TenantSettings", b =>
                 {
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
@@ -3805,6 +4519,13 @@ namespace Explore.Persistence.Migrations
                         .HasConstraintName("fk_user_roles_tenants_tenant_id");
 
                     b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.Event", b =>
+                {
+                    b.Navigation("IslamicAspect");
+
+                    b.Navigation("TechAspect");
                 });
 
             modelBuilder.Entity("Explore.Domain.Organization", b =>

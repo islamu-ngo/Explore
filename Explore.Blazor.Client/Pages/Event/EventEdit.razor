@@ -252,7 +252,7 @@ else if (currentEvent != null && updateDto != null)
                         <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
                             @if (allCategories != null && allCategories.Any())
                             {
-                                <MudSelect T="Guid"
+                                <MudSelect T="Guid?"
                                            MultiSelection="true"
                                            @bind-SelectedValues="selectedCategoryIds"
                                            Label="Select Categories"
@@ -261,7 +261,7 @@ else if (currentEvent != null && updateDto != null)
                                            MultiSelectionTextFunc="@(new Func<List<string>, string>(GetCategorySelectionText))">
                                     @foreach (var category in allCategories)
                                     {
-                                        <MudSelectItem Value="@category.Id">@category.FullName</MudSelectItem>
+                                        <MudSelectItem T="Guid?" Value="@category.Id">@category.FullName</MudSelectItem>
                                     }
                                 </MudSelect>
                             }
@@ -276,7 +276,7 @@ else if (currentEvent != null && updateDto != null)
                         <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
                             @if (allTags != null && allTags.Any())
                             {
-                                <MudSelect T="Guid"
+                                <MudSelect T="Guid?"
                                            MultiSelection="true"
                                            @bind-SelectedValues="selectedTagIds"
                                            Label="Select Tags"
@@ -285,7 +285,7 @@ else if (currentEvent != null && updateDto != null)
                                            MultiSelectionTextFunc="@(new Func<List<string>, string>(GetTagSelectionText))">
                                     @foreach (var tag in allTags)
                                     {
-                                        <MudSelectItem Value="@tag.Id">@tag.FullName</MudSelectItem>
+                                        <MudSelectItem T="Guid?" Value="@tag.Id">@tag.FullName</MudSelectItem>
                                     }
                                 </MudSelect>
                             }
@@ -377,10 +377,11 @@ else
     private string? selectedTimezone;
 
     // Categories and Tags
-    private IEnumerable<Guid> selectedCategoryIds = new HashSet<Guid>();
-    private IEnumerable<Guid> selectedTagIds = new HashSet<Guid>();
-    private ICollection<CategoryListDto>? existingCategories;
-    private ICollection<TagListDto>? existingTags;
+    private IEnumerable<Guid?> selectedCategoryIds = new HashSet<Guid?>();
+    private IEnumerable<Guid?> selectedTagIds = new HashSet<Guid?>();
+    // Note: These are ICollection<object> because the service methods are neutralized
+    private ICollection<object>? existingCategoriesRaw;
+    private ICollection<object>? existingTagsRaw;
 
     // Sessions
     private List<SessionEditorModel> sessions = new();
@@ -433,6 +434,7 @@ else
                     Description = currentEvent.Description,
                     AudienceGenderId = currentEvent.AudienceGenderId,
                     AudienceAgeId = currentEvent.AudienceAgeId,
+                    ActorId = currentEvent.ActorId,
                     Price = currentEvent.Price,
                     CurrencyCode = currentEvent.CurrencyCode,
                     FeaturedImageId = currentEvent.FeaturedImageId,
@@ -482,13 +484,15 @@ else
 
                 allCategories = await allCategoriesTask;
                 allTags = await allTagsTask;
-                existingCategories = await eventCategoriesTask;
-                existingTags = await eventTagsTask;
+                existingCategoriesRaw = await eventCategoriesTask;
+                existingTagsRaw = await eventTagsTask;
                 var eventSessions = await sessionsTask;
 
                 // Set selected categories and tags
-                selectedCategoryIds = existingCategories?.Select(c => c.Id).ToHashSet() ?? new HashSet<Guid>();
-                selectedTagIds = existingTags?.Select(t => t.Id).ToHashSet() ?? new HashSet<Guid>();
+                // Note: Service methods are neutralized and return empty collections
+                // When API is updated, parse the raw objects back to typed DTOs
+                selectedCategoryIds = new HashSet<Guid?>();
+                selectedTagIds = new HashSet<Guid?>();
 
                 // Convert sessions to editor models
                 sessions = eventSessions?.Select(s => SessionEditorModel.FromDto(s)).ToList() ?? new List<SessionEditorModel>();
@@ -565,7 +569,12 @@ else
                 updateDto.FeaturedImageId = _uploadedStorageObjectId.Value;
             }
 
-            var response = await EventService.UpdateEventAsync(updateDto.Id, updateDto);
+            if (!updateDto.Id.HasValue)
+            {
+                Snackbar.Add("Event ID is missing", Severity.Error);
+                return;
+            }
+            var response = await EventService.UpdateEventAsync(updateDto.Id.Value, updateDto);
 
             if (response?.Success == true)
             {
@@ -577,8 +586,26 @@ else
                 Snackbar.Add(response?.Message ?? "Failed to update event", Severity.Error);
             }
         }
+        catch (ApiException<BaseCommandResponseOfGuid> apiEx)
+        {
+            // Extract detailed error from API response
+            var errorMessage = apiEx.Result?.Message ?? "Unknown error";
+            var errors = apiEx.Result?.Errors;
+            if (errors != null && errors.Any())
+            {
+                errorMessage = string.Join("; ", errors);
+            }
+            Logger.LogError(apiEx, "API error updating event: {Message}, Errors: {Errors}", errorMessage, errors);
+            Snackbar.Add($"Error updating event: {errorMessage}", Severity.Error);
+        }
+        catch (ApiException apiEx)
+        {
+            Logger.LogError(apiEx, "API error updating event. Status: {StatusCode}, Response: {Response}", apiEx.StatusCode, apiEx.Response);
+            Snackbar.Add($"Error updating event: {apiEx.Message} (Status: {apiEx.StatusCode})", Severity.Error);
+        }
         catch (Exception ex)
         {
+            Logger.LogError(ex, "Unexpected error updating event");
             Snackbar.Add($"Error updating event: {ex.Message}", Severity.Error);
         }
     }

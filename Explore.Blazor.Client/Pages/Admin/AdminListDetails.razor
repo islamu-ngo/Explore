@@ -11,12 +11,12 @@
         <MudPaper Class="admin-list-details__hero" Elevation="0">
             <div class="admin-list-details__loading">
                 <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
-                <MudText Typo="Typo.body1">Loading organization details…</MudText>
+                <MudText Typo="Typo.body1">Loading Organization details…</MudText>
                 <MudText Typo="Typo.caption" style="opacity:0.7;">Please wait a moment.</MudText>
             </div>
         </MudPaper>
     }
-    else if (organization != null)
+    else if (Organization != null)
     {
         <!-- HERO HEADER -->
         <MudPaper Class="admin-list-details__hero" Elevation="0">
@@ -26,10 +26,10 @@
                 </div>
                 <div>
                     <MudText Typo="Typo.h4" Style="font-weight:800; letter-spacing:.2px;">
-                        @organization.FullName
+                        @Organization.FullName
                     </MudText>
                     <MudText Typo="Typo.body2" Class="admin-list-details__hero-meta">
-                        Organization ID: @organization.Id.ToString()[..8]…
+                        Organization ID: @Organization.Id.ToString()[..8]…
                     </MudText>
                 </div>
             </div>
@@ -37,10 +37,10 @@
             <!-- STATUS BADGE IN HERO -->
             <MudStack Row AlignItems="AlignItems.Center" Spacing="1" Style="margin-top:16px;">
                 <MudChip T="string"
-                         Color="@StatusColor(organization.ApprovalStatusId)"
+                         Color="@StatusColor(Organization.ApprovalStatusId ?? 0)"
                          Variant="Variant.Filled"
                          Style="border-radius:999px; padding:8px 16px; font-weight:600;">
-                    @GetStatusName(organization.ApprovalStatusId)
+                    @GetStatusName(Organization.ApprovalStatusId ?? 0)
                 </MudChip>
             </MudStack>
         </MudPaper>
@@ -57,7 +57,7 @@
             <div class="admin-list-details__field-row">
                 <div class="admin-list-details__field-value">
                     <div class="admin-list-details__field-label">Organization Name</div>
-                    <MudText Class="admin-list-details__field-text">@organization.FullName</MudText>
+                    <MudText Class="admin-list-details__field-text">@Organization.FullName</MudText>
                 </div>
             </div>
         </MudPaper>
@@ -74,16 +74,16 @@
             <div class="admin-list-details__field-row">
                 <div class="admin-list-details__field-value">
                     <div class="admin-list-details__field-label">Email</div>
-                    <MudLink Href="@($"mailto:{organization.Email}")" Target="_blank">
-                        @organization.Email
+                    <MudLink Href="@($"mailto:{Organization.Email}")" Target="_blank">
+                        @Organization.Email
                     </MudLink>
                 </div>
                 <div class="admin-list-details__field-value">
                     <div class="admin-list-details__field-label">Website</div>
-                    @if (!string.IsNullOrWhiteSpace(organization.WebsiteUrl))
+                    @if (!string.IsNullOrWhiteSpace(Organization.WebsiteUrl))
                     {
-                        <MudLink Href="@organization.WebsiteUrl" Target="_blank">
-                            @organization.WebsiteUrl
+                        <MudLink Href="@Organization.WebsiteUrl" Target="_blank">
+                            @Organization.WebsiteUrl
                         </MudLink>
                     }
                     else
@@ -106,22 +106,22 @@
             <div class="admin-list-details__field-row">
                 <div class="admin-list-details__field-value" style="grid-column: 1 / -1;">
                     <div class="admin-list-details__field-label">Street Address</div>
-                    <MudText Class="admin-list-details__field-text">@(organization.Address ?? "Not provided")</MudText>
+                    <MudText Class="admin-list-details__field-text">@(Organization.Address ?? "Not provided")</MudText>
                 </div>
             </div>
 
             <div class="admin-list-details__field-row">
                 <div class="admin-list-details__field-value">
                     <div class="admin-list-details__field-label">City</div>
-                    <MudText Class="admin-list-details__field-text">@(organization.City ?? "Not provided")</MudText>
+                    <MudText Class="admin-list-details__field-text">@(Organization.City ?? "Not provided")</MudText>
                 </div>
                 <div class="admin-list-details__field-value">
                     <div class="admin-list-details__field-label">Country</div>
-                    <MudText Class="admin-list-details__field-text">@(organization.Country ?? "Not provided")</MudText>
+                    <MudText Class="admin-list-details__field-text">@(Organization.Country ?? "Not provided")</MudText>
                 </div>
                 <div class="admin-list-details__field-value">
                     <div class="admin-list-details__field-label">Postal Code</div>
-                    <MudText Class="admin-list-details__field-text">@(string.IsNullOrEmpty(organization.Postcode) ? "Not provided" : organization.Postcode)</MudText>
+                    <MudText Class="admin-list-details__field-text">@(string.IsNullOrEmpty(Organization.Postcode) ? "Not provided" : Organization.Postcode)</MudText>
                 </div>
             </div>
         </MudPaper>
@@ -142,7 +142,7 @@
         <MudPaper Class="admin-list-details__error" Elevation="0">
             <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Large" Color="Color.Warning" />
             <MudText Typo="Typo.h6" Style="font-weight:800;">Organization not found</MudText>
-            <MudText Typo="Typo.body2">The organization you're looking for doesn't exist or has been deleted.</MudText>
+            <MudText Typo="Typo.body2">The Organization you're looking for doesn't exist or has been deleted.</MudText>
             <MudButton Variant="Variant.Outlined"
                        Color="Color.Default"
                        StartIcon="@Icons.Material.Filled.ArrowBack"

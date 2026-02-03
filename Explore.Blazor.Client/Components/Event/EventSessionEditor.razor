@@ -316,8 +316,8 @@
                 Id = dto.Id,
                 Title = dto.Title ?? dto.EventTitle,
                 Description = null,
-                StartTime = dto.StartTime.LocalDateTime,
-                EndTime = dto.EndTime.LocalDateTime,
+                StartTime = dto.StartTime?.LocalDateTime ?? DateTime.Now,
+                EndTime = dto.EndTime?.LocalDateTime ?? DateTime.Now.AddHours(1),
                 LocationId = dto.LocationId,
                 MaxAudienceAttendees = dto.MaxAudienceAttendees,
                 RegistrationModeId = dto.RegistrationModeId

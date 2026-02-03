@@ -1,0 +1,45 @@
+{
+  "include": [
+    "schema/**/*",
+    "Event.API.IntegrationTests/**/*",
+    "Event.Application.UnitTests/**/*",
+    "Event.Architecture.Tests/**/*",
+    "Event.Domain.UnitTests/**/*",
+    "Event.MigrationService/**/*",
+    "Event.Persistence.IntegrationTests/**/*",
+    "Explore.API/**/*",
+    "Explore.Application/**/*",
+    "Explore.Diagnostic/**/*",
+    "Explore.Domain/**/*",
+    "Explore.Infrastructure/**/*",
+    "Explore.Persistence/**/*",
+    "Explore.Secrets/**/*",
+    "Explore.ServiceDefaults/**/*",
+    "docs/**/*",
+    "_bmad-output/**/*",
+    ".claude/**/*",
+    ".opencode/**/*",
+    ".taskmaster/**/*",
+    "dev/active/**/*",
+    "CLAUDE.md",
+    "README.md"
+  ],
+  "output": {
+    "style": "markdown",
+    "filePath": ".repomix/repomix-api.md",
+    "removeComments": true,
+    "showLineNumbers": true,
+    "topFilesLength": 20,
+    "copyToClipboard": false
+  },
+  "ignore": {
+    "customPatterns": [
+      "**/*.log",
+      ".opencode/command/**/*",
+      ".claude/commands/**/*",
+      ".claude/hooks/**/*"
+    ],
+    "useGitignore": true,
+    "useDefaultPatterns": true
+  }
+}

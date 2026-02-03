@@ -1,0 +1,97 @@
+namespace Explore.API.Hateoas.Policies;
+
+using System.Security.Claims;
+using Explore.Application.Contracts.Hateoas;
+using Explore.Application.DTOs.Tag;
+using Explore.Application.Hateoas;
+
+/// <summary>
+/// Link policy for TagDto (detail view).
+/// </summary>
+public sealed class TagDetailLinkPolicy : ILinkPolicy<TagDto>
+{
+    /// <inheritdoc />
+    public IEnumerable<LinkDefinition> GetLinks(TagDto dto, ClaimsPrincipal? user)
+    {
+        // Self link
+        yield return new LinkDefinition(
+            LinkRelations.Self,
+            RouteNames.GetTagById,
+            new { id = dto.Id },
+            "GET",
+            dto.FullName);
+
+        // Collection link
+        yield return new LinkDefinition(
+            LinkRelations.Collection,
+            RouteNames.GetTags,
+            null,
+            "GET",
+            "All tags");
+
+        // Events with this tag
+        yield return new LinkDefinition(
+            "events",
+            RouteNames.GetTagEvents,
+            new { tagId = dto.Id },
+            "GET",
+            "Events with this tag");
+
+        // Tag types link (pure join table - embedded here per enterprise pattern)
+        yield return new LinkDefinition(
+            "tag-types",
+            RouteNames.GetTagTagTypes,
+            new { tagId = dto.Id },
+            "GET",
+            "Tag type classifications");
+
+        // Edit link - requires authentication
+        yield return new LinkDefinition(
+            LinkRelations.Edit,
+            RouteNames.UpdateTag,
+            new { id = dto.Id },
+            "PUT",
+            "Update tag",
+            RequiresAuth: true);
+
+        // Delete link - requires authentication
+        yield return new LinkDefinition(
+            "delete",
+            RouteNames.DeleteTag,
+            new { id = dto.Id },
+            "DELETE",
+            "Delete tag",
+            RequiresAuth: true);
+    }
+}
+
+/// <summary>
+/// Link policy for TagListDto (collection items).
+/// </summary>
+public sealed class TagCollectionLinkPolicy : ICollectionLinkPolicy<TagListDto>
+{
+    /// <inheritdoc />
+    public IEnumerable<LinkDefinition> GetItemLinks(TagListDto dto, ClaimsPrincipal? user)
+    {
+        // Self link for item
+        yield return new LinkDefinition(
+            LinkRelations.Self,
+            RouteNames.GetTagById,
+            new { id = dto.Id },
+            "GET",
+            dto.FullName);
+    }
+
+    /// <inheritdoc />
+    public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
+    {
+        // Create link - requires authentication
+        yield return new LinkDefinition(
+            "create",
+            RouteNames.CreateTag,
+            null,
+            "POST",
+            "Create new tag",
+            RequiresAuth: true);
+    }
+}

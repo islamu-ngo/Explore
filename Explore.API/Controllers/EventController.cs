@@ -1,215 +1,453 @@
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.Event;
+using Explore.Application.DTOs.EventAspects;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Features.Events.Requests.Queries;
+using Explore.Application.Features.EventAspects.Requests.Commands;
+using Explore.Application.Features.EventAspects.Requests.Queries;
+using Explore.Application.Hateoas;
 using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-// For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+namespace Explore.API.Controllers;
 
-namespace Explore.API.Controllers
+/// <summary>
+/// Event management API endpoints.
+/// All responses include HATEOAS links by default.
+/// Send "Prefer: return=minimal" header to strip links.
+/// </summary>
+[Route("api/v1/[controller]")]
+[ApiController]
+[Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
+public class EventController : ControllerBase
 {
-    [Route("api/v1/[controller]")]
-    [ApiController]
-    public class EventController : ControllerBase
+    private readonly IMediator _mediator;
+    private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly ILogger<EventController> _logger;
+    private readonly IResourceAssembler<EventDto, EventListDto> _resourceAssembler;
+
+    public EventController(
+        IMediator mediator,
+        IHttpContextAccessor httpContextAccessor,
+        ILogger<EventController> logger,
+        IResourceAssembler<EventDto, EventListDto> resourceAssembler)
     {
-        private readonly IMediator _mediator;
-        private readonly IHttpContextAccessor _httpContextAccessor;
-        private readonly ILogger<EventController> _logger;
+        _mediator = mediator;
+        _httpContextAccessor = httpContextAccessor;
+        _logger = logger;
+        _resourceAssembler = resourceAssembler;
+    }
 
-        public EventController(IMediator mediator, IHttpContextAccessor httpContextAccessor, ILogger<EventController> logger)
+    /// <summary>
+    /// Get all events with pagination.
+    /// </summary>
+    [HttpGet(Name = RouteNames.GetEvents)]
+    [EndpointSummary("Get all Events")]
+    [EndpointDescription("Get a paginated list of all Events (Conference, Webinar, Workshop...). " +
+        "Default page size is 20, max is 100. " +
+        "Response includes HATEOAS navigation links (first, prev, next, last). " +
+        "Send 'Prefer: return=minimal' header to strip links.")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(HalCollectionResource<EventListDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<HalCollectionResource<EventListDto>>> GetAll(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        var result = await _mediator.Send(new GetEventListRequest
         {
-            _mediator = mediator;
-            _httpContextAccessor = httpContextAccessor;
-            _logger = logger;
-        }
+            PageNumber = pageNumber,
+            PageSize = pageSize
+        });
 
-        // GET: api/<EventController>
-        [HttpGet]
-        [EndpointSummary("Get all Events (Conference, Webinar, Workshop ...)")]
-        [EndpointDescription("Get a paginated list of all Events. Default page size is 20, max is 100.")]
-        [AllowAnonymous]
-        public async Task<ActionResult<PaginatedResult<EventListDto>>> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
+        var halResource = _resourceAssembler.ToCollectionResource(
+            result,
+            RouteNames.GetEvents,
+            additionalRouteValues: null,
+            HttpContext);
+
+        return Ok(halResource);
+    }
+
+    /// <summary>
+    /// Get events for the current user's organizations.
+    /// </summary>
+    [HttpGet("my", Name = RouteNames.GetMyEvents)]
+    [EndpointSummary("Get My Events")]
+    [EndpointDescription("Get a paginated list of events created by the current user's organizations. " +
+        "Default page size is 20, max is 100.")]
+    [Authorize]
+    [ProducesResponseType(typeof(HalCollectionResource<EventListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<HalCollectionResource<EventListDto>>> GetMyEvents(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        try
         {
-            var events = await _mediator.Send(new GetEventListRequest
+            _logger.LogInformation("=== GetMyEvents API Request ===");
+            _logger.LogInformation("User authenticated: {IsAuthenticated}", User?.Identity?.IsAuthenticated);
+            _logger.LogInformation("User name: {Name}", User?.Identity?.Name);
+
+            var userId = GetCurrentUserId();
+            _logger.LogInformation("Extracted userId: {UserId}", userId);
+
+            if (string.IsNullOrEmpty(userId))
             {
+                _logger.LogWarning("User ID not found in token");
+                return Unauthorized(new { error = "User ID not found in token" });
+            }
+
+            _logger.LogInformation("Sending GetMyEventsRequest for userId: {UserId}", userId);
+            var result = await _mediator.Send(new GetMyEventsRequest
+            {
+                UserId = userId,
                 PageNumber = pageNumber,
                 PageSize = pageSize
             });
-            return Ok(events);
+
+            _logger.LogInformation("Retrieved {Count} events", result?.Items?.Count ?? 0);
+
+            var halResource = _resourceAssembler.ToCollectionResource(
+                result!,
+                RouteNames.GetMyEvents,
+                additionalRouteValues: null,
+                HttpContext);
+
+            return Ok(halResource);
         }
-
-        // GET: api/<EventController>/my
-        [HttpGet("my")]
-        [EndpointSummary("Get My Events")]
-        [EndpointDescription("Get a paginated list of events created by the current user's organizations. Default page size is 20, max is 100.")]
-        [Authorize]
-        public async Task<ActionResult<PaginatedResult<EventListDto>>> GetMyEvents([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
+        catch (Exception ex)
         {
-            try
-            {
-                _logger.LogInformation("=== GetMyEvents API Request ===");
-                _logger.LogInformation($"User authenticated: {User?.Identity?.IsAuthenticated}");
-                _logger.LogInformation($"User name: {User?.Identity?.Name}");
-
-                // Log all claims for debugging
-                var claims = _httpContextAccessor.HttpContext?.User?.Claims;
-                if (claims != null)
-                {
-                    _logger.LogInformation("User Claims:");
-                    foreach (var claim in claims)
-                    {
-                        _logger.LogInformation($"  {claim.Type}: {claim.Value}");
-                    }
-                }
-
-                var userId = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
-                    ?? _httpContextAccessor.HttpContext?.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
-                    ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sid")?.Value;
-
-                _logger.LogInformation($"Extracted userId: {userId}");
-
-                if (string.IsNullOrEmpty(userId))
-                {
-                    _logger.LogWarning("User ID not found in token");
-                    return Unauthorized(new { error = "User ID not found in token" });
-                }
-
-                _logger.LogInformation($"Sending GetMyEventsRequest for userId: {userId}");
-                var events = await _mediator.Send(new GetMyEventsRequest
-                {
-                    UserId = userId,
-                    PageNumber = pageNumber,
-                    PageSize = pageSize
-                });
-
-                _logger.LogInformation($"Retrieved {events?.Items?.Count ?? 0} events");
-                return Ok(events);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in GetMyEvents");
-                return StatusCode(500, new { error = ex.Message, stackTrace = ex.StackTrace });
-            }
-        }
-
-        // GET api/<EventController>/5
-        [HttpGet("{id}")]
-        [EndpointSummary("Get Event (Conference, Webinar, Workshop ...) Details")]
-        [EndpointDescription("Get Details of the Event!")]
-        [AllowAnonymous]
-        public async Task<ActionResult<EventDto>> GetById(Guid id)
-        {
-            var @event = await _mediator.Send(new GetEventDetailsRequest { Id = id });
-            return Ok(@event);
-        }
-
-        // POST api/<EventController>
-        [HttpPost]
-        [EndpointSummary("Create a new Event")]
-        [EndpointDescription("Creates a new event. If OrganizationId is provided, the event is created under that organization (user must be admin). If null, the event is created under the user's personal actor.")]
-        [Authorize]
-        public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventDto @event)
-        {
-            var command = new CreateEventCommand { EventDto = @event };
-            var response = await _mediator.Send(command);
-
-            if (!response.Success)
-            {
-                return BadRequest(response);
-            }
-
-            return Ok(response);
-        }
-
-        // POST api/<EventController>/with-sessions
-        /// <summary>
-        /// Creates a new event along with its sessions in a single transaction.
-        /// FirstSessionDate and LastSessionDate are computed from the provided sessions.
-        /// At least one session is required.
-        /// </summary>
-        [HttpPost("with-sessions")]
-        [EndpointSummary("Create Event with Sessions")]
-        [EndpointDescription("Creates a new event along with its sessions in a single transaction. At least one session is required. FirstSessionDate and LastSessionDate are computed automatically from the sessions.")]
-        [Authorize]
-        [Consumes("application/json")]
-        [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<ActionResult<BaseCommandResponse<Guid>>> CreateWithSessions([FromBody] CreateEventWithSessionsDto dto)
-        {
-            var command = new CreateEventWithSessionsCommand { EventWithSessionsDto = dto };
-            var response = await _mediator.Send(command);
-
-            if (!response.Success)
-            {
-                return BadRequest(response);
-            }
-
-            return CreatedAtAction(nameof(GetById), new { id = response.Id }, response);
-        }
-
-        // PUT api/<EventController>/5
-        [HttpPut("{id}")]
-        [EndpointSummary("Update an Event")]
-        [EndpointDescription("Update an existing event")]
-        [Authorize]
-        public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventDto @event)
-        {
-            if (id != @event.Id)
-            {
-                return BadRequest(new { error = "Event ID mismatch" });
-            }
-
-            var command = new UpdateEventCommand { EventDto = @event };
-            var response = await _mediator.Send(command);
-
-            if (!response.Success)
-            {
-                return BadRequest(response);
-            }
-
-            return Ok(response);
-        }
-
-        // DELETE api/<EventController>/5
-        [HttpDelete("{id}")]
-        [EndpointSummary("Delete an Event")]
-        [EndpointDescription("Delete an event (only if user owns the organization)")]
-        [Authorize]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult> Delete(Guid id)
-        {
-            try
-            {
-                var userId = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
-                    ?? _httpContextAccessor.HttpContext?.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
-                    ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sid")?.Value;
-
-                if (string.IsNullOrEmpty(userId))
-                {
-                    return Unauthorized(new { error = "User ID not found in token" });
-                }
-
-                var command = new DeleteEventCommand { Id = id, UserId = userId };
-                var result = await _mediator.Send(command);
-
-                if (!result)
-                {
-                    return NotFound(new { error = "Event not found or you don't have permission to delete it" });
-                }
-
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error deleting event {EventId}", id);
-                return StatusCode(500, new { error = ex.Message });
-            }
+            _logger.LogError(ex, "Error in GetMyEvents");
+            return StatusCode(500, new { error = ex.Message, stackTrace = ex.StackTrace });
         }
     }
+
+    /// <summary>
+    /// Get event details by ID.
+    /// </summary>
+    [HttpGet("{id:guid}", Name = RouteNames.GetEventById)]
+    [EndpointSummary("Get Event Details")]
+    [EndpointDescription("Get full details of an event including actor information, sessions, and related resources. " +
+        "Response includes links to related resources (sessions, categories, tags).")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(HalResource<EventDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<HalResource<EventDto>>> GetById(Guid id)
+    {
+        var @event = await _mediator.Send(new GetEventDetailsRequest { Id = id });
+
+        if (@event is null)
+        {
+            return NotFound();
+        }
+
+        var halResource = _resourceAssembler.ToResource(@event, HttpContext);
+        return Ok(halResource);
+    }
+
+    /// <summary>
+    /// Create a new event.
+    /// </summary>
+    [HttpPost(Name = RouteNames.CreateEvent)]
+    [EndpointSummary("Create Event")]
+    [EndpointDescription("Creates a new event. If OrganizationId is provided, the event is created under that organization " +
+        "(user must be admin). If null, the event is created under the user's personal actor.")]
+    [Authorize]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventDto @event)
+    {
+        var command = new CreateEventCommand { EventDto = @event };
+        var response = await _mediator.Send(command);
+
+        if (!response.Success)
+        {
+            return BadRequest(response);
+        }
+
+        return CreatedAtRoute(
+            RouteNames.GetEventById,
+            new { id = response.Id },
+            response);
+    }
+
+    /// <summary>
+    /// Create a new event with sessions in a single transaction.
+    /// </summary>
+    [HttpPost("with-sessions")]
+    [EndpointSummary("Create Event with Sessions")]
+    [EndpointDescription("Creates a new event along with its sessions in a single transaction. " +
+        "At least one session is required. FirstSessionDate and LastSessionDate are computed automatically from the sessions.")]
+    [Authorize]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> CreateWithSessions([FromBody] CreateEventWithSessionsDto dto)
+    {
+        var command = new CreateEventWithSessionsCommand { EventWithSessionsDto = dto };
+        var response = await _mediator.Send(command);
+
+        if (!response.Success)
+        {
+            return BadRequest(response);
+        }
+
+        return CreatedAtRoute(
+            RouteNames.GetEventById,
+            new { id = response.Id },
+            response);
+    }
+
+    /// <summary>
+    /// Update an existing event.
+    /// </summary>
+    [HttpPut("{id:guid}", Name = RouteNames.UpdateEvent)]
+    [EndpointSummary("Update Event")]
+    [EndpointDescription("Update an existing event. User must be a member of the organization that owns the event.")]
+    [Authorize]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventDto @event)
+    {
+        if (id != @event.Id)
+        {
+            return BadRequest(new { error = "Event ID mismatch" });
+        }
+
+        var command = new UpdateEventCommand { EventDto = @event };
+        var response = await _mediator.Send(command);
+
+        if (!response.Success)
+        {
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
+
+    /// <summary>
+    /// Delete an event.
+    /// </summary>
+    [HttpDelete("{id:guid}", Name = RouteNames.DeleteEvent)]
+    [EndpointSummary("Delete Event")]
+    [EndpointDescription("Delete an event. User must be a member of the organization that owns the event.")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> Delete(Guid id)
+    {
+        try
+        {
+            var userId = GetCurrentUserId();
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized(new { error = "User ID not found in token" });
+            }
+
+            var command = new DeleteEventCommand { Id = id, UserId = userId };
+            var result = await _mediator.Send(command);
+
+            if (!result)
+            {
+                return NotFound(new { error = "Event not found or you don't have permission to delete it" });
+            }
+
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting event {EventId}", id);
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Extracts the current user ID from claims using the standard fallback pattern.
+    /// </summary>
+    private string? GetCurrentUserId()
+    {
+        return _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
+            ?? _httpContextAccessor.HttpContext?.User?.FindFirst(
+                "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
+            ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sid")?.Value;
+    }
+
+    #region Event Aspects
+
+    /// <summary>
+    /// Get the Islamic aspect for an event.
+    /// </summary>
+    [HttpGet("{id:guid}/aspects/islamic", Name = RouteNames.GetEventIslamicAspect)]
+    [EndpointSummary("Get Event Islamic Aspect")]
+    [EndpointDescription("Get the Islamic-specific characteristics of an event (Madhab, prayer timing, gender mode). " +
+        "Returns 404 if the event doesn't have an Islamic aspect configured.")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(EventIslamicAspectDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<EventIslamicAspectDto>> GetIslamicAspect(Guid id)
+    {
+        var aspect = await _mediator.Send(new GetEventIslamicAspectRequest { EventId = id });
+
+        if (aspect == null)
+        {
+            return NotFound(new { error = "Islamic aspect not found for this event." });
+        }
+
+        return Ok(aspect);
+    }
+
+    /// <summary>
+    /// Create or update the Islamic aspect for an event.
+    /// </summary>
+    [HttpPut("{id:guid}/aspects/islamic", Name = RouteNames.UpsertEventIslamicAspect)]
+    [EndpointSummary("Create/Update Event Islamic Aspect")]
+    [EndpointDescription("Creates or updates the Islamic-specific characteristics of an event. " +
+        "Includes Madhab, prayer-based scheduling, gender segregation mode, and language settings.")]
+    [Authorize]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpsertIslamicAspect(
+        Guid id,
+        [FromBody] CreateUpdateIslamicAspectDto aspectDto)
+    {
+        var command = new UpsertEventIslamicAspectCommand
+        {
+            EventId = id,
+            AspectDto = aspectDto
+        };
+
+        var response = await _mediator.Send(command);
+
+        if (!response.Success)
+        {
+            if (response.Message == "Event not found.")
+            {
+                return NotFound(response);
+            }
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
+
+    /// <summary>
+    /// Delete the Islamic aspect from an event.
+    /// </summary>
+    [HttpDelete("{id:guid}/aspects/islamic", Name = RouteNames.DeleteEventIslamicAspect)]
+    [EndpointSummary("Delete Event Islamic Aspect")]
+    [EndpointDescription("Removes the Islamic-specific characteristics from an event. " +
+        "The event itself is not deleted.")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> DeleteIslamicAspect(Guid id)
+    {
+        var result = await _mediator.Send(new DeleteEventIslamicAspectCommand { EventId = id });
+
+        if (!result)
+        {
+            return NotFound(new { error = "Islamic aspect not found for this event." });
+        }
+
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Get the Tech aspect for an event.
+    /// </summary>
+    [HttpGet("{id:guid}/aspects/tech", Name = RouteNames.GetEventTechAspect)]
+    [EndpointSummary("Get Event Tech Aspect")]
+    [EndpointDescription("Get the tech/developer-specific characteristics of an event (skill level, hackathon details, tech stack). " +
+        "Returns 404 if the event doesn't have a Tech aspect configured.")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(EventTechAspectDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<EventTechAspectDto>> GetTechAspect(Guid id)
+    {
+        var aspect = await _mediator.Send(new GetEventTechAspectRequest { EventId = id });
+
+        if (aspect == null)
+        {
+            return NotFound(new { error = "Tech aspect not found for this event." });
+        }
+
+        return Ok(aspect);
+    }
+
+    /// <summary>
+    /// Create or update the Tech aspect for an event.
+    /// </summary>
+    [HttpPut("{id:guid}/aspects/tech", Name = RouteNames.UpsertEventTechAspect)]
+    [EndpointSummary("Create/Update Event Tech Aspect")]
+    [EndpointDescription("Creates or updates the tech/developer-specific characteristics of an event. " +
+        "Includes skill level requirements, hackathon track, tech stack tags, and competition details.")]
+    [Authorize]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpsertTechAspect(
+        Guid id,
+        [FromBody] CreateUpdateTechAspectDto aspectDto)
+    {
+        var command = new UpsertEventTechAspectCommand
+        {
+            EventId = id,
+            AspectDto = aspectDto
+        };
+
+        var response = await _mediator.Send(command);
+
+        if (!response.Success)
+        {
+            if (response.Message == "Event not found.")
+            {
+                return NotFound(response);
+            }
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
+
+    /// <summary>
+    /// Delete the Tech aspect from an event.
+    /// </summary>
+    [HttpDelete("{id:guid}/aspects/tech", Name = RouteNames.DeleteEventTechAspect)]
+    [EndpointSummary("Delete Event Tech Aspect")]
+    [EndpointDescription("Removes the tech/developer-specific characteristics from an event. " +
+        "The event itself is not deleted.")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> DeleteTechAspect(Guid id)
+    {
+        var result = await _mediator.Send(new DeleteEventTechAspectCommand { EventId = id });
+
+        if (!result)
+        {
+            return NotFound(new { error = "Tech aspect not found for this event." });
+        }
+
+        return NoContent();
+    }
+
+    #endregion
 }

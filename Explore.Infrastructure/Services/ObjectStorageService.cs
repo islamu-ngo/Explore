@@ -14,6 +14,7 @@ namespace Explore.Infrastructure.Services;
 public class ObjectStorageService : IObjectStorageService
 {
     private readonly IAmazonS3 _s3Client;
+    private readonly IAmazonS3 _presignClient;
     private readonly S3Settings _s3Settings;
     private const int UploadUrlExpirationMinutes = 40; // DEVELOPMENT MODE! Reduce in production
 
@@ -21,6 +22,7 @@ public class ObjectStorageService : IObjectStorageService
     {
         _s3Client = s3Client;
         _s3Settings = s3Settings.Value;
+        _presignClient = CreatePresignClient(_s3Settings) ?? _s3Client;
     }
 
     public Task<UploadUrlResponseDto> GeneratePresignedUploadUrl(string fileName, string contentType)
@@ -58,7 +60,7 @@ public class ObjectStorageService : IObjectStorageService
         string? uploadUrl;
         try
         {
-            uploadUrl = _s3Client.GetPreSignedURL(request);
+            uploadUrl = _presignClient.GetPreSignedURL(request);
         }
         catch (Exception ex)
         {
@@ -131,7 +133,7 @@ public class ObjectStorageService : IObjectStorageService
         string? downloadUrl;
         try
         {
-            downloadUrl = _s3Client.GetPreSignedURL(request);
+            downloadUrl = _presignClient.GetPreSignedURL(request);
         }
         catch (Exception ex)
         {
@@ -155,5 +157,36 @@ public class ObjectStorageService : IObjectStorageService
         // NOTE: We store just the object key. The full URL will be constructed at display time
         // by either generating a presigned S3 URL or routing through the API proxy.
         return objectKey;
+    }
+
+    private static IAmazonS3? CreatePresignClient(S3Settings settings)
+    {
+        if (string.IsNullOrWhiteSpace(settings.PublicEndpoint))
+        {
+            return null;
+        }
+
+        if (string.Equals(settings.PublicEndpoint.Trim(), settings.Endpoint?.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var config = new AmazonS3Config
+        {
+            ForcePathStyle = true
+        };
+
+        var endpoint = settings.PublicEndpoint.Trim();
+        if (!endpoint.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+            !endpoint.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            endpoint = $"https://{endpoint}";
+        }
+
+        config.ServiceURL = endpoint;
+        config.UseHttp = endpoint.StartsWith("http://", StringComparison.OrdinalIgnoreCase);
+        config.AuthenticationRegion = string.IsNullOrWhiteSpace(settings.Region) ? "us-east-1" : settings.Region;
+
+        return new AmazonS3Client(settings.AccessKeyId, settings.SecretAccessKey, config);
     }
 }

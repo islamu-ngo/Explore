@@ -48,7 +48,7 @@ else
                 <CardHeaderContent>
                     <div class="d-flex align-center gap-2 flex-wrap">
                         <MudText Typo="Typo.h4" Class="mr-2">@organization.FullName</MudText>
-                        <MudChip T="string" Color="@GetStatusColor(organization.ApprovalStatusId)" Size="Size.Small" Variant="Variant.Outlined">
+                        <MudChip T="string" Color="@GetStatusColor(organization.ApprovalStatusId ?? 0)" Size="Size.Small" Variant="Variant.Outlined">
                             @(organization.ApprovalStatusFullName ?? "Pending")
                         </MudChip>
                     </div>

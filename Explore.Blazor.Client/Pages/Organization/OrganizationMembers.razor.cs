@@ -139,7 +139,12 @@ public partial class OrganizationMembers
         {
             try
             {
-                await MemberService.DeleteMemberAsync(member.Id);
+                if (!member.Id.HasValue)
+                {
+                    Snackbar.Add("Member ID is missing", Severity.Error);
+                    return;
+                }
+                await MemberService.DeleteMemberAsync(member.Id.Value);
                 Snackbar.Add("Member removed.", Severity.Success);
                 await LoadMembers();
             }

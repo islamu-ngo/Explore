@@ -1,0 +1,62 @@
+{
+  "realm": "explore",
+  "enabled": true,
+  "displayName": "Explore",
+  "registrationAllowed": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "clients": [
+    {
+      "clientId": "explore-blazor-server",
+      "name": "Explore Blazor Server",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "explore-blazor-server-secret",
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:7002/*",
+        "http://localhost/*",
+        "http://127.0.0.1/*",
+        "http://host.docker.internal/*"
+      ],
+      "webOrigins": [
+        "http://localhost:7002",
+        "http://localhost",
+        "http://127.0.0.1",
+        "http://host.docker.internal"
+      ],
+      "protocol": "openid-connect",
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    },
+    {
+      "clientId": "explore-api",
+      "name": "Explore API",
+      "enabled": true,
+      "bearerOnly": true,
+      "publicClient": false,
+      "protocol": "openid-connect"
+    }
+  ],
+  "users": [
+    {
+      "username": "demo",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "demo@example.com",
+      "firstName": "Demo",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "demo1234",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}

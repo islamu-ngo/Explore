@@ -105,6 +105,10 @@ namespace Explore.Persistence
             services.AddScoped<IEventSessionLanguageRepository, EventSessionLanguageRepository>();
             services.AddScoped<IEventSessionSpeakerRepository, EventSessionSpeakerRepository>();
 
+            // Event Aspect Repositories
+            services.AddScoped<IEventIslamicAspectRepository, EventIslamicAspectRepository>();
+            services.AddScoped<IEventTechAspectRepository, EventTechAspectRepository>();
+
             // Location Repository
             services.AddScoped<ILocationRepository, LocationRepository>();
 
@@ -123,6 +127,18 @@ namespace Explore.Persistence
             services.AddScoped<IAtprotoRecordRepository, AtprotoRecordRepository>();
             services.AddScoped<IIndexedDidRepository, IndexedDidRepository>();
             services.AddScoped<ISyncStateRepository, SyncStateRepository>();
+
+            // Settings Repositories
+            services.AddScoped<ISystemSettingRepository, SystemSettingRepository>();
+            services.AddScoped<ITenantSettingRepository, TenantSettingRepository>();
+            services.AddScoped<IAppSettingRepository, AppSettingRepository>();
+
+            // Module Governance Repositories
+            services.AddScoped<IModuleDefinitionRepository, ModuleDefinitionRepository>();
+            services.AddScoped<ITenantCapabilityRepository, TenantCapabilityRepository>();
+
+            // PDS Synchronization Repositories
+            services.AddScoped<IPdsSyncOutboxRepository, PdsSyncOutboxRepository>();
 
             return services;
         }

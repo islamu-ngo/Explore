@@ -1,8 +1,22 @@
+// ABOUTME: Admin service for managing organizations, lookup tables, and CRUD operations for categories/tags/locations.
+// This is the Anti-Corruption Layer that converts HAL responses to clean DTOs for UI consumption.
+
 using System.Net.Http.Json;
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Helpers;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;
+
+/// <summary>
+/// Known Approval Status IDs from the backend (ApprovalStatusEnum).
+/// </summary>
+public static class ApprovalStatusId
+{
+    public const int Pending = 1;
+    public const int Approved = 2;
+    public const int Rejected = 3;
+}
 
 public interface IAdminService
 {
@@ -71,19 +85,12 @@ public class AdminService : IAdminService
     {
         try
         {
-            _logger.LogInformation("[ADMIN SERVICE] Fetching all organizations via API client");
-            var response = await _apiClient.OrganizationGETAsync(pageNumber: 1, pageSize: 100);
-            _logger.LogInformation("[ADMIN SERVICE] Received {Count} organizations from {Total} total", response?.Items?.Count ?? 0, response?.TotalCount ?? 0);
-            return response?.Items ?? new List<OrganizationListDto>();
+            var response = await _apiClient.GetOrganizationsAsync(pageNumber: 1, pageSize: 100);
+            return response?.GetItems() ?? new List<OrganizationListDto>();
         }
         catch (ApiException ex)
         {
             _logger.LogError(ex, "[ADMIN SERVICE] API error fetching organizations: {StatusCode}", ex.StatusCode);
-            return new List<OrganizationListDto>();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error fetching organizations");
             return new List<OrganizationListDto>();
         }
     }
@@ -92,7 +99,8 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.OrganizationGET2Async(id);
+            var response = await _apiClient.GetOrganizationByIdAsync(id);
+            return response?.ToDto();
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
         {
@@ -104,33 +112,19 @@ public class AdminService : IAdminService
             _logger.LogError(ex, "[ADMIN SERVICE] API error fetching organization details: {StatusCode}", ex.StatusCode);
             return null;
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error fetching organization details");
-            return null;
-        }
     }
 
     public async Task<bool> ApproveOrganizationAsync(Guid id)
     {
         try
         {
-            // Status 2 = Approved
-            var updateDto = new UpdateOrganizationApprovalStatusDto { ApprovalStatusId = 2 };
-            _logger.LogInformation("[ADMIN SERVICE] Approving organization {OrganizationId} with status 2", id);
+            var updateDto = new UpdateOrganizationApprovalStatusDto { ApprovalStatusId = ApprovalStatusId.Approved };
             await _apiClient.UpdatestatustypeAsync(id, updateDto);
-            _logger.LogInformation("[ADMIN SERVICE] Organization approved successfully");
             return true;
         }
-        catch (ApiException ex) when (ex.StatusCode == 204 || ex.StatusCode == 200)
+        catch (ApiException ex) when (ex.StatusCode is 204 or 200)
         {
-            _logger.LogInformation("[ADMIN SERVICE] Organization approved successfully (HTTP {StatusCode})", ex.StatusCode);
             return true;
-        }
-        catch (ApiException ex)
-        {
-            _logger.LogError(ex, "[ADMIN SERVICE] API error approving organization: {StatusCode}", ex.StatusCode);
-            return false;
         }
         catch (Exception ex)
         {
@@ -143,22 +137,13 @@ public class AdminService : IAdminService
     {
         try
         {
-            // Status 3 = Rejected
-            var updateDto = new UpdateOrganizationApprovalStatusDto { ApprovalStatusId = 3 };
-            _logger.LogInformation("[ADMIN SERVICE] Rejecting organization {OrganizationId} with status 3", id);
+            var updateDto = new UpdateOrganizationApprovalStatusDto { ApprovalStatusId = ApprovalStatusId.Rejected };
             await _apiClient.UpdatestatustypeAsync(id, updateDto);
-            _logger.LogInformation("[ADMIN SERVICE] Organization rejected successfully");
             return true;
         }
-        catch (ApiException ex) when (ex.StatusCode == 204 || ex.StatusCode == 200)
+        catch (ApiException ex) when (ex.StatusCode is 204 or 200)
         {
-            _logger.LogInformation("[ADMIN SERVICE] Organization rejected successfully (HTTP {StatusCode})", ex.StatusCode);
             return true;
-        }
-        catch (ApiException ex)
-        {
-            _logger.LogError(ex, "[ADMIN SERVICE] API error rejecting organization: {StatusCode}", ex.StatusCode);
-            return false;
         }
         catch (Exception ex)
         {
@@ -171,22 +156,13 @@ public class AdminService : IAdminService
     {
         try
         {
-            // Status 1 = Pending
-            var updateDto = new UpdateOrganizationApprovalStatusDto { ApprovalStatusId = 1 };
-            _logger.LogInformation("[ADMIN SERVICE] Reverting organization {OrganizationId} to pending with status 1", id);
+            var updateDto = new UpdateOrganizationApprovalStatusDto { ApprovalStatusId = ApprovalStatusId.Pending };
             await _apiClient.UpdatestatustypeAsync(id, updateDto);
-            _logger.LogInformation("[ADMIN SERVICE] Organization reverted to pending successfully");
             return true;
         }
-        catch (ApiException ex) when (ex.StatusCode == 204 || ex.StatusCode == 200)
+        catch (ApiException ex) when (ex.StatusCode is 204 or 200)
         {
-            _logger.LogInformation("[ADMIN SERVICE] Organization reverted to pending successfully (HTTP {StatusCode})", ex.StatusCode);
             return true;
-        }
-        catch (ApiException ex)
-        {
-            _logger.LogError(ex, "[ADMIN SERVICE] API error reverting organization: {StatusCode}", ex.StatusCode);
-            return false;
         }
         catch (Exception ex)
         {
@@ -199,15 +175,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            _logger.LogInformation("[ADMIN SERVICE] Fetching event types...");
-            var response = await _apiClient.EventTypeAllAsync();
-            _logger.LogInformation("[ADMIN SERVICE] Received {Count} event types", response?.Count ?? 0);
-            return response ?? new List<EventTypeListDto>();
-        }
-        catch (ApiException ex)
-        {
-            _logger.LogError(ex, "[ADMIN SERVICE] API error fetching event types: {StatusCode}", ex.StatusCode);
-            return new List<EventTypeListDto>();
+            return await _apiClient.EventTypeAllAsync();
         }
         catch (Exception ex)
         {
@@ -220,15 +188,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            _logger.LogInformation("[ADMIN SERVICE] Fetching audience genders...");
-            var response = await _apiClient.AudienceGenderAllAsync();
-            _logger.LogInformation("[ADMIN SERVICE] Received {Count} audience genders", response?.Count ?? 0);
-            return response ?? new List<AudienceGenderListDto>();
-        }
-        catch (ApiException ex)
-        {
-            _logger.LogError(ex, "[ADMIN SERVICE] API error fetching audience genders: {StatusCode}", ex.StatusCode);
-            return new List<AudienceGenderListDto>();
+            return await _apiClient.AudienceGenderAllAsync();
         }
         catch (Exception ex)
         {
@@ -241,15 +201,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            _logger.LogInformation("[ADMIN SERVICE] Fetching audience ages...");
-            var response = await _apiClient.AudienceAgeAllAsync();
-            _logger.LogInformation("[ADMIN SERVICE] Received {Count} audience ages", response?.Count ?? 0);
-            return response ?? new List<AudienceAgeListDto>();
-        }
-        catch (ApiException ex)
-        {
-            _logger.LogError(ex, "[ADMIN SERVICE] API error fetching audience ages: {StatusCode}", ex.StatusCode);
-            return new List<AudienceAgeListDto>();
+            return await _apiClient.AudienceAgeAllAsync();
         }
         catch (Exception ex)
         {
@@ -262,8 +214,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            var response = await _apiClient.EventFormatAllAsync();
-            return response ?? new List<EventFormatListDto>();
+            return await _apiClient.EventFormatAllAsync();
         }
         catch (Exception ex)
         {
@@ -276,8 +227,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            var response = await _apiClient.EventStatusAllAsync();
-            return response ?? new List<EventStatusListDto>();
+            return await _apiClient.EventStatusAllAsync();
         }
         catch (Exception ex)
         {
@@ -290,8 +240,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            var response = await _apiClient.MadhabAllAsync();
-            return response ?? new List<MadhabListDto>();
+            return await _apiClient.MadhabAllAsync();
         }
         catch (Exception ex)
         {
@@ -304,8 +253,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            var response = await _apiClient.VisibilityTypeAllAsync();
-            return response ?? new List<VisibilityTypeListDto>();
+            return await _apiClient.VisibilityTypeAllAsync();
         }
         catch (Exception ex)
         {
@@ -318,8 +266,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            var response = await _apiClient.RegistrationModeAllAsync();
-            return response ?? new List<RegistrationModeListDto>();
+            return await _apiClient.RegistrationModeAllAsync();
         }
         catch (Exception ex)
         {
@@ -332,8 +279,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            var response = await _apiClient.LanguageAllAsync();
-            return response ?? new List<LanguageListDto>();
+            return await _apiClient.LanguageAllAsync();
         }
         catch (Exception ex)
         {
@@ -346,8 +292,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            var response = await _apiClient.OrganizationRoleAllAsync();
-            return response ?? new List<OrganizationRoleListDto>();
+            return await _apiClient.OrganizationRoleAllAsync();
         }
         catch (Exception ex)
         {
@@ -360,8 +305,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            var response = await _apiClient.OrganizationPositionAllAsync();
-            return response ?? new List<OrganizationPositionListDto>();
+            return await _apiClient.OrganizationPositionAllAsync();
         }
         catch (Exception ex)
         {
@@ -374,8 +318,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            var response = await _apiClient.ActorTypeAllAsync();
-            return response ?? new List<ActorTypeListDto>();
+            return await _apiClient.ActorTypeAllAsync();
         }
         catch (Exception ex)
         {
@@ -388,8 +331,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            var response = await _apiClient.ApprovalStatusAllAsync();
-            return response ?? new List<StatusTypeListDto>();
+            return await _apiClient.ApprovalStatusAllAsync();
         }
         catch (Exception ex)
         {
@@ -402,8 +344,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            var response = await _apiClient.FileTypeAllAsync();
-            return response ?? new List<FileTypeListDto>();
+            return await _apiClient.FileTypeAllAsync();
         }
         catch (Exception ex)
         {
@@ -416,8 +357,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            var response = await _apiClient.DidCustodyTypeAllAsync();
-            return response ?? new List<DidCustodyTypeListDto>();
+            return await _apiClient.DidCustodyTypeAllAsync();
         }
         catch (Exception ex)
         {
@@ -426,19 +366,13 @@ public class AdminService : IAdminService
         }
     }
 
+    // Category CRUD
     public async Task<ICollection<CategoryListDto>> GetCategoriesAsync()
     {
         try
         {
-            _logger.LogInformation("[ADMIN SERVICE] Fetching categories...");
-            var response = await _apiClient.CategoryGETAsync(pageNumber: 1, pageSize: 100);
-            _logger.LogInformation("[ADMIN SERVICE] Received {Count} categories from {Total} total", response?.Items?.Count ?? 0, response?.TotalCount ?? 0);
-            return response?.Items ?? new List<CategoryListDto>();
-        }
-        catch (ApiException ex)
-        {
-            _logger.LogError(ex, "[ADMIN SERVICE] API error fetching categories: {StatusCode}", ex.StatusCode);
-            return new List<CategoryListDto>();
+            var response = await _apiClient.GetCategoriesAsync(1, 100);
+            return response?.GetItems() ?? new List<CategoryListDto>();
         }
         catch (Exception ex)
         {
@@ -451,16 +385,11 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.CategoryGET2Async(id);
+            var response = await _apiClient.GetCategoryByIdAsync(id);
+            return response?.ToDto();
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
         {
-            _logger.LogWarning("[ADMIN SERVICE] Category not found: {CategoryId}", id);
-            return null;
-        }
-        catch (ApiException ex)
-        {
-            _logger.LogError(ex, "[ADMIN SERVICE] API error fetching category: {StatusCode}", ex.StatusCode);
             return null;
         }
         catch (Exception ex)
@@ -474,13 +403,8 @@ public class AdminService : IAdminService
     {
         try
         {
-            await _apiClient.CategoryPOSTAsync(category);
+            await _apiClient.CreateCategoryAsync(category);
             return true;
-        }
-        catch (ApiException ex)
-        {
-            _logger.LogError(ex, "[ADMIN SERVICE] API error creating category: {StatusCode}", ex.StatusCode);
-            return false;
         }
         catch (Exception ex)
         {
@@ -493,13 +417,13 @@ public class AdminService : IAdminService
     {
         try
         {
-            await _apiClient.CategoryPUTAsync(category.Id, category);
+            if (!category.Id.HasValue)
+            {
+                _logger.LogWarning("[ADMIN SERVICE] Category ID is null");
+                return false;
+            }
+            await _apiClient.UpdateCategoryAsync(category.Id.Value, category);
             return true;
-        }
-        catch (ApiException ex)
-        {
-            _logger.LogError(ex, "[ADMIN SERVICE] API error updating category: {StatusCode}", ex.StatusCode);
-            return false;
         }
         catch (Exception ex)
         {
@@ -512,13 +436,8 @@ public class AdminService : IAdminService
     {
         try
         {
-            await _apiClient.CategoryDELETEAsync(id);
+            await _apiClient.DeleteCategoryAsync(id);
             return true;
-        }
-        catch (ApiException ex)
-        {
-            _logger.LogError(ex, "[ADMIN SERVICE] API error deleting category: {StatusCode}", ex.StatusCode);
-            return false;
         }
         catch (Exception ex)
         {
@@ -527,19 +446,13 @@ public class AdminService : IAdminService
         }
     }
 
+    // Tag CRUD
     public async Task<ICollection<TagListDto>> GetTagsAsync()
     {
         try
         {
-            _logger.LogInformation("[ADMIN SERVICE] Fetching tags...");
-            var response = await _apiClient.TagGETAsync(pageNumber: 1, pageSize: 100);
-            _logger.LogInformation("[ADMIN SERVICE] Received {Count} tags from {Total} total", response?.Items?.Count ?? 0, response?.TotalCount ?? 0);
-            return response?.Items ?? new List<TagListDto>();
-        }
-        catch (ApiException ex)
-        {
-            _logger.LogError(ex, "[ADMIN SERVICE] API error fetching tags: {StatusCode}", ex.StatusCode);
-            return new List<TagListDto>();
+            var response = await _apiClient.GetTagsAsync(1, 100);
+            return response?.GetItems() ?? new List<TagListDto>();
         }
         catch (Exception ex)
         {
@@ -552,16 +465,11 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.TagGET2Async(id);
+            var response = await _apiClient.GetTagByIdAsync(id);
+            return response?.ToDto();
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
         {
-            _logger.LogWarning("[ADMIN SERVICE] Tag not found: {TagId}", id);
-            return null;
-        }
-        catch (ApiException ex)
-        {
-            _logger.LogError(ex, "[ADMIN SERVICE] API error fetching tag: {StatusCode}", ex.StatusCode);
             return null;
         }
         catch (Exception ex)
@@ -575,13 +483,8 @@ public class AdminService : IAdminService
     {
         try
         {
-            await _apiClient.TagPOSTAsync(tag);
+            await _apiClient.CreateTagAsync(tag);
             return true;
-        }
-        catch (ApiException ex)
-        {
-            _logger.LogError(ex, "[ADMIN SERVICE] API error creating tag: {StatusCode}", ex.StatusCode);
-            return false;
         }
         catch (Exception ex)
         {
@@ -594,13 +497,13 @@ public class AdminService : IAdminService
     {
         try
         {
-            await _apiClient.TagPUTAsync(tag.Id, tag);
+            if (!tag.Id.HasValue)
+            {
+                _logger.LogWarning("[ADMIN SERVICE] Tag ID is null");
+                return false;
+            }
+            await _apiClient.UpdateTagAsync(tag.Id.Value, tag);
             return true;
-        }
-        catch (ApiException ex)
-        {
-            _logger.LogError(ex, "[ADMIN SERVICE] API error updating tag: {StatusCode}", ex.StatusCode);
-            return false;
         }
         catch (Exception ex)
         {
@@ -613,13 +516,8 @@ public class AdminService : IAdminService
     {
         try
         {
-            await _apiClient.TagDELETEAsync(id);
+            await _apiClient.DeleteTagAsync(id);
             return true;
-        }
-        catch (ApiException ex)
-        {
-            _logger.LogError(ex, "[ADMIN SERVICE] API error deleting tag: {StatusCode}", ex.StatusCode);
-            return false;
         }
         catch (Exception ex)
         {
@@ -628,19 +526,13 @@ public class AdminService : IAdminService
         }
     }
 
+    // Location CRUD
     public async Task<ICollection<LocationListDto>> GetLocationsAsync()
     {
         try
         {
-            _logger.LogInformation("[ADMIN SERVICE] Fetching locations...");
-            var response = await _apiClient.LocationGETAsync(pageNumber: 1, pageSize: 100);
-            _logger.LogInformation("[ADMIN SERVICE] Received {Count} locations from {Total} total", response?.Items?.Count ?? 0, response?.TotalCount ?? 0);
-            return response?.Items ?? new List<LocationListDto>();
-        }
-        catch (ApiException ex)
-        {
-            _logger.LogError(ex, "[ADMIN SERVICE] API error fetching locations: {StatusCode}", ex.StatusCode);
-            return new List<LocationListDto>();
+            var response = await _apiClient.GetLocationsAsync(1, 100);
+            return response?.GetItems() ?? new List<LocationListDto>();
         }
         catch (Exception ex)
         {
@@ -653,16 +545,11 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.LocationGET2Async(id);
+            var response = await _apiClient.GetLocationByIdAsync(id);
+            return response?.ToDto();
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
         {
-            _logger.LogWarning("[ADMIN SERVICE] Location not found: {LocationId}", id);
-            return null;
-        }
-        catch (ApiException ex)
-        {
-            _logger.LogError(ex, "[ADMIN SERVICE] API error fetching location: {StatusCode}", ex.StatusCode);
             return null;
         }
         catch (Exception ex)
@@ -676,13 +563,8 @@ public class AdminService : IAdminService
     {
         try
         {
-            await _apiClient.LocationPOSTAsync(location);
+            await _apiClient.CreateLocationAsync(location);
             return true;
-        }
-        catch (ApiException ex)
-        {
-            _logger.LogError(ex, "[ADMIN SERVICE] API error creating location: {StatusCode}", ex.StatusCode);
-            return false;
         }
         catch (Exception ex)
         {
@@ -695,13 +577,13 @@ public class AdminService : IAdminService
     {
         try
         {
-            await _apiClient.LocationPUTAsync(location.Id, location);
+            if (!location.Id.HasValue)
+            {
+                _logger.LogWarning("[ADMIN SERVICE] Location ID is null");
+                return false;
+            }
+            await _apiClient.UpdateLocationAsync(location.Id.Value, location);
             return true;
-        }
-        catch (ApiException ex)
-        {
-            _logger.LogError(ex, "[ADMIN SERVICE] API error updating location: {StatusCode}", ex.StatusCode);
-            return false;
         }
         catch (Exception ex)
         {
@@ -714,13 +596,8 @@ public class AdminService : IAdminService
     {
         try
         {
-            await _apiClient.LocationDELETEAsync(id);
+            await _apiClient.DeleteLocationAsync(id);
             return true;
-        }
-        catch (ApiException ex)
-        {
-            _logger.LogError(ex, "[ADMIN SERVICE] API error deleting location: {StatusCode}", ex.StatusCode);
-            return false;
         }
         catch (Exception ex)
         {

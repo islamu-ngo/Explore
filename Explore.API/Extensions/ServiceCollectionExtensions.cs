@@ -1,6 +1,8 @@
-﻿using Microsoft.OpenApi.Models;
+﻿using Explore.API.OpenApi;
+using Microsoft.OpenApi;
 
 namespace Explore.API.Extensions;
+
 internal static class ServiceCollectionExtensions
 {
     internal static IServiceCollection AddSwaggerGenWithAuth(
@@ -9,6 +11,9 @@ internal static class ServiceCollectionExtensions
         services.AddSwaggerGen(options =>
         {
             options.CustomSchemaIds(id => id.FullName!.Replace('+', '-'));
+
+            // Add schema filter for HAL wrapper types to properly expose inner DTOs
+            options.SchemaFilter<HalSchemaFilter>();
 
             options.AddSecurityDefinition("Keycloak", new OpenApiSecurityScheme
             {
@@ -27,24 +32,17 @@ internal static class ServiceCollectionExtensions
                 }
             });
 
-            var securityRequirement = new OpenApiSecurityRequirement
+            // Swashbuckle 10.x requires a Func<OpenApiDocument, OpenApiSecurityRequirement>
+            options.AddSecurityRequirement(document =>
             {
+                // Get the security scheme reference from the document
+                var securitySchemeRef = new OpenApiSecuritySchemeReference("Keycloak", document);
+
+                return new OpenApiSecurityRequirement
                 {
-                    new OpenApiSecurityScheme
-                    {
-                        Reference = new OpenApiReference
-                        {
-                            Id = "Keycloak",
-                            Type = ReferenceType.SecurityScheme
-                        },
-                        In = ParameterLocation.Header,
-                        Name = "Bearer",
-                        Scheme = "Bearer"
-                    },
-                    []
-                }
-            };
-            options.AddSecurityRequirement(securityRequirement);
+                    { securitySchemeRef, new List<string>() }
+                };
+            });
         });
 
         return services;

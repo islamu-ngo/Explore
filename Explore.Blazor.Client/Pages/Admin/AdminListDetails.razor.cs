@@ -17,19 +17,24 @@ public partial class AdminListDetails
 
     private Guid OrganizationId { get; set; }
 
-    private OrganizationDto? organization;
+    private OrganizationDto? Organization;
+
     private bool _isLoading = true;
     private string? _errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
-        // Get route parameter from Blazouter
         var orgIdStr = RouterState.GetParam("organizationId");
         if (Guid.TryParse(orgIdStr, out var id))
         {
             OrganizationId = id;
+            await LoadOrganizationDetails();
         }
-        await LoadOrganizationDetails();
+        else
+        {
+            _errorMessage = "Invalid Organization ID provided.";
+            _isLoading = false;
+        }
     }
 
     private async Task LoadOrganizationDetails()
@@ -39,17 +44,12 @@ public partial class AdminListDetails
 
         try
         {
-            Logger.LogDebug("Loading organization {OrganizationId}", OrganizationId);
-            organization = await AdminService.GetOrganizationDetailsAsync(OrganizationId);
+            Organization = await AdminService.GetOrganizationDetailsAsync(OrganizationId);
 
-            if (organization == null)
+            if (Organization == null)
             {
                 _errorMessage = "Organization not found";
                 Snackbar.Add(_errorMessage, Severity.Warning);
-            }
-            else
-            {
-                Logger.LogDebug("Loaded organization: {OrganizationName}", organization.FullName);
             }
         }
         catch (Exception ex)
@@ -69,16 +69,13 @@ public partial class AdminListDetails
         NavigationManager.NavigateTo("/admin");
     }
 
-    private static string GetStatusName(int statusTypeId)
+    private static string GetStatusName(int statusTypeId) => statusTypeId switch
     {
-        return statusTypeId switch
-        {
-            1 => "Pending",
-            2 => "Approved",
-            3 => "Rejected",
-            _ => "Unknown"
-        };
-    }
+        1 => "Pending",
+        2 => "Approved",
+        3 => "Rejected",
+        _ => "Unknown"
+    };
 
     private Color StatusColor(int statusTypeId) => statusTypeId switch
     {

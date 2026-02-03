@@ -1,0 +1,177 @@
+name: explore-platform
+
+x-keycloak-env: &keycloak-env
+  KEYCLOAK_REALM: ${KEYCLOAK_REALM:-explore}
+  KEYCLOAK_PUBLIC_URL: ${KEYCLOAK_PUBLIC_URL:-http://keycloak.localhost:8080}
+  KEYCLOAK_INTERNAL_URL: http://keycloak:8080
+  Keycloak__RequireHttpsMetadata: ${KEYCLOAK_REQUIRE_HTTPS_METADATA:-false}
+
+# Secret management configuration (optional - uses env vars if not set)
+# Set SECRET_PROVIDER=infisical to enable Infisical, or leave as "none" for env vars only
+x-secrets-env: &secrets-env
+  SECRET_PROVIDER: ${SECRET_PROVIDER:-none}
+  Infisical__Url: ${INFISICAL_URL:-https://app.infisical.com}
+  Infisical__ProjectId: ${INFISICAL_PROJECT_ID:-}
+  Infisical__ClientId: ${INFISICAL_CLIENT_ID:-}
+  Infisical__ClientSecret: ${INFISICAL_CLIENT_SECRET:-}
+  Infisical__Environment: ${INFISICAL_ENV:-dev}
+
+x-postgres-env: &postgres-env
+  POSTGRES_USER: ${POSTGRES_USER:-explore}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-explore}
+  POSTGRES_DB: ${POSTGRES_DB:-explore}
+
+x-s3-env: &s3-env
+  S3Settings__Endpoint: ${S3_INTERNAL_ENDPOINT:-http://minio:9000}
+  S3Settings__PublicEndpoint: ${S3_PUBLIC_ENDPOINT:-http://minio.localhost:9000}
+  S3Settings__Region: ${S3_REGION:-us-east-1}
+  S3Settings__BucketName: ${S3_BUCKET_NAME:-explore}
+  S3Settings__AccessKeyId: ${S3_ACCESS_KEY_ID:-minioadmin}
+  S3Settings__SecretAccessKey: ${S3_SECRET_ACCESS_KEY:-minioadmin}
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      <<: *postgres-env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      retries: 5
+
+  keycloak-db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak
+      POSTGRES_DB: keycloak
+    volumes:
+      - keycloak_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 5s
+      retries: 5
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.1.2
+    restart: unless-stopped
+    command: ["start-dev", "--import-realm", "--http-port=8080"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak
+      KC_HOSTNAME: ${KEYCLOAK_PUBLIC_URL:-http://keycloak.localhost:8080}
+      KC_HOSTNAME_URL: ${KEYCLOAK_PUBLIC_URL:-http://keycloak.localhost:8080}
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
+      KC_HTTP_ENABLED: "true"
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+    volumes:
+      - ./docker/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/8080'"]
+      interval: 10s
+      timeout: 10s
+      retries: 15 # Give it more attempts
+      start_period: 60s # Give it a full minute to do the heavy lifting
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+
+  explore-api:
+    build:
+      context: .
+      dockerfile: Explore.API/Dockerfile
+    environment:
+      <<: [*keycloak-env, *s3-env, *secrets-env]
+      ASPNETCORE_URLS: http://+:8080
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: Host=postgres;Database=${POSTGRES_DB:-explore};Username=${POSTGRES_USER:-explore};Password=${POSTGRES_PASSWORD:-explore}
+      Keycloak__MetadataAddress: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}/realms/${KEYCLOAK_REALM:-explore}/.well-known/openid-configuration
+      Keycloak__Authority: ${KEYCLOAK_PUBLIC_URL:-http://keycloak.localhost:8080}/realms/${KEYCLOAK_REALM:-explore}
+    ports:
+      - "7039:8080"
+    extra_hosts:
+      - "keycloak.localhost:host-gateway"
+      - "minio.localhost:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+        required: false # API starts even if MinIO is not in the active profile
+
+  explore-blazor:
+    build:
+      context: .
+      dockerfile: Explore.Blazor/Dockerfile
+    environment:
+      <<: [*keycloak-env, *secrets-env]
+      ASPNETCORE_URLS: http://+:8080
+      ASPNETCORE_ENVIRONMENT: Production
+      EXPLORE_API_BASE_URL: ${EXPLORE_API_BASE_URL:-http://explore-api:8080/}
+      Keycloak__Authority: ${KEYCLOAK_PUBLIC_URL:-http://keycloak.localhost:8080}/realms/${KEYCLOAK_REALM:-explore}
+      Keycloak__MetadataAddress: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}/realms/${KEYCLOAK_REALM:-explore}/.well-known/openid-configuration
+      Keycloak__Realm: ${KEYCLOAK_REALM:-explore}
+      Keycloak__ClientId: explore-blazor-server
+      Keycloak__ClientSecret: ${KEYCLOAK_BLAZOR_CLIENT_SECRET:-explore-blazor-server-secret}
+    ports:
+      - "7002:8080"
+    extra_hosts:
+      - "keycloak.localhost:host-gateway"
+      - "minio.localhost:host-gateway"
+    depends_on:
+      explore-api:
+        condition: service_started
+      keycloak:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+        required: false
+
+  minio:
+    image: ghcr.io/coollabsio/minio:latest
+    profiles: ["storage"] # Opt-in only
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:-minioadmin}
+      MINIO_SERVER_URL: ${S3_PUBLIC_ENDPOINT:-http://minio.localhost:9000}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9005:9000" # CHANGED TO 9005 TO AVOID CONFLICT
+      - "9006:9001"
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      retries: 5
+
+  minio-init:
+    image: minio/mc:latest
+    profiles: ["storage"] # Only runs if storage is enabled
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${S3_ACCESS_KEY_ID:-minioadmin} ${S3_SECRET_ACCESS_KEY:-minioadmin};
+      mc mb --ignore-existing local/${S3_BUCKET_NAME:-explore};
+      mc anonymous set public local/${S3_BUCKET_NAME:-explore};
+      "
+
+volumes:
+  postgres_data:
+  keycloak_data:
+  minio_data:

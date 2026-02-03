@@ -1,0 +1,204 @@
+namespace Explore.API.Hateoas.Policies;
+
+using System.Security.Claims;
+using Explore.Application.Contracts.Hateoas;
+using Explore.Application.DTOs.Event;
+using Explore.Application.Hateoas;
+
+/// <summary>
+/// Link policy for EventDto (detail view).
+/// Generates links based on event state and user authorization.
+/// </summary>
+public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
+{
+    /// <inheritdoc />
+    public IEnumerable<LinkDefinition> GetLinks(EventDto dto, ClaimsPrincipal? user)
+    {
+        // Self link - always included
+        yield return new LinkDefinition(
+            LinkRelations.Self,
+            RouteNames.GetEventById,
+            new { id = dto.Id },
+            "GET",
+            "Event details");
+
+        // Collection link
+        yield return new LinkDefinition(
+            LinkRelations.Collection,
+            RouteNames.GetEvents,
+            null,
+            "GET",
+            "All events");
+
+        // Sessions link - event has sessions
+        yield return new LinkDefinition(
+            "sessions",
+            RouteNames.GetEventSessions,
+            new { eventId = dto.Id },
+            "GET",
+            $"Event sessions ({dto.SessionCount ?? 0})");
+
+        // Categories link
+        yield return new LinkDefinition(
+            "categories",
+            RouteNames.GetEventCategories,
+            new { eventId = dto.Id },
+            "GET",
+            "Event categories");
+
+        // Tags link
+        yield return new LinkDefinition(
+            "tags",
+            RouteNames.GetEventTags,
+            new { eventId = dto.Id },
+            "GET",
+            "Event tags");
+
+        // Aspect links - conditionally included based on available aspects
+        if (dto.AvailableAspects?.Contains("Islamic") == true || dto.IslamicAspect != null)
+        {
+            yield return new LinkDefinition(
+                "islamic-aspect",
+                RouteNames.GetEventIslamicAspect,
+                new { id = dto.Id },
+                "GET",
+                "Islamic aspect details");
+        }
+        else
+        {
+            // Even if aspect doesn't exist, provide link to create it
+            yield return new LinkDefinition(
+                "islamic-aspect:create",
+                RouteNames.UpsertEventIslamicAspect,
+                new { id = dto.Id },
+                "PUT",
+                "Add Islamic aspect",
+                RequiresAuth: true);
+        }
+
+        if (dto.AvailableAspects?.Contains("Tech") == true || dto.TechAspect != null)
+        {
+            yield return new LinkDefinition(
+                "tech-aspect",
+                RouteNames.GetEventTechAspect,
+                new { id = dto.Id },
+                "GET",
+                "Tech aspect details");
+        }
+        else
+        {
+            // Even if aspect doesn't exist, provide link to create it
+            yield return new LinkDefinition(
+                "tech-aspect:create",
+                RouteNames.UpsertEventTechAspect,
+                new { id = dto.Id },
+                "PUT",
+                "Add Tech aspect",
+                RequiresAuth: true);
+        }
+
+        // Actor link (owner)
+        yield return new LinkDefinition(
+            "actor",
+            RouteNames.GetActorById,
+            new { id = dto.ActorId },
+            "GET",
+            dto.ActorDisplayName);
+
+        // Edit link - requires authentication
+        yield return new LinkDefinition(
+            LinkRelations.Edit,
+            RouteNames.UpdateEvent,
+            new { id = dto.Id },
+            "PUT",
+            "Update event",
+            RequiresAuth: true);
+
+        // Delete link - requires authentication
+        yield return new LinkDefinition(
+            "delete",
+            RouteNames.DeleteEvent,
+            new { id = dto.Id },
+            "DELETE",
+            "Delete event",
+            RequiresAuth: true);
+
+        // Registration link - if registration is required
+        if (dto.IsRegistrationRequired)
+        {
+            if (!string.IsNullOrEmpty(dto.ExternalRegistrationUrl))
+            {
+                // External registration - we don't generate a link, but the URL is in the DTO
+            }
+            else
+            {
+                yield return new LinkDefinition(
+                    "register",
+                    RouteNames.CreateRegistration,
+                    new { eventId = dto.Id },
+                    "POST",
+                    "Register for event",
+                    RequiresAuth: true);
+            }
+        }
+    }
+}
+
+/// <summary>
+/// Link policy for EventListDto (collection items).
+/// </summary>
+public sealed class EventCollectionLinkPolicy : ICollectionLinkPolicy<EventListDto>
+{
+    /// <inheritdoc />
+    public IEnumerable<LinkDefinition> GetItemLinks(EventListDto dto, ClaimsPrincipal? user)
+    {
+        // Self link for item
+        yield return new LinkDefinition(
+            LinkRelations.Self,
+            RouteNames.GetEventById,
+            new { id = dto.Id },
+            "GET",
+            dto.Title);
+
+        // Sessions link
+        if (dto.SessionCount.HasValue && dto.SessionCount.Value > 0)
+        {
+            yield return new LinkDefinition(
+                "sessions",
+                RouteNames.GetEventSessions,
+                new { eventId = dto.Id },
+                "GET",
+                $"{dto.SessionCount} sessions");
+        }
+
+        // Actor link
+        yield return new LinkDefinition(
+            "actor",
+            RouteNames.GetActorById,
+            new { id = dto.ActorId },
+            "GET",
+            dto.ActorDisplayName);
+    }
+
+    /// <inheritdoc />
+    public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
+    {
+        // Create link - requires authentication
+        yield return new LinkDefinition(
+            "create",
+            RouteNames.CreateEvent,
+            null,
+            "POST",
+            "Create new event",
+            RequiresAuth: true);
+
+        // My events link - requires authentication
+        yield return new LinkDefinition(
+            "my-events",
+            RouteNames.GetMyEvents,
+            null,
+            "GET",
+            "My events",
+            RequiresAuth: true);
+    }
+}

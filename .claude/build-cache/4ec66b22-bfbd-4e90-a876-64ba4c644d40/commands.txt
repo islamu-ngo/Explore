@@ -1,6 +1,0 @@
-Application:build:dotnet build Explore.Application --nologo --no-restore
-Frontend:build:dotnet build Explore.Blazor --nologo --no-restore
-Shared:build:dotnet build --nologo
-Shared:build:dotnet build --nologo
-Shared:build:dotnet build --nologo
-Shared:build:dotnet build --nologo

@@ -2,6 +2,7 @@ using Blazouter.Services;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Components.Event;
 using Explore.Blazor.Client.Services;
+using Explore.Blazor.Client.Services.Contracts;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
 using MudBlazor;
@@ -22,7 +23,8 @@ public partial class EventDetail : ComponentBase
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
     [Inject] private IUserService UserService { get; set; } = default!;
     [Inject] private Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
-    
+    [Inject] private IEventAspectService EventAspectService { get; set; } = default!;
+
     // Changed from private to protected to be accessible by Razor view
     [Inject] protected ILogger<EventDetail> Logger { get; set; } = default!;
 
@@ -35,8 +37,13 @@ public partial class EventDetail : ComponentBase
     private bool _isUserRegistered;
     private bool _isCheckingRegistration = true;
     private bool _canDelete = false;
+    private bool _canEdit = false;
     private bool _isCheckingAuth = true;
     private string? _errorMessage;
+
+    // Event Aspects
+    private EventIslamicAspectDto? _islamicAspect;
+    private EventTechAspectDto? _techAspect;
 
     /// <summary>
     /// Initializes the component and loads event data.
@@ -75,10 +82,11 @@ public partial class EventDetail : ComponentBase
                 _primarySession = _eventSessions?.FirstOrDefault();
                 Logger.LogInformation("Loaded {SessionCount} sessions", _eventSessions?.Count ?? 0);
 
-                // Check registration status and authorization in parallel
+                // Check registration status, authorization, and load aspects in parallel
                 var registrationTask = CheckRegistrationStatusAsync();
                 var authTask = CheckDeleteAuthorizationAsync();
-                await Task.WhenAll(registrationTask, authTask);
+                var aspectsTask = LoadEventAspectsAsync();
+                await Task.WhenAll(registrationTask, authTask, aspectsTask);
             }
         }
         catch (Exception ex)
@@ -94,6 +102,30 @@ public partial class EventDetail : ComponentBase
         }
     }
 
+    /// <summary>
+    /// Loads event aspects (Islamic and Tech) for the current event.
+    /// </summary>
+    private async Task LoadEventAspectsAsync()
+    {
+        try
+        {
+            var islamicTask = EventAspectService.GetIslamicAspectAsync(EventId);
+            var techTask = EventAspectService.GetTechAspectAsync(EventId);
+
+            await Task.WhenAll(islamicTask, techTask);
+
+            _islamicAspect = await islamicTask;
+            _techAspect = await techTask;
+
+            Logger.LogDebug("Loaded aspects for event {EventId}: Islamic={HasIslamic}, Tech={HasTech}",
+                EventId, _islamicAspect != null, _techAspect != null);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading event aspects for event {EventId}", EventId);
+        }
+    }
+
     private async Task CheckRegistrationStatusAsync()
     {
         try
@@ -102,9 +134,9 @@ public partial class EventDetail : ComponentBase
             if (authState.User.Identity?.IsAuthenticated == true)
             {
                 var user = await UserService.GetCurrentUserAsync();
-                if (user != null)
+                if (user?.Id != null)
                 {
-                    var registrations = await EventService.GetRegistrationsByUserAsync(user.Id);
+                    var registrations = await EventService.GetRegistrationsByUserAsync(user.Id.Value);
                     // Check if any registration belongs to any session of this event
                     if (_eventSessions != null && registrations != null)
                     {
@@ -121,7 +153,7 @@ public partial class EventDetail : ComponentBase
     }
 
     /// <summary>
-    /// Checks if the current user is authorized to delete this event.
+    /// Checks if the current user is authorized to edit/delete this event.
     /// </summary>
     private async Task CheckDeleteAuthorizationAsync()
     {
@@ -131,18 +163,22 @@ public partial class EventDetail : ComponentBase
             if (authState.User.Identity?.IsAuthenticated == true)
             {
                 _canDelete = await EventService.CanDeleteEventAsync(EventId);
-                Logger.LogDebug("Delete authorization check for event {EventId}: {CanDelete}", EventId, _canDelete);
+                // Edit permissions follow the same rules as delete (owner or admin)
+                _canEdit = _canDelete;
+                Logger.LogDebug("Authorization check for event {EventId}: CanDelete={CanDelete}, CanEdit={CanEdit}", EventId, _canDelete, _canEdit);
             }
             else
             {
                 _canDelete = false;
-                Logger.LogDebug("User not authenticated, cannot delete event {EventId}", EventId);
+                _canEdit = false;
+                Logger.LogDebug("User not authenticated, cannot edit/delete event {EventId}", EventId);
             }
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error checking delete authorization for event {EventId}", EventId);
+            Logger.LogError(ex, "Error checking authorization for event {EventId}", EventId);
             _canDelete = false;
+            _canEdit = false;
         }
     }
 
@@ -160,10 +196,10 @@ public partial class EventDetail : ComponentBase
     private string GetDateDisplay()
     {
         // Use session data if available, otherwise fall back to event dates
-        if (_primarySession != null)
+        if (_primarySession != null && _primarySession.StartTime.HasValue && _primarySession.EndTime.HasValue)
         {
-            var start = _primarySession.StartTime.LocalDateTime;
-            var end = _primarySession.EndTime.LocalDateTime;
+            var start = _primarySession.StartTime.Value.LocalDateTime;
+            var end = _primarySession.EndTime.Value.LocalDateTime;
 
             if (start.Date == end.Date)
             {
@@ -275,7 +311,7 @@ public partial class EventDetail : ComponentBase
     private async Task OpenRegistrationDialog()
     {
         if (_eventDetails == null) return;
-        
+
         // Ensure sessions are loaded
         if (_eventSessions == null || !_eventSessions.Any())
         {
@@ -327,7 +363,7 @@ public partial class EventDetail : ComponentBase
                         successCount++;
                     }
                 }
-                
+
                 if (successCount > 0)
                 {
                     // Refresh status to update UI immediately
@@ -369,7 +405,7 @@ public partial class EventDetail : ComponentBase
         {
             Logger.LogInformation("Registration completed for session {SessionId}", session.Id);
             Snackbar.Add($"Successfully registered for {session.Title}!", Severity.Success);
-            
+
             // For single session flow, we update status here too
             if (_eventSessions != null && _eventSessions.Count == 1)
             {
@@ -465,4 +501,206 @@ public partial class EventDetail : ComponentBase
             Navigation.NavigateTo("/myevents");
         }
     }
+
+    #region Event Aspects Dialog Methods
+
+    /// <summary>
+    /// Opens the dialog to add a new Islamic aspect to the event.
+    /// </summary>
+    private async Task OpenAddIslamicAspectDialog()
+    {
+        await OpenIslamicAspectDialogAsync(existingAspect: null);
+    }
+
+    /// <summary>
+    /// Opens the dialog to edit the existing Islamic aspect.
+    /// </summary>
+    private async Task OpenEditIslamicAspectDialog()
+    {
+        await OpenIslamicAspectDialogAsync(_islamicAspect);
+    }
+
+    /// <summary>
+    /// Opens the Islamic aspect dialog for add or edit operations.
+    /// </summary>
+    private async Task OpenIslamicAspectDialogAsync(EventIslamicAspectDto? existingAspect)
+    {
+        var parameters = new DialogParameters
+        {
+            { "EventId", EventId },
+            { "ExistingAspect", existingAspect }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<IslamicAspectEditDialog>(
+            existingAspect == null ? "Add Islamic Characteristics" : "Edit Islamic Characteristics",
+            parameters,
+            options);
+
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+        {
+            // Reload the aspect to reflect changes
+            await ReloadIslamicAspectAsync();
+        }
+    }
+
+    /// <summary>
+    /// Opens the dialog to add a new Tech aspect to the event.
+    /// </summary>
+    private async Task OpenAddTechAspectDialog()
+    {
+        await OpenTechAspectDialogAsync(existingAspect: null);
+    }
+
+    /// <summary>
+    /// Opens the dialog to edit the existing Tech aspect.
+    /// </summary>
+    private async Task OpenEditTechAspectDialog()
+    {
+        await OpenTechAspectDialogAsync(_techAspect);
+    }
+
+    /// <summary>
+    /// Opens the Tech aspect dialog for add or edit operations.
+    /// </summary>
+    private async Task OpenTechAspectDialogAsync(EventTechAspectDto? existingAspect)
+    {
+        var parameters = new DialogParameters
+        {
+            { "EventId", EventId },
+            { "ExistingAspect", existingAspect }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<TechAspectEditDialog>(
+            existingAspect == null ? "Add Tech Characteristics" : "Edit Tech Characteristics",
+            parameters,
+            options);
+
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+        {
+            // Reload the aspect to reflect changes
+            await ReloadTechAspectAsync();
+        }
+    }
+
+    /// <summary>
+    /// Shows confirmation dialog and deletes the Islamic aspect if confirmed.
+    /// </summary>
+    private async Task ConfirmDeleteIslamicAspect()
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Delete Islamic Characteristics",
+            "Are you sure you want to remove the Islamic characteristics from this event? This action cannot be undone.",
+            yesText: "Delete",
+            cancelText: "Cancel");
+
+        if (confirmed == true)
+        {
+            try
+            {
+                var success = await EventAspectService.DeleteIslamicAspectAsync(EventId);
+                if (success)
+                {
+                    _islamicAspect = null;
+                    Snackbar.Add("Islamic characteristics removed", Severity.Success);
+                    StateHasChanged();
+                }
+                else
+                {
+                    Snackbar.Add("Failed to remove Islamic characteristics", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error deleting Islamic aspect for event {EventId}", EventId);
+                Snackbar.Add("An error occurred while removing Islamic characteristics", Severity.Error);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Shows confirmation dialog and deletes the Tech aspect if confirmed.
+    /// </summary>
+    private async Task ConfirmDeleteTechAspect()
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Delete Tech Characteristics",
+            "Are you sure you want to remove the Tech characteristics from this event? This action cannot be undone.",
+            yesText: "Delete",
+            cancelText: "Cancel");
+
+        if (confirmed == true)
+        {
+            try
+            {
+                var success = await EventAspectService.DeleteTechAspectAsync(EventId);
+                if (success)
+                {
+                    _techAspect = null;
+                    Snackbar.Add("Tech characteristics removed", Severity.Success);
+                    StateHasChanged();
+                }
+                else
+                {
+                    Snackbar.Add("Failed to remove Tech characteristics", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error deleting Tech aspect for event {EventId}", EventId);
+                Snackbar.Add("An error occurred while removing Tech characteristics", Severity.Error);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Reloads only the Islamic aspect after add/edit operations.
+    /// </summary>
+    private async Task ReloadIslamicAspectAsync()
+    {
+        try
+        {
+            _islamicAspect = await EventAspectService.GetIslamicAspectAsync(EventId);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error reloading Islamic aspect for event {EventId}", EventId);
+        }
+    }
+
+    /// <summary>
+    /// Reloads only the Tech aspect after add/edit operations.
+    /// </summary>
+    private async Task ReloadTechAspectAsync()
+    {
+        try
+        {
+            _techAspect = await EventAspectService.GetTechAspectAsync(EventId);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error reloading Tech aspect for event {EventId}", EventId);
+        }
+    }
+
+    #endregion
 }

@@ -7,7 +7,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <UserSecretsId>cf2496b7-15ad-4167-8905-1b67f7d20442</UserSecretsId>
+    <UserSecretsId>event-shared-secrets</UserSecretsId>
 	<HotReloadAutoRestart>true</HotReloadAutoRestart>
   </PropertyGroup>
 
@@ -17,7 +17,7 @@
     <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="9.5.1" />
     <PackageReference Include="Aspire.Hosting.RabbitMQ" Version="9.5.1" />
     <PackageReference Include="Aspire.Hosting.Redis" Version="9.5.1" />
-    <PackageReference Include="Infisical.Sdk" Version="3.0.3" />
+    <!-- Infisical.Sdk removed - each project loads its own secrets via AddSecretManagement() -->
     <PackageReference Include="SonarAnalyzer.CSharp" Version="10.15.0.120848">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

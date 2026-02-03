@@ -35,7 +35,10 @@ public partial class MyReviews
             var user = await UserService.GetCurrentUserAsync();
             if (user != null)
             {
-                _reviews = (await OrganizationReviewService.GetReviewsByUserId(user.Id)).ToList();
+                if (user.Id.HasValue)
+                {
+                    _reviews = (await OrganizationReviewService.GetReviewsByUserId(user.Id.Value)).ToList();
+                }
             }
         }
         catch (Exception ex)

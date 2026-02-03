@@ -1,0 +1,156 @@
+@* ABOUTME: Component displaying Islamic aspect information for an event. *@
+@* Shows Madhab, prayer timing, gender mode, Quran recitation, and language. *@
+
+@using Explore.Blazor.Client.Clients
+@using MudBlazor
+
+<MudPaper Elevation="0" Class="islamic-aspect-card pa-4">
+    <div class="islamic-aspect-card__header">
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.Mosque" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Islamic Characteristics</MudText>
+        </div>
+        @if (ShowActions)
+        {
+            <div class="islamic-aspect-card__actions">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                               Size="Size.Small"
+                               Color="Color.Primary"
+                               OnClick="@(() => OnEdit.InvokeAsync())"
+                               Title="Edit Islamic Aspect" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                               Size="Size.Small"
+                               Color="Color.Error"
+                               OnClick="@(() => OnDelete.InvokeAsync())"
+                               Title="Remove Islamic Aspect" />
+            </div>
+        }
+    </div>
+
+    <MudDivider Class="my-3" />
+
+    <MudGrid Spacing="2">
+        @if (Aspect?.MadhabId.HasValue == true)
+        {
+            <MudItem xs="12" sm="6">
+                <div class="islamic-aspect-card__field">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Madhab (School of Jurisprudence)</MudText>
+                    <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Outlined">
+                        @(Aspect.MadhabName ?? "Not specified")
+                    </MudChip>
+                </div>
+            </MudItem>
+        }
+
+        <MudItem xs="12" sm="6">
+            <div class="islamic-aspect-card__field">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Gender Mode</MudText>
+                <MudChip T="string" Color="@GetGenderModeColor()" Size="Size.Small" Variant="Variant.Filled">
+                    @GetGenderModeDisplay()
+                </MudChip>
+            </div>
+        </MudItem>
+
+        @if (Aspect?.ReferencePrayer.HasValue == true)
+        {
+            <MudItem xs="12" sm="6">
+                <div class="islamic-aspect-card__field">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Prayer Time Reference</MudText>
+                    <MudText Typo="Typo.body2">
+                        @GetPrayerTimeDisplay()
+                    </MudText>
+                </div>
+            </MudItem>
+        }
+
+        @if (Aspect?.IncludesQuranRecitation == true)
+        {
+            <MudItem xs="12" sm="6">
+                <div class="islamic-aspect-card__field">
+                    <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Text"
+                             Icon="@Icons.Material.Filled.MenuBook">
+                        Includes Quran Recitation
+                    </MudChip>
+                </div>
+            </MudItem>
+        }
+
+        @if (Aspect?.PrimaryLanguageId.HasValue == true)
+        {
+            <MudItem xs="12" sm="6">
+                <div class="islamic-aspect-card__field">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Primary Language</MudText>
+                    <MudText Typo="Typo.body2">@(Aspect.PrimaryLanguageName ?? "Not specified")</MudText>
+                </div>
+            </MudItem>
+        }
+    </MudGrid>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public EventIslamicAspectDto? Aspect { get; set; }
+
+    [Parameter]
+    public Guid EventId { get; set; }
+
+    [Parameter]
+    public bool ShowActions { get; set; } = true;
+
+    [Parameter]
+    public EventCallback OnEdit { get; set; }
+
+    [Parameter]
+    public EventCallback OnDelete { get; set; }
+
+    private string GetGenderModeDisplay()
+    {
+        return Aspect?.GenderMode switch
+        {
+            (int)GenderSegregationMode.Mixed => "Mixed",
+            (int)GenderSegregationMode.MenOnly => "Men Only",
+            (int)GenderSegregationMode.WomenOnly => "Women Only",
+            (int)GenderSegregationMode.Segregated => "Segregated",
+            (int)GenderSegregationMode.Family => "Family",
+            _ => "Mixed"
+        };
+    }
+
+    private Color GetGenderModeColor()
+    {
+        return Aspect?.GenderMode switch
+        {
+            (int)GenderSegregationMode.MenOnly => Color.Info,
+            (int)GenderSegregationMode.WomenOnly => Color.Secondary,
+            (int)GenderSegregationMode.Segregated => Color.Warning,
+            (int)GenderSegregationMode.Family => Color.Success,
+            _ => Color.Default
+        };
+    }
+
+    private string GetPrayerTimeDisplay()
+    {
+        if (Aspect?.ReferencePrayer == null) return string.Empty;
+
+        var prayerName = Aspect.ReferencePrayer switch
+        {
+            (int)PrayerTime.Fajr => "Fajr",
+            (int)PrayerTime.Sunrise => "Sunrise",
+            (int)PrayerTime.Dhuhr => "Dhuhr",
+            (int)PrayerTime.Asr => "Asr",
+            (int)PrayerTime.Maghrib => "Maghrib",
+            (int)PrayerTime.Isha => "Isha",
+            _ => "Unknown"
+        };
+
+        if (Aspect.PrayerTimeOffset.HasValue && Aspect.PrayerTimeOffset.Value != 0)
+        {
+            var offsetText = Aspect.PrayerTimeOffset.Value > 0
+                ? $"+{Aspect.PrayerTimeOffset.Value} min"
+                : $"{Aspect.PrayerTimeOffset.Value} min";
+            return $"{prayerName} ({offsetText})";
+        }
+
+        return prayerName;
+    }
+}

@@ -1,134 +1,197 @@
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.Features.EventSessions.Requests.Commands;
 using Explore.Application.Features.EventSessions.Requests.Queries;
+using Explore.Application.Hateoas;
 using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Explore.API.Controllers
+namespace Explore.API.Controllers;
+
+/// <summary>
+/// Event Session management API endpoints.
+/// All responses include HATEOAS links by default.
+/// Send "Prefer: return=minimal" header to strip links.
+/// </summary>
+[Route("api/v1/[controller]")]
+[ApiController]
+[Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
+public class EventSessionController : ControllerBase
 {
-    [Route("api/v1/[controller]")]
-    [ApiController]
-    public class EventSessionController : ControllerBase
+    private readonly IMediator _mediator;
+    private readonly ILogger<EventSessionController> _logger;
+    private readonly IResourceAssembler<EventSessionDto, EventSessionListDto> _resourceAssembler;
+
+    public EventSessionController(
+        IMediator mediator,
+        ILogger<EventSessionController> logger,
+        IResourceAssembler<EventSessionDto, EventSessionListDto> resourceAssembler)
     {
-        private readonly IMediator _mediator;
-        private readonly ILogger<EventSessionController> _logger;
+        _mediator = mediator;
+        _logger = logger;
+        _resourceAssembler = resourceAssembler;
+    }
 
-        public EventSessionController(IMediator mediator, ILogger<EventSessionController> logger)
+    /// <summary>
+    /// Get all event sessions with pagination.
+    /// </summary>
+    [HttpGet(Name = RouteNames.GetEventSessions_List)]
+    [EndpointSummary("Get all Event Sessions")]
+    [EndpointDescription("Get a paginated list of all event sessions. " +
+        "Default page size is 20, max is 100. " +
+        "Response includes HATEOAS navigation links. " +
+        "Send 'Prefer: return=minimal' header to strip links.")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(HalCollectionResource<EventSessionListDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<HalCollectionResource<EventSessionListDto>>> GetAll(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        var result = await _mediator.Send(new GetEventSessionListRequest
         {
-            _mediator = mediator;
-            _logger = logger;
+            PageNumber = pageNumber,
+            PageSize = pageSize
+        });
+
+        var halResource = _resourceAssembler.ToCollectionResource(
+            result,
+            RouteNames.GetEventSessions_List,
+            additionalRouteValues: null,
+            HttpContext);
+
+        return Ok(halResource);
+    }
+
+    /// <summary>
+    /// Get event session details by ID.
+    /// </summary>
+    [HttpGet("{id:guid}", Name = RouteNames.GetEventSessionById)]
+    [EndpointSummary("Get Event Session Details")]
+    [EndpointDescription("Get detailed information about a specific event session. " +
+        "Response includes links to related resources (event, speakers, agenda).")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(HalResource<EventSessionDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<HalResource<EventSessionDto>>> GetById(Guid id)
+    {
+        var session = await _mediator.Send(new GetEventSessionDetailsRequest { Id = id });
+
+        if (session is null)
+        {
+            return NotFound(new { error = "Event session not found" });
         }
 
-        // GET: api/v1/eventsession
-        [HttpGet]
-        [EndpointSummary("Get all Event Sessions")]
-        [EndpointDescription("Get a paginated list of all event sessions. Default page size is 20, max is 100.")]
-        [AllowAnonymous]
-        public async Task<ActionResult<PaginatedResult<EventSessionListDto>>> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
+        var halResource = _resourceAssembler.ToResource(session, HttpContext);
+        return Ok(halResource);
+    }
+
+    /// <summary>
+    /// Get sessions for a specific event.
+    /// </summary>
+    [HttpGet("by-event/{eventId:guid}", Name = RouteNames.GetEventSessions)]
+    [EndpointSummary("Get Sessions by Event")]
+    [EndpointDescription("Get all sessions for a specific event.")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(HalCollectionResource<EventSessionListDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<HalCollectionResource<EventSessionListDto>>> GetByEvent(Guid eventId)
+    {
+        var sessions = await _mediator.Send(new GetSessionsByEventRequest { EventId = eventId });
+
+        var halResource = _resourceAssembler.ToCollectionResource(
+            sessions,
+            RouteNames.GetEventSessions,
+            HttpContext);
+
+        return Ok(halResource);
+    }
+
+    /// <summary>
+    /// Create a new event session.
+    /// </summary>
+    [HttpPost(Name = RouteNames.CreateEventSession)]
+    [EndpointSummary("Create Event Session")]
+    [EndpointDescription("Create a new event session. Must be associated with an existing event.")]
+    [Authorize]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventSessionDto session)
+    {
+        var command = new CreateEventSessionCommand { EventSessionDto = session };
+        var response = await _mediator.Send(command);
+
+        if (!response.Success)
         {
-            var sessions = await _mediator.Send(new GetEventSessionListRequest
-            {
-                PageNumber = pageNumber,
-                PageSize = pageSize
-            });
-            return Ok(sessions);
+            return BadRequest(response);
         }
 
-        // GET: api/v1/eventsession/{id}
-        [HttpGet("{id}")]
-        [EndpointSummary("Get Event Session Details")]
-        [EndpointDescription("Get detailed information about a specific event session")]
-        [AllowAnonymous]
-        public async Task<ActionResult<EventSessionDto>> GetById(Guid id)
-        {
-            var session = await _mediator.Send(new GetEventSessionDetailsRequest { Id = id });
+        return CreatedAtRoute(
+            RouteNames.GetEventSessionById,
+            new { id = response.Id },
+            response);
+    }
 
-            if (session == null)
+    /// <summary>
+    /// Update an existing event session.
+    /// </summary>
+    [HttpPut("{id:guid}", Name = RouteNames.UpdateEventSession)]
+    [EndpointSummary("Update Event Session")]
+    [EndpointDescription("Update an existing event session.")]
+    [Authorize]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventSessionDto session)
+    {
+        if (id != session.Id)
+        {
+            return BadRequest(new { error = "Event session ID mismatch" });
+        }
+
+        var command = new UpdateEventSessionCommand { EventSessionDto = session };
+        var response = await _mediator.Send(command);
+
+        if (!response.Success)
+        {
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
+
+    /// <summary>
+    /// Delete an event session.
+    /// </summary>
+    [HttpDelete("{id:guid}", Name = RouteNames.DeleteEventSession)]
+    [EndpointSummary("Delete Event Session")]
+    [EndpointDescription("Delete an event session.")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> Delete(Guid id)
+    {
+        try
+        {
+            var command = new DeleteEventSessionCommand { Id = id };
+            var result = await _mediator.Send(command);
+
+            if (!result)
             {
                 return NotFound(new { error = "Event session not found" });
             }
 
-            return Ok(session);
+            return NoContent();
         }
-
-        // GET: api/v1/eventsession/by-event/{eventId}
-        [HttpGet("by-event/{eventId}")]
-        [EndpointSummary("Get Sessions by Event")]
-        [EndpointDescription("Get all sessions for a specific event")]
-        [AllowAnonymous]
-        public async Task<ActionResult<List<EventSessionListDto>>> GetByEvent(Guid eventId)
+        catch (Exception ex)
         {
-            var sessions = await _mediator.Send(new GetSessionsByEventRequest { EventId = eventId });
-            return Ok(sessions);
-        }
-
-        // POST: api/v1/eventsession
-        [HttpPost]
-        [EndpointSummary("Create Event Session")]
-        [EndpointDescription("Create a new event session")]
-        [Authorize]
-        public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventSessionDto session)
-        {
-            var command = new CreateEventSessionCommand { EventSessionDto = session };
-            var response = await _mediator.Send(command);
-
-            if (!response.Success)
-            {
-                return BadRequest(response);
-            }
-
-            return Ok(response);
-        }
-
-        // PUT: api/v1/eventsession/{id}
-        [HttpPut("{id}")]
-        [EndpointSummary("Update Event Session")]
-        [EndpointDescription("Update an existing event session")]
-        [Authorize]
-        public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventSessionDto session)
-        {
-            if (id != session.Id)
-            {
-                return BadRequest(new { error = "Event session ID mismatch" });
-            }
-
-            var command = new UpdateEventSessionCommand { EventSessionDto = session };
-            var response = await _mediator.Send(command);
-
-            if (!response.Success)
-            {
-                return BadRequest(response);
-            }
-
-            return Ok(response);
-        }
-
-        // DELETE: api/v1/eventsession/{id}
-        [HttpDelete("{id}")]
-        [EndpointSummary("Delete Event Session")]
-        [EndpointDescription("Delete an event session")]
-        [Authorize]
-        public async Task<ActionResult> Delete(Guid id)
-        {
-            try
-            {
-                var command = new DeleteEventSessionCommand { Id = id };
-                var result = await _mediator.Send(command);
-
-                if (!result)
-                {
-                    return NotFound(new { error = "Event session not found" });
-                }
-
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error deleting event session {SessionId}", id);
-                return StatusCode(500, new { error = ex.Message });
-            }
+            _logger.LogError(ex, "Error deleting event session {SessionId}", id);
+            return StatusCode(500, new { error = ex.Message });
         }
     }
 }

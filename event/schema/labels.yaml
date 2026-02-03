@@ -1,0 +1,12 @@
+groups:
+  general:
+    color: '#7BDCB5'
+    labels:
+    - name: Sec
+    - name: Config
+    - name: Test
+    - name: Chore
+    - name: Refactor
+    - name: Fix
+    - name: Feature
+    - name: CI/CD

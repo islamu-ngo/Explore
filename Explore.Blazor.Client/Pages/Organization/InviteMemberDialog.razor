@@ -7,10 +7,10 @@
 <MudDialog>
     <DialogContent>
         <MudTextField @bind-Value="model.Email" Label="Email" Required="true" RequiredError="Email is required" InputType="InputType.Email" />
-        <MudSelect T="int" Label="Role" @bind-Value="model.Role" AnchorOrigin="Origin.BottomCenter">
-            <MudSelectItem Value="2">Co-Owner</MudSelectItem>
-            <MudSelectItem Value="3">Admin</MudSelectItem>
-            <MudSelectItem Value="4">Member</MudSelectItem>
+        <MudSelect T="int?" Label="Role" @bind-Value="model.Role" AnchorOrigin="Origin.BottomCenter">
+            <MudSelectItem T="int?" Value="2">Co-Owner</MudSelectItem>
+            <MudSelectItem T="int?" Value="3">Admin</MudSelectItem>
+            <MudSelectItem T="int?" Value="4">Member</MudSelectItem>
         </MudSelect>
     </DialogContent>
     <DialogActions>

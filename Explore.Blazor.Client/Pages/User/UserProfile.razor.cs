@@ -73,7 +73,10 @@ public partial class UserProfile : ComponentBase
                 Logger.LogInformation("[UserProfile] User data loaded: {Email}", UserData.Email);
 
                 // Load statistics in parallel
-                await LoadStatisticsAsync(userData.Id);
+                if (userData.Id.HasValue)
+                {
+                    await LoadStatisticsAsync(userData.Id.Value);
+                }
             }
             else
             {

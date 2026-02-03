@@ -1,8 +1,8 @@
+// ABOUTME: Service for managing actor-related operations.
+
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services.Contracts;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace Explore.Blazor.Client.Services;
 
@@ -17,12 +17,13 @@ public class ActorService : IActorService
 
     public async Task<ICollection<ActorListDto>> GetActorsAsync()
     {
-        var response = await _client.ActorGETAsync(pageNumber: 1, pageSize: 100);
-        return response?.Items ?? new List<ActorListDto>();
+        var result = await _client.GetActorsAsync(pageNumber: 1, pageSize: 100);
+        return result?.GetItems() ?? new List<ActorListDto>();
     }
 
-    public async Task<ActorDto> GetActorByIdAsync(Guid id)
+    public async Task<ActorDto?> GetActorByIdAsync(Guid id)
     {
-        return await _client.ActorGET2Async(id);
+        var result = await _client.GetActorByIdAsync(id);
+        return result?.ToDto();
     }
 }

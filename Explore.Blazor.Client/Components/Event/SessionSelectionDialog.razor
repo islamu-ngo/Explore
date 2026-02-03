@@ -25,19 +25,19 @@
 
             <MudDivider Class="my-2" />
 
-            @foreach (var session in Sessions)
+            @foreach (var session in Sessions.Where(s => s.Id.HasValue))
             {
-                <MudPaper Class="pa-4 cursor-pointer" 
-                          Elevation="@(_selectedSessionIds.Contains(session.Id) ? 4 : 0)"
-                          Style="@GetSessionStyle(session.Id)"
-                          OnClick="@(() => ToggleSelection(session.Id))">
+                <MudPaper Class="pa-4 cursor-pointer"
+                          Elevation="@(_selectedSessionIds.Contains(session.Id!.Value) ? 4 : 0)"
+                          Style="@GetSessionStyle(session.Id!.Value)"
+                          OnClick="@(() => ToggleSelection(session.Id!.Value))">
                     <div class="d-flex align-center gap-3">
-                        <MudCheckBox T="bool" Value="@_selectedSessionIds.Contains(session.Id)" 
-                                     ValueChanged="@((v) => ToggleSelection(session.Id))" 
+                        <MudCheckBox T="bool" Value="@_selectedSessionIds.Contains(session.Id!.Value)"
+                                     ValueChanged="@((v) => ToggleSelection(session.Id!.Value))"
                                      Color="Color.Primary" />
                         <div>
                             <MudText Typo="Typo.subtitle1">@session.Title</MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">@session.StartTime.ToString("f")</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@(session.StartTime?.ToString("f") ?? "")</MudText>
                         </div>
                     </div>
                 </MudPaper>
@@ -58,7 +58,7 @@
 
     private HashSet<Guid> _selectedSessionIds = new();
 
-    private bool IsAllSelected => Sessions.Any() && _selectedSessionIds.Count == Sessions.Count;
+    private bool IsAllSelected => Sessions.Any(s => s.Id.HasValue) && _selectedSessionIds.Count == Sessions.Count(s => s.Id.HasValue);
 
     private void ToggleSelectAll()
     {
@@ -68,7 +68,7 @@
         }
         else
         {
-            _selectedSessionIds = Sessions.Select(s => s.Id).ToHashSet();
+            _selectedSessionIds = Sessions.Where(s => s.Id.HasValue).Select(s => s.Id!.Value).ToHashSet();
         }
     }
 

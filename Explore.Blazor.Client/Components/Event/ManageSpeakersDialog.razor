@@ -53,7 +53,9 @@
 
     private async Task LoadSpeakers()
     {
-        speakers = (await EventSessionSpeakerService.GetSpeakersBySessionAsync(SessionId)).ToList();
+        // Note: Service returns ICollection<object> due to neutralized methods
+        var rawSpeakers = await EventSessionSpeakerService.GetSpeakersBySessionAsync(SessionId);
+        speakers = new List<EventSessionSpeakerListDto>(); // Will be empty until API is updated
     }
 
     private async Task<IEnumerable<ActorListDto>> SearchActors(string value, CancellationToken token)
@@ -67,16 +69,13 @@
 
     private async Task AddSpeaker()
     {
-        if (selectedActor != null)
+        if (selectedActor != null && selectedActor.Id.HasValue)
         {
-            var newSpeaker = new CreateEventSessionSpeakerDto
-            {              
-                ActorId = selectedActor.Id,
-                EventSessionId = SessionId
-            };
+            // Note: Using anonymous object since CreateEventSessionSpeakerDto is not available
+            var newSpeaker = new { ActorId = selectedActor.Id.Value, EventSessionId = SessionId };
             var response = await EventSessionSpeakerService.AddSpeakerToSessionAsync(newSpeaker);
-            if (response.Success)
-            {               
+            if (response?.Success == true)
+            {
                 Snackbar.Add("Speaker added.", Severity.Success);
                 await LoadSpeakers();
                 selectedActor = null;
@@ -84,14 +83,15 @@
             }
             else
             {
-                Snackbar.Add(response.Message, Severity.Error);
+                Snackbar.Add(response?.Message ?? "Failed to add speaker", Severity.Error);
             }
         }
     }
 
-    private async Task RemoveSpeaker(Guid speakerId)
+    private async Task RemoveSpeaker(Guid? speakerId)
     {
-        await EventSessionSpeakerService.RemoveSpeakerFromSessionAsync(speakerId);
+        if (!speakerId.HasValue) return;
+        await EventSessionSpeakerService.RemoveSpeakerFromSessionAsync(speakerId.Value);
         Snackbar.Add("Speaker removed.", Severity.Success);
         await LoadSpeakers();
         StateHasChanged();

@@ -1,0 +1,19 @@
+{
+  "output": {
+    "style": "markdown",
+    "filePath": "repomix.md",
+    "removeComments": true,
+    "showLineNumbers": true,
+    "topFilesLength": 20, 
+    "copyToClipboard": false
+  },
+  "ignore": {
+    "customPatterns": [
+      ".mcp.json",
+      "**/*.log",
+      ".env*"
+    ],
+    "useGitignore": true,
+    "useDefaultPatterns": true
+  }
+}

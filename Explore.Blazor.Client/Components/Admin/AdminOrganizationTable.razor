@@ -16,9 +16,9 @@
         <RowTemplate>
             <MudTd DataLabel="Submitted">
                 <MudText Typo="Typo.body2" Style="font-weight:650;">
-                    @context.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+                    @(context.CreatedAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "N/A")
                 </MudText>
-                <MudText Typo="Typo.caption" Class="muted">@GetRelative(context.CreatedAt)</MudText>
+                <MudText Typo="Typo.caption" Class="muted">@GetRelative(context.CreatedAt ?? DateTimeOffset.UtcNow)</MudText>
             </MudTd>
 
             <MudTd DataLabel="ID">

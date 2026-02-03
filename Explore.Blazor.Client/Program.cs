@@ -72,6 +72,7 @@ builder.Services.AddScoped<ILanguageService, LanguageService>();
 builder.Services.AddScoped<IMadhabService, MadhabService>();
 builder.Services.AddScoped<IEventSessionSpeakerService, EventSessionSpeakerService>();
 builder.Services.AddScoped<IActorService, ActorService>();
+builder.Services.AddScoped<IEventAspectService, EventAspectService>();
 
 // Register AuthStateService for centralized auth context
 builder.Services.AddScoped<IAuthStateService, AuthStateService>();

@@ -1,5 +1,6 @@
 # Explore.Blazor/Dockerfile
-# Multi-stage build with Infisical CLI for secret management
+# Multi-stage build for production deployment
+# Secrets are loaded at runtime via AddSecretManagement() - no CLI needed
 # Supports zero-downtime deployments with Coolify
 
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
@@ -15,6 +16,7 @@ WORKDIR /src
 # Copy all project files for restore
 COPY ["Explore.Blazor/Explore.Blazor.csproj", "Explore.Blazor/"]
 COPY ["Explore.Blazor.Client/Explore.Blazor.Client.csproj", "Explore.Blazor.Client/"]
+COPY ["Explore.Secrets/Explore.Secrets.csproj", "Explore.Secrets/"]
 COPY ["Explore.ServiceDefaults/Explore.ServiceDefaults.csproj", "Explore.ServiceDefaults/"]
 
 RUN dotnet restore "./Explore.Blazor/Explore.Blazor.csproj"
@@ -29,23 +31,13 @@ RUN dotnet publish "./Explore.Blazor.csproj" -c $BUILD_CONFIGURATION -o /app/pub
 FROM base AS final
 WORKDIR /app
 
-# 1. Install dos2unix along with Infisical
-USER root
-RUN apt-get update && apt-get install -y bash curl ca-certificates dos2unix && \
-    curl -1sLf 'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh' | bash && \
-    apt-get update && apt-get install -y infisical && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
 # Copy published application
 COPY --from=publish /app/publish .
 
-# Copy entrypoint script
-COPY Explore.Blazor/entrypoint.sh /app/entrypoint.sh
+# Secret management is handled by the application via AddSecretManagement()
+# Configure via environment variables:
+#   SECRET_PROVIDER=infisical (or "none" for env vars only)
+#   Infisical__ProjectId, Infisical__ClientId, Infisical__ClientSecret, etc.
+# See docs/CONFIGURATION.md for full list of options
 
-# 2. FIX LINE ENDINGS
-RUN dos2unix /app/entrypoint.sh && chmod +x /app/entrypoint.sh
-
-# Switch back to non-root user
-USER $APP_UID
-
-ENTRYPOINT ["/app/entrypoint.sh"]
+ENTRYPOINT ["dotnet", "Explore.Blazor.dll"]

@@ -1,0 +1,18 @@
+// ABOUTME: Command to delete the Tech aspect from an event.
+// ABOUTME: Permanently removes the aspect data.
+
+namespace Explore.Application.Features.EventAspects.Requests.Commands;
+
+using System;
+using MediatR;
+
+/// <summary>
+/// Command to delete the Tech aspect from an event.
+/// </summary>
+public class DeleteEventTechAspectCommand : IRequest<bool>
+{
+    /// <summary>
+    /// The event ID to remove the Tech aspect from.
+    /// </summary>
+    public Guid EventId { get; set; }
+}

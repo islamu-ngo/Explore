@@ -2,12 +2,16 @@ using Amazon;
 using Amazon.S3;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Strategies;
 using Explore.Application.Models;
 using Explore.Infrastructure.Identity;
 using Explore.Infrastructure.Mail;
 using Explore.Infrastructure.Services;
+using Explore.Infrastructure.Services.Federation;
+using Explore.Infrastructure.Strategies;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 
 namespace Explore.Infrastructure
@@ -73,6 +77,26 @@ namespace Explore.Infrastructure
             // Identity services
             services.AddScoped<IUserContext, UserContext>();
             services.AddScoped<ICurrentUserService, CurrentUserService>();
+
+            // Memory cache for settings and module governance
+            services.AddMemoryCache();
+
+            // Settings and Module Governance services
+            services.AddScoped<ISettingsResolver, SettingsResolver>();
+            services.AddScoped<IModuleService, ModuleService>();
+
+            // Event Strategies
+            services.AddScoped<IEventStrategy, IslamicEventStrategy>();
+            services.AddScoped<IEventStrategy, TechEventStrategy>();
+            services.AddScoped<IStrategyResolver, StrategyResolver>();
+
+            // PDS Synchronization services
+            services.Configure<PdsSyncSettings>(configuration.GetSection(PdsSyncSettings.SectionName));
+            services.AddHttpClient("PdsService");
+            services.AddScoped<IPdsService, PdsService>();
+
+            // Deployment mode configuration (single-tenant vs multi-tenant)
+            services.Configure<DeploymentSettings>(configuration.GetSection(DeploymentSettings.SectionName));
 
             return services;
         }

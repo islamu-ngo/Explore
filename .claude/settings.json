@@ -1,10 +1,20 @@
 {
   "permissions": {
-    "allow": ["Edit:*", "Write:*", "MultiEdit:*", "NotebookEdit:*", "Bash:*"],
+    "allow": [
+      "Edit:*",
+      "Write:*",
+      "MultiEdit:*",
+      "NotebookEdit:*",
+      "Bash:*"
+    ],
     "defaultMode": "acceptEdits"
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["sequential-thinking", "playwright", "context7"],
+  "enabledMcpjsonServers": [
+    "sequential-thinking",
+    "playwright",
+    "context7"
+  ],
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -12,6 +22,17 @@
           {
             "type": "command",
             "command": "dotnet .claude/hooks/SkillTrigger.cs"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "dotnet .claude/hooks/SecurityCheck.cs"
           }
         ]
       }
@@ -43,14 +64,13 @@
     ]
   },
   "enabledPlugins": {
-    "github@claude-plugins-official": true,
-    "context7@claude-plugins-official": true,
+    "github@claude-plugins-official": false,
     "serena@claude-plugins-official": true,
     "commit-commands@claude-plugins-official": true,
-    "playwright@claude-plugins-official": true,
     "security-guidance@claude-plugins-official": true,
-    "csharp-lsp@claude-plugins-official": false,
-    "llm-council@the-llm-council": true
+    "csharp-lsp@claude-plugins-official": true,
+    "llm-council@the-llm-council": true,
+    "claude-mem@thedotmack": true
   },
   "commands": {
     "build": "dotnet build",

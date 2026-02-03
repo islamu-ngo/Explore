@@ -68,7 +68,7 @@
                                     <MudText Typo="Typo.caption" Color="Color.Secondary">Reviews</MudText>
                                 </div>
                                 <div class="text-center">
-                                    <MudText Typo="Typo.h6">@(_reviews.Any() ? _reviews.Average(r => r.Rating).ToString("0.0") : "-")</MudText>
+                                    <MudText Typo="Typo.h6">@(_reviews.Any() && _reviews.Any(r => r.Rating.HasValue) ? _reviews.Where(r => r.Rating.HasValue).Average(r => r.Rating!.Value).ToString("0.0") : "-")</MudText>
                                     <MudText Typo="Typo.caption" Color="Color.Secondary">Rating</MudText>
                                 </div>
                             </div>
@@ -94,10 +94,10 @@
                                             </MudAvatar>
                                             <div>
                                                 <MudText Typo="Typo.subtitle2">@review.UserFullName</MudText>
-                                                <MudText Typo="Typo.caption" Color="Color.Secondary">@review.CreatedAt.DateTime.ToShortDateString()</MudText>
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">@(review.CreatedAt?.DateTime.ToShortDateString() ?? "Unknown")</MudText>
                                             </div>
                                         </div>
-                                        <MudRating ReadOnly="true" SelectedValue="@review.Rating" Size="Size.Small" />
+                                        <MudRating ReadOnly="true" SelectedValue="@(review.Rating ?? 0)" Size="Size.Small" />
                                     </div>
                                     <MudText Typo="Typo.body2">@review.Comment</MudText>
                                 </MudCard>

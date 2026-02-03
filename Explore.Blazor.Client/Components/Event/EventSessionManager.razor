@@ -24,7 +24,7 @@
                                 <div class="d-flex align-center gap-1">
                                     <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" Color="Color.Secondary" />
                                     <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                        @session.StartTime.ToString("f")
+                                        @(session.StartTime?.ToString("f") ?? "")
                                     </MudText>
                                 </div>
                                 <div class="d-flex align-center gap-1">

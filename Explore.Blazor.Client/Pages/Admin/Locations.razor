@@ -274,8 +274,14 @@
 
     private async Task OpenEditDialog(LocationListDto location)
     {
+        if (location.Id == null)
+        {
+            Snackbar.Add("Location ID is missing.", Severity.Error);
+            return;
+        }
+
         // First, get the full location details
-        var locationDetails = await LocationService.GetLocationByIdAsync(location.Id);
+        var locationDetails = await LocationService.GetLocationByIdAsync(location.Id.Value);
         if (locationDetails == null)
         {
             Snackbar.Add("Failed to load location details", Severity.Error);
@@ -299,7 +305,12 @@
 
         if (result is { Canceled: false, Data: UpdateLocationDto updateDto })
         {
-            var response = await LocationService.UpdateLocationAsync(updateDto.Id, updateDto);
+            if (updateDto.Id == null)
+            {
+                Snackbar.Add("Location ID is missing for update.", Severity.Error);
+                return;
+            }
+            var response = await LocationService.UpdateLocationAsync(updateDto.Id.Value, updateDto);
             if (response?.Success == true)
             {
                 Snackbar.Add($"Location '{updateDto.FullName}' updated successfully", Severity.Success);
@@ -323,7 +334,12 @@
 
         if (confirm == true)
         {
-            var success = await LocationService.DeleteLocationAsync(location.Id);
+            if (location.Id == null)
+            {
+                Snackbar.Add("Location ID is missing for delete.", Severity.Error);
+                return;
+            }
+            var success = await LocationService.DeleteLocationAsync(location.Id.Value);
             if (success)
             {
                 Snackbar.Add($"Location '{location.FullName}' deleted successfully", Severity.Success);

@@ -1,0 +1,26 @@
+- id: EVENT-59
+  title: 'feat: MapLibre Interactive WorldMap all events in the world'
+  type: task
+  description: '<p class="editor-paragraph-block" data-id="4b7c11e2-7d5b-41fd-a5ad-7e0a712a866c">tech:
+    <a target="_blank" class="text-accent-secondary underline underline-offset-[3px]
+    hover:text-accent-primary transition-colors cursor-pointer" href="https://maplibre.org/"
+    rel="noopener noreferrer">https://maplibre.org/</a><br>Inspiration: <a target="_blank"
+    class="text-accent-secondary underline underline-offset-[3px] hover:text-accent-primary
+    transition-colors cursor-pointer" href="http://smokesignal.events" rel="noopener
+    noreferrer">smokesignal.events</a></p><image-component data-id="fcbf5e83-0fcb-4604-ba81-c38c62df1a37"
+    src="37f8115d-6ee6-41a4-9e06-61700de52678" id="fcbf5e83-0fcb-4604-ba81-c38c62df1a37"
+    width="299px" height="120px" aspectratio="2.4906015037593985" alignment="left"
+    status="uploaded"></image-component><image-component data-id="059aee11-9b72-4354-ac12-cad2b1431dfe"
+    src="6e6e7910-cfb0-48a4-8db4-f696efba009b" id="059aee11-9b72-4354-ac12-cad2b1431dfe"
+    width="299px" height="117px" aspectratio="2.562992125984252" alignment="left"
+    status="uploaded"></image-component><p class="editor-paragraph-block" data-id="52fe0753-3e32-47ed-a1c4-5528ca40ebcf"></p>'
+  state: Backlog
+  priority: low
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-58
+  title: Hybrid Caching
+  type: task
+  description: '<p class="editor-paragraph-block" data-id="5b492a4a-45a7-445d-a5ea-56b73ba0f3be"><span>In
+    .NET, you usually have to choose between Speed and Consistency.<br><br>In-Memory
+    Caching (IMemoryCache):<br></span><span data-name="check_mark_button" 

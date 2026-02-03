@@ -157,7 +157,7 @@ public partial class OrganizationDetails
 
             var success = await OrganizationService.UpdateOrganizationAsync(Id, editModel!);
 
-            if (success != null && success.Success)
+            if (success?.Success == true)
             {
                 successMessage = "Organization updated successfully!";
                 isEditMode = false;

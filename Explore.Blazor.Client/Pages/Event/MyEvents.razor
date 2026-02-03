@@ -70,7 +70,7 @@
                                 <MudText Typo="Typo.body2"
                                          Color="@(_selectedOrganizationId == org.Id ? Color.Primary : Color.Default)"
                                          Class="my-events__filter-option"
-                                         @onclick="@(() => OnOrganizationChanged(org.Id))">
+                                         @onclick="@(() => OnOrganizationChanged(org.Id ?? Guid.Empty))">
                                     @org.FullName
                                 </MudText>
                             }

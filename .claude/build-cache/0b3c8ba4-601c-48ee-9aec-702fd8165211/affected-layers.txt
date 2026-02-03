@@ -1,5 +1,0 @@
-Application
-API
-Domain
-Shared
-Frontend

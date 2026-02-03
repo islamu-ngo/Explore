@@ -1,0 +1,21 @@
+standard:
+  states:
+  - name: Backlog
+    group: backlog
+    color: '#60646C'
+  - name: Todo
+    group: unstarted
+    color: '#60646C'
+  - name: In Progress
+    group: started
+    color: '#F59E0B'
+  - name: Done
+    group: completed
+    color: '#46A758'
+  - name: Cancelled
+    group: cancelled
+    color: '#9AA4BC'
+  initial: backlog
+  terminal:
+  - done
+  - cancelled

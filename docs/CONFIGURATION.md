@@ -81,14 +81,92 @@
 | `Infisical__ClientId` | Secrets manager client | `...` |
 | `Infisical__ClientSecret` | Secrets manager secret | `...` |
 
-## Secrets Management (Infisical)
+## Secret Management
 
-Sensitive configuration is stored in Infisical:
-- Database credentials
-- Keycloak secrets
-- API keys
-- Encryption keys
-- and more!
+The application uses a unified secret management system (`Explore.Secrets`) that supports multiple providers:
+
+### Secret Providers
+
+| Provider | Use Case | Configuration |
+|----------|----------|---------------|
+| `none` | Self-hosters, local dev | Use environment variables directly |
+| `infisical` | Production with Infisical | Connects to Infisical service |
+
+### Configuration Options
+
+```json
+{
+  "SecretProvider": {
+    "Provider": "infisical",
+    "FailFast": true
+  },
+  "Infisical": {
+    "Url": "https://app.infisical.com",
+    "ProjectId": "your-project-id",
+    "ClientId": "your-client-id",
+    "ClientSecret": "your-client-secret",
+    "Environment": "dev"
+  },
+  "SecretRefresh": {
+    "RefreshInterval": "00:05:00",
+    "BaseBackoffDelay": "00:00:30",
+    "MaxBackoffDelay": "00:05:00"
+  }
+}
+```
+
+### Environment Variables
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `SECRET_PROVIDER` | Provider type: `none` or `infisical` | No (default: `none`) |
+| `Infisical__Url` | Infisical server URL | Only if using Infisical |
+| `Infisical__ProjectId` | Infisical project ID | Only if using Infisical |
+| `Infisical__ClientId` | Universal Auth client ID | Only if using Infisical |
+| `Infisical__ClientSecret` | Universal Auth client secret | Only if using Infisical |
+| `Infisical__Environment` | Environment slug (dev, staging, prod) | No (default: `dev`) |
+
+### Self-Hosted Deployment (No Secret Manager)
+
+For self-hosters who don't want to use Infisical, set `SECRET_PROVIDER=none` and provide all secrets via environment variables:
+
+```bash
+# Required environment variables for self-hosted deployment
+SECRET_PROVIDER=none
+ConnectionStrings__DefaultConnection=Host=...;Database=...;Username=...;Password=...
+Keycloak__Authority=https://your-keycloak/realms/your-realm
+Keycloak__ClientId=explore-api
+Keycloak__ClientSecret=your-secret
+S3Settings__AccessKeyId=your-access-key
+S3Settings__SecretAccessKey=your-secret-key
+```
+
+### Infisical Deployment
+
+For production with Infisical:
+
+```bash
+SECRET_PROVIDER=infisical
+Infisical__Url=https://app.infisical.com
+Infisical__ProjectId=your-project-id
+Infisical__ClientId=your-client-id
+Infisical__ClientSecret=your-client-secret
+Infisical__Environment=prod
+```
+
+Secrets are automatically loaded from Infisical paths:
+- `/keycloak` - Keycloak configuration
+- `/postgresql` - Database credentials
+- `/api` - API-specific secrets (S3, etc.)
+- `/blazor` - Blazor-specific configuration
+
+### Features
+
+- **Automatic Refresh**: Secrets are refreshed periodically (configurable interval)
+- **Health Checks**: Secret provider health is exposed at `/health`
+- **Metrics**: Prometheus-compatible metrics for monitoring
+- **Audit Logging**: All secret access is logged with redaction
+- **Graceful Fallback**: Falls back to environment variables if Infisical unavailable
 
 ## Cerbos (Planned)
 

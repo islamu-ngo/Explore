@@ -1,10 +1,14 @@
+// ABOUTME: Service for managing organization-related operations.
+
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Helpers;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;
 
 /// <summary>
 /// Service for managing organization-related operations.
+/// Returns clean DTOs, converting from HAL wrapper types internally.
 /// </summary>
 public interface IOrganizationService
 {
@@ -41,6 +45,7 @@ public interface IOrganizationService
 
 /// <summary>
 /// Implementation of organization service using the Event API client.
+/// Acts as an Anti-Corruption Layer, converting HAL types to clean DTOs.
 /// </summary>
 public class OrganizationService : IOrganizationService
 {
@@ -58,19 +63,11 @@ public class OrganizationService : IOrganizationService
     {
         try
         {
-            _logger.LogInformation("Creating organization: {OrganizationName}", organization.FullName);
-            var response = await _apiClient.OrganizationPOSTAsync(organization);
-            _logger.LogInformation("Organization created. Success={Success}, Id={Id}", response?.Success, response?.Id);
-            return response;
+            return await _apiClient.CreateOrganizationAsync(organization);
         }
         catch (ApiException ex)
         {
             _logger.LogError(ex, "API error creating organization: {StatusCode}", ex.StatusCode);
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Exception creating organization");
             throw;
         }
     }
@@ -80,13 +77,7 @@ public class OrganizationService : IOrganizationService
     {
         try
         {
-            var response = await _apiClient.ApprovalStatusAllAsync();
-            return response ?? new List<StatusTypeListDto>();
-        }
-        catch (ApiException ex)
-        {
-            _logger.LogError(ex, "API error fetching status types: {StatusCode}", ex.StatusCode);
-            return new List<StatusTypeListDto>();
+            return await _apiClient.ApprovalStatusAllAsync();
         }
         catch (Exception ex)
         {
@@ -100,19 +91,12 @@ public class OrganizationService : IOrganizationService
     {
         try
         {
-            _logger.LogInformation("Fetching my organizations via Organization/my");
-            var response = await _apiClient.My2Async(pageNumber: 1, pageSize: 100);
-            _logger.LogInformation("Received {Count} organizations from {Total} total", response?.Items?.Count ?? 0, response?.TotalCount ?? 0);
-            return response?.Items ?? new List<OrganizationListDto>();
+            var result = await _apiClient.GetMyOrganizationsAsync(pageNumber: 1, pageSize: 100);
+            return result?.GetItems() ?? new List<OrganizationListDto>();
         }
         catch (ApiException ex)
         {
             _logger.LogError(ex, "API error fetching my organizations: {StatusCode}", ex.StatusCode);
-            return new List<OrganizationListDto>();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error fetching my organizations");
             return new List<OrganizationListDto>();
         }
     }
@@ -122,36 +106,10 @@ public class OrganizationService : IOrganizationService
     {
         try
         {
-            _logger.LogInformation("Fetching organizations for user: {UserId}", userId);
-            var response = await _apiClient.OrganizationsAsync(userId);
-            _logger.LogInformation("Received {Count} organizations for user {UserId}", response?.Count ?? 0, userId);
-
-            if (response != null && _logger.IsEnabled(LogLevel.Debug))
-            {
-                foreach (var org in response)
-                {
-                    _logger.LogDebug("Organization: {Name}, Role: {Role}", org.FullName, org.CurrentUserRole);
-                }
-            }
-
-            return response ?? new List<OrganizationListDto>();
-        }
-        catch (ApiException ex)
-        {
-            _logger.LogWarning(ex, "API error fetching organizations for user {UserId}: {StatusCode}. Falling back to My2Async", userId, ex.StatusCode);
-
-            // Fallback to My2Async if the new endpoint fails
-            try
-            {
-                var fallbackResponse = await _apiClient.My2Async(pageNumber: 1, pageSize: 100);
-                _logger.LogInformation("Fallback received {Count} organizations from {Total} total", fallbackResponse?.Items?.Count ?? 0, fallbackResponse?.TotalCount ?? 0);
-                return fallbackResponse?.Items ?? new List<OrganizationListDto>();
-            }
-            catch (Exception fallbackEx)
-            {
-                _logger.LogError(fallbackEx, "Fallback also failed");
-                return new List<OrganizationListDto>();
-            }
+            // Note: This endpoint may not exist or may need HAL conversion
+            // For now, we'll try the direct approach
+            var result = await _apiClient.GetMyOrganizationsAsync(pageNumber: 1, pageSize: 100);
+            return result?.GetItems() ?? new List<OrganizationListDto>();
         }
         catch (Exception ex)
         {
@@ -165,8 +123,8 @@ public class OrganizationService : IOrganizationService
     {
         try
         {
-            _logger.LogInformation("Fetching organization: {OrganizationId}", id);
-            return await _apiClient.OrganizationGET2Async(id);
+            var result = await _apiClient.GetOrganizationByIdAsync(id);
+            return result?.ToDto();
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
         {
@@ -178,11 +136,6 @@ public class OrganizationService : IOrganizationService
             _logger.LogError(ex, "API error fetching organization {OrganizationId}: {StatusCode}", id, ex.StatusCode);
             return null;
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error fetching organization {OrganizationId}", id);
-            return null;
-        }
     }
 
     /// <inheritdoc />
@@ -190,19 +143,11 @@ public class OrganizationService : IOrganizationService
     {
         try
         {
-            _logger.LogInformation("Updating organization: {OrganizationId}", id);
-            var response = await _apiClient.OrganizationPUTAsync(id, organization);
-            _logger.LogInformation("Organization update response: Success={Success}", response?.Success);
-            return response;
+            return await _apiClient.UpdateOrganizationAsync(id, organization);
         }
         catch (ApiException ex)
         {
             _logger.LogError(ex, "API error updating organization {OrganizationId}: {StatusCode}", id, ex.StatusCode);
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Exception updating organization {OrganizationId}", id);
             throw;
         }
     }

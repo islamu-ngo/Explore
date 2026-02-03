@@ -1,12 +1,14 @@
 using Explore.Blazor.Client.Configuration;
 using Explore.Blazor.Client.Pages;
 using Explore.Blazor.Client.Services;
+using Explore.Blazor.Client.Services.Contracts;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Extensions;
 using Explore.Blazor.Components;
 using Blazouter.Extensions;
 using Blazouter.Server.Extensions;
 using Explore.Blazor.Services;
+using Explore.Secrets.Extensions;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -51,6 +53,10 @@ builder.Configuration.AddInfisicalBlazorCompatibility();
 
 builder.AddServiceDefaults();
 
+// Add secret management services (refresh service, health checks, metrics, audit logging)
+// This adds observability and background refresh for secrets loaded via AddInfisicalBlazorCompatibility
+builder.Services.AddSecretManagement(builder.Configuration);
+
 // Add MudBlazor services + DI
 builder.Services.AddMudServices();
 builder.Services.AddScoped<IEventService, EventService>();
@@ -66,6 +72,7 @@ builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<ITagService, TagService>();
 builder.Services.AddScoped<IEventRegistrationService, EventRegistrationService>();
 builder.Services.AddScoped<ILocationService, LocationService>();
+builder.Services.AddScoped<IEventAspectService, EventAspectService>();
 builder.Services.AddTransient<ServerCookieForwardingHandler>();
 builder.Services.AddScoped<ICircuitAccessTokenService, CircuitAccessTokenService>();
 builder.Services.AddTransient<AccessTokenForwardingHandler>();
@@ -148,6 +155,7 @@ builder.Services.AddOptions();
 var keycloakAuthority = builder.Configuration["Keycloak:Authority"];
 var keycloakClientId = builder.Configuration["Keycloak:ClientId"];
 var keycloakClientSecret = builder.Configuration["Keycloak:ClientSecret"];
+var keycloakMetadataAddress = builder.Configuration["Keycloak:MetadataAddress"];
 
 builder.Services.AddLogging(logging =>
 {
@@ -195,6 +203,10 @@ builder.Services.AddAuthentication(options =>
         options.UsePkce = true;
         options.SaveTokens = true;
         options.GetClaimsFromUserInfoEndpoint = true;
+        if (!string.IsNullOrEmpty(keycloakMetadataAddress))
+        {
+            options.MetadataAddress = keycloakMetadataAddress;
+        }
 
         options.RequireHttpsMetadata = string.Equals(
             builder.Configuration["Keycloak:RequireHttpsMetadata"],
@@ -220,6 +232,54 @@ builder.Services.AddAuthentication(options =>
         options.Scope.Add("profile");
         options.Scope.Add("email");
         options.Scope.Add("offline_access");
+
+        // OIDC event handlers for debugging authentication issues
+        options.Events = new Microsoft.AspNetCore.Authentication.OpenIdConnect.OpenIdConnectEvents
+        {
+            OnRedirectToIdentityProvider = context =>
+            {
+                // Log the redirect URI being sent to Keycloak
+                logger.LogInformation("[OIDC] Redirecting to IdP. RedirectUri: {RedirectUri}, Authority: {Authority}",
+                    context.ProtocolMessage.RedirectUri,
+                    context.Options.Authority);
+                return Task.CompletedTask;
+            },
+            OnAuthenticationFailed = context =>
+            {
+                logger.LogError(context.Exception, "[OIDC] Authentication failed: {Error}",
+                    context.Exception?.Message);
+                return Task.CompletedTask;
+            },
+            OnRemoteFailure = context =>
+            {
+                logger.LogError("[OIDC] Remote failure: {Error}, Description: {Description}",
+                    context.Failure?.Message,
+                    context.Properties?.Items);
+
+                // Log the full error from Keycloak
+                if (context.HttpContext.Request.Query.TryGetValue("error", out var error))
+                {
+                    logger.LogError("[OIDC] Keycloak error: {Error}", error);
+                }
+                if (context.HttpContext.Request.Query.TryGetValue("error_description", out var errorDesc))
+                {
+                    logger.LogError("[OIDC] Keycloak error_description: {ErrorDesc}", errorDesc);
+                }
+
+                return Task.CompletedTask;
+            },
+            OnMessageReceived = context =>
+            {
+                logger.LogInformation("[OIDC] Message received from IdP");
+                return Task.CompletedTask;
+            },
+            OnTokenValidated = context =>
+            {
+                logger.LogInformation("[OIDC] Token validated for user: {User}",
+                    context.Principal?.Identity?.Name);
+                return Task.CompletedTask;
+            }
+        };
     });
 
 // Antiforgery for BFF endpoints
@@ -478,6 +538,14 @@ app.MapGet("/auth/challenge", async ctx =>
 {
     var returnUrl = GetSafeReturnUrl(ctx, app.Logger);
 
+    // Log current OIDC configuration for debugging
+    var config = ctx.RequestServices.GetRequiredService<IConfiguration>();
+    app.Logger.LogInformation(
+        "[AuthEndpoints] /auth/challenge - Config check: Authority={Authority}, ClientId={ClientId}, HasSecret={HasSecret}",
+        config["Keycloak:Authority"],
+        config["Keycloak:ClientId"],
+        !string.IsNullOrEmpty(config["Keycloak:ClientSecret"]));
+
     app.Logger.LogInformation(
         "[AuthEndpoints] /auth/challenge hit - Url: {Url} ReturnUrl: {ReturnUrl}",
         ctx.Request.GetDisplayUrl(),
@@ -494,9 +562,18 @@ app.MapGet("/auth/challenge", async ctx =>
     }
     catch (Exception ex)
     {
-        app.Logger.LogError(ex, "[AuthEndpoints] Error during login challenge");
+        app.Logger.LogError(ex, "[AuthEndpoints] Error during login challenge. InnerException: {Inner}",
+            ex.InnerException?.Message);
         ctx.Response.StatusCode = 500;
-        await ctx.Response.WriteAsJsonAsync(new { error = "Login failed", details = ex.Message });
+        await ctx.Response.WriteAsJsonAsync(new
+        {
+            error = "Login failed",
+            details = ex.Message,
+            inner = ex.InnerException?.Message,
+            authority = config["Keycloak:Authority"],
+            clientId = config["Keycloak:ClientId"],
+            hasSecret = !string.IsNullOrEmpty(config["Keycloak:ClientSecret"])
+        });
     }
 });
 
@@ -543,6 +620,52 @@ app.MapGet("/auth/status", (HttpContext ctx) =>
     }
 });
 
+// Debug endpoint to test OIDC discovery and configuration
+app.MapGet("/auth/debug", async (IConfiguration config, IHttpClientFactory httpClientFactory) =>
+{
+    var authority = config["Keycloak:Authority"];
+    var metadataAddress = config["Keycloak:MetadataAddress"] ?? $"{authority}/.well-known/openid-configuration";
+    var clientId = config["Keycloak:ClientId"];
+    var clientSecret = config["Keycloak:ClientSecret"];
+
+    var result = new Dictionary<string, object?>
+    {
+        ["authority"] = authority,
+        ["metadataAddress"] = metadataAddress,
+        ["clientId"] = clientId,
+        ["hasClientSecret"] = !string.IsNullOrEmpty(clientSecret),
+        ["clientSecretPreview"] = string.IsNullOrEmpty(clientSecret) ? null : $"****{clientSecret[^Math.Min(4, clientSecret.Length)..]}",
+        ["clientSecretLength"] = clientSecret?.Length
+    };
+
+    // Try to fetch OIDC discovery document
+    try
+    {
+        using var httpClient = httpClientFactory.CreateClient();
+        httpClient.Timeout = TimeSpan.FromSeconds(10);
+        var response = await httpClient.GetAsync(metadataAddress);
+        result["discoveryStatus"] = (int)response.StatusCode;
+        result["discoverySuccess"] = response.IsSuccessStatusCode;
+
+        if (response.IsSuccessStatusCode)
+        {
+            var content = await response.Content.ReadAsStringAsync();
+            result["discoveryDocument"] = System.Text.Json.JsonSerializer.Deserialize<object>(content);
+        }
+        else
+        {
+            result["discoveryError"] = await response.Content.ReadAsStringAsync();
+        }
+    }
+    catch (Exception ex)
+    {
+        result["discoveryError"] = ex.Message;
+        result["discoveryInnerError"] = ex.InnerException?.Message;
+    }
+
+    return Results.Ok(result);
+});
+
 app.MapGet("/bff/me", (HttpContext ctx) =>
 {
     if (ctx.User.Identity?.IsAuthenticated != true)
@@ -574,5 +697,3 @@ app.MapRazorComponents<App>()
 app.MapReverseProxy();
 
 await app.RunAsync();
-
-

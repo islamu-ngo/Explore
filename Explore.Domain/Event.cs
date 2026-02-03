@@ -81,5 +81,26 @@ namespace Explore.Domain
         public bool IsDeleted { get; set; }
         public DateTime? DeletedAt { get; set; }
         public Guid? DeletedBy { get; set; }
+
+        // ===== Aspect Navigation Properties =====
+        // Optional 1:1 aspects - only present when event has specific characteristics
+
+        /// <summary>
+        /// Islamic aspect for events with Islamic characteristics.
+        /// Only populated when event is associated with the Islamic module.
+        /// </summary>
+        public EventIslamicAspect? IslamicAspect { get; set; }
+
+        /// <summary>
+        /// Tech aspect for events with tech/developer characteristics.
+        /// Only populated when event is associated with the Tech module.
+        /// </summary>
+        public EventTechAspect? TechAspect { get; set; }
+
+        /// <summary>
+        /// JSON container for dynamic metadata that doesn't warrant a dedicated column.
+        /// Use for rare or tenant-specific custom fields.
+        /// </summary>
+        public string? MetadataJson { get; set; }
     }
 }
