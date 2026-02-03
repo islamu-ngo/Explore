@@ -1,3 +1,6 @@
+// ABOUTME: Unit tests for OrganizationService.
+// Tests organization CRUD operations and membership management.
+
 namespace Explore.Blazor.Client.Tests.Services;
 
 /// <summary>
@@ -8,13 +11,13 @@ namespace Explore.Blazor.Client.Tests.Services;
 /// These tests verify:
 /// - Proper API client calls with correct method signatures
 /// - Error handling and fallback behavior
-/// - Response transformation
+/// - Response transformation from HAL to DTO
 /// - Edge cases (null responses, exceptions)
 ///
-/// IMPORTANT: The API client has two overloads for each method:
-/// - Without CancellationToken (used by the service)
-/// - With CancellationToken
-/// We must mock the correct overload (without CancellationToken) for tests to work.
+/// IMPORTANT: The API client uses HAL resource types:
+/// - GetMyOrganizationsAsync returns HalCollectionResourceOfOrganizationListDto
+/// - GetOrganizationByIdAsync returns HalResourceOfOrganizationDto
+/// The service converts these to plain DTOs using extension methods.
 ///
 /// OrganizationService behavior:
 /// - CreateOrganizationAsync: THROWS on exception
@@ -42,16 +45,10 @@ public class OrganizationServiceTests
     {
         // Arrange
         var expectedOrgs = ComponentDataBuilder.OrganizationListDto.Generate(2);
-        var response = new PaginatedResultOfOrganizationListDto
-        {
-            Items = expectedOrgs,
-            TotalCount = 2,
-            PageNumber = 1,
-            PageSize = 100
-        };
-        // Service calls My2Async(pageNumber: 1, pageSize: 100) without CancellationToken
-        _apiClient.My2Async(Arg.Any<int?>(), Arg.Any<int?>())
-            .Returns(response);
+        var halResponse = CreateHalCollectionResponse(expectedOrgs);
+
+        _apiClient.GetMyOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(halResponse);
 
         // Act
         var result = await _service.GetMyOrganizationsAsync();
@@ -65,7 +62,7 @@ public class OrganizationServiceTests
     public async Task GetMyOrganizationsAsync_ReturnsEmptyList_WhenApiThrowsException()
     {
         // Arrange
-        _apiClient.My2Async(Arg.Any<int?>(), Arg.Any<int?>())
+        _apiClient.GetMyOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Unauthorized", 401, null, null, null));
 
         // Act
@@ -79,8 +76,8 @@ public class OrganizationServiceTests
     public async Task GetMyOrganizationsAsync_ReturnsEmptyList_WhenApiReturnsNull()
     {
         // Arrange
-        _apiClient.My2Async(Arg.Any<int?>(), Arg.Any<int?>())
-            .Returns((PaginatedResultOfOrganizationListDto?)null);
+        _apiClient.GetMyOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns((HalCollectionResourceOfOrganizationListDto?)null);
 
         // Act
         var result = await _service.GetMyOrganizationsAsync();
@@ -90,16 +87,15 @@ public class OrganizationServiceTests
     }
 
     [Test]
-    public async Task GetMyOrganizationsAsync_ReturnsEmptyList_WhenItemsIsNull()
+    public async Task GetMyOrganizationsAsync_ReturnsEmptyList_WhenEmbeddedIsNull()
     {
         // Arrange
-        var response = new PaginatedResultOfOrganizationListDto
+        var halResponse = new HalCollectionResourceOfOrganizationListDto
         {
-            Items = null,
-            TotalCount = 0
+            _embedded = null
         };
-        _apiClient.My2Async(Arg.Any<int?>(), Arg.Any<int?>())
-            .Returns(response);
+        _apiClient.GetMyOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(halResponse);
 
         // Act
         var result = await _service.GetMyOrganizationsAsync();
@@ -112,19 +108,15 @@ public class OrganizationServiceTests
     public async Task GetMyOrganizationsAsync_CallsApiWithCorrectPagination()
     {
         // Arrange
-        var response = new PaginatedResultOfOrganizationListDto
-        {
-            Items = new List<OrganizationListDto>(),
-            TotalCount = 0
-        };
-        _apiClient.My2Async(Arg.Any<int?>(), Arg.Any<int?>())
-            .Returns(response);
+        var halResponse = CreateHalCollectionResponse(new List<OrganizationListDto>());
+        _apiClient.GetMyOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(halResponse);
 
         // Act
         await _service.GetMyOrganizationsAsync();
 
         // Assert - Service should request page 1 with size 100
-        await _apiClient.Received(1).My2Async(1, 100);
+        await _apiClient.Received(1).GetMyOrganizationsAsync(1, 100, Arg.Any<CancellationToken>());
     }
 
     #endregion
@@ -138,9 +130,10 @@ public class OrganizationServiceTests
         var orgId = Guid.NewGuid();
         var expectedOrg = ComponentDataBuilder.OrganizationDto.Generate();
         expectedOrg.Id = orgId;
-        // Service calls OrganizationGET2Async(id) without CancellationToken
-        _apiClient.OrganizationGET2Async(orgId)
-            .Returns(expectedOrg);
+        var halResponse = CreateHalResourceResponse(expectedOrg);
+
+        _apiClient.GetOrganizationByIdAsync(orgId, Arg.Any<CancellationToken>())
+            .Returns(halResponse);
 
         // Act
         var result = await _service.GetOrganizationByIdAsync(orgId);
@@ -156,7 +149,7 @@ public class OrganizationServiceTests
     {
         // Arrange
         var orgId = Guid.NewGuid();
-        _apiClient.OrganizationGET2Async(orgId)
+        _apiClient.GetOrganizationByIdAsync(orgId, Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Not Found", 404, null, null, null));
 
         // Act
@@ -171,7 +164,7 @@ public class OrganizationServiceTests
     {
         // Arrange
         var orgId = Guid.NewGuid();
-        _apiClient.OrganizationGET2Async(orgId)
+        _apiClient.GetOrganizationByIdAsync(orgId, Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
 
         // Act
@@ -187,14 +180,16 @@ public class OrganizationServiceTests
         // Arrange
         var orgId = Guid.NewGuid();
         var expectedOrg = ComponentDataBuilder.OrganizationDto.Generate();
-        _apiClient.OrganizationGET2Async(Arg.Any<Guid>())
-            .Returns(expectedOrg);
+        var halResponse = CreateHalResourceResponse(expectedOrg);
+
+        _apiClient.GetOrganizationByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(halResponse);
 
         // Act
         await _service.GetOrganizationByIdAsync(orgId);
 
         // Assert
-        await _apiClient.Received(1).OrganizationGET2Async(orgId);
+        await _apiClient.Received(1).GetOrganizationByIdAsync(orgId, Arg.Any<CancellationToken>());
     }
 
     #endregion
@@ -208,8 +203,8 @@ public class OrganizationServiceTests
         var createDto = ComponentDataBuilder.CreateOrganizationDto.Generate();
         var expectedId = Guid.NewGuid();
         var expectedResponse = ComponentDataBuilder.SuccessResponse(expectedId);
-        // Service calls OrganizationPOSTAsync(organization) without CancellationToken
-        _apiClient.OrganizationPOSTAsync(Arg.Any<CreateOrganizationDto>())
+
+        _apiClient.CreateOrganizationAsync(Arg.Any<CreateOrganizationDto>(), Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
@@ -226,7 +221,7 @@ public class OrganizationServiceTests
     {
         // Arrange
         var createDto = ComponentDataBuilder.CreateOrganizationDto.Generate();
-        _apiClient.OrganizationPOSTAsync(Arg.Any<CreateOrganizationDto>())
+        _apiClient.CreateOrganizationAsync(Arg.Any<CreateOrganizationDto>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Bad Request", 400, "Validation failed", null, null));
 
         // Act & Assert - OrganizationService re-throws the exception
@@ -240,14 +235,14 @@ public class OrganizationServiceTests
         // Arrange
         var createDto = ComponentDataBuilder.CreateOrganizationDto.Generate();
         var expectedResponse = ComponentDataBuilder.SuccessResponse();
-        _apiClient.OrganizationPOSTAsync(Arg.Any<CreateOrganizationDto>())
+        _apiClient.CreateOrganizationAsync(Arg.Any<CreateOrganizationDto>(), Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
         await _service.CreateOrganizationAsync(createDto);
 
         // Assert
-        await _apiClient.Received(1).OrganizationPOSTAsync(createDto);
+        await _apiClient.Received(1).CreateOrganizationAsync(createDto, Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -261,7 +256,7 @@ public class OrganizationServiceTests
             Id = Guid.NewGuid(),
             Message = "Organization created successfully."
         };
-        _apiClient.OrganizationPOSTAsync(Arg.Any<CreateOrganizationDto>())
+        _apiClient.CreateOrganizationAsync(Arg.Any<CreateOrganizationDto>(), Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
@@ -281,7 +276,6 @@ public class OrganizationServiceTests
     {
         // Arrange
         var orgId = Guid.NewGuid();
-        // UpdateOrganizationDto doesn't have Id - the orgId is passed separately to the API
         var updateDto = new UpdateOrganizationDto
         {
             FullName = "Updated Name",
@@ -292,8 +286,8 @@ public class OrganizationServiceTests
             Postcode = 12345
         };
         var expectedResponse = ComponentDataBuilder.SuccessResponse(orgId);
-        // Service calls OrganizationPUTAsync(id, organization) without CancellationToken
-        _apiClient.OrganizationPUTAsync(Arg.Any<Guid>(), Arg.Any<UpdateOrganizationDto>())
+
+        _apiClient.UpdateOrganizationAsync(Arg.Any<Guid>(), Arg.Any<UpdateOrganizationDto>(), Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
@@ -319,7 +313,7 @@ public class OrganizationServiceTests
             Address = "123 Main Street",
             Postcode = 12345
         };
-        _apiClient.OrganizationPUTAsync(Arg.Any<Guid>(), Arg.Any<UpdateOrganizationDto>())
+        _apiClient.UpdateOrganizationAsync(Arg.Any<Guid>(), Arg.Any<UpdateOrganizationDto>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Not Found", 404, null, null, null));
 
         // Act & Assert - OrganizationService re-throws the exception
@@ -342,14 +336,14 @@ public class OrganizationServiceTests
             Postcode = 12345
         };
         var expectedResponse = ComponentDataBuilder.SuccessResponse(orgId);
-        _apiClient.OrganizationPUTAsync(Arg.Any<Guid>(), Arg.Any<UpdateOrganizationDto>())
+        _apiClient.UpdateOrganizationAsync(Arg.Any<Guid>(), Arg.Any<UpdateOrganizationDto>(), Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
         await _service.UpdateOrganizationAsync(orgId, updateDto);
 
         // Assert
-        await _apiClient.Received(1).OrganizationPUTAsync(orgId, updateDto);
+        await _apiClient.Received(1).UpdateOrganizationAsync(orgId, updateDto, Arg.Any<CancellationToken>());
     }
 
     #endregion
@@ -362,9 +356,11 @@ public class OrganizationServiceTests
         // Arrange
         var userId = Guid.NewGuid();
         var expectedOrgs = ComponentDataBuilder.OrganizationListDto.Generate(3);
-        // Service calls OrganizationsAsync(userId) without CancellationToken
-        _apiClient.OrganizationsAsync(userId)
-            .Returns(expectedOrgs);
+        var halResponse = CreateHalCollectionResponse(expectedOrgs);
+
+        // Note: Current implementation falls back to GetMyOrganizationsAsync
+        _apiClient.GetMyOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(halResponse);
 
         // Act
         var result = await _service.GetOrganizationsByUserAsync(userId);
@@ -374,38 +370,11 @@ public class OrganizationServiceTests
     }
 
     [Test]
-    public async Task GetOrganizationsByUserAsync_FallsBackToMy2Async_WhenOrganizationsAsyncFails()
+    public async Task GetOrganizationsByUserAsync_ReturnsEmptyList_WhenApiFails()
     {
         // Arrange
         var userId = Guid.NewGuid();
-        var expectedOrgs = ComponentDataBuilder.OrganizationListDto.Generate(2);
-        var fallbackResponse = new PaginatedResultOfOrganizationListDto
-        {
-            Items = expectedOrgs,
-            TotalCount = 2
-        };
-
-        _apiClient.OrganizationsAsync(userId)
-            .ThrowsAsync(new ApiException("Not Found", 404, null, null, null));
-        _apiClient.My2Async(Arg.Any<int?>(), Arg.Any<int?>())
-            .Returns(fallbackResponse);
-
-        // Act
-        var result = await _service.GetOrganizationsByUserAsync(userId);
-
-        // Assert
-        await Assert.That(result.Count).IsEqualTo(2);
-    }
-
-    [Test]
-    public async Task GetOrganizationsByUserAsync_ReturnsEmptyList_WhenBothEndpointsFail()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-
-        _apiClient.OrganizationsAsync(userId)
-            .ThrowsAsync(new ApiException("Not Found", 404, null, null, null));
-        _apiClient.My2Async(Arg.Any<int?>(), Arg.Any<int?>())
+        _apiClient.GetMyOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
 
         // Act
@@ -413,22 +382,6 @@ public class OrganizationServiceTests
 
         // Assert
         await Assert.That(result).IsEmpty();
-    }
-
-    [Test]
-    public async Task GetOrganizationsByUserAsync_CallsApiWithCorrectUserId()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var expectedOrgs = ComponentDataBuilder.OrganizationListDto.Generate(1);
-        _apiClient.OrganizationsAsync(Arg.Any<Guid>())
-            .Returns(expectedOrgs);
-
-        // Act
-        await _service.GetOrganizationsByUserAsync(userId);
-
-        // Assert
-        await _apiClient.Received(1).OrganizationsAsync(userId);
     }
 
     #endregion
@@ -444,8 +397,7 @@ public class OrganizationServiceTests
             new() { Id = 1, FullName = "Pending" },
             new() { Id = 2, FullName = "Approved" }
         };
-        // Service calls ApprovalStatusAllAsync() without CancellationToken
-        _apiClient.ApprovalStatusAllAsync()
+        _apiClient.ApprovalStatusAllAsync(Arg.Any<CancellationToken>())
             .Returns(expectedStatuses);
 
         // Act
@@ -459,7 +411,7 @@ public class OrganizationServiceTests
     public async Task GetStatusTypesAsync_ReturnsEmptyList_WhenApiThrowsException()
     {
         // Arrange
-        _apiClient.ApprovalStatusAllAsync()
+        _apiClient.ApprovalStatusAllAsync(Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
 
         // Act
@@ -473,7 +425,7 @@ public class OrganizationServiceTests
     public async Task GetStatusTypesAsync_ReturnsEmptyList_WhenApiReturnsNull()
     {
         // Arrange
-        _apiClient.ApprovalStatusAllAsync()
+        _apiClient.ApprovalStatusAllAsync(Arg.Any<CancellationToken>())
             .Returns((ICollection<StatusTypeListDto>?)null);
 
         // Act
@@ -481,6 +433,36 @@ public class OrganizationServiceTests
 
         // Assert
         await Assert.That(result).IsEmpty();
+    }
+
+    #endregion
+
+    #region Helper Methods
+
+    /// <summary>
+    /// Creates a HAL collection response with the provided organization list items.
+    /// </summary>
+    private static HalCollectionResourceOfOrganizationListDto CreateHalCollectionResponse(
+        IList<OrganizationListDto> items)
+    {
+        return new HalCollectionResourceOfOrganizationListDto
+        {
+            _embedded = new HalCollectionResourceOfOrganizationListDto_embedded
+            {
+                Items = items.Cast<object>().ToList()
+            }
+        };
+    }
+
+    /// <summary>
+    /// Creates a HAL resource response from an organization DTO.
+    /// Uses JSON serialization to properly populate all properties.
+    /// </summary>
+    private static HalResourceOfOrganizationDto CreateHalResourceResponse(OrganizationDto dto)
+    {
+        var json = Newtonsoft.Json.JsonConvert.SerializeObject(dto);
+        return Newtonsoft.Json.JsonConvert.DeserializeObject<HalResourceOfOrganizationDto>(json)
+               ?? new HalResourceOfOrganizationDto();
     }
 
     #endregion

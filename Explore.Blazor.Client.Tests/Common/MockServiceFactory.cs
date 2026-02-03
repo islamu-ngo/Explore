@@ -1,3 +1,6 @@
+// ABOUTME: Factory for creating pre-configured mock services for common testing scenarios.
+// All mocks use NSubstitute and return sensible defaults using HAL resource types.
+
 namespace Explore.Blazor.Client.Tests.Common;
 
 /// <summary>
@@ -10,6 +13,7 @@ namespace Explore.Blazor.Client.Tests.Common;
 /// - All tenant IDs are Guid (matching domain model)
 /// - Default responses are empty collections (fail-safe)
 /// - Mocks are configured for common success scenarios
+/// - Uses HAL resource types matching the actual API client interface
 /// </remarks>
 public static class MockServiceFactory
 {
@@ -17,49 +21,50 @@ public static class MockServiceFactory
 
     /// <summary>
     /// Creates a mock IEventApiClient with default empty responses.
+    /// Uses HAL resource types that match the actual NSwag-generated client.
     /// </summary>
     public static IEventApiClient CreateEventApiClient()
     {
         var mock = Substitute.For<IEventApiClient>();
 
-        // Configure default successful empty responses for events
-        mock.EventGETAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .Returns(new PaginatedResultOfEventListDto
+        // Configure default successful empty responses for events (HAL collection)
+        mock.GetEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(new HalCollectionResourceOfEventListDto
             {
-                Items = new List<EventListDto>(),
-                TotalCount = 0,
-                PageNumber = 1,
-                PageSize = 50
+                _embedded = new HalCollectionResourceOfEventListDto_embedded
+                {
+                    Items = new List<object>()
+                }
             });
 
-        // Configure default successful empty responses for my events
-        mock.MyAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .Returns(new PaginatedResultOfEventListDto
+        // Configure default successful empty responses for my events (HAL collection)
+        mock.GetMyEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(new HalCollectionResourceOfEventListDto
             {
-                Items = new List<EventListDto>(),
-                TotalCount = 0,
-                PageNumber = 1,
-                PageSize = 50
+                _embedded = new HalCollectionResourceOfEventListDto_embedded
+                {
+                    Items = new List<object>()
+                }
             });
 
-        // Configure default successful empty responses for organizations
-        mock.OrganizationGETAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .Returns(new PaginatedResultOfOrganizationListDto
+        // Configure default successful empty responses for organizations (HAL collection)
+        mock.GetOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(new HalCollectionResourceOfOrganizationListDto
             {
-                Items = new List<OrganizationListDto>(),
-                TotalCount = 0,
-                PageNumber = 1,
-                PageSize = 50
+                _embedded = new HalCollectionResourceOfOrganizationListDto_embedded
+                {
+                    Items = new List<object>()
+                }
             });
 
-        // Configure default successful empty responses for my organizations
-        mock.My2Async(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .Returns(new PaginatedResultOfOrganizationListDto
+        // Configure default successful empty responses for my organizations (HAL collection)
+        mock.GetMyOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(new HalCollectionResourceOfOrganizationListDto
             {
-                Items = new List<OrganizationListDto>(),
-                TotalCount = 0,
-                PageNumber = 1,
-                PageSize = 50
+                _embedded = new HalCollectionResourceOfOrganizationListDto_embedded
+                {
+                    Items = new List<object>()
+                }
             });
 
         return mock;
