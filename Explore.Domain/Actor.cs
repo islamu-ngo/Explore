@@ -17,7 +17,7 @@ namespace Explore.Domain
         [ForeignKey("ActorType")]
         public int ActorTypeId { get; set; }
 
-        public required ActorType ActorType { get; set; }
+        public ActorType ActorType { get; set; } = null!;
 
         // Navigation Properties & Foreign Keys
         [ForeignKey(nameof(UserId))]
@@ -31,7 +31,7 @@ namespace Explore.Domain
         [ForeignKey("Tenant")]
         public Guid TenantId { get; set; }
 
-        public required Tenant Tenant { get; set; }
+        public Tenant Tenant { get; set; } = null!;
 
         public required string DisplayName { get; set; }
 

@@ -311,7 +311,7 @@ public static class ComponentDataBuilder
         .RuleFor(s => s.Title, f => f.Lorem.Sentence(2, 4))
         .RuleFor(s => s.Slug, f => f.Lorem.Slug(2))
         .RuleFor(s => s.StartTime, f => f.Date.FutureOffset(1))
-        .RuleFor(s => s.EndTime, (f, s) => s.StartTime.AddHours(f.Random.Int(1, 4)))
+        .RuleFor(s => s.EndTime, (f, s) => s.StartTime?.AddHours(f.Random.Int(1, 4)))
         .RuleFor(s => s.LocationId, f => f.Random.Bool() ? Guid.NewGuid() : null)
         .RuleFor(s => s.LocationFullName, f => f.Company.CompanyName())
         .RuleFor(s => s.LocationCity, f => f.Address.City())

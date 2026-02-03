@@ -78,7 +78,16 @@ This project uses **project-agnostic documentation** with placeholder syntax `{P
 
 **Before starting ANY task, always run tests:**
 
-1. **Check test status**: `dotnet test` (or equivalent)
+1. **Check test status**: `dotnet test`
+2. # Match CI/CD exactly
+dotnet test Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release
+dotnet test Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release
+dotnet test Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release
+dotnet test Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release
+dotnet test Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release
+dotnet test Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release
+dotnet test Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release
+
 2. **If tests are failing:**
    - **STOP your planned work**
    - Fix the failing tests FIRST
@@ -98,13 +107,21 @@ This project uses **project-agnostic documentation** with placeholder syntax `{P
 ```bash
 # Start of session
 dotnet test
+# Match CI/CD exactly
+dotnet test Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release
+dotnet test Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release
+dotnet test Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release
+dotnet test Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release
+dotnet test Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release
+dotnet test Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release
+dotnet test Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release
+
 # ❌ 3 tests failing
 
 # DO NOT proceed with work yet
 # Fix the 3 failing tests
 
 # Now tests pass - safe to proceed
-dotnet test
 # ✅ All tests passing
 
 # Now continue on your work

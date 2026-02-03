@@ -12,15 +12,15 @@ namespace Explore.Domain
 
         [ForeignKey("Actor")]
         public Guid ActorId { get; set; }
-        public Actor Actor { get; set; }
+        public Actor Actor { get; set; } = null!;
 
         [ForeignKey("Tenant")]
         public Guid TenantId { get; set; }
-        public Tenant Tenant { get; set; }
+        public Tenant Tenant { get; set; } = null!;
 
-        public string KeyPurpose { get; set; }
-        public string PrivateKeyEncrypted { get; set; }
-        public string PublicKey { get; set; }
+        public required string KeyPurpose { get; set; }
+        public required string PrivateKeyEncrypted { get; set; }
+        public required string PublicKey { get; set; }
         public bool? IsActive { get; set; }
         public DateTimeOffset? CreatedAt { get; set; }
     }

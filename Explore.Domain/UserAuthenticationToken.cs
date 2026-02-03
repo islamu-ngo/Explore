@@ -12,13 +12,13 @@ namespace Explore.Domain
 
         [ForeignKey("User")]
         public Guid UserId { get; set; }
-        public User User { get; set; }
+        public User User { get; set; } = null!;
 
         [ForeignKey("Tenant")]
         public Guid TenantId { get; set; }
-        public Tenant Tenant { get; set; }
+        public Tenant Tenant { get; set; } = null!;
 
-        public string Provider { get; set; }
+        public required string Provider { get; set; }
         public string? AccessToken { get; set; }
         public string? RefreshToken { get; set; }
         public string? PdsHost { get; set; }
