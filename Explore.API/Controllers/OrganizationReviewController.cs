@@ -5,21 +5,41 @@ using Explore.Application.Features.OrganizationReviews.Queries.GetMyReviews;
 using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Explore.API.Hateoas;
+using Explore.Application.Hateoas;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Explore.API.Controllers
 {
     [Route("api/v1/[controller]")]
     [ApiController]
+    [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
     public class OrganizationReviewController : ControllerBase
     {
         private readonly IMediator _mediator;
+        private readonly IResourceAssembler<OrganizationReviewDto, OrganizationReviewDto> _resourceAssembler;
 
-        public OrganizationReviewController(IMediator mediator)
+        public OrganizationReviewController(IMediator mediator, IResourceAssembler<OrganizationReviewDto, OrganizationReviewDto> resourceAssembler)
         {
             _mediator = mediator;
+            _resourceAssembler = resourceAssembler;
+        }
+
+        [HttpGet(Name = RouteNames.GetOrganizationReviews)]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(HalCollectionResource<OrganizationReviewDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<HalCollectionResource<OrganizationReviewDto>>> GetAll()
+        {
+            var reviews = await _mediator.Send(new GetOrganizationReviewsQuery());
+            var halResource = _resourceAssembler.ToCollectionResource(
+                reviews,
+                RouteNames.GetOrganizationReviews,
+                HttpContext);
+            return Ok(halResource);
         }
 
         [HttpGet("{organizationId}")]
+        [AllowAnonymous]
         public async Task<ActionResult<List<OrganizationReviewDto>>> Get(Guid organizationId)
         {
             var reviews = await _mediator.Send(new GetOrganizationReviewsQuery { OrganizationId = organizationId });
@@ -27,6 +47,7 @@ namespace Explore.API.Controllers
         }
 
         [HttpGet("user/{userId}")]
+        [AllowAnonymous]
         public async Task<ActionResult<List<OrganizationReviewDto>>> GetByUserId(Guid userId)
         {
             var reviews = await _mediator.Send(new GetMyReviewsQuery { UserId = userId });
@@ -34,6 +55,7 @@ namespace Explore.API.Controllers
         }
 
         [HttpPost]
+        [Authorize]
         public async Task<ActionResult<BaseCommandResponse<Guid>>> Post([FromBody] CreateOrganizationReviewDto createOrganizationReviewDto)
         {
             var command = new CreateOrganizationReviewCommand { CreateOrganizationReviewDto = createOrganizationReviewDto };

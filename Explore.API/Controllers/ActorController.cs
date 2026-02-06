@@ -15,7 +15,7 @@ namespace Explore.API.Controllers;
 /// All responses include HATEOAS links by default.
 /// Send "Prefer: return=minimal" header to strip links.
 /// </summary>
-[Route("api/v1/[controller]")]
+[Route("api/v1/actor")]
 [ApiController]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public class ActorController : ControllerBase

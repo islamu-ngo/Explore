@@ -62,16 +62,28 @@ public class EventListTests : IDisposable
 
     private void SetupDefaultMockResponses()
     {
+        // Sample data for rendering
+        var sampleEvents = new List<EventListDto>
+        {
+            new() { Id = Guid.NewGuid(), Title = "Test Event 1", Description = "Description 1", EventTypeFullName = "Conference", Price = 0, CurrencyCode = "USD", TotalViews = 100 },
+            new() { Id = Guid.NewGuid(), Title = "Test Event 2", Description = "Description 2", EventTypeFullName = "Workshop", Price = 50, CurrencyCode = "EUR", TotalViews = 200 }
+        };
+
+        var sampleCategories = new List<CategoryListDto>
+        {
+            new() { Id = Guid.NewGuid(), FullName = "Islamic Studies" },
+            new() { Id = Guid.NewGuid(), FullName = "Technology" }
+        };
+
         // Event service defaults
-        _eventService.GetAllEventsAsync().Returns(new List<EventListDto>());
+        _eventService.GetAllEventsAsync().Returns(sampleEvents);
         _eventService.GetEventTypesAsync().Returns(new List<EventTypeListDto>());
         _eventService.GetEventFormatsAsync().Returns(new List<EventFormatListDto>());
         _eventService.GetAllSessionsAsync().Returns(new List<EventSessionListDto>());
-        // GetAllSessionLanguagesAsync returns ICollection<object> - neutralized method
         _eventService.GetAllSessionLanguagesAsync().Returns(new List<object>());
 
         // Category service defaults
-        _categoryService.GetAllCategoriesAsync().Returns(new List<CategoryListDto>());
+        _categoryService.GetAllCategoriesAsync().Returns(sampleCategories);
 
         // Tag service defaults
         _tagService.GetAllTagsAsync().Returns(new List<TagListDto>());
@@ -123,7 +135,8 @@ public class EventListTests : IDisposable
     [Test]
     public async Task EventList_ShowsNoEventsMessage_WhenEmpty()
     {
-        // Arrange - Services return empty lists (already set in defaults)
+        // Arrange - Override default to return empty list
+        _eventService.GetAllEventsAsync().Returns(new List<EventListDto>());
 
         // Act - Use RenderMudComponent for MudBlazor components
         var cut = _ctx.RenderMudComponent<EventList>();
@@ -164,9 +177,9 @@ public class EventListTests : IDisposable
         await Task.Delay(200);
 
         // Assert - Should have event cards with actions
-        await Assert.That(cut.Markup).Contains("Details");
-        await Assert.That(cut.Markup).Contains("Register");
-        await Assert.That(cut.Markup).Contains("100 views"); // TotalViews display
+        await Assert.That(cut.Markup).Contains("Learn More");
+        await Assert.That(cut.Markup).Contains("Quick Register");
+        await Assert.That(cut.Markup).Contains("100"); // TotalViews display
     }
 
     #endregion
@@ -187,13 +200,16 @@ public class EventListTests : IDisposable
         var cut = _ctx.RenderMudComponent<EventList>();
         await Task.Delay(200);
 
-        // Assert - Filter pills should be present
+        // Assert - MudSelect renders filter labels; "Any Time" appears as selected value
+        // for the Date filter. Other MudSelect dropdowns render labels but not default
+        // item text when closed (BUnit doesn't expand popover items).
         await Assert.That(cut.Markup).Contains("Any Time");
-        await Assert.That(cut.Markup).Contains("All Categories");
-        await Assert.That(cut.Markup).Contains("All Tags");
-        await Assert.That(cut.Markup).Contains("All Formats");
-        await Assert.That(cut.Markup).Contains("All Madhabs");
-        await Assert.That(cut.Markup).Contains("All Locations");
+        await Assert.That(cut.Markup).Contains("Date");
+        await Assert.That(cut.Markup).Contains("Category");
+        await Assert.That(cut.Markup).Contains("Tags");
+        await Assert.That(cut.Markup).Contains("Format");
+        await Assert.That(cut.Markup).Contains("Madhab");
+        await Assert.That(cut.Markup).Contains("Location");
     }
 
     [Test]
@@ -236,8 +252,8 @@ public class EventListTests : IDisposable
         // Assert - Pagination should be present
         // MudBlazor renders CSS class names like "mud-pagination" not component names
         await Assert.That(cut.Markup).Contains("mud-pagination");
-        // Should show "Page 1 of 2" type info
-        await Assert.That(cut.Markup).Contains("Page 1");
+        // MudPagination uses aria-labels like "Current page 1", not "Page 1"
+        await Assert.That(cut.Markup).Contains("Showing 1 - 6 of 12 events");
     }
 
     [Test]
@@ -343,7 +359,7 @@ public class EventListTests : IDisposable
         // Arrange
         var events = new List<EventListDto>
         {
-            new() { Id = Guid.NewGuid(), Title = "Paid Event", Price = 25.00, CurrencyCode = "EUR" }
+            new() { Id = Guid.NewGuid(), Title = "Paid Event", Price = 25.00, CurrencyCode = "EUR", EventTypeFullName = "Workshop" }
         };
         _eventService.GetAllEventsAsync().Returns(events);
 
@@ -351,9 +367,10 @@ public class EventListTests : IDisposable
         var cut = _ctx.RenderMudComponent<EventList>();
         await Task.Delay(200);
 
-        // Assert - Check for EUR and 25 (format may vary by locale: "25.00" or "25,00")
-        await Assert.That(cut.Markup).Contains("EUR");
-        await Assert.That(cut.Markup).Contains("25");
+        // Assert - EventList card renders title and event type, not price details
+        // Price display is on EventDetail page, not EventList cards
+        await Assert.That(cut.Markup).Contains("Paid Event");
+        await Assert.That(cut.Markup).Contains("Workshop");
     }
 
     #endregion

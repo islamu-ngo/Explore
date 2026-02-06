@@ -77,6 +77,14 @@ public sealed class IndexedDidCollectionLinkPolicy : ICollectionLinkPolicy<Index
     /// <inheritdoc />
     public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
     {
+        yield return new LinkDefinition(
+            LinkRelations.Self,
+            RouteNames.GetIndexedDids,
+            null,
+            "GET",
+            "All indexed DIDs",
+            RequiresAuth: false);
+
         // Create link - requires authentication
         yield return new LinkDefinition(
             "create",

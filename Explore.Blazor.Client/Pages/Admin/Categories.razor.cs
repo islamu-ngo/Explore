@@ -12,12 +12,12 @@ public partial class Categories
 {
     [Inject] protected ICategoryService CategoryService { get; set; } = null!;
     [Inject] protected IDialogService DialogService { get; set; } = null!;
-    [Inject] protected ISnackbar Snackbar { get; set; } = null!;
     [Inject] protected NavigationManager Nav { get; set; } = null!;
 
     private ICollection<CategoryListDto> _categories = new List<CategoryListDto>();
     private string _searchString = string.Empty;
     private bool _isLoading = true;
+    private string? _errorMessage;
 
     private IEnumerable<CategoryListDto> FilteredCategories
     {
@@ -43,13 +43,14 @@ public partial class Categories
     private async Task LoadCategories()
     {
         _isLoading = true;
+        _errorMessage = null;
         try
         {
             _categories = await CategoryService.GetCategoriesAsync() ?? new List<CategoryListDto>();
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Failed to load categories: {ex.Message}", Severity.Error);
+            _errorMessage = $"Failed to load categories: {ex.Message}";
         }
         finally
         {
@@ -68,12 +69,11 @@ public partial class Categories
             var response = await CategoryService.CreateCategoryAsync(createDto);
             if (response?.Success == true)
             {
-                Snackbar.Add($"Category '{createDto.FullName}' created successfully", Severity.Success);
                 await LoadCategories();
             }
             else
             {
-                Snackbar.Add($"Failed to create category: {response?.Message ?? "Unknown error"}", Severity.Error);
+                _errorMessage = $"Failed to create category: {response?.Message ?? "Unknown error"}";
             }
         }
     }
@@ -94,12 +94,11 @@ public partial class Categories
             var response = await CategoryService.UpdateCategoryAsync(updateDto.Id.Value, updateDto);
             if (response?.Success == true)
             {
-                Snackbar.Add($"Category '{updateDto.FullName}' updated successfully", Severity.Success);
                 await LoadCategories();
             }
             else
             {
-                Snackbar.Add($"Failed to update category: {response?.Message ?? "Unknown error"}", Severity.Error);
+                _errorMessage = $"Failed to update category: {response?.Message ?? "Unknown error"}";
             }
         }
     }
@@ -119,12 +118,11 @@ public partial class Categories
             var success = await CategoryService.DeleteCategoryAsync(category.Id.Value);
             if (success)
             {
-                Snackbar.Add($"Category '{category.FullName}' deleted successfully", Severity.Success);
                 await LoadCategories();
             }
             else
             {
-                Snackbar.Add($"Failed to delete category '{category.FullName}'", Severity.Error);
+                _errorMessage = $"Failed to delete category '{category.FullName}'";
             }
         }
     }

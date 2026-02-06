@@ -1,4 +1,4 @@
-@page "/organization/{organizationId}/create-event"
+@page "/create-event"
 @using MudBlazor
 @using Explore.Blazor.Client.Components
 @using Explore.Blazor.Client.Components.Event
@@ -14,36 +14,14 @@
             <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
         </div>
     }
-    else if (organization == null && !_isRetrying)
-    {
-        <MudPaper Class="isl-status-card" Elevation="1">
-            <MudAlert Severity="Severity.Error" Class="mb-4">
-                Organization not found or you do not have permission to create events for this organization.
-            </MudAlert>
-            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="@(() => Navigation.NavigateTo("/organization/my"))">
-                Back to My Organizations
-            </MudButton>
-        </MudPaper>
-    }
-    else if (!canCreateEvent && !_isRetrying)
-    {
-        <MudPaper Class="isl-status-card" Elevation="1">
-            <MudAlert Severity="Severity.Warning" Class="mb-4">
-                You do not have permission to create events for <strong>@organization?.FullName</strong>.
-            </MudAlert>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo($"/organization/{OrganizationId}"))">
-                Back to Organization
-            </MudButton>
-        </MudPaper>
-    }
     else if (!_isRetrying)
     {
         <MudButton StartIcon="@Icons.Material.Filled.ArrowBack"
                    Color="Color.Primary"
                    Variant="Variant.Text"
-                   OnClick="@(() => Navigation.NavigateTo($"/organization/{OrganizationId}"))"
+                   OnClick="@(() => Navigation.NavigateTo("/events"))"
                    Class="create-event__back-button">
-            Back to Organization
+            Back to Events
         </MudButton>
 
         <MudPaper Class="isl-card isl-form-card" Elevation="1">
@@ -54,7 +32,7 @@
                         <div>
                             <MudText Typo="Typo.h5">Create Event</MudText>
                             <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                Create a new event for @organization?.FullName
+                                @GetPublisherDescription()
                             </MudText>
                         </div>
                     </MudStack>
@@ -73,6 +51,69 @@
                     <DataAnnotationsValidator />
 
                     <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4">
+                        <MudTabPanel Text="Publish As" Icon="@Icons.Material.Filled.AccountCircle">
+                            <MudText Class="isl-form__section-title mb-3">Who is publishing this event?</MudText>
+
+                            <MudRadioGroup @bind-Value="_publisherMode" T="string" Class="mb-4">
+                                <MudRadio Value="@("personal")" Color="Color.Primary" Dense="true">
+                                    <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                                        <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
+                                        <MudText>Myself (User Reported)</MudText>
+                                    </MudStack>
+                                </MudRadio>
+                                <MudRadio Value="@("organization")" Color="Color.Primary" Dense="true"
+                                          Disabled="@(_myOrganizations == null || !_myOrganizations.Any())">
+                                    <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                                        <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" />
+                                        <MudText>An Organization</MudText>
+                                    </MudStack>
+                                </MudRadio>
+                            </MudRadioGroup>
+
+                            @if (_publisherMode == "personal")
+                            {
+                                <MudAlert Severity="Severity.Info" Class="mb-4" Variant="Variant.Outlined">
+                                    Events published in your name will be marked as <strong>User Reported</strong>.
+                                    These events are subject to community moderation.
+                                </MudAlert>
+                            }
+
+                            @if (_publisherMode == "organization")
+                            {
+                                @if (_myOrganizations != null && _myOrganizations.Any())
+                                {
+                                    <MudSelect Value="_selectedOrganizationId"
+                                               T="Guid?"
+                                               Label="Select Organization"
+                                               Variant="Variant.Outlined"
+                                               Required="true"
+                                               Class="mb-3"
+                                               ValueChanged="OnOrganizationSelected">
+                                        <MudSelectItem T="Guid?" Value="@((Guid?)null)">-- Select an organization --</MudSelectItem>
+                                        @foreach (var org in _myOrganizations)
+                                        {
+                                            <MudSelectItem T="Guid?" Value="@((Guid?)org.Id)">
+                                                @org.FullName @(org.CurrentUserRole.HasValue ? $"({GetRoleName((int)org.CurrentUserRole.Value)})" : "")
+                                            </MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                }
+                                else
+                                {
+                                    <MudAlert Severity="Severity.Warning" Class="mb-4">
+                                        You are not a member of any organizations. Create or join an organization first.
+                                    </MudAlert>
+                                }
+
+                                @if (!string.IsNullOrEmpty(_organizationRoleError))
+                                {
+                                    <MudAlert Severity="Severity.Error" Class="mb-4">
+                                        @_organizationRoleError
+                                    </MudAlert>
+                                }
+                            }
+                        </MudTabPanel>
+
                         <MudTabPanel Text="General Info" Icon="@Icons.Material.Filled.Info">
                             <MudGrid>
                                 <MudItem xs="12">
@@ -103,7 +144,7 @@
                                             }
                                         }
                                     </MudSelect>
-                                    
+
                                     <MudText Class="isl-form__section-title mb-2 mt-2">Audience</MudText>
                                     <MudGrid>
                                         <MudItem xs="12" md="6">
@@ -177,7 +218,7 @@
                                                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveSession(index))" />
                                             }
                                         </div>
-                                        
+
                                         <EventSessionEditor Session="sessions[index]"
                                                             SessionChanged="@((s) => OnSessionChanged(index, s))"
                                                             Index="index"
@@ -251,11 +292,11 @@
                     </MudTabs>
 
                     <div class="d-flex justify-end mt-6 gap-2">
-                        <MudButton Variant="Variant.Text" OnClick="@(() => Navigation.NavigateTo($"/organization/{OrganizationId}"))">Cancel</MudButton>
+                        <MudButton Variant="Variant.Text" OnClick="@(() => Navigation.NavigateTo("/events"))">Cancel</MudButton>
                         <MudButton ButtonType="ButtonType.Submit"
                                    Variant="Variant.Filled"
                                    Color="Color.Primary"
-                                   Disabled="@(isProcessing || _isUploadingImage)"
+                                   Disabled="@(isProcessing || _isUploadingImage || !string.IsNullOrEmpty(_organizationRoleError))"
                                    StartIcon="@(isProcessing || _isUploadingImage ? null : Icons.Material.Filled.Save)">
                             @if (isProcessing)
                             {

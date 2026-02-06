@@ -153,7 +153,13 @@
                     <MudCard Class="h-100 d-flex flex-column">
                         <MudCardMedia Image="@(string.IsNullOrEmpty(evt.FeaturedImageUri) ? GetEventImage(evt) : evt.FeaturedImageUri)" Height="200" />
                         <MudCardContent Class="flex-grow-1">
-                            <MudText Typo="Typo.button" Class="mud-text-disabled mb-1">@GetEventTypeName(evt)</MudText>
+                            <div class="d-flex align-center gap-2 mb-1">
+                                <MudText Typo="Typo.button" Class="mud-text-disabled">@GetEventTypeName(evt)</MudText>
+                                @if (evt.IsUserReported == true)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">User Reported</MudChip>
+                                }
+                            </div>
                             <MudText Typo="Typo.h6" Class="mb-4">@evt.Title</MudText>
                             <MudText Typo="Typo.body2" Style="overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;">
                                 @GetTruncatedDescription(evt.Description)

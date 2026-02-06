@@ -5,11 +5,13 @@
 @using Explore.Blazor.Client.Components.Event
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Authorization
 @using System.IO
 @using Blazouter.Services
 @using static Explore.Blazor.Client.Components.Event.EventSessionEditor
 @using Explore.Blazor.Client.Helpers
 @using Explore.Blazor.Client.Components
+@attribute [Authorize]
 @inject IEventService EventService
 @inject IOrganizationService OrganizationService
 @inject IAdminService AdminService

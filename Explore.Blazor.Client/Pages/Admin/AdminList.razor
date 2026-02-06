@@ -4,319 +4,265 @@
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize(Roles="Admin")]
 
-<div class="admin-list">
+@page "/admin"
+@using MudBlazor
+@using Explore.Blazor.Client.Components.Admin
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles="Admin")]
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-8">
 
     <!-- HERO -->
-    <MudPaper Class="admin-list__hero" Elevation="0">
-        <div class="admin-list__hero-top">
-            <div>
-                <div class="admin-list__hero-title">
-                    <div class="admin-list__hero-badge">
-                        <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Color="Color.Primary" />
-                    </div>
-                    <div>
-                        <MudText Typo="Typo.h4" Style="font-weight:800; letter-spacing:.2px;">
-                            Admin Dashboard
-                        </MudText>
-                        <MudText Typo="Typo.body2" Class="admin-list__hero-subtitle">
-                            Review and action incoming organization requests
-                        </MudText>
-                    </div>
+    <MudPaper Elevation="0" Class="pa-6 mb-6 rounded-xl relative overflow-hidden" Style="background: radial-gradient(circle at 20% 10%, rgba(124, 58, 237, 0.15), transparent 60%), linear-gradient(180deg, var(--mud-palette-surface), var(--mud-palette-background)); border: 1px solid var(--mud-palette-lines-default);">
+        <div class="d-flex justify-space-between align-center flex-wrap gap-4">
+            <div class="d-flex align-center gap-4">
+                <MudAvatar Rounded="true" Size="Size.Large" Color="Color.Primary" Variant="Variant.Filled">
+                    <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Size="Size.Medium" />
+                </MudAvatar>
+                <div>
+                    <MudText Typo="Typo.h4" Style="font-weight: 800;">Admin Dashboard</MudText>
+                    <MudText Typo="Typo.body1" Color="Color.Secondary">Review and action incoming organization requests</MudText>
                 </div>
             </div>
-
-            <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.Refresh"
-                           OnClick="LoadOrganizationRequests"
-                           Style="border-radius:999px; padding:10px 16px;">
-                    Refresh
-                </MudButton>
-            </MudStack>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadOrganizationRequests" Class="rounded-pill px-6">Refresh</MudButton>
         </div>
 
-        <!-- STATS -->
-        <div class="admin-list__stats">
-            <div class="admin-list__stat">
-                <div class="admin-list__stat-row">
-                    <div class="admin-list__stat-icon admin-list__stat-icon--pending">
-                        <MudIcon Icon="@Icons.Material.Filled.HourglassBottom" Color="Color.Info" />
+        <MudGrid Class="mt-6" Spacing="3">
+            <MudItem xs="12" sm="4">
+                <MudCard Elevation="0" Class="pa-4 border-solid border-1 mud-border-lines-default rounded-lg">
+                    <div class="d-flex align-center gap-4">
+                        <MudAvatar Rounded="true" Color="Color.Info" Variant="Variant.Outlined">
+                            <MudIcon Icon="@Icons.Material.Filled.HourglassBottom" />
+                        </MudAvatar>
+                        <div>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Pending</MudText>
+                            <MudText Typo="Typo.h5" Style="font-weight: 700;">@PendingCount</MudText>
+                        </div>
                     </div>
-                    <div>
-                        <div class="admin-list__stat-label">Pending</div>
-                        <div class="admin-list__stat-value">@PendingCount</div>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudCard Elevation="0" Class="pa-4 border-solid border-1 mud-border-lines-default rounded-lg">
+                    <div class="d-flex align-center gap-4">
+                        <MudAvatar Rounded="true" Color="Color.Success" Variant="Variant.Outlined">
+                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" />
+                        </MudAvatar>
+                        <div>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Approved</MudText>
+                            <MudText Typo="Typo.h5" Style="font-weight: 700;">@ApprovedCount</MudText>
+                        </div>
                     </div>
-                </div>
-            </div>
-
-            <div class="admin-list__stat">
-                <div class="admin-list__stat-row">
-                    <div class="admin-list__stat-icon admin-list__stat-icon--approved">
-                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" />
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudCard Elevation="0" Class="pa-4 border-solid border-1 mud-border-lines-default rounded-lg">
+                    <div class="d-flex align-center gap-4">
+                        <MudAvatar Rounded="true" Color="Color.Error" Variant="Variant.Outlined">
+                            <MudIcon Icon="@Icons.Material.Filled.Cancel" />
+                        </MudAvatar>
+                        <div>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Rejected</MudText>
+                            <MudText Typo="Typo.h5" Style="font-weight: 700;">@RejectedCount</MudText>
+                        </div>
                     </div>
-                    <div>
-                        <div class="admin-list__stat-label">Approved</div>
-                        <div class="admin-list__stat-value">@ApprovedCount</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="admin-list__stat">
-                <div class="admin-list__stat-row">
-                    <div class="admin-list__stat-icon admin-list__stat-icon--rejected">
-                        <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Error" />
-                    </div>
-                    <div>
-                        <div class="admin-list__stat-label">Rejected</div>
-                        <div class="admin-list__stat-value">@RejectedCount</div>
-                    </div>
-                </div>
-            </div>
-        </div>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
     </MudPaper>
 
-    <!-- LOOKUP TABLES NAVIGATION -->
-    <div class="admin-list__lookup-section">
-        <div class="admin-list__section-head">
-            <div>
-                <MudText Typo="Typo.h5" Style="font-weight:800;">Lookup Tables</MudText>
-                <MudText Typo="Typo.body2" Class="admin-list__muted">
-                    Manage system data and configurations
-                </MudText>
-            </div>
-        </div>
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">@_errorMessage</MudAlert>
+    }
 
-        <div class="admin-list__lookup-grid">
-            <!-- CRUD Tables (Full Edit Access) -->
-            <MudPaper Class="admin-list__lookup-card admin-list__lookup-card--crud" Elevation="0" @onclick="@(() => Nav.NavigateTo("/admin/tags"))">
-                <div class="admin-list__lookup-card-icon admin-list__lookup-card-icon--tags">
-                    <MudIcon Icon="@Icons.Material.Filled.LocalOffer" />
-                </div>
-                <div class="admin-list__lookup-card-content">
-                    <MudText Typo="Typo.subtitle1" Style="font-weight:700;">Tags</MudText>
-                    <MudText Typo="Typo.caption" Class="admin-list__muted">Create, edit, delete tags</MudText>
-                </div>
-                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled">CRUD</MudChip>
-            </MudPaper>
+    <!-- LOOKUP TABLES -->
+    <div class="mb-8">
+        <MudText Typo="Typo.h5" Class="mb-4" Style="font-weight: 700;">Lookup Tables</MudText>
+        <MudGrid Spacing="3">
+            <!-- CRUD -->
+            <MudItem xs="12" sm="6" md="4" lg="3">
+                <MudCard Elevation="0" Class="pa-4 cursor-pointer hover-elevation-4 transition-all border-solid border-1 mud-border-lines-default rounded-lg" @onclick="@(() => Nav.NavigateTo("/admin/tags"))">
+                    <div class="d-flex justify-space-between align-start mb-2">
+                        <MudAvatar Rounded="true" Color="Color.Primary" Variant="Variant.Outlined">
+                            <MudIcon Icon="@Icons.Material.Filled.LocalOffer" />
+                        </MudAvatar>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text">CRUD</MudChip>
+                    </div>
+                    <MudText Typo="Typo.h6" Class="mt-2">Tags</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Manage tags</MudText>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4" lg="3">
+                <MudCard Elevation="0" Class="pa-4 cursor-pointer hover-elevation-4 transition-all border-solid border-1 mud-border-lines-default rounded-lg" @onclick="@(() => Nav.NavigateTo("/admin/categories"))">
+                    <div class="d-flex justify-space-between align-start mb-2">
+                        <MudAvatar Rounded="true" Color="Color.Primary" Variant="Variant.Outlined">
+                            <MudIcon Icon="@Icons.Material.Filled.Category" />
+                        </MudAvatar>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text">CRUD</MudChip>
+                    </div>
+                    <MudText Typo="Typo.h6" Class="mt-2">Categories</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Manage categories</MudText>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4" lg="3">
+                <MudCard Elevation="0" Class="pa-4 cursor-pointer hover-elevation-4 transition-all border-solid border-1 mud-border-lines-default rounded-lg" @onclick="@(() => Nav.NavigateTo("/admin/locations"))">
+                    <div class="d-flex justify-space-between align-start mb-2">
+                        <MudAvatar Rounded="true" Color="Color.Primary" Variant="Variant.Outlined">
+                            <MudIcon Icon="@Icons.Material.Filled.LocationOn" />
+                        </MudAvatar>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text">CRUD</MudChip>
+                    </div>
+                    <MudText Typo="Typo.h6" Class="mt-2">Locations</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Manage venues</MudText>
+                </MudCard>
+            </MudItem>
 
-            <MudPaper Class="admin-list__lookup-card admin-list__lookup-card--crud" Elevation="0" @onclick="@(() => Nav.NavigateTo("/admin/categories"))">
-                <div class="admin-list__lookup-card-icon admin-list__lookup-card-icon--categories">
-                    <MudIcon Icon="@Icons.Material.Filled.Category" />
-                </div>
-                <div class="admin-list__lookup-card-content">
-                    <MudText Typo="Typo.subtitle1" Style="font-weight:700;">Categories</MudText>
-                    <MudText Typo="Typo.caption" Class="admin-list__muted">Manage event categories</MudText>
-                </div>
-                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled">CRUD</MudChip>
-            </MudPaper>
-
-            <MudPaper Class="admin-list__lookup-card admin-list__lookup-card--crud" Elevation="0" @onclick="@(() => Nav.NavigateTo("/admin/locations"))">
-                <div class="admin-list__lookup-card-icon admin-list__lookup-card-icon--locations">
-                    <MudIcon Icon="@Icons.Material.Filled.LocationOn" />
-                </div>
-                <div class="admin-list__lookup-card-content">
-                    <MudText Typo="Typo.subtitle1" Style="font-weight:700;">Locations</MudText>
-                    <MudText Typo="Typo.caption" Class="admin-list__muted">Manage event venues</MudText>
-                </div>
-                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled">CRUD</MudChip>
-            </MudPaper>
-
-            <!-- Read-Only Tables -->
-            <MudPaper Class="admin-list__lookup-card" Elevation="0" @onclick="@(() => Nav.NavigateTo("/admin/madhabs"))">
-                <div class="admin-list__lookup-card-icon admin-list__lookup-card-icon--madhabs">
-                    <MudIcon Icon="@Icons.Material.Filled.MenuBook" />
-                </div>
-                <div class="admin-list__lookup-card-content">
-                    <MudText Typo="Typo.subtitle1" Style="font-weight:700;">Madhabs</MudText>
-                    <MudText Typo="Typo.caption" Class="admin-list__muted">Islamic jurisprudence schools</MudText>
-                </div>
-                <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">View</MudChip>
-            </MudPaper>
-
-            <MudPaper Class="admin-list__lookup-card" Elevation="0" @onclick="@(() => Nav.NavigateTo("/admin/audience-ages"))">
-                <div class="admin-list__lookup-card-icon admin-list__lookup-card-icon--ages">
-                    <MudIcon Icon="@Icons.Material.Filled.Cake" />
-                </div>
-                <div class="admin-list__lookup-card-content">
-                    <MudText Typo="Typo.subtitle1" Style="font-weight:700;">Audience Ages</MudText>
-                    <MudText Typo="Typo.caption" Class="admin-list__muted">Age group classifications</MudText>
-                </div>
-                <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">View</MudChip>
-            </MudPaper>
-
-            <MudPaper Class="admin-list__lookup-card" Elevation="0" @onclick="@(() => Nav.NavigateTo("/admin/audience-genders"))">
-                <div class="admin-list__lookup-card-icon admin-list__lookup-card-icon--genders">
-                    <MudIcon Icon="@Icons.Material.Filled.People" />
-                </div>
-                <div class="admin-list__lookup-card-content">
-                    <MudText Typo="Typo.subtitle1" Style="font-weight:700;">Audience Genders</MudText>
-                    <MudText Typo="Typo.caption" Class="admin-list__muted">Gender audience options</MudText>
-                </div>
-                <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">View</MudChip>
-            </MudPaper>
-
-            <MudPaper Class="admin-list__lookup-card" Elevation="0" @onclick="@(() => Nav.NavigateTo("/admin/event-types"))">
-                <div class="admin-list__lookup-card-icon admin-list__lookup-card-icon--event-types">
-                    <MudIcon Icon="@Icons.Material.Filled.Event" />
-                </div>
-                <div class="admin-list__lookup-card-content">
-                    <MudText Typo="Typo.subtitle1" Style="font-weight:700;">Event Types</MudText>
-                    <MudText Typo="Typo.caption" Class="admin-list__muted">Event classifications</MudText>
-                </div>
-                <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">View</MudChip>
-            </MudPaper>
-
-            <MudPaper Class="admin-list__lookup-card" Elevation="0" @onclick="@(() => Nav.NavigateTo("/admin/event-formats"))">
-                <div class="admin-list__lookup-card-icon admin-list__lookup-card-icon--event-formats">
-                    <MudIcon Icon="@Icons.Material.Filled.Videocam" />
-                </div>
-                <div class="admin-list__lookup-card-content">
-                    <MudText Typo="Typo.subtitle1" Style="font-weight:700;">Event Formats</MudText>
-                    <MudText Typo="Typo.caption" Class="admin-list__muted">In-person, Online, Hybrid</MudText>
-                </div>
-                <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">View</MudChip>
-            </MudPaper>
-
-            <MudPaper Class="admin-list__lookup-card" Elevation="0" @onclick="@(() => Nav.NavigateTo("/admin/languages"))">
-                <div class="admin-list__lookup-card-icon admin-list__lookup-card-icon--languages">
-                    <MudIcon Icon="@Icons.Material.Filled.Language" />
-                </div>
-                <div class="admin-list__lookup-card-content">
-                    <MudText Typo="Typo.subtitle1" Style="font-weight:700;">Languages</MudText>
-                    <MudText Typo="Typo.caption" Class="admin-list__muted">Supported languages</MudText>
-                </div>
-                <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">View</MudChip>
-            </MudPaper>
-        </div>
+            <!-- Read Only / Others -->
+            <MudItem xs="12" sm="6" md="4" lg="3">
+                <MudCard Elevation="0" Class="pa-4 cursor-pointer hover-elevation-4 transition-all border-solid border-1 mud-border-lines-default rounded-lg" @onclick="@(() => Nav.NavigateTo("/admin/event-types"))">
+                    <div class="d-flex justify-space-between align-start mb-2">
+                        <MudAvatar Rounded="true" Color="Color.Secondary" Variant="Variant.Outlined">
+                            <MudIcon Icon="@Icons.Material.Filled.Event" />
+                        </MudAvatar>
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text">View</MudChip>
+                    </div>
+                    <MudText Typo="Typo.h6" Class="mt-2">Event Types</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Classifications</MudText>
+                </MudCard>
+            </MudItem>
+             <MudItem xs="12" sm="6" md="4" lg="3">
+                <MudCard Elevation="0" Class="pa-4 cursor-pointer hover-elevation-4 transition-all border-solid border-1 mud-border-lines-default rounded-lg" @onclick="@(() => Nav.NavigateTo("/admin/event-formats"))">
+                    <div class="d-flex justify-space-between align-start mb-2">
+                        <MudAvatar Rounded="true" Color="Color.Secondary" Variant="Variant.Outlined">
+                            <MudIcon Icon="@Icons.Material.Filled.Videocam" />
+                        </MudAvatar>
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text">View</MudChip>
+                    </div>
+                    <MudText Typo="Typo.h6" Class="mt-2">Formats</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">In-person/Online</MudText>
+                </MudCard>
+            </MudItem>
+             <MudItem xs="12" sm="6" md="4" lg="3">
+                <MudCard Elevation="0" Class="pa-4 cursor-pointer hover-elevation-4 transition-all border-solid border-1 mud-border-lines-default rounded-lg" @onclick="@(() => Nav.NavigateTo("/admin/languages"))">
+                    <div class="d-flex justify-space-between align-start mb-2">
+                        <MudAvatar Rounded="true" Color="Color.Secondary" Variant="Variant.Outlined">
+                            <MudIcon Icon="@Icons.Material.Filled.Language" />
+                        </MudAvatar>
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text">View</MudChip>
+                    </div>
+                    <MudText Typo="Typo.h6" Class="mt-2">Languages</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Supported languages</MudText>
+                </MudCard>
+            </MudItem>
+             <MudItem xs="12" sm="6" md="4" lg="3">
+                <MudCard Elevation="0" Class="pa-4 cursor-pointer hover-elevation-4 transition-all border-solid border-1 mud-border-lines-default rounded-lg" @onclick="@(() => Nav.NavigateTo("/admin/audience-ages"))">
+                    <div class="d-flex justify-space-between align-start mb-2">
+                        <MudAvatar Rounded="true" Color="Color.Secondary" Variant="Variant.Outlined">
+                            <MudIcon Icon="@Icons.Material.Filled.Cake" />
+                        </MudAvatar>
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text">View</MudChip>
+                    </div>
+                    <MudText Typo="Typo.h6" Class="mt-2">Ages</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Audience ages</MudText>
+                </MudCard>
+            </MudItem>
+             <MudItem xs="12" sm="6" md="4" lg="3">
+                <MudCard Elevation="0" Class="pa-4 cursor-pointer hover-elevation-4 transition-all border-solid border-1 mud-border-lines-default rounded-lg" @onclick="@(() => Nav.NavigateTo("/admin/audience-genders"))">
+                    <div class="d-flex justify-space-between align-start mb-2">
+                        <MudAvatar Rounded="true" Color="Color.Secondary" Variant="Variant.Outlined">
+                            <MudIcon Icon="@Icons.Material.Filled.People" />
+                        </MudAvatar>
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text">View</MudChip>
+                    </div>
+                    <MudText Typo="Typo.h6" Class="mt-2">Genders</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Audience genders</MudText>
+                </MudCard>
+            </MudItem>
+             <MudItem xs="12" sm="6" md="4" lg="3">
+                <MudCard Elevation="0" Class="pa-4 cursor-pointer hover-elevation-4 transition-all border-solid border-1 mud-border-lines-default rounded-lg" @onclick="@(() => Nav.NavigateTo("/admin/madhabs"))">
+                    <div class="d-flex justify-space-between align-start mb-2">
+                        <MudAvatar Rounded="true" Color="Color.Secondary" Variant="Variant.Outlined">
+                            <MudIcon Icon="@Icons.Material.Filled.MenuBook" />
+                        </MudAvatar>
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text">View</MudChip>
+                    </div>
+                    <MudText Typo="Typo.h6" Class="mt-2">Madhabs</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Schools of thought</MudText>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
     </div>
 
     @if (_isLoading)
     {
-        <MudPaper Class="admin-list__panel" Elevation="0" Style="margin-top:14px;">
-            <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="py-4">
-                <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
-                <MudText Typo="Typo.body1">Loading organization requests…</MudText>
-                <MudText Typo="Typo.caption" Class="admin-list__muted">Please wait a moment.</MudText>
-            </MudStack>
-        </MudPaper>
+        <div class="d-flex flex-column align-center justify-center py-12">
+            <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+            <MudText Typo="Typo.body1" Class="mt-4" Color="Color.Secondary">Loading organization requests...</MudText>
+        </div>
     }
     else
     {
-        <div class="admin-list__section">
-            <div class="admin-list__section-head">
+        <MudPaper Elevation="0" Class="pa-4 border-solid border-1 mud-border-lines-default rounded-xl">
+            <div class="d-flex justify-space-between align-center flex-wrap gap-4 mb-4">
                 <div>
-                    <MudText Typo="Typo.h5" Style="font-weight:800;">Admin Management</MudText>
-                    <MudText Typo="Typo.body2" Class="admin-list__muted">
-                        Showing oldest first • @_organizationRequests.Count requests
-                    </MudText>
+                    <MudText Typo="Typo.h5" Style="font-weight: 700;">Admin Management</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Showing oldest first • @_organizationRequests.Count requests</MudText>
                 </div>
-            </div>
-
-            <!-- TOOLBAR -->
-            <MudPaper Class="admin-list__panel" Elevation="0">
-                <div class="admin-list__toolbar">
+                
+                <div class="d-flex gap-2 align-center flex-wrap">
                     <MudTextField @bind-Value="_search"
-                                  Placeholder="Search by name, email, city, country…"
+                                  Placeholder="Search..."
                                   Adornment="Adornment.Start"
                                   AdornmentIcon="@Icons.Material.Filled.Search"
                                   Variant="Variant.Outlined"
-                                  Immediate="true"
-                                  Clearable="true"
                                   Margin="Margin.Dense"
-                                  Style="min-width:320px; border-radius:999px;" />
-
-                    <MudDivider Vertical="true" Class="mx-2" />
-
-                    <div class="admin-list__chip-row">
-                        <MudChip T="bool"
-                                 Selected="@IsStatusSelected(RequestStatus.Pending)"
-                                 OnClick="@(() => ToggleStatus(RequestStatus.Pending))"
-                                 Color="Color.Info"
-                                 Variant="Variant.Outlined">
-                            Pending
-                        </MudChip>
-
-                        <MudChip T="bool"
-                                 Selected="@IsStatusSelected(RequestStatus.Approved)"
-                                 OnClick="@(() => ToggleStatus(RequestStatus.Approved))"
-                                 Color="Color.Success"
-                                 Variant="Variant.Outlined">
-                            Approved
-                        </MudChip>
-
-                        <MudChip T="bool"
-                                 Selected="@IsStatusSelected(RequestStatus.Rejected)"
-                                 OnClick="@(() => ToggleStatus(RequestStatus.Rejected))"
-                                 Color="Color.Error"
-                                 Variant="Variant.Outlined">
-                            Rejected
-                        </MudChip>
-
-                        <MudButton Variant="Variant.Text"
-                                   StartIcon="@Icons.Material.Filled.FilterAltOff"
-                                   OnClick="ClearFilters"
-                                   Style="border-radius:999px;">
-                            Clear
-                        </MudButton>
-                    </div>
-
-                    <MudSpacer />
-
-                    <MudSelect @bind-Value="_sort"
-                               Label="Sort"
-                               Variant="Variant.Outlined"
-                               Margin="Margin.Dense"
-                               Style="min-width:190px; border-radius:14px;">
+                                  Class="rounded-pill"
+                                  Style="background: var(--mud-palette-surface);" />
+                                  
+                    <MudSelect @bind-Value="_sort" Label="Sort" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Style="min-width: 150px;">
                         <MudSelectItem Value="SortOption.OldestFirst">Oldest first</MudSelectItem>
                         <MudSelectItem Value="SortOption.NewestFirst">Newest first</MudSelectItem>
                         <MudSelectItem Value="SortOption.Name">Name</MudSelectItem>
                         <MudSelectItem Value="SortOption.Status">Status</MudSelectItem>
                     </MudSelect>
                 </div>
-            </MudPaper>
+            </div>
 
-            <!-- TABS -->
-            <MudPaper Class="admin-list__tabs" Elevation="0" Style="margin-top:12px;">
-                <MudTabs @bind-ActivePanelIndex="_activeTab"
-                         Rounded="true"
-                         Border="true"
-                         ApplyEffectsToContainer="true">
-                    <MudTabPanel Text="@($"All ({_organizationRequests.Count})")">
-                        <AdminOrganizationTable Items="GetFilteredAndSorted(null)"
-                                                OnApprove="Approve"
-                                                OnReject="Reject"
-                                                OnRevert="RevertToPending"
-                                                OnViewDetails="ViewDetails"
-                                                OnClearFilters="ClearFilters" />
-                    </MudTabPanel>
-                    <MudTabPanel Text="@($"Pending ({PendingCount})")">
-                        <AdminOrganizationTable Items="GetFilteredAndSorted(RequestStatus.Pending)"
-                                                OnApprove="Approve"
-                                                OnReject="Reject"
-                                                OnRevert="RevertToPending"
-                                                OnViewDetails="ViewDetails"
-                                                OnClearFilters="ClearFilters" />
-                    </MudTabPanel>
-                    <MudTabPanel Text="@($"Approved ({ApprovedCount})")">
-                        <AdminOrganizationTable Items="GetFilteredAndSorted(RequestStatus.Approved)"
-                                                OnApprove="Approve"
-                                                OnReject="Reject"
-                                                OnRevert="RevertToPending"
-                                                OnViewDetails="ViewDetails"
-                                                OnClearFilters="ClearFilters" />
-                    </MudTabPanel>
-                    <MudTabPanel Text="@($"Rejected ({RejectedCount})")">
-                        <AdminOrganizationTable Items="GetFilteredAndSorted(RequestStatus.Rejected)"
-                                                OnApprove="Approve"
-                                                OnReject="Reject"
-                                                OnRevert="RevertToPending"
-                                                OnViewDetails="ViewDetails"
-                                                OnClearFilters="ClearFilters" />
-                    </MudTabPanel>
-                </MudTabs>
-            </MudPaper>
-        </div>
+            <MudTabs @bind-ActivePanelIndex="_activeTab" Elevation="0" Rounded="true" ApplyEffectsToContainer="true" Color="Color.Primary" Class="mt-4">
+                <MudTabPanel Text="@($"All ({_organizationRequests.Count})")">
+                    <AdminOrganizationTable Items="GetFilteredAndSorted(null)"
+                                            OnApprove="Approve"
+                                            OnReject="Reject"
+                                            OnRevert="RevertToPending"
+                                            OnViewDetails="ViewDetails"
+                                            OnClearFilters="ClearFilters" />
+                </MudTabPanel>
+                <MudTabPanel Text="@($"Pending ({PendingCount})")">
+                    <AdminOrganizationTable Items="GetFilteredAndSorted(RequestStatus.Pending)"
+                                            OnApprove="Approve"
+                                            OnReject="Reject"
+                                            OnRevert="RevertToPending"
+                                            OnViewDetails="ViewDetails"
+                                            OnClearFilters="ClearFilters" />
+                </MudTabPanel>
+                <MudTabPanel Text="@($"Approved ({ApprovedCount})")">
+                    <AdminOrganizationTable Items="GetFilteredAndSorted(RequestStatus.Approved)"
+                                            OnApprove="Approve"
+                                            OnReject="Reject"
+                                            OnRevert="RevertToPending"
+                                            OnViewDetails="ViewDetails"
+                                            OnClearFilters="ClearFilters" />
+                </MudTabPanel>
+                <MudTabPanel Text="@($"Rejected ({RejectedCount})")">
+                    <AdminOrganizationTable Items="GetFilteredAndSorted(RequestStatus.Rejected)"
+                                            OnApprove="Approve"
+                                            OnReject="Reject"
+                                            OnRevert="RevertToPending"
+                                            OnViewDetails="ViewDetails"
+                                            OnClearFilters="ClearFilters" />
+                </MudTabPanel>
+            </MudTabs>
+        </MudPaper>
     }
 
-</div>
+</MudContainer>

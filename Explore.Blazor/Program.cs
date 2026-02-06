@@ -27,6 +27,7 @@ using Yarp.ReverseProxy.Configuration;
 using Yarp.ReverseProxy.Transforms;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.HttpOverrides;
+using Explore.Blazor.Client.Constants;
 
 // Graceful shutdown tracking for zero-downtime deployments
 // SIGTERM: 25 second grace period (health returns 503, still accepts requests)
@@ -73,7 +74,6 @@ builder.Services.AddScoped<ITagService, TagService>();
 builder.Services.AddScoped<IEventRegistrationService, EventRegistrationService>();
 builder.Services.AddScoped<ILocationService, LocationService>();
 builder.Services.AddScoped<IEventAspectService, EventAspectService>();
-builder.Services.AddTransient<ServerCookieForwardingHandler>();
 builder.Services.AddScoped<ICircuitAccessTokenService, CircuitAccessTokenService>();
 builder.Services.AddTransient<AccessTokenForwardingHandler>();
 // Configure multi-tenancy settings
@@ -190,7 +190,9 @@ builder.Services.AddAuthentication(options =>
 
         // Cookie security settings
         options.Cookie.HttpOnly = true;
-        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+            ? CookieSecurePolicy.SameAsRequest
+            : CookieSecurePolicy.Always;
         options.Cookie.SameSite = SameSiteMode.Lax;
     })
     .AddOpenIdConnect(options =>
@@ -199,7 +201,6 @@ builder.Services.AddAuthentication(options =>
         options.Authority = keycloakAuthority;
         options.ClientId = keycloakClientId;
         options.ClientSecret = keycloakClientSecret;
-        options.ResponseType = "code";
         options.UsePkce = true;
         options.SaveTokens = true;
         options.GetClaimsFromUserInfoEndpoint = true;
@@ -238,10 +239,8 @@ builder.Services.AddAuthentication(options =>
         {
             OnRedirectToIdentityProvider = context =>
             {
-                // Log the redirect URI being sent to Keycloak
-                logger.LogInformation("[OIDC] Redirecting to IdP. RedirectUri: {RedirectUri}, Authority: {Authority}",
-                    context.ProtocolMessage.RedirectUri,
-                    context.Options.Authority);
+                logger.LogDebug("[OIDC] Redirecting to IdP. RedirectUri: {RedirectUri}",
+                    context.ProtocolMessage.RedirectUri);
                 return Task.CompletedTask;
             },
             OnAuthenticationFailed = context =>
@@ -270,12 +269,12 @@ builder.Services.AddAuthentication(options =>
             },
             OnMessageReceived = context =>
             {
-                logger.LogInformation("[OIDC] Message received from IdP");
+                logger.LogDebug("[OIDC] Message received from IdP");
                 return Task.CompletedTask;
             },
             OnTokenValidated = context =>
             {
-                logger.LogInformation("[OIDC] Token validated for user: {User}",
+                logger.LogDebug("[OIDC] Token validated for user: {User}",
                     context.Principal?.Identity?.Name);
                 return Task.CompletedTask;
             }
@@ -312,10 +311,6 @@ var proxyClusters = new[]
     }
 };
 
-// Default tenant ID - MUST match Explore.API.Services.TenantContext.DefaultTenantId
-// and Explore.Persistence.SeedIds.DefaultTenantId for proper multi-tenant isolation
-const string DefaultTenantId = "018e4e5c-7f00-7000-8000-000000000001";
-
 builder.Services.AddReverseProxy()
     .LoadFromMemory(proxyRoutes, proxyClusters)
     .AddTransforms(context =>
@@ -332,9 +327,11 @@ builder.Services.AddReverseProxy()
 
             // Always add X-Tenant-Id header for multi-tenant isolation
             // This ensures the API knows which tenant the request belongs to
-            if (!transformContext.ProxyRequest.Headers.Contains("X-Tenant-Id"))
+            if (!transformContext.ProxyRequest.Headers.Contains(TenantConstants.TenantIdHeaderName))
             {
-                transformContext.ProxyRequest.Headers.Add("X-Tenant-Id", DefaultTenantId);
+                transformContext.ProxyRequest.Headers.Add(
+                    TenantConstants.TenantIdHeaderName,
+                    TenantConstants.DefaultTenantId.ToString());
             }
         });
     });
@@ -382,15 +379,14 @@ forwardedHeadersOptions.KnownProxies.Clear();
 
 app.UseForwardedHeaders(forwardedHeadersOptions);
 
-// Log the detected scheme for debugging
+// Log the detected scheme for debugging (debug level to avoid log spam)
 app.Use(async (context, next) =>
 {
-    // Only log on specific paths to avoid log spam
     if (context.Request.Path.StartsWithSegments("/auth") ||
         context.Request.Path.StartsWithSegments("/login") ||
         context.Request.Path.StartsWithSegments("/logout"))
     {
-        app.Logger.LogInformation(
+        app.Logger.LogDebug(
             "[ForwardedHeaders] Path: {Path}, Scheme: {Scheme}, Host: {Host}, Proto Header: {Proto}",
             context.Request.Path,
             context.Request.Scheme,
@@ -466,8 +462,9 @@ app.Use(async (ctx, next) =>
                 new CookieOptions
                 {
                     HttpOnly = false,
-                    Secure = ctx.Request.IsHttps,
-                    SameSite = SameSiteMode.Lax
+                    Secure = !app.Environment.IsDevelopment(),
+                    SameSite = SameSiteMode.Lax,
+                    Path = "/"
                 }
             );
         }
@@ -480,6 +477,25 @@ app.UseRouting();
 
 app.UseAuthentication();
 
+// Capture access token during HTTP request pipeline (async-safe) for use in Blazor components
+// This avoids the .GetAwaiter().GetResult() anti-pattern in App.razor's synchronous code block
+app.Use(async (ctx, next) =>
+{
+    if (ctx.User?.Identity?.IsAuthenticated == true)
+    {
+        var accessToken = await ctx.GetTokenAsync("access_token");
+        if (!string.IsNullOrEmpty(accessToken))
+        {
+            ctx.Items["AccessToken"] = accessToken;
+
+            // Store in scoped token service for API calls during this request
+            var tokenService = ctx.RequestServices.GetService<ICircuitAccessTokenService>();
+            tokenService?.SetToken(accessToken);
+        }
+    }
+
+    await next();
+});
 
 app.Use(async (ctx, next) =>
 {
@@ -538,12 +554,11 @@ app.MapGet("/auth/challenge", async ctx =>
 {
     var returnUrl = GetSafeReturnUrl(ctx, app.Logger);
 
-    // Log current OIDC configuration for debugging
     var config = ctx.RequestServices.GetRequiredService<IConfiguration>();
-    app.Logger.LogInformation(
-        "[AuthEndpoints] /auth/challenge - Config check: Authority={Authority}, ClientId={ClientId}, HasSecret={HasSecret}",
+    app.Logger.LogDebug(
+        "[AuthEndpoints] /auth/challenge - Config check: Authority={Authority}, HasClientId={HasClientId}, HasSecret={HasSecret}",
         config["Keycloak:Authority"],
-        config["Keycloak:ClientId"],
+        !string.IsNullOrEmpty(config["Keycloak:ClientId"]),
         !string.IsNullOrEmpty(config["Keycloak:ClientSecret"]));
 
     app.Logger.LogInformation(
@@ -562,17 +577,15 @@ app.MapGet("/auth/challenge", async ctx =>
     }
     catch (Exception ex)
     {
-        app.Logger.LogError(ex, "[AuthEndpoints] Error during login challenge. InnerException: {Inner}",
+        app.Logger.LogError(ex, "[AuthEndpoints] Error during login challenge. Authority: {Authority}, ClientId: {ClientId}, HasSecret: {HasSecret}, InnerException: {Inner}",
+            config["Keycloak:Authority"],
+            config["Keycloak:ClientId"],
+            !string.IsNullOrEmpty(config["Keycloak:ClientSecret"]),
             ex.InnerException?.Message);
         ctx.Response.StatusCode = 500;
         await ctx.Response.WriteAsJsonAsync(new
         {
-            error = "Login failed",
-            details = ex.Message,
-            inner = ex.InnerException?.Message,
-            authority = config["Keycloak:Authority"],
-            clientId = config["Keycloak:ClientId"],
-            hasSecret = !string.IsNullOrEmpty(config["Keycloak:ClientSecret"])
+            error = "Login failed. Please try again later."
         });
     }
 });
@@ -598,11 +611,11 @@ app.MapGet("/auth/signout", async ctx =>
     {
         app.Logger.LogError(ex, "[AuthEndpoints] Error during signout");
         ctx.Response.StatusCode = 500;
-        await ctx.Response.WriteAsJsonAsync(new { error = "Logout failed", details = ex.Message });
+        await ctx.Response.WriteAsJsonAsync(new { error = "Logout failed. Please try again later." });
     }
 });
 
-// Public endpoint to check authentication status
+// Authentication status endpoint - returns minimal safe information only
 app.MapGet("/auth/status", (HttpContext ctx) =>
 {
     if (ctx.User.Identity?.IsAuthenticated == true)
@@ -610,8 +623,7 @@ app.MapGet("/auth/status", (HttpContext ctx) =>
         return Results.Ok(new
         {
             isAuthenticated = true,
-            name = ctx.User.Identity.Name,
-            claims = ctx.User.Claims.Select(c => new { c.Type, c.Value })
+            name = ctx.User.Identity.Name
         });
     }
     else
@@ -620,51 +632,49 @@ app.MapGet("/auth/status", (HttpContext ctx) =>
     }
 });
 
-// Debug endpoint to test OIDC discovery and configuration
-app.MapGet("/auth/debug", async (IConfiguration config, IHttpClientFactory httpClientFactory) =>
+// OIDC debug endpoint - Development only, requires authentication
+if (app.Environment.IsDevelopment())
 {
-    var authority = config["Keycloak:Authority"];
-    var metadataAddress = config["Keycloak:MetadataAddress"] ?? $"{authority}/.well-known/openid-configuration";
-    var clientId = config["Keycloak:ClientId"];
-    var clientSecret = config["Keycloak:ClientSecret"];
-
-    var result = new Dictionary<string, object?>
+    app.MapGet("/auth/debug", async (IConfiguration config, IHttpClientFactory httpClientFactory) =>
     {
-        ["authority"] = authority,
-        ["metadataAddress"] = metadataAddress,
-        ["clientId"] = clientId,
-        ["hasClientSecret"] = !string.IsNullOrEmpty(clientSecret),
-        ["clientSecretPreview"] = string.IsNullOrEmpty(clientSecret) ? null : $"****{clientSecret[^Math.Min(4, clientSecret.Length)..]}",
-        ["clientSecretLength"] = clientSecret?.Length
-    };
+        var authority = config["Keycloak:Authority"];
+        var metadataAddress = config["Keycloak:MetadataAddress"] ?? $"{authority}/.well-known/openid-configuration";
 
-    // Try to fetch OIDC discovery document
-    try
-    {
-        using var httpClient = httpClientFactory.CreateClient();
-        httpClient.Timeout = TimeSpan.FromSeconds(10);
-        var response = await httpClient.GetAsync(metadataAddress);
-        result["discoveryStatus"] = (int)response.StatusCode;
-        result["discoverySuccess"] = response.IsSuccessStatusCode;
-
-        if (response.IsSuccessStatusCode)
+        var result = new Dictionary<string, object?>
         {
-            var content = await response.Content.ReadAsStringAsync();
-            result["discoveryDocument"] = System.Text.Json.JsonSerializer.Deserialize<object>(content);
-        }
-        else
-        {
-            result["discoveryError"] = await response.Content.ReadAsStringAsync();
-        }
-    }
-    catch (Exception ex)
-    {
-        result["discoveryError"] = ex.Message;
-        result["discoveryInnerError"] = ex.InnerException?.Message;
-    }
+            ["authority"] = authority,
+            ["metadataAddress"] = metadataAddress,
+            ["hasClientId"] = !string.IsNullOrEmpty(config["Keycloak:ClientId"]),
+            ["hasClientSecret"] = !string.IsNullOrEmpty(config["Keycloak:ClientSecret"])
+        };
 
-    return Results.Ok(result);
-});
+        // Try to fetch OIDC discovery document
+        try
+        {
+            using var httpClient = httpClientFactory.CreateClient();
+            httpClient.Timeout = TimeSpan.FromSeconds(10);
+            var response = await httpClient.GetAsync(metadataAddress);
+            result["discoveryStatus"] = (int)response.StatusCode;
+            result["discoverySuccess"] = response.IsSuccessStatusCode;
+
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                result["discoveryDocument"] = System.Text.Json.JsonSerializer.Deserialize<object>(content);
+            }
+            else
+            {
+                result["discoveryError"] = await response.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            result["discoveryError"] = ex.Message;
+        }
+
+        return Results.Ok(result);
+    }).RequireAuthorization();
+}
 
 app.MapGet("/bff/me", (HttpContext ctx) =>
 {
@@ -673,10 +683,14 @@ app.MapGet("/bff/me", (HttpContext ctx) =>
         return Results.Unauthorized();
     }
 
+    // Return only safe, non-sensitive claims needed by the frontend
+    var safeClaims = new[] { "preferred_username", "email", "name", "given_name", "family_name", "roles", "sub" };
     return Results.Ok(new
     {
         Name = ctx.User.Identity?.Name,
-        Claims = ctx.User.Claims.Select(c => new { c.Type, c.Value })
+        Claims = ctx.User.Claims
+            .Where(c => safeClaims.Contains(c.Type, StringComparer.OrdinalIgnoreCase))
+            .Select(c => new { c.Type, c.Value })
     });
 });
 

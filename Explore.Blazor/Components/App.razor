@@ -1,9 +1,6 @@
 @using Explore.Blazor.Client.Layout
 @using Microsoft.AspNetCore.Components.Web
-@using Microsoft.AspNetCore.Authentication
-@using Explore.Blazor.Services
 @inject IHttpContextAccessor HttpContextAccessor
-@inject ICircuitAccessTokenService TokenService
 
 <!DOCTYPE html>
 <html lang="en">
@@ -11,13 +8,16 @@
 <head>
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-	@* <meta http-equiv="Content-Security-Policy"
+	<meta http-equiv="Content-Security-Policy"
 	      content="default-src 'self';
                script-src 'self' 'wasm-unsafe-eval';
-               style-src 'self' 'unsafe-inline';
-               connect-src 'self' http://localhost:8080 http://keycloak:8080;
-               img-src 'self' data:;
-               font-src 'self' https://fonts.gstatic.com;"> *@
+               style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+               connect-src 'self' ws: wss:;
+               img-src 'self' data: https: blob:;
+               font-src 'self' https://fonts.gstatic.com;
+               frame-ancestors 'self';
+               base-uri 'self';
+               form-action 'self';">
 	<base href="/" />
 	<link href=@Assets["_content/MudBlazor/MudBlazor.min.css"] rel="stylesheet" />
 	<link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
@@ -26,56 +26,41 @@
 	<link rel="stylesheet" href="_content/Blazouter/blazouter.min.css" />
 	<ImportMap />
 	<link rel="icon" type="image/ico" href="favicon.ico" />
-	<HeadOutlet @rendermode="new InteractiveServerRenderMode(prerender: false)" />
+	<HeadOutlet @rendermode="InteractiveAuto" />
 </head>
 
 <body>
     @{
         var theme = HttpContextAccessor.HttpContext?.Request.Cookies["theme"];
         var isDark = theme == "dark";
-
-        // Capture access token during initial HTTP request for use in SignalR circuit
-        string? accessToken = null;
-        try
-        {
-            var httpContext = HttpContextAccessor.HttpContext;
-            if (httpContext?.User?.Identity?.IsAuthenticated == true)
-            {
-                accessToken = httpContext.GetTokenAsync("access_token").GetAwaiter().GetResult();
-
-                // Also store in TokenService immediately so it's available for API calls
-                if (!string.IsNullOrEmpty(accessToken))
-                {
-                    TokenService.SetToken(accessToken);
-                    Console.WriteLine($"[App.razor] Stored access token (length: {accessToken.Length})");
-                }
-                else
-                {
-                    Console.WriteLine("[App.razor] User authenticated but no access token available");
-                }
-            }
-            else
-            {
-                Console.WriteLine("[App.razor] User not authenticated");
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[App.razor] Token retrieval failed: {ex.Message}");
-        }
     }
 
 	<CascadingAuthenticationState>
         <CascadingValue Value="isDark" Name="InitialTheme">
-            <CascadingValue Value="accessToken" Name="AccessToken">
-		        <Routes @rendermode="InteractiveServer" />
-            </CascadingValue>
+            <ErrorBoundary>
+                <ChildContent>
+		            <Routes @rendermode="InteractiveAuto" />
+                </ChildContent>
+                <ErrorContent Context="ex">
+                    <MudContainer MaxWidth="MaxWidth.Small" Class="mt-16">
+                        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+                            An unexpected error occurred. Please try refreshing the page.
+                        </MudAlert>
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   OnClick="@(() => { })"
+                                   Href="/"
+                                   Class="mt-2">
+                            Return to Home
+                        </MudButton>
+                    </MudContainer>
+                </ErrorContent>
+            </ErrorBoundary>
         </CascadingValue>
 	</CascadingAuthenticationState>
 	<script src="_framework/blazor.web.js"></script>
 	<script src=@Assets["_content/MudBlazor/MudBlazor.min.js"]></script>
     <script src="js/layout.js"></script>
-	<script src="js/bff.js"></script>
 </body>
 
 </html>

@@ -19451,6 +19451,9 @@ namespace Explore.Blazor.Client.Clients
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? TotalViews { get; set; } = default!;
 
+        [Newtonsoft.Json.JsonProperty("isUserReported", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public bool? IsUserReported { get; set; } = default!;
+
         [Newtonsoft.Json.JsonProperty("eventUrl", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
         public string? EventUrl { get; set; } = default!;
 
@@ -19715,6 +19718,9 @@ namespace Explore.Blazor.Client.Clients
         [Newtonsoft.Json.JsonProperty("totalViews", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? TotalViews { get; set; } = default!;
+
+        [Newtonsoft.Json.JsonProperty("isUserReported", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public bool? IsUserReported { get; set; } = default!;
 
         [Newtonsoft.Json.JsonProperty("eventUrl", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
         public string? EventUrl { get; set; } = default!;
@@ -21100,6 +21106,9 @@ namespace Explore.Blazor.Client.Clients
         [Newtonsoft.Json.JsonProperty("totalViews", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? TotalViews { get; set; } = default!;
+
+        [Newtonsoft.Json.JsonProperty("isUserReported", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public bool? IsUserReported { get; set; } = default!;
 
         [Newtonsoft.Json.JsonProperty("eventUrl", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
         public string? EventUrl { get; set; } = default!;

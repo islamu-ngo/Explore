@@ -1,20 +1,10 @@
 {
   "permissions": {
-    "allow": [
-      "Edit:*",
-      "Write:*",
-      "MultiEdit:*",
-      "NotebookEdit:*",
-      "Bash:*"
-    ],
+    "allow": ["Edit:*", "Write:*", "MultiEdit:*", "NotebookEdit:*", "Bash:*"],
     "defaultMode": "acceptEdits"
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": [
-    "sequential-thinking",
-    "playwright",
-    "context7"
-  ],
+  "enabledMcpjsonServers": ["sequential-thinking", "playwright", "context7"],
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -70,7 +60,7 @@
     "security-guidance@claude-plugins-official": true,
     "csharp-lsp@claude-plugins-official": true,
     "llm-council@the-llm-council": true,
-    "claude-mem@thedotmack": true
+    "claude-mem@thedotmack": false
   },
   "commands": {
     "build": "dotnet build",

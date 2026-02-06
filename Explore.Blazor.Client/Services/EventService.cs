@@ -51,20 +51,44 @@ public partial class EventService : IEventService
 
     public async Task<ICollection<EventListDto>> GetMyEventsAsync()
     {
-        var result = await _apiClient.GetMyEventsAsync(1, 100);
-        return result?.GetItems() ?? new List<EventListDto>();
+        try
+        {
+            var result = await _apiClient.GetMyEventsAsync(1, 100);
+            return result?.GetItems() ?? new List<EventListDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching my events");
+            return new List<EventListDto>();
+        }
     }
 
     public async Task<ICollection<EventListDto>> GetAllEventsAsync()
     {
-        var result = await _apiClient.GetEventsAsync(1, 100);
-        return result?.GetItems() ?? new List<EventListDto>();
+        try
+        {
+            var result = await _apiClient.GetEventsAsync(1, 100);
+            return result?.GetItems() ?? new List<EventListDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching all events");
+            return new List<EventListDto>();
+        }
     }
 
     public async Task<EventDto?> GetEventByIdAsync(Guid eventId)
     {
-        var result = await _apiClient.GetEventByIdAsync(eventId);
-        return result?.ToDto();
+        try
+        {
+            var result = await _apiClient.GetEventByIdAsync(eventId);
+            return result?.ToDto();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching event {EventId}", eventId);
+            return null;
+        }
     }
 
     public async Task<bool> DeleteEventAsync(Guid eventId)
@@ -101,9 +125,31 @@ public partial class EventService : IEventService
         }
     }
 
-    public Task<BaseCommandResponseOfGuid?> UpdateEventAsync(Guid eventId, UpdateEventDto eventDto) => _apiClient.UpdateEventAsync(eventId, eventDto);
+    public async Task<BaseCommandResponseOfGuid?> UpdateEventAsync(Guid eventId, UpdateEventDto eventDto)
+    {
+        try
+        {
+            return await _apiClient.UpdateEventAsync(eventId, eventDto);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating event {EventId}", eventId);
+            return null;
+        }
+    }
 
-    public Task<BaseCommandResponseOfGuid?> CreateEventAsync(CreateEventDto createDto) => _apiClient.CreateEventAsync(createDto);
+    public async Task<BaseCommandResponseOfGuid?> CreateEventAsync(CreateEventDto createDto)
+    {
+        try
+        {
+            return await _apiClient.CreateEventAsync(createDto);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating event");
+            return null;
+        }
+    }
 
     public Task<ICollection<EventTypeListDto>> GetEventTypesAsync() => _apiClient.EventTypeAllAsync();
 
@@ -159,7 +205,15 @@ public partial class EventService : IEventService
 
     public async Task<EventSessionDto?> GetSessionByIdAsync(Guid sessionId)
     {
-        var result = await _apiClient.GetEventSessionByIdAsync(sessionId);
-        return result?.ToDto();
+        try
+        {
+            var result = await _apiClient.GetEventSessionByIdAsync(sessionId);
+            return result?.ToDto();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching session {SessionId}", sessionId);
+            return null;
+        }
     }
 }

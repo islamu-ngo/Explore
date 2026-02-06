@@ -18,6 +18,7 @@ namespace Explore.Persistence.Configurations.Entities
 
             builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
             builder.Property(e => e.TotalViews).HasDefaultValue(0);
+            builder.Property(e => e.IsUserReported).HasDefaultValue(false);
 
             builder.Property(e => e.Title).HasMaxLength(200).IsRequired();
             builder.Property(e => e.Description).HasMaxLength(5000);

@@ -25,6 +25,7 @@ namespace Explore.API.Controllers
         }
 
         [HttpGet("{organizationId}")]
+        [AllowAnonymous]
         public async Task<ActionResult<List<OrganizationMemberDto>>> Get(Guid organizationId)
         {
             var members = await _mediator.Send(new GetOrganizationMembersRequest { OrganizationId = organizationId });

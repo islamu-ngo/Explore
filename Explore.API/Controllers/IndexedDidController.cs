@@ -10,7 +10,7 @@ using Explore.Application.Hateoas;
 
 namespace Explore.API.Controllers
 {
-    [Route("api/v1/[controller]")]
+    [Route("api/v1/indexeddid")]
     [ApiController]
     [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
     public class IndexedDidController : ControllerBase

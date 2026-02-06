@@ -23,10 +23,10 @@ public class TenantControllerTests
     #region Tenant Controller
 
     [Test]
-    public async Task Tenant_GetAll_ShouldReturnOk()
+    public async Task Tenant_GetAll_ShouldReturnUnauthorized()
     {
         var response = await _fixture.Client.GetAsync("/api/v1/tenant");
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]
@@ -53,10 +53,10 @@ public class TenantControllerTests
     #region TenantUser Controller
 
     [Test]
-    public async Task TenantUser_GetAll_ShouldReturnOk()
+    public async Task TenantUser_GetAll_ShouldReturnUnauthorized()
     {
         var response = await _fixture.Client.GetAsync("/api/v1/tenantuser");
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]
@@ -83,10 +83,10 @@ public class TenantControllerTests
     #region TenantSettings Controller
 
     [Test]
-    public async Task TenantSettings_GetAll_ShouldReturnOk()
+    public async Task TenantSettings_GetAll_ShouldReturnUnauthorized()
     {
         var response = await _fixture.Client.GetAsync("/api/v1/tenantsettings");
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]

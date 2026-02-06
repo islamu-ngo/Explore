@@ -36,6 +36,7 @@ namespace Explore.Domain
 
         public int TotalViews { get; set; }
         public bool IsRegistrationRequired { get; set; }
+        public bool IsUserReported { get; set; }
         public string? EventUrl { get; set; }
 
         [ForeignKey("Madhab")]

@@ -23,10 +23,10 @@ public class FederationControllerTests
     #region ActorKeyStore Controller
 
     [Test]
-    public async Task ActorKeyStore_GetAll_ShouldReturnOk()
+    public async Task ActorKeyStore_GetAll_ShouldReturnUnauthorized()
     {
         var response = await _fixture.Client.GetAsync("/api/v1/actorkeystore");
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]
@@ -80,10 +80,10 @@ public class FederationControllerTests
     #region SyncState Controller
 
     [Test]
-    public async Task SyncState_GetAll_ShouldReturnOk()
+    public async Task SyncState_GetAll_ShouldReturnUnauthorized()
     {
         var response = await _fixture.Client.GetAsync("/api/v1/syncstate");
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]
@@ -98,10 +98,10 @@ public class FederationControllerTests
     #region AtprotoRecord Controller
 
     [Test]
-    public async Task AtprotoRecord_GetAll_ShouldReturnOk()
+    public async Task AtprotoRecord_GetAll_ShouldReturnUnauthorized()
     {
         var response = await _fixture.Client.GetAsync("/api/v1/atprotorecord");
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]
@@ -135,10 +135,10 @@ public class FederationControllerTests
     #region UserAuthenticationToken Controller
 
     [Test]
-    public async Task UserAuthenticationToken_GetAll_ShouldReturnOk()
+    public async Task UserAuthenticationToken_GetAll_ShouldReturnUnauthorized()
     {
         var response = await _fixture.Client.GetAsync("/api/v1/userauthenticationtoken");
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]
@@ -153,10 +153,10 @@ public class FederationControllerTests
     #region UserExternalLogin Controller
 
     [Test]
-    public async Task UserExternalLogin_GetAll_ShouldReturnOk()
+    public async Task UserExternalLogin_GetAll_ShouldReturnUnauthorized()
     {
         var response = await _fixture.Client.GetAsync("/api/v1/userexternallogin");
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]

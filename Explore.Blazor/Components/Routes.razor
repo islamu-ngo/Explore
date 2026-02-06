@@ -2,6 +2,7 @@
 @using Blazouter.Enums
 @using Blazouter.Interfaces
 @using Explore.Blazor.Client.Layout
+@using Explore.Blazor.Client.Components
 @using Explore.Blazor.Client.Pages
 @using Explore.Blazor.Client.Pages.Auth
 @using Explore.Blazor.Client.Pages.Event
@@ -11,10 +12,6 @@
 @using Explore.Blazor.Client.Pages.Landing
 @using Explore.Blazor.Client.Providers
 @using Microsoft.AspNetCore.Components.Authorization
-@using Explore.Blazor.Services
-@inject AuthenticationStateProvider AuthStateProvider
-@inject ICircuitAccessTokenService TokenService
-@inject ILogger<Routes> Logger
 
 <TenantContextProvider>
     <Blazouter.Components.Router Routes="@_routes" DefaultLayout="typeof(MainLayout)">
@@ -33,16 +30,10 @@
 </TenantContextProvider>
 
 @code {
-    [CascadingParameter(Name = "AccessToken")]
-    private string? AccessToken { get; set; }
-
     private List<RouteConfig> _routes = new();
 
     protected override void OnInitialized()
     {
-        // Store the access token for use in HTTP requests during SignalR calls
-        UpdateAccessToken();
-
         _routes = new List<RouteConfig>
         {
             // Public routes - accessible to everyone (no guards)
@@ -51,13 +42,10 @@
             new RouteConfig { Path = "/welcome", Component = typeof(LandingPageForNonUsers), Transition = RouteTransition.Fade },
             new RouteConfig { Path = "/home", Component = typeof(Home), Transition = RouteTransition.Fade },
             new RouteConfig { Path = "/loading", Component = typeof(Loading), Transition = RouteTransition.None },
-            new RouteConfig { Path = "/counter", Component = typeof(Counter), Transition = RouteTransition.Fade },
-            new RouteConfig { Path = "/weather", Component = typeof(Weather), Transition = RouteTransition.Fade },
             new RouteConfig { Path = "/login", Component = typeof(LoginRedirect), Transition = RouteTransition.None },
             new RouteConfig { Path = "/logout", Component = typeof(LogoutRedirect), Transition = RouteTransition.None },
 
             // User authenticated routes
-            new RouteConfig { Path = "/dashboard", Component = typeof(UsersHome), Transition = RouteTransition.Fade },
             new RouteConfig { Path = "/user/profile", Component = typeof(UserProfile), Transition = RouteTransition.Fade },
             new RouteConfig { Path = "/user/reviews", Component = typeof(MyReviews), Transition = RouteTransition.Fade },
             new RouteConfig { Path = "/settings", Component = typeof(Settings), Transition = RouteTransition.Fade },
@@ -79,31 +67,13 @@
             new RouteConfig { Path = "/event/edit/:eventId", Component = typeof(EventEdit), Transition = RouteTransition.Fade },
             new RouteConfig { Path = "/event-created/:eventId", Component = typeof(EventCreated), Transition = RouteTransition.Fade },
 
-            // Admin routes (TODO: Add admin guard when implementing auth)
+            // Admin routes - protected by [Authorize(Roles="Admin")] on AdminList.razor
+            // Additional Blazouter route guards should be implemented when available
             new RouteConfig { Path = "/admin/organization/:organizationId", Component = typeof(AdminListDetails), Transition = RouteTransition.Fade },
             new RouteConfig { Path = "/admin", Component = typeof(AdminList), Transition = RouteTransition.Fade },
             new RouteConfig { Path = "/admin/categories", Component = typeof(Categories), Transition = RouteTransition.Fade },
             new RouteConfig { Path = "/admin/locations", Component = typeof(Locations), Transition = RouteTransition.Fade },
             new RouteConfig { Path = "/admin/tags", Component = typeof(Tags), Transition = RouteTransition.Fade },
-        };
-    }
-
-    protected override void OnParametersSet()
-    {
-        // Update token when cascading parameter changes (e.g., after login)
-        UpdateAccessToken();
-    }
-
-    private void UpdateAccessToken()
-    {
-        if (!string.IsNullOrEmpty(AccessToken))
-        {
-            Logger.LogInformation("[Routes] Setting access token (length: {Length})", AccessToken.Length);
-            TokenService.SetToken(AccessToken);
-        }
-        else
-        {
-            Logger.LogWarning("[Routes] AccessToken cascading parameter is null or empty");
-        }
+    };
     }
 }

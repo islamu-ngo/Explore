@@ -1,3 +1,6 @@
+// ABOUTME: Code-behind for the Create Event page.
+// Allows users to create events as themselves (user-reported) or as an organization they have admin rights to.
+
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Components;
@@ -7,7 +10,6 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Extensions.Logging;
 using MudBlazor;
-using Blazouter.Services;
 using static Explore.Blazor.Client.Components.Event.EventSessionEditor;
 
 namespace Explore.Blazor.Client.Pages.Event;
@@ -25,15 +27,16 @@ public partial class CreateEvent
     [Inject] protected NavigationManager Navigation { get; set; } = null!;
     [Inject] protected ISnackbar Snackbar { get; set; } = null!;
     [Inject] protected IDialogService DialogService { get; set; } = null!;
-    [Inject] protected RouterStateService RouterState { get; set; } = null!;
     [Inject] protected ILogger<CreateEvent> Logger { get; set; } = null!;
 
-    private Guid OrganizationId { get; set; }
+    // Publisher selection state
+    private string _publisherMode = "personal";
+    private Guid? _selectedOrganizationId;
+    private ICollection<OrganizationListDto>? _myOrganizations;
+    private string _organizationRoleError = string.Empty;
 
     private Guid? _currentUserId;
-    private int _loadedOrgsCount = 0;
     private CreateEventDto createDto = new();
-    private OrganizationListDto? organization;
     private ICollection<EventTypeListDto>? eventTypes;
     private ICollection<AudienceGenderListDto>? audienceGenders;
     private ICollection<AudienceAgeListDto>? audienceAges;
@@ -47,7 +50,6 @@ public partial class CreateEvent
     private ICollection<LanguageListDto>? languages;
     private bool isLoading = true;
     private bool _isRetrying = false;
-    private bool canCreateEvent = false;
     private bool _dataLoaded = false;
     private int? selectedMadhabId;
     private string errorMessage = string.Empty;
@@ -72,20 +74,35 @@ public partial class CreateEvent
 
     protected override async Task OnInitializedAsync()
     {
-        // Get route parameter from Blazouter
-        var orgIdStr = RouterState.GetParam("organizationId");
-        if (Guid.TryParse(orgIdStr, out var id))
-        {
-            OrganizationId = id;
-        }
-
-        Logger.LogInformation("OnInitializedAsync starting for organization {OrganizationId}", OrganizationId);
+        Logger.LogInformation("OnInitializedAsync starting");
         await LoadFormData();
 
-        // Initialize with one default session if none exist
         if (!sessions.Any())
         {
             AddSession();
+        }
+    }
+
+    /// <summary>
+    /// Handles organization selection change. Validates user role for the selected organization.
+    /// </summary>
+    private void OnOrganizationSelected(Guid? orgId)
+    {
+        _selectedOrganizationId = orgId;
+        _organizationRoleError = string.Empty;
+
+        if (orgId.HasValue && _myOrganizations != null)
+        {
+            var org = _myOrganizations.FirstOrDefault(o => o.Id == orgId.Value);
+            if (org?.CurrentUserRole != null)
+            {
+                var role = (int)org.CurrentUserRole.Value;
+                // Only Creator (1), CoOwner (2), Admin (3) can publish events
+                if (role > 3)
+                {
+                    _organizationRoleError = "You don't have the authority to perform that action. Only Creator, Co-Owner, or Admin roles can publish events.";
+                }
+            }
         }
     }
 
@@ -102,7 +119,6 @@ public partial class CreateEvent
 
         if (fileData == null)
         {
-            // File was removed
             _uploadedImageStorageObjectId = null;
             Logger.LogInformation("[CreateEvent] Image selection cleared");
             return;
@@ -116,7 +132,6 @@ public partial class CreateEvent
         {
             Logger.LogInformation("[CreateEvent] Starting upload for {FileName} ({Size} bytes)", fileData.FileName, fileData.Size);
 
-            // Upload the image using the bytes-based method (avoids stream issues)
             Logger.LogInformation("[CreateEvent] Calling ImageStorageService.UploadAndCreateRecordFromBytesAsync...");
             var uploadResult = await ImageStorageService.UploadAndCreateRecordFromBytesAsync(fileData);
             Logger.LogInformation("[CreateEvent] Upload result: Success={Success}, StorageObjectId={Id}, Error={Error}",
@@ -136,7 +151,6 @@ public partial class CreateEvent
                 _uploadError = errorMsg;
                 Snackbar.Add(errorMsg, Severity.Error);
 
-                // Clear the preview and selected file on failure
                 await ClearUploadState();
             }
         }
@@ -146,7 +160,6 @@ public partial class CreateEvent
             _uploadError = $"Upload error: {ex.Message}";
             Snackbar.Add("An error occurred while uploading the image", Severity.Error);
 
-            // Clear on error
             await ClearUploadState();
         }
         finally
@@ -228,9 +241,9 @@ public partial class CreateEvent
         {
             isLoading = true;
 
-            Logger.LogInformation("Loading form data for organization {OrganizationId}", OrganizationId);
+            Logger.LogInformation("Loading form data for create event page");
 
-            // Get current user ID first
+            // Get current user ID
             if (!_currentUserId.HasValue)
             {
                 try
@@ -248,48 +261,19 @@ public partial class CreateEvent
                 }
             }
 
-            // Load organization data and verify user has permission
-            ICollection<OrganizationListDto>? allOrgs = null;
-
-            if (_currentUserId.HasValue)
+            // Load user's organizations for the publisher selector
+            try
             {
-                allOrgs = await OrganizationService.GetOrganizationsByUserAsync(_currentUserId.Value);
-                Logger.LogInformation("Got {Count} organizations for user {UserId}", allOrgs?.Count ?? 0, _currentUserId);
+                _myOrganizations = await OrganizationService.GetMyOrganizationsAsync();
+                Logger.LogInformation("Loaded {Count} organizations for publisher selector", _myOrganizations?.Count ?? 0);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error loading user organizations");
+                _myOrganizations = new List<OrganizationListDto>();
             }
 
-            // Fallback to old method if no orgs found
-            if ((allOrgs == null || allOrgs.Count == 0))
-            {
-                Logger.LogInformation("Trying fallback GetMyOrganizationsAsync");
-                allOrgs = await OrganizationService.GetMyOrganizationsAsync();
-                Logger.LogInformation("Fallback got {Count} organizations", allOrgs?.Count ?? 0);
-            }
-
-            _loadedOrgsCount = allOrgs?.Count ?? 0;
-            organization = allOrgs?.FirstOrDefault(o => o.Id == OrganizationId);
-
-            if (organization != null)
-            {
-                Logger.LogInformation("Found organization: {OrgName}, CurrentUserRole: {Role}", organization.FullName, organization.CurrentUserRole);
-
-                // Check if user can create events
-                canCreateEvent = organization.CurrentUserRole.HasValue &&
-                    (organization.CurrentUserRole.Value == 1 || organization.CurrentUserRole.Value == 2 || organization.CurrentUserRole.Value == 3);
-
-                // Fallback: if user is a member of the org, allow event creation
-                if (!canCreateEvent)
-                {
-                    Logger.LogInformation("User is member but role not admin-level, allowing as fallback");
-                    canCreateEvent = true;
-                }
-
-                if (canCreateEvent)
-                {
-                    createDto.OrganizationId = OrganizationId;
-                }
-            }
-
-            // Load dropdown data
+            // Load dropdown data in parallel
             var eventTypesTask = AdminService.GetEventTypesAsync();
             var audienceGendersTask = AdminService.GetAudienceGendersAsync();
             var audienceAgesTask = AdminService.GetAudienceAgesAsync();
@@ -332,6 +316,21 @@ public partial class CreateEvent
     private bool ValidateForm()
     {
         errorMessage = string.Empty;
+
+        // Validate publisher selection
+        if (_publisherMode == "organization")
+        {
+            if (!_selectedOrganizationId.HasValue)
+            {
+                errorMessage = "Please select an organization.";
+                return false;
+            }
+            if (!string.IsNullOrEmpty(_organizationRoleError))
+            {
+                errorMessage = _organizationRoleError;
+                return false;
+            }
+        }
 
         if (string.IsNullOrWhiteSpace(createDto.Title))
         {
@@ -402,8 +401,8 @@ public partial class CreateEvent
                 Logger.LogInformation("Using pre-uploaded image. StorageObjectId: {StorageObjectId}", featuredImageId);
             }
 
-            // 2. Prepare Event DTO
-            createDto.OrganizationId = OrganizationId;
+            // Set publisher context: null = personal (user-reported), Guid = organization
+            createDto.OrganizationId = _publisherMode == "organization" ? _selectedOrganizationId : null;
             createDto.FeaturedImageId = featuredImageId;
             createDto.MadhabId = selectedMadhabId;
 
@@ -414,8 +413,8 @@ public partial class CreateEvent
             createDto.FirstSessionDate = earliestStart;
             createDto.LastSessionDate = latestEnd;
 
-            // 3. Create Event
-            Logger.LogInformation("Creating event record");
+            // Create Event
+            Logger.LogInformation("Creating event record (publisherMode={Mode}, organizationId={OrgId})", _publisherMode, createDto.OrganizationId);
             var response = await EventService.CreateEventAsync(createDto);
 
             if (response?.Success == true && response.Id.HasValue && response.Id != Guid.Empty)
@@ -423,22 +422,20 @@ public partial class CreateEvent
                 createdEventId = response.Id.Value;
                 Logger.LogInformation("Event created with ID: {EventId}", createdEventId);
 
-                // 4. Assign Categories (neutralized - API endpoint may not exist)
-                var tenantId = Guid.Parse("00000000-0000-0000-0000-000000000001"); // Default tenant
+                // Assign Categories
+                var tenantId = Constants.TenantConstants.DefaultTenantId;
                 foreach (var categoryId in selectedCategoryIds)
                 {
-                    // Note: AssignCategoryToEventAsync is neutralized until API is updated
                     await CategoryService.AssignCategoryToEventAsync(new { EventId = createdEventId, CategoryId = categoryId, TenantId = tenantId });
                 }
 
-                // 5. Assign Tags (neutralized - API endpoint may not exist)
+                // Assign Tags
                 foreach (var tagId in selectedTagIds)
                 {
-                    // Note: AssignTagToEventAsync is neutralized until API is updated
                     await TagService.AssignTagToEventAsync(new { EventId = createdEventId, TagId = tagId, TenantId = tenantId });
                 }
 
-                // 6. Handle Sessions
+                // Handle Sessions
                 var existingSessions = await EventService.GetSessionsByEventAsync(createdEventId);
                 var defaultSession = existingSessions?.FirstOrDefault();
 
@@ -498,7 +495,6 @@ public partial class CreateEvent
 
     private async Task SaveSessionLanguages(SessionEditorModel session, Guid sessionId, Guid tenantId)
     {
-        // Note: AssignLanguageToSessionAsync may be neutralized until API is updated
         if (session.LanguageIds.Any())
         {
             foreach (var languageId in session.LanguageIds)
@@ -515,15 +511,13 @@ public partial class CreateEvent
     // Session management
     private void AddSession()
     {
-        // Default start/end time for new session
         var defaultStart = DateTime.Today.AddDays(1).AddHours(9);
         var defaultEnd = DateTime.Today.AddDays(1).AddHours(17);
 
-        // Try to base on last session if exists
         if (sessions.Any())
         {
             var last = sessions.Last();
-            defaultStart = last.StartTime.AddDays(1); // Next day same time?
+            defaultStart = last.StartTime.AddDays(1);
             defaultEnd = last.EndTime.AddDays(1);
         }
 
@@ -531,7 +525,6 @@ public partial class CreateEvent
         {
             StartTime = defaultStart,
             EndTime = defaultEnd,
-            // Copy some defaults from first session maybe?
             RegistrationModeId = sessions.FirstOrDefault()?.RegistrationModeId ?? 1
         });
     }
@@ -545,9 +538,9 @@ public partial class CreateEvent
                 Snackbar.Add("You must have at least one session.", Severity.Warning);
                 return;
             }
-            
+
             var session = sessions[index];
-            
+
             if (session.Id.HasValue && session.Id != Guid.Empty)
             {
                 bool? confirm = await DialogService.ShowMessageBox(
@@ -585,7 +578,28 @@ public partial class CreateEvent
         }
     }
 
-    private string GetBackButtonText() => "Back to Organization";
+    private string GetPublisherDescription()
+    {
+        if (_publisherMode == "personal")
+            return "Publishing as yourself (User Reported)";
 
-    private string GetStepDescription() => "Fill in event details and add sessions below.";
+        if (_selectedOrganizationId.HasValue && _myOrganizations != null)
+        {
+            var org = _myOrganizations.FirstOrDefault(o => o.Id == _selectedOrganizationId.Value);
+            if (org != null) return $"Publishing for {org.FullName}";
+        }
+
+        return "Select who is publishing this event";
+    }
+
+    private static string GetRoleName(int roleId) => roleId switch
+    {
+        1 => "Creator",
+        2 => "Co-Owner",
+        3 => "Admin",
+        4 => "Moderator",
+        5 => "Member",
+        6 => "Viewer",
+        _ => "Member"
+    };
 }

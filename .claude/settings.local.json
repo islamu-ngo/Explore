@@ -31,7 +31,9 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "mcp__tavily__tavily_research",
       "WebFetch(domain:)",
-      "WebFetch(domain:www.nuget.org)"
+      "WebFetch(domain:www.nuget.org)",
+      "Bash(dotnet test:*)",
+      "Bash(dotnet build:*)"
     ]
   }
 }

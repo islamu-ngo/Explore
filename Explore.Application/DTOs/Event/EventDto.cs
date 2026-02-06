@@ -75,6 +75,7 @@ namespace Explore.Application.DTOs.Event
 
         // Metadata
         public int TotalViews { get; set; }
+        public bool IsUserReported { get; set; }
         public string? EventUrl { get; set; }
 
         // ATProto Federation

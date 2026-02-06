@@ -146,6 +146,7 @@ namespace Explore.Application.Features.Events.Handlers.Commands
             @event.ActorId = actorId;
             @event.TotalViews = 0;
             @event.TenantId = _tenantContext.TenantId;
+            @event.IsUserReported = !request.EventDto.OrganizationId.HasValue;
 
             // Set defaults for status and visibility if not provided
             if (@event.EventStatusId == 0) @event.EventStatusId = 1; // Draft

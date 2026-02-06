@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
@@ -21,18 +21,13 @@
     <ProjectReference Include="..\Explore.Blazor.Client\Explore.Blazor.Client.csproj" />
     <ProjectReference Include="..\Explore.Secrets\Explore.Secrets.csproj" />
     <ProjectReference Include="..\Explore.ServiceDefaults\Explore.ServiceDefaults.csproj" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.Cookies" Version="2.3.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="9.0.9" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="9.*" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="9.0.12" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.1" />
     <PackageReference Include="Microsoft.OpenApi" Version="2.3.6" />
     <PackageReference Include="Yarp.ReverseProxy" Version="2.3.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Compile Remove="Extensions\BffApiExtensions.cs" />
-    <Compile Remove="Extensions\BffEndpointRoutes.cs" />
-    <Compile Remove="Extensions\BffMappingExtensions.cs" />
-  </ItemGroup>
+
 
 </Project>

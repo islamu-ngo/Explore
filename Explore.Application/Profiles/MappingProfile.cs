@@ -172,6 +172,7 @@ namespace Explore.Application.Profiles
                 .ForMember(dest => dest.TenantId, opt => opt.Ignore()) // Set by handler
                 .ForMember(dest => dest.SessionCount, opt => opt.Ignore())
                 .ForMember(dest => dest.AtprotoRecordId, opt => opt.Ignore())
+                .ForMember(dest => dest.IsUserReported, opt => opt.Ignore()) // Set by handler based on OrganizationId
                 // Convert DateTimeOffset? to DateOnly? for session dates
                 .ForMember(dest => dest.FirstSessionDate, opt => opt.MapFrom(src =>
                     src.FirstSessionDate.HasValue ? DateOnly.FromDateTime(src.FirstSessionDate.Value.DateTime) : (DateOnly?)null))

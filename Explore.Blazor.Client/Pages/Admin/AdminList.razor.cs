@@ -9,7 +9,6 @@ namespace Explore.Blazor.Client.Pages.Admin;
 public partial class AdminList
 {
     [Inject] protected IDialogService DialogService { get; set; } = null!;
-    [Inject] protected ISnackbar Snackbar { get; set; } = null!;
     [Inject] protected NavigationManager Nav { get; set; } = null!;
     [Inject] protected IAdminService AdminService { get; set; } = null!;
     [Inject] protected IUserService UserService { get; set; } = null!;
@@ -60,7 +59,6 @@ public partial class AdminList
         {
             _errorMessage = $"Failed to load organizations: {ex.Message}";
             Logger.LogError(ex, "Failed to load organizations");
-            Snackbar.Add(_errorMessage, Severity.Error);
             _organizationRequests = new List<OrganizationListDto>();
         }
         finally
@@ -136,12 +134,11 @@ public partial class AdminList
             var success = await AdminService.ApproveOrganizationAsync(req.Id.Value);
             if (success)
             {
-                Snackbar.Add($"Approved {req.FullName}", Severity.Success);
                 await LoadOrganizationRequests(); // Reload data
             }
             else
             {
-                Snackbar.Add($"Failed to approve {req.FullName}", Severity.Error);
+                _errorMessage = $"Failed to approve {req.FullName}";
             }
         }
     }
@@ -160,12 +157,11 @@ public partial class AdminList
             var success = await AdminService.RejectOrganizationAsync(req.Id.Value);
             if (success)
             {
-                Snackbar.Add($"Rejected {req.FullName}", Severity.Error);
                 await LoadOrganizationRequests(); // Reload data
             }
             else
             {
-                Snackbar.Add($"Failed to reject {req.FullName}", Severity.Error);
+                _errorMessage = $"Failed to reject {req.FullName}";
             }
         }
     }
@@ -176,12 +172,11 @@ public partial class AdminList
         var success = await AdminService.RevertToPendingAsync(req.Id.Value);
         if (success)
         {
-            Snackbar.Add($"Moved {req.FullName} back to Pending", Severity.Info);
             await LoadOrganizationRequests(); // Reload data
         }
         else
         {
-            Snackbar.Add($"Failed to revert {req.FullName} to pending", Severity.Error);
+            _errorMessage = $"Failed to revert {req.FullName} to pending";
         }
     }
 

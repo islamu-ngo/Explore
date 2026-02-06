@@ -136,10 +136,10 @@ public partial class EventList
             var eventsTask = EventService.GetAllEventsAsync();
             var eventTypesTask = EventService.GetEventTypesAsync();
             var eventFormatsTask = EventService.GetEventFormatsAsync();
-            var categoriesTask = CategoryService.GetCategoriesAsync();
-            var tagsTask = TagService.GetTagsAsync();
+            var categoriesTask = CategoryService.GetAllCategoriesAsync();
+            var tagsTask = TagService.GetAllTagsAsync();
             var madhabsTask = AdminService.GetMadhabsAsync();
-            var locationsTask = LocationService.GetLocations();
+            var locationsTask = LocationService.GetAllLocationsAsync();
             var registrationModesTask = AdminService.GetRegistrationModesAsync();
             var languagesTask = AdminService.GetLanguagesAsync();
             var sessionsTask = EventService.GetAllSessionsAsync();

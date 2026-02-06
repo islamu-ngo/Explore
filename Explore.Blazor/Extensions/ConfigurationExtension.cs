@@ -1,5 +1,5 @@
 // ABOUTME: Configuration extensions for the Blazor Server project.
-// Adds Infisical as configuration source and provides compatibility mapping for environment variables.
+// ABOUTME: Adds Infisical as configuration source and provides compatibility mapping for environment variables.
 
 using Explore.Secrets.Extensions;
 using Microsoft.Extensions.Configuration;
@@ -29,10 +29,11 @@ public static class ConfigurationExtensions
         // Build temporary config to read bootstrap credentials (from user secrets/env vars)
         var bootstrapConfig = configBuilder.Build();
 
-        // Log bootstrap config for debugging
+        // NOTE: Console.WriteLine is intentional here - this runs during IConfigurationBuilder setup,
+        // before the DI container and ILogger are available. These are minimal, non-sensitive diagnostics.
         Console.WriteLine("[Blazor Infisical] Checking bootstrap credentials...");
-        Console.WriteLine($"[Blazor Infisical] ProjectId: {bootstrapConfig["Infisical:ProjectId"] ?? "(not set)"}");
-        Console.WriteLine($"[Blazor Infisical] ClientId: {bootstrapConfig["Infisical:ClientId"] ?? "(not set)"}");
+        Console.WriteLine($"[Blazor Infisical] ProjectId: {(string.IsNullOrEmpty(bootstrapConfig["Infisical:ProjectId"]) ? "(not set)" : "(set)")}");
+        Console.WriteLine($"[Blazor Infisical] ClientId: {(string.IsNullOrEmpty(bootstrapConfig["Infisical:ClientId"]) ? "(not set)" : "(set)")}");
         Console.WriteLine($"[Blazor Infisical] HasClientSecret: {!string.IsNullOrEmpty(bootstrapConfig["Infisical:ClientSecret"])}");
 
         // Add Infisical as configuration source (loads secrets from Infisical service)
@@ -48,21 +49,6 @@ public static class ConfigurationExtensions
 
         // Rebuild config after Infisical secrets are added
         var configWithSecrets = configBuilder.Build();
-
-        // Debug: Log all keys that contain "BLAZOR" or "CLIENT_SECRET"
-        Console.WriteLine("[Blazor Infisical] Searching for Blazor client secret in loaded config...");
-        foreach (var kvp in configWithSecrets.AsEnumerable())
-        {
-            if (kvp.Key.Contains("BLAZOR", StringComparison.OrdinalIgnoreCase) ||
-                kvp.Key.Contains("ClientSecret", StringComparison.OrdinalIgnoreCase) ||
-                kvp.Key.Contains("CLIENT_SECRET", StringComparison.OrdinalIgnoreCase))
-            {
-                var valuePreview = string.IsNullOrEmpty(kvp.Value)
-                    ? "(empty)"
-                    : $"****{kvp.Value[^Math.Min(4, kvp.Value.Length)..]}";
-                Console.WriteLine($"[Blazor Infisical] Found: {kvp.Key} = {valuePreview}");
-            }
-        }
 
         // Apply compatibility mapping for environment variable names
         ApplyBlazorCompatibilityMapping(configBuilder, configWithSecrets);
@@ -92,16 +78,12 @@ public static class ConfigurationExtensions
             : $"{baseUrl.TrimEnd('/')}/realms/{rawRealm}";
         var metadataAddress = $"{keycloakAuthority}/.well-known/openid-configuration";
 
-        // Log configuration for debugging
-        Console.WriteLine("===========================================");
-        Console.WriteLine("Blazor Keycloak Configuration (from Infisical):");
-        Console.WriteLine($"  Realm: {rawRealm}");
+        // Log non-sensitive configuration summary for startup diagnostics
+        // NOTE: Console.WriteLine is intentional - ILogger is not yet available during configuration setup
+        Console.WriteLine("[Blazor Infisical] Keycloak configuration mapped:");
         Console.WriteLine($"  Authority: {keycloakAuthority}");
-        Console.WriteLine($"  MetadataAddress: {metadataAddress}");
-        Console.WriteLine($"  ClientId: explore-blazor-server");
-        Console.WriteLine($"  ClientSecret: {(string.IsNullOrEmpty(rawClientSecret) ? "NOT SET!" : "****" + rawClientSecret[^4..])}");
+        Console.WriteLine($"  HasClientSecret: {!string.IsNullOrEmpty(rawClientSecret)}");
         Console.WriteLine($"  API BaseUrl: {rawApiUrl ?? "(not set, will use default)"}");
-        Console.WriteLine("===========================================");
 
         var mappedConfig = new Dictionary<string, string?>();
 
@@ -119,15 +101,15 @@ public static class ConfigurationExtensions
         TrySet(mappedConfig, config, "Keycloak:Realm", rawRealm);
         TrySet(mappedConfig, config, "Keycloak:Authority", keycloakAuthority);
         TrySet(mappedConfig, config, "Keycloak:MetadataAddress", metadataAddress);
-        TrySet(mappedConfig, config, "Keycloak:ClientId", "explore-blazor-server");
+        TrySet(mappedConfig, config, "Keycloak:ClientId", config["Keycloak:ClientId"] ?? "explore-blazor-server");
         TrySet(mappedConfig, config, "Keycloak:RequireHttpsMetadata", "true");
 
-        // IMPORTANT: Always set client secret from Infisical (override any existing value)
+        // Always set client secret from Infisical (override any existing value)
         // This ensures the correct secret from Infisical is used, not a stale value from user secrets
         if (!string.IsNullOrWhiteSpace(rawClientSecret))
         {
             mappedConfig["Keycloak:ClientSecret"] = rawClientSecret;
-            Console.WriteLine($"[Blazor Infisical] Setting Keycloak:ClientSecret from Infisical (overriding existing)");
+            Console.WriteLine("[Blazor Infisical] Setting Keycloak:ClientSecret from Infisical (overriding existing)");
         }
 
         // API Mapping
@@ -135,8 +117,6 @@ public static class ConfigurationExtensions
         {
             TrySet(mappedConfig, config, "ExploreApi:BaseUrl", rawApiUrl);
         }
-
-        // Google Maps (already handled by .NET's env var parsing: GoogleMaps__ApiKey -> GoogleMaps:ApiKey)
 
         // Inject mapped configuration
         configBuilder.AddInMemoryCollection(

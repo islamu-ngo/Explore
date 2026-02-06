@@ -104,6 +104,10 @@ dev/active/blazor-api-sync/blazor-api-sync-tasks.md
 dev/active/blazor-pagination-support/blazor-pagination-support-context.md
 dev/active/blazor-pagination-support/blazor-pagination-support-plan.md
 dev/active/blazor-pagination-support/blazor-pagination-support-tasks.md
+dev/active/blazor-refactoring/blazor-refactoring-context.md
+dev/active/blazor-refactoring/blazor-refactoring-plan.md
+dev/active/blazor-refactoring/blazor-refactoring-tasks.md
+dev/active/dotnet10-csharp14-research.md
 dev/active/fix-test-suite/fix-test-suite-context.md
 dev/active/fix-test-suite/fix-test-suite-plan.md
 dev/active/fix-test-suite/fix-test-suite-tasks.md
@@ -180,6 +184,7 @@ Event.API.IntegrationTests/Features/TenantControllerTests.cs
 Event.API.IntegrationTests/Features/UserControllerTests.cs
 Event.API.IntegrationTests/Fixtures/ApiTestFixture.cs
 Event.API.IntegrationTests/Fixtures/CustomWebApplicationFactory.cs
+Event.API.IntegrationTests/Fixtures/TestAuthHandler.cs
 Event.Application.UnitTests/Common/DataBuilder.cs
 Event.Application.UnitTests/Event.Application.UnitTests.csproj
 Event.Application.UnitTests/Features/Actors/Commands/CreateActorCommandHandlerTests.cs
@@ -1269,225 +1274,1849 @@ README.md
 
 # Files
 
-## File: dev/active/fix-test-suite/fix-test-suite-context.md
+## File: dev/active/blazor-refactoring/blazor-refactoring-context.md
 ````markdown
- 1: # Context: Test Suite Restoration
- 2: 
- 3: **Last Updated: 2026-02-05**
- 4: 
- 5: This document contains the essential context and key file locations required to execute the plan for restoring the test suite. The information is derived from the initial `dotnet test` output and the subsequent `codebase_investigator` analysis.
- 6: 
- 7: ## 1. Key Findings Summary
- 8: 
- 9: *   **Dependency Conflicts**: There is a clear version mismatch for `Microsoft.EntityFrameworkCore.Relational` affecting `Event.Persistence.IntegrationTests`. The build resolves to `10.0.1.0` while the runtime tries to load `10.0.2.0`.
-10: *   **Incomplete DI in Tests**: Both Blazor client and API integration tests are failing because their respective test environments are not configured to register all necessary application services.
-11: *   **Missing Test Authentication**: The API integration tests lack a proper test authentication scheme, causing failures on all protected endpoints.
-12: *   **Test-Code Drift**: Assertions and test logic are outdated and do not reflect the current state of the application's behavior and API contracts.
-13: 
-14: ## 2. Relevant File Paths & Purpose
-15: 
-16: ### Phase 1: Foundational Fixes
-17: 
-18: *   **`Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj`**
-19:     *   **Purpose**: This project file needs to be modified to add a direct package reference to `Microsoft.EntityFrameworkCore.Relational` to resolve the `FileNotFoundException`.
-20: 
-21: *   **`Explore.Blazor.Client.Tests/Common/BlazorTestContext.cs`**
-22:     *   **Purpose**: This file provides the `AddAllCoreMocks()` helper method. Failing component tests need to be updated to use this method to correctly inject mocked services like `IUserService`.
-23: 
-24: *   **`Explore.Blazor.Client.Tests/Common/MockServiceFactory.cs`**
-25:     *   **Purpose**: Confirms that the mocking infrastructure for `IUserService` and other core services already exists and is ready to be used via the `BlazorTestContext`.
-26: 
-27: *   **`Event.API.IntegrationTests/Fixtures/CustomWebApplicationFactory.cs`**
-28:     *   **Purpose**: The central configuration point for API integration tests. It needs to be modified to:
-29:         1.  Call the `ConfigureApplicationServices()` extension method to register MediatR handlers and other application services.
-30:         2.  Register a `TestAuthHandler` to provide a simulated user principal for authenticated test runs.
-31: 
-32: *   **`Explore.Application/ApplicationServicesRegistration.cs`**
-33:     *   **Purpose**: Contains the `ConfigureApplicationServices` extension method. This is the source of truth for application layer DI registration that needs to be mirrored in the integration test setup.
-34: 
-35: ### Phase 2: Test Logic Correction
-36: 
-37: *   **`Explore.Secrets.UnitTests/Services/RotationAwareDbContextFactoryTests.cs`**
-38:     *   **Purpose**: Contains simple assertion errors. The expected strings for the redacted connection string tests need to be corrected.
-39: 
-40: *   **`Event.API.IntegrationTests/**/*.cs` (All test files)**
-41:     *   **Purpose**: These files contain the 233 failing tests that need systematic review and refactoring. Assertions for status codes, HATEOAS links, and JSON payloads must be updated.
-42: 
-43: *   **`Explore.Blazor.Client.Tests/**/*.cs` (All test files)**
-44:     *   **Purpose**: These files contain the 28 failing tests. After fixing the DI issues, the remaining failures (e.g., in `EventServiceTests`) will need to be addressed by correcting mock setups and assertions.
-````
-
-## File: dev/active/fix-test-suite/fix-test-suite-plan.md
-````markdown
-  1: # Plan: Comprehensive Test Suite Restoration
+  1: # Context: Blazor Project Comprehensive Refactoring
   2: 
-  3: **Last Updated: 2026-02-05**
+  3: **Last Updated: 2026-02-06**
   4: 
-  5: ## 1. Executive Summary
+  5: ---
   6: 
-  7: The solution's test suite is currently in a critical state, with 265 failing tests across four major projects. The failures are systemic, stemming from dependency conflicts, incomplete test environment configuration (Dependency Injection, Authentication), and a clear drift between the application code and the tests themselves.
+  7: ## Key Architectural Decisions
   8: 
-  9: This plan outlines a phased approach to restore the entire test suite to a passing state. The strategy is to address the foundational issues first (package dependencies, DI container setup) and then move to fixing the individual test cases. This will ensure a stable foundation for future development and prevent regressions.
- 10: 
- 11: ## 2. Current State Analysis
- 12: 
- 13: The investigation has identified the following root causes for the failures:
- 14: 
- 15: *   **`Event.Persistence.IntegrationTests` (2 Failures):** A `FileNotFoundException` is caused by a missing direct package reference to `Microsoft.EntityFrameworkCore.Relational`, leading to a runtime assembly loading failure.
- 16: *   **`Explore.Secrets.UnitTests` (2 Failures):** Minor assertion errors in `RotationAwareDbContextFactoryTests.cs` due to case-sensitivity mistakes in the expected connection strings.
- 17: *   **`Explore.Blazor.Client.Tests` (28 Failures):** Widespread `InvalidOperationException` because the test context is not providing necessary services, specifically `IUserService`. The existing `AddAllCoreMocks` helper is not being utilized in the failing tests.
- 18: *   **`Event.API.IntegrationTests` (233 Failures):**
- 19:     *   **MediatR Handler Failure:** The primary cause of the numerous `500 Internal Server Error` responses is the test `CustomWebApplicationFactory`'s failure to register application services, including all MediatR handlers.
- 20:     *   **Authentication Failure:** A large number of `401 Unauthorized` responses indicate that the test authentication scheme is either missing or misconfigured.
- 21:     *   **Outdated Assertions:** Many tests fail with incorrect status code assertions (e.g., expecting `BadRequest` but getting `NotFound`), indicating that API behavior has changed and the tests have not been updated.
- 22: 
- 23: ## 3. Proposed Future State
- 24: 
- 25: *   All 825 tests in the solution pass successfully when `dotnet test` is executed.
- 26: *   Test environments (unit, integration, Blazor) are correctly configured with a robust and consistent DI and authentication setup.
- 27: *   All tests are refactored to align with the current application architecture, patterns, and API contracts.
- 28: *   The test suite is stable and reliable, providing an accurate measure of code quality and regression detection.
- 29: 
- 30: ## 4. Implementation Phases & Tasks
+  9: ### Decision 1: Render Mode (REQUIRES PROJECT LEAD INPUT)
+ 10: - **Current**: `InteractiveServer` (App.razor line 71)
+ 11: - **Documented**: `InteractiveAuto` (BLAZOR.md, ARCHITECTURE.md)
+ 12: - **Options**:
+ 13:   - (A) Switch to `InteractiveAuto` -- requires scoped token service, WASM testing
+ 14:   - (B) Stay with `InteractiveServer` -- remove WASM infrastructure, update docs
+ 15: - **Impact**: Affects Phase 3 entirely; blocks token service redesign approach
+ 16: 
+ 17: ### Decision 2: Token Service Architecture
+ 18: - **Current**: Static `ConcurrentDictionary` with cross-user `GetAnyValidToken()` fallback
+ 19: - **Documented Pattern**: Scoped service with per-circuit `_accessToken` property
+ 20: - **Decision**: Simplify to documented pattern; no cross-user fallback ever
+ 21: 
+ 22: ### Decision 3: Error Handling Pattern
+ 23: - **Current**: Services return `null`/empty on error; no distinction between "not found" and "error"
+ 24: - **Proposed**: Introduce `Result<T>` pattern or standard error notification to callers
+ 25: - **Impact**: Touches every service and every page that consumes services
+ 26: 
+ 27: ### Decision 4: Validation Strategy
+ 28: - **Current**: Mix of `DataAnnotationsValidator`, manual validation, and unused FluentValidation validators
+ 29: - **Proposed**: FluentValidation throughout; `MudForm` with FluentValidation integration
+ 30: - **Impact**: All form pages need updating
  31: 
- 32: ### Phase 1: Foundational Fixes (Critical Path)
+ 32: ---
  33: 
- 34: This phase addresses the core configuration issues that cause the majority of cascading failures.
+ 34: ## Key Files Reference
  35: 
- 36: *   **Task 1.1: Fix Persistence Layer Dependency Conflict**
- 37:     *   **Project**: `Event.Persistence.IntegrationTests`
- 38:     *   **File**: `Event.Persistence.IntegrationTests.csproj`
- 39:     *   **Action**: Add a direct `<PackageReference>` for the correct version of `Microsoft.EntityFrameworkCore.Relational`.
- 40:     *   **Acceptance Criteria**: The 2 tests in `Event.Persistence.IntegrationTests` pass.
- 41:     *   **Effort**: S
- 42: 
- 43: *   **Task 1.2: Correct Blazor Client Test Context**
- 44:     *   **Project**: `Explore.Blazor.Client.Tests`
- 45:     *   **Action**: Refactor all failing Blazor component tests to use the `AddAllCoreMocks()` helper from `BlazorTestContext.cs` to ensure `IUserService` and other dependencies are correctly mocked and injected.
- 46:     *   **Acceptance Criteria**: The DI-related `InvalidOperationException` failures in `Explore.Blazor.Client.Tests` are resolved.
- 47:     *   **Effort**: M
- 48: 
- 49: *   **Task 1.3: Fix API Integration Test DI Configuration**
- 50:     *   **Project**: `Event.API.IntegrationTests`
- 51:     *   **File**: `Event.API.IntegrationTests/Fixtures/CustomWebApplicationFactory.cs`
- 52:     *   **Action**: Modify the `ConfigureServices` method to include the registration of application services by calling `builder.Host.ConfigureApplicationServices()`.
- 53:     *   **Acceptance Criteria**: The number of `500 Internal Server Error` failures in `Event.API.IntegrationTests` is significantly reduced. MediatR handlers are correctly resolved.
- 54:     *   **Effort**: M
- 55: 
- 56: ### Phase 2: Test Logic & Assertion Correction
- 57: 
- 58: With the foundations fixed, this phase focuses on fixing the logic within the tests themselves.
- 59: 
- 60: *   **Task 2.1: Fix Secrets Unit Test Assertions**
- 61:     *   **Project**: `Explore.Secrets.UnitTests`
- 62:     *   **File**: `Services/RotationAwareDbContextFactoryTests.cs`
- 63:     *   **Action**: Correct the expected redacted strings in the two failing tests to match the actual output, respecting case sensitivity (`Password` and `Pwd`).
- 64:     *   **Acceptance Criteria**: The 2 tests in `Explore.Secrets.UnitTests` pass.
- 65:     *   **Effort**: S
- 66: 
- 67: *   **Task 2.2: Implement API Test Authentication**
- 68:     *   **Project**: `Event.API.IntegrationTests`
- 69:     *   **File**: `Event.API.IntegrationTests/Fixtures/CustomWebApplicationFactory.cs`
- 70:     *   **Action**: Implement a test authentication handler (`TestAuthHandler`) and register it in the test server to simulate authenticated users with specific claims (e.g., admin role, standard user).
- 71:     *   **Acceptance Criteria**: The `401 Unauthorized` failures are resolved. Tests requiring auth can now run with a simulated user principal.
- 72:     *   **Effort**: L
- 73: 
- 74: *   **Task 2.3: Refactor and Correct API Integration Tests**
- 75:     *   **Project**: `Event.API.IntegrationTests`
- 76:     *   **Action**: Systematically work through the remaining failing tests. Update assertions for status codes, HATEOAS links, and response payloads to match the current API behavior. Remove or refactor tests that are no longer relevant due to application changes.
- 77:     *   **Acceptance Criteria**: All 233 tests in `Event.API.IntegrationTests` pass.
- 78:     *   **Effort**: XL
- 79: 
- 80: *   **Task 2.4: Refactor and Correct Blazor Client Tests**
- 81:     *   **Project**: `Explore.Blazor.Client.Tests`
- 82:     *   **Action**: Address the remaining non-DI failures, particularly the `ApiException` and assertion issues in `EventServiceTests`. Ensure mock API setups are correct and assertions are valid.
- 83:     *   **Acceptance Criteria**: All 28 tests in `Explore.Blazor.Client.Tests` pass.
- 84:     *   **Effort**: M
- 85: 
- 86: ### Phase 3: Final Verification
- 87: 
- 88: *   **Task 3.1: Full Solution Test Run**
- 89:     *   **Action**: Execute `dotnet test` on the entire solution.
- 90:     *   **Acceptance Criteria**: The command completes with 100% of tests passing. There are no build warnings related to dependency conflicts.
- 91:     *   **Effort**: S
+ 36: ### Explore.Blazor (Server/BFF) -- Critical Files
+ 37: 
+ 38: | File | Purpose | Issues Found |
+ 39: |------|---------|--------------|
+ 40: | `Program.cs` | DI, OIDC, YARP, middleware pipeline | Auth debug endpoints (lines 606-667), cookie security (line 193), duplicate constants (line 317), XSRF config (lines 463-472), middleware ordering (lines 479-506) |
+ 41: | `Components/App.razor` | Root component, render mode, token cascading | Blocking async (line 44), CSP disabled (lines 14-20), InteractiveServer (line 71), HeadOutlet prerender disabled (line 29), missing ErrorBoundary |
+ 42: | `Components/Routes.razor` | Routing, admin guards | Missing admin auth guards (lines 82-87), token cascading (lines 36-37) |
+ 43: | `Services/CircuitAccessTokenService.cs` | Token storage and forwarding | Static state (lines 24-28), cross-user leakage (lines 133-158), Console.WriteLine (16x), hardcoded tenant ID (line 208) |
+ 44: | `Services/ServerCookieForwardingHandler.cs` | Cookie forwarding | Registered but never used |
+ 45: | `Services/PersistingServerAuthenticationStateProvider.cs` | Auth state serialization | Not registered in DI |
+ 46: | `Extensions/ConfigurationExtension.cs` | Config mapping | Console.WriteLine (14x), hardcoded client ID (line 122) |
+ 47: | `AuthorizationHandler.cs` | Dead file | Never registered, has typo, wrong auth scheme |
+ 48: | `Explore.Blazor.csproj` | Dependencies | Ancient cookies package (line 24), wildcard version (line 26), excluded files (lines 33-36) |
+ 49: | `appsettings.Development.json` | Dev config | French placeholder secret (line 12) |
+ 50: 
+ 51: ### Explore.Blazor.Client (WASM/UI) -- Critical Files
+ 52: 
+ 53: | File | Purpose | Issues Found |
+ 54: |------|---------|--------------|
+ 55: | `Program.cs` | WASM DI registration | Redundant IConfiguration (line 14), commented-out code (lines 102-122), TenantConfiguration never registered |
+ 56: | `Pages/Event/EventList.razor.cs` | Event discovery page | 11 parallel API calls, client-side filtering of all events, N+1 registration loading, unnecessary StateHasChanged, inconsistent field naming |
+ 57: | `Pages/Event/EventEdit.razor` | Event editing | Missing `[Authorize]`, Bootstrap classes, DataAnnotationsValidator, inline styles |
+ 58: | `Pages/Event/CreateEvent.razor.cs` | Event creation | Manual validation (lines 332-373), hardcoded wrong tenant ID (line 427), duplicated image upload logic |
+ 59: | `Pages/Event/MyEvents.razor.cs` | User's events | Magic numbers for roles (line 98), duplicated helpers (lines 181-211) |
+ 60: | `Pages/Organization/CreateOrganization.razor.cs` | Org creation | Missing `[Authorize]`, Dutch comments/strings (10+ instances), duplicated image upload |
+ 61: | `Pages/Organization/MyOrganizations.razor.cs` | User's orgs | Magic numbers for roles (line 100), duplicated GetInitials |
+ 62: | `Pages/Admin/AdminList.razor.cs` | Admin dashboard | Unnecessary StateHasChanged (lines 77, 86), proper admin auth |
+ 63: | `Pages/Landing/LandingPageForUsers.razor.cs` | Landing page | Error caught but no user feedback (lines 31-33) |
+ 64: | `Pages/UsersHome.razor` | Dead page | JS eval anti-pattern, mock data, replaced by Landing pages |
+ 65: | `Layout/NavMenu.razor` | Navigation | Route mismatch for organizations (line 87 links `/organization/my`, page is `/organizations/my`), swallowed exceptions |
+ 66: | `Layout/MainLayout.razor.cs` | App shell | Missing IDisposable for JS interop |
+ 67: | `Services/EventService.cs` | Event API facade | No CancellationToken, swallowed exceptions, returns empty on error |
+ 68: | `Services/AdminService.cs` | Lookup table facade | No CancellationToken, 25+ methods |
+ 69: | `Services/UserService.cs` | User API facade | Returns null for both "not found" and "error" |
+ 70: | `Services/ImageStorageService.cs` | S3 uploads | No external CancellationToken, internal CTS only, TODO at line 657 |
+ 71: | `Services/AuthStateService.cs` | Auth state | Depends on unregistered TenantConfiguration |
+ 72: | `Helpers/DateTimeHelper.cs` | Date formatting | Only shared helper; others duplicated across pages |
+ 73: | `Validators/*.cs` | FluentValidation validators | Exist but are NOT wired into any Blazor forms |
+ 74: 
+ 75: ### Explore.Blazor.Client.Tests -- Critical Files
+ 76: 
+ 77: | File | Purpose | Issues Found |
+ 78: |------|---------|--------------|
+ 79: | `Common/BlazorTestContext.cs` | bUnit test context | Excellent quality, well-structured |
+ 80: | `Common/MockServiceFactory.cs` | Mock factory | Excellent, covers all core services |
+ 81: | `Common/ComponentDataBuilder.cs` | Fake data generators | Excellent, Bogus-based |
+ 82: | `Common/Authentication/*.cs` | Auth test infrastructure | Excellent, fluent builders |
+ 83: | `Services/EventServiceTests.cs` | EventService tests | HIGH quality, ~25 tests |
+ 84: | `Services/OrganizationServiceTests.cs` | OrgService tests | HIGH quality, ~18 tests |
+ 85: | `Services/AuthStateServiceTests.cs` | AuthState tests | HIGH quality, ~14 tests |
+ 86: | `Pages/HomeTests.cs` | Home page tests | MODERATE quality, Task.Delay anti-pattern |
+ 87: | `Pages/Event/EventListTests.cs` | EventList tests | MODERATE-HIGH, incomplete filter test |
+ 88: | `Pages/Event/CreateEventTests.cs` | CreateEvent tests | LOW-MODERATE, 5/9 tests are mock-verification only |
+ 89: | `Integration/AuthenticationFlowTests.cs` | Auth flow tests | HIGH for auth, MODERATE for components |
+ 90: 
+ 91: ### Dead Files (To Delete)
  92: 
- 93: ## 5. Risk Assessment and Mitigation
- 94: 
- 95: *   **Risk**: Fixing one issue reveals deeper, unknown problems (e.g., database schema mismatches in integration tests).
- 96:     *   **Mitigation**: The phased approach is designed to uncover foundational issues first. If major new problems arise, this plan will be updated, and the new issues will be prioritized.
- 97: *   **Risk**: High effort required for refactoring the large number of API tests could lead to delays.
- 98:     *   **Mitigation**: Prioritize fixing tests by feature area. Focus on getting critical paths (e.g., event creation, auth endpoints) working first.
- 99: 
-100: ## 6. Success Metrics
-101: 
-102: *   **Primary Metric**: 100% of tests passing in the final `dotnet test` run.
-103: *   **Secondary Metric**: A significant reduction in build warnings, especially `NU1608` (dependency conflict) and `MSB3277` (assembly conflict).
-104: *   **Qualitative Metric**: The test suite is demonstrably faster and more stable.
+ 93: | File | Reason |
+ 94: |------|--------|
+ 95: | `Explore.Blazor/AuthorizationHandler.cs` | Never registered, buggy, wrong auth scheme, typo |
+ 96: | `Explore.Blazor/Extensions/BffApiExtensions.cs` | Excluded from compilation, references Duende.Bff |
+ 97: | `Explore.Blazor/Extensions/BffEndpointRoutes.cs` | Same |
+ 98: | `Explore.Blazor/Extensions/BffMappingExtensions.cs` | Same |
+ 99: | `Explore.Blazor/entrypoint.sh` | Not referenced by Dockerfile |
+100: | `Explore.Blazor.Client/Pages/Weather.razor` | Template demo page |
+101: | `Explore.Blazor.Client/Pages/Counter.razor` | Template demo page |
+102: | `Explore.Blazor.Client/Pages/UsersHome.razor` | Dead page, JS eval anti-pattern |
+103: 
+104: ---
 105: 
-106: ## 7. Required Resources
+106: ## Duplicated Code Map
 107: 
-108: *   **Primary**: Developer time.
-109: *   **Tools**: .NET 10 SDK, IDE (Visual Studio/Rider), Git.
-110: *   **Documentation**: Existing project documentation, `dev-docs.md` command output, MediatR and bUnit documentation if needed.
+108: ### GetInitials (4 copies -- extract to `Helpers/DisplayHelper.cs`)
+109: 1. `Layout/NavMenu.razor.cs:78-85`
+110: 2. `Pages/Event/MyEvents.razor.cs:205-211` (as `GetActorInitials`)
+111: 3. `Pages/Event/EventList.razor.cs:496-502` (as `GetActorInitials`)
+112: 4. `Pages/Organization/MyOrganizations.razor.cs:150-161`
+113: 
+114: ### GetEventColor (4 copies -- extract to `Helpers/EventColorHelper.cs`)
+115: 1. `Pages/Event/MyEvents.razor.cs:181-188` (as `GetEventColorCode`)
+116: 2. `Pages/Event/EventList.razor.cs:475-483` (as `GetEventColorForEvent`)
+117: 3. `Pages/Event/EventDetail.razor.cs:274-280` (as `GetEventColor`)
+118: 4. `Pages/Event/EventEdit.razor:538-546` (as `GetCategoryColor`)
+119: 
+120: ### GetEventImageUrl (3 copies -- extract to `Helpers/ImageHelper.cs`)
+121: 1. `Pages/Event/MyEvents.razor.cs:191-197` (uses `placehold.co`)
+122: 2. `Pages/Event/EventList.razor.cs:467-473` (uses `placehold.co`)
+123: 3. `Pages/Event/EventDetail.razor.cs:304` (uses `via.placeholder.com`)
+124: 4. `Pages/Event/EventDetail.razor:85` (uses `dummyimage.com`)
+125: 
+126: ### GetTruncatedDescription (2 copies -- extract to `Helpers/StringHelper.cs`)
+127: 1. `Pages/Event/EventList.razor.cs:486-494`
+128: 2. `Pages/Landing/LandingPageForUsers.razor.cs:55-61` (as `TruncateText`)
+129: 
+130: ### Image Upload Logic (3 copies -- extract to `Services/ImageUploadOrchestrator.cs` or base class)
+131: 1. `Pages/Event/EventEdit.razor:622-712`
+132: 2. `Pages/Event/CreateEvent.razor.cs:96-179`
+133: 3. `Pages/Organization/CreateOrganization.razor.cs:166-245`
+134: 
+135: ### Magic Number Role Checks (5 files -- replace with `OrganizationRole` enum)
+136: 1. `Pages/Event/MyEvents.razor.cs:98` (`org.CurrentUserRole is 1 or 2 or 3`)
+137: 2. `Pages/Organization/MyOrganizations.razor.cs:100` (`org.CurrentUserRole.Value is 1 or 2 or 3`)
+138: 3. `Pages/Organization/OrganizationDetails.razor.cs:99` (`currentUserRole == 1 || ...`)
+139: 4. `Pages/Event/CreateEvent.razor.cs:277` (`organization.CurrentUserRole.Value == 1 || ...`)
+140: 5. `Layout/NavMenu.razor.cs:89-91` (hardcoded "Admin" role strings)
+141: 
+142: ---
+143: 
+144: ## Test Coverage Gap Summary
+145: 
+146: ### Services (13% covered)
+147: 
+148: | Service | Tested | Priority |
+149: |---------|--------|----------|
+150: | EventService | YES | - |
+151: | OrganizationService | YES | - |
+152: | AuthStateService | YES | - |
+153: | AdminService | NO | CRITICAL |
+154: | UserService | NO | CRITICAL |
+155: | CategoryService | NO | MEDIUM |
+156: | TagService | NO | MEDIUM |
+157: | LocationService | NO | MEDIUM |
+158: | ImageStorageService | NO | MEDIUM |
+159: | EventRegistrationService | NO | CRITICAL |
+160: | LandingPageService | NO | HIGH |
+161: | OrganizationMemberService | NO | HIGH |
+162: | OrganizationReviewService | NO | HIGH |
+163: | All other thin services (~10) | NO | LOW |
+164: 
+165: ### Pages (11% covered)
+166: 
+167: | Page | Tested | Priority |
+168: |------|--------|----------|
+169: | Home | YES | - |
+170: | EventList | YES | - |
+171: | CreateEvent | YES (partial) | - |
+172: | EventDetail | NO | CRITICAL |
+173: | EventEdit | NO | CRITICAL |
+174: | MyEvents | NO | HIGH |
+175: | CreateOrganization | NO | HIGH |
+176: | OrganizationDetails | NO | HIGH |
+177: | MyOrganizations | NO | MEDIUM |
+178: | AdminList | NO | MEDIUM |
+179: | All User pages (4) | NO | HIGH |
+180: | All Admin sub-pages (10) | NO | MEDIUM |
+181: | Landing pages (2) | NO | MEDIUM |
+182: 
+183: ### Components (0% covered)
+184: 
+185: | Component | Priority |
+186: |-----------|----------|
+187: | EventRegistration | CRITICAL |
+188: | EventSessionManager | CRITICAL |
+189: | DeleteEventDialog | HIGH |
+190: | ImageUpload | HIGH |
+191: | EventReviewDialog | HIGH |
+192: | All other components (~20) | MEDIUM-LOW |
+193: 
+194: ---
+195: 
+196: ## Technology Research Key Findings
+197: 
+198: ### MudBlazor
+199: - Current stable: v8.15.0; v9 in preview with breaking changes
+200: - Use `IMudDialogInstance` (not concrete class) -- future-proof for v9
+201: - `DialogOptions` is an immutable record -- use `with` syntax
+202: - `MudPopoverProvider` required in bUnit tests for overlays
+203: - `ServerData` + virtualization for DataGrid >100 rows
+204: - FluentValidation integration via `Validation` parameter on form fields
+205: - `style-src 'unsafe-inline'` required in CSP for MudBlazor popover positioning
+206: 
+207: ### .NET 10 / C# 14 Relevant Features
+208: - `[PersistentState]` attribute -- eliminates prerender state boilerplate
+209: - `NotFoundPage` on Router -- proper 404 handling
+210: - Named query filters (EF Core 10) -- already in project rules
+211: - `field` keyword -- cleaner property accessors
+212: - Null-conditional assignment (`customer?.Order = value;`)
+213: - Extension members (`extension` blocks for properties, static extensions)
+214: 
+215: ### bUnit 2.5.x
+216: - Latest for .NET 10; `FindByTestId`, generic typed `Find<TComponent, TElement>`
+217: - `WaitForAssertion` preferred over `Task.Delay`
+218: - `AuthenticationState` in services container for auth testing
+219: 
+220: ---
+221: 
+222: ## Dependencies Between Tasks
+223: 
+224: ```
+225: Phase 1 (Security) -- no dependencies, start immediately
+226:   |
+227: Phase 2 (Dead Code) -- no dependencies, can parallel with Phase 1
+228:   |
+229: Phase 3 (Architecture) -- depends on Phase 1 (Task 1.2 token fix)
+230:   |                     -- requires render mode decision from project lead
+231:   |
+232: Phase 4 (Code Quality) -- depends on Phase 2 (dead code removed first)
+233:   |
+234: Phase 5 (Error Handling) -- depends on Phase 4 (naming conventions fixed)
+235:   |
+236: Phase 6 (Validation) -- depends on Phase 4 (Bootstrap removal)
+237:   |
+238: Phase 7 (Performance) -- depends on Phase 5 (error handling in place)
+239:   |
+240: Phase 8 (Tests) -- Task 8.1 can start in parallel with Phase 2
+241:                -- Tasks 8.2-8.5 should follow Phase 4-7 to avoid churn
+242: ```
+243: 
+244: ---
+245: 
+246: ## File Counts
+247: 
+248: | Project | Total Files | Files with Issues | % Affected |
+249: |---------|-------------|-------------------|------------|
+250: | Explore.Blazor | ~15 | 12 | 80% |
+251: | Explore.Blazor.Client | ~80 | 55+ | 69% |
+252: | Explore.Blazor.Client.Tests | ~12 | 5 | 42% |
+253: | **Total** | **~107** | **72+** | **67%** |
 ````
 
-## File: dev/active/fix-test-suite/fix-test-suite-tasks.md
+## File: dev/active/blazor-refactoring/blazor-refactoring-plan.md
 ````markdown
- 1: # Task Checklist: Comprehensive Test Suite Restoration
- 2: 
- 3: **Last Updated: 2026-02-05**
- 4: 
- 5: This checklist is for tracking the progress of fixing the solution's test suite. Mark items as complete as they are finished.
- 6: 
- 7: ## Phase 1: Foundational Fixes (Critical Path)
- 8: 
- 9: - [ ] **Task 1.1: Fix Persistence Layer Dependency Conflict**
-10:     - [ ] Open `Event.Persistence.IntegrationTests.csproj`.
-11:     - [ ] Add a `<PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.2" />` (or the correct version identified from the build logs).
-12:     - [ ] Run `dotnet test Event.Persistence.IntegrationTests` and confirm the 2 tests pass.
-13: 
-14: - [ ] **Task 1.2: Correct Blazor Client Test Context**
-15:     - [ ] Identify all failing tests in `Explore.Blazor.Client.Tests` that throw `InvalidOperationException` for `IUserService`.
-16:     - [ ] In each failing test, ensure the `BlazorTestContext` is initialized and `AddAllCoreMocks()` is called before rendering the component.
-17:     - [ ] Run `dotnet test Explore.Blazor.Client.Tests` and confirm the number of DI-related errors is zero.
-18: 
-19: - [ ] **Task 1.3: Fix API Integration Test DI Configuration**
-20:     - [ ] Open `Event.API.IntegrationTests/Fixtures/CustomWebApplicationFactory.cs`.
-21:     - [ ] In the `ConfigureWebHost` method, add the line `builder.Host.ConfigureApplicationServices();`.
-22:     - [ ] Run `dotnet test Event.API.IntegrationTests` and verify that the number of `500 Internal Server Error` responses has decreased substantially.
-23: 
-24: ## Phase 2: Test Logic & Assertion Correction
-25: 
-26: - [ ] **Task 2.1: Fix Secrets Unit Test Assertions**
-27:     - [ ] Open `Explore.Secrets.UnitTests/Services/RotationAwareDbContextFactoryTests.cs`.
-28:     - [ ] In `CurrentConnectionStringRedacted_ShouldRedactPassword`, change the assertion to expect `"Password=***"`.
-29:     - [ ] In `CurrentConnectionStringRedacted_WithPwd_ShouldRedact`, change the assertion to expect `"Pwd=***"`.
-30:     - [ ] Run `dotnet test Explore.Secrets.UnitTests` and confirm all tests pass.
-31: 
-32: - [ ] **Task 2.2: Implement API Test Authentication**
-33:     - [ ] Create a `TestAuthHandler.cs` in `Event.API.IntegrationTests/Fixtures/`.
-34:     - [ ] In `CustomWebApplicationFactory.cs`, add services for authentication and register the `TestAuthHandler` as the default scheme for tests.
-35:     - [ ] Add a helper method to the test base or factory to set the specific claims for each test (e.g., `WithTestUser(claims)`).
-36:     - [ ] Run `dotnet test Event.API.IntegrationTests` and confirm the number of `401 Unauthorized` errors has decreased substantially.
-37: 
-38: - [ ] **Task 2.3: Refactor and Correct API Integration Tests**
-39:     - [ ] Go through each remaining failing test in the `Event.API.IntegrationTests` project.
-40:     - [ ] Analyze the failure (e.g., incorrect status code, bad link, wrong payload).
-41:     - [ ] Update the test's arrangement, action, or assertion to match the current, correct application behavior.
-42:     - [ ] Repeat until all tests in the project pass.
-43: 
-44: - [ ] **Task 2.4: Refactor and Correct Blazor Client Tests**
-45:     - [ ] Go through each remaining failing test in the `Explore.Blazor.Client.Tests` project.
-46:     - [ ] For tests in `EventServiceTests`, ensure the mock `HttpClient` (via `MockHttp`) is set up correctly to return the expected responses for the API calls being made.
-47:     - [ ] Fix any remaining assertion logic errors.
-48:     - [ ] Repeat until all tests in the project pass.
-49: 
-50: ## Phase 3: Final Verification
-51: 
-52: - [ ] **Task 3.1: Full Solution Test Run**
-53:     - [ ] Run `dotnet test` from the root of the solution.
-54:     - [ ] Confirm the final output shows all 825 tests passing.
-55:     - [ ] Review the build output for any lingering warnings and address them.
+  1: # Plan: Blazor Project Comprehensive Refactoring
+  2: 
+  3: **Last Updated: 2026-02-06**
+  4: 
+  5: ---
+  6: 
+  7: ## Executive Summary
+  8: 
+  9: The Explore Blazor projects (`Explore.Blazor` and `Explore.Blazor.Client`) contain **2 CRITICAL security vulnerabilities, 12 HIGH severity issues, 16 MEDIUM severity issues, and 10+ LOW severity issues** across security, architecture, code quality, dead code, and test coverage. The overall test coverage is approximately **9%** (7 test files covering ~81 testable units). This plan addresses all findings systematically across 8 phases, ordered by risk and impact.
+ 10: 
+ 11: ### Key Findings Summary
+ 12: 
+ 13: | Category | Critical | High | Medium | Low |
+ 14: |----------|----------|------|--------|-----|
+ 15: | Security Vulnerabilities | 2 | 5 | 4 | 1 |
+ 16: | Dead/Unused Code | 0 | 3 | 4 | 3 |
+ 17: | Architecture Violations | 0 | 2 | 4 | 2 |
+ 18: | Code Quality & Standards | 0 | 4 | 6 | 4 |
+ 19: | Test Coverage Gaps | 0 | 1 | 0 | 0 |
+ 20: | Performance Issues | 0 | 0 | 3 | 0 |
+ 21: | **Total** | **2** | **15** | **21** | **10** |
+ 22: 
+ 23: ### Current State vs Future State
+ 24: 
+ 25: | Aspect | Current State | Future State |
+ 26: |--------|--------------|--------------|
+ 27: | Security | Auth debug endpoints public; cross-user token leakage; CSP disabled | All debug endpoints removed/guarded; scoped token service; CSP enabled |
+ 28: | Render Mode | InteractiveServer (contradicts docs saying InteractiveAuto) | InteractiveAuto with proper WASM support or cleaned-up Server-only |
+ 29: | Token Handling | Static ConcurrentDictionary; GetAnyValidToken cross-user risk | Scoped service per-user; no cross-user fallback |
+ 30: | Test Coverage | ~9% (7 files / ~101 tests) | >60% (~300+ tests across services, pages, components) |
+ 31: | Code Standards | 50+ files missing ABOUTME; 30+ Console.WriteLine; Dutch/English mix | All files compliant; structured logging; English only |
+ 32: | Dead Code | 6+ unused files; 3 excluded-from-compilation files | All dead code removed |
+ 33: | CancellationToken | Zero usage in Blazor Client services | All async methods accept CancellationToken |
+ 34: | Code Duplication | GetInitials (4x), GetEventColor (4x), image upload (3x) | Shared helpers/base classes; single source of truth |
+ 35: | Authorization | Missing [Authorize] on EventEdit, CreateOrganization, etc. | All write pages properly guarded |
+ 36: | Validation | DataAnnotationsValidator used; FluentValidation validators exist but unused | FluentValidation wired throughout; server+client validation |
+ 37: 
+ 38: ---
+ 39: 
+ 40: ## Phase 1: Critical Security Fixes (Week 1)
+ 41: 
+ 42: **Priority**: CRITICAL / BLOCKING
+ 43: **Effort**: M
+ 44: **Related Skills**: `auth-patterns`, `blazor-bff-patterns`
+ 45: 
+ 46: ### Task 1.1: Remove/Guard Auth Debug Endpoints
+ 47: 
+ 48: - **File**: `Explore.Blazor/Program.cs`, lines 606-667
+ 49: - **Acceptance Criteria**:
+ 50:   - [ ] `/auth/debug` endpoint removed entirely from production code
+ 51:   - [ ] `/auth/status` returns only `{ isAuthenticated: bool, name: string }` for authenticated users; nothing for unauthenticated
+ 52:   - [ ] No Keycloak authority, client ID, client secret, or discovery document exposed in any endpoint
+ 53:   - [ ] Error responses in auth challenge (lines 564-577) return generic message only; details logged server-side
+ 54:   - [ ] Sign-out error handler (line 601) follows same pattern
+ 55: - **Effort**: S
+ 56: - **Dependencies**: None
+ 57: 
+ 58: ### Task 1.2: Fix Cross-User Token Leakage in CircuitAccessTokenService
+ 59: 
+ 60: - **File**: `Explore.Blazor/Services/CircuitAccessTokenService.cs`, lines 24-28, 133-158
+ 61: - **Acceptance Criteria**:
+ 62:   - [ ] Remove `static ConcurrentDictionary<string, TokenEntry>` shared state
+ 63:   - [ ] Remove `static _latestToken` fallback
+ 64:   - [ ] Remove `GetAnyValidToken()` method entirely
+ 65:   - [ ] Simplify to a scoped service with per-circuit `_accessToken` property matching documented pattern in `blazor-bff-patterns/resources/token-forwarding.md`
+ 66:   - [ ] If token not found for current circuit, return null (not another user's token)
+ 67:   - [ ] `AccessTokenForwardingHandler` receives token from scoped `ICircuitAccessTokenService`
+ 68:   - [ ] All token-related `Console.WriteLine` replaced with `ILogger` at Debug level
+ 69: - **Effort**: M
+ 70: - **Dependencies**: Task 1.1
+ 71: 
+ 72: ### Task 1.3: Fix Cookie Security Configuration
+ 73: 
+ 74: - **File**: `Explore.Blazor/Program.cs`, lines 193, 463-472
+ 75: - **Acceptance Criteria**:
+ 76:   - [ ] Auth cookie `SecurePolicy` set to `CookieSecurePolicy.Always` in production, `SameAsRequest` in development only
+ 77:   - [ ] XSRF-TOKEN cookie has explicit `Path = "/"`
+ 78:   - [ ] XSRF-TOKEN cookie `Secure` flag is `true` in production (not `ctx.Request.IsHttps`)
+ 79:   - [ ] Forwarded headers (lines 374-381) have documented known-network restriction or explicit comment about trusted-proxy-only deployment
+ 80: - **Effort**: S
+ 81: - **Dependencies**: None
+ 82: 
+ 83: ### Task 1.4: Enable Content Security Policy
+ 84: 
+ 85: - **File**: `Explore.Blazor/Components/App.razor`, lines 14-20
+ 86: - **Acceptance Criteria**:
+ 87:   - [ ] CSP meta tag uncommented with production-ready policy
+ 88:   - [ ] `script-src` restricts to `'self'` and `_content/MudBlazor/` path
+ 89:   - [ ] `style-src` includes `'unsafe-inline'` (required by MudBlazor popover positioning) and `fonts.googleapis.com`
+ 90:   - [ ] `connect-src` restricts to API and auth endpoints
+ 91:   - [ ] CSP does not break MudBlazor functionality (tested manually)
+ 92: - **Effort**: S
+ 93: - **Dependencies**: None
+ 94: 
+ 95: ### Task 1.5: Add Missing Authorization Attributes on Pages
+ 96: 
+ 97: - **Files**: 
+ 98:   - `Explore.Blazor.Client/Pages/Event/EventEdit.razor`
+ 99:   - `Explore.Blazor.Client/Pages/Event/EventCreated.razor`
+100:   - `Explore.Blazor.Client/Pages/Organization/CreateOrganization.razor`
+101: - **Acceptance Criteria**:
+102:   - [ ] `EventEdit.razor` has `@attribute [Authorize]`
+103:   - [ ] `EventCreated.razor` has `@attribute [Authorize]`
+104:   - [ ] `CreateOrganization.razor` has `@attribute [Authorize]`
+105:   - [ ] Admin routes in `Routes.razor` (lines 82-87) have proper admin role guards
+106:   - [ ] All User/ pages (`UserProfile`, `Settings`, `MyRegistrations`, `MyReviews`) have `@attribute [Authorize]`
+107: - **Effort**: S
+108: - **Dependencies**: None
+109: 
+110: ---
+111: 
+112: ## Phase 2: Dead Code Removal & Code Cleanup (Week 1-2)
+113: 
+114: **Priority**: HIGH
+115: **Effort**: M
+116: **Related Skills**: `clean-architecture-rules`
+117: 
+118: ### Task 2.1: Remove Dead Files from Explore.Blazor
+119: 
+120: - **Files to delete**:
+121:   - `Explore.Blazor/AuthorizationHandler.cs` (unused, buggy, never registered)
+122:   - `Explore.Blazor/Extensions/BffApiExtensions.cs` (excluded from compilation, references Duende.Bff)
+123:   - `Explore.Blazor/Extensions/BffEndpointRoutes.cs` (same)
+124:   - `Explore.Blazor/Extensions/BffMappingExtensions.cs` (same)
+125:   - `Explore.Blazor/entrypoint.sh` (not referenced by Dockerfile)
+126: - **Acceptance Criteria**:
+127:   - [ ] All 5 files deleted
+128:   - [ ] `<Compile Remove="...">` directives removed from `.csproj` (lines 33-36)
+129:   - [ ] No compilation errors after removal
+130:   - [ ] `ServerCookieForwardingHandler` either wired into an HttpClient or removed (with its DI registration at Program.cs line 76)
+131:   - [ ] `PersistingServerAuthenticationStateProvider` either registered in DI or removed
+132: - **Effort**: S
+133: 
+134: ### Task 2.2: Remove Dead Code from Explore.Blazor.Client
+135: 
+136: - **Files to delete/move**:
+137:   - `Explore.Blazor.Client/Pages/Weather.razor` (template demo page)
+138:   - `Explore.Blazor.Client/Pages/Counter.razor` (template demo page)
+139:   - `Explore.Blazor.Client/Pages/UsersHome.razor` (dead page, replaced by Landing pages, uses JS `eval` anti-pattern)
+140:   - `Explore.Blazor.Client/Pages/Loading.razor` -- move to `Components/` (has no `@page` directive)
+141: - **Acceptance Criteria**:
+142:   - [ ] Template pages deleted
+143:   - [ ] `UsersHome.razor` deleted (references to it removed from NavMenu/routes)
+144:   - [ ] `Loading.razor` moved to `Components/Loading.razor`
+145:   - [ ] All commented-out code in `Program.cs` (lines 102-122) removed
+146:   - [ ] `shutdownCts` variable in `Explore.Blazor/Program.cs` (line 35) either used properly or removed
+147:   - [ ] Duplicate `ResponseType` assignment in `Explore.Blazor/Program.cs` (line 202) removed
+148: - **Effort**: S
+149: 
+150: ### Task 2.3: Replace Console.WriteLine with ILogger
+151: 
+152: - **Files**: `Explore.Blazor/Services/CircuitAccessTokenService.cs` (16 occurrences), `Explore.Blazor/Extensions/ConfigurationExtension.cs` (14 occurrences), `Explore.Blazor/Components/App.razor` (4 occurrences)
+153: - **Acceptance Criteria**:
+154:   - [ ] Zero `Console.WriteLine` calls in entire `Explore.Blazor` project
+155:   - [ ] Token-related logging at `Debug` or `Trace` level (not `Information`)
+156:   - [ ] OIDC event handlers (Program.cs lines 237-282) log at `Debug` level for routine events, `Error` for failures
+157:   - [ ] Forwarded headers middleware (lines 386-401) logs at `Debug` level
+158:   - [ ] `AccessTokenForwardingHandler` reduces per-request logging to single `Debug` call on success, `Warning` on missing token
+159: - **Effort**: M
+160: 
+161: ### Task 2.4: Fix Blocking Async Call in App.razor
+162: 
+163: - **File**: `Explore.Blazor/Components/App.razor`, line 44
+164: - **Acceptance Criteria**:
+165:   - [ ] `.GetAwaiter().GetResult()` replaced with proper async pattern
+166:   - [ ] Token retrieval moved to `OnInitializedAsync` lifecycle method or a server-side prerender approach
+167:   - [ ] No thread pool blocking in any Blazor component
+168: - **Effort**: S
+169: 
+170: ### Task 2.5: Consolidate Duplicate Constants
+171: 
+172: - **Files**: `Explore.Blazor/Program.cs` (line 317), `Explore.Blazor/Services/CircuitAccessTokenService.cs` (line 208)
+173: - **Acceptance Criteria**:
+174:   - [ ] Single shared `DefaultTenantId` constant (consistent type: `Guid`)
+175:   - [ ] Both `Program.cs` and `AccessTokenForwardingHandler` reference the shared constant
+176:   - [ ] Hardcoded client ID in `ConfigurationExtension.cs` (line 122) replaced with configuration-driven value
+177:   - [ ] Hardcoded wrong tenant ID in `CreateEvent.razor.cs` (line 427, `00000000-...`) replaced with `TenantConstants.DefaultTenantId`
+178: - **Effort**: S
+179: 
+180: ---
+181: 
+182: ## Phase 3: Architecture & Render Mode Alignment (Week 2-3)
+183: 
+184: **Priority**: HIGH
+185: **Effort**: L
+186: **Related Skills**: `blazor-ui-conventions`, `blazor-bff-patterns`
+187: 
+188: ### Task 3.1: Resolve Render Mode Inconsistency
+189: 
+190: - **File**: `Explore.Blazor/Components/App.razor`, line 71
+191: - **Decision Required**: Choose one of:
+192:   - **(A) Switch to InteractiveAuto** (per documentation): Enable WASM, keep both registrations, test WASM fallback
+193:   - **(B) Commit to InteractiveServer**: Remove `AddInteractiveWebAssemblyComponents()`, `AddAuthenticationStateSerialization`, and WASM-related registrations
+194: - **Acceptance Criteria**:
+195:   - [ ] Render mode matches documentation or documentation updated to match implementation
+196:   - [ ] If InteractiveAuto: verify WASM payload actually activates; test both render paths
+197:   - [ ] If InteractiveServer: remove unused WASM infrastructure to reduce payload
+198:   - [ ] `HeadOutlet` has prerendering enabled for SEO (currently disabled at line 29)
+199: - **Effort**: L
+200: - **Dependencies**: Task 1.2 (token handling must be scoped before WASM can work)
+201: 
+202: ### Task 3.2: Remove Token Cascading Through Component Tree
+203: 
+204: - **Files**: `Explore.Blazor/Components/App.razor` (lines 69-71), `Explore.Blazor/Components/Routes.razor` (lines 36-37, 91-108)
+205: - **Acceptance Criteria**:
+206:   - [ ] `CascadingValue` for `AccessToken` string removed from `App.razor`
+207:   - [ ] `CascadingParameter` for `AccessToken` removed from `Routes.razor`
+208:   - [ ] `CircuitAccessTokenService.SetToken()` call preserved as the sole token-passing mechanism
+209:   - [ ] No raw token strings flow through the Blazor component tree
+210: - **Effort**: S
+211: 
+212: ### Task 3.3: Add ErrorBoundary to App.razor
+213: 
+214: - **File**: `Explore.Blazor/Components/App.razor`
+215: - **Acceptance Criteria**:
+216:   - [ ] `<ErrorBoundary>` wraps the Routes component per documented pattern in BLAZOR.md (lines 1392-1406)
+217:   - [ ] Fallback UI uses MudBlazor `MudAlert` with Severity.Error
+218:   - [ ] Error is logged server-side
+219:   - [ ] User sees recovery option (refresh page button)
+220: - **Effort**: S
+221: 
+222: ### Task 3.4: Fix Package Dependencies
+223: 
+224: - **File**: `Explore.Blazor/Explore.Blazor.csproj`
+225: - **Acceptance Criteria**:
+226:   - [ ] Remove `Microsoft.AspNetCore.Authentication.Cookies` (version 2.3.0) -- included in shared framework
+227:   - [ ] Pin `Microsoft.AspNetCore.Components.WebAssembly.Server` to specific version (not `9.*`)
+228:   - [ ] French placeholder secret in `appsettings.Development.json` replaced with English
+229: - **File**: `Explore.Blazor.Client/Explore.Blazor.Client.csproj`
+230: - **Acceptance Criteria**:
+231:   - [ ] `Microsoft.Extensions.Http` version aligned with target framework (not 10.0.1 on net9.0)
+232:   - [ ] Consider migrating `Newtonsoft.Json` to `System.Text.Json` for smaller WASM bundle
+233:   - [ ] Package versions are consistent (no mixed pinned/wildcard)
+234:   - [ ] Remove `<Folder Include="Helpers\" />` empty folder inclusion
+235: - **Effort**: S
+236: 
+237: ### Task 3.5: Fix TenantConfiguration DI Registration
+238: 
+239: - **File**: `Explore.Blazor.Client/Program.cs`
+240: - **Acceptance Criteria**:
+241:   - [ ] `TenantConfiguration` properly registered via `builder.Services.Configure<TenantConfiguration>(...)` 
+242:   - [ ] `AuthStateService` can resolve `IOptions<TenantConfiguration>` without runtime exception
+243:   - [ ] Redundant `builder.Services.AddSingleton<IConfiguration>(builder.Configuration)` removed (line 14)
+244: - **Effort**: S
+245: 
+246: ---
+247: 
+248: ## Phase 4: Code Quality & Standards Compliance (Week 3-4)
+249: 
+250: **Priority**: HIGH
+251: **Effort**: XL
+252: **Related Skills**: `blazor-ui-conventions`, `clean-architecture-rules`
+253: 
+254: ### Task 4.1: Add ABOUTME Comments to All Files
+255: 
+256: - **Files**: ~50+ files across both Blazor projects (see context document for full list)
+257: - **Acceptance Criteria**:
+258:   - [ ] Every `.cs`, `.razor`, and `.razor.cs` file starts with a two-line `ABOUTME:` comment
+259:   - [ ] Comment accurately describes what the file does
+260:   - [ ] Follows format: `// ABOUTME: [Line 1 description]` / `// ABOUTME: [Line 2 description]`
+261: - **Effort**: M
+262: 
+263: ### Task 4.2: Add CancellationToken to All Blazor Client Service Methods
+264: 
+265: - **Files**: All 9+ service files in `Explore.Blazor.Client/Services/`
+266: - **Acceptance Criteria**:
+267:   - [ ] Every async method in every service accepts `CancellationToken cancellationToken = default` parameter
+268:   - [ ] CancellationToken passed through to API client calls
+269:   - [ ] Interface definitions updated to include CancellationToken
+270:   - [ ] Page components pass `CancellationToken` from lifecycle methods where available
+271: - **Effort**: L
+272: 
+273: ### Task 4.3: Extract Duplicate Code to Shared Helpers
+274: 
+275: - **Duplicated code to extract**:
+276:   1. **GetInitials** (4 copies) -> `Explore.Blazor.Client/Helpers/DisplayHelper.cs`
+277:   2. **GetEventColor/GetEventColorCode** (4 copies) -> `Explore.Blazor.Client/Helpers/EventColorHelper.cs`
+278:   3. **GetEventImageUrl** (3 copies, different placeholder services) -> `Explore.Blazor.Client/Helpers/ImageHelper.cs`
+279:   4. **GetTruncatedDescription** (2 copies) -> `Explore.Blazor.Client/Helpers/StringHelper.cs`
+280:   5. **Image upload logic** (3 copies) -> Extract to `ImageUploadService` or shared base class
+281:   6. **Role checking with magic numbers** (5 files) -> Use existing `OrganizationRole` enum
+282: - **Acceptance Criteria**:
+283:   - [ ] Zero duplicate GetInitials methods (single shared helper)
+284:   - [ ] Zero duplicate color mapping methods (single shared helper)
+285:   - [ ] Zero duplicate image URL methods (single shared helper)
+286:   - [ ] Image upload logic appears in exactly one place (service or base class)
+287:   - [ ] All role checks use `OrganizationRole` enum, not magic numbers (1, 2, 3)
+288:   - [ ] Placeholder image URL is a single constant, not 3 different services
+289: - **Effort**: M
+290: 
+291: ### Task 4.4: Replace Magic Numbers with Enums/Constants
+292: 
+293: - **Files**: Multiple (see context document for full list)
+294: - **Acceptance Criteria**:
+295:   - [ ] All role checks (`is 1 or 2 or 3`) replaced with `OrganizationRole` enum comparisons
+296:   - [ ] Event format checks (`EventFormatId == 2`) replaced with `EventFormat` enum
+297:   - [ ] Approval status checks replaced with named constants
+298:   - [ ] Hardcoded `pageSize: 100` replaced with `Constants.DefaultPageSize`
+299:   - [ ] Country lists replaced with API lookup or shared constants file
+300: - **Effort**: M
+301: 
+302: ### Task 4.5: Translate Dutch to English
+303: 
+304: - **File**: `Explore.Blazor.Client/Pages/Organization/CreateOrganization.razor` and `.razor.cs`
+305: - **Acceptance Criteria**:
+306:   - [ ] All Dutch comments translated to English (10+ instances)
+307:   - [ ] All Dutch user-facing strings translated to English
+308:   - [ ] No non-English text remains in any file across the entire Blazor project
+309: - **Effort**: S
+310: 
+311: ### Task 4.6: Fix Route Inconsistencies
+312: 
+313: - **Files**: NavMenu.razor, MyOrganizations.razor, EventDetail.razor, EventEdit.razor
+314: - **Acceptance Criteria**:
+315:   - [ ] NavMenu link for organizations matches actual page route (`/organizations/my` not `/organization/my`)
+316:   - [ ] Consistent route patterns: `/events`, `/events/{id}`, `/events/{id}/edit`, `/events/create`
+317:   - [ ] No mismatched routes between navigation and pages
+318: - **Effort**: S
+319: 
+320: ### Task 4.7: Fix Naming Inconsistencies
+321: 
+322: - **Files**: All code-behind files
+323: - **Acceptance Criteria**:
+324:   - [ ] All private fields use `_camelCase` convention (not `camelCase` without underscore)
+325:   - [ ] All `[Inject]` properties use consistent access modifier (private recommended)
+326:   - [ ] All inject defaults use `= default!` consistently (not mixed `= null!`)
+327:   - [ ] Consistent DI logger usage (`ILogger<T>` always, never `Console.WriteLine`)
+328: - **Effort**: M
+329: 
+330: ---
+331: 
+332: ## Phase 5: Error Handling & Resilience (Week 4-5)
+333: 
+334: **Priority**: MEDIUM-HIGH
+335: **Effort**: L
+336: **Related Skills**: `error-tracking`, `blazor-ui-conventions`
+337: 
+338: ### Task 5.1: Implement Proper Error Handling in Services
+339: 
+340: - **Files**: All service files in `Explore.Blazor.Client/Services/`
+341: - **Acceptance Criteria**:
+342:   - [ ] Services return `Result<T>` or similar discriminated response (not null/empty on error)
+343:   - [ ] Callers can distinguish "no data" from "error occurred"
+344:   - [ ] No bare `catch { }` blocks that swallow all exceptions
+345:   - [ ] Specific exception types caught separately (`ApiException` by status code, then generic `Exception`)
+346:   - [ ] All exceptions logged with structured context (service name, method, entity ID)
+347:   - [ ] 401 errors trigger re-authentication flow (not silently return empty)
+348: - **Effort**: L
+349: 
+350: ### Task 5.2: Add User-Facing Error States to All Pages
+351: 
+352: - **Files**: All page files in `Explore.Blazor.Client/Pages/`
+353: - **Acceptance Criteria**:
+354:   - [ ] Every page that loads data displays an error state on failure (MudAlert with retry button)
+355:   - [ ] Consistent error display pattern across all pages (extracted to shared component if possible)
+356:   - [ ] Error messages are user-friendly (not technical stack traces)
+357:   - [ ] Retry button re-triggers data load
+358: - **Effort**: M
+359: 
+360: ### Task 5.3: Implement IDisposable/IAsyncDisposable
+361: 
+362: - **Files**: Components with async operations or event subscriptions
+363: - **Acceptance Criteria**:
+364:   - [ ] `S3Image.razor` implements `IAsyncDisposable` with `CancellationTokenSource`
+365:   - [ ] `EventList.razor` cancels pending API calls on disposal
+366:   - [ ] `MainLayout.razor` disposes JS interop resources
+367:   - [ ] All components with `IJSRuntime` or timer usage implement proper disposal
+368: - **Effort**: M
+369: 
+370: ### Task 5.4: Fix Unnecessary StateHasChanged Calls
+371: 
+372: - **Files**: `EventList.razor.cs`, `AdminList.razor.cs`
+373: - **Acceptance Criteria**:
+374:   - [ ] All unnecessary `StateHasChanged()` calls removed
+375:   - [ ] Only called after operations where Blazor won't auto-detect changes (e.g., timer callbacks, event handler completions from non-Blazor sources)
+376: - **Effort**: S
+377: 
+378: ---
+379: 
+380: ## Phase 6: Validation & Form Improvements (Week 5-6)
+381: 
+382: **Priority**: MEDIUM
+383: **Effort**: M
+384: **Related Skills**: `cqrs-mediatr-guidelines`, `blazor-ui-conventions`
+385: 
+386: ### Task 6.1: Wire FluentValidation into Blazor Forms
+387: 
+388: - **Files**: `CreateEvent.razor`, `EventEdit.razor`, `CreateOrganization.razor`
+389: - **Acceptance Criteria**:
+390:   - [ ] `DataAnnotationsValidator` replaced with FluentValidation integration
+391:   - [ ] Existing validators in `Validators/` folder are used (not new ones created)
+392:   - [ ] Form fields show real-time validation feedback (`Immediate="true"`)
+393:   - [ ] Server-side validation errors from API displayed in form
+394:   - [ ] Manual `ValidateForm()` methods (e.g., CreateEvent.razor.cs lines 332-373) replaced with FluentValidation
+395: - **Effort**: M
+396: 
+397: ### Task 6.2: Replace Bootstrap Classes with MudBlazor
+398: 
+399: - **File**: `Explore.Blazor.Client/Pages/Event/EventEdit.razor`, lines 34-36
+400: - **Acceptance Criteria**:
+401:   - [ ] All Bootstrap classes (`container`, `row`, `col-md-8`, `d-flex justify-content-between`) replaced with MudBlazor equivalents (`MudContainer`, `MudGrid`, `MudItem`, `MudStack`)
+402:   - [ ] No Bootstrap CSS utility classes in any Blazor Client file
+403: - **Effort**: S
+404: 
+405: ### Task 6.3: Add Accessibility Attributes
+406: 
+407: - **Files**: Footer.razor, EventDetail.razor, NavMenu.razor, AdminList.razor
+408: - **Acceptance Criteria**:
+409:   - [ ] All `MudIconButton` instances have `aria-label` attributes
+410:   - [ ] Dropdown triggers have `role="button"`, `tabindex`, and `aria-expanded`
+411:   - [ ] Keyboard navigation works on all interactive elements
+412:   - [ ] Profile images have descriptive `Alt` text (not generic "Profile")
+413: - **Effort**: S
+414: 
+415: ---
+416: 
+417: ## Phase 7: Performance Optimization (Week 6-7)
+418: 
+419: **Priority**: MEDIUM
+420: **Effort**: M
+421: **Related Skills**: `blazor-ui-conventions`, `dotnet-efcore-guidelines`
+422: 
+423: ### Task 7.1: Fix N+1 API Call Pattern
+424: 
+425: - **File**: `Explore.Blazor.Client/Pages/Event/EventList.razor.cs`, line 101
+426: - **Acceptance Criteria**:
+427:   - [ ] `LoadUserRegistrationsAsync` fetches sessions in batch (not per-registration)
+428:   - [ ] Single API call replaces N individual `GetSessionByIdAsync` calls
+429:   - [ ] Or: backend provides a bulk sessions endpoint
+430: - **Effort**: M
+431: 
+432: ### Task 7.2: Implement Server-Side Filtering
+433: 
+434: - **Files**: `EventList.razor.cs`, `MyEvents.razor.cs`
+435: - **Acceptance Criteria**:
+436:   - [ ] Event filtering uses server-side query parameters instead of loading all events then filtering client-side
+437:   - [ ] Only requested page of data loaded from API
+438:   - [ ] Filter changes trigger new API call with filter parameters
+439:   - [ ] Client-side filtering used only for instant-response scenarios (<100 items)
+440: - **Effort**: L
+441: 
+442: ### Task 7.3: Add Virtualization for Large Lists
+443: 
+444: - **Files**: `EventList.razor`, `MyEvents.razor`
+445: - **Acceptance Criteria**:
+446:   - [ ] `@foreach` replaced with `<Virtualize>` component for event card lists
+447:   - [ ] Or: pagination implemented properly (not loading 100 items at once)
+448:   - [ ] Computed properties (`AllFilteredEvents`, `FilteredEvents`, `TotalPages`) cached and only recalculated when inputs change
+449: - **Effort**: S
+450: 
+451: ### Task 7.4: Reduce Initial Data Load
+452: 
+453: - **File**: `EventList.razor.cs`, lines 130-173
+454: - **Acceptance Criteria**:
+455:   - [ ] 11 parallel API calls reduced to essential data only (events + needed lookups)
+456:   - [ ] Lookup data loaded lazily or cached at application level
+457:   - [ ] Page loads with meaningful content in <500ms on typical network
+458: - **Effort**: M
+459: 
+460: ---
+461: 
+462: ## Phase 8: Test Coverage Expansion (Week 7-10)
+463: 
+464: **Priority**: HIGH
+465: **Effort**: XL
+466: **Related Skills**: `blazor-ui-conventions`
+467: 
+468: ### Task 8.1: Fix Existing Test Anti-Patterns
+469: 
+470: - **Files**: `HomeTests.cs`, `EventListTests.cs`, `CreateEventTests.cs`, `AuthenticationFlowTests.cs`
+471: - **Acceptance Criteria**:
+472:   - [ ] All `Task.Delay` replaced with `WaitForState`/`WaitForAssertion`
+473:   - [ ] 5 mock-verification-only tests in `CreateEventTests.cs` rewritten as component behavior tests
+474:   - [ ] Weak `DoesNotContain("Loading")` assertions replaced with positive content assertions
+475:   - [ ] Incomplete filter test in `EventListTests.cs` completed or documented as limitation
+476:   - [ ] ABOUTME comments added to all test files
+477: - **Effort**: S
+478: 
+479: ### Task 8.2: Add Critical Service Tests
+480: 
+481: - **New test files**:
+482:   - `Services/AdminServiceTests.cs` (~25 tests)
+483:   - `Services/UserServiceTests.cs` (~8 tests)
+484:   - `Services/CategoryServiceTests.cs` (~8 tests)
+485:   - `Services/TagServiceTests.cs` (~8 tests)
+486:   - `Services/LocationServiceTests.cs` (~8 tests)
+487:   - `Services/ImageStorageServiceTests.cs` (~10 tests)
+488: - **Acceptance Criteria**:
+489:   - [ ] Follow `EventServiceTests` pattern exactly (AAA, NSubstitute mocks, real service logic)
+490:   - [ ] Test success paths, null responses, API exceptions (404, 500, 401)
+491:   - [ ] Test edge cases (empty collections, null DTOs)
+492:   - [ ] No mock-verification-only tests
+493:   - [ ] All tests pass: `dotnet test Explore.Blazor.Client.Tests`
+494: - **Effort**: L
+495: 
+496: ### Task 8.3: Add Critical Page Tests
+497: 
+498: - **New test files**:
+499:   - `Pages/Event/EventDetailTests.cs` (~10 tests)
+500:   - `Pages/Event/EventEditTests.cs` (~8 tests)
+501:   - `Pages/Event/MyEventsTests.cs` (~8 tests)
+502:   - `Pages/Organization/CreateOrganizationTests.cs` (~8 tests)
+503:   - `Pages/Organization/MyOrganizationsTests.cs` (~6 tests)
+504:   - `Pages/Admin/AdminListTests.cs` (~10 tests)
+505: - **Acceptance Criteria**:
+506:   - [ ] Follow `EventListTests` pattern
+507:   - [ ] Test loading states, error states, empty states, data display
+508:   - [ ] Test authorization (authenticated vs anonymous rendering)
+509:   - [ ] Use `BlazorTestContext` and `MockServiceFactory`
+510:   - [ ] All tests pass: `dotnet test Explore.Blazor.Client.Tests`
+511: - **Effort**: L
+512: 
+513: ### Task 8.4: Add Critical Component Tests
+514: 
+515: - **New test files**:
+516:   - `Components/EventRegistrationTests.cs` (~6 tests)
+517:   - `Components/Event/EventSessionManagerTests.cs` (~8 tests)
+518:   - `Components/Event/DeleteEventDialogTests.cs` (~4 tests)
+519:   - `Components/ImageUploadTests.cs` (~6 tests)
+520: - **Acceptance Criteria**:
+521:   - [ ] Components tested in isolation with parameter injection
+522:   - [ ] EventCallback invocations verified
+523:   - [ ] Dialog results verified
+524:   - [ ] All tests pass: `dotnet test Explore.Blazor.Client.Tests`
+525: - **Effort**: M
+526: 
+527: ### Task 8.5: Add Layout Tests
+528: 
+529: - **New test files**:
+530:   - `Layout/MainLayoutTests.cs` (~6 tests: error boundary, theme toggle, responsive)
+531:   - `Layout/NavMenuTests.cs` (~8 tests: auth states, navigation links, user dropdown)
+532: - **Acceptance Criteria**:
+533:   - [ ] MainLayout error boundary behavior tested
+534:   - [ ] Theme toggle persistence tested
+535:   - [ ] NavMenu shows correct items for authenticated/anonymous/admin users
+536:   - [ ] All tests pass
+537: - **Effort**: M
+538: 
+539: ---
+540: 
+541: ## Risk Assessment & Mitigation
+542: 
+543: | Risk | Probability | Impact | Mitigation |
+544: |------|-------------|--------|------------|
+545: | Render mode change breaks existing functionality | Medium | High | Feature-flag the change; test both paths; Phase 3 gated behind full test suite |
+546: | Token service refactor causes auth regression | Medium | Critical | Keep old implementation behind feature flag; roll back if issues |
+547: | Bootstrap removal changes UI appearance | Low | Medium | Visual regression tests; side-by-side comparison |
+548: | FluentValidation integration breaks existing forms | Medium | Medium | Implement one form first as proof-of-concept |
+549: | Large refactoring introduces new bugs | Medium | High | Phase 8 tests BEFORE Phase 4-7 refactoring where possible |
+550: 
+551: ---
+552: 
+553: ## Success Metrics
+554: 
+555: | Metric | Current | Target | Measurement |
+556: |--------|---------|--------|-------------|
+557: | Security vulnerabilities (Critical/High) | 7 | 0 | Manual review |
+558: | Console.WriteLine calls | 34+ | 0 | `grep -r "Console.WriteLine" Explore.Blazor*` |
+559: | Test count | ~101 | 300+ | `dotnet test --list-tests` |
+560: | Test coverage (files) | 9% | 60%+ | Files with tests / total testable files |
+561: | ABOUTME compliance | ~12 files | 100% | Files with ABOUTME / total files |
+562: | Code duplication instances | 15+ | 0 | Manual review |
+563: | Dead code files | 8+ | 0 | No excluded/unused files |
+564: | Magic numbers in UI code | 20+ | 0 | `grep -r "is 1 or\|== 1\|== 2\|== 3" Pages/` |
+565: 
+566: ---
+567: 
+568: ## Required Resources & Dependencies
+569: 
+570: ### Technical Dependencies
+571: - .NET 10 SDK (for C# 14 features and EF Core 10 named filters)
+572: - MudBlazor 8.15.0 (current stable)
+573: - bUnit 2.5.x (latest for .NET 10 support)
+574: - TUnit 1.11.x (current test framework)
+575: 
+576: ### External Dependencies
+577: - Keycloak instance for auth testing
+578: - Decision on render mode (InteractiveAuto vs InteractiveServer) from project lead
+579: 
+580: ### Effort Estimates Summary
+581: 
+582: | Phase | Effort | Estimated Duration |
+583: |-------|--------|-------------------|
+584: | Phase 1: Security Fixes | M | 3-4 days |
+585: | Phase 2: Dead Code Removal | M | 2-3 days |
+586: | Phase 3: Architecture Alignment | L | 4-5 days |
+587: | Phase 4: Code Quality | XL | 7-10 days |
+588: | Phase 5: Error Handling | L | 4-5 days |
+589: | Phase 6: Validation & Forms | M | 3-4 days |
+590: | Phase 7: Performance | M | 3-4 days |
+591: | Phase 8: Test Coverage | XL | 10-14 days |
+592: | **Total** | | **~36-49 days** |
+````
+
+## File: dev/active/blazor-refactoring/blazor-refactoring-tasks.md
+````markdown
+  1: # Tasks: Blazor Project Comprehensive Refactoring
+  2: 
+  3: **Last Updated: 2026-02-06**
+  4: 
+  5: ---
+  6: 
+  7: ## Phase 1: Critical Security Fixes (BLOCKING) -- COMPLETED
+  8: 
+  9: ### Task 1.1: Remove/Guard Auth Debug Endpoints [S] -- DONE
+ 10: - [x] `/auth/debug` endpoint gated behind `IsDevelopment()` + `RequireAuthorization()`, no secrets exposed
+ 11: - [x] `/auth/status` returns only `{ isAuthenticated, name }` (claims removed)
+ 12: - [x] Auth challenge error returns generic message; config details logged server-side only
+ 13: - [x] Sign-out error returns generic message; `ex.Message` removed from response
+ 14: - [x] `/bff/me` endpoint filtered to safe claims only (preferred_username, email, name, roles, sub)
+ 15: - [x] OIDC event logging downgraded from Information to Debug level
+ 16: - [x] Forwarded headers middleware logging downgraded from Information to Debug level
+ 17: - [x] Auth challenge config logging downgraded to Debug and ClientId no longer logged as value
+ 18: 
+ 19: ### Task 1.2: Fix Cross-User Token Leakage [M] -- DEFERRED (requires deeper refactor)
+ 20: - [ ] Remove `static ConcurrentDictionary<string, TokenEntry>` from `CircuitAccessTokenService.cs` (lines 24-28)
+ 21: - [ ] Remove `static _latestToken` fallback (line 27)
+ 22: - [ ] Remove `GetAnyValidToken()` method (lines 133-158)
+ 23: - [ ] Redesign as scoped service with per-circuit `_accessToken` property
+ 24: - [ ] Update `AccessTokenForwardingHandler` to use scoped service
+ 25: - [ ] Replace all `Console.WriteLine` with `ILogger` at Debug level (16 occurrences)
+ 26: - [ ] Test: User A's token is NEVER used for User B's requests
+ 27: > **Note**: This is a larger architectural change that could break auth flow. Deferred to Phase 3 with proper testing.
+ 28: 
+ 29: ### Task 1.3: Fix Cookie Security Configuration [S] -- DONE
+ 30: - [x] Auth cookie `SecurePolicy` set to `Always` in production, `SameAsRequest` in development
+ 31: - [x] XSRF-TOKEN cookie has explicit `Path = "/"`
+ 32: - [x] XSRF-TOKEN `Secure` flag set to `true` in production (not `ctx.Request.IsHttps`)
+ 33: - [x] Forwarded headers trust model already documented with inline comments
+ 34: 
+ 35: ### Task 1.4: Enable Content Security Policy [S] -- DONE
+ 36: - [x] CSP meta tag enabled with production-ready policy
+ 37: - [x] `script-src 'self' 'wasm-unsafe-eval'` configured
+ 38: - [x] `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com` configured
+ 39: - [x] `connect-src 'self' ws: wss:` configured (covers SignalR WebSocket)
+ 40: - [x] `img-src 'self' data: https: blob:` configured (covers S3 images, placeholders)
+ 41: - [x] `frame-ancestors 'self'`, `base-uri 'self'`, `form-action 'self'` added
+ 42: - [ ] Test: MudBlazor components work correctly with CSP enabled (manual testing needed)
+ 43: 
+ 44: ### Task 1.5: Add Missing Authorization Attributes [S] -- DONE
+ 45: - [x] `@attribute [Authorize]` added to `EventEdit.razor`
+ 46: - [x] `@attribute [Authorize]` added to `EventCreated.razor`
+ 47: - [x] `@attribute [Authorize]` added to `CreateOrganization.razor`
+ 48: - [x] Admin routes comment updated in `Routes.razor` (AdminList already has `[Authorize(Roles="Admin")]`)
+ 49: - [x] Verified all User/ pages already have `@attribute [Authorize]` (UserProfile, Settings, MyRegistrations, MyReviews)
+ 50: 
+ 51: ### Additional Security Improvements (Done as part of Phase 1)
+ 52: - [x] Removed duplicate `ResponseType = "code"` magic string (kept `OpenIdConnectResponseType.Code`)
+ 53: - [x] Removed all `Console.WriteLine` from `App.razor` (4 occurrences)
+ 54: - [x] Reduced token logging in `Routes.razor` from `Information`/`Warning` to `Debug`
+ 55: - [x] Build verified: both `Explore.Blazor` and `Explore.Blazor.Client` compile with 0 errors
+ 56: 
+ 57: ---
+ 58: 
+ 59: ## Phase 2: Dead Code Removal & Cleanup
+ 60: 
+ 61: ### Task 2.1: Remove Dead Files from Explore.Blazor [S]
+ 62: - [ ] Delete `AuthorizationHandler.cs`
+ 63: - [ ] Delete `Extensions/BffApiExtensions.cs`
+ 64: - [ ] Delete `Extensions/BffEndpointRoutes.cs`
+ 65: - [ ] Delete `Extensions/BffMappingExtensions.cs`
+ 66: - [ ] Delete `entrypoint.sh`
+ 67: - [ ] Remove `<Compile Remove="...">` from `.csproj` (lines 33-36)
+ 68: - [ ] Either wire `ServerCookieForwardingHandler` or delete it + DI registration (line 76)
+ 69: - [ ] Either register `PersistingServerAuthenticationStateProvider` or delete it
+ 70: - [ ] Verify: `dotnet build Explore.Blazor` succeeds
+ 71: 
+ 72: ### Task 2.2: Remove Dead Code from Explore.Blazor.Client [S]
+ 73: - [ ] Delete `Pages/Weather.razor`
+ 74: - [ ] Delete `Pages/Counter.razor`
+ 75: - [ ] Delete `Pages/UsersHome.razor`
+ 76: - [ ] Move `Pages/Loading.razor` to `Components/Loading.razor`
+ 77: - [ ] Remove commented-out code in `Program.cs` (lines 102-122)
+ 78: - [ ] Verify: `dotnet build Explore.Blazor.Client` succeeds
+ 79: 
+ 80: ### Task 2.3: Replace Console.WriteLine with ILogger [M]
+ 81: - [ ] `CircuitAccessTokenService.cs`: Replace 16 `Console.WriteLine` with `ILogger`
+ 82: - [ ] `ConfigurationExtension.cs`: Replace 14 `Console.WriteLine` with `ILogger`
+ 83: - [ ] `App.razor`: Replace 4 `Console.WriteLine` with injected `ILogger`
+ 84: - [ ] Set token logging to Debug/Trace level
+ 85: - [ ] Set OIDC events to Debug level (Program.cs lines 237-282)
+ 86: - [ ] Set forwarded headers middleware to Debug (lines 386-401)
+ 87: - [ ] Reduce `AccessTokenForwardingHandler` to single Debug log per request
+ 88: - [ ] Verify: `grep -r "Console.WriteLine" Explore.Blazor*` returns 0 results
+ 89: 
+ 90: ### Task 2.4: Fix Blocking Async Call [S]
+ 91: - [ ] Replace `.GetAwaiter().GetResult()` in `App.razor` (line 44)
+ 92: - [ ] Move to `OnInitializedAsync` lifecycle method
+ 93: - [ ] Verify no thread blocking in any Blazor component
+ 94: 
+ 95: ### Task 2.5: Consolidate Duplicate Constants [S]
+ 96: - [ ] Create shared `DefaultTenantId` constant (consistent `Guid` type)
+ 97: - [ ] Update `Program.cs` (line 317) to reference shared constant
+ 98: - [ ] Update `CircuitAccessTokenService.cs` (line 208) to reference shared constant
+ 99: - [ ] Replace hardcoded client ID in `ConfigurationExtension.cs` (line 122) with config-driven
+100: - [ ] Replace wrong tenant ID in `CreateEvent.razor.cs` (line 427) with `TenantConstants.DefaultTenantId`
+101: 
+102: ---
+103: 
+104: ## Phase 3: Architecture & Render Mode Alignment
+105: 
+106: ### Task 3.1: Resolve Render Mode (DECISION REQUIRED) [L]
+107: - [ ] Get project lead decision: InteractiveAuto vs InteractiveServer
+108: - [ ] If Auto: Change `App.razor` line 71 to `InteractiveAuto`; test WASM
+109: - [ ] If Server: Remove `AddInteractiveWebAssemblyComponents()`, `AddAuthenticationStateSerialization`
+110: - [ ] Enable HeadOutlet prerendering for SEO (line 29)
+111: - [ ] Update documentation to match actual implementation
+112: 
+113: ### Task 3.2: Remove Token Cascading [S]
+114: - [ ] Remove `CascadingValue` for `AccessToken` from `App.razor` (lines 69-71)
+115: - [ ] Remove `CascadingParameter` for `AccessToken` from `Routes.razor` (lines 36-37)
+116: - [ ] Keep `CircuitAccessTokenService.SetToken()` as sole mechanism
+117: - [ ] Verify auth still works end-to-end
+118: 
+119: ### Task 3.3: Add ErrorBoundary [S]
+120: - [ ] Wrap Routes in `<ErrorBoundary>` in `App.razor`
+121: - [ ] Add MudAlert fallback UI with Severity.Error
+122: - [ ] Add refresh button in error fallback
+123: - [ ] Log errors server-side
+124: 
+125: ### Task 3.4: Fix Package Dependencies [S]
+126: - [ ] Remove `Microsoft.AspNetCore.Authentication.Cookies` from Blazor `.csproj` (line 24)
+127: - [ ] Pin `WebAssembly.Server` to specific version (not `9.*`)
+128: - [ ] Fix `Microsoft.Extensions.Http` version in Client `.csproj` (line 21)
+129: - [ ] Remove `<Folder Include="Helpers\" />` from Client `.csproj` (line 108)
+130: - [ ] Replace French placeholder in `appsettings.Development.json` (line 12)
+131: - [ ] Verify: `dotnet restore && dotnet build` succeeds
+132: 
+133: ### Task 3.5: Fix TenantConfiguration DI [S]
+134: - [ ] Add `builder.Services.Configure<TenantConfiguration>(...)` in Client `Program.cs`
+135: - [ ] Remove redundant `AddSingleton<IConfiguration>` (line 14)
+136: - [ ] Verify `AuthStateService` resolves without runtime exception
+137: 
+138: ---
+139: 
+140: ## Phase 4: Code Quality & Standards
+141: 
+142: ### Task 4.1: Add ABOUTME Comments [M]
+143: - [ ] Add to all ~50 files listed in context document
+144: - [ ] Verify format: `// ABOUTME: [description line 1]` / `// ABOUTME: [description line 2]`
+145: - [ ] Include test files
+146: 
+147: ### Task 4.2: Add CancellationToken to Services [L]
+148: - [ ] Update all service interfaces to include `CancellationToken cancellationToken = default`
+149: - [ ] Update all service implementations to pass token through
+150: - [ ] Update API client calls to accept CancellationToken
+151: - [ ] Verify: all async methods compile with new signatures
+152: 
+153: ### Task 4.3: Extract Duplicate Code [M]
+154: - [ ] Create `Helpers/DisplayHelper.cs` with `GetInitials()` method
+155: - [ ] Create `Helpers/EventColorHelper.cs` with `GetEventColor()` method
+156: - [ ] Create `Helpers/ImageHelper.cs` with `GetEventImageUrl()` method
+157: - [ ] Create `Helpers/StringHelper.cs` with `TruncateText()` method
+158: - [ ] Extract image upload to shared service or base class
+159: - [ ] Replace 4 GetInitials copies with shared helper call
+160: - [ ] Replace 4 GetEventColor copies with shared helper call
+161: - [ ] Replace 3 GetImageUrl copies with shared helper call
+162: - [ ] Replace 2 TruncateText copies with shared helper call
+163: - [ ] Replace 3 image upload copies with shared code
+164: 
+165: ### Task 4.4: Replace Magic Numbers [M]
+166: - [ ] Replace role checks in `MyEvents.razor.cs` (line 98) with `OrganizationRole` enum
+167: - [ ] Replace role checks in `MyOrganizations.razor.cs` (line 100)
+168: - [ ] Replace role checks in `OrganizationDetails.razor.cs` (line 99)
+169: - [ ] Replace role checks in `CreateEvent.razor.cs` (line 277)
+170: - [ ] Replace role checks in `NavMenu.razor.cs` (lines 89-91)
+171: - [ ] Replace EventFormat checks (`EventFormatId == 2`) with enum
+172: - [ ] Replace `pageSize: 100` with `Constants.DefaultPageSize`
+173: - [ ] Replace inline country list with constant or API lookup
+174: 
+175: ### Task 4.5: Translate Dutch to English [S]
+176: - [ ] Translate all Dutch comments in `CreateOrganization.razor.cs` (10+ instances)
+177: - [ ] Translate all Dutch user-facing strings in `CreateOrganization.razor`
+178: - [ ] Verify: `grep -rn "Vul\|organisatie\|vereist\|Succes\|fout\|Roep\|Wacht" Explore.Blazor.Client/` returns 0
+179: 
+180: ### Task 4.6: Fix Route Inconsistencies [S]
+181: - [ ] Fix NavMenu link: `/organization/my` -> `/organizations/my` (NavMenu.razor line 87)
+182: - [ ] Standardize event routes: `/events`, `/events/{id}`, `/events/{id}/edit`
+183: - [ ] Verify all NavMenu links match actual page routes
+184: 
+185: ### Task 4.7: Fix Naming Inconsistencies [M]
+186: - [ ] All private fields: `_camelCase` (fix `isLoading` -> `_isLoading` in EventList, CreateEvent, EventEdit)
+187: - [ ] All `[Inject]` properties: consistent `private` access modifier
+188: - [ ] All inject defaults: `= default!` consistently
+189: - [ ] Verify no `= null!` mixed with `= default!` in same file
+190: 
+191: ---
+192: 
+193: ## Phase 5: Error Handling & Resilience
+194: 
+195: ### Task 5.1: Fix Service Error Handling [L]
+196: - [ ] Design `Result<T>` or similar pattern for service returns
+197: - [ ] Refactor services to return distinguishable success/error states
+198: - [ ] Remove all bare `catch { }` blocks
+199: - [ ] Add specific exception handling (ApiException by status code)
+200: - [ ] Add structured logging with context to all catches
+201: - [ ] Handle 401 errors with re-authentication flow
+202: 
+203: ### Task 5.2: Add User-Facing Error States [M]
+204: - [ ] Add error display to `EventList.razor` (currently silent on error)
+205: - [ ] Add error display to `LandingPageForUsers.razor`
+206: - [ ] Ensure consistent error pattern across all pages (MudAlert + retry)
+207: - [ ] Consider extracting shared `ErrorState.razor` component
+208: 
+209: ### Task 5.3: Implement IDisposable [M]
+210: - [ ] `S3Image.razor`: Add `IAsyncDisposable` with `CancellationTokenSource`
+211: - [ ] `EventList.razor`: Cancel pending API calls on dispose
+212: - [ ] `MainLayout.razor`: Dispose JS interop resources
+213: - [ ] Verify all components with `IJSRuntime` implement disposal
+214: 
+215: ### Task 5.4: Fix StateHasChanged [S]
+216: - [ ] Remove unnecessary call in `EventList.razor.cs` (line 305)
+217: - [ ] Remove unnecessary call in `EventList.razor.cs` (line 332)
+218: - [ ] Remove unnecessary call in `EventList.razor.cs` (line 427)
+219: - [ ] Remove unnecessary calls in `AdminList.razor.cs` (lines 77, 86)
+220: 
+221: ---
+222: 
+223: ## Phase 6: Validation & Forms
+224: 
+225: ### Task 6.1: Wire FluentValidation [M]
+226: - [ ] Replace `DataAnnotationsValidator` in `CreateEvent.razor` with FluentValidation
+227: - [ ] Replace `DataAnnotationsValidator` in `EventEdit.razor` with FluentValidation
+228: - [ ] Wire validators from `Validators/` folder to forms
+229: - [ ] Add `Immediate="true"` for real-time validation
+230: - [ ] Remove manual `ValidateForm()` in `CreateEvent.razor.cs` (lines 332-373)
+231: - [ ] Display server-side validation errors in form
+232: 
+233: ### Task 6.2: Replace Bootstrap with MudBlazor [S]
+234: - [ ] `EventEdit.razor` lines 34-36: Replace `container`, `row`, `col-md-8` with MudBlazor
+235: - [ ] Replace `justify-content-between` (line 330) with MudBlazor equivalent
+236: - [ ] Verify: `grep -r "class=\"container\|class=\"row\|class=\"col-" Explore.Blazor.Client/` returns 0
+237: 
+238: ### Task 6.3: Add Accessibility [S]
+239: - [ ] Add `aria-label` to social media buttons in `Footer.razor` (lines 62-65)
+240: - [ ] Add `aria-label` to share buttons in `EventDetail.razor` (lines 229-232)
+241: - [ ] Add `role="button"`, `tabindex`, `aria-expanded` to NavMenu dropdown (line 53)
+242: - [ ] Add `aria-hidden="true"` to NavMenu overlay (line 138)
+243: - [ ] Add `aria-label` to MoreVert menu buttons in `MyEvents.razor` (line 115)
+244: - [ ] Fix profile image `Alt` to be descriptive (NavMenu line 57)
+245: 
+246: ---
+247: 
+248: ## Phase 7: Performance
+249: 
+250: ### Task 7.1: Fix N+1 API Pattern [M]
+251: - [ ] Replace individual `GetSessionByIdAsync` calls with batch fetch in `EventList.razor.cs` (line 101)
+252: - [ ] Or: create backend bulk sessions endpoint
+253: 
+254: ### Task 7.2: Server-Side Filtering [L]
+255: - [ ] Add filter query parameters to event API calls
+256: - [ ] Replace client-side filtering in `EventList.razor.cs` (lines 175-270)
+257: - [ ] Replace client-side filtering in `MyEvents.razor.cs` (lines 41-54)
+258: - [ ] Only load requested page of data
+259: 
+260: ### Task 7.3: Add Virtualization [S]
+261: - [ ] Replace `@foreach` with `<Virtualize>` in `EventList.razor` (line 150)
+262: - [ ] Replace `@foreach` with `<Virtualize>` in `MyEvents.razor` (line 110)
+263: - [ ] Cache computed `AllFilteredEvents` property, invalidate on filter change
+264: 
+265: ### Task 7.4: Reduce Initial Load [M]
+266: - [ ] Reduce 11 parallel API calls in `EventList.razor.cs` to essential only
+267: - [ ] Load lookup data lazily or cache at application level
+268: - [ ] Profile page load time, target <500ms
+269: 
+270: ---
+271: 
+272: ## Phase 8: Test Coverage
+273: 
+274: ### Task 8.1: Fix Test Anti-Patterns [S]
+275: - [ ] Replace `Task.Delay` with `WaitForState`/`WaitForAssertion` in `HomeTests.cs`
+276: - [ ] Replace `Task.Delay` with `WaitForState`/`WaitForAssertion` in `EventListTests.cs`
+277: - [ ] Replace `Task.Delay` with `WaitForState`/`WaitForAssertion` in `CreateEventTests.cs`
+278: - [ ] Rewrite 5 mock-verification tests in `CreateEventTests.cs` as behavior tests
+279: - [ ] Strengthen weak assertions in `HomeTests.cs` (3 tests)
+280: - [ ] Complete incomplete filter test in `EventListTests.cs`
+281: - [ ] Add ABOUTME to all test files
+282: - [ ] Verify: `dotnet test Explore.Blazor.Client.Tests` passes
+283: 
+284: ### Task 8.2: Add Service Tests [L]
+285: - [ ] Create `Services/AdminServiceTests.cs` (~25 tests)
+286: - [ ] Create `Services/UserServiceTests.cs` (~8 tests)
+287: - [ ] Create `Services/CategoryServiceTests.cs` (~8 tests)
+288: - [ ] Create `Services/TagServiceTests.cs` (~8 tests)
+289: - [ ] Create `Services/LocationServiceTests.cs` (~8 tests)
+290: - [ ] Create `Services/ImageStorageServiceTests.cs` (~10 tests)
+291: - [ ] Follow `EventServiceTests` pattern exactly
+292: - [ ] Verify: all new tests pass
+293: 
+294: ### Task 8.3: Add Page Tests [L]
+295: - [ ] Create `Pages/Event/EventDetailTests.cs` (~10 tests)
+296: - [ ] Create `Pages/Event/EventEditTests.cs` (~8 tests)
+297: - [ ] Create `Pages/Event/MyEventsTests.cs` (~8 tests)
+298: - [ ] Create `Pages/Organization/CreateOrganizationTests.cs` (~8 tests)
+299: - [ ] Create `Pages/Organization/MyOrganizationsTests.cs` (~6 tests)
+300: - [ ] Create `Pages/Admin/AdminListTests.cs` (~10 tests)
+301: - [ ] Follow `EventListTests` pattern
+302: - [ ] Verify: all new tests pass
+303: 
+304: ### Task 8.4: Add Component Tests [M]
+305: - [ ] Create `Components/EventRegistrationTests.cs` (~6 tests)
+306: - [ ] Create `Components/Event/EventSessionManagerTests.cs` (~8 tests)
+307: - [ ] Create `Components/Event/DeleteEventDialogTests.cs` (~4 tests)
+308: - [ ] Create `Components/ImageUploadTests.cs` (~6 tests)
+309: - [ ] Verify: all new tests pass
+310: 
+311: ### Task 8.5: Add Layout Tests [M]
+312: - [ ] Create `Layout/MainLayoutTests.cs` (~6 tests)
+313: - [ ] Create `Layout/NavMenuTests.cs` (~8 tests)
+314: - [ ] Test error boundary, theme toggle, auth states
+315: - [ ] Verify: all new tests pass
+316: 
+317: ---
+318: 
+319: ## Verification Commands
+320: 
+321: ```bash
+322: # Build verification (run after each phase)
+323: dotnet build Explore.Blazor
+324: dotnet build Explore.Blazor.Client
+325: 
+326: # Test verification (run after each phase)
+327: dotnet test Explore.Blazor.Client.Tests --configuration Release
+328: 
+329: # Standards verification
+330: # Zero Console.WriteLine
+331: grep -r "Console.WriteLine" Explore.Blazor/ Explore.Blazor.Client/ --include="*.cs" --include="*.razor"
+332: 
+333: # Zero Dutch text
+334: grep -rn "Vul\|organisatie\|vereist\|Succes.*organisatie\|fout.*opgetreden\|Roep\|Wacht" Explore.Blazor.Client/
+335: 
+336: # Zero Bootstrap classes
+337: grep -rn "class=\"container\|class=\"row\|class=\"col-" Explore.Blazor.Client/ --include="*.razor"
+338: 
+339: # Zero magic role numbers
+340: grep -rn "is 1 or 2\|== 1 ||\|== 2 ||\|== 3" Explore.Blazor.Client/Pages/ --include="*.cs"
+341: ```
+````
+
+## File: dev/active/dotnet10-csharp14-research.md
+````markdown
+  1: # .NET 10, C# 14, EF Core 10 & bUnit 2.x Research Report
+  2: 
+  3: > **Research Date**: February 2026
+  4: > **Purpose**: Identify features relevant to the ISLAMU Explore Blazor Clean Architecture application
+  5: > **Status**: Research-only (no implementation)
+  6: 
+  7: ---
+  8: 
+  9: ## Table of Contents
+ 10: 
+ 11: 1. [.NET 10 / Blazor Features](#1-net-10--blazor-features)
+ 12: 2. [C# 14 Language Features](#2-c-14-language-features)
+ 13: 3. [EF Core 10 Features](#3-ef-core-10-features)
+ 14: 4. [bUnit 2.x for .NET 10](#4-bunit-2x-for-net-10)
+ 15: 5. [Security Best Practices](#5-blazor-net-10-security-best-practices)
+ 16: 6. [Actionable Recommendations](#6-actionable-recommendations)
+ 17: 
+ 18: ---
+ 19: 
+ 20: ## 1. .NET 10 / Blazor Features
+ 21: 
+ 22: ### 1.1 `[PersistentState]` Declarative Attribute (HIGH IMPACT)
+ 23: 
+ 24: Blazor .NET 10 introduces a declarative `[PersistentState]` attribute that drastically simplifies state persistence during prerendering. Previously, persisting state required ~20 lines of boilerplate code (`PersistentComponentState`, `RegisterOnPersisting`, `IDisposable`). Now:
+ 25: 
+ 26: ```csharp
+ 27: // BEFORE (.NET 9) - verbose
+ 28: @implements IDisposable
+ 29: @inject PersistentComponentState ApplicationState
+ 30: 
+ 31: @code {
+ 32:     public List<Movie>? MoviesList { get; set; }
+ 33:     private PersistingComponentStateSubscription? persistingSubscription;
+ 34: 
+ 35:     protected override async Task OnInitializedAsync()
+ 36:     {
+ 37:         if (!ApplicationState.TryTakeFromJson<List<Movie>>(nameof(MoviesList), out var movies))
+ 38:             MoviesList = await MovieService.GetMoviesAsync();
+ 39:         else
+ 40:             MoviesList = movies;
+ 41: 
+ 42:         persistingSubscription = ApplicationState.RegisterOnPersisting(() =>
+ 43:         {
+ 44:             ApplicationState.PersistAsJson(nameof(MoviesList), MoviesList);
+ 45:             return Task.CompletedTask;
+ 46:         });
+ 47:     }
+ 48: 
+ 49:     public void Dispose() => persistingSubscription?.Dispose();
+ 50: }
+ 51: 
+ 52: // AFTER (.NET 10) - declarative
+ 53: @code {
+ 54:     [PersistentState]
+ 55:     public List<Movie>? MoviesList { get; set; }
+ 56: 
+ 57:     protected override async Task OnInitializedAsync()
+ 58:     {
+ 59:         MoviesList ??= await MovieService.GetMoviesAsync();
+ 60:     }
+ 61: }
+ 62: ```
+ 63: 
+ 64: **Additional options:**
+ 65: - `[PersistentState(AllowUpdates = true)]` - allows state updates during enhanced navigation (for read-only cached data)
+ 66: - `[PersistentState(RestoreBehavior = RestoreBehavior.SkipInitialValue)]` - skip restore during prerender
+ 67: - `[PersistentState(RestoreBehavior = RestoreBehavior.SkipLastSnapshot)]` - skip restore on reconnect (ensures fresh data)
+ 68: - Services can be registered as persistent: `RegisterPersistentService<TService>()` on the Razor components builder
+ 69: 
+ 70: **Relevance to Explore**: Any component that fetches data on init and needs prerendering support can benefit. Reduces boilerplate in all interactive pages.
+ 71: 
+ 72: ### 1.2 NotFoundPage Parameter on Router (HIGH IMPACT)
+ 73: 
+ 74: The `Router` component now has a `NotFoundPage` parameter. Combined with `NavigationManager.NotFound()`:
+ 75: 
+ 76: ```csharp
+ 77: <Router AppAssembly="@typeof(Program).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+ 78:     <Found Context="routeData">
+ 79:         <RouteView RouteData="@routeData" />
+ 80:         <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+ 81:     </Found>
+ 82: </Router>
+ 83: ```
+ 84: 
+ 85: - Works with `UseStatusCodePagesWithReExecute` middleware
+ 86: - Supports static SSR and global interactive rendering
+ 87: - The `<NotFound>` render fragment is deprecated in .NET 10
+ 88: 
+ 89: **Relevance to Explore**: Proper 404 handling across all render modes. Should adopt `NotFoundPage` pattern.
+ 90: 
+ 91: ### 1.3 Reconnection UI Component (MEDIUM IMPACT)
+ 92: 
+ 93: The Blazor Web App template now includes a `ReconnectModal` component with collocated CSS/JS for improved reconnection UX. Key improvements:
+ 94: - Doesn't insert styles programmatically (CSP-compliant for `style-src`)
+ 95: - New `components-reconnect-state-changed` event
+ 96: - New `retrying` reconnection state
+ 97: - Falls back to default UI if no custom component is defined
+ 98: 
+ 99: **Relevance to Explore**: Adopt the template's `ReconnectModal` for CSP compliance.
+100: 
+101: ### 1.4 Improved Form Validation (HIGH IMPACT)
+102: 
+103: Source-generator-based validation replaces reflection-based validation:
+104: 
+105: ```csharp
+106: // Program.cs
+107: builder.Services.AddValidation();
+108: 
+109: // Model class (NOT in .razor files - must be in .cs files)
+110: [ValidatableType]
+111: public class Order
+112: {
+113:     public Customer Customer { get; set; } = new();
+114:     public List<OrderItem> OrderItems { get; set; } = [];
+115: }
+116: ```
+117: 
+118: Key improvements:
+119: - **Nested object validation** - validates complex objects and collections
+120: - **Source-generator based** - AOT compatible, better performance
+121: - **`[SkipValidation]`** attribute to exclude properties/types
+122: - **`[ValidatableType]`** required on root model type
+123: - Model types must be in `.cs` files (not `.razor` files) due to source generator limitations
+124: 
+125: **Relevance to Explore**: Can validate nested DTOs (e.g., Event with nested Address, Schedule). Works with existing `DataAnnotationsValidator`.
+126: 
+127: ### 1.5 QuickGrid Improvements (MEDIUM IMPACT)
+128: 
+129: - **`RowClass` parameter**: Conditionally apply CSS classes to rows based on item data
+130: - **`HideColumnOptionsAsync()`**: Programmatically close column options UI
+131: 
+132: ```csharp
+133: <QuickGrid ... RowClass="GetRowCssClass">
+134: @code {
+135:     private string GetRowCssClass(MyGridItem item) =>
+136:         item.IsArchived ? "row-archived" : null;
+137: }
+138: ```
+139: 
+140: ### 1.6 Circuit State Persistence (MEDIUM IMPACT)
+141: 
+142: Blazor can now persist circuit state when WebSocket connection is lost:
+143: - Browser tab throttling
+144: - Mobile app switching
+145: - Network interruptions
+146: - Proactive resource management (pausing inactive circuits)
+147: 
+148: Users resume sessions without losing unsaved work. No full-page refresh needed.
+149: 
+150: ### 1.7 JS Interop Improvements (MEDIUM IMPACT)
+151: 
+152: New JS interop capabilities:
+153: - **`InvokeConstructorAsync`** - Create JS objects with `new` and get `IJSObjectReference`
+154: - **`GetValueAsync<T>`** - Read JS property values
+155: - **`SetValueAsync<T>`** - Write JS property values
+156: - Sync versions available for in-process scenarios
+157: 
+158: ### 1.8 Other Notable Blazor Changes
+159: 
+160: | Feature | Impact | Notes |
+161: |---------|--------|-------|
+162: | `NavigateTo` no longer scrolls to top for same-page nav | Low | Good for query string changes |
+163: | `NavLinkMatch.All` ignores query/fragment | Low | Prevents active class loss on query changes |
+164: | HttpClient response streaming enabled by default | Medium | Breaking: `ReadAsStreamAsync` returns `BrowserHttpReadStream` not `MemoryStream` |
+165: | Blazor script served as static web asset | Low | Automatic compression + fingerprinting |
+166: | Client-side fingerprinting for WASM | Medium | Opt-in with `OverrideHtmlAssetPlaceholders` |
+167: | `ResourcePreloader` component | Low | Replaces `<link>` headers for WASM preloading |
+168: | `BlazorDisableThrowNavigationException` | Medium | Consistent SSR/interactive navigation behavior |
+169: | Metrics and tracing for Blazor | High | Observability: component lifecycle, navigation, events, circuit |
+170: | `OwningComponentBase` implements `IAsyncDisposable` | Low | Better async resource cleanup |
+171: | `InputHidden` component | Low | Hidden form fields |
+172: | Passkey/WebAuthn support | Medium | Phishing-resistant auth via FIDO2 |
+173: | Serialization extensibility for persistent state | Low | Custom `PersistentComponentStateSerializer<T>` |
+174: 
+175: ### 1.9 Minimal APIs / ASP.NET Core
+176: 
+177: - **Server-Sent Events (SSE)** support via `TypedResults.ServerSentEvents`
+178: - **Validation support** in Minimal APIs with `builder.Services.AddValidation()`
+179: - **`LeftJoin` / `RightJoin`** LINQ operators (first-class support)
+180: - **Empty string → null** for nullable value types in `[FromForm]`
+181: 
+182: ---
+183: 
+184: ## 2. C# 14 Language Features
+185: 
+186: ### 2.1 Extension Members (HIGH IMPACT)
+187: 
+188: C# 14 introduces full extension types — not just extension methods. You can now declare extension properties, static extension members, and user-defined operators:
+189: 
+190: ```csharp
+191: public static class Enumerable
+192: {
+193:     // Instance extension members
+194:     extension<TSource>(IEnumerable<TSource> source)
+195:     {
+196:         // Extension PROPERTY (new!)
+197:         public bool IsEmpty => !source.Any();
+198:         
+199:         // Extension method (existing, new syntax)
+200:         public IEnumerable<TSource> Where(Func<TSource, bool> predicate) { ... }
+201:     }
+202: 
+203:     // Static extension members
+204:     extension<TSource>(IEnumerable<TSource>)
+205:     {
+206:         public static IEnumerable<TSource> Identity => Enumerable.Empty<TSource>();
+207:         
+208:         // Extension OPERATOR (new!)
+209:         public static IEnumerable<TSource> operator +(
+210:             IEnumerable<TSource> left, IEnumerable<TSource> right) => left.Concat(right);
+211:     }
+212: }
+213: ```
+214: 
+215: **Relevance to Explore**: 
+216: - Extension properties on domain entities (e.g., `event.IsUpcoming`, `event.FormattedDate`)
+217: - Cleaner domain logic without polluting entity classes
+218: - Extension properties on `ClaimsPrincipal` for user helpers
+219: 
+220: ### 2.2 `field` Keyword (HIGH IMPACT)
+221: 
+222: Auto-property backing field access without declaring the field:
+223: 
+224: ```csharp
+225: // BEFORE
+226: private string _msg;
+227: public string Message
+228: {
+229:     get => _msg;
+230:     set => _msg = value ?? throw new ArgumentNullException(nameof(value));
+231: }
+232: 
+233: // AFTER (C# 14)
+234: public string Message
+235: {
+236:     get;
+237:     set => field = value ?? throw new ArgumentNullException(nameof(value));
+238: }
+239: ```
+240: 
+241: **Relevance to Explore**:
+242: - Domain entity property validation without backing fields
+243: - Cleaner ViewModel property setters with `StateHasChanged` triggers
+244: - Reduces boilerplate in DTOs with validation logic
+245: 
+246: ### 2.3 Null-Conditional Assignment (HIGH IMPACT)
+247: 
+248: ```csharp
+249: // BEFORE
+250: if (customer is not null)
+251: {
+252:     customer.Order = GetCurrentOrder();
+253: }
+254: 
+255: // AFTER (C# 14)
+256: customer?.Order = GetCurrentOrder();
+257: 
+258: // Also works with compound assignment
+259: customer?.Score += 10;
+260: ```
+261: 
+262: The right side is evaluated only when the left side isn't null.
+263: 
+264: **Relevance to Explore**: Simplifies null-checking throughout handlers, services, and components.
+265: 
+266: ### 2.4 Implicit Span Conversions (MEDIUM IMPACT)
+267: 
+268: First-class `Span<T>` and `ReadOnlySpan<T>` support:
+269: - Implicit conversions between `T[]`, `Span<T>`, and `ReadOnlySpan<T>`
+270: - Better generic type inference
+271: - Extension method receivers
+272: 
+273: **Relevance to Explore**: Performance improvements in string processing, data transformations. Useful in hot paths.
+274: 
+275: ### 2.5 Simple Lambda Parameters with Modifiers (MEDIUM IMPACT)
+276: 
+277: ```csharp
+278: // BEFORE - had to specify types with modifiers
+279: TryParse<int> parse = (string text, out int result) => Int32.TryParse(text, out result);
+280: 
+281: // AFTER - types inferred even with modifiers
+282: TryParse<int> parse = (text, out result) => Int32.TryParse(text, out result);
+283: ```
+284: 
+285: ### 2.6 `nameof` with Unbound Generic Types (LOW IMPACT)
+286: 
+287: ```csharp
+288: nameof(List<>)  // Returns "List" - previously required nameof(List<int>)
+289: ```
+290: 
+291: ### 2.7 Partial Constructors and Events (MEDIUM IMPACT)
+292: 
+293: Constructors and events can now be partial members. Useful for source generators.
+294: 
+295: ### 2.8 User-Defined Compound Assignment (LOW IMPACT)
+296: 
+297: Custom types can now define compound assignment operators (`+=`, `-=`, etc.).
+298: 
+299: ### Summary of C# 14 Features by Impact
+300: 
+301: | Feature | Impact | Primary Use Case |
+302: |---------|--------|-----------------|
+303: | Extension members | High | Domain extensions, utility properties |
+304: | `field` keyword | High | Property validation, reduced boilerplate |
+305: | Null-conditional assignment | High | Null-safe property assignment everywhere |
+306: | Implicit Span conversions | Medium | Performance in hot paths |
+307: | Lambda parameter modifiers | Medium | Cleaner delegate usage |
+308: | Partial constructors/events | Medium | Source generator scenarios |
+309: | `nameof` unbound generics | Low | Logging, error messages |
+310: | Compound assignment operators | Low | Custom numeric types |
+311: 
+312: ---
+313: 
+314: ## 3. EF Core 10 Features
+315: 
+316: ### 3.1 Named Query Filters (HIGH IMPACT - Already in CLAUDE.md!)
+317: 
+318: EF Core 10 introduces named query filters, which our project already references in CLAUDE.md Rule #11:
+319: 
+320: ```csharp
+321: modelBuilder.Entity<Blog>()
+322:     .HasQueryFilter("SoftDelete", b => !b.IsDeleted)
+323:     .HasQueryFilter("TenantFilter", b => b.TenantId == tenantId);
+324: 
+325: // Selectively disable specific filters
+326: var allBlogs = await context.Blogs
+327:     .IgnoreQueryFilters(["SoftDelete"])
+328:     .ToListAsync();
+329: ```
+330: 
+331: **Relevance to Explore**: This is already specified as a project convention. Enables:
+332: - Soft delete filter: `.HasQueryFilter("SoftDelete", e => !e.IsDeleted)`
+333: - Tenant filter if multi-tenancy is added
+334: - Admin views that selectively bypass soft-delete
+335: 
+336: ### 3.2 Complex Types Improvements (HIGH IMPACT)
+337: 
+338: Major improvements to complex types:
+339: - **Optional complex types** (`Address?`) now supported
+340: - **JSON mapping** for complex types: `.ComplexProperty(c => c.Address, c => c.ToJson())`
+341: - **Struct support** for complex types
+342: - **`ExecuteUpdateAsync` support** for JSON complex types
+343: - Complex types have **value semantics** (unlike owned entities)
+344: 
+345: ```csharp
+346: // Complex type in JSON column
+347: modelBuilder.Entity<Customer>(b =>
+348: {
+349:     b.ComplexProperty(c => c.ShippingAddress, c => c.ToJson());
+350: });
+351: 
+352: // Bulk update JSON properties
+353: await context.Blogs.ExecuteUpdateAsync(s =>
+354:     s.SetProperty(b => b.Details.Views, b => b.Details.Views + 1));
+355: ```
+356: 
+357: **Relevance to Explore**: Event metadata, location data, or schedule details could be modeled as complex types in JSON columns.
+358: 
+359: ### 3.3 LeftJoin / RightJoin LINQ Operators (HIGH IMPACT)
+360: 
+361: First-class LINQ support for LEFT/RIGHT JOIN:
+362: 
+363: ```csharp
+364: // BEFORE (.NET 9) - complex GroupJoin + SelectMany + DefaultIfEmpty
+365: var query = context.Students
+366:     .GroupJoin(context.Departments, s => s.DepartmentID, d => d.ID, (s, depts) => new { s, depts })
+367:     .SelectMany(x => x.depts.DefaultIfEmpty(), (x, d) => new { ... });
+368: 
+369: // AFTER (.NET 10) - clean and readable
+370: var query = context.Students
+371:     .LeftJoin(
+372:         context.Departments,
+373:         student => student.DepartmentID,
+374:         department => department.ID,
+375:         (student, department) => new 
+376:         { 
+377:             student.FirstName,
+378:             Department = department.Name ?? "[NONE]"
+379:         });
+380: ```
+381: 
+382: **Relevance to Explore**: Simplifies queries joining Events with optional Members, Categories, etc.
+383: 
+384: ### 3.4 Improved Parameterized Collections (HIGH IMPACT)
+385: 
+386: New default: each collection value becomes its own SQL parameter with "padding":
+387: 
+388: ```sql
+389: -- .NET 10 default (new)
+390: SELECT * FROM Blogs WHERE Id IN (@ids1, @ids2, @ids3)
+391: 
+392: -- .NET 9 default (JSON)
+393: SELECT * FROM Blogs WHERE Id IN (SELECT value FROM OPENJSON(@ids))
+394: 
+395: -- Override per-query
+396: var blogs = await context.Blogs.Where(b => EF.Constant(ids).Contains(b.Id)).ToListAsync();
+397: ```
+398: 
+399: Better query plan caching and cardinality information for the database planner.
+400: 
+401: ### 3.5 ExecuteUpdateAsync with Regular Lambda (HIGH IMPACT)
+402: 
+403: No more expression tree manipulation for conditional updates:
+404: 
+405: ```csharp
+406: // BEFORE - manual Expression tree manipulation (complex and error-prone)
+407: Expression<Func<SetPropertyCalls<Blog>, SetPropertyCalls<Blog>>> setters = ...;
+408: 
+409: // AFTER (.NET 10) - regular lambda with conditionals
+410: await context.Blogs.ExecuteUpdateAsync(s =>
+411: {
+412:     s.SetProperty(b => b.Views, 8);
+413:     if (nameChanged)
+414:     {
+415:         s.SetProperty(b => b.Name, "foo");
+416:     }
+417: });
+418: ```
+419: 
+420: ### 3.6 Security Improvements
+421: 
+422: - **Redacted inlined constants** in logging by default (prevents PII leaks)
+423: - **SQL injection analyzer** warns on string concatenation in `FromSqlRaw`
+424: 
+425: ### 3.7 Vector Search (SQL Server 2025 / Azure SQL)
+426: 
+427: Full support for `vector` data type and `VECTOR_DISTANCE()` for AI/embedding workloads:
+428: 
+429: ```csharp
+430: [Column(TypeName = "vector(1536)")]
+431: public SqlVector<float> Embedding { get; set; }
+432: ```
+433: 
+434: ### 3.8 JSON Data Type (SQL Server 2025 / Azure SQL)
+435: 
+436: Native `json` column type instead of `nvarchar(max)`:
+437: - Primitive collections and complex types auto-map to `json`
+438: - `JSON_VALUE` with `RETURNING` clause for typed extraction
+439: - Existing `nvarchar` JSON columns auto-migrate to `json` type
+440: 
+441: ### 3.9 Other EF Core 10 Improvements
+442: 
+443: | Feature | Notes |
+444: |---------|-------|
+445: | Custom default constraint names | `HasDefaultValueSql("GETDATE()", "DF_Post_CreatedDate")` |
+446: | Named default constraints | `UseNamedDefaultConstraints()` for auto-naming |
+447: | Split query ordering fix | Consistent ordering across split queries |
+448: | `DateOnly.ToDateTime()` translation | New SQL translation |
+449: | `COALESCE` → `ISNULL` on SQL Server | Optimization |
+450: | Simplified parameter names | `@city` instead of `@__city_0` |
+451: | Cosmos DB full-text search | `FullTextContains`, `FullTextScore` |
+452: | Cosmos hybrid search | `Rrf()` combining vector + full-text |
+453: 
+454: ---
+455: 
+456: ## 4. bUnit 2.x for .NET 10
+457: 
+458: ### 4.1 Version Status
+459: 
+460: **Latest**: bUnit 2.5.3 (released January 8, 2026)
+461: 
+462: Major version 2.0 was released November 21, 2025 targeting .NET 10:
+463: - **Dropped** support for all versions prior to .NET 8
+464: - **Added** `net10.0` target framework
+465: - API cleanup and simplifications
+466: - Improved renderer logic for edge cases
+467: - Improved JSInterop developer experience
+468: 
+469: ### 4.2 Key bUnit 2.x Features
+470: 
+471: | Version | Feature |
+472: |---------|---------|
+473: | 2.5.3 | `FindByTestId` for querying elements by test ID |
+474: | 2.5.3 | `Render(RenderFragment)` preferred via `OverloadResolutionAttribute` |
+475: | 2.3.4 | Generic `Find<TComponent, TElement>` and `FindAll<TComponent, TElement>` |
+476: | 2.3.4 | Generic `WaitForElement<TComponent, TElement>` and `WaitForElements<TComponent, TElement>` |
+477: | 2.2.2 | `FindByAllByLabel` in `bunit.web.query` |
+478: | 2.1.1 | `AuthenticationState` registered in services container (not RenderTree) |
+479: | 2.0.66 | Form submission from buttons outside form via HTML5 `form` attribute |
+480: | 1.37.7 | Support for `RendererInfo` and `AssignedRenderMode` (.NET 9+) |
+481: | 1.38.5 | xUnit v3 support in bunit.template |
+482: 
+483: ### 4.3 Testing Patterns for .NET 10
+484: 
+485: **Testing Render Modes**: bUnit 1.37.7+ supports `RendererInfo` and `AssignedRenderMode`, essential for testing InteractiveAuto components.
+486: 
+487: **Testing Authentication**: bUnit 2.1.1 moved `AuthenticationState` to the services container, matching .NET 10's `AddAuthenticationStateSerialization` pattern.
+488: 
+489: **Test Runner Compatibility**: 
+490: - xUnit v3 supported (template since 1.38.5)
+491: - TUnit not explicitly listed but bUnit is test-runner agnostic (based on `TestContext` not test framework)
+492: 
+493: ### 4.4 Relevance to Explore
+494: 
+495: The project uses bUnit with TUnit (per `Explore.Blazor.Client.Tests`). Key upgrade considerations:
+496: 1. Upgrade to bUnit 2.5.x for .NET 10 support
+497: 2. Use `FindByTestId` for more resilient component queries
+498: 3. Generic `Find<TComponent, TElement>` for type-safe element queries
+499: 4. `AuthenticationState` in services aligns with our auth testing patterns
+500: 
+501: ---
+502: 
+503: ## 5. Blazor .NET 10 Security Best Practices
+504: 
+505: ### 5.1 CSRF/XSRF Protection
+506: 
+507: **Automatic in Blazor**: Antiforgery services are added when `AddRazorComponents` is called. The middleware is added via `UseAntiforgery()`.
+508: 
+509: Key points:
+510: - `AntiforgeryToken` component auto-added to `EditForm` instances
+511: - `AntiforgeryStateProvider` provides tokens for manual AJAX calls
+512: - Tokens stored in component state (available to interactive components)
+513: - Only required for `application/x-www-form-urlencoded`, `multipart/form-data`, or `text/plain` enctypes
+514: - API endpoints (JSON) don't need antiforgery if using Bearer tokens
+515: 
+516: **Configuration options**:
+517: ```csharp
+518: builder.Services.AddAntiforgery(options =>
+519: {
+520:     options.FormFieldName = "AntiforgeryFieldname";
+521:     options.HeaderName = "X-CSRF-TOKEN-HEADERNAME";
+522:     options.SuppressXFrameOptionsHeader = false;
+523: });
+524: 
+525: // Secure cookie in non-Development
+526: if (!builder.Environment.IsDevelopment())
+527: {
+528:     builder.Services.AddAntiforgery(o =>
+529:         o.Cookie.SecurePolicy = CookieSecurePolicy.Always);
+530: }
+531: ```
+532: 
+533: ### 5.2 Authentication State (.NET 10)
+534: 
+535: **Server → Client flow**:
+536: ```csharp
+537: // Server Program.cs
+538: builder.Services.AddRazorComponents()
+539:     .AddInteractiveWebAssemblyComponents()
+540:     .AddAuthenticationStateSerialization(
+541:         options => options.SerializeAllClaims = true);
+542: 
+543: // Client Program.cs  
+544: builder.Services.AddAuthorizationCore();
+545: builder.Services.AddCascadingAuthenticationState();
+546: builder.Services.AddAuthenticationStateDeserialization();
+547: ```
+548: 
+549: **Revalidation**: `IdentityRevalidatingAuthenticationStateProvider` revalidates security stamp every 30 minutes. Adjustable:
+550: ```csharp
+551: protected override TimeSpan RevalidationInterval => TimeSpan.FromMinutes(20);
+552: ```
+553: 
+554: ### 5.3 Passkey/WebAuthn Support (NEW in .NET 10)
+555: 
+556: ASP.NET Core Identity now supports passkey authentication:
+557: - Based on WebAuthn and FIDO2 standards
+558: - Phishing-resistant, device-based authentication
+559: - Blazor Web App template includes passkey management UI
+560: - Biometrics and security keys supported
+561: 
+562: ### 5.4 Reconnection UI and CSP Compliance
+563: 
+564: The new `ReconnectModal` component:
+565: - Doesn't inject styles programmatically
+566: - Complies with `style-src` CSP directives
+567: - Framework's default reconnection UI could cause CSP violations (before .NET 10)
+568: 
+569: ### 5.5 Content Security Policy Recommendations
+570: 
+571: ```
+572: Content-Security-Policy:
+573:   default-src 'self';
+574:   script-src 'self' 'wasm-unsafe-eval';
+575:   style-src 'self';
+576:   connect-src 'self' wss:;
+577:   img-src 'self' data:;
+578:   font-src 'self';
+579:   frame-ancestors 'none';
+580: ```
+581: 
+582: - Use `ReconnectModal` component to avoid `style-src 'unsafe-inline'`
+583: - Blazor script fingerprinting prevents cache poisoning
+584: - `X-Frame-Options: SAMEORIGIN` set by default (antiforgery middleware)
+585: 
+586: ### 5.6 Additional Security Patterns
+587: 
+588: - **Never trust client-side auth checks** - all authorization must be server-enforced
+589: - **Use Secret Manager** for local development credentials
+590: - **Managed Identities** for Azure services (no credentials in code)
+591: - **Temporary Redirection URL validity** configurable (default 5 minutes)
+592: - **EF Core 10** redacts inlined constants from SQL logging by default
+593: - **SQL injection analyzer** warns on string concatenation in raw SQL methods
+594: 
+595: ---
+596: 
+597: ## 6. Actionable Recommendations
+598: 
+599: ### Priority 1: High-Impact, Low-Effort Adoptions
+600: 
+601: | # | Item | Effort | Impact |
+602: |---|------|--------|--------|
+603: | 1 | **Adopt `[PersistentState]`** on all components that persist prerender state | Low | High - eliminates boilerplate |
+604: | 2 | **Use Named Query Filters** (already in CLAUDE.md rules) | Low | High - flexible soft-delete |
+605: | 3 | **Use `field` keyword** in property setters with validation | Low | Medium - cleaner code |
+606: | 4 | **Use null-conditional assignment** (`?.=`) throughout handlers | Low | Medium - cleaner null-checks |
+607: | 5 | **Upgrade bUnit to 2.5.x** | Low | High - .NET 10 support |
+608: | 6 | **Adopt `NotFoundPage` on Router** | Low | Medium - proper 404 handling |
+609: 
+610: ### Priority 2: Medium-Effort Improvements
+611: 
+612: | # | Item | Effort | Impact |
+613: |---|------|--------|--------|
+614: | 7 | **Adopt `ReconnectModal`** component from template | Medium | Medium - CSP compliance |
+615: | 8 | **Use `AddValidation()` + `[ValidatableType]`** for nested form validation | Medium | High - better validation |
+616: | 9 | **Use `LeftJoin` LINQ operator** to simplify complex queries | Medium | Medium - readability |
+617: | 10 | **Adopt extension members** for domain entity helpers | Medium | Medium - cleaner architecture |
+618: | 11 | **Use `ExecuteUpdateAsync` regular lambda** for conditional bulk updates | Medium | Medium - simpler code |
+619: | 12 | **Enable Blazor metrics/tracing** for observability | Medium | High - production insights |
+620: 
+621: ### Priority 3: Architecture Considerations (Discuss First)
+622: 
+623: | # | Item | Effort | Impact |
+624: |---|------|--------|--------|
+625: | 13 | **Complex types for JSON columns** (replace owned entities) | High | High - better modeling |
+626: | 14 | **Passkey/WebAuthn** adoption for passwordless auth | High | High - security improvement |
+627: | 15 | **Circuit state persistence** configuration | Medium | Medium - mobile UX |
+628: | 16 | **Source-generator validation** migration from reflection | High | Medium - AOT readiness |
+629: 
+630: ### Breaking Changes to Watch
+631: 
+632: 1. **HttpClient response streaming** enabled by default in WASM - `ReadAsStreamAsync` returns `BrowserHttpReadStream` not `MemoryStream`
+633: 2. **`<NotFound>` render fragment** deprecated - migrate to `NotFoundPage` parameter
+634: 3. **EF Core JSON columns** auto-migrate from `nvarchar(max)` to `json` type (SQL Server 2025)
+635: 4. **`NavigationException`** behavior change during static SSR (opt-in via MSBuild property)
+636: 5. **bUnit 2.x** dropped .NET versions prior to .NET 8
+637: 
+638: ### Questions for Next Steps
+639: 
+640: 1. Which Priority 1 items should we start implementing first?
+641: 2. Should we adopt complex types (JSON mapping) for any current owned entities?
+642: 3. Is passkey/WebAuthn support a requirement for the project's auth roadmap?
+643: 4. Should we target SQL Server 2025 features (native `json`, `vector`) or maintain backward compatibility?
 ````
 
 ## File: Explore.API/appsettings.Development.json
@@ -1553,82 +3182,6 @@ README.md
 4: Accept: application/json
 5: 
 6: ###
-````
-
-## File: Explore.API/Middleware/ExceptionMiddleware.cs
-````csharp
- 1: using Newtonsoft.Json;
- 2: using System.Net;
- 3: using Explore.Application.Exceptions;
- 4: 
- 5: namespace Explore.API.Middleware
- 6: {
- 7:     public class ExceptionMiddleware
- 8:     {
- 9:         private readonly RequestDelegate _next;
-10:         private readonly ILogger<ExceptionMiddleware> _logger;
-11: 
-12:         public ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddleware> logger)
-13:         {
-14:             _next = next;
-15:             _logger = logger;
-16:         }
-17:         public async Task InvokeAsync(HttpContext httpContext)
-18:         {
-19:             try
-20:             {
-21:                 await _next(httpContext);
-22:             }
-23:             catch (Exception ex)
-24:             {
-25:                 _logger.LogError(ex, "Une exception non gérée s'est produite: {Message}", ex.Message);
-26:                 await HandleExceptionAsync(httpContext, ex);
-27:             }
-28:         }
-29:         private Task HandleExceptionAsync(HttpContext context, Exception exception)
-30:         {
-31:             context.Response.ContentType = "application/json";
-32:             HttpStatusCode statusCode;
-33: 
-34:             string result = JsonConvert.SerializeObject(new ErrorDetails()
-35:             {
-36:                 ErrorMessage = exception.Message,
-37:                 ErrorType = "Failure"
-38:             });
-39: 
-40:             switch (exception)
-41:             {
-42: 
-43: 
-44:                 case BadRequestException badRequestException:
-45:                     statusCode = HttpStatusCode.BadRequest;
-46:                     _logger.LogWarning("Invalid Request: {Message}", exception.Message);
-47:                     break;
-48:                 case ValidationException validationException:
-49:                     statusCode = HttpStatusCode.BadRequest;
-50:                     result = JsonConvert.SerializeObject(validationException.Errors);
-51:                     _logger.LogWarning("Validation Error: {Message}", exception.Message);
-52:                     break;
-53:                 case NotFoundException notFoundException:
-54:                     statusCode = HttpStatusCode.NotFound;
-55:                     _logger.LogWarning("Ressource Not Found: {Message}", exception.Message);
-56:                     break;
-57:                 default:
-58:                     statusCode = HttpStatusCode.InternalServerError;
-59:                     _logger.LogError("Internal Server Error: {Message}", exception.Message);
-60:                     break;
-61:             }
-62: 
-63:             context.Response.StatusCode = (int)statusCode;
-64:             return context.Response.WriteAsync(result);
-65:         }
-66:     }
-67:     public class ErrorDetails
-68:     {
-69:         public string ErrorType { get; set; }
-70:         public string ErrorMessage { get; set; }
-71:     }
-72: }
 ````
 
 ## File: Explore.API/Properties/launchSettings.json
@@ -1933,371 +3486,6 @@ README.md
 39: }
 ````
 
-## File: Explore.Persistence/Seed/SeedData.cs
-````csharp
-  1: using Explore.Domain;
-  2: using Explore.Domain.Enums;
-  3: using Explore.Domain.Modules;
-  4: 
-  5: namespace Explore.Persistence.Seed;
-  6: 
-  7: 
-  8: 
-  9: 
- 10: 
- 11: 
- 12: 
- 13: 
- 14: public static class SeedData
- 15: {
- 16: 
- 17:     private static readonly DateTime SeedTimestamp = new(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
- 18: 
- 19: 
- 20:     public static Tenant DefaultTenant => new()
- 21:     {
- 22:         Id = SeedIds.DefaultTenantId,
- 23:         FullName = "ISLAMU Default Tenant",
- 24:         Slug = "default",
- 25:         IsActive = true
- 26:     };
- 27: 
- 28: 
- 29:     public static User SystemUser => new()
- 30:     {
- 31:         Id = SeedIds.SystemUserId,
- 32:         Email = "system@islamu.org",
- 33:         FirstName = "System",
- 34:         LastName = "Account",
- 35:         ActorId = SeedIds.SystemUserActorId,
- 36:         AuthProvider = "system",
- 37:         AuthProviderId = "system",
- 38:         EmailVerified = true
- 39:     };
- 40: 
- 41: 
- 42:     public static Organization IslamuOrganization => new()
- 43:     {
- 44:         Id = SeedIds.IslamuOrganizationId,
- 45:         FullName = "ISLAMU",
- 46:         WebsiteUrl = "https://islamu.ngo",
- 47:         Email = "contact@openislamu.org",
- 48:         Country = "Belgium",
- 49:         City = "Brussels",
- 50:         Postcode = "1070",
- 51:         Address = "Parc Du Peterbos",
- 52:         ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
- 53:         TenantId = SeedIds.DefaultTenantId,
- 54:         ActorId = SeedIds.IslamuOrganizationActorId,
- 55:         CreatedAt = SeedTimestamp
- 56:     };
- 57: 
- 58: 
- 59:     public static Actor SystemUserActor => new()
- 60:     {
- 61:         Id = SeedIds.SystemUserActorId,
- 62:         ActorTypeId = (int)ActorTypeEnum.User,
- 63:         TenantId = SeedIds.DefaultTenantId,
- 64:         DisplayName = "System Account",
- 65:         Handle = "system",
- 66:         Description = "System user account",
- 67:         UserId = SeedIds.SystemUserId,
- 68:         OrganizationId = null
- 69:     };
- 70: 
- 71:     public static Actor IslamuOrganizationActor => new()
- 72:     {
- 73:         Id = SeedIds.IslamuOrganizationActorId,
- 74:         ActorTypeId = (int)ActorTypeEnum.Organization,
- 75:         TenantId = SeedIds.DefaultTenantId,
- 76:         DisplayName = "ISLAMU",
- 77:         Handle = "islamu",
- 78:         Description = "ISLAMU NGO - Islamic Learning and Media Union",
- 79:         UserId = null,
- 80:         OrganizationId = SeedIds.IslamuOrganizationId
- 81:     };
- 82: 
- 83: 
- 84:     public static OrganizationMember SystemUserIslamuMember => new()
- 85:     {
- 86:         Id = SeedIds.SystemUserIslamuMemberId,
- 87:         OrganizationId = SeedIds.IslamuOrganizationId,
- 88:         UserId = SeedIds.SystemUserId,
- 89:         TenantId = SeedIds.DefaultTenantId,
- 90:         OrganizationRoleId = (int)OrganizationRoleEnum.Creator,
- 91:         OrganizationPositionId = (int)OrganizationPositionEnum.Founder,
- 92:         CreatedAt = SeedTimestamp
- 93:     };
- 94: 
- 95: 
- 96:     public static StorageObject DefaultEventImage => new()
- 97:     {
- 98:         Id = SeedIds.DefaultEventImageId,
- 99:         Uri = "https://placeholder.islamu.org/event-default.jpg",
-100:         FullName = "Default Event Image",
-101:         Extension = ".jpg",
-102:         Size = 0,
-103:         FileTypeId = (int)FileTypeEnum.Image,
-104:         TenantId = SeedIds.DefaultTenantId,
-105:         ActorId = SeedIds.SystemUserActorId
-106:     };
-107: 
-108:     public static StorageObject DefaultProfileImage => new()
-109:     {
-110:         Id = SeedIds.DefaultProfileImageId,
-111:         Uri = "https://placeholder.islamu.org/profile-default.jpg",
-112:         FullName = "Default Profile Image",
-113:         Extension = ".jpg",
-114:         Size = 0,
-115:         FileTypeId = (int)FileTypeEnum.Image,
-116:         TenantId = SeedIds.DefaultTenantId,
-117:         ActorId = SeedIds.SystemUserActorId
-118:     };
-119: 
-120:     public static StorageObject DefaultOrganizationLogo => new()
-121:     {
-122:         Id = SeedIds.DefaultOrganizationLogoId,
-123:         Uri = "https://placeholder.islamu.org/org-default.jpg",
-124:         FullName = "Default Organization Logo",
-125:         Extension = ".jpg",
-126:         Size = 0,
-127:         FileTypeId = (int)FileTypeEnum.Image,
-128:         TenantId = SeedIds.DefaultTenantId,
-129:         ActorId = SeedIds.SystemUserActorId
-130:     };
-131: 
-132: 
-133:     public static TenantSettings DefaultTenantSettings => new()
-134:     {
-135:         Id = SeedIds.DefaultTenantSettingsId,
-136:         TenantId = SeedIds.DefaultTenantId
-137:     };
-138: 
-139: 
-140:     public static TenantCapability DefaultTenantCoreCapability => new()
-141:     {
-142:         Id = SeedIds.DefaultTenantCoreCapabilityId,
-143:         TenantId = SeedIds.DefaultTenantId,
-144:         ModuleId = SeedIds.ModuleCoreId,
-145:         IsEnabled = true,
-146:         EnabledAt = SeedTimestamp
-147:     };
-148: 
-149:     public static TenantCapability DefaultTenantIslamicCapability => new()
-150:     {
-151:         Id = SeedIds.DefaultTenantIslamicCapabilityId,
-152:         TenantId = SeedIds.DefaultTenantId,
-153:         ModuleId = SeedIds.ModuleIslamicId,
-154:         IsEnabled = true,
-155:         EnabledAt = SeedTimestamp
-156:     };
-157: 
-158: 
-159:     public static Location OnlineLocation => new()
-160:     {
-161:         Id = SeedIds.OnlineLocationId,
-162:         FullName = "Online / Virtual",
-163:         Address = "Virtual",
-164:         Postcode = "00000",
-165:         Country = "Internet",
-166:         City = "Virtual",
-167:         Timezone = "UTC",
-168:         TenantId = SeedIds.DefaultTenantId
-169:     };
-170: 
-171: 
-172:     public static Category IslamicStudiesCategory => new()
-173:     {
-174:         Id = SeedIds.IslamicStudiesCategoryId,
-175:         MasterCode = "ISLAMIC_STUDIES",
-176:         FullName = "Islamic Studies",
-177:         TenantId = SeedIds.DefaultTenantId,
-178:         ParentId = null
-179:     };
-180: 
-181:     public static Category QuranCategory => new()
-182:     {
-183:         Id = SeedIds.QuranCategoryId,
-184:         MasterCode = "QURAN",
-185:         FullName = "Quran & Tafsir",
-186:         TenantId = SeedIds.DefaultTenantId,
-187:         ParentId = SeedIds.IslamicStudiesCategoryId
-188:     };
-189: 
-190:     public static Category HadithCategory => new()
-191:     {
-192:         Id = SeedIds.HadithCategoryId,
-193:         MasterCode = "HADITH",
-194:         FullName = "Hadith Sciences",
-195:         TenantId = SeedIds.DefaultTenantId,
-196:         ParentId = SeedIds.IslamicStudiesCategoryId
-197:     };
-198: 
-199:     public static Category FiqhCategory => new()
-200:     {
-201:         Id = SeedIds.FiqhCategoryId,
-202:         MasterCode = "FIQH",
-203:         FullName = "Fiqh (Islamic Jurisprudence)",
-204:         TenantId = SeedIds.DefaultTenantId,
-205:         ParentId = SeedIds.IslamicStudiesCategoryId
-206:     };
-207: 
-208:     public static Category AqeedahCategory => new()
-209:     {
-210:         Id = SeedIds.AqeedahCategoryId,
-211:         MasterCode = "AQEEDAH",
-212:         FullName = "Aqeedah (Islamic Creed)",
-213:         TenantId = SeedIds.DefaultTenantId,
-214:         ParentId = SeedIds.IslamicStudiesCategoryId
-215:     };
-216: 
-217:     public static Category SeerahCategory => new()
-218:     {
-219:         Id = SeedIds.SeerahCategoryId,
-220:         MasterCode = "SEERAH",
-221:         FullName = "Seerah (Prophetic Biography)",
-222:         TenantId = SeedIds.DefaultTenantId,
-223:         ParentId = SeedIds.IslamicStudiesCategoryId
-224:     };
-225: 
-226:     public static Category ArabicLanguageCategory => new()
-227:     {
-228:         Id = SeedIds.ArabicLanguageCategoryId,
-229:         MasterCode = "ARABIC",
-230:         FullName = "Arabic Language",
-231:         TenantId = SeedIds.DefaultTenantId,
-232:         ParentId = null
-233:     };
-234: 
-235:     public static Category CommunityEventsCategory => new()
-236:     {
-237:         Id = SeedIds.CommunityEventsCategoryId,
-238:         MasterCode = "COMMUNITY",
-239:         FullName = "Community Events",
-240:         TenantId = SeedIds.DefaultTenantId,
-241:         ParentId = null
-242:     };
-243: 
-244: 
-245:     public static Tag BeginnerTag => new()
-246:     {
-247:         Id = SeedIds.BeginnerTagId,
-248:         MasterCode = "BEGINNER",
-249:         FullName = "Beginner",
-250:         TenantId = SeedIds.DefaultTenantId
-251:     };
-252: 
-253:     public static Tag IntermediateTag => new()
-254:     {
-255:         Id = SeedIds.IntermediateTagId,
-256:         MasterCode = "INTERMEDIATE",
-257:         FullName = "Intermediate",
-258:         TenantId = SeedIds.DefaultTenantId
-259:     };
-260: 
-261:     public static Tag AdvancedTag => new()
-262:     {
-263:         Id = SeedIds.AdvancedTagId,
-264:         MasterCode = "ADVANCED",
-265:         FullName = "Advanced",
-266:         TenantId = SeedIds.DefaultTenantId
-267:     };
-268: 
-269:     public static Tag FreeTag => new()
-270:     {
-271:         Id = SeedIds.FreeTagId,
-272:         MasterCode = "FREE",
-273:         FullName = "Free",
-274:         TenantId = SeedIds.DefaultTenantId
-275:     };
-276: 
-277:     public static Tag PaidTag => new()
-278:     {
-279:         Id = SeedIds.PaidTagId,
-280:         MasterCode = "PAID",
-281:         FullName = "Paid",
-282:         TenantId = SeedIds.DefaultTenantId
-283:     };
-284: 
-285:     public static Tag OnlineTag => new()
-286:     {
-287:         Id = SeedIds.OnlineTagId,
-288:         MasterCode = "ONLINE",
-289:         FullName = "Online",
-290:         TenantId = SeedIds.DefaultTenantId
-291:     };
-292: 
-293:     public static Tag InPersonTag => new()
-294:     {
-295:         Id = SeedIds.InPersonTagId,
-296:         MasterCode = "IN_PERSON",
-297:         FullName = "In-Person",
-298:         TenantId = SeedIds.DefaultTenantId
-299:     };
-300: 
-301: 
-302:     public static Event SampleEvent => new()
-303:     {
-304:         Id = SeedIds.SampleEventId,
-305:         Title = "Welcome to ISLAMU Events",
-306:         Description = "This is a sample event to demonstrate the ISLAMU Events platform. Feel free to explore and create your own events!",
-307:         Slug = "welcome-to-islamu-events",
-308:         EventTypeId = (int)EventTypeEnum.Webinar,
-309:         AudienceGenderId = (int)AudienceGenderEnum.Both,
-310:         AudienceAgeId = (int)AudienceAgeEnum.AllAges,
-311:         ActorId = SeedIds.IslamuOrganizationActorId,
-312:         Price = 0,
-313:         CurrencyCode = "EUR",
-314:         FeaturedImageId = SeedIds.DefaultEventImageId,
-315:         TotalViews = 0,
-316:         IsRegistrationRequired = false,
-317:         MadhabId = null,
-318:         TenantId = SeedIds.DefaultTenantId,
-319:         VisibilityTypeId = (int)VisibilityTypeEnum.Public,
-320:         EventStatusId = (int)EventStatusEnum.Published,
-321:         EventFormatId = (int)EventFormatEnum.Digital,
-322:         Timezone = "Europe/Brussels"
-323:     };
-324: 
-325: 
-326:     public static UserRole SuperAdminRole => new()
-327:     {
-328:         Id = 1,
-329:         FullName = "Super Administrator",
-330:         MasterCode = "SUPER_ADMIN",
-331:         Description = "Full system access",
-332:         TenantId = SeedIds.DefaultTenantId
-333:     };
-334: 
-335:     public static UserRole AdminRole => new()
-336:     {
-337:         Id = 2,
-338:         FullName = "Administrator",
-339:         MasterCode = "ADMIN",
-340:         Description = "Organization administrator",
-341:         TenantId = SeedIds.DefaultTenantId
-342:     };
-343: 
-344:     public static UserRole ModeratorRole => new()
-345:     {
-346:         Id = 3,
-347:         FullName = "Moderator",
-348:         MasterCode = "MODERATOR",
-349:         Description = "Content moderator",
-350:         TenantId = SeedIds.DefaultTenantId
-351:     };
-352: 
-353:     public static UserRole UserRoleData => new()
-354:     {
-355:         Id = 4,
-356:         FullName = "User",
-357:         MasterCode = "USER",
-358:         Description = "Standard user",
-359:         TenantId = SeedIds.DefaultTenantId
-360:     };
-361: }
-````
-
 ## File: Explore.ServiceDefaults/Explore.ServiceDefaults.csproj
 ````
  1: <Project Sdk="Microsoft.NET.Sdk">
@@ -2328,90 +3516,88 @@ README.md
 ````markdown
  1: ---
  2: name: clean-code-architect
- 3: description: Use this agent when the user needs help implementing new code or refactoring existing code with a focus on quality, cleanliness, maintainability, and reusability. This includes writing new features, creating utility functions, building modules, or improving existing implementations.\n\nExamples:\n\n<example>\nContext: User requests implementation of a new feature\nuser: "I need a function to validate email addresses"\nassistant: "I'll use the clean-code-architect agent to implement a high-quality, reusable email validation solution."\n<commentary>\nSince the user needs new code implemented, use the clean-code-architect agent to ensure the implementation follows best practices for clean, maintainable, and reusable code.\n</commentary>\n</example>\n\n<example>\nContext: User asks for help building a data processing module\nuser: "Can you help me create a module that handles user authentication?"\nassistant: "Let me engage the clean-code-architect agent to design and implement a robust, maintainable authentication module."\n<commentary>\nThe user needs a new module implemented. The clean-code-architect agent will ensure proper separation of concerns, reusable components, and clean architecture.\n</commentary>\n</example>\n\n<example>\nContext: User wants to implement a utility class\nuser: "I need a helper class for date formatting across my application"\nassistant: "I'll use the clean-code-architect agent to create a well-designed, DRY date formatting utility."\n<commentary>\nThis is a perfect use case for clean-code-architect as utilities need to be highly reusable and maintainable.\n</commentary>\n</example>
- 4: model: opus
- 5: color: red
- 6: ---
+ 3: description: Use this agent when the user needs help implementing new code or refactoring existing code with a focus on quality, cleanliness, maintainability, and reusability. This includes writing new features, creating utility functions, building modules, or improving existing implementations.\n\nExamples:\n\n<example>\nContext User requests implementation of a new feature\nuser "I need a function to validate email addresses"\nassistant "I'll use the clean-code-architect agent to implement a high-quality, reusable email validation solution."\n<commentary>\nSince the user needs new code implemented, use the clean-code-architect agent to ensure the implementation follows best practices for clean, maintainable, and reusable code.\n</commentary>\n</example>\n\n<example>\nContext  User asks for help building a data processing module\nuser "Can you help me create a module that handles user authentication?"\nassistant "Let me engage the clean-code-architect agent to design and implement a robust, maintainable authentication module."\n<commentary>\nThe user needs a new module implemented. The clean-code-architect agent will ensure proper separation of concerns, reusable components, and clean architecture.\n</commentary>\n</example>\n\n<example>\nContext User wants to implement a utility class\nuser "I need a helper class for date formatting across my application"\nassistant "I'll use the clean-code-architect agent to create a well-designed, DRY date formatting utility."\n<commentary>\nThis is a perfect use case for clean-code-architect as utilities need to be highly reusable and maintainable.\n</commentary>\n</example>
+ 4: ---
+ 5: 
+ 6: You are an elite software architect and clean code craftsman with decades of experience building maintainable, scalable systems. You treat code as a craft, approaching every implementation with the precision of an artist and the rigor of an engineer. Your code has been praised in code reviews across Fortune 500 companies for its clarity, elegance, and robustness.
  7: 
- 8: You are an elite software architect and clean code craftsman with decades of experience building maintainable, scalable systems. You treat code as a craft, approaching every implementation with the precision of an artist and the rigor of an engineer. Your code has been praised in code reviews across Fortune 500 companies for its clarity, elegance, and robustness.
+ 8: ## Core Philosophy
  9: 
-10: ## Core Philosophy
+10: You believe that code is read far more often than it is written. Every line you produce should be immediately understandable to another developer—or to yourself six months from now. You write code that is a joy to maintain and extend.
 11: 
-12: You believe that code is read far more often than it is written. Every line you produce should be immediately understandable to another developer—or to yourself six months from now. You write code that is a joy to maintain and extend.
+12: ## Implementation Principles
 13: 
-14: ## Implementation Principles
+14: ### DRY (Don't Repeat Yourself)
 15: 
-16: ### DRY (Don't Repeat Yourself)
-17: 
-18: - Extract common patterns into reusable functions, classes, or modules
-19: - Identify repetition not just in code, but in concepts and logic
-20: - Create abstractions at the right level—not too early, not too late
-21: - Use composition and inheritance judiciously to share behavior
-22: - When you see similar code blocks, ask: "What is the underlying abstraction?"
+16: - Extract common patterns into reusable functions, classes, or modules
+17: - Identify repetition not just in code, but in concepts and logic
+18: - Create abstractions at the right level—not too early, not too late
+19: - Use composition and inheritance judiciously to share behavior
+20: - When you see similar code blocks, ask: "What is the underlying abstraction?"
+21: 
+22: ### Clean Code Standards
 23: 
-24: ### Clean Code Standards
-25: 
-26: - **Naming**: Use intention-revealing names that make comments unnecessary. Variables should explain what they hold; functions should explain what they do
-27: - **Functions**: Keep them small, focused on a single task, and at one level of abstraction. A function should do one thing and do it well
-28: - **Classes**: Follow Single Responsibility Principle. A class should have only one reason to change
-29: - **Comments**: Write code that doesn't need comments. When comments are necessary, explain "why" not "what"
-30: - **Formatting**: Consistent indentation, logical grouping, and visual hierarchy that guides the reader
+24: - **Naming**: Use intention-revealing names that make comments unnecessary. Variables should explain what they hold; functions should explain what they do
+25: - **Functions**: Keep them small, focused on a single task, and at one level of abstraction. A function should do one thing and do it well
+26: - **Classes**: Follow Single Responsibility Principle. A class should have only one reason to change
+27: - **Comments**: Write code that doesn't need comments. When comments are necessary, explain "why" not "what"
+28: - **Formatting**: Consistent indentation, logical grouping, and visual hierarchy that guides the reader
+29: 
+30: ### Reusability Architecture
 31: 
-32: ### Reusability Architecture
-33: 
-34: - Design components with clear interfaces and minimal dependencies
-35: - Use dependency injection to decouple implementations from their consumers
-36: - Create modules that can be easily extracted and reused in other projects
-37: - Follow the Interface Segregation Principle—don't force clients to depend on methods they don't use
-38: - Build with configuration over hard-coding; externalize what might change
+32: - Design components with clear interfaces and minimal dependencies
+33: - Use dependency injection to decouple implementations from their consumers
+34: - Create modules that can be easily extracted and reused in other projects
+35: - Follow the Interface Segregation Principle—don't force clients to depend on methods they don't use
+36: - Build with configuration over hard-coding; externalize what might change
+37: 
+38: ### Maintainability Focus
 39: 
-40: ### Maintainability Focus
-41: 
-42: - Write self-documenting code through expressive naming and clear structure
-43: - Keep cognitive complexity low—minimize nested conditionals and loops
-44: - Handle errors gracefully with meaningful messages and appropriate recovery
-45: - Design for testability from the start; if it's hard to test, it's hard to maintain
-46: - Apply the Scout Rule: leave code better than you found it
+40: - Write self-documenting code through expressive naming and clear structure
+41: - Keep cognitive complexity low—minimize nested conditionals and loops
+42: - Handle errors gracefully with meaningful messages and appropriate recovery
+43: - Design for testability from the start; if it's hard to test, it's hard to maintain
+44: - Apply the Scout Rule: leave code better than you found it
+45: 
+46: ## Implementation Process
 47: 
-48: ## Implementation Process
+48: 1. **Understand Before Building**: Before writing any code, ensure you fully understand the requirements. Ask clarifying questions if the scope is ambiguous.
 49: 
-50: 1. **Understand Before Building**: Before writing any code, ensure you fully understand the requirements. Ask clarifying questions if the scope is ambiguous.
+50: 2. **Design First**: Consider the architecture before implementation. Think about how this code fits into the larger system, what interfaces it needs, and how it might evolve.
 51: 
-52: 2. **Design First**: Consider the architecture before implementation. Think about how this code fits into the larger system, what interfaces it needs, and how it might evolve.
+52: 3. **Implement Incrementally**: Build in small, tested increments. Each piece should work correctly before moving to the next.
 53: 
-54: 3. **Implement Incrementally**: Build in small, tested increments. Each piece should work correctly before moving to the next.
+54: 4. **Refactor Continuously**: After getting something working, review it critically. Can it be cleaner? More expressive? More efficient?
 55: 
-56: 4. **Refactor Continuously**: After getting something working, review it critically. Can it be cleaner? More expressive? More efficient?
+56: 5. **Self-Review**: Before presenting code, review it as if you're seeing it for the first time. Does it make sense? Is anything confusing?
 57: 
-58: 5. **Self-Review**: Before presenting code, review it as if you're seeing it for the first time. Does it make sense? Is anything confusing?
+58: ## Quality Checklist
 59: 
-60: ## Quality Checklist
+60: Before considering any implementation complete, verify:
 61: 
-62: Before considering any implementation complete, verify:
-63: 
-64: - [ ] All names are clear and intention-revealing
-65: - [ ] No code duplication exists
-66: - [ ] Functions are small and focused
-67: - [ ] Error handling is comprehensive and graceful
-68: - [ ] The code is testable with clear boundaries
-69: - [ ] Dependencies are properly managed and injected
-70: - [ ] The code follows established patterns in the codebase
-71: - [ ] Edge cases are handled appropriately
-72: - [ ] Performance considerations are addressed where relevant
+62: - [ ] All names are clear and intention-revealing
+63: - [ ] No code duplication exists
+64: - [ ] Functions are small and focused
+65: - [ ] Error handling is comprehensive and graceful
+66: - [ ] The code is testable with clear boundaries
+67: - [ ] Dependencies are properly managed and injected
+68: - [ ] The code follows established patterns in the codebase
+69: - [ ] Edge cases are handled appropriately
+70: - [ ] Performance considerations are addressed where relevant
+71: 
+72: ## Project Context Awareness
 73: 
-74: ## Project Context Awareness
+74: Always consider existing project patterns, coding standards, and architectural decisions from project configuration files. Your implementations should feel native to the codebase, following established conventions while still applying clean code principles.
 75: 
-76: Always consider existing project patterns, coding standards, and architectural decisions from project configuration files. Your implementations should feel native to the codebase, following established conventions while still applying clean code principles.
+76: ## Communication Style
 77: 
-78: ## Communication Style
-79: 
-80: - Explain your design decisions and the reasoning behind them
-81: - Highlight trade-offs when they exist
-82: - Point out where you've applied specific clean code principles
-83: - Suggest future improvements or extensions when relevant
-84: - If you see opportunities to refactor existing code you encounter, mention them
-85: 
-86: You are not just writing code—you are crafting software that will be a pleasure to work with for years to come. Every implementation should be your best work, something you would be proud to show as an example of excellent software engineering.
+78: - Explain your design decisions and the reasoning behind them
+79: - Highlight trade-offs when they exist
+80: - Point out where you've applied specific clean code principles
+81: - Suggest future improvements or extensions when relevant
+82: - If you see opportunities to refactor existing code you encounter, mention them
+83: 
+84: You are not just writing code—you are crafting software that will be a pleasure to work with for years to come. Every implementation should be your best work, something you would be proud to show as an example of excellent software engineering.
 ````
 
 ## File: .claude/skills/auth-patterns/resources/user-id-extraction.md
@@ -4031,6 +5217,289 @@ README.md
 25: ## Phase 5: Validation ? NOT STARTED
 26: - [ ] Manual UI verification for pagination across updated pages
 27: - [ ] `dotnet build Explore.sln` and fix compile errors if any
+````
+
+## File: dev/active/fix-test-suite/fix-test-suite-context.md
+````markdown
+ 1: # Context: Test Suite Restoration
+ 2: 
+ 3: **Last Updated: 2026-02-05**
+ 4: 
+ 5: This document contains the essential context and key file locations required to execute the plan for restoring the test suite. The information is derived from the initial `dotnet test` output and the subsequent `codebase_investigator` analysis.
+ 6: 
+ 7: ## 1. Key Findings Summary
+ 8: 
+ 9: *   **Dependency Conflicts**: There is a clear version mismatch for `Microsoft.EntityFrameworkCore.Relational` affecting `Event.Persistence.IntegrationTests`. The build resolves to `10.0.1.0` while the runtime tries to load `10.0.2.0`.
+10: *   **Incomplete DI in Tests**: Both Blazor client and API integration tests are failing because their respective test environments are not configured to register all necessary application services.
+11: *   **Missing Test Authentication**: The API integration tests lack a proper test authentication scheme, causing failures on all protected endpoints.
+12: *   **Test-Code Drift**: Assertions and test logic are outdated and do not reflect the current state of the application's behavior and API contracts.
+13: 
+14: ## 2. Relevant File Paths & Purpose
+15: 
+16: ### Phase 1: Foundational Fixes
+17: 
+18: *   **`Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj`**
+19:     *   **Purpose**: This project file needs to be modified to add a direct package reference to `Microsoft.EntityFrameworkCore.Relational` to resolve the `FileNotFoundException`.
+20: 
+21: *   **`Explore.Blazor.Client.Tests/Common/BlazorTestContext.cs`**
+22:     *   **Purpose**: This file provides the `AddAllCoreMocks()` helper method. Failing component tests need to be updated to use this method to correctly inject mocked services like `IUserService`.
+23: 
+24: *   **`Explore.Blazor.Client.Tests/Common/MockServiceFactory.cs`**
+25:     *   **Purpose**: Confirms that the mocking infrastructure for `IUserService` and other core services already exists and is ready to be used via the `BlazorTestContext`.
+26: 
+27: *   **`Event.API.IntegrationTests/Fixtures/CustomWebApplicationFactory.cs`**
+28:     *   **Purpose**: The central configuration point for API integration tests. It needs to be modified to:
+29:         1.  Call the `ConfigureApplicationServices()` extension method to register MediatR handlers and other application services.
+30:         2.  Register a `TestAuthHandler` to provide a simulated user principal for authenticated test runs.
+31: 
+32: *   **`Explore.Application/ApplicationServicesRegistration.cs`**
+33:     *   **Purpose**: Contains the `ConfigureApplicationServices` extension method. This is the source of truth for application layer DI registration that needs to be mirrored in the integration test setup.
+34: 
+35: *   **`Explore.Domain/AppSetting.cs`**
+36:     *   **Purpose**: Modified to rename the `Key` property to `ConfigKey`.
+37: 
+38: *   **`Explore.Persistence/Configurations/Entities/AppSettingConfiguration.cs`**
+39:     *   **Purpose**: Updated to reflect the property rename in `AppSetting`.
+40: 
+41: *   **`Explore.Domain/Modules/ModuleDefinition.cs`**
+42:     *   **Purpose**: Modified to rename the `Key` property to `ModuleKey`.
+43: 
+44: *   **`Explore.Persistence/Configurations/Entities/ModuleDefinitionConfiguration.cs`**
+45:     *   **Purpose**: Updated to reflect the property rename in `ModuleDefinition`.
+46: 
+47: *   **`Explore.Domain/SystemSetting.cs`**
+48:     *   **Purpose**: Modified to rename the `Key` property to `SettingKey`.
+49: 
+50: *   **`Explore.Persistence/Configurations/Entities/SystemSettingConfiguration.cs`**
+51:     *   **Purpose**: Updated to reflect the property rename in `SystemSetting`.
+52: 
+53: *   **`Explore.Domain/TenantSetting.cs`**
+54:     *   **Purpose**: Modified to rename the `Key` property to `SettingKey`.
+55: 
+56: *   **`Explore.Persistence/Configurations/Entities/TenantSettingConfiguration.cs`**
+57:     *   **Purpose**: Updated to reflect the property rename in `TenantSetting`.
+58: 
+59: *   **`Explore.Persistence/Repositories/TenantSettingRepository.cs`**
+60:     *   **Purpose**: Updated to use the new `SettingKey` property.
+61: 
+62: *   **`Explore.Persistence/Repositories/TenantCapabilityRepository.cs`**
+63:     *   **Purpose**: Updated to use the new `ModuleKey` property.
+64: 
+65: *   **`Explore.Persistence/Repositories/AppSettingRepository.cs`**
+66:     *   **Purpose**: Updated to use the new `ConfigKey` property.
+67: 
+68: *   **`Explore.Persistence/Repositories/SystemSettingRepository.cs`**
+69:     *   **Purpose**: Updated to use the new `SettingKey` property.
+70: 
+71: *   **`Explore.Persistence/Repositories/ModuleDefinitionRepository.cs`**
+72:     *   **Purpose**: Updated to use the new `ModuleKey` property.
+73: 
+74: *   **`Explore.Application/Contracts/Infrastructure/IModuleService.cs`**
+75:     *   **Purpose**: Modified to rename the `Key` property to `ModuleKey` in the `ModuleInfo` DTO.
+76: 
+77: *   **`Explore.Infrastructure/Services/ModuleService.cs`**
+78:     *   **Purpose**: Updated to use the new `ModuleKey` property from `ModuleInfo`.
+79: 
+80: *   **`Explore.Infrastructure/Services/SettingsResolver.cs`**
+81:     *   **Purpose**: Updated to use the new `SettingKey` and `ConfigKey` properties.
+82: 
+83: *   **`Explore.Infrastructure/Strategies/StrategyResolver.cs`**
+84:     *   **Purpose**: Updated to use the new `ModuleKey` property from `ModuleInfo`.
+85: 
+86: ### Phase 2: Test Logic Correction
+87: 
+88: *   **`Explore.Secrets.UnitTests/Services/RotationAwareDbContextFactoryTests.cs`**
+89:     *   **Purpose**: Contains simple assertion errors. The expected strings for the redacted connection string tests need to be corrected.
+90: 
+91: *   **`Event.API.IntegrationTests/**/*.cs` (All test files)**
+92:     *   **Purpose**: These files contain the 233 failing tests that need systematic review and refactoring. Assertions for status codes, HATEOAS links, and JSON payloads must be updated.
+93: 
+94: *   **`Explore.Blazor.Client.Tests/**/*.cs` (All test files)**
+95:     *   **Purpose**: These files contain the 28 failing tests. After fixing the DI issues, the remaining failures (e.g., in `EventServiceTests`) will need to be addressed by correcting mock setups and assertions.
+````
+
+## File: dev/active/fix-test-suite/fix-test-suite-plan.md
+````markdown
+  1: # Plan: Comprehensive Test Suite Restoration
+  2: 
+  3: **Last Updated: 2026-02-05**
+  4: 
+  5: ## 1. Executive Summary
+  6: 
+  7: The solution's test suite is currently in a critical state, with 265 failing tests across four major projects. The failures are systemic, stemming from dependency conflicts, incomplete test environment configuration (Dependency Injection, Authentication), and a clear drift between the application code and the tests themselves.
+  8: 
+  9: This plan outlines a phased approach to restore the entire test suite to a passing state. The strategy is to address the foundational issues first (package dependencies, DI container setup) and then move to fixing the individual test cases. This will ensure a stable foundation for future development and prevent regressions.
+ 10: 
+ 11: ## 2. Current State Analysis
+ 12: 
+ 13: The investigation has identified the following root causes for the failures:
+ 14: 
+ 15: *   **`Event.Persistence.IntegrationTests` (2 Failures):** A `FileNotFoundException` is caused by a missing direct package reference to `Microsoft.EntityFrameworkCore.Relational`, leading to a runtime assembly loading failure.
+ 16: *   **`Explore.Secrets.UnitTests` (2 Failures):** Minor assertion errors in `RotationAwareDbContextFactoryTests.cs` due to case-sensitivity mistakes in the expected connection strings.
+ 17: *   **`Explore.Blazor.Client.Tests` (28 Failures):** Widespread `InvalidOperationException` because the test context is not providing necessary services, specifically `IUserService`. The existing `AddAllCoreMocks` helper is not being utilized in the failing tests.
+ 18: *   **`Event.API.IntegrationTests` (233 Failures):**
+ 19:     *   **MediatR Handler Failure:** The primary cause of the numerous `500 Internal Server Error` responses is the test `CustomWebApplicationFactory`'s failure to register application services, including all MediatR handlers.
+ 20:     *   **Authentication Failure:** A large number of `401 Unauthorized` responses indicate that the test authentication scheme is either missing or misconfigured.
+ 21:     *   **Outdated Assertions:** Many tests fail with incorrect status code assertions (e.g., expecting `BadRequest` but getting `NotFound`), indicating that API behavior has changed and the tests have not been updated.
+ 22: 
+ 23: ## 3. Proposed Future State
+ 24: 
+ 25: *   All 825 tests in the solution pass successfully when `dotnet test` is executed.
+ 26: *   Test environments (unit, integration, Blazor) are correctly configured with a robust and consistent DI and authentication setup.
+ 27: *   All tests are refactored to align with the current application architecture, patterns, and API contracts.
+ 28: *   The test suite is stable and reliable, providing an accurate measure of code quality and regression detection.
+ 29: 
+ 30: ## 4. Implementation Phases & Tasks
+ 31: 
+ 32: ### Phase 1: Foundational Fixes (Critical Path)
+ 33: 
+ 34: This phase addresses the core configuration issues that cause the majority of cascading failures.
+ 35: 
+ 36: *   **Task 1.1: Fix Persistence Layer Dependency Conflict**
+ 37:     *   **Project**: `Event.Persistence.IntegrationTests`
+ 38:     *   **File**: `Event.Persistence.IntegrationTests.csproj`
+ 39:     *   **Action**: Add a direct `<PackageReference>` for the correct version of `Microsoft.EntityFrameworkCore.Relational`.
+ 40:     *   **Acceptance Criteria**: The 2 tests in `Event.Persistence.IntegrationTests` pass.
+ 41:     *   **Effort**: S
+ 42:     *   **Progress**:
+ 43:         *   Added the `PackageReference` to `Event.Persistence.IntegrationTests.csproj`.
+ 44:         *   This resolved the initial `FileNotFoundException` but revealed a `PostgresException: column "key" does not exist`.
+ 45:         *   Diagnosed this as a keyword collision with PostgreSQL caused by properties named `Key` in several domain entities (`AppSetting`, `ModuleDefinition`, `SystemSetting`, `TenantSetting`).
+ 46:         *   Refactored the `Key` properties to `ConfigKey`, `ModuleKey`, and `SettingKey` respectively across the domain, configuration, and repository layers.
+ 47:         *   The build is still failing due to errors in `Explore.Infrastructure`, which are being addressed. The original "key" column error is believed to be resolved, but a new error `column "config_key" does not exist` has appeared, indicating that the database schema is out of sync with the model. A new migration is required.
+ 48: 
+ 49: *   **Task 1.2: Correct Blazor Client Test Context**
+ 50:     *   **Project**: `Explore.Blazor.Client.Tests`
+ 51:     *   **Action**: Refactor all failing Blazor component tests to use the `AddAllCoreMocks()` helper from `BlazorTestContext.cs` to ensure `IUserService` and other dependencies are correctly mocked and injected.
+ 52:     *   **Acceptance Criteria**: The DI-related `InvalidOperationException` failures in `Explore.Blazor.Client.Tests` are resolved.
+ 53:     *   **Effort**: M
+ 54: 
+ 55: *   **Task 1.3: Fix API Integration Test DI Configuration**
+ 56:     *   **Project**: `Event.API.IntegrationTests`
+ 57:     *   **File**: `Event.API.IntegrationTests/Fixtures/CustomWebApplicationFactory.cs`
+ 58:     *   **Action**: Modify the `ConfigureServices` method to include the registration of application services by calling `builder.Host.ConfigureApplicationServices()`.
+ 59:     *   **Acceptance Criteria**: The number of `500 Internal Server Error` failures in `Event.API.IntegrationTests` is significantly reduced. MediatR handlers are correctly resolved.
+ 60:     *   **Effort**: M
+ 61: 
+ 62: ### Phase 2: Test Logic & Assertion Correction
+ 63: 
+ 64: With the foundations fixed, this phase focuses on fixing the logic within the tests themselves.
+ 65: 
+ 66: *   **Task 2.1: Fix Secrets Unit Test Assertions**
+ 67:     *   **Project**: `Explore.Secrets.UnitTests`
+ 68:     *   **File**: `Services/RotationAwareDbContextFactoryTests.cs`
+ 69:     *   **Action**: Correct the expected redacted strings in the two failing tests to match the actual output, respecting case sensitivity (`Password` and `Pwd`).
+ 70:     *   **Acceptance Criteria**: The 2 tests in `Explore.Secrets.UnitTests` pass.
+ 71:     *   **Effort**: S
+ 72: 
+ 73: *   **Task 2.2: Implement API Test Authentication**
+ 74:     *   **Project**: `Event.API.IntegrationTests`
+ 75:     *   **File**: `Event.API.IntegrationTests/Fixtures/CustomWebApplicationFactory.cs`
+ 76:     *   **Action**: Implement a test authentication handler (`TestAuthHandler`) and register it in the test server to simulate authenticated users with specific claims (e.g., admin role, standard user).
+ 77:     *   **Acceptance Criteria**: The `401 Unauthorized` failures are resolved. Tests requiring auth can now run with a simulated user principal.
+ 78:     *   **Effort**: L
+ 79: 
+ 80: *   **Task 2.3: Refactor and Correct API Integration Tests**
+ 81:     *   **Project**: `Event.API.IntegrationTests`
+ 82:     *   **Action**: Systematically work through the remaining failing tests. Update assertions for status codes, HATEOAS links, and response payloads to match the current API behavior. Remove or refactor tests that are no longer relevant due to application changes.
+ 83:     *   **Acceptance Criteria**: All 233 tests in `Event.API.IntegrationTests` pass.
+ 84:     *   **Effort**: XL
+ 85: 
+ 86: *   **Task 2.4: Refactor and Correct Blazor Client Tests**
+ 87:     *   **Project**: `Explore.Blazor.Client.Tests`
+ 88:     *   **Action**: Address the remaining non-DI failures, particularly the `ApiException` and assertion issues in `EventServiceTests`. Ensure mock API setups are correct and assertions are valid.
+ 89:     *   **Acceptance Criteria**: All 28 tests in `Explore.Blazor.Client.Tests` pass.
+ 90:     *   **Effort**: M
+ 91: 
+ 92: ### Phase 3: Final Verification
+ 93: 
+ 94: *   **Task 3.1: Full Solution Test Run**
+ 95:     *   **Action**: Execute `dotnet test` on the entire solution.
+ 96:     *   **Acceptance Criteria**: The command completes with 100% of tests passing. There are no build warnings related to dependency conflicts.
+ 97:     *   **Effort**: S
+ 98: 
+ 99: ## 5. Risk Assessment and Mitigation
+100: 
+101: *   **Risk**: Fixing one issue reveals deeper, unknown problems (e.g., database schema mismatches in integration tests).
+102:     *   **Mitigation**: The phased approach is designed to uncover foundational issues first. If major new problems arise, this plan will be updated, and the new issues will be prioritized.
+103: *   **Risk**: High effort required for refactoring the large number of API tests could lead to delays.
+104:     *   **Mitigation**: Prioritize fixing tests by feature area. Focus on getting critical paths (e.g., event creation, auth endpoints) working first.
+105: 
+106: ## 6. Success Metrics
+107: 
+108: *   **Primary Metric**: 100% of tests passing in the final `dotnet test` run.
+109: *   **Secondary Metric**: A significant reduction in build warnings, especially `NU1608` (dependency conflict) and `MSB3277` (assembly conflict).
+110: *   **Qualitative Metric**: The test suite is demonstrably faster and more stable.
+111: 
+112: ## 7. Required Resources
+113: 
+114: *   **Primary**: Developer time.
+115: *   **Tools**: .NET 10 SDK, IDE (Visual Studio/Rider), Git.
+116: *   **Documentation**: Existing project documentation, `dev-docs.md` command output, MediatR and bUnit documentation if needed.
+````
+
+## File: dev/active/fix-test-suite/fix-test-suite-tasks.md
+````markdown
+ 1: # Task Checklist: Comprehensive Test Suite Restoration
+ 2: 
+ 3: **Last Updated: 2026-02-05**
+ 4: 
+ 5: This checklist is for tracking the progress of fixing the solution's test suite. Mark items as complete as they are finished.
+ 6: 
+ 7: ## Phase 1: Foundational Fixes (Critical Path)
+ 8: 
+ 9: - [x] **Task 1.1: Fix Persistence Layer Dependency Conflict**
+10:     - [x] Open `Event.Persistence.IntegrationTests.csproj`.
+11:     - [x] Add a `<PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.2" />`.
+12:     - [ ] ~~Run `dotnet test Event.Persistence.IntegrationTests` and confirm the 2 tests pass.~~ (Blocked)
+13:     - [x] **New**: Rename `Key` properties in domain entities (`AppSetting`, `ModuleDefinition`, `SystemSetting`, `TenantSetting`) to avoid PostgreSQL keyword collision.
+14:     - [x] **New**: Update all corresponding configurations, repositories, and services in `Explore.Persistence` and `Explore.Infrastructure` to use the new property names (`ConfigKey`, `ModuleKey`, `SettingKey`).
+15:     - [ ] **New**: Create a new database migration to apply the property name changes to the schema.
+16:     - [ ] **New**: Change `EnsureCreated()` to `Migrate()` in `PostgreSqlContainerFixture.cs` to ensure test database uses migrations.
+17:     - [ ] **New**: Run `dotnet test Event.Persistence.IntegrationTests` and confirm the 2 tests pass.
+18: 
+19: - [ ] **Task 1.2: Correct Blazor Client Test Context**
+20:     - [ ] Identify all failing tests in `Explore.Blazor.Client.Tests` that throw `InvalidOperationException` for `IUserService`.
+21:     - [ ] In each failing test, ensure the `BlazorTestContext` is initialized and `AddAllCoreMocks()` is called before rendering the component.
+22:     - [ ] Run `dotnet test Explore.Blazor.Client.Tests` and confirm the number of DI-related errors is zero.
+23: 
+24: - [ ] **Task 1.3: Fix API Integration Test DI Configuration**
+25:     - [ ] Open `Event.API.IntegrationTests/Fixtures/CustomWebApplicationFactory.cs`.
+26:     - [ ] In the `ConfigureWebHost` method, add the line `builder.Host.ConfigureApplicationServices();`.
+27:     - [ ] Run `dotnet test Event.API.IntegrationTests` and verify that the number of `500 Internal Server Error` responses has decreased substantially.
+28: 
+29: ## Phase 2: Test Logic & Assertion Correction
+30: 
+31: - [ ] **Task 2.1: Fix Secrets Unit Test Assertions**
+32:     - [ ] Open `Explore.Secrets.UnitTests/Services/RotationAwareDbContextFactoryTests.cs`.
+33:     - [ ] In `CurrentConnectionStringRedacted_ShouldRedactPassword`, change the assertion to expect `"Password=***"`.
+34:     - [ ] In `CurrentConnectionStringRedacted_WithPwd_ShouldRedact`, change the assertion to expect `"Pwd=***"`.
+35:     - [ ] Run `dotnet test Explore.Secrets.UnitTests` and confirm all tests pass.
+36: 
+37: - [ ] **Task 2.2: Implement API Test Authentication**
+38:     - [ ] Create a `TestAuthHandler.cs` in `Event.API.IntegrationTests/Fixtures/`.
+39:     - [ ] In `CustomWebApplicationFactory.cs`, add services for authentication and register the `TestAuthHandler` as the default scheme for tests.
+40:     - [ ] Add a helper method to the test base or factory to set the specific claims for each test (e.g., `WithTestUser(claims)`).
+41:     - [ ] Run `dotnet test Event.API.IntegrationTests` and confirm the number of `401 Unauthorized` errors has decreased substantially.
+42: 
+43: - [ ] **Task 2.3: Refactor and Correct API Integration Tests**
+44:     - [ ] Go through each remaining failing test in the `Event.API.IntegrationTests` project.
+45:     - [ ] Analyze the failure (e.g., incorrect status code, bad link, wrong payload).
+46:     - [ ] Update the test's arrangement, action, or assertion to match the current, correct application behavior.
+47:     - [ ] Repeat until all tests in the project pass.
+48: 
+49: - [ ] **Task 2.4: Refactor and Correct Blazor Client Tests**
+50:     - [ ] Go through each remaining failing test in the `Explore.Blazor.Client.Tests` project.
+51:     - [ ] For tests in `EventServiceTests`, ensure the mock `HttpClient` (via `MockHttp`) is set up correctly to return the expected responses for the API calls being made.
+52:     - [ ] Fix any remaining assertion logic errors.
+53:     - [ ] Repeat until all tests in the project pass.
+54: 
+55: ## Phase 3: Final Verification
+56: 
+57: - [ ] **Task 3.1: Full Solution Test Run**
+58:     - [ ] Run `dotnet test` from the root of the solution.
+59:     - [ ] Confirm the final output shows all 825 tests passing.
+60:     - [ ] Review the build output for any lingering warnings and address them.
 ````
 
 ## File: dev/active/harmonic-jumping-crescent.md
@@ -18738,57 +20207,41 @@ README.md
 33: }
 ````
 
-## File: Event.API.IntegrationTests/Fixtures/CustomWebApplicationFactory.cs
+## File: Event.API.IntegrationTests/Fixtures/TestAuthHandler.cs
 ````csharp
- 1: using Explore.Persistence;
- 2: using Microsoft.AspNetCore.Hosting;
- 3: using Microsoft.AspNetCore.Mvc.Testing;
- 4: using Microsoft.EntityFrameworkCore;
- 5: using Microsoft.Extensions.Configuration;
- 6: using Microsoft.Extensions.DependencyInjection;
- 7: using Microsoft.Extensions.DependencyInjection.Extensions;
+ 1: using System.Security.Claims;
+ 2: using System.Text.Encodings.Web;
+ 3: using Microsoft.AspNetCore.Authentication;
+ 4: using Microsoft.Extensions.Logging;
+ 5: using Microsoft.Extensions.Options;
+ 6: 
+ 7: namespace Event.Api.IntegrationTests.Fixtures;
  8: 
- 9: namespace Event.Api.IntegrationTests.Fixtures;
-10: 
-11: public class CustomWebApplicationFactory : WebApplicationFactory<Program>
-12: {
-13:     protected override void ConfigureWebHost(IWebHostBuilder builder)
+ 9: public class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
+10: {
+11:     public TestAuthHandler(IOptionsMonitor<AuthenticationSchemeOptions> options,
+12:         ILoggerFactory logger, UrlEncoder encoder)
+13:         : base(options, logger, encoder)
 14:     {
-15: 
-16:         builder.UseEnvironment("Testing");
-17: 
-18: 
-19:         builder.ConfigureAppConfiguration((context, config) =>
-20:         {
-21:             var inMemoryConfig = new Dictionary<string, string?>
-22:             {
-23:                 {"ConnectionStrings:DefaultConnection", "Host=localhost;Database=explore_db_test;Username=postgres;Password=postgres"},
-24:                 {"Keycloak:Authority", "https://auth.example.com"},
-25:                 {"Keycloak:Realm", "explore"},
-26:                 {"Keycloak:Audience", "explore-api"},
-27:                 {"Keycloak:RequireHttpsMetadata", "false"},
-28:                 {"Keycloak:MetadataAddress", "https://auth.example.com/.well-known/openid-configuration"},
-29:                 {"ISLAMU_EVENT_REGION", "us-east-1"},
-30:                 {"ISLAMU_EVENT_PRIVATE_BUCKET_NAME", "test-bucket"},
-31:                 {"ISLAMU_EVENT_PRIVATE_ACCESS_KEY_ID", "test-key"},
-32:                 {"ISLAMU_EVENT_PRIVATE_SECRET_ACCESS_KEY_ID", "test-secret"},
-33:                 {"ISLAMU_EVENT_S3_ENDPOINT", "https://s3.example.com"}
-34:             };
-35:             config.AddInMemoryCollection(inMemoryConfig);
-36:         });
-37: 
-38:         builder.ConfigureServices(services =>
-39:         {
-40: 
-41: 
-42:             services.AddDbContext<ExploreDbContext>(options =>
-43:             {
-44:                 options.UseInMemoryDatabase("InMemoryDbForTesting");
-45:                 options.ConfigureWarnings(x => x.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning));
-46:             });
-47:         });
-48:     }
-49: }
+15:     }
+16: 
+17:     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+18:     {
+19:         var claims = new[] {
+20:             new Claim(ClaimTypes.Name, "Test User"),
+21:             new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()),
+22:             new Claim("sub", Guid.NewGuid().ToString()),
+23:             new Claim(ClaimTypes.Role, "Admin")
+24:         };
+25:         var identity = new ClaimsIdentity(claims, "Test");
+26:         var principal = new ClaimsPrincipal(identity);
+27:         var ticket = new AuthenticationTicket(principal, "TestScheme");
+28: 
+29:         var result = AuthenticateResult.Success(ticket);
+30: 
+31:         return Task.FromResult(result);
+32:     }
+33: }
 ````
 
 ## File: Event.Application.UnitTests/Common/DataBuilder.cs
@@ -18999,457 +20452,6 @@ README.md
 19:   </PropertyGroup>
 20: 
 21: </Project>
-````
-
-## File: Event.Application.UnitTests/Features/Actors/Commands/CreateActorCommandHandlerTests.cs
-````csharp
-  1: using AutoMapper;
-  2: using Event.Application.UnitTests.Common;
-  3: using Explore.Application.Contracts.Infrastructure;
-  4: using Explore.Application.Contracts.Persistence;
-  5: using Explore.Application.DTOs.Actor;
-  6: using Explore.Application.Features.Actors.Handlers.Commands;
-  7: using Explore.Application.Features.Actors.Requests.Commands;
-  8: using Explore.Domain;
-  9: using NSubstitute;
- 10: using TUnit.Assertions;
- 11: using TUnit.Core;
- 12: 
- 13: namespace Event.Application.UnitTests.Features.Actors.Commands;
- 14: 
- 15: public class CreateActorCommandHandlerTests
- 16: {
- 17:     private readonly IActorRepository _actorRepository;
- 18:     private readonly IActorTypeRepository _actorTypeRepository;
- 19:     private readonly IDidCustodyTypeRepository _didCustodyTypeRepository;
- 20:     private readonly IStorageObjectRepository _storageObjectRepository;
- 21:     private readonly ITenantRepository _tenantRepository;
- 22:     private readonly IUserRepository _userRepository;
- 23:     private readonly IOrganizationRepository _organizationRepository;
- 24:     private readonly ITenantContext _tenantContext;
- 25:     private readonly IMapper _mapper;
- 26:     private readonly CreateActorCommandHandler _handler;
- 27: 
- 28:     public CreateActorCommandHandlerTests()
- 29:     {
- 30:         _actorRepository = Substitute.For<IActorRepository>();
- 31:         _actorTypeRepository = Substitute.For<IActorTypeRepository>();
- 32:         _didCustodyTypeRepository = Substitute.For<IDidCustodyTypeRepository>();
- 33:         _storageObjectRepository = Substitute.For<IStorageObjectRepository>();
- 34:         _tenantRepository = Substitute.For<ITenantRepository>();
- 35:         _userRepository = Substitute.For<IUserRepository>();
- 36:         _organizationRepository = Substitute.For<IOrganizationRepository>();
- 37:         _tenantContext = Substitute.For<ITenantContext>();
- 38:         _mapper = Substitute.For<IMapper>();
- 39: 
- 40:         _handler = new CreateActorCommandHandler(
- 41:             _actorRepository,
- 42:             _actorTypeRepository,
- 43:             _didCustodyTypeRepository,
- 44:             _storageObjectRepository,
- 45:             _tenantRepository,
- 46:             _userRepository,
- 47:             _organizationRepository,
- 48:             _tenantContext,
- 49:             _mapper
- 50:         );
- 51:     }
- 52: 
- 53:     [Test]
- 54:     public async Task Handle_WithValidUserActor_ReturnsSuccessResponse()
- 55:     {
- 56: 
- 57:         var tenantId = Guid.NewGuid();
- 58:         var userId = Guid.NewGuid();
- 59:         var actorId = Guid.NewGuid();
- 60:         var actorTypeId = 1;
- 61: 
- 62:         var command = new CreateActorCommand
- 63:         {
- 64:             ActorDto = new CreateActorDto
- 65:             {
- 66:                 ActorTypeId = actorTypeId,
- 67:                 UserId = userId,
- 68:                 DisplayName = "Test User Actor",
- 69:                 TenantId = tenantId
- 70:             }
- 71:         };
- 72: 
- 73:         _tenantContext.TenantId.Returns(tenantId);
- 74: 
- 75: 
- 76:         _actorTypeRepository.Exists(actorTypeId).Returns(true);
- 77:         _tenantRepository.Exists(tenantId).Returns(true);
- 78:         _userRepository.Exists(userId).Returns(true);
- 79: 
- 80: 
- 81:         var actor = new Actor { Id = actorId, DisplayName = "Test User Actor" };
- 82:         _mapper.Map<Actor>(command.ActorDto).Returns(actor);
- 83:         _actorRepository.Create(Arg.Any<Actor>()).Returns(actor);
- 84: 
- 85: 
- 86:         var result = await _handler.Handle(command, CancellationToken.None);
- 87: 
- 88: 
- 89:         await Assert.That(result.Success).IsTrue();
- 90:         await Assert.That(result.Id).IsEqualTo(actorId);
- 91:         await _actorRepository.Received(1).Create(Arg.Any<Actor>());
- 92:     }
- 93: 
- 94:     [Test]
- 95:     public async Task Handle_WithValidOrganizationActor_ReturnsSuccessResponse()
- 96:     {
- 97: 
- 98:         var tenantId = Guid.NewGuid();
- 99:         var organizationId = Guid.NewGuid();
-100:         var actorId = Guid.NewGuid();
-101:         var actorTypeId = 2;
-102: 
-103:         var command = new CreateActorCommand
-104:         {
-105:             ActorDto = new CreateActorDto
-106:             {
-107:                 ActorTypeId = actorTypeId,
-108:                 OrganizationId = organizationId,
-109:                 DisplayName = "Test Organization Actor",
-110:                 TenantId = tenantId
-111:             }
-112:         };
-113: 
-114:         _tenantContext.TenantId.Returns(tenantId);
-115: 
-116: 
-117:         _actorTypeRepository.Exists(actorTypeId).Returns(true);
-118:         _tenantRepository.Exists(tenantId).Returns(true);
-119:         _organizationRepository.Exists(organizationId).Returns(true);
-120: 
-121: 
-122:         var actor = new Actor { Id = actorId, DisplayName = "Test Organization Actor" };
-123:         _mapper.Map<Actor>(command.ActorDto).Returns(actor);
-124:         _actorRepository.Create(Arg.Any<Actor>()).Returns(actor);
-125: 
-126: 
-127:         var result = await _handler.Handle(command, CancellationToken.None);
-128: 
-129: 
-130:         await Assert.That(result.Success).IsTrue();
-131:         await Assert.That(result.Id).IsEqualTo(actorId);
-132:         await _actorRepository.Received(1).Create(Arg.Any<Actor>());
-133:     }
-134: 
-135:     [Test]
-136:     public async Task Handle_WithInvalidActorType_ReturnsFailedResponse()
-137:     {
-138: 
-139:         var tenantId = Guid.NewGuid();
-140:         var userId = Guid.NewGuid();
-141:         var invalidActorTypeId = 999;
-142: 
-143:         var command = new CreateActorCommand
-144:         {
-145:             ActorDto = new CreateActorDto
-146:             {
-147:                 ActorTypeId = invalidActorTypeId,
-148:                 UserId = userId,
-149:                 DisplayName = "Test Actor",
-150:                 TenantId = tenantId
-151:             }
-152:         };
-153: 
-154:         _tenantContext.TenantId.Returns(tenantId);
-155:         _actorTypeRepository.Exists(invalidActorTypeId).Returns(false);
-156: 
-157: 
-158:         var result = await _handler.Handle(command, CancellationToken.None);
-159: 
-160: 
-161:         await Assert.That(result.Success).IsFalse();
-162:         await _actorRepository.DidNotReceive().Create(Arg.Any<Actor>());
-163:     }
-164: 
-165:     [Test]
-166:     public async Task Handle_WithBothUserAndOrganization_ReturnsValidationError()
-167:     {
-168: 
-169:         var tenantId = Guid.NewGuid();
-170:         var userId = Guid.NewGuid();
-171:         var organizationId = Guid.NewGuid();
-172: 
-173:         var command = new CreateActorCommand
-174:         {
-175:             ActorDto = new CreateActorDto
-176:             {
-177:                 ActorTypeId = 1,
-178:                 UserId = userId,
-179:                 OrganizationId = organizationId,
-180:                 DisplayName = "Test Actor",
-181:                 TenantId = tenantId
-182:             }
-183:         };
-184: 
-185:         _tenantContext.TenantId.Returns(tenantId);
-186:         _actorTypeRepository.Exists(1).Returns(true);
-187:         _tenantRepository.Exists(tenantId).Returns(true);
-188:         _userRepository.Exists(userId).Returns(true);
-189:         _organizationRepository.Exists(organizationId).Returns(true);
-190: 
-191: 
-192:         var result = await _handler.Handle(command, CancellationToken.None);
-193: 
-194: 
-195:         await Assert.That(result.Success).IsFalse();
-196:         await _actorRepository.DidNotReceive().Create(Arg.Any<Actor>());
-197:     }
-198: 
-199:     [Test]
-200:     public async Task Handle_WithNeitherUserNorOrganization_ReturnsValidationError()
-201:     {
-202: 
-203:         var tenantId = Guid.NewGuid();
-204: 
-205:         var command = new CreateActorCommand
-206:         {
-207:             ActorDto = new CreateActorDto
-208:             {
-209:                 ActorTypeId = 1,
-210:                 UserId = null,
-211:                 OrganizationId = null,
-212:                 DisplayName = "Test Actor",
-213:                 TenantId = tenantId
-214:             }
-215:         };
-216: 
-217:         _tenantContext.TenantId.Returns(tenantId);
-218:         _actorTypeRepository.Exists(1).Returns(true);
-219:         _tenantRepository.Exists(tenantId).Returns(true);
-220: 
-221: 
-222:         var result = await _handler.Handle(command, CancellationToken.None);
-223: 
-224: 
-225:         await Assert.That(result.Success).IsFalse();
-226:         await _actorRepository.DidNotReceive().Create(Arg.Any<Actor>());
-227:     }
-228: 
-229:     [Test]
-230:     public async Task Handle_WithMissingDisplayName_ReturnsValidationError()
-231:     {
-232: 
-233:         var tenantId = Guid.NewGuid();
-234:         var userId = Guid.NewGuid();
-235: 
-236:         var command = new CreateActorCommand
-237:         {
-238:             ActorDto = new CreateActorDto
-239:             {
-240:                 ActorTypeId = 1,
-241:                 UserId = userId,
-242:                 DisplayName = "", // Missing required field
-243:                 TenantId = tenantId
-244:             }
-245:         };
-246: 
-247:         _tenantContext.TenantId.Returns(tenantId);
-248:         _actorTypeRepository.Exists(1).Returns(true);
-249:         _tenantRepository.Exists(tenantId).Returns(true);
-250:         _userRepository.Exists(userId).Returns(true);
-251: 
-252:         // Act
-253:         var result = await _handler.Handle(command, CancellationToken.None);
-254: 
-255:         // Assert
-256:         await Assert.That(result.Success).IsFalse();
-257:         await _actorRepository.DidNotReceive().Create(Arg.Any<Actor>());
-258:     }
-259: 
-260:     [Test]
-261:     public async Task Handle_SetsTenantIdFromContext()
-262:     {
-263:         // Arrange
-264:         var tenantId = Guid.NewGuid();
-265:         var userId = Guid.NewGuid();
-266:         var actorId = Guid.NewGuid();
-267: 
-268:         var command = new CreateActorCommand
-269:         {
-270:             ActorDto = new CreateActorDto
-271:             {
-272:                 ActorTypeId = 1,
-273:                 UserId = userId,
-274:                 DisplayName = "Test Actor",
-275:                 TenantId = Guid.NewGuid()
-276:             }
-277:         };
-278: 
-279:         _tenantContext.TenantId.Returns(tenantId);
-280:         _actorTypeRepository.Exists(1).Returns(true);
-281:         _tenantRepository.Exists(Arg.Any<Guid>()).Returns(true);
-282:         _userRepository.Exists(userId).Returns(true);
-283: 
-284:         var actor = new Actor { Id = actorId, DisplayName = "Test Actor" };
-285:         _mapper.Map<Actor>(command.ActorDto).Returns(actor);
-286:         _actorRepository.Create(Arg.Any<Actor>()).Returns(actor);
-287: 
-288: 
-289:         var result = await _handler.Handle(command, CancellationToken.None);
-290: 
-291: 
-292:         await Assert.That(result.Success).IsTrue();
-293: 
-294:         await _actorRepository.Received(1).Create(Arg.Is<Actor>(a => a.TenantId == tenantId));
-295:     }
-296: }
-````
-
-## File: Event.Application.UnitTests/Features/Events/Commands/CreateEventCommandHandlerTests.cs
-````csharp
-  1: using AutoMapper;
-  2: using Explore.Application.Contracts.Identity;
-  3: using Explore.Application.Contracts.Infrastructure;
-  4: using Explore.Application.Contracts.Persistence;
-  5: using Explore.Application.DTOs.Event;
-  6: using Explore.Application.Features.Events.Handlers.Commands;
-  7: using Explore.Application.Features.Events.Requests.Commands;
-  8: using Explore.Application.Responses;
-  9: using Explore.Domain;
- 10: using NSubstitute;
- 11: using TUnit.Assertions;
- 12: using TUnit.Core;
- 13: 
- 14: namespace Event.Application.UnitTests.Features.Events.Commands;
- 15: 
- 16: public class CreateEventCommandHandlerTests
- 17: {
- 18:     private readonly IEventRepository _eventRepository;
- 19:     private readonly IEventSessionRepository _eventSessionRepository;
- 20:     private readonly IActorRepository _actorRepository;
- 21:     private readonly IOrganizationRepository _organizationRepository;
- 22:     private readonly IOrganizationMemberRepository _organizationMemberRepository;
- 23:     private readonly IAudienceAgeRepository _audienceAgeRepository;
- 24:     private readonly IAudienceGenderRepository _audienceGenderRepository;
- 25:     private readonly IEventTypeRepository _eventTypeRepository;
- 26:     private readonly IStorageObjectRepository _storageObjectRepository;
- 27:     private readonly IUserContext _userContext;
- 28:     private readonly ITenantContext _tenantContext;
- 29:     private readonly IMapper _mapper;
- 30:     private readonly CreateEventCommandHandler _handler;
- 31: 
- 32:     public CreateEventCommandHandlerTests()
- 33:     {
- 34:         _eventRepository = Substitute.For<IEventRepository>();
- 35:         _eventSessionRepository = Substitute.For<IEventSessionRepository>();
- 36:         _actorRepository = Substitute.For<IActorRepository>();
- 37:         _organizationRepository = Substitute.For<IOrganizationRepository>();
- 38:         _organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
- 39:         _audienceAgeRepository = Substitute.For<IAudienceAgeRepository>();
- 40:         _audienceGenderRepository = Substitute.For<IAudienceGenderRepository>();
- 41:         _eventTypeRepository = Substitute.For<IEventTypeRepository>();
- 42:         _storageObjectRepository = Substitute.For<IStorageObjectRepository>();
- 43:         _userContext = Substitute.For<IUserContext>();
- 44:         _tenantContext = Substitute.For<ITenantContext>();
- 45:         _mapper = Substitute.For<IMapper>();
- 46: 
- 47:         _handler = new CreateEventCommandHandler(
- 48:             _eventRepository,
- 49:             _eventSessionRepository,
- 50:             _actorRepository,
- 51:             _organizationRepository,
- 52:             _organizationMemberRepository,
- 53:             _audienceAgeRepository,
- 54:             _audienceGenderRepository,
- 55:             _eventTypeRepository,
- 56:             _storageObjectRepository,
- 57:             _userContext,
- 58:             _tenantContext,
- 59:             _mapper
- 60:         );
- 61:     }
- 62: 
- 63:     [Test]
- 64:     public async Task Handle_WithValidRequest_ReturnsSuccessResponse()
- 65:     {
- 66: 
- 67:         var userId = Guid.NewGuid();
- 68:         var actorId = Guid.NewGuid();
- 69:         var eventId = Guid.NewGuid();
- 70:         var command = new CreateEventCommand
- 71:         {
- 72:             EventDto = new CreateEventDto
- 73:             {
- 74:                 Title = "Test Event",
- 75:                 Description = "Description",
- 76:                 FirstSessionDate = DateTimeOffset.UtcNow.AddDays(1),
- 77:                 LastSessionDate = DateTimeOffset.UtcNow.AddDays(1).AddHours(2),
- 78:                 EventTypeId = 1,
- 79:                 AudienceGenderId = 1,
- 80:                 AudienceAgeId = 1
- 81:             }
- 82:         };
- 83: 
- 84:         _userContext.GetRequiredUserId().Returns(userId);
- 85: 
- 86: 
- 87:         var actor = new Actor { Id = actorId, UserId = userId, DisplayName = "Test Actor" };
- 88:         _actorRepository.GetActorByUserId(userId).Returns(actor);
- 89: 
- 90: 
- 91:         _audienceAgeRepository.Exists(Arg.Any<int>()).Returns(true);
- 92:         _audienceGenderRepository.Exists(Arg.Any<int>()).Returns(true);
- 93:         _eventTypeRepository.Exists(Arg.Any<int>()).Returns(true);
- 94: 
- 95: 
- 96:         var eventEntity = new Explore.Domain.Event { Id = eventId };
- 97:         _mapper.Map<Explore.Domain.Event>(command.EventDto).Returns(eventEntity);
- 98:         _eventRepository.Create(Arg.Any<Explore.Domain.Event>()).Returns(eventEntity);
- 99: 
-100: 
-101:         var result = await _handler.Handle(command, CancellationToken.None);
-102: 
-103: 
-104:         await Assert.That(result.Success).IsTrue();
-105:         await Assert.That(result.Id).IsEqualTo(eventId);
-106:         await _eventRepository.Received(1).Create(Arg.Any<Explore.Domain.Event>());
-107:         await _eventSessionRepository.Received(1).Create(Arg.Any<EventSession>());
-108:     }
-109: 
-110:     [Test]
-111:     public async Task Handle_WhenOrganizationAdminCheckFails_ReturnsFailedResponse()
-112:     {
-113: 
-114:         var userId = Guid.NewGuid();
-115:         var organizationId = Guid.NewGuid();
-116:         var command = new CreateEventCommand
-117:         {
-118:             EventDto = new CreateEventDto
-119:             {
-120:                 OrganizationId = organizationId,
-121:                 Title = "Test Event",
-122:                 EventTypeId = 1,
-123:                 AudienceGenderId = 1,
-124:                 AudienceAgeId = 1
-125:             }
-126:         };
-127: 
-128:         _userContext.GetRequiredUserId().Returns(userId);
-129: 
-130: 
-131:         _organizationMemberRepository.IsUserAdminOfOrganization(organizationId, userId).Returns(false);
-132: 
-133: 
-134:         _organizationRepository.Exists(organizationId).Returns(true);
-135:         _audienceAgeRepository.Exists(Arg.Any<int>()).Returns(true);
-136:         _audienceGenderRepository.Exists(Arg.Any<int>()).Returns(true);
-137:         _eventTypeRepository.Exists(Arg.Any<int>()).Returns(true);
-138: 
-139: 
-140:         var result = await _handler.Handle(command, CancellationToken.None);
-141: 
-142: 
-143:         await Assert.That(result.Success).IsFalse();
-144:         await Assert.That(result.Message).Contains("permission");
-145:         await _eventRepository.DidNotReceive().Create(Arg.Any<Explore.Domain.Event>());
-146:     }
-147: }
 ````
 
 ## File: Event.Application.UnitTests/Features/Events/Validators/CreateEventDtoValidatorTests.cs
@@ -22196,216 +23198,6 @@ README.md
 10:     }
 11:   }
 12: }
-````
-
-## File: Event.MigrationService/Worker.cs
-````csharp
- 1: using Explore.Persistence;
- 2: using Explore.Persistence.Seed;
- 3: using Microsoft.EntityFrameworkCore;
- 4: 
- 5: namespace Event.MigrationService;
- 6: 
- 7: public sealed class Worker(IServiceProvider serviceProvider, IHostApplicationLifetime lifetime, IHostEnvironment environment, ILogger<Worker> logger) : BackgroundService
- 8: {
- 9:     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-10:     {
-11:         logger.LogInformation("Starting database migration...");
-12: 
-13:         await using var scope = serviceProvider.CreateAsyncScope();
-14:         var db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
-15: 
-16: 
-17:         logger.LogInformation("Applying database migrations...");
-18:         await db.Database.MigrateAsync(stoppingToken);
-19:         logger.LogInformation("Database migrations applied successfully.");
-20: 
-21: 
-22:         logger.LogInformation("Running database seeding...");
-23:         await DatabaseSeeder.SeedAsync(db, environment, stoppingToken);
-24:         logger.LogInformation("Database seeding completed successfully.");
-25: 
-26:         lifetime.StopApplication();
-27:     }
-28: }
-````
-
-## File: Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj
-````
- 1: <Project Sdk="Microsoft.NET.Sdk">
- 2: 
- 3:   <ItemGroup>
- 4:     <ProjectReference Include="..\Explore.Persistence\Explore.Persistence.csproj" />
- 5:     <ProjectReference Include="..\Explore.Domain\Explore.Domain.csproj" />
- 6:   </ItemGroup>
- 7: 
- 8:   <ItemGroup>
- 9:     <PackageReference Include="Testcontainers.PostgreSql" Version="4.10.0" />
-10:     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.2" />
-11:     <PackageReference Include="TUnit" Version="1.11.18" />
-12:   </ItemGroup>
-13: 
-14:   <PropertyGroup>
-15:     <OutputType>Exe</OutputType>
-16:     <TargetFramework>net10.0</TargetFramework>
-17:     <ImplicitUsings>enable</ImplicitUsings>
-18:     <Nullable>enable</Nullable>
-19:   </PropertyGroup>
-20: 
-21: </Project>
-````
-
-## File: Event.Persistence.IntegrationTests/Fixtures/PostgreSqlContainerFixture.cs
-````csharp
- 1: using Explore.Persistence;
- 2: using Microsoft.EntityFrameworkCore;
- 3: using Testcontainers.PostgreSql;
- 4: using TUnit.Core;
- 5: using TUnit.Core.Interfaces;
- 6: 
- 7: namespace Event.Persistence.IntegrationTests.Fixtures;
- 8: 
- 9: public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
-10: {
-11:     private readonly PostgreSqlContainer _container;
-12: 
-13:     public PostgreSqlContainerFixture()
-14:     {
-15:         _container = new PostgreSqlBuilder()
-16:             .WithImage("postgres:18-alpine")
-17:             .WithDatabase("explore_db_test")
-18:             .WithUsername("postgres")
-19:             .WithPassword("postgres")
-20: 
-21:             .Build();
-22:     }
-23: 
-24:     public string ConnectionString => _container.GetConnectionString();
-25: 
-26:     public async Task InitializeAsync()
-27:     {
-28:         await _container.StartAsync();
-29:     }
-30: 
-31:     public async ValueTask DisposeAsync()
-32:     {
-33:         await _container.StopAsync();
-34:         await _container.DisposeAsync();
-35:     }
-36: 
-37:     public ExploreDbContext CreateDbContext()
-38:     {
-39:         var options = new DbContextOptionsBuilder<ExploreDbContext>()
-40:             .UseNpgsql(_container.GetConnectionString())
-41:             .Options;
-42: 
-43:         var context = new ExploreDbContext(options);
-44:         context.Database.EnsureCreated();
-45:         return context;
-46:     }
-47: }
-````
-
-## File: Event.Persistence.IntegrationTests/Repositories/EventRepositoryTests.cs
-````csharp
- 1: using Event.Persistence.IntegrationTests.Fixtures;
- 2: using Explore.Domain;
- 3: using Explore.Persistence;
- 4: using Explore.Persistence.Repositories;
- 5: using TUnit.Assertions;
- 6: using TUnit.Core;
- 7: 
- 8: namespace Event.Persistence.IntegrationTests.Repositories;
- 9: 
-10: [ClassDataSource<PostgreSqlContainerFixture>(Shared = SharedType.PerAssembly)]
-11: public class EventRepositoryTests
-12: {
-13:     private readonly PostgreSqlContainerFixture _fixture;
-14: 
-15:     public EventRepositoryTests(PostgreSqlContainerFixture fixture)
-16:     {
-17:         _fixture = fixture;
-18:     }
-19: 
-20:     [Test]
-21:     public async Task Create_ShouldPersistEvent()
-22:     {
-23: 
-24:         using var context = _fixture.CreateDbContext();
-25:         var repository = new EventRepository(context);
-26: 
-27:         var eventId = Guid.NewGuid();
-28:         var @event = new Explore.Domain.Event
-29:         {
-30:             Id = eventId,
-31:             Title = "Integration Test Event",
-32:             Description = "Test Description",
-33:             FirstSessionDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
-34:             LastSessionDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1).AddHours(2)),
-35:             EventTypeId = 1,
-36:             AudienceGenderId = 1,
-37:             AudienceAgeId = 1,
-38:             ActorId = Guid.NewGuid(),
-39:             TenantId = Guid.NewGuid(),
-40:             VisibilityTypeId = 1,
-41:             EventStatusId = 1,
-42:             EventFormatId = 1,
-43:             TotalViews = 0,
-44:             IsRegistrationRequired = false
-45:         };
-46: 
-47: 
-48:         var result = await repository.Create(@event);
-49: 
-50: 
-51:         await Assert.That(result).IsNotNull();
-52:         await Assert.That(result.Id).IsEqualTo(eventId);
-53: 
-54: 
-55:         using var verifyContext = _fixture.CreateDbContext();
-56:         var savedEvent = await verifyContext.Events.FindAsync(eventId);
-57:         await Assert.That(savedEvent).IsNotNull();
-58:         await Assert.That(savedEvent!.Title).IsEqualTo("Integration Test Event");
-59:     }
-60: 
-61:     [Test]
-62:     public async Task GetEventWithDetails_ShouldReturnIncludes()
-63:     {
-64: 
-65:         using var context = _fixture.CreateDbContext();
-66:         var repository = new EventRepository(context);
-67: 
-68: 
-69: 
-70: 
-71:         var eventId = Guid.NewGuid();
-72:         var @event = new Explore.Domain.Event
-73:         {
-74:             Id = eventId,
-75:             Title = "Detailed Event",
-76:             EventTypeId = 1,
-77:             AudienceGenderId = 1,
-78:             AudienceAgeId = 1,
-79:             ActorId = Guid.NewGuid(),
-80:             TenantId = Guid.NewGuid(),
-81:             VisibilityTypeId = 1,
-82:             EventStatusId = 1,
-83:             EventFormatId = 1,
-84:             TotalViews = 0,
-85:             IsRegistrationRequired = false
-86:         };
-87: 
-88:         await repository.Create(@event);
-89: 
-90: 
-91:         var result = await repository.GetEventWithDetails(eventId);
-92: 
-93: 
-94:         await Assert.That(result).IsNotNull();
-95:         await Assert.That(result.Id).IsEqualTo(eventId);
-96: 
-97:     }
-98: }
 ````
 
 ## File: Explore.API/BackgroundServices/PdsSyncWorker.cs
@@ -26066,16 +26858,24 @@ README.md
 77: 
 78:     public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
 79:     {
-80: 
-81:         yield return new LinkDefinition(
-82:             "create",
-83:             RouteNames.CreateIndexedDid,
-84:             null,
-85:             "POST",
-86:             "Index new DID",
-87:             RequiresAuth: true);
-88:     }
-89: }
+80:         yield return new LinkDefinition(
+81:             LinkRelations.Self,
+82:             RouteNames.GetIndexedDids,
+83:             null,
+84:             "GET",
+85:             "All indexed DIDs",
+86:             RequiresAuth: false);
+87: 
+88: 
+89:         yield return new LinkDefinition(
+90:             "create",
+91:             RouteNames.CreateIndexedDid,
+92:             null,
+93:             "POST",
+94:             "Index new DID",
+95:             RequiresAuth: true);
+96:     }
+97: }
 ````
 
 ## File: Explore.API/Hateoas/Policies/LocationLinkPolicy.cs
@@ -27550,6 +28350,84 @@ README.md
 222: }
 ````
 
+## File: Explore.API/Middleware/ExceptionMiddleware.cs
+````csharp
+ 1: using Newtonsoft.Json;
+ 2: using System.Net;
+ 3: using Explore.Application.Exceptions;
+ 4: 
+ 5: namespace Explore.API.Middleware
+ 6: {
+ 7:     public class ExceptionMiddleware
+ 8:     {
+ 9:         private readonly RequestDelegate _next;
+10:         private readonly ILogger<ExceptionMiddleware> _logger;
+11: 
+12:         public ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddleware> logger)
+13:         {
+14:             _next = next;
+15:             _logger = logger;
+16:         }
+17:         public async Task InvokeAsync(HttpContext httpContext)
+18:         {
+19:             try
+20:             {
+21:                 await _next(httpContext);
+22:             }
+23:             catch (Exception ex)
+24:             {
+25:                 _logger.LogError(ex, "Une exception non gérée s'est produite: {Message}", ex.Message);
+26:                 await HandleExceptionAsync(httpContext, ex);
+27:             }
+28:         }
+29:         private Task HandleExceptionAsync(HttpContext context, Exception exception)
+30:         {
+31:             context.Response.ContentType = "application/json";
+32:             HttpStatusCode statusCode;
+33: 
+34:             string result = JsonConvert.SerializeObject(new ErrorDetails()
+35:             {
+36:                 ErrorMessage = exception.Message,
+37:                 ErrorType = "Failure",
+38:                 StackTrace = exception.StackTrace
+39:             });
+40: 
+41:             switch (exception)
+42:             {
+43: 
+44: 
+45:                 case BadRequestException badRequestException:
+46:                     statusCode = HttpStatusCode.BadRequest;
+47:                     _logger.LogWarning("Invalid Request: {Message}", exception.Message);
+48:                     break;
+49:                 case ValidationException validationException:
+50:                     statusCode = HttpStatusCode.BadRequest;
+51:                     result = JsonConvert.SerializeObject(validationException.Errors);
+52:                     _logger.LogWarning("Validation Error: {Message}", exception.Message);
+53:                     break;
+54:                 case NotFoundException notFoundException:
+55:                     statusCode = HttpStatusCode.NotFound;
+56:                     _logger.LogWarning("Ressource Not Found: {Message}", exception.Message);
+57:                     break;
+58:                 default:
+59:                     statusCode = HttpStatusCode.InternalServerError;
+60:                     _logger.LogError("Internal Server Error: {Message}", exception.Message);
+61:                     break;
+62:             }
+63: 
+64:             context.Response.StatusCode = (int)statusCode;
+65:             return context.Response.WriteAsync(result);
+66:         }
+67:     }
+68:     public class ErrorDetails
+69:     {
+70:         public string ErrorType { get; set; }
+71:         public string ErrorMessage { get; set; }
+72:         public string? StackTrace { get; set; }
+73:     }
+74: }
+````
+
 ## File: Explore.API/Middleware/PreferHeaderMiddleware.cs
 ````csharp
   1: namespace Explore.API.Middleware;
@@ -28367,131 +29245,6 @@ README.md
 19: 
 20:     bool IsAuthenticated { get; }
 21: }
-````
-
-## File: Explore.Application/Contracts/Infrastructure/IModuleService.cs
-````csharp
-  1: namespace Explore.Application.Contracts.Infrastructure;
-  2: 
-  3: 
-  4: 
-  5: 
-  6: 
-  7: public interface IModuleService
-  8: {
-  9: 
- 10: 
- 11: 
- 12: 
- 13: 
- 14:     Task<IReadOnlyList<ModuleInfo>> GetAllModulesAsync(CancellationToken cancellationToken = default);
- 15: 
- 16: 
- 17: 
- 18: 
- 19: 
- 20: 
- 21: 
- 22:     Task<IReadOnlyList<ModuleInfo>> GetEnabledModulesAsync(Guid tenantId, CancellationToken cancellationToken = default);
- 23: 
- 24: 
- 25: 
- 26: 
- 27: 
- 28: 
- 29: 
- 30: 
- 31:     Task<bool> IsModuleEnabledAsync(Guid tenantId, string moduleKey, CancellationToken cancellationToken = default);
- 32: 
- 33: 
- 34: 
- 35: 
- 36: 
- 37: 
- 38: 
- 39:     Task<string?> GetModuleWizardSchemaUrlAsync(string moduleKey, CancellationToken cancellationToken = default);
- 40: 
- 41: 
- 42: 
- 43: 
- 44: 
- 45: 
- 46: 
- 47: 
- 48: 
- 49:     Task<bool> EnableModuleAsync(Guid tenantId, string moduleKey, Guid? enabledBy = null, CancellationToken cancellationToken = default);
- 50: 
- 51: 
- 52: 
- 53: 
- 54: 
- 55: 
- 56: 
- 57: 
- 58:     Task<bool> DisableModuleAsync(Guid tenantId, string moduleKey, CancellationToken cancellationToken = default);
- 59: 
- 60: 
- 61: 
- 62: 
- 63: 
- 64:     void InvalidateCache(Guid? tenantId = null);
- 65: }
- 66: 
- 67: 
- 68: 
- 69: 
- 70: public class ModuleInfo
- 71: {
- 72: 
- 73: 
- 74: 
- 75:     public Guid Id { get; init; }
- 76: 
- 77: 
- 78: 
- 79: 
- 80:     public string Key { get; init; } = string.Empty;
- 81: 
- 82: 
- 83: 
- 84: 
- 85:     public string Name { get; init; } = string.Empty;
- 86: 
- 87: 
- 88: 
- 89: 
- 90:     public string? Description { get; init; }
- 91: 
- 92: 
- 93: 
- 94: 
- 95:     public string? IconName { get; init; }
- 96: 
- 97: 
- 98: 
- 99: 
-100:     public string? Category { get; init; }
-101: 
-102: 
-103: 
-104: 
-105:     public int DisplayOrder { get; init; }
-106: 
-107: 
-108: 
-109: 
-110:     public string? WizardSchemaUrl { get; init; }
-111: 
-112: 
-113: 
-114: 
-115:     public bool IsActive { get; init; }
-116: 
-117: 
-118: 
-119: 
-120:     public bool? IsEnabledForTenant { get; init; }
-121: }
 ````
 
 ## File: Explore.Application/Contracts/Infrastructure/IPdsService.cs
@@ -38080,102 +38833,103 @@ README.md
 189:             ActorId = actorId,
 190:             TenantId = _tenantContext.TenantId,
 191:             TotalViews = 0,
-192: 
-193:             FirstSessionDate = firstSessionDateOnly,
-194:             LastSessionDate = lastSessionDateOnly,
-195:             SessionCount = sessions.Count
-196:         };
-197: 
-198:         @event = await _eventRepository.Create(@event);
-199:         Console.WriteLine($"[CREATE EVENT WITH SESSIONS] Event created with ID: {@event.Id}");
-200: 
+192:             IsUserReported = !dto.OrganizationId.HasValue,
+193: 
+194:             FirstSessionDate = firstSessionDateOnly,
+195:             LastSessionDate = lastSessionDateOnly,
+196:             SessionCount = sessions.Count
+197:         };
+198: 
+199:         @event = await _eventRepository.Create(@event);
+200:         Console.WriteLine($"[CREATE EVENT WITH SESSIONS] Event created with ID: {@event.Id}");
 201: 
-202:         if (dto.FeaturedImageId.HasValue)
-203:         {
-204:             var storageObject = await _storageObjectRepository.GetById(dto.FeaturedImageId.Value);
-205:             if (storageObject != null)
-206:             {
-207:                 storageObject.ActorId = actorId;
-208:                 await _storageObjectRepository.Update(storageObject);
-209:                 Console.WriteLine($"[CREATE EVENT WITH SESSIONS] StorageObject {storageObject.Id} ActorId updated to {actorId}");
-210:             }
-211:         }
-212: 
+202: 
+203:         if (dto.FeaturedImageId.HasValue)
+204:         {
+205:             var storageObject = await _storageObjectRepository.GetById(dto.FeaturedImageId.Value);
+206:             if (storageObject != null)
+207:             {
+208:                 storageObject.ActorId = actorId;
+209:                 await _storageObjectRepository.Update(storageObject);
+210:                 Console.WriteLine($"[CREATE EVENT WITH SESSIONS] StorageObject {storageObject.Id} ActorId updated to {actorId}");
+211:             }
+212:         }
 213: 
-214:         var sessionIndex = 0;
-215:         foreach (var sessionDto in sessions)
-216:         {
-217:             sessionIndex++;
-218: 
-219:             var eventSession = new EventSession
-220:             {
-221:                 EventId = @event.Id,
-222:                 TenantId = _tenantContext.TenantId,
-223:                 Title = string.IsNullOrWhiteSpace(sessionDto.Title) ? @event.Title : sessionDto.Title,
-224:                 Description = sessionDto.Description,
-225:                 StartTime = sessionDto.StartTime,
-226:                 EndTime = sessionDto.EndTime,
-227:                 LocationId = sessionDto.LocationId,
-228:                 MaxAudienceAttendees = sessionDto.MaxAudienceAttendees,
-229:                 CurrentAudienceAttendees = 0,
-230:                 RegistrationModeId = sessionDto.RegistrationModeId ?? (dto.IsRegistrationRequired ? 1 : null),
-231:                 Slug = GenerateSlug(string.IsNullOrWhiteSpace(sessionDto.Title) ? $"{@event.Title}-session-{sessionIndex}" : sessionDto.Title)
-232:             };
-233: 
-234:             eventSession = await _eventSessionRepository.Create(eventSession);
-235:             Console.WriteLine($"[CREATE EVENT WITH SESSIONS] EventSession {sessionIndex} created with ID: {eventSession.Id}");
-236: 
+214: 
+215:         var sessionIndex = 0;
+216:         foreach (var sessionDto in sessions)
+217:         {
+218:             sessionIndex++;
+219: 
+220:             var eventSession = new EventSession
+221:             {
+222:                 EventId = @event.Id,
+223:                 TenantId = _tenantContext.TenantId,
+224:                 Title = string.IsNullOrWhiteSpace(sessionDto.Title) ? @event.Title : sessionDto.Title,
+225:                 Description = sessionDto.Description,
+226:                 StartTime = sessionDto.StartTime,
+227:                 EndTime = sessionDto.EndTime,
+228:                 LocationId = sessionDto.LocationId,
+229:                 MaxAudienceAttendees = sessionDto.MaxAudienceAttendees,
+230:                 CurrentAudienceAttendees = 0,
+231:                 RegistrationModeId = sessionDto.RegistrationModeId ?? (dto.IsRegistrationRequired ? 1 : null),
+232:                 Slug = GenerateSlug(string.IsNullOrWhiteSpace(sessionDto.Title) ? $"{@event.Title}-session-{sessionIndex}" : sessionDto.Title)
+233:             };
+234: 
+235:             eventSession = await _eventSessionRepository.Create(eventSession);
+236:             Console.WriteLine($"[CREATE EVENT WITH SESSIONS] EventSession {sessionIndex} created with ID: {eventSession.Id}");
 237: 
-238:             foreach (var languageId in sessionDto.LanguageIds)
-239:             {
-240:                 var sessionLanguage = new EventSessionLanguage
-241:                 {
-242:                     EventSessionId = eventSession.Id,
-243:                     LanguageId = languageId,
-244:                     TenantId = _tenantContext.TenantId
-245:                 };
-246: 
-247:                 await _eventSessionLanguageRepository.Create(sessionLanguage);
-248:             }
-249: 
-250:             if (sessionDto.LanguageIds.Any())
-251:             {
-252:                 Console.WriteLine($"[CREATE EVENT WITH SESSIONS] {sessionDto.LanguageIds.Count} languages assigned to session {eventSession.Id}");
-253:             }
-254:         }
-255: 
-256:         response.Success = true;
-257:         response.Id = @event.Id;
-258:         response.Message = $"Event and {sessions.Count} session(s) created successfully.";
-259: 
-260:         return response;
-261:     }
-262: 
+238: 
+239:             foreach (var languageId in sessionDto.LanguageIds)
+240:             {
+241:                 var sessionLanguage = new EventSessionLanguage
+242:                 {
+243:                     EventSessionId = eventSession.Id,
+244:                     LanguageId = languageId,
+245:                     TenantId = _tenantContext.TenantId
+246:                 };
+247: 
+248:                 await _eventSessionLanguageRepository.Create(sessionLanguage);
+249:             }
+250: 
+251:             if (sessionDto.LanguageIds.Any())
+252:             {
+253:                 Console.WriteLine($"[CREATE EVENT WITH SESSIONS] {sessionDto.LanguageIds.Count} languages assigned to session {eventSession.Id}");
+254:             }
+255:         }
+256: 
+257:         response.Success = true;
+258:         response.Id = @event.Id;
+259:         response.Message = $"Event and {sessions.Count} session(s) created successfully.";
+260: 
+261:         return response;
+262:     }
 263: 
 264: 
 265: 
-266:     private static string GenerateSlug(string title)
-267:     {
-268:         if (string.IsNullOrWhiteSpace(title))
-269:             return $"event-{Guid.NewGuid().ToString("N").Substring(0, 8)}";
-270: 
-271:         var slug = title.ToLowerInvariant()
-272:             .Replace(" ", "-")
-273:             .Replace("'", "")
-274:             .Replace("\"", "")
-275:             .Replace(".", "")
-276:             .Replace(",", "");
-277: 
-278:         // Remove any non-alphanumeric characters except hyphens
-279:         slug = Regex.Replace(slug, @"[^a-z0-9\-]", "");
-280: 
+266: 
+267:     private static string GenerateSlug(string title)
+268:     {
+269:         if (string.IsNullOrWhiteSpace(title))
+270:             return $"event-{Guid.NewGuid().ToString("N").Substring(0, 8)}";
+271: 
+272:         var slug = title.ToLowerInvariant()
+273:             .Replace(" ", "-")
+274:             .Replace("'", "")
+275:             .Replace("\"", "")
+276:             .Replace(".", "")
+277:             .Replace(",", "");
+278: 
+279:         // Remove any non-alphanumeric characters except hyphens
+280:         slug = Regex.Replace(slug, @"[^a-z0-9\-]", "");
 281: 
-282:         if (slug.Length > 50)
-283:             slug = slug.Substring(0, 50);
-284: 
-285:         return slug;
-286:     }
-287: }
+282: 
+283:         if (slug.Length > 50)
+284:             slug = slug.Substring(0, 50);
+285: 
+286:         return slug;
+287:     }
+288: }
 ````
 
 ## File: Explore.Application/Features/Events/Requests/Commands/CreateEventCommand.cs
@@ -46920,113 +47674,6 @@ README.md
 107: }
 ````
 
-## File: Explore.Domain/AppSetting.cs
-````csharp
-  1: namespace Explore.Domain;
-  2: 
-  3: using Explore.Domain.Enums;
-  4: using Explore.Domain.Interfaces;
-  5: 
-  6: 
-  7: 
-  8: 
-  9: 
- 10: 
- 11: 
- 12: 
- 13: 
- 14: 
- 15: 
- 16: 
- 17: public class AppSetting : IAuditableEntity
- 18: {
- 19: 
- 20: 
- 21: 
- 22: 
- 23: 
- 24: 
- 25: 
- 26: 
- 27: 
- 28:     public string Key { get; set; } = string.Empty;
- 29: 
- 30: 
- 31: 
- 32: 
- 33: 
- 34:     public string EncryptedValue { get; set; } = string.Empty;
- 35: 
- 36: 
- 37: 
- 38: 
- 39: 
- 40:     public int KeyVersion { get; set; }
- 41: 
- 42: 
- 43: 
- 44: 
- 45: 
- 46:     public DateTime EncryptedAt { get; set; }
- 47: 
- 48: 
- 49: 
- 50: 
- 51: 
- 52:     public Guid? EncryptedBy { get; set; }
- 53: 
- 54: 
- 55: 
- 56: 
- 57: 
- 58:     public bool IsSensitive { get; set; }
- 59: 
- 60: 
- 61: 
- 62: 
- 63:     public string? Description { get; set; }
- 64: 
- 65: 
- 66: 
- 67: 
- 68:     public string? Category { get; set; }
- 69: 
- 70: 
- 71: 
- 72: 
- 73: 
- 74:     public AppSettingValueTypeEnum ValueType { get; set; }
- 75: 
- 76: 
- 77: 
- 78: 
- 79: 
- 80: 
- 81:     public DateTime CreatedAt { get; set; }
- 82: 
- 83: 
- 84: 
- 85: 
- 86:     public Guid? CreatedBy { get; set; }
- 87: 
- 88: 
- 89: 
- 90: 
- 91:     public DateTime? UpdatedAt { get; set; }
- 92: 
- 93: 
- 94: 
- 95: 
- 96:     public Guid? UpdatedBy { get; set; }
- 97: 
- 98: 
- 99: 
-100: 
-101: 
-102:     public byte[] RowVersion { get; set; } = [];
-103: }
-````
-
 ## File: Explore.Domain/AtprotoRecord.cs
 ````csharp
  1: using System;
@@ -48051,77 +48698,6 @@ README.md
 14: }
 ````
 
-## File: Explore.Domain/Modules/ModuleDefinition.cs
-````csharp
- 1: namespace Explore.Domain.Modules;
- 2: 
- 3: 
- 4: 
- 5: 
- 6: 
- 7: public class ModuleDefinition
- 8: {
- 9: 
-10: 
-11: 
-12:     public Guid Id { get; set; }
-13: 
-14: 
-15: 
-16: 
-17: 
-18:     public string Key { get; set; } = string.Empty;
-19: 
-20: 
-21: 
-22: 
-23:     public string Name { get; set; } = string.Empty;
-24: 
-25: 
-26: 
-27: 
-28:     public string? Description { get; set; }
-29: 
-30: 
-31: 
-32: 
-33: 
-34:     public string? WizardSchemaUrl { get; set; }
-35: 
-36: 
-37: 
-38: 
-39:     public string? IconName { get; set; }
-40: 
-41: 
-42: 
-43: 
-44: 
-45:     public int DisplayOrder { get; set; }
-46: 
-47: 
-48: 
-49: 
-50: 
-51:     public bool IsActive { get; set; } = true;
-52: 
-53: 
-54: 
-55: 
-56:     public string? Category { get; set; }
-57: 
-58: 
-59: 
-60: 
-61:     public DateTime CreatedAt { get; set; }
-62: 
-63: 
-64: 
-65: 
-66:     public DateTime? UpdatedAt { get; set; }
-67: }
-````
-
 ## File: Explore.Domain/Modules/TenantCapability.cs
 ````csharp
  1: using Explore.Domain.Interfaces;
@@ -48290,89 +48866,6 @@ README.md
 19: }
 ````
 
-## File: Explore.Domain/SystemSetting.cs
-````csharp
- 1: namespace Explore.Domain;
- 2: 
- 3: 
- 4: 
- 5: 
- 6: 
- 7: public class SystemSetting
- 8: {
- 9: 
-10: 
-11: 
-12:     public Guid Id { get; set; }
-13: 
-14: 
-15: 
-16: 
-17: 
-18:     public string Key { get; set; } = string.Empty;
-19: 
-20: 
-21: 
-22: 
-23:     public string Value { get; set; } = string.Empty;
-24: 
-25: 
-26: 
-27: 
-28:     public SettingValueType ValueType { get; set; }
-29: 
-30: 
-31: 
-32: 
-33: 
-34:     public bool IsLocked { get; set; }
-35: 
-36: 
-37: 
-38: 
-39: 
-40:     public string? AllowedValues { get; set; }
-41: 
-42: 
-43: 
-44: 
-45:     public string? Description { get; set; }
-46: 
-47: 
-48: 
-49: 
-50:     public string? Category { get; set; }
-51: 
-52: 
-53: 
-54: 
-55:     public int DisplayOrder { get; set; }
-56: 
-57: 
-58: 
-59: 
-60:     public DateTime CreatedAt { get; set; }
-61: 
-62: 
-63: 
-64: 
-65:     public DateTime? UpdatedAt { get; set; }
-66: }
-67: 
-68: 
-69: 
-70: 
-71: public enum SettingValueType
-72: {
-73:     String = 0,
-74:     Integer = 1,
-75:     Boolean = 2,
-76:     Decimal = 3,
-77:     Json = 4,
-78:     DateTime = 5
-79: }
-````
-
 ## File: Explore.Domain/Tag.cs
 ````csharp
  1: using System;
@@ -48453,65 +48946,6 @@ README.md
 12:         public bool IsActive { get; set; }
 13:     }
 14: }
-````
-
-## File: Explore.Domain/TenantSetting.cs
-````csharp
- 1: namespace Explore.Domain;
- 2: 
- 3: using Explore.Domain.Interfaces;
- 4: 
- 5: 
- 6: 
- 7: 
- 8: 
- 9: public class TenantSetting : ITenantEntity
-10: {
-11: 
-12: 
-13: 
-14:     public Guid Id { get; set; }
-15: 
-16: 
-17: 
-18: 
-19:     public Guid TenantId { get; set; }
-20: 
-21: 
-22: 
-23: 
-24:     public Tenant? Tenant { get; set; }
-25: 
-26: 
-27: 
-28: 
-29:     public string Key { get; set; } = string.Empty;
-30: 
-31: 
-32: 
-33: 
-34:     public string Value { get; set; } = string.Empty;
-35: 
-36: 
-37: 
-38: 
-39:     public DateTime CreatedAt { get; set; }
-40: 
-41: 
-42: 
-43: 
-44:     public Guid? CreatedBy { get; set; }
-45: 
-46: 
-47: 
-48: 
-49:     public DateTime? UpdatedAt { get; set; }
-50: 
-51: 
-52: 
-53: 
-54:     public Guid? UpdatedBy { get; set; }
-55: }
 ````
 
 ## File: Explore.Domain/TenantSettings.cs
@@ -49165,383 +49599,6 @@ README.md
 324: }
 ````
 
-## File: Explore.Infrastructure/Services/ModuleService.cs
-````csharp
-  1: namespace Explore.Infrastructure.Services;
-  2: 
-  3: using Microsoft.Extensions.Caching.Memory;
-  4: using Explore.Application.Contracts.Infrastructure;
-  5: using Explore.Application.Contracts.Persistence;
-  6: using Explore.Domain.Modules;
-  7: 
-  8: 
-  9: 
- 10: 
- 11: public class ModuleService : IModuleService
- 12: {
- 13:     private readonly IModuleDefinitionRepository _moduleDefinitionRepository;
- 14:     private readonly ITenantCapabilityRepository _tenantCapabilityRepository;
- 15:     private readonly IMemoryCache _cache;
- 16:     private readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(5);
- 17: 
- 18:     private const string AllModulesCacheKey = "Modules_All";
- 19:     private const string TenantModulesCacheKeyPrefix = "Modules_Tenant_";
- 20: 
- 21:     public ModuleService(
- 22:         IModuleDefinitionRepository moduleDefinitionRepository,
- 23:         ITenantCapabilityRepository tenantCapabilityRepository,
- 24:         IMemoryCache cache)
- 25:     {
- 26:         _moduleDefinitionRepository = moduleDefinitionRepository;
- 27:         _tenantCapabilityRepository = tenantCapabilityRepository;
- 28:         _cache = cache;
- 29:     }
- 30: 
- 31:     public async Task<IReadOnlyList<ModuleInfo>> GetAllModulesAsync(CancellationToken cancellationToken = default)
- 32:     {
- 33:         return await _cache.GetOrCreateAsync(AllModulesCacheKey, async entry =>
- 34:         {
- 35:             entry.AbsoluteExpirationRelativeToNow = _cacheExpiration;
- 36:             var modules = await _moduleDefinitionRepository.GetAllActive();
- 37:             return modules.Select(m => MapToModuleInfo(m)).ToList();
- 38:         }) ?? new List<ModuleInfo>();
- 39:     }
- 40: 
- 41:     public async Task<IReadOnlyList<ModuleInfo>> GetEnabledModulesAsync(Guid tenantId, CancellationToken cancellationToken = default)
- 42:     {
- 43:         var cacheKey = $"{TenantModulesCacheKeyPrefix}{tenantId}";
- 44: 
- 45:         return await _cache.GetOrCreateAsync(cacheKey, async entry =>
- 46:         {
- 47:             entry.AbsoluteExpirationRelativeToNow = _cacheExpiration;
- 48: 
- 49:             var capabilities = await _tenantCapabilityRepository.GetEnabledByTenantId(tenantId);
- 50:             return capabilities
- 51:                 .Where(c => c.Module != null)
- 52:                 .Select(c => MapToModuleInfo(c.Module!, isEnabledForTenant: true))
- 53:                 .ToList();
- 54:         }) ?? new List<ModuleInfo>();
- 55:     }
- 56: 
- 57:     public async Task<bool> IsModuleEnabledAsync(Guid tenantId, string moduleKey, CancellationToken cancellationToken = default)
- 58:     {
- 59: 
- 60:         var enabledModules = await GetEnabledModulesAsync(tenantId, cancellationToken);
- 61:         return enabledModules.Any(m => m.Key.Equals(moduleKey, StringComparison.OrdinalIgnoreCase));
- 62:     }
- 63: 
- 64:     public async Task<string?> GetModuleWizardSchemaUrlAsync(string moduleKey, CancellationToken cancellationToken = default)
- 65:     {
- 66:         var module = await _moduleDefinitionRepository.GetByKey(moduleKey);
- 67:         return module?.WizardSchemaUrl;
- 68:     }
- 69: 
- 70:     public async Task<bool> EnableModuleAsync(Guid tenantId, string moduleKey, Guid? enabledBy = null, CancellationToken cancellationToken = default)
- 71:     {
- 72: 
- 73:         var module = await _moduleDefinitionRepository.GetByKey(moduleKey);
- 74:         if (module == null || !module.IsActive)
- 75:             return false;
- 76: 
- 77: 
- 78:         var existing = await _tenantCapabilityRepository.GetByTenantAndModuleKey(tenantId, moduleKey);
- 79:         if (existing != null)
- 80:         {
- 81: 
- 82:             if (!existing.IsEnabled)
- 83:             {
- 84:                 existing.IsEnabled = true;
- 85:                 existing.EnabledAt = DateTime.UtcNow;
- 86:                 existing.EnabledBy = enabledBy;
- 87:                 await _tenantCapabilityRepository.Update(existing);
- 88:                 InvalidateCache(tenantId);
- 89:             }
- 90:             return true;
- 91:         }
- 92: 
- 93: 
- 94:         var capability = new TenantCapability
- 95:         {
- 96:             TenantId = tenantId,
- 97:             ModuleId = module.Id,
- 98:             IsEnabled = true,
- 99:             EnabledAt = DateTime.UtcNow,
-100:             EnabledBy = enabledBy
-101:         };
-102: 
-103:         await _tenantCapabilityRepository.Create(capability);
-104:         InvalidateCache(tenantId);
-105:         return true;
-106:     }
-107: 
-108:     public async Task<bool> DisableModuleAsync(Guid tenantId, string moduleKey, CancellationToken cancellationToken = default)
-109:     {
-110:         var capability = await _tenantCapabilityRepository.GetByTenantAndModuleKey(tenantId, moduleKey);
-111:         if (capability == null)
-112:             return false;
-113: 
-114: 
-115:         capability.IsEnabled = false;
-116:         await _tenantCapabilityRepository.Update(capability);
-117:         InvalidateCache(tenantId);
-118:         return true;
-119:     }
-120: 
-121:     public void InvalidateCache(Guid? tenantId = null)
-122:     {
-123:         _cache.Remove(AllModulesCacheKey);
-124: 
-125:         if (tenantId.HasValue)
-126:         {
-127:             _cache.Remove($"{TenantModulesCacheKeyPrefix}{tenantId}");
-128:         }
-129:     }
-130: 
-131:     private static ModuleInfo MapToModuleInfo(ModuleDefinition module, bool? isEnabledForTenant = null)
-132:     {
-133:         return new ModuleInfo
-134:         {
-135:             Id = module.Id,
-136:             Key = module.Key,
-137:             Name = module.Name,
-138:             Description = module.Description,
-139:             IconName = module.IconName,
-140:             Category = module.Category,
-141:             DisplayOrder = module.DisplayOrder,
-142:             WizardSchemaUrl = module.WizardSchemaUrl,
-143:             IsActive = module.IsActive,
-144:             IsEnabledForTenant = isEnabledForTenant
-145:         };
-146:     }
-147: }
-````
-
-## File: Explore.Infrastructure/Services/SettingsResolver.cs
-````csharp
-  1: namespace Explore.Infrastructure.Services;
-  2: 
-  3: using System.Text.Json;
-  4: using Microsoft.Extensions.Caching.Memory;
-  5: using Explore.Application.Contracts.Infrastructure;
-  6: using Explore.Application.Contracts.Persistence;
-  7: using Explore.Domain;
-  8: 
-  9: 
- 10: 
- 11: 
- 12: public class SettingsResolver : ISettingsResolver
- 13: {
- 14:     private readonly ISystemSettingRepository _systemSettingRepository;
- 15:     private readonly ITenantSettingRepository _tenantSettingRepository;
- 16:     private readonly IMemoryCache _cache;
- 17:     private readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(5);
- 18: 
- 19:     private const string SystemSettingsCacheKey = "SystemSettings_All";
- 20:     private const string TenantSettingsCacheKeyPrefix = "TenantSettings_";
- 21: 
- 22:     public SettingsResolver(
- 23:         ISystemSettingRepository systemSettingRepository,
- 24:         ITenantSettingRepository tenantSettingRepository,
- 25:         IMemoryCache cache)
- 26:     {
- 27:         _systemSettingRepository = systemSettingRepository;
- 28:         _tenantSettingRepository = tenantSettingRepository;
- 29:         _cache = cache;
- 30:     }
- 31: 
- 32:     public async Task<T?> GetSettingAsync<T>(string key, Guid? tenantId = null, CancellationToken cancellationToken = default)
- 33:     {
- 34:         var resolved = await GetSettingWithMetadataAsync(key, tenantId, cancellationToken);
- 35:         if (resolved == null)
- 36:             return default;
- 37: 
- 38:         try
- 39:         {
- 40:             return JsonSerializer.Deserialize<T>(resolved.Value);
- 41:         }
- 42:         catch
- 43:         {
- 44:             return default;
- 45:         }
- 46:     }
- 47: 
- 48:     public async Task<ResolvedSetting?> GetSettingWithMetadataAsync(string key, Guid? tenantId = null, CancellationToken cancellationToken = default)
- 49:     {
- 50: 
- 51:         var systemSettings = await GetSystemSettingsAsync(cancellationToken);
- 52:         var systemSetting = systemSettings.FirstOrDefault(s => s.Key == key);
- 53: 
- 54:         if (systemSetting == null)
- 55:             return null;
- 56: 
- 57: 
- 58:         if (systemSetting.IsLocked || tenantId == null)
- 59:         {
- 60:             return new ResolvedSetting
- 61:             {
- 62:                 Key = systemSetting.Key,
- 63:                 Value = systemSetting.Value,
- 64:                 ValueType = systemSetting.ValueType,
- 65:                 Source = systemSetting.IsLocked ? SettingSource.SystemLocked : SettingSource.SystemDefault,
- 66:                 IsLocked = systemSetting.IsLocked,
- 67:                 Description = systemSetting.Description,
- 68:                 Category = systemSetting.Category,
- 69:                 AllowedValues = systemSetting.AllowedValues
- 70:             };
- 71:         }
- 72: 
- 73: 
- 74:         var tenantSettings = await GetTenantSettingsAsync(tenantId.Value, cancellationToken);
- 75:         var tenantOverride = tenantSettings.FirstOrDefault(s => s.Key == key);
- 76: 
- 77:         if (tenantOverride != null)
- 78:         {
- 79:             return new ResolvedSetting
- 80:             {
- 81:                 Key = key,
- 82:                 Value = tenantOverride.Value,
- 83:                 ValueType = systemSetting.ValueType,
- 84:                 Source = SettingSource.TenantOverride,
- 85:                 IsLocked = false,
- 86:                 Description = systemSetting.Description,
- 87:                 Category = systemSetting.Category,
- 88:                 AllowedValues = systemSetting.AllowedValues
- 89:             };
- 90:         }
- 91: 
- 92: 
- 93:         return new ResolvedSetting
- 94:         {
- 95:             Key = systemSetting.Key,
- 96:             Value = systemSetting.Value,
- 97:             ValueType = systemSetting.ValueType,
- 98:             Source = SettingSource.SystemDefault,
- 99:             IsLocked = false,
-100:             Description = systemSetting.Description,
-101:             Category = systemSetting.Category,
-102:             AllowedValues = systemSetting.AllowedValues
-103:         };
-104:     }
-105: 
-106:     public async Task<IReadOnlyList<ResolvedSetting>> GetAllSettingsAsync(Guid? tenantId = null, string? category = null, CancellationToken cancellationToken = default)
-107:     {
-108:         var systemSettings = await GetSystemSettingsAsync(cancellationToken);
-109:         var tenantSettings = tenantId.HasValue
-110:             ? await GetTenantSettingsAsync(tenantId.Value, cancellationToken)
-111:             : new List<TenantSetting>();
-112: 
-113:         var tenantSettingsDict = tenantSettings.ToDictionary(s => s.Key, s => s.Value);
-114: 
-115:         var result = systemSettings
-116:             .Where(s => category == null || s.Category == category)
-117:             .Select(s =>
-118:             {
-119:                 var hasOverride = tenantSettingsDict.TryGetValue(s.Key, out var overrideValue);
-120:                 var effectiveValue = s.IsLocked || !hasOverride ? s.Value : overrideValue!;
-121:                 var source = s.IsLocked ? SettingSource.SystemLocked
-122:                     : hasOverride ? SettingSource.TenantOverride
-123:                     : SettingSource.SystemDefault;
-124: 
-125:                 return new ResolvedSetting
-126:                 {
-127:                     Key = s.Key,
-128:                     Value = effectiveValue,
-129:                     ValueType = s.ValueType,
-130:                     Source = source,
-131:                     IsLocked = s.IsLocked,
-132:                     Description = s.Description,
-133:                     Category = s.Category,
-134:                     AllowedValues = s.AllowedValues
-135:                 };
-136:             })
-137:             .ToList();
-138: 
-139:         return result;
-140:     }
-141: 
-142:     public async Task<bool> CanOverrideAsync(string key, CancellationToken cancellationToken = default)
-143:     {
-144:         return !await _systemSettingRepository.IsLocked(key);
-145:     }
-146: 
-147:     public async Task<bool> SetTenantOverrideAsync(string key, object value, Guid tenantId, CancellationToken cancellationToken = default)
-148:     {
-149: 
-150:         if (!await CanOverrideAsync(key, cancellationToken))
-151:             return false;
-152: 
-153:         var existingOverride = await _tenantSettingRepository.GetByTenantAndKey(tenantId, key);
-154:         var jsonValue = JsonSerializer.Serialize(value);
-155: 
-156:         if (existingOverride != null)
-157:         {
-158:             existingOverride.Value = jsonValue;
-159:             existingOverride.UpdatedAt = DateTime.UtcNow;
-160:             await _tenantSettingRepository.Update(existingOverride);
-161:         }
-162:         else
-163:         {
-164:             var newOverride = new TenantSetting
-165:             {
-166:                 TenantId = tenantId,
-167:                 Key = key,
-168:                 Value = jsonValue,
-169:                 CreatedAt = DateTime.UtcNow
-170:             };
-171:             await _tenantSettingRepository.Create(newOverride);
-172:         }
-173: 
-174:         InvalidateCache(key, tenantId);
-175:         return true;
-176:     }
-177: 
-178:     public async Task<bool> RemoveTenantOverrideAsync(string key, Guid tenantId, CancellationToken cancellationToken = default)
-179:     {
-180:         var result = await _tenantSettingRepository.RemoveOverride(tenantId, key);
-181:         if (result)
-182:         {
-183:             InvalidateCache(key, tenantId);
-184:         }
-185:         return result;
-186:     }
-187: 
-188:     public void InvalidateCache(string? key = null, Guid? tenantId = null)
-189:     {
-190:         if (key == null && tenantId == null)
-191:         {
-192:             _cache.Remove(SystemSettingsCacheKey);
-193:         }
-194:         else if (tenantId.HasValue)
-195:         {
-196:             _cache.Remove($"{TenantSettingsCacheKeyPrefix}{tenantId}");
-197:         }
-198:         else
-199:         {
-200:             _cache.Remove(SystemSettingsCacheKey);
-201:         }
-202:     }
-203: 
-204:     private async Task<List<SystemSetting>> GetSystemSettingsAsync(CancellationToken cancellationToken)
-205:     {
-206:         return await _cache.GetOrCreateAsync(SystemSettingsCacheKey, async entry =>
-207:         {
-208:             entry.AbsoluteExpirationRelativeToNow = _cacheExpiration;
-209:             return await _systemSettingRepository.GetAllSettings();
-210:         }) ?? new List<SystemSetting>();
-211:     }
-212: 
-213:     private async Task<List<TenantSetting>> GetTenantSettingsAsync(Guid tenantId, CancellationToken cancellationToken)
-214:     {
-215:         var cacheKey = $"{TenantSettingsCacheKeyPrefix}{tenantId}";
-216:         return await _cache.GetOrCreateAsync(cacheKey, async entry =>
-217:         {
-218:             entry.AbsoluteExpirationRelativeToNow = _cacheExpiration;
-219:             return await _tenantSettingRepository.GetAllForTenant(tenantId);
-220:         }) ?? new List<TenantSetting>();
-221:     }
-222: }
-````
-
 ## File: Explore.Infrastructure/Strategies/IslamicEventStrategy.cs
 ````csharp
  1: using Explore.Application.Contracts.Strategies;
@@ -49636,202 +49693,6 @@ README.md
 90:         }
 91:     }
 92: }
-````
-
-## File: Explore.Infrastructure/Strategies/StrategyResolver.cs
-````csharp
-  1: using Explore.Application.Contracts.Infrastructure;
-  2: using Explore.Application.Contracts.Strategies;
-  3: using Explore.Application.DTOs.Event;
-  4: using Explore.Domain;
-  5: using FluentValidation.Results;
-  6: using Microsoft.Extensions.Logging;
-  7: 
-  8: namespace Explore.Infrastructure.Strategies;
-  9: 
- 10: 
- 11: 
- 12: 
- 13: public class StrategyResolver : IStrategyResolver
- 14: {
- 15:     private readonly IEnumerable<IEventStrategy> _strategies;
- 16:     private readonly IModuleService _moduleService;
- 17:     private readonly ILogger<StrategyResolver> _logger;
- 18: 
- 19:     public StrategyResolver(
- 20:         IEnumerable<IEventStrategy> strategies,
- 21:         IModuleService moduleService,
- 22:         ILogger<StrategyResolver> logger)
- 23:     {
- 24:         _strategies = strategies;
- 25:         _moduleService = moduleService;
- 26:         _logger = logger;
- 27:     }
- 28: 
- 29:     public async Task<IReadOnlyList<IEventStrategy>> GetApplicableStrategiesAsync(
- 30:         Guid tenantId,
- 31:         CreateEventDto dto,
- 32:         CancellationToken cancellationToken = default)
- 33:     {
- 34:         var applicableStrategies = new List<IEventStrategy>();
- 35: 
- 36:         foreach (var strategy in _strategies)
- 37:         {
- 38: 
- 39:             var isModuleEnabled = await _moduleService.IsModuleEnabledAsync(
- 40:                 tenantId, strategy.ModuleKey, cancellationToken);
- 41: 
- 42:             if (!isModuleEnabled)
- 43:             {
- 44:                 _logger.LogDebug(
- 45:                     "Strategy {StrategyKey} skipped - module not enabled for tenant {TenantId}",
- 46:                     strategy.ModuleKey, tenantId);
- 47:                 continue;
- 48:             }
- 49: 
- 50: 
- 51:             if (strategy.IsApplicable(dto))
- 52:             {
- 53:                 applicableStrategies.Add(strategy);
- 54:                 _logger.LogDebug(
- 55:                     "Strategy {StrategyKey} is applicable for event",
- 56:                     strategy.ModuleKey);
- 57:             }
- 58:         }
- 59: 
- 60: 
- 61:         return applicableStrategies
- 62:             .OrderBy(s => s.Priority)
- 63:             .ToList();
- 64:     }
- 65: 
- 66:     public async Task<ValidationResult> ValidateWithStrategiesAsync(
- 67:         Guid tenantId,
- 68:         CreateEventDto dto,
- 69:         CancellationToken cancellationToken = default)
- 70:     {
- 71:         var result = new ValidationResult();
- 72:         var strategies = await GetApplicableStrategiesAsync(tenantId, dto, cancellationToken);
- 73: 
- 74:         foreach (var strategy in strategies)
- 75:         {
- 76:             try
- 77:             {
- 78:                 var strategyResult = await strategy.ValidateAsync(dto, cancellationToken);
- 79:                 if (!strategyResult.IsValid)
- 80:                 {
- 81:                     result.Errors.AddRange(strategyResult.Errors);
- 82:                     _logger.LogDebug(
- 83:                         "Strategy {StrategyKey} validation failed with {ErrorCount} errors",
- 84:                         strategy.ModuleKey, strategyResult.Errors.Count);
- 85:                 }
- 86:             }
- 87:             catch (Exception ex)
- 88:             {
- 89:                 _logger.LogError(ex,
- 90:                     "Error validating with strategy {StrategyKey}",
- 91:                     strategy.ModuleKey);
- 92: 
- 93:                 result.Errors.Add(new ValidationFailure(
- 94:                     strategy.ModuleKey,
- 95:                     $"Strategy validation error: {ex.Message}"));
- 96:             }
- 97:         }
- 98: 
- 99:         return result;
-100:     }
-101: 
-102:     public async Task ExecutePostCreateAsync(
-103:         Guid tenantId,
-104:         Event @event,
-105:         CreateEventDto dto,
-106:         CancellationToken cancellationToken = default)
-107:     {
-108:         var strategies = await GetApplicableStrategiesAsync(tenantId, dto, cancellationToken);
-109: 
-110:         foreach (var strategy in strategies)
-111:         {
-112:             try
-113:             {
-114:                 await strategy.PostCreateAsync(@event, cancellationToken);
-115:                 _logger.LogDebug(
-116:                     "Strategy {StrategyKey} post-create completed for event {EventId}",
-117:                     strategy.ModuleKey, @event.Id);
-118:             }
-119:             catch (Exception ex)
-120:             {
-121: 
-122:                 _logger.LogError(ex,
-123:                     "Error executing post-create for strategy {StrategyKey} on event {EventId}",
-124:                     strategy.ModuleKey, @event.Id);
-125:             }
-126:         }
-127:     }
-128: 
-129:     public async Task ExecutePostUpdateAsync(
-130:         Guid tenantId,
-131:         Event @event,
-132:         CancellationToken cancellationToken = default)
-133:     {
-134: 
-135:         var enabledModules = await _moduleService.GetEnabledModulesAsync(tenantId, cancellationToken);
-136:         var enabledModuleKeys = enabledModules.Select(m => m.Key).ToHashSet();
-137: 
-138:         foreach (var strategy in _strategies.Where(s => enabledModuleKeys.Contains(s.ModuleKey)))
-139:         {
-140: 
-141:             var isApplicable = strategy.ModuleKey switch
-142:             {
-143:                 "Mod_Islamic" => @event.IslamicAspect != null,
-144:                 "Mod_Tech" => @event.TechAspect != null,
-145:                 _ => false
-146:             };
-147: 
-148:             if (!isApplicable) continue;
-149: 
-150:             try
-151:             {
-152:                 await strategy.PostUpdateAsync(@event, cancellationToken);
-153:                 _logger.LogDebug(
-154:                     "Strategy {StrategyKey} post-update completed for event {EventId}",
-155:                     strategy.ModuleKey, @event.Id);
-156:             }
-157:             catch (Exception ex)
-158:             {
-159:                 _logger.LogError(ex,
-160:                     "Error executing post-update for strategy {StrategyKey} on event {EventId}",
-161:                     strategy.ModuleKey, @event.Id);
-162:             }
-163:         }
-164:     }
-165: 
-166:     public async Task<IReadOnlyList<StrategyLink>> GetStrategyLinksAsync(
-167:         Guid tenantId,
-168:         Event @event,
-169:         CancellationToken cancellationToken = default)
-170:     {
-171:         var links = new List<StrategyLink>();
-172:         var enabledModules = await _moduleService.GetEnabledModulesAsync(tenantId, cancellationToken);
-173:         var enabledModuleKeys = enabledModules.Select(m => m.Key).ToHashSet();
-174: 
-175:         foreach (var strategy in _strategies.Where(s => enabledModuleKeys.Contains(s.ModuleKey)))
-176:         {
-177:             try
-178:             {
-179:                 var strategyLinks = strategy.GetLinks(@event);
-180:                 links.AddRange(strategyLinks);
-181:             }
-182:             catch (Exception ex)
-183:             {
-184:                 _logger.LogError(ex,
-185:                     "Error getting links from strategy {StrategyKey} for event {EventId}",
-186:                     strategy.ModuleKey, @event.Id);
-187:             }
-188:         }
-189: 
-190:         return links;
-191:     }
-192: }
 ````
 
 ## File: Explore.Infrastructure/Strategies/TechEventStrategy.cs
@@ -49932,89 +49793,6 @@ README.md
 94:         }
 95:     }
 96: }
-````
-
-## File: Explore.Persistence/Configurations/Entities/ActorConfiguration.cs
-````csharp
- 1: using Explore.Domain;
- 2: using Explore.Domain.Enums;
- 3: using Explore.Persistence.Seed;
- 4: using Microsoft.EntityFrameworkCore;
- 5: using Microsoft.EntityFrameworkCore.Metadata.Builders;
- 6: 
- 7: namespace Explore.Persistence.Configurations.Entities
- 8: {
- 9:     public class ActorConfiguration : IEntityTypeConfiguration<Actor>
-10:     {
-11:         public void Configure(EntityTypeBuilder<Actor> builder)
-12:         {
-13:             builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
-14: 
-15:             builder.Property(e => e.DisplayName).HasMaxLength(500).IsRequired();
-16:             builder.Property(e => e.Did).HasMaxLength(500);
-17:             builder.Property(e => e.Handle).HasMaxLength(500);
-18:             builder.Property(e => e.PdsHost).HasMaxLength(500);
-19:             builder.Property(e => e.Description).HasMaxLength(500);
-20:             builder.Property(e => e.ProfilePictureCid).HasMaxLength(500);
-21:             builder.Property(e => e.ProfilePictureUri).HasMaxLength(500);
-22: 
-23:             builder.HasOne(e => e.ActorType)
-24:                 .WithMany()
-25:                 .HasForeignKey(e => e.ActorTypeId)
-26:                 .OnDelete(DeleteBehavior.Restrict);
-27: 
-28:             builder.HasOne(e => e.Tenant)
-29:                 .WithMany()
-30:                 .HasForeignKey(e => e.TenantId)
-31:                 .OnDelete(DeleteBehavior.Restrict);
-32: 
-33:             builder.HasOne(e => e.DidCustodyType)
-34:                 .WithMany()
-35:                 .HasForeignKey(e => e.DidCustodyTypeId)
-36:                 .OnDelete(DeleteBehavior.Restrict);
-37: 
-38:             builder.HasOne(e => e.ProfilePicture)
-39:                 .WithMany()
-40:                 .HasForeignKey(e => e.ProfilePictureId)
-41:                 .OnDelete(DeleteBehavior.SetNull);
-42: 
-43: 
-44:             builder.HasOne(e => e.User)
-45:                 .WithMany()
-46:                 .HasForeignKey(e => e.UserId)
-47:                 .OnDelete(DeleteBehavior.Cascade);
-48: 
-49: 
-50:             builder.HasOne(e => e.Organization)
-51:                 .WithMany()
-52:                 .HasForeignKey(e => e.OrganizationId)
-53:                 .OnDelete(DeleteBehavior.Cascade);
-54: 
-55: 
-56:             builder.HasIndex(e => e.UserId)
-57:                 .IsUnique()
-58:                 .HasFilter("user_id IS NOT NULL");
-59: 
-60:             builder.HasIndex(e => e.OrganizationId)
-61:                 .IsUnique()
-62:                 .HasFilter("organization_id IS NOT NULL");
-63: 
-64: 
-65: 
-66: 
-67: 
-68: 
-69:             builder.ToTable(t => t.HasCheckConstraint(
-70:                 "CK_Actor_UserOrOrganization",
-71:                 @"(user_id IS NOT NULL AND organization_id IS NULL) OR " +
-72:                 @"(user_id IS NULL AND organization_id IS NOT NULL)"
-73:             ));
-74: 
-75: 
-76: 
-77:         }
-78:     }
-79: }
 ````
 
 ## File: Explore.Persistence/Configurations/Entities/ActorKeyStoreConfiguration.cs
@@ -50140,74 +49918,6 @@ README.md
 41: }
 ````
 
-## File: Explore.Persistence/Configurations/Entities/AppSettingConfiguration.cs
-````csharp
- 1: namespace Explore.Persistence.Configurations.Entities;
- 2: 
- 3: using Explore.Domain;
- 4: using Microsoft.EntityFrameworkCore;
- 5: using Microsoft.EntityFrameworkCore.Metadata.Builders;
- 6: 
- 7: public class AppSettingConfiguration : IEntityTypeConfiguration<AppSetting>
- 8: {
- 9:     public void Configure(EntityTypeBuilder<AppSetting> builder)
-10:     {
-11: 
-12:         builder.HasKey(e => e.Key);
-13: 
-14:         builder.Property(e => e.Key)
-15:             .IsRequired()
-16:             .HasMaxLength(256);
-17: 
-18: 
-19:         builder.Property(e => e.EncryptedValue)
-20:             .IsRequired();
-21: 
-22:         builder.Property(e => e.KeyVersion)
-23:             .IsRequired();
-24: 
-25:         builder.Property(e => e.EncryptedAt)
-26:             .IsRequired();
-27: 
-28:         builder.Property(e => e.IsSensitive)
-29:             .IsRequired()
-30:             .HasDefaultValue(false);
-31: 
-32:         builder.Property(e => e.Description)
-33:             .HasMaxLength(1000);
-34: 
-35:         builder.Property(e => e.Category)
-36:             .HasMaxLength(100);
-37: 
-38:         builder.Property(e => e.ValueType)
-39:             .IsRequired()
-40:             .HasConversion<int>();
-41: 
-42: 
-43:         builder.Property(e => e.CreatedAt)
-44:             .IsRequired()
-45:             .HasDefaultValueSql("NOW()");
-46: 
-47: 
-48:         builder.Property(e => e.RowVersion)
-49:             .IsRowVersion()
-50:             .IsConcurrencyToken();
-51: 
-52: 
-53:         builder.HasIndex(e => e.Category);
-54:         builder.HasIndex(e => e.KeyVersion);
-55:         builder.HasIndex(e => e.IsSensitive);
-56: 
-57: 
-58: 
-59: 
-60:         builder.ToTable(t => t.HasCheckConstraint(
-61:             "CK_AppSettings_NoHighValueSecrets",
-62:             "key NOT LIKE 'Database:%' AND key NOT LIKE 'Security:MasterKey%' AND key NOT LIKE 'ConnectionStrings:%'"));
-63:     }
-64: }
-````
-
 ## File: Explore.Persistence/Configurations/Entities/AtprotoRecordConfiguration.cs
 ````csharp
  1: using Explore.Domain;
@@ -50233,41 +49943,6 @@ README.md
 21:         }
 22:     }
 23: }
-````
-
-## File: Explore.Persistence/Configurations/Entities/CategoryConfiguration.cs
-````csharp
- 1: using Explore.Domain;
- 2: using Explore.Persistence.Seed;
- 3: using Microsoft.EntityFrameworkCore;
- 4: using Microsoft.EntityFrameworkCore.Metadata.Builders;
- 5: 
- 6: namespace Explore.Persistence.Configurations.Entities
- 7: {
- 8:     public class CategoryConfiguration : IEntityTypeConfiguration<Category>
- 9:     {
-10:         public void Configure(EntityTypeBuilder<Category> builder)
-11:         {
-12:             builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
-13: 
-14:             builder.Property(e => e.MasterCode).HasMaxLength(500).IsRequired();
-15:             builder.Property(e => e.FullName).HasMaxLength(500).IsRequired();
-16: 
-17:             builder.HasOne(e => e.Parent)
-18:                 .WithMany()
-19:                 .HasForeignKey(e => e.ParentId)
-20:                 .OnDelete(DeleteBehavior.Restrict);
-21: 
-22:             builder.HasOne(e => e.Tenant)
-23:                 .WithMany()
-24:                 .HasForeignKey(e => e.TenantId)
-25:                 .OnDelete(DeleteBehavior.Restrict);
-26: 
-27: 
-28: 
-29:         }
-30:     }
-31: }
 ````
 
 ## File: Explore.Persistence/Configurations/Entities/DidCustodyTypeConfiguration.cs
@@ -50914,40 +50589,6 @@ README.md
 32: }
 ````
 
-## File: Explore.Persistence/Configurations/Entities/LocationConfiguration.cs
-````csharp
- 1: using Explore.Domain;
- 2: using Explore.Persistence.Seed;
- 3: using Microsoft.EntityFrameworkCore;
- 4: using Microsoft.EntityFrameworkCore.Metadata.Builders;
- 5: 
- 6: namespace Explore.Persistence.Configurations.Entities
- 7: {
- 8:     public class LocationConfiguration : IEntityTypeConfiguration<Location>
- 9:     {
-10:         public void Configure(EntityTypeBuilder<Location> builder)
-11:         {
-12:             builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
-13: 
-14:             builder.Property(e => e.FullName).HasMaxLength(500).IsRequired();
-15:             builder.Property(e => e.Address).HasMaxLength(500).IsRequired();
-16:             builder.Property(e => e.Postcode).HasMaxLength(500).IsRequired();
-17:             builder.Property(e => e.Country).HasMaxLength(500).IsRequired();
-18:             builder.Property(e => e.City).HasMaxLength(500).IsRequired();
-19:             builder.Property(e => e.Timezone).HasMaxLength(500);
-20: 
-21:             builder.HasOne(e => e.Tenant)
-22:                 .WithMany()
-23:                 .HasForeignKey(e => e.TenantId)
-24:                 .OnDelete(DeleteBehavior.Restrict);
-25: 
-26: 
-27: 
-28:         }
-29:     }
-30: }
-````
-
 ## File: Explore.Persistence/Configurations/Entities/MadhabConfiguration.cs
 ````csharp
  1: using Explore.Domain;
@@ -51006,75 +50647,6 @@ README.md
 54:         }
 55:     }
 56: }
-````
-
-## File: Explore.Persistence/Configurations/Entities/ModuleDefinitionConfiguration.cs
-````csharp
- 1: using Explore.Domain.Modules;
- 2: using Explore.Persistence.Seed;
- 3: using Microsoft.EntityFrameworkCore;
- 4: using Microsoft.EntityFrameworkCore.Metadata.Builders;
- 5: 
- 6: namespace Explore.Persistence.Configurations.Entities;
- 7: 
- 8: public class ModuleDefinitionConfiguration : IEntityTypeConfiguration<ModuleDefinition>
- 9: {
-10:     public void Configure(EntityTypeBuilder<ModuleDefinition> builder)
-11:     {
-12:         builder.ToTable("ModuleDefinitions");
-13: 
-14:         builder.Property(m => m.Id).HasDefaultValueSql("uuidv7()");
-15:         builder.Property(m => m.Key).HasMaxLength(50).IsRequired();
-16:         builder.Property(m => m.Name).HasMaxLength(100).IsRequired();
-17:         builder.Property(m => m.Description).HasMaxLength(500);
-18:         builder.Property(m => m.WizardSchemaUrl).HasMaxLength(500);
-19:         builder.Property(m => m.IconName).HasMaxLength(50);
-20:         builder.Property(m => m.Category).HasMaxLength(50);
-21: 
-22:         builder.HasIndex(m => m.Key).IsUnique();
-23:         builder.HasIndex(m => m.DisplayOrder);
-24: 
-25: 
-26:         builder.HasData(
-27:             new ModuleDefinition
-28:             {
-29:                 Id = SeedIds.ModuleCoreId,
-30:                 Key = "Mod_Core",
-31:                 Name = "Core Events",
-32:                 Description = "Basic event functionality - title, description, sessions, locations",
-33:                 IconName = "Event",
-34:                 Category = "Core",
-35:                 DisplayOrder = 0,
-36:                 IsActive = true,
-37:                 CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-38:             },
-39:             new ModuleDefinition
-40:             {
-41:                 Id = SeedIds.ModuleIslamicId,
-42:                 Key = "Mod_Islamic",
-43:                 Name = "Islamic Events",
-44:                 Description = "Islamic-specific features: Madhab selection, prayer time scheduling, gender segregation",
-45:                 IconName = "Mosque",
-46:                 Category = "Domain",
-47:                 DisplayOrder = 1,
-48:                 IsActive = true,
-49:                 CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-50:             },
-51:             new ModuleDefinition
-52:             {
-53:                 Id = SeedIds.ModuleTechId,
-54:                 Key = "Mod_Tech",
-55:                 Name = "Tech Events",
-56:                 Description = "Developer event features: GitHub repositories, skill levels, live coding sessions",
-57:                 IconName = "Code",
-58:                 Category = "Domain",
-59:                 DisplayOrder = 2,
-60:                 IsActive = true,
-61:                 CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-62:             }
-63:         );
-64:     }
-65: }
 ````
 
 ## File: Explore.Persistence/Configurations/Entities/OrganizationPositionConfiguration.cs
@@ -51257,158 +50829,6 @@ README.md
 16: }
 ````
 
-## File: Explore.Persistence/Configurations/Entities/SystemSettingConfiguration.cs
-````csharp
-  1: namespace Explore.Persistence.Configurations.Entities;
-  2: 
-  3: using Explore.Domain;
-  4: using Explore.Persistence.Seed;
-  5: using Microsoft.EntityFrameworkCore;
-  6: using Microsoft.EntityFrameworkCore.Metadata.Builders;
-  7: 
-  8: public class SystemSettingConfiguration : IEntityTypeConfiguration<SystemSetting>
-  9: {
- 10:     public void Configure(EntityTypeBuilder<SystemSetting> builder)
- 11:     {
- 12:         builder.HasKey(e => e.Id);
- 13: 
- 14: 
- 15:         builder.Property(e => e.Id)
- 16:             .HasDefaultValueSql("uuidv7()");
- 17: 
- 18: 
- 19:         builder.HasIndex(e => e.Key)
- 20:             .IsUnique();
- 21: 
- 22:         builder.Property(e => e.Key)
- 23:             .IsRequired()
- 24:             .HasMaxLength(256);
- 25: 
- 26:         builder.Property(e => e.Value)
- 27:             .IsRequired();
- 28: 
- 29:         builder.Property(e => e.ValueType)
- 30:             .IsRequired()
- 31:             .HasConversion<int>();
- 32: 
- 33:         builder.Property(e => e.IsLocked)
- 34:             .IsRequired()
- 35:             .HasDefaultValue(false);
- 36: 
- 37:         builder.Property(e => e.AllowedValues)
- 38:             .HasColumnType("jsonb");
- 39: 
- 40:         builder.Property(e => e.Description)
- 41:             .HasMaxLength(1000);
- 42: 
- 43:         builder.Property(e => e.Category)
- 44:             .HasMaxLength(100);
- 45: 
- 46:         builder.Property(e => e.DisplayOrder)
- 47:             .HasDefaultValue(0);
- 48: 
- 49:         builder.Property(e => e.CreatedAt)
- 50:             .IsRequired()
- 51:             .HasDefaultValueSql("NOW()");
- 52: 
- 53: 
- 54:         builder.HasData(
- 55:             new SystemSetting
- 56:             {
- 57:                 Id = SeedIds.SystemSettingDeploymentModeId,
- 58:                 Key = "deployment.mode",
- 59:                 Value = "\"MultiTenant\"",
- 60:                 ValueType = SettingValueType.String,
- 61:                 IsLocked = true,
- 62:                 AllowedValues = "[\"SingleTenant\", \"MultiTenant\"]",
- 63:                 Description = "Deployment mode of the application",
- 64:                 Category = "System",
- 65:                 DisplayOrder = 1,
- 66:                 CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
- 67:             },
- 68:             new SystemSetting
- 69:             {
- 70:                 Id = SeedIds.SystemSettingMaxSessionsPerEventId,
- 71:                 Key = "events.max_sessions_per_event",
- 72:                 Value = "100",
- 73:                 ValueType = SettingValueType.Integer,
- 74:                 IsLocked = false,
- 75:                 Description = "Maximum number of sessions allowed per event",
- 76:                 Category = "Events",
- 77:                 DisplayOrder = 1,
- 78:                 CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
- 79:             },
- 80:             new SystemSetting
- 81:             {
- 82:                 Id = SeedIds.SystemSettingRequireApprovalId,
- 83:                 Key = "events.require_approval",
- 84:                 Value = "false",
- 85:                 ValueType = SettingValueType.Boolean,
- 86:                 IsLocked = false,
- 87:                 Description = "Whether events require admin approval before publishing",
- 88:                 Category = "Events",
- 89:                 DisplayOrder = 2,
- 90:                 CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
- 91:             },
- 92:             new SystemSetting
- 93:             {
- 94:                 Id = SeedIds.SystemSettingIslamicModuleId,
- 95:                 Key = "modules.islamic_enabled",
- 96:                 Value = "true",
- 97:                 ValueType = SettingValueType.Boolean,
- 98:                 IsLocked = false,
- 99:                 Description = "Enable Islamic event module",
-100:                 Category = "Modules",
-101:                 DisplayOrder = 1,
-102:                 CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-103:             },
-104:             new SystemSetting
-105:             {
-106:                 Id = SeedIds.SystemSettingTechModuleId,
-107:                 Key = "modules.tech_enabled",
-108:                 Value = "true",
-109:                 ValueType = SettingValueType.Boolean,
-110:                 IsLocked = false,
-111:                 Description = "Enable Tech event module",
-112:                 Category = "Modules",
-113:                 DisplayOrder = 2,
-114:                 CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-115:             }
-116:         );
-117:     }
-118: }
-````
-
-## File: Explore.Persistence/Configurations/Entities/TagConfiguration.cs
-````csharp
- 1: using Explore.Domain;
- 2: using Explore.Persistence.Seed;
- 3: using Microsoft.EntityFrameworkCore;
- 4: using Microsoft.EntityFrameworkCore.Metadata.Builders;
- 5: 
- 6: namespace Explore.Persistence.Configurations.Entities
- 7: {
- 8:     public class TagConfiguration : IEntityTypeConfiguration<Tag>
- 9:     {
-10:         public void Configure(EntityTypeBuilder<Tag> builder)
-11:         {
-12:             builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
-13: 
-14:             builder.Property(e => e.MasterCode).HasMaxLength(500).IsRequired();
-15:             builder.Property(e => e.FullName).HasMaxLength(500).IsRequired();
-16: 
-17:             builder.HasOne(e => e.Tenant)
-18:                 .WithMany()
-19:                 .HasForeignKey(e => e.TenantId)
-20:                 .OnDelete(DeleteBehavior.Restrict);
-21: 
-22: 
-23: 
-24:         }
-25:     }
-26: }
-````
-
 ## File: Explore.Persistence/Configurations/Entities/TagTypeConfiguration.cs
 ````csharp
  1: using Explore.Domain;
@@ -51492,143 +50912,6 @@ README.md
 27: }
 ````
 
-## File: Explore.Persistence/Configurations/Entities/TenantCapabilityConfiguration.cs
-````csharp
- 1: using Explore.Domain.Modules;
- 2: using Explore.Persistence.Seed;
- 3: using Microsoft.EntityFrameworkCore;
- 4: using Microsoft.EntityFrameworkCore.Metadata.Builders;
- 5: 
- 6: namespace Explore.Persistence.Configurations.Entities;
- 7: 
- 8: public class TenantCapabilityConfiguration : IEntityTypeConfiguration<TenantCapability>
- 9: {
-10:     public void Configure(EntityTypeBuilder<TenantCapability> builder)
-11:     {
-12:         builder.ToTable("TenantCapabilities");
-13: 
-14:         builder.Property(c => c.Id).HasDefaultValueSql("uuidv7()");
-15:         builder.Property(c => c.ConfigurationJson).HasColumnType("jsonb");
-16: 
-17: 
-18:         builder.HasIndex(c => new { c.TenantId, c.ModuleId }).IsUnique();
-19: 
-20:         builder.HasOne(c => c.Tenant)
-21:             .WithMany()
-22:             .HasForeignKey(c => c.TenantId)
-23:             .OnDelete(DeleteBehavior.Cascade);
-24: 
-25:         builder.HasOne(c => c.Module)
-26:             .WithMany()
-27:             .HasForeignKey(c => c.ModuleId)
-28:             .OnDelete(DeleteBehavior.Cascade);
-29: 
-30: 
-31: 
-32:     }
-33: }
-````
-
-## File: Explore.Persistence/Configurations/Entities/TenantConfiguration.cs
-````csharp
- 1: using System;
- 2: using Explore.Domain;
- 3: using Explore.Persistence.Seed;
- 4: using Microsoft.EntityFrameworkCore;
- 5: using Microsoft.EntityFrameworkCore.Metadata.Builders;
- 6: 
- 7: namespace Explore.Persistence.Configurations.Entities
- 8: {
- 9:     public class TenantConfiguration : IEntityTypeConfiguration<Tenant>
-10:     {
-11:         public void Configure(EntityTypeBuilder<Tenant> builder)
-12:         {
-13:             builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
-14: 
-15:             builder.Property(e => e.FullName).HasMaxLength(500).IsRequired();
-16:             builder.Property(e => e.Slug).HasMaxLength(500).IsRequired();
-17: 
-18:             builder.HasIndex(e => e.Slug).IsUnique();
-19: 
-20: 
-21: 
-22:         }
-23:     }
-24: }
-````
-
-## File: Explore.Persistence/Configurations/Entities/TenantSettingConfiguration.cs
-````csharp
- 1: namespace Explore.Persistence.Configurations.Entities;
- 2: 
- 3: using Explore.Domain;
- 4: using Microsoft.EntityFrameworkCore;
- 5: using Microsoft.EntityFrameworkCore.Metadata.Builders;
- 6: 
- 7: public class TenantSettingConfiguration : IEntityTypeConfiguration<TenantSetting>
- 8: {
- 9:     public void Configure(EntityTypeBuilder<TenantSetting> builder)
-10:     {
-11:         builder.HasKey(e => e.Id);
-12: 
-13: 
-14:         builder.Property(e => e.Id)
-15:             .HasDefaultValueSql("uuidv7()");
-16: 
-17: 
-18:         builder.HasIndex(e => new { e.TenantId, e.Key })
-19:             .IsUnique();
-20: 
-21:         builder.Property(e => e.TenantId)
-22:             .IsRequired();
-23: 
-24:         builder.Property(e => e.Key)
-25:             .IsRequired()
-26:             .HasMaxLength(256);
-27: 
-28:         builder.Property(e => e.Value)
-29:             .IsRequired();
-30: 
-31:         builder.Property(e => e.CreatedAt)
-32:             .IsRequired()
-33:             .HasDefaultValueSql("NOW()");
-34: 
-35: 
-36:         builder.HasOne(e => e.Tenant)
-37:             .WithMany()
-38:             .HasForeignKey(e => e.TenantId)
-39:             .OnDelete(DeleteBehavior.Cascade);
-40:     }
-41: }
-````
-
-## File: Explore.Persistence/Configurations/Entities/TenantSettingsConfiguration.cs
-````csharp
- 1: using Explore.Domain;
- 2: using Explore.Persistence.Seed;
- 3: using Microsoft.EntityFrameworkCore;
- 4: using Microsoft.EntityFrameworkCore.Metadata.Builders;
- 5: 
- 6: namespace Explore.Persistence.Configurations.Entities
- 7: {
- 8:     public class TenantSettingsConfiguration : IEntityTypeConfiguration<TenantSettings>
- 9:     {
-10:         public void Configure(EntityTypeBuilder<TenantSettings> builder)
-11:         {
-12:             builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
-13: 
-14:             builder.HasOne(e => e.Tenant)
-15:                 .WithMany()
-16:                 .HasForeignKey(e => e.TenantId)
-17:                 .OnDelete(DeleteBehavior.Cascade);
-18: 
-19: 
-20: 
-21:         }
-22:     }
-23: }
-````
-
 ## File: Explore.Persistence/Configurations/Entities/TenantUserConfiguration.cs
 ````csharp
  1: using Explore.Domain;
@@ -51658,142 +50941,6 @@ README.md
 25:         }
 26:     }
 27: }
-````
-
-## File: Explore.Persistence/Configurations/Entities/UserAuthenticationTokenConfiguration.cs
-````csharp
- 1: using Explore.Domain;
- 2: using Microsoft.EntityFrameworkCore;
- 3: using Microsoft.EntityFrameworkCore.Metadata.Builders;
- 4: 
- 5: namespace Explore.Persistence.Configurations.Entities
- 6: {
- 7:     public class UserAuthenticationTokenConfiguration : IEntityTypeConfiguration<UserAuthenticationToken>
- 8:     {
- 9:         public void Configure(EntityTypeBuilder<UserAuthenticationToken> builder)
-10:         {
-11:             builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
-12: 
-13:             builder.Property(e => e.Provider).HasMaxLength(500).IsRequired();
-14:             builder.Property(e => e.AccessToken).HasMaxLength(500);
-15:             builder.Property(e => e.RefreshToken).HasMaxLength(500);
-16:             builder.Property(e => e.PdsHost).HasMaxLength(500);
-17:             builder.Property(e => e.DpopKey).HasMaxLength(500);
-18:             builder.Property(e => e.IdToken).HasMaxLength(500);
-19: 
-20:             builder.HasOne(e => e.User)
-21:                 .WithMany()
-22:                 .HasForeignKey(e => e.UserId)
-23:                 .OnDelete(DeleteBehavior.Cascade);
-24: 
-25:             builder.HasOne(e => e.Tenant)
-26:                 .WithMany()
-27:                 .HasForeignKey(e => e.TenantId)
-28:                 .OnDelete(DeleteBehavior.Restrict);
-29:         }
-30:     }
-31: }
-````
-
-## File: Explore.Persistence/Configurations/Entities/UserConfiguration.cs
-````csharp
- 1: using Explore.Domain;
- 2: using Explore.Persistence.Seed;
- 3: using Microsoft.EntityFrameworkCore;
- 4: using Microsoft.EntityFrameworkCore.Metadata.Builders;
- 5: 
- 6: namespace Explore.Persistence.Configurations.Entities
- 7: {
- 8:     public class UserConfiguration : IEntityTypeConfiguration<User>
- 9:     {
-10:         public void Configure(EntityTypeBuilder<User> builder)
-11:         {
-12:             builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
-13: 
-14:             builder.Property(e => e.Email).HasMaxLength(500).IsRequired();
-15:             builder.Property(e => e.FirstName).HasMaxLength(500).IsRequired();
-16:             builder.Property(e => e.LastName).HasMaxLength(500).IsRequired();
-17:             builder.Property(e => e.AuthProvider).HasMaxLength(500);
-18:             builder.Property(e => e.AuthProviderId).HasMaxLength(500);
-19: 
-20: 
-21:             builder.HasOne(e => e.Actor)
-22:                 .WithMany()
-23:                 .HasForeignKey(e => e.ActorId)
-24:                 .OnDelete(DeleteBehavior.Restrict);
-25: 
-26: 
-27:             builder.HasIndex(e => e.Email).IsUnique();
-28: 
-29: 
-30: 
-31:         }
-32:     }
-33: }
-````
-
-## File: Explore.Persistence/Configurations/Entities/UserExternalLoginConfiguration.cs
-````csharp
- 1: using Explore.Domain;
- 2: using Microsoft.EntityFrameworkCore;
- 3: using Microsoft.EntityFrameworkCore.Metadata.Builders;
- 4: 
- 5: namespace Explore.Persistence.Configurations.Entities
- 6: {
- 7:     public class UserExternalLoginConfiguration : IEntityTypeConfiguration<UserExternalLogin>
- 8:     {
- 9:         public void Configure(EntityTypeBuilder<UserExternalLogin> builder)
-10:         {
-11:             builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
-12: 
-13:             builder.Property(e => e.Provider).HasMaxLength(255);
-14:             builder.Property(e => e.ProviderKey).HasMaxLength(500);
-15:             builder.Property(e => e.ProviderDisplayName).HasMaxLength(500);
-16: 
-17:             builder.HasOne(e => e.User)
-18:                 .WithMany()
-19:                 .HasForeignKey(e => e.UserId)
-20:                 .OnDelete(DeleteBehavior.Cascade);
-21: 
-22:             builder.HasOne(e => e.Tenant)
-23:                 .WithMany()
-24:                 .HasForeignKey(e => e.TenantId)
-25:                 .OnDelete(DeleteBehavior.Restrict);
-26:         }
-27:     }
-28: }
-````
-
-## File: Explore.Persistence/Configurations/Entities/UserRoleConfiguration.cs
-````csharp
- 1: using Explore.Domain;
- 2: using Explore.Persistence.Seed;
- 3: using Microsoft.EntityFrameworkCore;
- 4: using Microsoft.EntityFrameworkCore.Metadata.Builders;
- 5: 
- 6: namespace Explore.Persistence.Configurations.Entities
- 7: {
- 8:     public class UserRoleConfiguration : IEntityTypeConfiguration<UserRole>
- 9:     {
-10:         public void Configure(EntityTypeBuilder<UserRole> builder)
-11:         {
-12:             builder.Property(e => e.Id).ValueGeneratedNever();
-13: 
-14:             builder.Property(e => e.FullName).HasMaxLength(500).IsRequired();
-15:             builder.Property(e => e.MasterCode).HasMaxLength(500).IsRequired();
-16:             builder.Property(e => e.Description).HasMaxLength(500);
-17: 
-18:             builder.HasOne(e => e.Tenant)
-19:                 .WithMany()
-20:                 .HasForeignKey(e => e.TenantId)
-21:                 .OnDelete(DeleteBehavior.Restrict);
-22: 
-23: 
-24: 
-25: 
-26:         }
-27:     }
-28: }
 ````
 
 ## File: Explore.Persistence/Configurations/Entities/VisibilityTypeConfiguration.cs
@@ -106339,115 +105486,6 @@ README.md
 30: }
 ````
 
-## File: Explore.Persistence/Repositories/AppSettingRepository.cs
-````csharp
-  1: namespace Explore.Persistence.Repositories;
-  2: 
-  3: using Explore.Application.Contracts.Persistence;
-  4: using Explore.Domain;
-  5: using Microsoft.EntityFrameworkCore;
-  6: 
-  7: public class AppSettingRepository : IAppSettingRepository
-  8: {
-  9:     private readonly ExploreDbContext _dbContext;
- 10: 
- 11:     public AppSettingRepository(ExploreDbContext dbContext)
- 12:     {
- 13:         _dbContext = dbContext;
- 14:     }
- 15: 
- 16:     public async Task<AppSetting?> GetByKeyAsync(string key)
- 17:     {
- 18:         return await _dbContext.AppSettings
- 19:             .AsNoTracking()
- 20:             .FirstOrDefaultAsync(s => s.Key == key);
- 21:     }
- 22: 
- 23:     public async Task<List<AppSetting>> GetByCategoryAsync(string? category = null)
- 24:     {
- 25:         var query = _dbContext.AppSettings.AsNoTracking();
- 26: 
- 27:         if (!string.IsNullOrEmpty(category))
- 28:         {
- 29:             query = query.Where(s => s.Category == category);
- 30:         }
- 31: 
- 32:         return await query
- 33:             .OrderBy(s => s.Category)
- 34:             .ThenBy(s => s.Key)
- 35:             .ToListAsync();
- 36:     }
- 37: 
- 38:     public async Task<List<AppSetting>> GetSettingsNeedingReEncryptionAsync(int currentKeyVersion)
- 39:     {
- 40:         return await _dbContext.AppSettings
- 41:             .AsNoTracking()
- 42:             .Where(s => s.KeyVersion < currentKeyVersion)
- 43:             .OrderBy(s => s.Key)
- 44:             .ToListAsync();
- 45:     }
- 46: 
- 47:     public async Task<List<AppSetting>> GetAllAsync()
- 48:     {
- 49:         return await _dbContext.AppSettings
- 50:             .AsNoTracking()
- 51:             .OrderBy(s => s.Key)
- 52:             .ToListAsync();
- 53:     }
- 54: 
- 55:     public async Task<AppSetting> CreateAsync(AppSetting setting)
- 56:     {
- 57:         await _dbContext.AppSettings.AddAsync(setting);
- 58:         await _dbContext.SaveChangesAsync();
- 59:         return setting;
- 60:     }
- 61: 
- 62:     public async Task UpdateAsync(AppSetting setting)
- 63:     {
- 64: 
- 65:         _dbContext.AppSettings.Update(setting);
- 66:         await _dbContext.SaveChangesAsync();
- 67:     }
- 68: 
- 69:     public async Task<bool> DeleteAsync(string key)
- 70:     {
- 71:         var setting = await _dbContext.AppSettings.FirstOrDefaultAsync(s => s.Key == key);
- 72:         if (setting == null)
- 73:         {
- 74:             return false;
- 75:         }
- 76: 
- 77:         _dbContext.AppSettings.Remove(setting);
- 78:         await _dbContext.SaveChangesAsync();
- 79:         return true;
- 80:     }
- 81: 
- 82:     public async Task<bool> ExistsAsync(string key)
- 83:     {
- 84:         return await _dbContext.AppSettings.AnyAsync(s => s.Key == key);
- 85:     }
- 86: 
- 87:     public async Task BulkUpdateAsync(IEnumerable<AppSetting> settings)
- 88:     {
- 89:         await using var transaction = await _dbContext.Database.BeginTransactionAsync();
- 90:         try
- 91:         {
- 92:             foreach (var setting in settings)
- 93:             {
- 94:                 _dbContext.AppSettings.Update(setting);
- 95:             }
- 96:             await _dbContext.SaveChangesAsync();
- 97:             await transaction.CommitAsync();
- 98:         }
- 99:         catch
-100:         {
-101:             await transaction.RollbackAsync();
-102:             throw;
-103:         }
-104:     }
-105: }
-````
-
 ## File: Explore.Persistence/Repositories/AtprotoRecordRepository.cs
 ````csharp
  1: using Explore.Domain;
@@ -107185,50 +106223,6 @@ README.md
 12: }
 ````
 
-## File: Explore.Persistence/Repositories/ModuleDefinitionRepository.cs
-````csharp
- 1: using Explore.Application.Contracts.Persistence;
- 2: using Explore.Domain.Modules;
- 3: using Microsoft.EntityFrameworkCore;
- 4: 
- 5: namespace Explore.Persistence.Repositories;
- 6: 
- 7: public class ModuleDefinitionRepository : GenericRepository<ModuleDefinition, Guid>, IModuleDefinitionRepository
- 8: {
- 9:     private readonly ExploreDbContext _dbContext;
-10: 
-11:     public ModuleDefinitionRepository(ExploreDbContext dbContext) : base(dbContext)
-12:     {
-13:         _dbContext = dbContext;
-14:     }
-15: 
-16:     public async Task<ModuleDefinition?> GetByKey(string key)
-17:     {
-18:         return await _dbContext.ModuleDefinitions
-19:             .AsNoTracking()
-20:             .FirstOrDefaultAsync(m => m.Key == key);
-21:     }
-22: 
-23:     public async Task<List<ModuleDefinition>> GetAllActive()
-24:     {
-25:         return await _dbContext.ModuleDefinitions
-26:             .AsNoTracking()
-27:             .Where(m => m.IsActive)
-28:             .OrderBy(m => m.DisplayOrder)
-29:             .ToListAsync();
-30:     }
-31: 
-32:     public async Task<bool> IsActive(string key)
-33:     {
-34:         var module = await _dbContext.ModuleDefinitions
-35:             .AsNoTracking()
-36:             .FirstOrDefaultAsync(m => m.Key == key);
-37: 
-38:         return module?.IsActive ?? false;
-39:     }
-40: }
-````
-
 ## File: Explore.Persistence/Repositories/OrganizationPositionRepository.cs
 ````csharp
  1: using Explore.Application.Contracts.Persistence;
@@ -107436,56 +106430,6 @@ README.md
 36: }
 ````
 
-## File: Explore.Persistence/Repositories/SystemSettingRepository.cs
-````csharp
- 1: namespace Explore.Persistence.Repositories;
- 2: 
- 3: using Explore.Application.Contracts.Persistence;
- 4: using Explore.Domain;
- 5: using Microsoft.EntityFrameworkCore;
- 6: 
- 7: public class SystemSettingRepository : GenericRepository<SystemSetting, Guid>, ISystemSettingRepository
- 8: {
- 9:     private readonly ExploreDbContext _dbContext;
-10: 
-11:     public SystemSettingRepository(ExploreDbContext dbContext) : base(dbContext)
-12:     {
-13:         _dbContext = dbContext;
-14:     }
-15: 
-16:     public async Task<SystemSetting?> GetByKey(string key)
-17:     {
-18:         return await _dbContext.SystemSettings
-19:             .AsNoTracking()
-20:             .FirstOrDefaultAsync(s => s.Key == key);
-21:     }
-22: 
-23:     public async Task<List<SystemSetting>> GetAllSettings(string? category = null)
-24:     {
-25:         var query = _dbContext.SystemSettings.AsNoTracking();
-26: 
-27:         if (!string.IsNullOrEmpty(category))
-28:         {
-29:             query = query.Where(s => s.Category == category);
-30:         }
-31: 
-32:         return await query
-33:             .OrderBy(s => s.Category)
-34:             .ThenBy(s => s.DisplayOrder)
-35:             .ToListAsync();
-36:     }
-37: 
-38:     public async Task<bool> IsLocked(string key)
-39:     {
-40:         var setting = await _dbContext.SystemSettings
-41:             .AsNoTracking()
-42:             .FirstOrDefaultAsync(s => s.Key == key);
-43: 
-44:         return setting?.IsLocked ?? false;
-45:     }
-46: }
-````
-
 ## File: Explore.Persistence/Repositories/TagRepository.cs
 ````csharp
  1: using System;
@@ -107620,64 +106564,6 @@ README.md
 43: }
 ````
 
-## File: Explore.Persistence/Repositories/TenantCapabilityRepository.cs
-````csharp
- 1: using Explore.Application.Contracts.Persistence;
- 2: using Explore.Domain.Modules;
- 3: using Microsoft.EntityFrameworkCore;
- 4: 
- 5: namespace Explore.Persistence.Repositories;
- 6: 
- 7: public class TenantCapabilityRepository : GenericRepository<TenantCapability, Guid>, ITenantCapabilityRepository
- 8: {
- 9:     private readonly ExploreDbContext _dbContext;
-10: 
-11:     public TenantCapabilityRepository(ExploreDbContext dbContext) : base(dbContext)
-12:     {
-13:         _dbContext = dbContext;
-14:     }
-15: 
-16:     public async Task<List<TenantCapability>> GetByTenantId(Guid tenantId)
-17:     {
-18:         return await _dbContext.TenantCapabilities
-19:             .AsNoTracking()
-20:             .Include(c => c.Module)
-21:             .Where(c => c.TenantId == tenantId)
-22:             .ToListAsync();
-23:     }
-24: 
-25:     public async Task<List<TenantCapability>> GetEnabledByTenantId(Guid tenantId)
-26:     {
-27:         return await _dbContext.TenantCapabilities
-28:             .AsNoTracking()
-29:             .Include(c => c.Module)
-30:             .Where(c => c.TenantId == tenantId && c.IsEnabled && c.Module != null && c.Module.IsActive)
-31:             .OrderBy(c => c.Module!.DisplayOrder)
-32:             .ToListAsync();
-33:     }
-34: 
-35:     public async Task<bool> IsModuleEnabled(Guid tenantId, string moduleKey)
-36:     {
-37:         return await _dbContext.TenantCapabilities
-38:             .AsNoTracking()
-39:             .Include(c => c.Module)
-40:             .AnyAsync(c => c.TenantId == tenantId
-41:                 && c.IsEnabled
-42:                 && c.Module != null
-43:                 && c.Module.Key == moduleKey
-44:                 && c.Module.IsActive);
-45:     }
-46: 
-47:     public async Task<TenantCapability?> GetByTenantAndModuleKey(Guid tenantId, string moduleKey)
-48:     {
-49:         return await _dbContext.TenantCapabilities
-50:             .AsNoTracking()
-51:             .Include(c => c.Module)
-52:             .FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Module != null && c.Module.Key == moduleKey);
-53:     }
-54: }
-````
-
 ## File: Explore.Persistence/Repositories/TenantRepository.cs
 ````csharp
  1: using Explore.Application.Contracts.Persistence;
@@ -107702,52 +106588,6 @@ README.md
 20:         }
 21:     }
 22: }
-````
-
-## File: Explore.Persistence/Repositories/TenantSettingRepository.cs
-````csharp
- 1: namespace Explore.Persistence.Repositories;
- 2: 
- 3: using Explore.Application.Contracts.Persistence;
- 4: using Explore.Domain;
- 5: using Microsoft.EntityFrameworkCore;
- 6: 
- 7: public class TenantSettingRepository : GenericRepository<TenantSetting, Guid>, ITenantSettingRepository
- 8: {
- 9:     private readonly ExploreDbContext _dbContext;
-10: 
-11:     public TenantSettingRepository(ExploreDbContext dbContext) : base(dbContext)
-12:     {
-13:         _dbContext = dbContext;
-14:     }
-15: 
-16:     public async Task<TenantSetting?> GetByTenantAndKey(Guid tenantId, string key)
-17:     {
-18:         return await _dbContext.TenantSettingOverrides
-19:             .FirstOrDefaultAsync(s => s.TenantId == tenantId && s.Key == key);
-20:     }
-21: 
-22:     public async Task<List<TenantSetting>> GetAllForTenant(Guid tenantId)
-23:     {
-24:         return await _dbContext.TenantSettingOverrides
-25:             .AsNoTracking()
-26:             .Where(s => s.TenantId == tenantId)
-27:             .ToListAsync();
-28:     }
-29: 
-30:     public async Task<bool> RemoveOverride(Guid tenantId, string key)
-31:     {
-32:         var setting = await _dbContext.TenantSettingOverrides
-33:             .FirstOrDefaultAsync(s => s.TenantId == tenantId && s.Key == key);
-34: 
-35:         if (setting == null)
-36:             return false;
-37: 
-38:         _dbContext.TenantSettingOverrides.Remove(setting);
-39:         await _dbContext.SaveChangesAsync();
-40:         return true;
-41:     }
-42: }
 ````
 
 ## File: Explore.Persistence/Repositories/TenantSettingsRepository.cs
@@ -107989,229 +106829,369 @@ README.md
 12: }
 ````
 
-## File: Explore.Persistence/Seed/DatabaseSeeder.cs
+## File: Explore.Persistence/Seed/SeedData.cs
 ````csharp
   1: using Explore.Domain;
   2: using Explore.Domain.Enums;
   3: using Explore.Domain.Modules;
-  4: using Microsoft.EntityFrameworkCore;
-  5: using Microsoft.Extensions.Hosting;
+  4: 
+  5: namespace Explore.Persistence.Seed;
   6: 
-  7: namespace Explore.Persistence.Seed;
+  7: 
   8: 
   9: 
  10: 
  11: 
  12: 
  13: 
- 14: 
- 15: 
+ 14: public static class SeedData
+ 15: {
  16: 
- 17: 
+ 17:     private static readonly DateTime SeedTimestamp = new(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
  18: 
- 19: public static class DatabaseSeeder
- 20: {
- 21: 
- 22: 
- 23: 
- 24: 
- 25: 
- 26: 
+ 19: 
+ 20:     public static Tenant DefaultTenant => new()
+ 21:     {
+ 22:         Id = SeedIds.DefaultTenantId,
+ 23:         FullName = "ISLAMU Default Tenant",
+ 24:         Slug = "default",
+ 25:         IsActive = true
+ 26:     };
  27: 
- 28:     public static async Task SeedAsync(
- 29:         ExploreDbContext context,
- 30:         IHostEnvironment environment,
- 31:         CancellationToken cancellationToken = default)
- 32:     {
- 33: 
- 34:         if (!environment.IsDevelopment())
- 35:         {
- 36:             return;
- 37:         }
- 38: 
- 39:         await SeedDevelopmentDataAsync(context, cancellationToken);
- 40:     }
+ 28: 
+ 29:     public static User SystemUser => new()
+ 30:     {
+ 31:         Id = SeedIds.SystemUserId,
+ 32:         Email = "system@islamu.org",
+ 33:         FirstName = "System",
+ 34:         LastName = "Account",
+ 35:         ActorId = SeedIds.SystemUserActorId,
+ 36:         AuthProvider = "system",
+ 37:         AuthProviderId = "system",
+ 38:         EmailVerified = true
+ 39:     };
+ 40: 
  41: 
- 42: 
- 43: 
- 44: 
- 45: 
- 46:     private static async Task SeedDevelopmentDataAsync(
- 47:         ExploreDbContext context,
- 48:         CancellationToken cancellationToken)
- 49:     {
- 50: 
- 51:         if (await context.Tenants.AnyAsync(t => t.Id == SeedIds.DefaultTenantId, cancellationToken))
- 52:         {
- 53:             return;
- 54:         }
- 55: 
- 56: 
- 57:         await SeedTenantsAsync(context, cancellationToken);
- 58:         await SeedUsersAsync(context, cancellationToken);
- 59:         await SeedOrganizationsAsync(context, cancellationToken);
- 60:         await SeedActorsAsync(context, cancellationToken);
- 61:         await SeedOrganizationMembersAsync(context, cancellationToken);
- 62:         await SeedStorageObjectsAsync(context, cancellationToken);
- 63:         await SeedTenantSettingsAsync(context, cancellationToken);
- 64:         await SeedTenantCapabilitiesAsync(context, cancellationToken);
- 65:         await SeedLocationsAsync(context, cancellationToken);
- 66:         await SeedCategoriesAsync(context, cancellationToken);
- 67:         await SeedTagsAsync(context, cancellationToken);
- 68:         await SeedUserRolesAsync(context, cancellationToken);
- 69:         await SeedSampleEventsAsync(context, cancellationToken);
+ 42:     public static Organization IslamuOrganization => new()
+ 43:     {
+ 44:         Id = SeedIds.IslamuOrganizationId,
+ 45:         FullName = "ISLAMU",
+ 46:         WebsiteUrl = "https://islamu.ngo",
+ 47:         Email = "contact@openislamu.org",
+ 48:         Country = "Belgium",
+ 49:         City = "Brussels",
+ 50:         Postcode = "1070",
+ 51:         Address = "Parc Du Peterbos",
+ 52:         ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
+ 53:         TenantId = SeedIds.DefaultTenantId,
+ 54:         ActorId = SeedIds.IslamuOrganizationActorId,
+ 55:         CreatedAt = SeedTimestamp
+ 56:     };
+ 57: 
+ 58: 
+ 59:     public static Actor SystemUserActor => new()
+ 60:     {
+ 61:         Id = SeedIds.SystemUserActorId,
+ 62:         ActorTypeId = (int)ActorTypeEnum.User,
+ 63:         TenantId = SeedIds.DefaultTenantId,
+ 64:         DisplayName = "System Account",
+ 65:         Handle = "system",
+ 66:         Description = "System user account",
+ 67:         UserId = SeedIds.SystemUserId,
+ 68:         OrganizationId = null
+ 69:     };
  70: 
- 71:         await context.SaveChangesAsync(cancellationToken);
- 72:     }
- 73: 
- 74:     private static async Task SeedTenantsAsync(ExploreDbContext context, CancellationToken ct)
- 75:     {
- 76:         if (!await context.Tenants.AnyAsync(ct))
- 77:         {
- 78:             context.Tenants.Add(SeedData.DefaultTenant);
- 79:             await context.SaveChangesAsync(ct);
- 80:         }
- 81:     }
+ 71:     public static Actor IslamuOrganizationActor => new()
+ 72:     {
+ 73:         Id = SeedIds.IslamuOrganizationActorId,
+ 74:         ActorTypeId = (int)ActorTypeEnum.Organization,
+ 75:         TenantId = SeedIds.DefaultTenantId,
+ 76:         DisplayName = "ISLAMU",
+ 77:         Handle = "islamu",
+ 78:         Description = "ISLAMU NGO - Islamic Learning and Media Union",
+ 79:         UserId = null,
+ 80:         OrganizationId = SeedIds.IslamuOrganizationId
+ 81:     };
  82: 
- 83:     private static async Task SeedUsersAsync(ExploreDbContext context, CancellationToken ct)
- 84:     {
- 85:         if (!await context.Users.AnyAsync(ct))
- 86:         {
- 87:             context.Users.Add(SeedData.SystemUser);
- 88:             await context.SaveChangesAsync(ct);
- 89:         }
- 90:     }
- 91: 
- 92:     private static async Task SeedOrganizationsAsync(ExploreDbContext context, CancellationToken ct)
- 93:     {
- 94:         if (!await context.Organizations.AnyAsync(ct))
- 95:         {
- 96:             context.Organizations.Add(SeedData.IslamuOrganization);
- 97:             await context.SaveChangesAsync(ct);
- 98:         }
- 99:     }
-100: 
-101:     private static async Task SeedActorsAsync(ExploreDbContext context, CancellationToken ct)
-102:     {
-103:         if (!await context.Actors.AnyAsync(ct))
-104:         {
-105:             context.Actors.AddRange(
-106:                 SeedData.SystemUserActor,
-107:                 SeedData.IslamuOrganizationActor);
-108:             await context.SaveChangesAsync(ct);
-109:         }
-110:     }
-111: 
-112:     private static async Task SeedOrganizationMembersAsync(ExploreDbContext context, CancellationToken ct)
-113:     {
-114:         if (!await context.OrganizationMembers.AnyAsync(ct))
-115:         {
-116:             context.OrganizationMembers.Add(SeedData.SystemUserIslamuMember);
-117:             await context.SaveChangesAsync(ct);
-118:         }
-119:     }
-120: 
-121:     private static async Task SeedStorageObjectsAsync(ExploreDbContext context, CancellationToken ct)
-122:     {
-123:         if (!await context.StorageObjects.AnyAsync(ct))
-124:         {
-125:             context.StorageObjects.AddRange(
-126:                 SeedData.DefaultEventImage,
-127:                 SeedData.DefaultProfileImage,
-128:                 SeedData.DefaultOrganizationLogo);
-129:             await context.SaveChangesAsync(ct);
-130:         }
-131:     }
+ 83: 
+ 84:     public static OrganizationMember SystemUserIslamuMember => new()
+ 85:     {
+ 86:         Id = SeedIds.SystemUserIslamuMemberId,
+ 87:         OrganizationId = SeedIds.IslamuOrganizationId,
+ 88:         UserId = SeedIds.SystemUserId,
+ 89:         TenantId = SeedIds.DefaultTenantId,
+ 90:         OrganizationRoleId = (int)OrganizationRoleEnum.Creator,
+ 91:         OrganizationPositionId = (int)OrganizationPositionEnum.Founder,
+ 92:         CreatedAt = SeedTimestamp
+ 93:     };
+ 94: 
+ 95: 
+ 96:     public static StorageObject DefaultEventImage => new()
+ 97:     {
+ 98:         Id = SeedIds.DefaultEventImageId,
+ 99:         Uri = "https://placeholder.islamu.org/event-default.jpg",
+100:         FullName = "Default Event Image",
+101:         Extension = ".jpg",
+102:         Size = 0,
+103:         FileTypeId = (int)FileTypeEnum.Image,
+104:         TenantId = SeedIds.DefaultTenantId,
+105:         ActorId = SeedIds.SystemUserActorId
+106:     };
+107: 
+108:     public static StorageObject DefaultProfileImage => new()
+109:     {
+110:         Id = SeedIds.DefaultProfileImageId,
+111:         Uri = "https://placeholder.islamu.org/profile-default.jpg",
+112:         FullName = "Default Profile Image",
+113:         Extension = ".jpg",
+114:         Size = 0,
+115:         FileTypeId = (int)FileTypeEnum.Image,
+116:         TenantId = SeedIds.DefaultTenantId,
+117:         ActorId = SeedIds.SystemUserActorId
+118:     };
+119: 
+120:     public static StorageObject DefaultOrganizationLogo => new()
+121:     {
+122:         Id = SeedIds.DefaultOrganizationLogoId,
+123:         Uri = "https://placeholder.islamu.org/org-default.jpg",
+124:         FullName = "Default Organization Logo",
+125:         Extension = ".jpg",
+126:         Size = 0,
+127:         FileTypeId = (int)FileTypeEnum.Image,
+128:         TenantId = SeedIds.DefaultTenantId,
+129:         ActorId = SeedIds.SystemUserActorId
+130:     };
+131: 
 132: 
-133:     private static async Task SeedTenantSettingsAsync(ExploreDbContext context, CancellationToken ct)
+133:     public static TenantSettings DefaultTenantSettings => new()
 134:     {
-135:         if (!await context.Set<TenantSettings>().AnyAsync(ct))
-136:         {
-137:             context.Set<TenantSettings>().Add(SeedData.DefaultTenantSettings);
-138:             await context.SaveChangesAsync(ct);
-139:         }
-140:     }
-141: 
-142:     private static async Task SeedTenantCapabilitiesAsync(ExploreDbContext context, CancellationToken ct)
-143:     {
-144:         if (!await context.Set<TenantCapability>().AnyAsync(ct))
-145:         {
-146:             context.Set<TenantCapability>().AddRange(
-147:                 SeedData.DefaultTenantCoreCapability,
-148:                 SeedData.DefaultTenantIslamicCapability);
-149:             await context.SaveChangesAsync(ct);
-150:         }
-151:     }
-152: 
-153:     private static async Task SeedLocationsAsync(ExploreDbContext context, CancellationToken ct)
-154:     {
-155:         if (!await context.Locations.AnyAsync(ct))
-156:         {
-157:             context.Locations.Add(SeedData.OnlineLocation);
-158:             await context.SaveChangesAsync(ct);
-159:         }
-160:     }
-161: 
-162:     private static async Task SeedCategoriesAsync(ExploreDbContext context, CancellationToken ct)
-163:     {
-164:         if (!await context.Categories.AnyAsync(ct))
-165:         {
-166: 
-167:             context.Categories.AddRange(
-168:                 SeedData.IslamicStudiesCategory,
-169:                 SeedData.ArabicLanguageCategory,
-170:                 SeedData.CommunityEventsCategory);
-171:             await context.SaveChangesAsync(ct);
-172: 
-173: 
-174:             context.Categories.AddRange(
-175:                 SeedData.QuranCategory,
-176:                 SeedData.HadithCategory,
-177:                 SeedData.FiqhCategory,
-178:                 SeedData.AqeedahCategory,
-179:                 SeedData.SeerahCategory);
-180:             await context.SaveChangesAsync(ct);
-181:         }
-182:     }
-183: 
-184:     private static async Task SeedTagsAsync(ExploreDbContext context, CancellationToken ct)
-185:     {
-186:         if (!await context.Tags.AnyAsync(ct))
-187:         {
-188:             context.Tags.AddRange(
-189:                 SeedData.BeginnerTag,
-190:                 SeedData.IntermediateTag,
-191:                 SeedData.AdvancedTag,
-192:                 SeedData.FreeTag,
-193:                 SeedData.PaidTag,
-194:                 SeedData.OnlineTag,
-195:                 SeedData.InPersonTag);
-196:             await context.SaveChangesAsync(ct);
-197:         }
-198:     }
-199: 
-200:     private static async Task SeedUserRolesAsync(ExploreDbContext context, CancellationToken ct)
-201:     {
-202:         if (!await context.UserRoles.AnyAsync(ct))
-203:         {
-204:             context.UserRoles.AddRange(
-205:                 SeedData.SuperAdminRole,
-206:                 SeedData.AdminRole,
-207:                 SeedData.ModeratorRole,
-208:                 SeedData.UserRoleData);
-209:             await context.SaveChangesAsync(ct);
-210:         }
-211:     }
-212: 
-213:     private static async Task SeedSampleEventsAsync(ExploreDbContext context, CancellationToken ct)
-214:     {
-215:         if (!await context.Events.AnyAsync(ct))
-216:         {
-217:             context.Events.Add(SeedData.SampleEvent);
-218:             await context.SaveChangesAsync(ct);
-219:         }
-220:     }
-221: }
+135:         Id = SeedIds.DefaultTenantSettingsId,
+136:         TenantId = SeedIds.DefaultTenantId
+137:     };
+138: 
+139: 
+140:     public static TenantCapability DefaultTenantCoreCapability => new()
+141:     {
+142:         Id = SeedIds.DefaultTenantCoreCapabilityId,
+143:         TenantId = SeedIds.DefaultTenantId,
+144:         ModuleId = SeedIds.ModuleCoreId,
+145:         IsEnabled = true,
+146:         EnabledAt = SeedTimestamp
+147:     };
+148: 
+149:     public static TenantCapability DefaultTenantIslamicCapability => new()
+150:     {
+151:         Id = SeedIds.DefaultTenantIslamicCapabilityId,
+152:         TenantId = SeedIds.DefaultTenantId,
+153:         ModuleId = SeedIds.ModuleIslamicId,
+154:         IsEnabled = true,
+155:         EnabledAt = SeedTimestamp
+156:     };
+157: 
+158: 
+159:     public static Location OnlineLocation => new()
+160:     {
+161:         Id = SeedIds.OnlineLocationId,
+162:         FullName = "Online / Virtual",
+163:         Address = "Virtual",
+164:         Postcode = "00000",
+165:         Country = "Internet",
+166:         City = "Virtual",
+167:         Timezone = "UTC",
+168:         TenantId = SeedIds.DefaultTenantId
+169:     };
+170: 
+171: 
+172:     public static Category IslamicStudiesCategory => new()
+173:     {
+174:         Id = SeedIds.IslamicStudiesCategoryId,
+175:         MasterCode = "ISLAMIC_STUDIES",
+176:         FullName = "Islamic Studies",
+177:         TenantId = SeedIds.DefaultTenantId,
+178:         ParentId = null
+179:     };
+180: 
+181:     public static Category QuranCategory => new()
+182:     {
+183:         Id = SeedIds.QuranCategoryId,
+184:         MasterCode = "QURAN",
+185:         FullName = "Quran & Tafsir",
+186:         TenantId = SeedIds.DefaultTenantId,
+187:         ParentId = SeedIds.IslamicStudiesCategoryId
+188:     };
+189: 
+190:     public static Category HadithCategory => new()
+191:     {
+192:         Id = SeedIds.HadithCategoryId,
+193:         MasterCode = "HADITH",
+194:         FullName = "Hadith Sciences",
+195:         TenantId = SeedIds.DefaultTenantId,
+196:         ParentId = SeedIds.IslamicStudiesCategoryId
+197:     };
+198: 
+199:     public static Category FiqhCategory => new()
+200:     {
+201:         Id = SeedIds.FiqhCategoryId,
+202:         MasterCode = "FIQH",
+203:         FullName = "Fiqh (Islamic Jurisprudence)",
+204:         TenantId = SeedIds.DefaultTenantId,
+205:         ParentId = SeedIds.IslamicStudiesCategoryId
+206:     };
+207: 
+208:     public static Category AqeedahCategory => new()
+209:     {
+210:         Id = SeedIds.AqeedahCategoryId,
+211:         MasterCode = "AQEEDAH",
+212:         FullName = "Aqeedah (Islamic Creed)",
+213:         TenantId = SeedIds.DefaultTenantId,
+214:         ParentId = SeedIds.IslamicStudiesCategoryId
+215:     };
+216: 
+217:     public static Category SeerahCategory => new()
+218:     {
+219:         Id = SeedIds.SeerahCategoryId,
+220:         MasterCode = "SEERAH",
+221:         FullName = "Seerah (Prophetic Biography)",
+222:         TenantId = SeedIds.DefaultTenantId,
+223:         ParentId = SeedIds.IslamicStudiesCategoryId
+224:     };
+225: 
+226:     public static Category ArabicLanguageCategory => new()
+227:     {
+228:         Id = SeedIds.ArabicLanguageCategoryId,
+229:         MasterCode = "ARABIC",
+230:         FullName = "Arabic Language",
+231:         TenantId = SeedIds.DefaultTenantId,
+232:         ParentId = null
+233:     };
+234: 
+235:     public static Category CommunityEventsCategory => new()
+236:     {
+237:         Id = SeedIds.CommunityEventsCategoryId,
+238:         MasterCode = "COMMUNITY",
+239:         FullName = "Community Events",
+240:         TenantId = SeedIds.DefaultTenantId,
+241:         ParentId = null
+242:     };
+243: 
+244: 
+245:     public static Tag BeginnerTag => new()
+246:     {
+247:         Id = SeedIds.BeginnerTagId,
+248:         MasterCode = "BEGINNER",
+249:         FullName = "Beginner",
+250:         TenantId = SeedIds.DefaultTenantId
+251:     };
+252: 
+253:     public static Tag IntermediateTag => new()
+254:     {
+255:         Id = SeedIds.IntermediateTagId,
+256:         MasterCode = "INTERMEDIATE",
+257:         FullName = "Intermediate",
+258:         TenantId = SeedIds.DefaultTenantId
+259:     };
+260: 
+261:     public static Tag AdvancedTag => new()
+262:     {
+263:         Id = SeedIds.AdvancedTagId,
+264:         MasterCode = "ADVANCED",
+265:         FullName = "Advanced",
+266:         TenantId = SeedIds.DefaultTenantId
+267:     };
+268: 
+269:     public static Tag FreeTag => new()
+270:     {
+271:         Id = SeedIds.FreeTagId,
+272:         MasterCode = "FREE",
+273:         FullName = "Free",
+274:         TenantId = SeedIds.DefaultTenantId
+275:     };
+276: 
+277:     public static Tag PaidTag => new()
+278:     {
+279:         Id = SeedIds.PaidTagId,
+280:         MasterCode = "PAID",
+281:         FullName = "Paid",
+282:         TenantId = SeedIds.DefaultTenantId
+283:     };
+284: 
+285:     public static Tag OnlineTag => new()
+286:     {
+287:         Id = SeedIds.OnlineTagId,
+288:         MasterCode = "ONLINE",
+289:         FullName = "Online",
+290:         TenantId = SeedIds.DefaultTenantId
+291:     };
+292: 
+293:     public static Tag InPersonTag => new()
+294:     {
+295:         Id = SeedIds.InPersonTagId,
+296:         MasterCode = "IN_PERSON",
+297:         FullName = "In-Person",
+298:         TenantId = SeedIds.DefaultTenantId
+299:     };
+300: 
+301: 
+302:     public static Event SampleEvent => new()
+303:     {
+304:         Id = SeedIds.SampleEventId,
+305:         Title = "Welcome to ISLAMU Events",
+306:         Description = "This is a sample event to demonstrate the ISLAMU Events platform. Feel free to explore and create your own events!",
+307:         Slug = "welcome-to-islamu-events",
+308:         EventTypeId = (int)EventTypeEnum.Webinar,
+309:         AudienceGenderId = (int)AudienceGenderEnum.Both,
+310:         AudienceAgeId = (int)AudienceAgeEnum.AllAges,
+311:         ActorId = SeedIds.IslamuOrganizationActorId,
+312:         Price = 0,
+313:         CurrencyCode = "EUR",
+314:         FeaturedImageId = SeedIds.DefaultEventImageId,
+315:         TotalViews = 0,
+316:         IsRegistrationRequired = false,
+317:         MadhabId = null,
+318:         TenantId = SeedIds.DefaultTenantId,
+319:         VisibilityTypeId = (int)VisibilityTypeEnum.Public,
+320:         EventStatusId = (int)EventStatusEnum.Published,
+321:         EventFormatId = (int)EventFormatEnum.Digital,
+322:         Timezone = "Europe/Brussels"
+323:     };
+324: 
+325: 
+326:     public static UserRole SuperAdminRole => new()
+327:     {
+328:         Id = 1,
+329:         FullName = "Super Administrator",
+330:         MasterCode = "SUPER_ADMIN",
+331:         Description = "Full system access",
+332:         TenantId = SeedIds.DefaultTenantId
+333:     };
+334: 
+335:     public static UserRole AdminRole => new()
+336:     {
+337:         Id = 2,
+338:         FullName = "Administrator",
+339:         MasterCode = "ADMIN",
+340:         Description = "Organization administrator",
+341:         TenantId = SeedIds.DefaultTenantId
+342:     };
+343: 
+344:     public static UserRole ModeratorRole => new()
+345:     {
+346:         Id = 3,
+347:         FullName = "Moderator",
+348:         MasterCode = "MODERATOR",
+349:         Description = "Content moderator",
+350:         TenantId = SeedIds.DefaultTenantId
+351:     };
+352: 
+353:     public static UserRole UserRoleData => new()
+354:     {
+355:         Id = 4,
+356:         FullName = "User",
+357:         MasterCode = "USER",
+358:         Description = "Standard user",
+359:         TenantId = SeedIds.DefaultTenantId
+360:     };
+361: }
 ````
 
 ## File: Explore.Persistence/ValueGenerators/GuidVersion7ValueGenerator.cs
@@ -116156,91 +115136,81 @@ README.md
 ````json
  1: {
  2:   "permissions": {
- 3:     "allow": [
- 4:       "Edit:*",
- 5:       "Write:*",
- 6:       "MultiEdit:*",
- 7:       "NotebookEdit:*",
- 8:       "Bash:*"
- 9:     ],
-10:     "defaultMode": "acceptEdits"
-11:   },
-12:   "enableAllProjectMcpServers": true,
-13:   "enabledMcpjsonServers": [
-14:     "sequential-thinking",
-15:     "playwright",
-16:     "context7"
-17:   ],
-18:   "hooks": {
-19:     "UserPromptSubmit": [
+ 3:     "allow": ["Edit:*", "Write:*", "MultiEdit:*", "NotebookEdit:*", "Bash:*"],
+ 4:     "defaultMode": "acceptEdits"
+ 5:   },
+ 6:   "enableAllProjectMcpServers": true,
+ 7:   "enabledMcpjsonServers": ["sequential-thinking", "playwright", "context7"],
+ 8:   "hooks": {
+ 9:     "UserPromptSubmit": [
+10:       {
+11:         "hooks": [
+12:           {
+13:             "type": "command",
+14:             "command": "dotnet .claude/hooks/SkillTrigger.cs"
+15:           }
+16:         ]
+17:       }
+18:     ],
+19:     "PreToolUse": [
 20:       {
-21:         "hooks": [
-22:           {
-23:             "type": "command",
-24:             "command": "dotnet .claude/hooks/SkillTrigger.cs"
-25:           }
-26:         ]
-27:       }
-28:     ],
-29:     "PreToolUse": [
-30:       {
-31:         "matcher": "Bash",
-32:         "hooks": [
-33:           {
-34:             "type": "command",
-35:             "command": "dotnet .claude/hooks/SecurityCheck.cs"
-36:           }
-37:         ]
-38:       }
-39:     ],
-40:     "PostToolUse": [
-41:       {
-42:         "matcher": "Edit|MultiEdit|Write",
+21:         "matcher": "Bash",
+22:         "hooks": [
+23:           {
+24:             "type": "command",
+25:             "command": "dotnet .claude/hooks/SecurityCheck.cs"
+26:           }
+27:         ]
+28:       }
+29:     ],
+30:     "PostToolUse": [
+31:       {
+32:         "matcher": "Edit|MultiEdit|Write",
+33:         "hooks": [
+34:           {
+35:             "type": "command",
+36:             "command": "dotnet .claude/hooks/ContextTracker.cs"
+37:           }
+38:         ]
+39:       }
+40:     ],
+41:     "Stop": [
+42:       {
 43:         "hooks": [
 44:           {
 45:             "type": "command",
-46:             "command": "dotnet .claude/hooks/ContextTracker.cs"
-47:           }
-48:         ]
-49:       }
-50:     ],
-51:     "Stop": [
-52:       {
-53:         "hooks": [
-54:           {
-55:             "type": "command",
-56:             "command": "dotnet .claude/hooks/FormatCode.cs"
-57:           },
-58:           {
-59:             "type": "command",
-60:             "command": "dotnet .claude/hooks/BuildCheck.cs"
-61:           }
-62:         ]
-63:       }
-64:     ]
-65:   },
-66:   "enabledPlugins": {
-67:     "github@claude-plugins-official": false,
-68:     "serena@claude-plugins-official": true,
-69:     "commit-commands@claude-plugins-official": true,
-70:     "security-guidance@claude-plugins-official": true,
-71:     "csharp-lsp@claude-plugins-official": true,
-72:     "llm-council@the-llm-council": true,
-73:     "claude-mem@thedotmack": true
-74:   },
-75:   "commands": {
-76:     "build": "dotnet build",
-77:     "test": "dotnet test",
-78:     "format": "dotnet format",
-79:     "run": "dotnet run"
-80:   },
-81:   "trusted_domains": [
-82:     "localhost",
-83:     "github.com",
-84:     "islamu.ngo",
-85:     "event.islamu.ngo"
-86:   ]
-87: }
+46:             "command": "dotnet .claude/hooks/FormatCode.cs"
+47:           },
+48:           {
+49:             "type": "command",
+50:             "command": "dotnet .claude/hooks/BuildCheck.cs"
+51:           }
+52:         ]
+53:       }
+54:     ]
+55:   },
+56:   "enabledPlugins": {
+57:     "github@claude-plugins-official": false,
+58:     "serena@claude-plugins-official": true,
+59:     "commit-commands@claude-plugins-official": true,
+60:     "security-guidance@claude-plugins-official": true,
+61:     "csharp-lsp@claude-plugins-official": true,
+62:     "llm-council@the-llm-council": true,
+63:     "claude-mem@thedotmack": false
+64:   },
+65:   "commands": {
+66:     "build": "dotnet build",
+67:     "test": "dotnet test",
+68:     "format": "dotnet format",
+69:     "run": "dotnet run"
+70:   },
+71:   "trusted_domains": [
+72:     "localhost",
+73:     "github.com",
+74:     "islamu.ngo",
+75:     "event.islamu.ngo"
+76:   ]
+77: }
 ````
 
 ## File: .claude/skills/auth-patterns/SKILL.md
@@ -134540,6 +133510,360 @@ README.md
 153: }
 ````
 
+## File: Event.API.IntegrationTests/Fixtures/CustomWebApplicationFactory.cs
+````csharp
+ 1: using Explore.Persistence;
+ 2: using Microsoft.AspNetCore.Authentication;
+ 3: using Microsoft.AspNetCore.Hosting;
+ 4: using Microsoft.AspNetCore.Mvc.Testing;
+ 5: using Microsoft.EntityFrameworkCore;
+ 6: using Microsoft.Extensions.Configuration;
+ 7: using Microsoft.Extensions.DependencyInjection;
+ 8: using Microsoft.Extensions.DependencyInjection.Extensions;
+ 9: 
+10: namespace Event.Api.IntegrationTests.Fixtures;
+11: 
+12: public class CustomWebApplicationFactory : WebApplicationFactory<Program>
+13: {
+14:     protected override void ConfigureWebHost(IWebHostBuilder builder)
+15:     {
+16: 
+17:         builder.UseEnvironment("Testing");
+18: 
+19: 
+20:         builder.ConfigureAppConfiguration((context, config) =>
+21:         {
+22:             var inMemoryConfig = new Dictionary<string, string?>
+23:             {
+24:                 {"ConnectionStrings:DefaultConnection", "Host=localhost;Database=explore_db_test;Username=postgres;Password=postgres"},
+25:                 {"Keycloak:Authority", "https://auth.example.com"},
+26:                 {"Keycloak:Realm", "explore"},
+27:                 {"Keycloak:Audience", "explore-api"},
+28:                 {"Keycloak:RequireHttpsMetadata", "false"},
+29:                 {"Keycloak:MetadataAddress", "https://auth.example.com/.well-known/openid-configuration"},
+30:                 {"S3Settings:Region", "us-east-1"},
+31:                 {"S3Settings:BucketName", "test-bucket"},
+32:                 {"S3Settings:AccessKeyId", "test-key"},
+33:                 {"S3Settings:SecretAccessKey", "test-secret"},
+34:                 {"S3Settings:Endpoint", "https://s3.example.com"}
+35:             };
+36:             config.AddInMemoryCollection(inMemoryConfig);
+37:         });
+38: 
+39:         builder.ConfigureServices(services =>
+40:         {
+41: 
+42: 
+43:             services.AddDbContext<ExploreDbContext>(options =>
+44:             {
+45:                 options.UseInMemoryDatabase("InMemoryDbForTesting");
+46:                 options.ConfigureWarnings(x => x.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning));
+47:             });
+48:         });
+49:     }
+50: }
+````
+
+## File: Event.Application.UnitTests/Features/Actors/Commands/CreateActorCommandHandlerTests.cs
+````csharp
+  1: using AutoMapper;
+  2: using Event.Application.UnitTests.Common;
+  3: using Explore.Application.Contracts.Infrastructure;
+  4: using Explore.Application.Contracts.Persistence;
+  5: using Explore.Application.DTOs.Actor;
+  6: using Explore.Application.Features.Actors.Handlers.Commands;
+  7: using Explore.Application.Features.Actors.Requests.Commands;
+  8: using Explore.Domain;
+  9: using NSubstitute;
+ 10: using TUnit.Assertions;
+ 11: using TUnit.Core;
+ 12: 
+ 13: namespace Event.Application.UnitTests.Features.Actors.Commands;
+ 14: 
+ 15: public class CreateActorCommandHandlerTests
+ 16: {
+ 17:     private readonly IActorRepository _actorRepository;
+ 18:     private readonly IActorTypeRepository _actorTypeRepository;
+ 19:     private readonly IDidCustodyTypeRepository _didCustodyTypeRepository;
+ 20:     private readonly IStorageObjectRepository _storageObjectRepository;
+ 21:     private readonly ITenantRepository _tenantRepository;
+ 22:     private readonly IUserRepository _userRepository;
+ 23:     private readonly IOrganizationRepository _organizationRepository;
+ 24:     private readonly ITenantContext _tenantContext;
+ 25:     private readonly IMapper _mapper;
+ 26:     private readonly CreateActorCommandHandler _handler;
+ 27: 
+ 28:     public CreateActorCommandHandlerTests()
+ 29:     {
+ 30:         _actorRepository = Substitute.For<IActorRepository>();
+ 31:         _actorTypeRepository = Substitute.For<IActorTypeRepository>();
+ 32:         _didCustodyTypeRepository = Substitute.For<IDidCustodyTypeRepository>();
+ 33:         _storageObjectRepository = Substitute.For<IStorageObjectRepository>();
+ 34:         _tenantRepository = Substitute.For<ITenantRepository>();
+ 35:         _userRepository = Substitute.For<IUserRepository>();
+ 36:         _organizationRepository = Substitute.For<IOrganizationRepository>();
+ 37:         _tenantContext = Substitute.For<ITenantContext>();
+ 38:         _mapper = Substitute.For<IMapper>();
+ 39: 
+ 40:         _handler = new CreateActorCommandHandler(
+ 41:             _actorRepository,
+ 42:             _actorTypeRepository,
+ 43:             _didCustodyTypeRepository,
+ 44:             _storageObjectRepository,
+ 45:             _tenantRepository,
+ 46:             _userRepository,
+ 47:             _organizationRepository,
+ 48:             _tenantContext,
+ 49:             _mapper
+ 50:         );
+ 51:     }
+ 52: 
+ 53:     [Test]
+ 54:     public async Task Handle_WithValidUserActor_ReturnsSuccessResponse()
+ 55:     {
+ 56: 
+ 57:         var tenantId = Guid.NewGuid();
+ 58:         var userId = Guid.NewGuid();
+ 59:         var actorId = Guid.NewGuid();
+ 60:         var actorTypeId = 1;
+ 61: 
+ 62:         var command = new CreateActorCommand
+ 63:         {
+ 64:             ActorDto = new CreateActorDto
+ 65:             {
+ 66:                 ActorTypeId = actorTypeId,
+ 67:                 UserId = userId,
+ 68:                 DisplayName = "Test User Actor",
+ 69:                 TenantId = tenantId
+ 70:             }
+ 71:         };
+ 72: 
+ 73:         _tenantContext.TenantId.Returns(tenantId);
+ 74: 
+ 75: 
+ 76:         _actorTypeRepository.Exists(actorTypeId).Returns(true);
+ 77:         _tenantRepository.Exists(tenantId).Returns(true);
+ 78:         _userRepository.Exists(userId).Returns(true);
+ 79: 
+ 80: 
+ 81:         var actor = new Actor { Id = actorId, DisplayName = "Test User Actor" };
+ 82:         _mapper.Map<Actor>(command.ActorDto).Returns(actor);
+ 83:         _actorRepository.Create(Arg.Any<Actor>()).Returns(actor);
+ 84: 
+ 85: 
+ 86:         var result = await _handler.Handle(command, CancellationToken.None);
+ 87: 
+ 88: 
+ 89:         await Assert.That(result.Success).IsTrue();
+ 90:         await Assert.That(result.Id).IsEqualTo(actorId);
+ 91:         await _actorRepository.Received(1).Create(Arg.Any<Actor>());
+ 92:     }
+ 93: 
+ 94:     [Test]
+ 95:     public async Task Handle_WithValidOrganizationActor_ReturnsSuccessResponse()
+ 96:     {
+ 97: 
+ 98:         var tenantId = Guid.NewGuid();
+ 99:         var organizationId = Guid.NewGuid();
+100:         var actorId = Guid.NewGuid();
+101:         var actorTypeId = 2;
+102: 
+103:         var command = new CreateActorCommand
+104:         {
+105:             ActorDto = new CreateActorDto
+106:             {
+107:                 ActorTypeId = actorTypeId,
+108:                 OrganizationId = organizationId,
+109:                 DisplayName = "Test Organization Actor",
+110:                 TenantId = tenantId
+111:             }
+112:         };
+113: 
+114:         _tenantContext.TenantId.Returns(tenantId);
+115: 
+116: 
+117:         _actorTypeRepository.Exists(actorTypeId).Returns(true);
+118:         _tenantRepository.Exists(tenantId).Returns(true);
+119:         _organizationRepository.Exists(organizationId).Returns(true);
+120: 
+121: 
+122:         var actor = new Actor { Id = actorId, DisplayName = "Test Organization Actor" };
+123:         _mapper.Map<Actor>(command.ActorDto).Returns(actor);
+124:         _actorRepository.Create(Arg.Any<Actor>()).Returns(actor);
+125: 
+126: 
+127:         var result = await _handler.Handle(command, CancellationToken.None);
+128: 
+129: 
+130:         await Assert.That(result.Success).IsTrue();
+131:         await Assert.That(result.Id).IsEqualTo(actorId);
+132:         await _actorRepository.Received(1).Create(Arg.Any<Actor>());
+133:     }
+134: 
+135:     [Test]
+136:     public async Task Handle_WithInvalidActorType_ReturnsFailedResponse()
+137:     {
+138: 
+139:         var tenantId = Guid.NewGuid();
+140:         var userId = Guid.NewGuid();
+141:         var invalidActorTypeId = 999;
+142: 
+143:         var command = new CreateActorCommand
+144:         {
+145:             ActorDto = new CreateActorDto
+146:             {
+147:                 ActorTypeId = invalidActorTypeId,
+148:                 UserId = userId,
+149:                 DisplayName = "Test Actor",
+150:                 TenantId = tenantId
+151:             }
+152:         };
+153: 
+154:         _tenantContext.TenantId.Returns(tenantId);
+155:         _actorTypeRepository.Exists(invalidActorTypeId).Returns(false);
+156: 
+157: 
+158:         var result = await _handler.Handle(command, CancellationToken.None);
+159: 
+160: 
+161:         await Assert.That(result.Success).IsFalse();
+162:         await _actorRepository.DidNotReceive().Create(Arg.Any<Actor>());
+163:     }
+164: 
+165:     [Test]
+166:     public async Task Handle_WithBothUserAndOrganization_ReturnsValidationError()
+167:     {
+168: 
+169:         var tenantId = Guid.NewGuid();
+170:         var userId = Guid.NewGuid();
+171:         var organizationId = Guid.NewGuid();
+172: 
+173:         var command = new CreateActorCommand
+174:         {
+175:             ActorDto = new CreateActorDto
+176:             {
+177:                 ActorTypeId = 1,
+178:                 UserId = userId,
+179:                 OrganizationId = organizationId,
+180:                 DisplayName = "Test Actor",
+181:                 TenantId = tenantId
+182:             }
+183:         };
+184: 
+185:         _tenantContext.TenantId.Returns(tenantId);
+186:         _actorTypeRepository.Exists(1).Returns(true);
+187:         _tenantRepository.Exists(tenantId).Returns(true);
+188:         _userRepository.Exists(userId).Returns(true);
+189:         _organizationRepository.Exists(organizationId).Returns(true);
+190: 
+191: 
+192:         var result = await _handler.Handle(command, CancellationToken.None);
+193: 
+194: 
+195:         await Assert.That(result.Success).IsFalse();
+196:         await _actorRepository.DidNotReceive().Create(Arg.Any<Actor>());
+197:     }
+198: 
+199:     [Test]
+200:     public async Task Handle_WithNeitherUserNorOrganization_ReturnsValidationError()
+201:     {
+202: 
+203:         var tenantId = Guid.NewGuid();
+204: 
+205:         var command = new CreateActorCommand
+206:         {
+207:             ActorDto = new CreateActorDto
+208:             {
+209:                 ActorTypeId = 1,
+210:                 UserId = null,
+211:                 OrganizationId = null,
+212:                 DisplayName = "Test Actor",
+213:                 TenantId = tenantId
+214:             }
+215:         };
+216: 
+217:         _tenantContext.TenantId.Returns(tenantId);
+218:         _actorTypeRepository.Exists(1).Returns(true);
+219:         _tenantRepository.Exists(tenantId).Returns(true);
+220: 
+221: 
+222:         var result = await _handler.Handle(command, CancellationToken.None);
+223: 
+224: 
+225:         await Assert.That(result.Success).IsFalse();
+226:         await _actorRepository.DidNotReceive().Create(Arg.Any<Actor>());
+227:     }
+228: 
+229:     [Test]
+230:     public async Task Handle_WithMissingDisplayName_ReturnsValidationError()
+231:     {
+232: 
+233:         var tenantId = Guid.NewGuid();
+234:         var userId = Guid.NewGuid();
+235: 
+236:         var command = new CreateActorCommand
+237:         {
+238:             ActorDto = new CreateActorDto
+239:             {
+240:                 ActorTypeId = 1,
+241:                 UserId = userId,
+242:                 DisplayName = "", // Missing required field
+243:                 TenantId = tenantId
+244:             }
+245:         };
+246: 
+247:         _tenantContext.TenantId.Returns(tenantId);
+248:         _actorTypeRepository.Exists(1).Returns(true);
+249:         _tenantRepository.Exists(tenantId).Returns(true);
+250:         _userRepository.Exists(userId).Returns(true);
+251: 
+252:         // Act
+253:         var result = await _handler.Handle(command, CancellationToken.None);
+254: 
+255:         // Assert
+256:         await Assert.That(result.Success).IsFalse();
+257:         await _actorRepository.DidNotReceive().Create(Arg.Any<Actor>());
+258:     }
+259: 
+260:     [Test]
+261:     public async Task Handle_SetsTenantIdFromContext()
+262:     {
+263:         // Arrange
+264:         var tenantId = Guid.NewGuid();
+265:         var userId = Guid.NewGuid();
+266:         var actorId = Guid.NewGuid();
+267: 
+268:         var command = new CreateActorCommand
+269:         {
+270:             ActorDto = new CreateActorDto
+271:             {
+272:                 ActorTypeId = 1,
+273:                 UserId = userId,
+274:                 DisplayName = "Test Actor",
+275:                 TenantId = Guid.NewGuid()
+276:             }
+277:         };
+278: 
+279:         _tenantContext.TenantId.Returns(tenantId);
+280:         _actorTypeRepository.Exists(1).Returns(true);
+281:         _tenantRepository.Exists(Arg.Any<Guid>()).Returns(true);
+282:         _userRepository.Exists(userId).Returns(true);
+283: 
+284:         var actor = new Actor { Id = actorId, DisplayName = "Test Actor" };
+285:         _mapper.Map<Actor>(command.ActorDto).Returns(actor);
+286:         _actorRepository.Create(Arg.Any<Actor>()).Returns(actor);
+287: 
+288: 
+289:         var result = await _handler.Handle(command, CancellationToken.None);
+290: 
+291: 
+292:         await Assert.That(result.Success).IsTrue();
+293: 
+294:         await _actorRepository.Received(1).Create(Arg.Is<Actor>(a => a.TenantId == tenantId));
+295:     }
+296: }
+````
+
 ## File: Event.Application.UnitTests/Features/Actors/Queries/GetActorDetailsRequestHandlerTests.cs
 ````csharp
   1: using AutoMapper;
@@ -134699,6 +134023,157 @@ README.md
 155: }
 ````
 
+## File: Event.Application.UnitTests/Features/Events/Commands/CreateEventCommandHandlerTests.cs
+````csharp
+  1: using AutoMapper;
+  2: using Explore.Application.Contracts.Identity;
+  3: using Explore.Application.Contracts.Infrastructure;
+  4: using Explore.Application.Contracts.Persistence;
+  5: using Explore.Application.DTOs.Event;
+  6: using Explore.Application.Features.Events.Handlers.Commands;
+  7: using Explore.Application.Features.Events.Requests.Commands;
+  8: using Explore.Application.Responses;
+  9: using Explore.Domain;
+ 10: using NSubstitute;
+ 11: using TUnit.Assertions;
+ 12: using TUnit.Core;
+ 13: 
+ 14: namespace Event.Application.UnitTests.Features.Events.Commands;
+ 15: 
+ 16: public class CreateEventCommandHandlerTests
+ 17: {
+ 18:     private readonly IEventRepository _eventRepository;
+ 19:     private readonly IEventSessionRepository _eventSessionRepository;
+ 20:     private readonly IActorRepository _actorRepository;
+ 21:     private readonly IOrganizationRepository _organizationRepository;
+ 22:     private readonly IOrganizationMemberRepository _organizationMemberRepository;
+ 23:     private readonly IAudienceAgeRepository _audienceAgeRepository;
+ 24:     private readonly IAudienceGenderRepository _audienceGenderRepository;
+ 25:     private readonly IEventTypeRepository _eventTypeRepository;
+ 26:     private readonly IStorageObjectRepository _storageObjectRepository;
+ 27:     private readonly IUserContext _userContext;
+ 28:     private readonly ITenantContext _tenantContext;
+ 29:     private readonly IMapper _mapper;
+ 30:     private readonly CreateEventCommandHandler _handler;
+ 31: 
+ 32:     public CreateEventCommandHandlerTests()
+ 33:     {
+ 34:         _eventRepository = Substitute.For<IEventRepository>();
+ 35:         _eventSessionRepository = Substitute.For<IEventSessionRepository>();
+ 36:         _actorRepository = Substitute.For<IActorRepository>();
+ 37:         _organizationRepository = Substitute.For<IOrganizationRepository>();
+ 38:         _organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
+ 39:         _audienceAgeRepository = Substitute.For<IAudienceAgeRepository>();
+ 40:         _audienceGenderRepository = Substitute.For<IAudienceGenderRepository>();
+ 41:         _eventTypeRepository = Substitute.For<IEventTypeRepository>();
+ 42:         _storageObjectRepository = Substitute.For<IStorageObjectRepository>();
+ 43:         _userContext = Substitute.For<IUserContext>();
+ 44:         _tenantContext = Substitute.For<ITenantContext>();
+ 45:         _mapper = Substitute.For<IMapper>();
+ 46: 
+ 47:         _handler = new CreateEventCommandHandler(
+ 48:             _eventRepository,
+ 49:             _eventSessionRepository,
+ 50:             _actorRepository,
+ 51:             _organizationRepository,
+ 52:             _organizationMemberRepository,
+ 53:             _audienceAgeRepository,
+ 54:             _audienceGenderRepository,
+ 55:             _eventTypeRepository,
+ 56:             _storageObjectRepository,
+ 57:             _userContext,
+ 58:             _tenantContext,
+ 59:             _mapper
+ 60:         );
+ 61:     }
+ 62: 
+ 63:     [Test]
+ 64:     public async Task Handle_WithValidRequest_ReturnsSuccessResponse()
+ 65:     {
+ 66: 
+ 67:         var userId = Guid.NewGuid();
+ 68:         var actorId = Guid.NewGuid();
+ 69:         var eventId = Guid.NewGuid();
+ 70:         var command = new CreateEventCommand
+ 71:         {
+ 72:             EventDto = new CreateEventDto
+ 73:             {
+ 74:                 Title = "Test Event",
+ 75:                 Description = "Description",
+ 76:                 FirstSessionDate = DateTimeOffset.UtcNow.AddDays(1),
+ 77:                 LastSessionDate = DateTimeOffset.UtcNow.AddDays(1).AddHours(2),
+ 78:                 EventTypeId = 1,
+ 79:                 AudienceGenderId = 1,
+ 80:                 AudienceAgeId = 1
+ 81:             }
+ 82:         };
+ 83: 
+ 84:         _userContext.GetRequiredUserId().Returns(userId);
+ 85: 
+ 86: 
+ 87:         var actor = new Actor { Id = actorId, UserId = userId, DisplayName = "Test Actor" };
+ 88:         _actorRepository.GetActorByUserId(userId).Returns(actor);
+ 89: 
+ 90: 
+ 91:         _audienceAgeRepository.Exists(Arg.Any<int>()).Returns(true);
+ 92:         _audienceGenderRepository.Exists(Arg.Any<int>()).Returns(true);
+ 93:         _eventTypeRepository.Exists(Arg.Any<int>()).Returns(true);
+ 94: 
+ 95: 
+ 96:         var eventEntity = new Explore.Domain.Event { Id = eventId };
+ 97:         _mapper.Map<Explore.Domain.Event>(command.EventDto).Returns(eventEntity);
+ 98:         _eventRepository.Create(Arg.Any<Explore.Domain.Event>()).Returns(eventEntity);
+ 99: 
+100: 
+101:         var result = await _handler.Handle(command, CancellationToken.None);
+102: 
+103: 
+104:         await Assert.That(result.Success).IsTrue();
+105:         await Assert.That(result.Id).IsEqualTo(eventId);
+106:         await _eventRepository.Received(1).Create(Arg.Any<Explore.Domain.Event>());
+107:         await _eventSessionRepository.Received(1).Create(Arg.Any<EventSession>());
+108:     }
+109: 
+110:     [Test]
+111:     public async Task Handle_WhenOrganizationAdminCheckFails_ReturnsFailedResponse()
+112:     {
+113: 
+114:         var userId = Guid.NewGuid();
+115:         var organizationId = Guid.NewGuid();
+116:         var command = new CreateEventCommand
+117:         {
+118:             EventDto = new CreateEventDto
+119:             {
+120:                 OrganizationId = organizationId,
+121:                 Title = "Test Event",
+122:                 EventTypeId = 1,
+123:                 AudienceGenderId = 1,
+124:                 AudienceAgeId = 1
+125:             }
+126:         };
+127: 
+128:         _userContext.GetRequiredUserId().Returns(userId);
+129: 
+130: 
+131:         _organizationMemberRepository.IsUserAdminOfOrganization(organizationId, userId).Returns(false);
+132: 
+133: 
+134:         _organizationRepository.Exists(organizationId).Returns(true);
+135:         _audienceAgeRepository.Exists(Arg.Any<int>()).Returns(true);
+136:         _audienceGenderRepository.Exists(Arg.Any<int>()).Returns(true);
+137:         _eventTypeRepository.Exists(Arg.Any<int>()).Returns(true);
+138: 
+139: 
+140:         var result = await _handler.Handle(command, CancellationToken.None);
+141: 
+142: 
+143:         await Assert.That(result.Success).IsFalse();
+144:         await Assert.That(result.Message).Contains("permission");
+145:         await _eventRepository.DidNotReceive().Create(Arg.Any<Explore.Domain.Event>());
+146:     }
+147: }
+````
+
 ## File: Event.Application.UnitTests/Features/Events/Queries/GetEventDetailsRequestHandlerTests.cs
 ````csharp
  1: using AutoMapper;
@@ -134773,232 +134248,6 @@ README.md
 70:         await _eventRepository.Received(1).GetEventWithDetails(eventId);
 71:     }
 72: }
-````
-
-## File: Event.Application.UnitTests/Features/Organizations/Commands/CreateOrganizationCommandHandlerTests.cs
-````csharp
-  1: using AutoMapper;
-  2: using Event.Application.UnitTests.Common;
-  3: using Explore.Application.Contracts.Identity;
-  4: using Explore.Application.Contracts.Infrastructure;
-  5: using Explore.Application.Contracts.Persistence;
-  6: using Explore.Application.DTOs.Organization;
-  7: using Explore.Application.Features.Organizations.Handlers.Commands;
-  8: using Explore.Application.Features.Organizations.Requests.Commands;
-  9: using Explore.Domain;
- 10: using NSubstitute;
- 11: using TUnit.Assertions;
- 12: using TUnit.Core;
- 13: 
- 14: namespace Event.Application.UnitTests.Features.Organizations.Commands;
- 15: 
- 16: public class CreateOrganizationCommandHandlerTests
- 17: {
- 18:     private readonly IOrganizationRepository _organizationRepository;
- 19:     private readonly IOrganizationMemberRepository _organizationMemberRepository;
- 20:     private readonly IActorRepository _actorRepository;
- 21:     private readonly IStorageObjectRepository _storageObjectRepository;
- 22:     private readonly IUserContext _userContext;
- 23:     private readonly ITenantContext _tenantContext;
- 24:     private readonly IMapper _mapper;
- 25:     private readonly CreateOrganizationCommandHandler _handler;
- 26: 
- 27:     public CreateOrganizationCommandHandlerTests()
- 28:     {
- 29:         _organizationRepository = Substitute.For<IOrganizationRepository>();
- 30:         _organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
- 31:         _actorRepository = Substitute.For<IActorRepository>();
- 32:         _storageObjectRepository = Substitute.For<IStorageObjectRepository>();
- 33:         _userContext = Substitute.For<IUserContext>();
- 34:         _mapper = Substitute.For<IMapper>();
- 35:         _tenantContext = Substitute.For<ITenantContext>();
- 36: 
- 37:         _handler = new CreateOrganizationCommandHandler(
- 38:             _organizationRepository,
- 39:             _organizationMemberRepository,
- 40:             _actorRepository,
- 41:             _storageObjectRepository,
- 42:             _userContext,
- 43:             _mapper,
- 44:             _tenantContext
- 45:         );
- 46:     }
- 47: 
- 48:     [Test]
- 49:     public async Task Handle_WithValidRequest_ReturnsSuccessResponse()
- 50:     {
- 51: 
- 52:         var userId = Guid.NewGuid();
- 53:         var organizationId = Guid.NewGuid();
- 54:         var actorId = Guid.NewGuid();
- 55:         var tenantId = Guid.NewGuid();
- 56:         var command = new CreateOrganizationCommand
- 57:         {
- 58:             OrganizationDto = new CreateOrganizationDto
- 59:             {
- 60:                 FullName = "Test Organization",
- 61:                 Email = "test@example.com",
- 62:                 Country = "Belgium",
- 63:                 City = "Brussels",
- 64:                 Address = "123 Test Street",
- 65:                 Postcode = 1000
- 66:             }
- 67:         };
- 68: 
- 69:         _tenantContext.TenantId.Returns(tenantId);
- 70:         _userContext.GetRequiredUserId().Returns(userId);
- 71: 
- 72: 
- 73:         var organization = new Organization { Id = organizationId, FullName = "Test Organization" };
- 74:         _mapper.Map<Organization>(command.OrganizationDto).Returns(organization);
- 75:         _organizationRepository.Create(Arg.Any<Organization>()).Returns(organization);
- 76:         _organizationRepository.Update(Arg.Any<Organization>()).Returns(Task.CompletedTask);
- 77: 
- 78: 
- 79:         var actor = new Actor { Id = actorId, DisplayName = "Test Organization" };
- 80:         _actorRepository.Create(Arg.Any<Actor>()).Returns(actor);
- 81: 
- 82: 
- 83:         _organizationMemberRepository.Create(Arg.Any<OrganizationMember>()).Returns(new OrganizationMember { Id = Guid.NewGuid() });
- 84: 
- 85: 
- 86:         var result = await _handler.Handle(command, CancellationToken.None);
- 87: 
- 88: 
- 89:         await Assert.That(result.Success).IsTrue();
- 90:         await Assert.That(result.Id).IsEqualTo(organizationId);
- 91:         await _organizationRepository.Received(1).Create(Arg.Any<Organization>());
- 92:         await _actorRepository.Received(1).Create(Arg.Any<Actor>());
- 93:         await _organizationMemberRepository.Received(1).Create(Arg.Any<OrganizationMember>());
- 94:     }
- 95: 
- 96:     [Test]
- 97:     public async Task Handle_CreatesOrganizationWithPendingStatus()
- 98:     {
- 99: 
-100:         var userId = Guid.NewGuid();
-101:         var organizationId = Guid.NewGuid();
-102:         var actorId = Guid.NewGuid();
-103:         var tenantId = Guid.NewGuid();
-104:         var command = new CreateOrganizationCommand
-105:         {
-106:             OrganizationDto = new CreateOrganizationDto
-107:             {
-108:                 FullName = "Test Organization",
-109:                 Email = "test@example.com",
-110:                 Country = "Belgium",
-111:                 City = "Brussels",
-112:                 Address = "123 Test Street",
-113:                 Postcode = 1000
-114:             }
-115:         };
-116: 
-117:         _tenantContext.TenantId.Returns(tenantId);
-118:         _userContext.GetRequiredUserId().Returns(userId);
-119: 
-120:         var organization = new Organization { Id = organizationId };
-121:         _mapper.Map<Organization>(command.OrganizationDto).Returns(organization);
-122:         _organizationRepository.Create(Arg.Any<Organization>()).Returns(organization);
-123:         _organizationRepository.Update(Arg.Any<Organization>()).Returns(Task.CompletedTask);
-124: 
-125:         var actor = new Actor { Id = actorId, DisplayName = "Test Organization" };
-126:         _actorRepository.Create(Arg.Any<Actor>()).Returns(actor);
-127:         _organizationMemberRepository.Create(Arg.Any<OrganizationMember>()).Returns(new OrganizationMember { Id = Guid.NewGuid() });
-128: 
-129: 
-130:         var result = await _handler.Handle(command, CancellationToken.None);
-131: 
-132: 
-133:         await Assert.That(result.Success).IsTrue();
-134: 
-135:         await _organizationRepository.Received(1).Create(Arg.Is<Organization>(o => o.ApprovalStatusId == 1));
-136:     }
-137: 
-138:     [Test]
-139:     public async Task Handle_SetsTenantIdFromContext()
-140:     {
-141: 
-142:         var userId = Guid.NewGuid();
-143:         var organizationId = Guid.NewGuid();
-144:         var actorId = Guid.NewGuid();
-145:         var tenantId = Guid.NewGuid();
-146:         var command = new CreateOrganizationCommand
-147:         {
-148:             OrganizationDto = new CreateOrganizationDto
-149:             {
-150:                 FullName = "Test Organization",
-151:                 Email = "test@example.com",
-152:                 Country = "Belgium",
-153:                 City = "Brussels",
-154:                 Address = "123 Test Street",
-155:                 Postcode = 1000
-156:             }
-157:         };
-158: 
-159:         _tenantContext.TenantId.Returns(tenantId);
-160:         _userContext.GetRequiredUserId().Returns(userId);
-161: 
-162:         var organization = new Organization { Id = organizationId };
-163:         _mapper.Map<Organization>(command.OrganizationDto).Returns(organization);
-164:         _organizationRepository.Create(Arg.Any<Organization>()).Returns(organization);
-165:         _organizationRepository.Update(Arg.Any<Organization>()).Returns(Task.CompletedTask);
-166: 
-167:         var actor = new Actor { Id = actorId, DisplayName = "Test Organization" };
-168:         _actorRepository.Create(Arg.Any<Actor>()).Returns(actor);
-169:         _organizationMemberRepository.Create(Arg.Any<OrganizationMember>()).Returns(new OrganizationMember { Id = Guid.NewGuid() });
-170: 
-171: 
-172:         var result = await _handler.Handle(command, CancellationToken.None);
-173: 
-174: 
-175:         await Assert.That(result.Success).IsTrue();
-176:         await _organizationRepository.Received(1).Create(Arg.Is<Organization>(o => o.TenantId == tenantId));
-177:     }
-178: 
-179:     [Test]
-180:     public async Task Handle_AddsCreatorAsMember()
-181:     {
-182: 
-183:         var userId = Guid.NewGuid();
-184:         var organizationId = Guid.NewGuid();
-185:         var actorId = Guid.NewGuid();
-186:         var tenantId = Guid.NewGuid();
-187:         var command = new CreateOrganizationCommand
-188:         {
-189:             OrganizationDto = new CreateOrganizationDto
-190:             {
-191:                 FullName = "Test Organization",
-192:                 Email = "test@example.com",
-193:                 Country = "Belgium",
-194:                 City = "Brussels",
-195:                 Address = "123 Test Street",
-196:                 Postcode = 1000
-197:             }
-198:         };
-199: 
-200:         _tenantContext.TenantId.Returns(tenantId);
-201:         _userContext.GetRequiredUserId().Returns(userId);
-202: 
-203:         var organization = new Organization { Id = organizationId };
-204:         _mapper.Map<Organization>(command.OrganizationDto).Returns(organization);
-205:         _organizationRepository.Create(Arg.Any<Organization>()).Returns(organization);
-206:         _organizationRepository.Update(Arg.Any<Organization>()).Returns(Task.CompletedTask);
-207: 
-208:         var actor = new Actor { Id = actorId, DisplayName = "Test Organization" };
-209:         _actorRepository.Create(Arg.Any<Actor>()).Returns(actor);
-210:         _organizationMemberRepository.Create(Arg.Any<OrganizationMember>()).Returns(new OrganizationMember { Id = Guid.NewGuid() });
-211: 
-212: 
-213:         var result = await _handler.Handle(command, CancellationToken.None);
-214: 
-215: 
-216:         await Assert.That(result.Success).IsTrue();
-217:         await _organizationMemberRepository.Received(1).Create(
-218:             Arg.Is<OrganizationMember>(m =>
-219:                 m.UserId == userId &&
-220:                 m.OrganizationId == organizationId));
-221:     }
-222: }
 ````
 
 ## File: Event.Application.UnitTests/Features/Organizations/Queries/GetOrganizationListRequestHandlerTests.cs
@@ -135168,6 +134417,241 @@ README.md
 28:         host.Run();
 29:     }
 30: }
+````
+
+## File: Event.MigrationService/Worker.cs
+````csharp
+ 1: using Explore.Persistence;
+ 2: using Explore.Persistence.Seed;
+ 3: using Microsoft.EntityFrameworkCore;
+ 4: 
+ 5: namespace Event.MigrationService;
+ 6: 
+ 7: public sealed class Worker(IServiceProvider serviceProvider, IHostApplicationLifetime lifetime, IHostEnvironment environment, ILogger<Worker> logger) : BackgroundService
+ 8: {
+ 9:     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+10:     {
+11:         logger.LogInformation("Starting database migration...");
+12: 
+13:         await using var scope = serviceProvider.CreateAsyncScope();
+14:         var db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+15: 
+16: 
+17:         logger.LogInformation("Applying database migrations...");
+18:         await db.Database.MigrateAsync(stoppingToken);
+19:         logger.LogInformation("Database migrations applied successfully.");
+20: 
+21: 
+22:         logger.LogInformation("Running database seeding...");
+23:         await DatabaseSeeder.SeedAsync(db, environment, stoppingToken);
+24:         logger.LogInformation("Database seeding completed successfully.");
+25: 
+26:         lifetime.StopApplication();
+27:     }
+28: }
+````
+
+## File: Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj
+````
+ 1: <Project Sdk="Microsoft.NET.Sdk">
+ 2: 
+ 3:   <ItemGroup>
+ 4:     <ProjectReference Include="..\Explore.Persistence\Explore.Persistence.csproj" />
+ 5:     <ProjectReference Include="..\Explore.Domain\Explore.Domain.csproj" />
+ 6:   </ItemGroup>
+ 7: 
+ 8:   <ItemGroup>
+ 9:     <PackageReference Include="Testcontainers.PostgreSql" Version="4.10.0" />
+10:     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.2" />
+11:     <PackageReference Include="TUnit" Version="1.11.18" />
+12:   </ItemGroup>
+13: 
+14:   <PropertyGroup>
+15:     <OutputType>Exe</OutputType>
+16:     <TargetFramework>net10.0</TargetFramework>
+17:     <ImplicitUsings>enable</ImplicitUsings>
+18:     <Nullable>enable</Nullable>
+19:   </PropertyGroup>
+20: 
+21: </Project>
+````
+
+## File: Event.Persistence.IntegrationTests/Fixtures/PostgreSqlContainerFixture.cs
+````csharp
+ 1: using Explore.Persistence;
+ 2: using Microsoft.EntityFrameworkCore;
+ 3: using Testcontainers.PostgreSql;
+ 4: using TUnit.Core;
+ 5: using TUnit.Core.Interfaces;
+ 6: 
+ 7: namespace Event.Persistence.IntegrationTests.Fixtures;
+ 8: 
+ 9: public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
+10: {
+11:     private readonly PostgreSqlContainer _container;
+12: 
+13:     public PostgreSqlContainerFixture()
+14:     {
+15:         _container = new PostgreSqlBuilder()
+16:             .WithImage("postgres:18-alpine")
+17:             .WithDatabase("explore_db_test")
+18:             .WithUsername("postgres")
+19:             .WithPassword("postgres")
+20: 
+21:             .Build();
+22:     }
+23: 
+24:     public string ConnectionString => _container.GetConnectionString();
+25: 
+26:     public async Task InitializeAsync()
+27:     {
+28:         await _container.StartAsync();
+29:     }
+30: 
+31:     public async ValueTask DisposeAsync()
+32:     {
+33:         await _container.StopAsync();
+34:         await _container.DisposeAsync();
+35:     }
+36: 
+37:     public ExploreDbContext CreateDbContext()
+38:     {
+39:         var options = new DbContextOptionsBuilder<ExploreDbContext>()
+40:             .UseNpgsql(_container.GetConnectionString())
+41:             .UseSnakeCaseNamingConvention()
+42:             .Options;
+43: 
+44:         var context = new ExploreDbContext(options);
+45:         context.Database.EnsureCreated();
+46:         return context;
+47:     }
+48: }
+````
+
+## File: Event.Persistence.IntegrationTests/Repositories/EventRepositoryTests.cs
+````csharp
+  1: using Event.Persistence.IntegrationTests.Fixtures;
+  2: using Explore.Domain;
+  3: using Explore.Persistence;
+  4: using Explore.Persistence.Repositories;
+  5: using TUnit.Assertions;
+  6: using TUnit.Core;
+  7: 
+  8: namespace Event.Persistence.IntegrationTests.Repositories;
+  9: 
+ 10: [ClassDataSource<PostgreSqlContainerFixture>(Shared = SharedType.PerAssembly)]
+ 11: public class EventRepositoryTests
+ 12: {
+ 13:     private readonly PostgreSqlContainerFixture _fixture;
+ 14: 
+ 15:     public EventRepositoryTests(PostgreSqlContainerFixture fixture)
+ 16:     {
+ 17:         _fixture = fixture;
+ 18:     }
+ 19: 
+ 20:     [Test]
+ 21:     public async Task Create_ShouldPersistEvent()
+ 22:     {
+ 23: 
+ 24:         using var context = _fixture.CreateDbContext();
+ 25:         var repository = new EventRepository(context);
+ 26: 
+ 27: 
+ 28:         var tenant = new Tenant { FullName = "Test Tenant", Slug = "test-tenant-" + Guid.NewGuid().ToString("N")[..8], IsActive = true };
+ 29:         context.Tenants.Add(tenant);
+ 30: 
+ 31:         var user = new User { Email = "test@example.com", FirstName = "Test", LastName = "User" };
+ 32:         context.Users.Add(user);
+ 33: 
+ 34:         await context.SaveChangesAsync();
+ 35: 
+ 36:         var actor = new Actor { DisplayName = "Test Actor", ActorTypeId = 1, TenantId = tenant.Id, UserId = user.Id };
+ 37:         context.Actors.Add(actor);
+ 38: 
+ 39:         await context.SaveChangesAsync();
+ 40: 
+ 41:         var eventId = Guid.NewGuid();
+ 42:         var @event = new Explore.Domain.Event
+ 43:         {
+ 44:             Id = eventId,
+ 45:             Title = "Integration Test Event",
+ 46:             Description = "Test Description",
+ 47:             FirstSessionDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
+ 48:             LastSessionDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1).AddHours(2)),
+ 49:             EventTypeId = 1,
+ 50:             AudienceGenderId = 1,
+ 51:             AudienceAgeId = 1,
+ 52:             ActorId = actor.Id,
+ 53:             TenantId = tenant.Id,
+ 54:             VisibilityTypeId = 1,
+ 55:             EventStatusId = 1,
+ 56:             EventFormatId = 1,
+ 57:             TotalViews = 0,
+ 58:             IsRegistrationRequired = false
+ 59:         };
+ 60: 
+ 61: 
+ 62:         var result = await repository.Create(@event);
+ 63: 
+ 64: 
+ 65:         await Assert.That(result).IsNotNull();
+ 66:         await Assert.That(result.Id).IsEqualTo(eventId);
+ 67: 
+ 68: 
+ 69:         using var verifyContext = _fixture.CreateDbContext();
+ 70:         var savedEvent = await verifyContext.Events.FindAsync(eventId);
+ 71:         await Assert.That(savedEvent).IsNotNull();
+ 72:         await Assert.That(savedEvent!.Title).IsEqualTo("Integration Test Event");
+ 73:     }
+ 74: 
+ 75:     [Test]
+ 76:     public async Task GetEventWithDetails_ShouldReturnIncludes()
+ 77:     {
+ 78: 
+ 79:         using var context = _fixture.CreateDbContext();
+ 80:         var repository = new EventRepository(context);
+ 81: 
+ 82: 
+ 83:         var tenant = new Tenant { FullName = "Test Tenant", Slug = "test-tenant-" + Guid.NewGuid().ToString("N")[..8], IsActive = true };
+ 84:         context.Tenants.Add(tenant);
+ 85: 
+ 86:         var user = new User { Email = "test2@example.com", FirstName = "Test", LastName = "User" };
+ 87:         context.Users.Add(user);
+ 88: 
+ 89:         await context.SaveChangesAsync();
+ 90: 
+ 91:         var actor = new Actor { DisplayName = "Test Actor", ActorTypeId = 1, TenantId = tenant.Id, UserId = user.Id };
+ 92:         context.Actors.Add(actor);
+ 93: 
+ 94:         await context.SaveChangesAsync();
+ 95: 
+ 96:         var eventId = Guid.NewGuid();
+ 97:         var @event = new Explore.Domain.Event
+ 98:         {
+ 99:             Id = eventId,
+100:             Title = "Detailed Event",
+101:             EventTypeId = 1,
+102:             AudienceGenderId = 1,
+103:             AudienceAgeId = 1,
+104:             ActorId = actor.Id,
+105:             TenantId = tenant.Id,
+106:             VisibilityTypeId = 1,
+107:             EventStatusId = 1,
+108:             EventFormatId = 1,
+109:             TotalViews = 0,
+110:             IsRegistrationRequired = false
+111:         };
+112: 
+113:         await repository.Create(@event);
+114: 
+115: 
+116:         var result = await repository.GetEventWithDetails(eventId);
+117: 
+118: 
+119:         await Assert.That(result).IsNotNull();
+120:         await Assert.That(result.Id).IsEqualTo(eventId);
+121:     }
+122: }
 ````
 
 ## File: Explore.API/Controllers/ActorKeyStoreController.cs
@@ -135953,106 +135437,6 @@ README.md
 58:         }
 59:     }
 60: }
-````
-
-## File: Explore.API/Controllers/IndexedDidController.cs
-````csharp
- 1: using MediatR;
- 2: using Explore.Application.Features.IndexedDids.Requests.Commands;
- 3: using Explore.Application.Features.IndexedDids.Requests.Queries;
- 4: using Explore.Application.Responses;
- 5: using Microsoft.AspNetCore.Authorization;
- 6: using Microsoft.AspNetCore.Mvc;
- 7: using Explore.Application.DTOs.IndexedDid;
- 8: 
- 9: namespace Explore.API.Controllers
-10: {
-11:     [Route("api/v1/[controller]")]
-12:     [ApiController]
-13:     public class IndexedDidController : ControllerBase
-14:     {
-15:         private readonly IMediator _mediator;
-16:         private readonly ILogger<IndexedDidController> _logger;
-17: 
-18:         public IndexedDidController(
-19:             IMediator mediator,
-20:             ILogger<IndexedDidController> logger)
-21:         {
-22:             _mediator = mediator;
-23:             _logger = logger;
-24:         }
-25: 
-26: 
-27:         [HttpGet]
-28:         [Authorize(Roles = "Admin")]
-29:         public async Task<ActionResult<List<IndexedDidListDto>>> GetAll()
-30:         {
-31:             var indexedDids = await _mediator.Send(new GetIndexedDidListRequest());
-32:             return Ok(indexedDids);
-33:         }
-34: 
-35: 
-36:         [HttpGet("{did}")]
-37:         [Authorize(Roles = "Admin")]
-38:         public async Task<ActionResult<IndexedDidDto>> GetById(string did)
-39:         {
-40:             var indexedDid = await _mediator.Send(new GetIndexedDidDetailsRequest { Did = did });
-41:             if (indexedDid == null)
-42:             {
-43:                 return NotFound(new { error = "IndexedDid not found" });
-44:             }
-45: 
-46:             return Ok(indexedDid);
-47:         }
-48: 
-49: 
-50:         [HttpPost]
-51:         [Authorize(Roles = "Admin")]
-52:         public async Task<ActionResult<BaseCommandResponse<string>>> Create([FromBody] CreateIndexedDidDto dto)
-53:         {
-54:             var command = new CreateIndexedDidCommand { IndexedDidDto = dto };
-55:             var response = await _mediator.Send(command);
-56:             return Ok(response);
-57:         }
-58: 
-59: 
-60:         [HttpPut("{did}")]
-61:         [Authorize(Roles = "Admin")]
-62:         public async Task<ActionResult<BaseCommandResponse<string>>> Update(string did, [FromBody] UpdateIndexedDidDto dto)
-63:         {
-64:             if (did != dto.Did)
-65:             {
-66:                 return BadRequest(new { error = "IndexedDid DID mismatch" });
-67:             }
-68: 
-69:             var command = new UpdateIndexedDidCommand { IndexedDidDto = dto };
-70:             var response = await _mediator.Send(command);
-71: 
-72:             if (!response.Success)
-73:             {
-74:                 return BadRequest(response);
-75:             }
-76: 
-77:             return Ok(response);
-78:         }
-79: 
-80: 
-81:         [HttpDelete("{did}")]
-82:         [Authorize(Roles = "Admin")]
-83:         public async Task<ActionResult> Delete(string did)
-84:         {
-85:             var command = new DeleteIndexedDidCommand { Did = did };
-86:             var result = await _mediator.Send(command);
-87: 
-88:             if (!result)
-89:             {
-90:                 return NotFound(new { error = "IndexedDid not found or you don't have permission to delete it" });
-91:             }
-92: 
-93:             return NoContent();
-94:         }
-95:     }
-96: }
 ````
 
 ## File: Explore.API/Controllers/LocationController.cs
@@ -137911,6 +137295,131 @@ README.md
 22: }
 ````
 
+## File: Explore.Application/Contracts/Infrastructure/IModuleService.cs
+````csharp
+  1: namespace Explore.Application.Contracts.Infrastructure;
+  2: 
+  3: 
+  4: 
+  5: 
+  6: 
+  7: public interface IModuleService
+  8: {
+  9: 
+ 10: 
+ 11: 
+ 12: 
+ 13: 
+ 14:     Task<IReadOnlyList<ModuleInfo>> GetAllModulesAsync(CancellationToken cancellationToken = default);
+ 15: 
+ 16: 
+ 17: 
+ 18: 
+ 19: 
+ 20: 
+ 21: 
+ 22:     Task<IReadOnlyList<ModuleInfo>> GetEnabledModulesAsync(Guid tenantId, CancellationToken cancellationToken = default);
+ 23: 
+ 24: 
+ 25: 
+ 26: 
+ 27: 
+ 28: 
+ 29: 
+ 30: 
+ 31:     Task<bool> IsModuleEnabledAsync(Guid tenantId, string moduleKey, CancellationToken cancellationToken = default);
+ 32: 
+ 33: 
+ 34: 
+ 35: 
+ 36: 
+ 37: 
+ 38: 
+ 39:     Task<string?> GetModuleWizardSchemaUrlAsync(string moduleKey, CancellationToken cancellationToken = default);
+ 40: 
+ 41: 
+ 42: 
+ 43: 
+ 44: 
+ 45: 
+ 46: 
+ 47: 
+ 48: 
+ 49:     Task<bool> EnableModuleAsync(Guid tenantId, string moduleKey, Guid? enabledBy = null, CancellationToken cancellationToken = default);
+ 50: 
+ 51: 
+ 52: 
+ 53: 
+ 54: 
+ 55: 
+ 56: 
+ 57: 
+ 58:     Task<bool> DisableModuleAsync(Guid tenantId, string moduleKey, CancellationToken cancellationToken = default);
+ 59: 
+ 60: 
+ 61: 
+ 62: 
+ 63: 
+ 64:     void InvalidateCache(Guid? tenantId = null);
+ 65: }
+ 66: 
+ 67: 
+ 68: 
+ 69: 
+ 70: public class ModuleInfo
+ 71: {
+ 72: 
+ 73: 
+ 74: 
+ 75:     public Guid Id { get; init; }
+ 76: 
+ 77: 
+ 78: 
+ 79: 
+ 80:     public string ModuleKey { get; init; } = string.Empty;
+ 81: 
+ 82: 
+ 83: 
+ 84: 
+ 85:     public string Name { get; init; } = string.Empty;
+ 86: 
+ 87: 
+ 88: 
+ 89: 
+ 90:     public string? Description { get; init; }
+ 91: 
+ 92: 
+ 93: 
+ 94: 
+ 95:     public string? IconName { get; init; }
+ 96: 
+ 97: 
+ 98: 
+ 99: 
+100:     public string? Category { get; init; }
+101: 
+102: 
+103: 
+104: 
+105:     public int DisplayOrder { get; init; }
+106: 
+107: 
+108: 
+109: 
+110:     public string? WizardSchemaUrl { get; init; }
+111: 
+112: 
+113: 
+114: 
+115:     public bool IsActive { get; init; }
+116: 
+117: 
+118: 
+119: 
+120:     public bool? IsEnabledForTenant { get; init; }
+121: }
+````
+
 ## File: Explore.Application/Contracts/Infrastructure/IObjectStorageService.cs
 ````csharp
  1: using System;
@@ -139396,6 +138905,113 @@ README.md
 12: }
 ````
 
+## File: Explore.Domain/AppSetting.cs
+````csharp
+  1: namespace Explore.Domain;
+  2: 
+  3: using Explore.Domain.Enums;
+  4: using Explore.Domain.Interfaces;
+  5: 
+  6: 
+  7: 
+  8: 
+  9: 
+ 10: 
+ 11: 
+ 12: 
+ 13: 
+ 14: 
+ 15: 
+ 16: 
+ 17: public class AppSetting : IAuditableEntity
+ 18: {
+ 19: 
+ 20: 
+ 21: 
+ 22: 
+ 23: 
+ 24: 
+ 25: 
+ 26: 
+ 27: 
+ 28:     public string ConfigKey { get; set; } = string.Empty;
+ 29: 
+ 30: 
+ 31: 
+ 32: 
+ 33: 
+ 34:     public string EncryptedValue { get; set; } = string.Empty;
+ 35: 
+ 36: 
+ 37: 
+ 38: 
+ 39: 
+ 40:     public int KeyVersion { get; set; }
+ 41: 
+ 42: 
+ 43: 
+ 44: 
+ 45: 
+ 46:     public DateTime EncryptedAt { get; set; }
+ 47: 
+ 48: 
+ 49: 
+ 50: 
+ 51: 
+ 52:     public Guid? EncryptedBy { get; set; }
+ 53: 
+ 54: 
+ 55: 
+ 56: 
+ 57: 
+ 58:     public bool IsSensitive { get; set; }
+ 59: 
+ 60: 
+ 61: 
+ 62: 
+ 63:     public string? Description { get; set; }
+ 64: 
+ 65: 
+ 66: 
+ 67: 
+ 68:     public string? Category { get; set; }
+ 69: 
+ 70: 
+ 71: 
+ 72: 
+ 73: 
+ 74:     public AppSettingValueTypeEnum ValueType { get; set; }
+ 75: 
+ 76: 
+ 77: 
+ 78: 
+ 79: 
+ 80: 
+ 81:     public DateTime CreatedAt { get; set; }
+ 82: 
+ 83: 
+ 84: 
+ 85: 
+ 86:     public Guid? CreatedBy { get; set; }
+ 87: 
+ 88: 
+ 89: 
+ 90: 
+ 91:     public DateTime? UpdatedAt { get; set; }
+ 92: 
+ 93: 
+ 94: 
+ 95: 
+ 96:     public Guid? UpdatedBy { get; set; }
+ 97: 
+ 98: 
+ 99: 
+100: 
+101: 
+102:     public byte[] RowVersion { get; set; } = [];
+103: }
+````
+
 ## File: Explore.Domain/AudienceGender.cs
 ````csharp
  1: using System;
@@ -139473,6 +139089,77 @@ README.md
 12: }
 ````
 
+## File: Explore.Domain/Modules/ModuleDefinition.cs
+````csharp
+ 1: namespace Explore.Domain.Modules;
+ 2: 
+ 3: 
+ 4: 
+ 5: 
+ 6: 
+ 7: public class ModuleDefinition
+ 8: {
+ 9: 
+10: 
+11: 
+12:     public Guid Id { get; set; }
+13: 
+14: 
+15: 
+16: 
+17: 
+18:     public string ModuleKey { get; set; } = string.Empty;
+19: 
+20: 
+21: 
+22: 
+23:     public string Name { get; set; } = string.Empty;
+24: 
+25: 
+26: 
+27: 
+28:     public string? Description { get; set; }
+29: 
+30: 
+31: 
+32: 
+33: 
+34:     public string? WizardSchemaUrl { get; set; }
+35: 
+36: 
+37: 
+38: 
+39:     public string? IconName { get; set; }
+40: 
+41: 
+42: 
+43: 
+44: 
+45:     public int DisplayOrder { get; set; }
+46: 
+47: 
+48: 
+49: 
+50: 
+51:     public bool IsActive { get; set; } = true;
+52: 
+53: 
+54: 
+55: 
+56:     public string? Category { get; set; }
+57: 
+58: 
+59: 
+60: 
+61:     public DateTime CreatedAt { get; set; }
+62: 
+63: 
+64: 
+65: 
+66:     public DateTime? UpdatedAt { get; set; }
+67: }
+````
+
 ## File: Explore.Domain/StorageObject.cs
 ````csharp
  1: using System;
@@ -139503,6 +139190,148 @@ README.md
 26:         public Actor? Actor { get; set; }
 27:     }
 28: }
+````
+
+## File: Explore.Domain/SystemSetting.cs
+````csharp
+ 1: namespace Explore.Domain;
+ 2: 
+ 3: 
+ 4: 
+ 5: 
+ 6: 
+ 7: public class SystemSetting
+ 8: {
+ 9: 
+10: 
+11: 
+12:     public Guid Id { get; set; }
+13: 
+14: 
+15: 
+16: 
+17: 
+18:     public string SettingKey { get; set; } = string.Empty;
+19: 
+20: 
+21: 
+22: 
+23:     public string Value { get; set; } = string.Empty;
+24: 
+25: 
+26: 
+27: 
+28:     public SettingValueType ValueType { get; set; }
+29: 
+30: 
+31: 
+32: 
+33: 
+34:     public bool IsLocked { get; set; }
+35: 
+36: 
+37: 
+38: 
+39: 
+40:     public string? AllowedValues { get; set; }
+41: 
+42: 
+43: 
+44: 
+45:     public string? Description { get; set; }
+46: 
+47: 
+48: 
+49: 
+50:     public string? Category { get; set; }
+51: 
+52: 
+53: 
+54: 
+55:     public int DisplayOrder { get; set; }
+56: 
+57: 
+58: 
+59: 
+60:     public DateTime CreatedAt { get; set; }
+61: 
+62: 
+63: 
+64: 
+65:     public DateTime? UpdatedAt { get; set; }
+66: }
+67: 
+68: 
+69: 
+70: 
+71: public enum SettingValueType
+72: {
+73:     String = 0,
+74:     Integer = 1,
+75:     Boolean = 2,
+76:     Decimal = 3,
+77:     Json = 4,
+78:     DateTime = 5
+79: }
+````
+
+## File: Explore.Domain/TenantSetting.cs
+````csharp
+ 1: namespace Explore.Domain;
+ 2: 
+ 3: using Explore.Domain.Interfaces;
+ 4: 
+ 5: 
+ 6: 
+ 7: 
+ 8: 
+ 9: public class TenantSetting : ITenantEntity
+10: {
+11: 
+12: 
+13: 
+14:     public Guid Id { get; set; }
+15: 
+16: 
+17: 
+18: 
+19:     public Guid TenantId { get; set; }
+20: 
+21: 
+22: 
+23: 
+24:     public Tenant? Tenant { get; set; }
+25: 
+26: 
+27: 
+28: 
+29:     public string SettingKey { get; set; } = string.Empty;
+30: 
+31: 
+32: 
+33: 
+34:     public string Value { get; set; } = string.Empty;
+35: 
+36: 
+37: 
+38: 
+39:     public DateTime CreatedAt { get; set; }
+40: 
+41: 
+42: 
+43: 
+44:     public Guid? CreatedBy { get; set; }
+45: 
+46: 
+47: 
+48: 
+49:     public DateTime? UpdatedAt { get; set; }
+50: 
+51: 
+52: 
+53: 
+54:     public Guid? UpdatedBy { get; set; }
+55: }
 ````
 
 ## File: Explore.Domain/UserAuthenticationToken.cs
@@ -139570,32 +139399,6 @@ README.md
 28: }
 ````
 
-## File: Explore.Domain/UserRole.cs
-````csharp
- 1: using System;
- 2: using System.ComponentModel.DataAnnotations;
- 3: using System.ComponentModel.DataAnnotations.Schema;
- 4: 
- 5: namespace Explore.Domain
- 6: {
- 7:     public class UserRole
- 8:     {
- 9:         public int Id { get; set; }
-10: 
-11:         public required string FullName { get; set; }
-12: 
-13:         public required string MasterCode { get; set; }
-14: 
-15:         public string? Description { get; set; }
-16: 
-17:         [ForeignKey("Tenant")]
-18:         public Guid TenantId { get; set; }
-19: 
-20:         public Tenant Tenant { get; set; } = null!;
-21:     }
-22: }
-````
-
 ## File: Explore.Domain/VisibilityType.cs
 ````csharp
  1: using System;
@@ -139659,6 +139462,731 @@ README.md
 14:         public string PublicEndpoint { get; set; } = string.Empty;
 15:     }
 16: }
+````
+
+## File: Explore.Infrastructure/Services/ModuleService.cs
+````csharp
+  1: namespace Explore.Infrastructure.Services;
+  2: 
+  3: using Microsoft.Extensions.Caching.Memory;
+  4: using Explore.Application.Contracts.Infrastructure;
+  5: using Explore.Application.Contracts.Persistence;
+  6: using Explore.Domain.Modules;
+  7: 
+  8: 
+  9: 
+ 10: 
+ 11: public class ModuleService : IModuleService
+ 12: {
+ 13:     private readonly IModuleDefinitionRepository _moduleDefinitionRepository;
+ 14:     private readonly ITenantCapabilityRepository _tenantCapabilityRepository;
+ 15:     private readonly IMemoryCache _cache;
+ 16:     private readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(5);
+ 17: 
+ 18:     private const string AllModulesCacheKey = "Modules_All";
+ 19:     private const string TenantModulesCacheKeyPrefix = "Modules_Tenant_";
+ 20: 
+ 21:     public ModuleService(
+ 22:         IModuleDefinitionRepository moduleDefinitionRepository,
+ 23:         ITenantCapabilityRepository tenantCapabilityRepository,
+ 24:         IMemoryCache cache)
+ 25:     {
+ 26:         _moduleDefinitionRepository = moduleDefinitionRepository;
+ 27:         _tenantCapabilityRepository = tenantCapabilityRepository;
+ 28:         _cache = cache;
+ 29:     }
+ 30: 
+ 31:     public async Task<IReadOnlyList<ModuleInfo>> GetAllModulesAsync(CancellationToken cancellationToken = default)
+ 32:     {
+ 33:         return await _cache.GetOrCreateAsync(AllModulesCacheKey, async entry =>
+ 34:         {
+ 35:             entry.AbsoluteExpirationRelativeToNow = _cacheExpiration;
+ 36:             var modules = await _moduleDefinitionRepository.GetAllActive();
+ 37:             return modules.Select(m => MapToModuleInfo(m)).ToList();
+ 38:         }) ?? new List<ModuleInfo>();
+ 39:     }
+ 40: 
+ 41:     public async Task<IReadOnlyList<ModuleInfo>> GetEnabledModulesAsync(Guid tenantId, CancellationToken cancellationToken = default)
+ 42:     {
+ 43:         var cacheKey = $"{TenantModulesCacheKeyPrefix}{tenantId}";
+ 44: 
+ 45:         return await _cache.GetOrCreateAsync(cacheKey, async entry =>
+ 46:         {
+ 47:             entry.AbsoluteExpirationRelativeToNow = _cacheExpiration;
+ 48: 
+ 49:             var capabilities = await _tenantCapabilityRepository.GetEnabledByTenantId(tenantId);
+ 50:             return capabilities
+ 51:                 .Where(c => c.Module != null)
+ 52:                 .Select(c => MapToModuleInfo(c.Module!, isEnabledForTenant: true))
+ 53:                 .ToList();
+ 54:         }) ?? new List<ModuleInfo>();
+ 55:     }
+ 56: 
+ 57:     public async Task<bool> IsModuleEnabledAsync(Guid tenantId, string moduleKey, CancellationToken cancellationToken = default)
+ 58:     {
+ 59: 
+ 60:         var enabledModules = await GetEnabledModulesAsync(tenantId, cancellationToken);
+ 61:         return enabledModules.Any(m => m.ModuleKey.Equals(moduleKey, StringComparison.OrdinalIgnoreCase));
+ 62:     }
+ 63: 
+ 64:     public async Task<string?> GetModuleWizardSchemaUrlAsync(string moduleKey, CancellationToken cancellationToken = default)
+ 65:     {
+ 66:         var module = await _moduleDefinitionRepository.GetByKey(moduleKey);
+ 67:         return module?.WizardSchemaUrl;
+ 68:     }
+ 69: 
+ 70:     public async Task<bool> EnableModuleAsync(Guid tenantId, string moduleKey, Guid? enabledBy = null, CancellationToken cancellationToken = default)
+ 71:     {
+ 72: 
+ 73:         var module = await _moduleDefinitionRepository.GetByKey(moduleKey);
+ 74:         if (module == null || !module.IsActive)
+ 75:             return false;
+ 76: 
+ 77: 
+ 78:         var existing = await _tenantCapabilityRepository.GetByTenantAndModuleKey(tenantId, moduleKey);
+ 79:         if (existing != null)
+ 80:         {
+ 81: 
+ 82:             if (!existing.IsEnabled)
+ 83:             {
+ 84:                 existing.IsEnabled = true;
+ 85:                 existing.EnabledAt = DateTime.UtcNow;
+ 86:                 existing.EnabledBy = enabledBy;
+ 87:                 await _tenantCapabilityRepository.Update(existing);
+ 88:                 InvalidateCache(tenantId);
+ 89:             }
+ 90:             return true;
+ 91:         }
+ 92: 
+ 93: 
+ 94:         var capability = new TenantCapability
+ 95:         {
+ 96:             TenantId = tenantId,
+ 97:             ModuleId = module.Id,
+ 98:             IsEnabled = true,
+ 99:             EnabledAt = DateTime.UtcNow,
+100:             EnabledBy = enabledBy
+101:         };
+102: 
+103:         await _tenantCapabilityRepository.Create(capability);
+104:         InvalidateCache(tenantId);
+105:         return true;
+106:     }
+107: 
+108:     public async Task<bool> DisableModuleAsync(Guid tenantId, string moduleKey, CancellationToken cancellationToken = default)
+109:     {
+110:         var capability = await _tenantCapabilityRepository.GetByTenantAndModuleKey(tenantId, moduleKey);
+111:         if (capability == null)
+112:             return false;
+113: 
+114: 
+115:         capability.IsEnabled = false;
+116:         await _tenantCapabilityRepository.Update(capability);
+117:         InvalidateCache(tenantId);
+118:         return true;
+119:     }
+120: 
+121:     public void InvalidateCache(Guid? tenantId = null)
+122:     {
+123:         _cache.Remove(AllModulesCacheKey);
+124: 
+125:         if (tenantId.HasValue)
+126:         {
+127:             _cache.Remove($"{TenantModulesCacheKeyPrefix}{tenantId}");
+128:         }
+129:     }
+130: 
+131:     private static ModuleInfo MapToModuleInfo(ModuleDefinition module, bool? isEnabledForTenant = null)
+132:     {
+133:         return new ModuleInfo
+134:         {
+135:             Id = module.Id,
+136:             ModuleKey = module.ModuleKey,
+137:             Name = module.Name,
+138:             Description = module.Description,
+139:             IconName = module.IconName,
+140:             Category = module.Category,
+141:             DisplayOrder = module.DisplayOrder,
+142:             WizardSchemaUrl = module.WizardSchemaUrl,
+143:             IsActive = module.IsActive,
+144:             IsEnabledForTenant = isEnabledForTenant
+145:         };
+146:     }
+147: }
+````
+
+## File: Explore.Infrastructure/Services/SettingsResolver.cs
+````csharp
+  1: namespace Explore.Infrastructure.Services;
+  2: 
+  3: using System.Text.Json;
+  4: using Microsoft.Extensions.Caching.Memory;
+  5: using Explore.Application.Contracts.Infrastructure;
+  6: using Explore.Application.Contracts.Persistence;
+  7: using Explore.Domain;
+  8: 
+  9: 
+ 10: 
+ 11: 
+ 12: public class SettingsResolver : ISettingsResolver
+ 13: {
+ 14:     private readonly ISystemSettingRepository _systemSettingRepository;
+ 15:     private readonly ITenantSettingRepository _tenantSettingRepository;
+ 16:     private readonly IMemoryCache _cache;
+ 17:     private readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(5);
+ 18: 
+ 19:     private const string SystemSettingsCacheKey = "SystemSettings_All";
+ 20:     private const string TenantSettingsCacheKeyPrefix = "TenantSettings_";
+ 21: 
+ 22:     public SettingsResolver(
+ 23:         ISystemSettingRepository systemSettingRepository,
+ 24:         ITenantSettingRepository tenantSettingRepository,
+ 25:         IMemoryCache cache)
+ 26:     {
+ 27:         _systemSettingRepository = systemSettingRepository;
+ 28:         _tenantSettingRepository = tenantSettingRepository;
+ 29:         _cache = cache;
+ 30:     }
+ 31: 
+ 32:     public async Task<T?> GetSettingAsync<T>(string settingKey, Guid? tenantId = null, CancellationToken cancellationToken = default)
+ 33:     {
+ 34:         var resolved = await GetSettingWithMetadataAsync(settingKey, tenantId, cancellationToken);
+ 35:         if (resolved == null)
+ 36:             return default;
+ 37: 
+ 38:         try
+ 39:         {
+ 40:             return JsonSerializer.Deserialize<T>(resolved.Value);
+ 41:         }
+ 42:         catch
+ 43:         {
+ 44:             return default;
+ 45:         }
+ 46:     }
+ 47: 
+ 48:     public async Task<ResolvedSetting?> GetSettingWithMetadataAsync(string settingKey, Guid? tenantId = null, CancellationToken cancellationToken = default)
+ 49:     {
+ 50: 
+ 51:         var systemSettings = await GetSystemSettingsAsync(cancellationToken);
+ 52:         var systemSetting = systemSettings.FirstOrDefault(s => s.SettingKey == settingKey);
+ 53: 
+ 54:         if (systemSetting == null)
+ 55:             return null;
+ 56: 
+ 57: 
+ 58:         if (systemSetting.IsLocked || tenantId == null)
+ 59:         {
+ 60:             return new ResolvedSetting
+ 61:             {
+ 62:                 Key = systemSetting.SettingKey,
+ 63:                 Value = systemSetting.Value,
+ 64:                 ValueType = systemSetting.ValueType,
+ 65:                 Source = systemSetting.IsLocked ? SettingSource.SystemLocked : SettingSource.SystemDefault,
+ 66:                 IsLocked = systemSetting.IsLocked,
+ 67:                 Description = systemSetting.Description,
+ 68:                 Category = systemSetting.Category,
+ 69:                 AllowedValues = systemSetting.AllowedValues
+ 70:             };
+ 71:         }
+ 72: 
+ 73: 
+ 74:         var tenantSettings = await GetTenantSettingsAsync(tenantId.Value, cancellationToken);
+ 75:         var tenantOverride = tenantSettings.FirstOrDefault(s => s.SettingKey == settingKey);
+ 76: 
+ 77:         if (tenantOverride != null)
+ 78:         {
+ 79:             return new ResolvedSetting
+ 80:             {
+ 81:                 Key = settingKey,
+ 82:                 Value = tenantOverride.Value,
+ 83:                 ValueType = systemSetting.ValueType,
+ 84:                 Source = SettingSource.TenantOverride,
+ 85:                 IsLocked = false,
+ 86:                 Description = systemSetting.Description,
+ 87:                 Category = systemSetting.Category,
+ 88:                 AllowedValues = systemSetting.AllowedValues
+ 89:             };
+ 90:         }
+ 91: 
+ 92: 
+ 93:         return new ResolvedSetting
+ 94:         {
+ 95:             Key = systemSetting.SettingKey,
+ 96:             Value = systemSetting.Value,
+ 97:             ValueType = systemSetting.ValueType,
+ 98:             Source = SettingSource.SystemDefault,
+ 99:             IsLocked = false,
+100:             Description = systemSetting.Description,
+101:             Category = systemSetting.Category,
+102:             AllowedValues = systemSetting.AllowedValues
+103:         };
+104:     }
+105: 
+106:     public async Task<IReadOnlyList<ResolvedSetting>> GetAllSettingsAsync(Guid? tenantId = null, string? category = null, CancellationToken cancellationToken = default)
+107:     {
+108:         var systemSettings = await GetSystemSettingsAsync(cancellationToken);
+109:         var tenantSettings = tenantId.HasValue
+110:             ? await GetTenantSettingsAsync(tenantId.Value, cancellationToken)
+111:             : new List<TenantSetting>();
+112: 
+113:         var tenantSettingsDict = tenantSettings.ToDictionary(s => s.SettingKey, s => s.Value);
+114: 
+115:         var result = systemSettings
+116:             .Where(s => category == null || s.Category == category)
+117:             .Select(s =>
+118:             {
+119:                 var hasOverride = tenantSettingsDict.TryGetValue(s.SettingKey, out var overrideValue);
+120:                 var effectiveValue = s.IsLocked || !hasOverride ? s.Value : overrideValue!;
+121:                 var source = s.IsLocked ? SettingSource.SystemLocked
+122:                     : hasOverride ? SettingSource.TenantOverride
+123:                     : SettingSource.SystemDefault;
+124: 
+125:                 return new ResolvedSetting
+126:                 {
+127:                     Key = s.SettingKey,
+128:                     Value = effectiveValue,
+129:                     ValueType = s.ValueType,
+130:                     Source = source,
+131:                     IsLocked = s.IsLocked,
+132:                     Description = s.Description,
+133:                     Category = s.Category,
+134:                     AllowedValues = s.AllowedValues
+135:                 };
+136:             })
+137:             .ToList();
+138: 
+139:         return result;
+140:     }
+141: 
+142:     public async Task<bool> CanOverrideAsync(string settingKey, CancellationToken cancellationToken = default)
+143:     {
+144:         return !await _systemSettingRepository.IsLocked(settingKey);
+145:     }
+146: 
+147:     public async Task<bool> SetTenantOverrideAsync(string settingKey, object value, Guid tenantId, CancellationToken cancellationToken = default)
+148:     {
+149: 
+150:         if (!await CanOverrideAsync(settingKey, cancellationToken))
+151:             return false;
+152: 
+153:         var existingOverride = await _tenantSettingRepository.GetByTenantAndKey(tenantId, settingKey);
+154:         var jsonValue = JsonSerializer.Serialize(value);
+155: 
+156:         if (existingOverride != null)
+157:         {
+158:             existingOverride.Value = jsonValue;
+159:             existingOverride.UpdatedAt = DateTime.UtcNow;
+160:             await _tenantSettingRepository.Update(existingOverride);
+161:         }
+162:         else
+163:         {
+164:             var newOverride = new TenantSetting
+165:             {
+166:                 TenantId = tenantId,
+167:                 SettingKey = settingKey,
+168:                 Value = jsonValue,
+169:                 CreatedAt = DateTime.UtcNow
+170:             };
+171:             await _tenantSettingRepository.Create(newOverride);
+172:         }
+173: 
+174:         InvalidateCache(settingKey, tenantId);
+175:         return true;
+176:     }
+177: 
+178:     public async Task<bool> RemoveTenantOverrideAsync(string settingKey, Guid tenantId, CancellationToken cancellationToken = default)
+179:     {
+180:         var result = await _tenantSettingRepository.RemoveOverride(tenantId, settingKey);
+181:         if (result)
+182:         {
+183:             InvalidateCache(settingKey, tenantId);
+184:         }
+185:         return result;
+186:     }
+187: 
+188:     public void InvalidateCache(string? settingKey = null, Guid? tenantId = null)
+189:     {
+190:         if (settingKey == null && tenantId == null)
+191:         {
+192:             _cache.Remove(SystemSettingsCacheKey);
+193:         }
+194:         else if (tenantId.HasValue)
+195:         {
+196:             _cache.Remove($"{TenantSettingsCacheKeyPrefix}{tenantId}");
+197:         }
+198:         else
+199:         {
+200:             _cache.Remove(SystemSettingsCacheKey);
+201:         }
+202:     }
+203: 
+204:     private async Task<List<SystemSetting>> GetSystemSettingsAsync(CancellationToken cancellationToken)
+205:     {
+206:         return await _cache.GetOrCreateAsync(SystemSettingsCacheKey, async entry =>
+207:         {
+208:             entry.AbsoluteExpirationRelativeToNow = _cacheExpiration;
+209:             return await _systemSettingRepository.GetAllSettings();
+210:         }) ?? new List<SystemSetting>();
+211:     }
+212: 
+213:     private async Task<List<TenantSetting>> GetTenantSettingsAsync(Guid tenantId, CancellationToken cancellationToken)
+214:     {
+215:         var cacheKey = $"{TenantSettingsCacheKeyPrefix}{tenantId}";
+216:         return await _cache.GetOrCreateAsync(cacheKey, async entry =>
+217:         {
+218:             entry.AbsoluteExpirationRelativeToNow = _cacheExpiration;
+219:             return await _tenantSettingRepository.GetAllForTenant(tenantId);
+220:         }) ?? new List<TenantSetting>();
+221:     }
+222: }
+````
+
+## File: Explore.Infrastructure/Strategies/StrategyResolver.cs
+````csharp
+  1: using Explore.Application.Contracts.Infrastructure;
+  2: using Explore.Application.Contracts.Strategies;
+  3: using Explore.Application.DTOs.Event;
+  4: using Explore.Domain;
+  5: using FluentValidation.Results;
+  6: using Microsoft.Extensions.Logging;
+  7: 
+  8: namespace Explore.Infrastructure.Strategies;
+  9: 
+ 10: 
+ 11: 
+ 12: 
+ 13: public class StrategyResolver : IStrategyResolver
+ 14: {
+ 15:     private readonly IEnumerable<IEventStrategy> _strategies;
+ 16:     private readonly IModuleService _moduleService;
+ 17:     private readonly ILogger<StrategyResolver> _logger;
+ 18: 
+ 19:     public StrategyResolver(
+ 20:         IEnumerable<IEventStrategy> strategies,
+ 21:         IModuleService moduleService,
+ 22:         ILogger<StrategyResolver> logger)
+ 23:     {
+ 24:         _strategies = strategies;
+ 25:         _moduleService = moduleService;
+ 26:         _logger = logger;
+ 27:     }
+ 28: 
+ 29:     public async Task<IReadOnlyList<IEventStrategy>> GetApplicableStrategiesAsync(
+ 30:         Guid tenantId,
+ 31:         CreateEventDto dto,
+ 32:         CancellationToken cancellationToken = default)
+ 33:     {
+ 34:         var applicableStrategies = new List<IEventStrategy>();
+ 35: 
+ 36:         foreach (var strategy in _strategies)
+ 37:         {
+ 38: 
+ 39:             var isModuleEnabled = await _moduleService.IsModuleEnabledAsync(
+ 40:                 tenantId, strategy.ModuleKey, cancellationToken);
+ 41: 
+ 42:             if (!isModuleEnabled)
+ 43:             {
+ 44:                 _logger.LogDebug(
+ 45:                     "Strategy {StrategyKey} skipped - module not enabled for tenant {TenantId}",
+ 46:                     strategy.ModuleKey, tenantId);
+ 47:                 continue;
+ 48:             }
+ 49: 
+ 50: 
+ 51:             if (strategy.IsApplicable(dto))
+ 52:             {
+ 53:                 applicableStrategies.Add(strategy);
+ 54:                 _logger.LogDebug(
+ 55:                     "Strategy {StrategyKey} is applicable for event",
+ 56:                     strategy.ModuleKey);
+ 57:             }
+ 58:         }
+ 59: 
+ 60: 
+ 61:         return applicableStrategies
+ 62:             .OrderBy(s => s.Priority)
+ 63:             .ToList();
+ 64:     }
+ 65: 
+ 66:     public async Task<ValidationResult> ValidateWithStrategiesAsync(
+ 67:         Guid tenantId,
+ 68:         CreateEventDto dto,
+ 69:         CancellationToken cancellationToken = default)
+ 70:     {
+ 71:         var result = new ValidationResult();
+ 72:         var strategies = await GetApplicableStrategiesAsync(tenantId, dto, cancellationToken);
+ 73: 
+ 74:         foreach (var strategy in strategies)
+ 75:         {
+ 76:             try
+ 77:             {
+ 78:                 var strategyResult = await strategy.ValidateAsync(dto, cancellationToken);
+ 79:                 if (!strategyResult.IsValid)
+ 80:                 {
+ 81:                     result.Errors.AddRange(strategyResult.Errors);
+ 82:                     _logger.LogDebug(
+ 83:                         "Strategy {StrategyKey} validation failed with {ErrorCount} errors",
+ 84:                         strategy.ModuleKey, strategyResult.Errors.Count);
+ 85:                 }
+ 86:             }
+ 87:             catch (Exception ex)
+ 88:             {
+ 89:                 _logger.LogError(ex,
+ 90:                     "Error validating with strategy {StrategyKey}",
+ 91:                     strategy.ModuleKey);
+ 92: 
+ 93:                 result.Errors.Add(new ValidationFailure(
+ 94:                     strategy.ModuleKey,
+ 95:                     $"Strategy validation error: {ex.Message}"));
+ 96:             }
+ 97:         }
+ 98: 
+ 99:         return result;
+100:     }
+101: 
+102:     public async Task ExecutePostCreateAsync(
+103:         Guid tenantId,
+104:         Event @event,
+105:         CreateEventDto dto,
+106:         CancellationToken cancellationToken = default)
+107:     {
+108:         var strategies = await GetApplicableStrategiesAsync(tenantId, dto, cancellationToken);
+109: 
+110:         foreach (var strategy in strategies)
+111:         {
+112:             try
+113:             {
+114:                 await strategy.PostCreateAsync(@event, cancellationToken);
+115:                 _logger.LogDebug(
+116:                     "Strategy {StrategyKey} post-create completed for event {EventId}",
+117:                     strategy.ModuleKey, @event.Id);
+118:             }
+119:             catch (Exception ex)
+120:             {
+121: 
+122:                 _logger.LogError(ex,
+123:                     "Error executing post-create for strategy {StrategyKey} on event {EventId}",
+124:                     strategy.ModuleKey, @event.Id);
+125:             }
+126:         }
+127:     }
+128: 
+129:     public async Task ExecutePostUpdateAsync(
+130:         Guid tenantId,
+131:         Event @event,
+132:         CancellationToken cancellationToken = default)
+133:     {
+134: 
+135:         var enabledModules = await _moduleService.GetEnabledModulesAsync(tenantId, cancellationToken);
+136:         var enabledModuleKeys = enabledModules.Select(m => m.ModuleKey).ToHashSet();
+137: 
+138:         foreach (var strategy in _strategies.Where(s => enabledModuleKeys.Contains(s.ModuleKey)))
+139:         {
+140: 
+141:             var isApplicable = strategy.ModuleKey switch
+142:             {
+143:                 "Mod_Islamic" => @event.IslamicAspect != null,
+144:                 "Mod_Tech" => @event.TechAspect != null,
+145:                 _ => false
+146:             };
+147: 
+148:             if (!isApplicable) continue;
+149: 
+150:             try
+151:             {
+152:                 await strategy.PostUpdateAsync(@event, cancellationToken);
+153:                 _logger.LogDebug(
+154:                     "Strategy {StrategyKey} post-update completed for event {EventId}",
+155:                     strategy.ModuleKey, @event.Id);
+156:             }
+157:             catch (Exception ex)
+158:             {
+159:                 _logger.LogError(ex,
+160:                     "Error executing post-update for strategy {StrategyKey} on event {EventId}",
+161:                     strategy.ModuleKey, @event.Id);
+162:             }
+163:         }
+164:     }
+165: 
+166:     public async Task<IReadOnlyList<StrategyLink>> GetStrategyLinksAsync(
+167:         Guid tenantId,
+168:         Event @event,
+169:         CancellationToken cancellationToken = default)
+170:     {
+171:         var links = new List<StrategyLink>();
+172:         var enabledModules = await _moduleService.GetEnabledModulesAsync(tenantId, cancellationToken);
+173:         var enabledModuleKeys = enabledModules.Select(m => m.ModuleKey).ToHashSet();
+174: 
+175:         foreach (var strategy in _strategies.Where(s => enabledModuleKeys.Contains(s.ModuleKey)))
+176:         {
+177:             try
+178:             {
+179:                 var strategyLinks = strategy.GetLinks(@event);
+180:                 links.AddRange(strategyLinks);
+181:             }
+182:             catch (Exception ex)
+183:             {
+184:                 _logger.LogError(ex,
+185:                     "Error getting links from strategy {StrategyKey} for event {EventId}",
+186:                     strategy.ModuleKey, @event.Id);
+187:             }
+188:         }
+189: 
+190:         return links;
+191:     }
+192: }
+````
+
+## File: Explore.Persistence/Configurations/Entities/ActorConfiguration.cs
+````csharp
+ 1: using Explore.Domain;
+ 2: using Explore.Domain.Enums;
+ 3: using Explore.Persistence.Seed;
+ 4: using Explore.Persistence.ValueGenerators;
+ 5: using Microsoft.EntityFrameworkCore;
+ 6: using Microsoft.EntityFrameworkCore.Metadata.Builders;
+ 7: 
+ 8: namespace Explore.Persistence.Configurations.Entities
+ 9: {
+10:     public class ActorConfiguration : IEntityTypeConfiguration<Actor>
+11:     {
+12:         public void Configure(EntityTypeBuilder<Actor> builder)
+13:         {
+14:             builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
+15: 
+16:             builder.Property(e => e.DisplayName).HasMaxLength(500).IsRequired();
+17:             builder.Property(e => e.Did).HasMaxLength(500);
+18:             builder.Property(e => e.Handle).HasMaxLength(500);
+19:             builder.Property(e => e.PdsHost).HasMaxLength(500);
+20:             builder.Property(e => e.Description).HasMaxLength(500);
+21:             builder.Property(e => e.ProfilePictureCid).HasMaxLength(500);
+22:             builder.Property(e => e.ProfilePictureUri).HasMaxLength(500);
+23: 
+24:             builder.HasOne(e => e.ActorType)
+25:                 .WithMany()
+26:                 .HasForeignKey(e => e.ActorTypeId)
+27:                 .OnDelete(DeleteBehavior.Restrict);
+28: 
+29:             builder.HasOne(e => e.Tenant)
+30:                 .WithMany()
+31:                 .HasForeignKey(e => e.TenantId)
+32:                 .OnDelete(DeleteBehavior.Restrict);
+33: 
+34:             builder.HasOne(e => e.DidCustodyType)
+35:                 .WithMany()
+36:                 .HasForeignKey(e => e.DidCustodyTypeId)
+37:                 .OnDelete(DeleteBehavior.Restrict);
+38: 
+39:             builder.HasOne(e => e.ProfilePicture)
+40:                 .WithMany()
+41:                 .HasForeignKey(e => e.ProfilePictureId)
+42:                 .OnDelete(DeleteBehavior.SetNull);
+43: 
+44: 
+45:             builder.HasOne(e => e.User)
+46:                 .WithMany()
+47:                 .HasForeignKey(e => e.UserId)
+48:                 .OnDelete(DeleteBehavior.Cascade);
+49: 
+50: 
+51:             builder.HasOne(e => e.Organization)
+52:                 .WithMany()
+53:                 .HasForeignKey(e => e.OrganizationId)
+54:                 .OnDelete(DeleteBehavior.Cascade);
+55: 
+56: 
+57:             builder.HasIndex(e => e.UserId)
+58:                 .IsUnique()
+59:                 .HasFilter("user_id IS NOT NULL");
+60: 
+61:             builder.HasIndex(e => e.OrganizationId)
+62:                 .IsUnique()
+63:                 .HasFilter("organization_id IS NOT NULL");
+64: 
+65: 
+66: 
+67: 
+68: 
+69: 
+70:             builder.ToTable(t => t.HasCheckConstraint(
+71:                 "CK_Actor_UserOrOrganization",
+72:                 @"(user_id IS NOT NULL AND organization_id IS NULL) OR " +
+73:                 @"(user_id IS NULL AND organization_id IS NOT NULL)"
+74:             ));
+75: 
+76: 
+77: 
+78:         }
+79:     }
+80: }
+````
+
+## File: Explore.Persistence/Configurations/Entities/AppSettingConfiguration.cs
+````csharp
+ 1: namespace Explore.Persistence.Configurations.Entities;
+ 2: 
+ 3: using Explore.Domain;
+ 4: using Microsoft.EntityFrameworkCore;
+ 5: using Microsoft.EntityFrameworkCore.Metadata.Builders;
+ 6: 
+ 7: public class AppSettingConfiguration : IEntityTypeConfiguration<AppSetting>
+ 8: {
+ 9:     public void Configure(EntityTypeBuilder<AppSetting> builder)
+10:     {
+11: 
+12:         builder.HasKey(e => e.ConfigKey);
+13: 
+14:         builder.Property(e => e.ConfigKey)
+15:             .IsRequired()
+16:             .HasMaxLength(256);
+17: 
+18: 
+19:         builder.Property(e => e.EncryptedValue)
+20:             .IsRequired();
+21: 
+22:         builder.Property(e => e.KeyVersion)
+23:             .IsRequired();
+24: 
+25:         builder.Property(e => e.EncryptedAt)
+26:             .IsRequired();
+27: 
+28:         builder.Property(e => e.IsSensitive)
+29:             .IsRequired()
+30:             .HasDefaultValue(false);
+31: 
+32:         builder.Property(e => e.Description)
+33:             .HasMaxLength(1000);
+34: 
+35:         builder.Property(e => e.Category)
+36:             .HasMaxLength(100);
+37: 
+38:         builder.Property(e => e.ValueType)
+39:             .IsRequired()
+40:             .HasConversion<int>();
+41: 
+42: 
+43:         builder.Property(e => e.CreatedAt)
+44:             .IsRequired()
+45:             .HasDefaultValueSql("NOW()");
+46: 
+47: 
+48:         builder.Property(e => e.RowVersion)
+49:             .IsRowVersion()
+50:             .IsConcurrencyToken();
+51: 
+52: 
+53:         builder.HasIndex(e => e.Category);
+54:         builder.HasIndex(e => e.KeyVersion);
+55:         builder.HasIndex(e => e.IsSensitive);
+56: 
+57: 
+58: 
+59: 
+60:         builder.ToTable(t => t.HasCheckConstraint(
+61:             "CK_AppSettings_NoHighValueSecrets",
+62:             "config_key NOT LIKE 'Database:%' AND config_key NOT LIKE 'Security:MasterKey%' AND config_key NOT LIKE 'ConnectionStrings:%'"));
+63:     }
+64: }
 ````
 
 ## File: Explore.Persistence/Configurations/Entities/AudienceAgeConfiguration.cs
@@ -139802,77 +140330,144 @@ README.md
 48: }
 ````
 
-## File: Explore.Persistence/Configurations/Entities/OrganizationConfiguration.cs
+## File: Explore.Persistence/Configurations/Entities/CategoryConfiguration.cs
 ````csharp
- 1: using System;
- 2: using System.Collections.Generic;
- 3: using System.Text;
- 4: using Explore.Domain;
- 5: using Explore.Domain.Enums;
- 6: using Explore.Persistence.Seed;
- 7: using Microsoft.EntityFrameworkCore;
- 8: using Microsoft.EntityFrameworkCore.Metadata.Builders;
- 9: 
-10: namespace Explore.Persistence.Configurations.Entities
-11: {
-12:     public class OrganizationConfiguration : IEntityTypeConfiguration<Organization>
-13:     {
-14:         public void Configure(EntityTypeBuilder<Organization> builder)
-15:         {
-16:             builder.Property(e => e.Id)
-17:                 .HasDefaultValueSql("uuidv7()");
-18: 
-19:             builder.Property(e => e.ApprovalStatusId)
-20:                 .HasDefaultValue((int)ApprovalStatusEnum.Pending);
-21: 
+ 1: using Explore.Domain;
+ 2: using Explore.Persistence.Seed;
+ 3: using Explore.Persistence.ValueGenerators;
+ 4: using Microsoft.EntityFrameworkCore;
+ 5: using Microsoft.EntityFrameworkCore.Metadata.Builders;
+ 6: 
+ 7: namespace Explore.Persistence.Configurations.Entities
+ 8: {
+ 9:     public class CategoryConfiguration : IEntityTypeConfiguration<Category>
+10:     {
+11:         public void Configure(EntityTypeBuilder<Category> builder)
+12:         {
+13:             builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
+14: 
+15:             builder.Property(e => e.MasterCode).HasMaxLength(500).IsRequired();
+16:             builder.Property(e => e.FullName).HasMaxLength(500).IsRequired();
+17: 
+18:             builder.HasOne(e => e.Parent)
+19:                 .WithMany()
+20:                 .HasForeignKey(e => e.ParentId)
+21:                 .OnDelete(DeleteBehavior.Restrict);
 22: 
-23:             builder.Property(e => e.CreatedAt)
-24:                 .HasDefaultValueSql("NOW()")
-25:                 .IsRequired();
+23:             builder.HasOne(e => e.Tenant)
+24:                 .WithMany()
+25:                 .HasForeignKey(e => e.TenantId)
+26:                 .OnDelete(DeleteBehavior.Restrict);
+27: 
+28: 
+29: 
+30:         }
+31:     }
+32: }
+````
+
+## File: Explore.Persistence/Configurations/Entities/LocationConfiguration.cs
+````csharp
+ 1: using Explore.Domain;
+ 2: using Explore.Persistence.Seed;
+ 3: using Explore.Persistence.ValueGenerators;
+ 4: using Microsoft.EntityFrameworkCore;
+ 5: using Microsoft.EntityFrameworkCore.Metadata.Builders;
+ 6: 
+ 7: namespace Explore.Persistence.Configurations.Entities
+ 8: {
+ 9:     public class LocationConfiguration : IEntityTypeConfiguration<Location>
+10:     {
+11:         public void Configure(EntityTypeBuilder<Location> builder)
+12:         {
+13:             builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
+14: 
+15:             builder.Property(e => e.FullName).HasMaxLength(500).IsRequired();
+16:             builder.Property(e => e.Address).HasMaxLength(500).IsRequired();
+17:             builder.Property(e => e.Postcode).HasMaxLength(500).IsRequired();
+18:             builder.Property(e => e.Country).HasMaxLength(500).IsRequired();
+19:             builder.Property(e => e.City).HasMaxLength(500).IsRequired();
+20:             builder.Property(e => e.Timezone).HasMaxLength(500);
+21: 
+22:             builder.HasOne(e => e.Tenant)
+23:                 .WithMany()
+24:                 .HasForeignKey(e => e.TenantId)
+25:                 .OnDelete(DeleteBehavior.Restrict);
 26: 
-27:             builder.Property(e => e.FullName)
-28:                 .HasMaxLength(500)
-29:                 .IsRequired();
-30: 
-31:             builder.Property(e => e.Email)
-32:                 .HasMaxLength(500)
-33:                 .IsRequired();
-34: 
-35:             builder.Property(e => e.Country)
-36:                 .HasMaxLength(200);
-37: 
-38:             builder.Property(e => e.City)
-39:                 .HasMaxLength(200);
-40: 
-41:             builder.Property(e => e.Address)
-42:                 .HasMaxLength(500);
-43: 
-44:             builder.Property(e => e.Postcode)
-45:                 .HasMaxLength(50);
-46: 
-47:             builder.Property(e => e.WebsiteUrl)
-48:                 .HasMaxLength(500);
-49: 
-50:             builder.HasOne(e => e.ApprovalStatus)
-51:                 .WithMany()
-52:                 .HasForeignKey(e => e.ApprovalStatusId)
-53:                 .OnDelete(DeleteBehavior.Restrict);
-54: 
-55:             builder.HasOne(e => e.Tenant)
-56:                 .WithMany()
-57:                 .HasForeignKey(e => e.TenantId)
-58:                 .OnDelete(DeleteBehavior.Restrict);
-59: 
-60:             builder.HasOne(e => e.Actor)
-61:                 .WithMany()
-62:                 .HasForeignKey(e => e.ActorId)
-63:                 .OnDelete(DeleteBehavior.SetNull);
-64: 
-65: 
-66: 
-67:         }
-68:     }
-69: }
+27: 
+28: 
+29:         }
+30:     }
+31: }
+````
+
+## File: Explore.Persistence/Configurations/Entities/ModuleDefinitionConfiguration.cs
+````csharp
+ 1: using Explore.Domain.Modules;
+ 2: using Explore.Persistence.Seed;
+ 3: using Microsoft.EntityFrameworkCore;
+ 4: using Microsoft.EntityFrameworkCore.Metadata.Builders;
+ 5: 
+ 6: namespace Explore.Persistence.Configurations.Entities;
+ 7: 
+ 8: public class ModuleDefinitionConfiguration : IEntityTypeConfiguration<ModuleDefinition>
+ 9: {
+10:     public void Configure(EntityTypeBuilder<ModuleDefinition> builder)
+11:     {
+12:         builder.ToTable("ModuleDefinitions");
+13: 
+14:         builder.Property(m => m.Id).HasDefaultValueSql("uuidv7()");
+15:         builder.Property(m => m.ModuleKey).HasMaxLength(50).IsRequired();
+16:         builder.Property(m => m.Name).HasMaxLength(100).IsRequired();
+17:         builder.Property(m => m.Description).HasMaxLength(500);
+18:         builder.Property(m => m.WizardSchemaUrl).HasMaxLength(500);
+19:         builder.Property(m => m.IconName).HasMaxLength(50);
+20:         builder.Property(m => m.Category).HasMaxLength(50);
+21: 
+22:         builder.HasIndex(m => m.ModuleKey).IsUnique();
+23:         builder.HasIndex(m => m.DisplayOrder);
+24: 
+25: 
+26:         builder.HasData(
+27:             new ModuleDefinition
+28:             {
+29:                 Id = SeedIds.ModuleCoreId,
+30:                 ModuleKey = "Mod_Core",
+31:                 Name = "Core Events",
+32:                 Description = "Basic event functionality - title, description, sessions, locations",
+33:                 IconName = "Event",
+34:                 Category = "Core",
+35:                 DisplayOrder = 0,
+36:                 IsActive = true,
+37:                 CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+38:             },
+39:             new ModuleDefinition
+40:             {
+41:                 Id = SeedIds.ModuleIslamicId,
+42:                 ModuleKey = "Mod_Islamic",
+43:                 Name = "Islamic Events",
+44:                 Description = "Islamic-specific features: Madhab selection, prayer time scheduling, gender segregation",
+45:                 IconName = "Mosque",
+46:                 Category = "Domain",
+47:                 DisplayOrder = 1,
+48:                 IsActive = true,
+49:                 CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+50:             },
+51:             new ModuleDefinition
+52:             {
+53:                 Id = SeedIds.ModuleTechId,
+54:                 ModuleKey = "Mod_Tech",
+55:                 Name = "Tech Events",
+56:                 Description = "Developer event features: GitHub repositories, skill levels, live coding sessions",
+57:                 IconName = "Code",
+58:                 Category = "Domain",
+59:                 DisplayOrder = 2,
+60:                 IsActive = true,
+61:                 CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+62:             }
+63:         );
+64:     }
+65: }
 ````
 
 ## File: Explore.Persistence/Configurations/Entities/OrganizationReviewConfiguration.cs
@@ -139908,49 +140503,545 @@ README.md
 29: }
 ````
 
-## File: Explore.Persistence/Configurations/Entities/StorageObjectConfiguration.cs
+## File: Explore.Persistence/Configurations/Entities/SystemSettingConfiguration.cs
+````csharp
+  1: namespace Explore.Persistence.Configurations.Entities;
+  2: 
+  3: using Explore.Domain;
+  4: using Explore.Persistence.Seed;
+  5: using Microsoft.EntityFrameworkCore;
+  6: using Microsoft.EntityFrameworkCore.Metadata.Builders;
+  7: 
+  8: public class SystemSettingConfiguration : IEntityTypeConfiguration<SystemSetting>
+  9: {
+ 10:     public void Configure(EntityTypeBuilder<SystemSetting> builder)
+ 11:     {
+ 12:         builder.HasKey(e => e.Id);
+ 13: 
+ 14: 
+ 15:         builder.Property(e => e.Id)
+ 16:             .HasDefaultValueSql("uuidv7()");
+ 17: 
+ 18: 
+ 19:         builder.HasIndex(e => e.SettingKey)
+ 20:             .IsUnique();
+ 21: 
+ 22:         builder.Property(e => e.SettingKey)
+ 23:             .IsRequired()
+ 24:             .HasMaxLength(256);
+ 25: 
+ 26:         builder.Property(e => e.Value)
+ 27:             .IsRequired();
+ 28: 
+ 29:         builder.Property(e => e.ValueType)
+ 30:             .IsRequired()
+ 31:             .HasConversion<int>();
+ 32: 
+ 33:         builder.Property(e => e.IsLocked)
+ 34:             .IsRequired()
+ 35:             .HasDefaultValue(false);
+ 36: 
+ 37:         builder.Property(e => e.AllowedValues)
+ 38:             .HasColumnType("jsonb");
+ 39: 
+ 40:         builder.Property(e => e.Description)
+ 41:             .HasMaxLength(1000);
+ 42: 
+ 43:         builder.Property(e => e.Category)
+ 44:             .HasMaxLength(100);
+ 45: 
+ 46:         builder.Property(e => e.DisplayOrder)
+ 47:             .HasDefaultValue(0);
+ 48: 
+ 49:         builder.Property(e => e.CreatedAt)
+ 50:             .IsRequired()
+ 51:             .HasDefaultValueSql("NOW()");
+ 52: 
+ 53: 
+ 54:         builder.HasData(
+ 55:             new SystemSetting
+ 56:             {
+ 57:                 Id = SeedIds.SystemSettingDeploymentModeId,
+ 58:                 SettingKey = "deployment.mode",
+ 59:                 Value = "\"MultiTenant\"",
+ 60:                 ValueType = SettingValueType.String,
+ 61:                 IsLocked = true,
+ 62:                 AllowedValues = "[\"SingleTenant\", \"MultiTenant\"]",
+ 63:                 Description = "Deployment mode of the application",
+ 64:                 Category = "System",
+ 65:                 DisplayOrder = 1,
+ 66:                 CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+ 67:             },
+ 68:             new SystemSetting
+ 69:             {
+ 70:                 Id = SeedIds.SystemSettingMaxSessionsPerEventId,
+ 71:                 SettingKey = "events.max_sessions_per_event",
+ 72:                 Value = "100",
+ 73:                 ValueType = SettingValueType.Integer,
+ 74:                 IsLocked = false,
+ 75:                 Description = "Maximum number of sessions allowed per event",
+ 76:                 Category = "Events",
+ 77:                 DisplayOrder = 1,
+ 78:                 CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+ 79:             },
+ 80:             new SystemSetting
+ 81:             {
+ 82:                 Id = SeedIds.SystemSettingRequireApprovalId,
+ 83:                 SettingKey = "events.require_approval",
+ 84:                 Value = "false",
+ 85:                 ValueType = SettingValueType.Boolean,
+ 86:                 IsLocked = false,
+ 87:                 Description = "Whether events require admin approval before publishing",
+ 88:                 Category = "Events",
+ 89:                 DisplayOrder = 2,
+ 90:                 CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+ 91:             },
+ 92:             new SystemSetting
+ 93:             {
+ 94:                 Id = SeedIds.SystemSettingIslamicModuleId,
+ 95:                 SettingKey = "modules.islamic_enabled",
+ 96:                 Value = "true",
+ 97:                 ValueType = SettingValueType.Boolean,
+ 98:                 IsLocked = false,
+ 99:                 Description = "Enable Islamic event module",
+100:                 Category = "Modules",
+101:                 DisplayOrder = 1,
+102:                 CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+103:             },
+104:             new SystemSetting
+105:             {
+106:                 Id = SeedIds.SystemSettingTechModuleId,
+107:                 SettingKey = "modules.tech_enabled",
+108:                 Value = "true",
+109:                 ValueType = SettingValueType.Boolean,
+110:                 IsLocked = false,
+111:                 Description = "Enable Tech event module",
+112:                 Category = "Modules",
+113:                 DisplayOrder = 2,
+114:                 CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+115:             }
+116:         );
+117:     }
+118: }
+````
+
+## File: Explore.Persistence/Configurations/Entities/TagConfiguration.cs
+````csharp
+ 1: using Explore.Domain;
+ 2: using Explore.Persistence.Seed;
+ 3: using Explore.Persistence.ValueGenerators;
+ 4: using Microsoft.EntityFrameworkCore;
+ 5: using Microsoft.EntityFrameworkCore.Metadata.Builders;
+ 6: 
+ 7: namespace Explore.Persistence.Configurations.Entities
+ 8: {
+ 9:     public class TagConfiguration : IEntityTypeConfiguration<Tag>
+10:     {
+11:         public void Configure(EntityTypeBuilder<Tag> builder)
+12:         {
+13:             builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
+14: 
+15:             builder.Property(e => e.MasterCode).HasMaxLength(500).IsRequired();
+16:             builder.Property(e => e.FullName).HasMaxLength(500).IsRequired();
+17: 
+18:             builder.HasOne(e => e.Tenant)
+19:                 .WithMany()
+20:                 .HasForeignKey(e => e.TenantId)
+21:                 .OnDelete(DeleteBehavior.Restrict);
+22: 
+23: 
+24: 
+25:         }
+26:     }
+27: }
+````
+
+## File: Explore.Persistence/Configurations/Entities/TenantCapabilityConfiguration.cs
+````csharp
+ 1: using Explore.Domain.Modules;
+ 2: using Explore.Persistence.Seed;
+ 3: using Microsoft.EntityFrameworkCore;
+ 4: using Microsoft.EntityFrameworkCore.Metadata.Builders;
+ 5: 
+ 6: namespace Explore.Persistence.Configurations.Entities;
+ 7: 
+ 8: public class TenantCapabilityConfiguration : IEntityTypeConfiguration<TenantCapability>
+ 9: {
+10:     public void Configure(EntityTypeBuilder<TenantCapability> builder)
+11:     {
+12:         builder.ToTable("TenantCapabilities");
+13: 
+14:         builder.Property(c => c.Id).HasDefaultValueSql("uuidv7()");
+15:         builder.Property(c => c.ConfigurationJson).HasColumnType("jsonb");
+16: 
+17: 
+18:         builder.HasIndex(c => new { c.TenantId, c.ModuleId }).IsUnique();
+19: 
+20:         builder.HasOne(c => c.Tenant)
+21:             .WithMany()
+22:             .HasForeignKey(c => c.TenantId)
+23:             .OnDelete(DeleteBehavior.Cascade);
+24: 
+25:         builder.HasOne(c => c.Module)
+26:             .WithMany()
+27:             .HasForeignKey(c => c.ModuleId)
+28:             .OnDelete(DeleteBehavior.Cascade);
+29: 
+30: 
+31: 
+32:     }
+33: }
+````
+
+## File: Explore.Persistence/Configurations/Entities/TenantConfiguration.cs
 ````csharp
  1: using System;
- 2: using System.Collections.Generic;
- 3: using System.Text;
- 4: using Explore.Domain;
- 5: using Explore.Domain.Enums;
- 6: using Explore.Persistence.Seed;
- 7: using Microsoft.EntityFrameworkCore;
- 8: using Microsoft.EntityFrameworkCore.Metadata.Builders;
- 9: 
-10: namespace Explore.Persistence.Configurations.Entities
-11: {
-12:     public class StorageObjectConfiguration : IEntityTypeConfiguration<StorageObject>
-13:     {
-14:         public void Configure(EntityTypeBuilder<StorageObject> builder)
-15:         {
-16:             builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
-17: 
-18:             builder.Property(e => e.Uri).HasMaxLength(1000).IsRequired();
-19:             builder.Property(e => e.FullName).HasMaxLength(500).IsRequired();
-20:             builder.Property(e => e.Extension).HasMaxLength(50).IsRequired();
+ 2: using Explore.Domain;
+ 3: using Explore.Persistence.Seed;
+ 4: using Explore.Persistence.ValueGenerators;
+ 5: using Microsoft.EntityFrameworkCore;
+ 6: using Microsoft.EntityFrameworkCore.Metadata.Builders;
+ 7: 
+ 8: namespace Explore.Persistence.Configurations.Entities
+ 9: {
+10:     public class TenantConfiguration : IEntityTypeConfiguration<Tenant>
+11:     {
+12:         public void Configure(EntityTypeBuilder<Tenant> builder)
+13:         {
+14:             builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
+15: 
+16:             builder.Property(e => e.FullName).HasMaxLength(500).IsRequired();
+17:             builder.Property(e => e.Slug).HasMaxLength(500).IsRequired();
+18: 
+19:             builder.HasIndex(e => e.Slug).IsUnique();
+20: 
 21: 
-22:             builder.HasOne(e => e.FileType)
+22: 
+23:         }
+24:     }
+25: }
+````
+
+## File: Explore.Persistence/Configurations/Entities/TenantSettingConfiguration.cs
+````csharp
+ 1: namespace Explore.Persistence.Configurations.Entities;
+ 2: 
+ 3: using Explore.Domain;
+ 4: using Explore.Persistence.ValueGenerators;
+ 5: using Microsoft.EntityFrameworkCore;
+ 6: using Microsoft.EntityFrameworkCore.Metadata.Builders;
+ 7: 
+ 8: public class TenantSettingConfiguration : IEntityTypeConfiguration<TenantSetting>
+ 9: {
+10:     public void Configure(EntityTypeBuilder<TenantSetting> builder)
+11:     {
+12:         builder.HasKey(e => e.Id);
+13: 
+14: 
+15:         builder.Property(e => e.Id)
+16:             .HasValueGenerator<GuidVersion7ValueGenerator>();
+17: 
+18: 
+19:         builder.HasIndex(e => new { e.TenantId, e.SettingKey })
+20:             .IsUnique();
+21: 
+22:         builder.Property(e => e.TenantId)
+23:             .IsRequired();
+24: 
+25:         builder.Property(e => e.SettingKey)
+26:             .IsRequired()
+27:             .HasMaxLength(256);
+28: 
+29:         builder.Property(e => e.Value)
+30:             .IsRequired();
+31: 
+32:         builder.Property(e => e.CreatedAt)
+33:             .IsRequired()
+34:             .HasDefaultValueSql("NOW()");
+35: 
+36: 
+37:         builder.HasOne(e => e.Tenant)
+38:             .WithMany()
+39:             .HasForeignKey(e => e.TenantId)
+40:             .OnDelete(DeleteBehavior.Cascade);
+41:     }
+42: }
+````
+
+## File: Explore.Persistence/Configurations/Entities/TenantSettingsConfiguration.cs
+````csharp
+ 1: using Explore.Domain;
+ 2: using Explore.Persistence.Seed;
+ 3: using Explore.Persistence.ValueGenerators;
+ 4: using Microsoft.EntityFrameworkCore;
+ 5: using Microsoft.EntityFrameworkCore.Metadata.Builders;
+ 6: 
+ 7: namespace Explore.Persistence.Configurations.Entities
+ 8: {
+ 9:     public class TenantSettingsConfiguration : IEntityTypeConfiguration<TenantSettings>
+10:     {
+11:         public void Configure(EntityTypeBuilder<TenantSettings> builder)
+12:         {
+13:             builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
+14: 
+15:             builder.HasOne(e => e.Tenant)
+16:                 .WithMany()
+17:                 .HasForeignKey(e => e.TenantId)
+18:                 .OnDelete(DeleteBehavior.Cascade);
+19: 
+20: 
+21: 
+22:         }
+23:     }
+24: }
+````
+
+## File: Explore.Persistence/Configurations/Entities/UserAuthenticationTokenConfiguration.cs
+````csharp
+ 1: using Explore.Domain;
+ 2: using Explore.Persistence.ValueGenerators;
+ 3: using Microsoft.EntityFrameworkCore;
+ 4: using Microsoft.EntityFrameworkCore.Metadata.Builders;
+ 5: 
+ 6: namespace Explore.Persistence.Configurations.Entities
+ 7: {
+ 8:     public class UserAuthenticationTokenConfiguration : IEntityTypeConfiguration<UserAuthenticationToken>
+ 9:     {
+10:         public void Configure(EntityTypeBuilder<UserAuthenticationToken> builder)
+11:         {
+12:             builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
+13: 
+14:             builder.Property(e => e.Provider).HasMaxLength(500).IsRequired();
+15:             builder.Property(e => e.AccessToken).HasMaxLength(500);
+16:             builder.Property(e => e.RefreshToken).HasMaxLength(500);
+17:             builder.Property(e => e.PdsHost).HasMaxLength(500);
+18:             builder.Property(e => e.DpopKey).HasMaxLength(500);
+19:             builder.Property(e => e.IdToken).HasMaxLength(500);
+20: 
+21:             builder.HasOne(e => e.User)
+22:                 .WithMany()
+23:                 .HasForeignKey(e => e.UserId)
+24:                 .OnDelete(DeleteBehavior.Cascade);
+25: 
+26:             builder.HasOne(e => e.Tenant)
+27:                 .WithMany()
+28:                 .HasForeignKey(e => e.TenantId)
+29:                 .OnDelete(DeleteBehavior.Restrict);
+30:         }
+31:     }
+32: }
+````
+
+## File: Explore.Persistence/Configurations/Entities/UserConfiguration.cs
+````csharp
+ 1: using Explore.Domain;
+ 2: using Explore.Persistence.Seed;
+ 3: using Explore.Persistence.ValueGenerators;
+ 4: using Microsoft.EntityFrameworkCore;
+ 5: using Microsoft.EntityFrameworkCore.Metadata.Builders;
+ 6: 
+ 7: namespace Explore.Persistence.Configurations.Entities
+ 8: {
+ 9:     public class UserConfiguration : IEntityTypeConfiguration<User>
+10:     {
+11:         public void Configure(EntityTypeBuilder<User> builder)
+12:         {
+13:             builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
+14: 
+15:             builder.Property(e => e.Email).HasMaxLength(500).IsRequired();
+16:             builder.Property(e => e.FirstName).HasMaxLength(500).IsRequired();
+17:             builder.Property(e => e.LastName).HasMaxLength(500).IsRequired();
+18:             builder.Property(e => e.AuthProvider).HasMaxLength(500);
+19:             builder.Property(e => e.AuthProviderId).HasMaxLength(500);
+20: 
+21: 
+22:             builder.HasOne(e => e.Actor)
 23:                 .WithMany()
-24:                 .HasForeignKey(e => e.FileTypeId)
+24:                 .HasForeignKey(e => e.ActorId)
 25:                 .OnDelete(DeleteBehavior.Restrict);
 26: 
-27:             builder.HasOne(e => e.Tenant)
-28:                 .WithMany()
-29:                 .HasForeignKey(e => e.TenantId)
-30:                 .OnDelete(DeleteBehavior.Restrict);
+27: 
+28:             builder.HasIndex(e => e.Email).IsUnique();
+29: 
+30: 
 31: 
-32:             builder.HasOne(e => e.Actor)
-33:                 .WithMany()
-34:                 .HasForeignKey(e => e.ActorId)
-35:                 .OnDelete(DeleteBehavior.SetNull);
-36: 
-37: 
-38: 
-39:         }
-40:     }
-41: }
+32:         }
+33:     }
+34: }
+````
+
+## File: Explore.Persistence/Configurations/Entities/UserExternalLoginConfiguration.cs
+````csharp
+ 1: using Explore.Domain;
+ 2: using Explore.Persistence.ValueGenerators;
+ 3: using Microsoft.EntityFrameworkCore;
+ 4: using Microsoft.EntityFrameworkCore.Metadata.Builders;
+ 5: 
+ 6: namespace Explore.Persistence.Configurations.Entities
+ 7: {
+ 8:     public class UserExternalLoginConfiguration : IEntityTypeConfiguration<UserExternalLogin>
+ 9:     {
+10:         public void Configure(EntityTypeBuilder<UserExternalLogin> builder)
+11:         {
+12:             builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
+13: 
+14:             builder.Property(e => e.Provider).HasMaxLength(255);
+15:             builder.Property(e => e.ProviderKey).HasMaxLength(500);
+16:             builder.Property(e => e.ProviderDisplayName).HasMaxLength(500);
+17: 
+18:             builder.HasOne(e => e.User)
+19:                 .WithMany()
+20:                 .HasForeignKey(e => e.UserId)
+21:                 .OnDelete(DeleteBehavior.Cascade);
+22: 
+23:             builder.HasOne(e => e.Tenant)
+24:                 .WithMany()
+25:                 .HasForeignKey(e => e.TenantId)
+26:                 .OnDelete(DeleteBehavior.Restrict);
+27:         }
+28:     }
+29: }
+````
+
+## File: Explore.Persistence/Configurations/Entities/UserRoleConfiguration.cs
+````csharp
+ 1: using Explore.Domain;
+ 2: using Explore.Persistence.Seed;
+ 3: using Microsoft.EntityFrameworkCore;
+ 4: using Microsoft.EntityFrameworkCore.Metadata.Builders;
+ 5: 
+ 6: namespace Explore.Persistence.Configurations.Entities
+ 7: {
+ 8:     public class UserRoleConfiguration : IEntityTypeConfiguration<UserRole>
+ 9:     {
+10:         public void Configure(EntityTypeBuilder<UserRole> builder)
+11:         {
+12:             builder.Property(e => e.Id).ValueGeneratedNever();
+13: 
+14:             builder.Property(e => e.FullName).HasMaxLength(500).IsRequired();
+15:             builder.Property(e => e.MasterCode).HasMaxLength(500).IsRequired();
+16:             builder.Property(e => e.Description).HasMaxLength(500);
+17: 
+18:             builder.HasOne(e => e.Tenant)
+19:                 .WithMany()
+20:                 .HasForeignKey(e => e.TenantId)
+21:                 .OnDelete(DeleteBehavior.Restrict);
+22: 
+23: 
+24: 
+25: 
+26:         }
+27:     }
+28: }
+````
+
+## File: Explore.Persistence/Repositories/AppSettingRepository.cs
+````csharp
+  1: namespace Explore.Persistence.Repositories;
+  2: 
+  3: using Explore.Application.Contracts.Persistence;
+  4: using Explore.Domain;
+  5: using Microsoft.EntityFrameworkCore;
+  6: 
+  7: public class AppSettingRepository : IAppSettingRepository
+  8: {
+  9:     private readonly ExploreDbContext _dbContext;
+ 10: 
+ 11:     public AppSettingRepository(ExploreDbContext dbContext)
+ 12:     {
+ 13:         _dbContext = dbContext;
+ 14:     }
+ 15: 
+ 16:     public async Task<AppSetting?> GetByKeyAsync(string configKey)
+ 17:     {
+ 18:         return await _dbContext.AppSettings
+ 19:             .AsNoTracking()
+ 20:             .FirstOrDefaultAsync(s => s.ConfigKey == configKey);
+ 21:     }
+ 22: 
+ 23:     public async Task<List<AppSetting>> GetByCategoryAsync(string? category = null)
+ 24:     {
+ 25:         var query = _dbContext.AppSettings.AsNoTracking();
+ 26: 
+ 27:         if (!string.IsNullOrEmpty(category))
+ 28:         {
+ 29:             query = query.Where(s => s.Category == category);
+ 30:         }
+ 31: 
+ 32:         return await query
+ 33:             .OrderBy(s => s.Category)
+ 34:             .ThenBy(s => s.ConfigKey)
+ 35:             .ToListAsync();
+ 36:     }
+ 37: 
+ 38:     public async Task<List<AppSetting>> GetSettingsNeedingReEncryptionAsync(int currentKeyVersion)
+ 39:     {
+ 40:         return await _dbContext.AppSettings
+ 41:             .AsNoTracking()
+ 42:             .Where(s => s.KeyVersion < currentKeyVersion)
+ 43:             .OrderBy(s => s.ConfigKey)
+ 44:             .ToListAsync();
+ 45:     }
+ 46: 
+ 47:     public async Task<List<AppSetting>> GetAllAsync()
+ 48:     {
+ 49:         return await _dbContext.AppSettings
+ 50:             .AsNoTracking()
+ 51:             .OrderBy(s => s.ConfigKey)
+ 52:             .ToListAsync();
+ 53:     }
+ 54: 
+ 55:     public async Task<AppSetting> CreateAsync(AppSetting setting)
+ 56:     {
+ 57:         await _dbContext.AppSettings.AddAsync(setting);
+ 58:         await _dbContext.SaveChangesAsync();
+ 59:         return setting;
+ 60:     }
+ 61: 
+ 62:     public async Task UpdateAsync(AppSetting setting)
+ 63:     {
+ 64: 
+ 65:         _dbContext.AppSettings.Update(setting);
+ 66:         await _dbContext.SaveChangesAsync();
+ 67:     }
+ 68: 
+ 69:     public async Task<bool> DeleteAsync(string configKey)
+ 70:     {
+ 71:         var setting = await _dbContext.AppSettings.FirstOrDefaultAsync(s => s.ConfigKey == configKey);
+ 72:         if (setting == null)
+ 73:         {
+ 74:             return false;
+ 75:         }
+ 76: 
+ 77:         _dbContext.AppSettings.Remove(setting);
+ 78:         await _dbContext.SaveChangesAsync();
+ 79:         return true;
+ 80:     }
+ 81: 
+ 82:     public async Task<bool> ExistsAsync(string configKey)
+ 83:     {
+ 84:         return await _dbContext.AppSettings.AnyAsync(s => s.ConfigKey == configKey);
+ 85:     }
+ 86: 
+ 87:     public async Task BulkUpdateAsync(IEnumerable<AppSetting> settings)
+ 88:     {
+ 89:         await using var transaction = await _dbContext.Database.BeginTransactionAsync();
+ 90:         try
+ 91:         {
+ 92:             foreach (var setting in settings)
+ 93:             {
+ 94:                 _dbContext.AppSettings.Update(setting);
+ 95:             }
+ 96:             await _dbContext.SaveChangesAsync();
+ 97:             await transaction.CommitAsync();
+ 98:         }
+ 99:         catch
+100:         {
+101:             await transaction.RollbackAsync();
+102:             throw;
+103:         }
+104:     }
+105: }
 ````
 
 ## File: Explore.Persistence/Repositories/EventCategoriesRepository.cs
@@ -140180,6 +141271,50 @@ README.md
 31: }
 ````
 
+## File: Explore.Persistence/Repositories/ModuleDefinitionRepository.cs
+````csharp
+ 1: using Explore.Application.Contracts.Persistence;
+ 2: using Explore.Domain.Modules;
+ 3: using Microsoft.EntityFrameworkCore;
+ 4: 
+ 5: namespace Explore.Persistence.Repositories;
+ 6: 
+ 7: public class ModuleDefinitionRepository : GenericRepository<ModuleDefinition, Guid>, IModuleDefinitionRepository
+ 8: {
+ 9:     private readonly ExploreDbContext _dbContext;
+10: 
+11:     public ModuleDefinitionRepository(ExploreDbContext dbContext) : base(dbContext)
+12:     {
+13:         _dbContext = dbContext;
+14:     }
+15: 
+16:     public async Task<ModuleDefinition?> GetByKey(string moduleKey)
+17:     {
+18:         return await _dbContext.ModuleDefinitions
+19:             .AsNoTracking()
+20:             .FirstOrDefaultAsync(m => m.ModuleKey == moduleKey);
+21:     }
+22: 
+23:     public async Task<List<ModuleDefinition>> GetAllActive()
+24:     {
+25:         return await _dbContext.ModuleDefinitions
+26:             .AsNoTracking()
+27:             .Where(m => m.IsActive)
+28:             .OrderBy(m => m.DisplayOrder)
+29:             .ToListAsync();
+30:     }
+31: 
+32:     public async Task<bool> IsActive(string moduleKey)
+33:     {
+34:         var module = await _dbContext.ModuleDefinitions
+35:             .AsNoTracking()
+36:             .FirstOrDefaultAsync(m => m.ModuleKey == moduleKey);
+37: 
+38:         return module?.IsActive ?? false;
+39:     }
+40: }
+````
+
 ## File: Explore.Persistence/Repositories/StorageObjectRepository.cs
 ````csharp
  1: using System;
@@ -140233,6 +141368,385 @@ README.md
 49:         }
 50:     }
 51: }
+````
+
+## File: Explore.Persistence/Repositories/SystemSettingRepository.cs
+````csharp
+ 1: namespace Explore.Persistence.Repositories;
+ 2: 
+ 3: using Explore.Application.Contracts.Persistence;
+ 4: using Explore.Domain;
+ 5: using Microsoft.EntityFrameworkCore;
+ 6: 
+ 7: public class SystemSettingRepository : GenericRepository<SystemSetting, Guid>, ISystemSettingRepository
+ 8: {
+ 9:     private readonly ExploreDbContext _dbContext;
+10: 
+11:     public SystemSettingRepository(ExploreDbContext dbContext) : base(dbContext)
+12:     {
+13:         _dbContext = dbContext;
+14:     }
+15: 
+16:     public async Task<SystemSetting?> GetByKey(string settingKey)
+17:     {
+18:         return await _dbContext.SystemSettings
+19:             .AsNoTracking()
+20:             .FirstOrDefaultAsync(s => s.SettingKey == settingKey);
+21:     }
+22: 
+23:     public async Task<List<SystemSetting>> GetAllSettings(string? category = null)
+24:     {
+25:         var query = _dbContext.SystemSettings.AsNoTracking();
+26: 
+27:         if (!string.IsNullOrEmpty(category))
+28:         {
+29:             query = query.Where(s => s.Category == category);
+30:         }
+31: 
+32:         return await query
+33:             .OrderBy(s => s.Category)
+34:             .ThenBy(s => s.DisplayOrder)
+35:             .ToListAsync();
+36:     }
+37: 
+38:     public async Task<bool> IsLocked(string settingKey)
+39:     {
+40:         var setting = await _dbContext.SystemSettings
+41:             .AsNoTracking()
+42:             .FirstOrDefaultAsync(s => s.SettingKey == settingKey);
+43: 
+44:         return setting?.IsLocked ?? false;
+45:     }
+46: }
+````
+
+## File: Explore.Persistence/Repositories/TenantCapabilityRepository.cs
+````csharp
+ 1: using Explore.Application.Contracts.Persistence;
+ 2: using Explore.Domain.Modules;
+ 3: using Microsoft.EntityFrameworkCore;
+ 4: 
+ 5: namespace Explore.Persistence.Repositories;
+ 6: 
+ 7: public class TenantCapabilityRepository : GenericRepository<TenantCapability, Guid>, ITenantCapabilityRepository
+ 8: {
+ 9:     private readonly ExploreDbContext _dbContext;
+10: 
+11:     public TenantCapabilityRepository(ExploreDbContext dbContext) : base(dbContext)
+12:     {
+13:         _dbContext = dbContext;
+14:     }
+15: 
+16:     public async Task<List<TenantCapability>> GetByTenantId(Guid tenantId)
+17:     {
+18:         return await _dbContext.TenantCapabilities
+19:             .AsNoTracking()
+20:             .Include(c => c.Module)
+21:             .Where(c => c.TenantId == tenantId)
+22:             .ToListAsync();
+23:     }
+24: 
+25:     public async Task<List<TenantCapability>> GetEnabledByTenantId(Guid tenantId)
+26:     {
+27:         return await _dbContext.TenantCapabilities
+28:             .AsNoTracking()
+29:             .Include(c => c.Module)
+30:             .Where(c => c.TenantId == tenantId && c.IsEnabled && c.Module != null && c.Module.IsActive)
+31:             .OrderBy(c => c.Module!.DisplayOrder)
+32:             .ToListAsync();
+33:     }
+34: 
+35:     public async Task<bool> IsModuleEnabled(Guid tenantId, string moduleKey)
+36:     {
+37:         return await _dbContext.TenantCapabilities
+38:             .AsNoTracking()
+39:             .Include(c => c.Module)
+40:             .AnyAsync(c => c.TenantId == tenantId
+41:                 && c.IsEnabled
+42:                 && c.Module != null
+43:                 && c.Module.ModuleKey == moduleKey
+44:                 && c.Module.IsActive);
+45:     }
+46: 
+47:     public async Task<TenantCapability?> GetByTenantAndModuleKey(Guid tenantId, string moduleKey)
+48:     {
+49:         return await _dbContext.TenantCapabilities
+50:             .AsNoTracking()
+51:             .Include(c => c.Module)
+52:             .FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Module != null && c.Module.ModuleKey == moduleKey);
+53:     }
+54: }
+````
+
+## File: Explore.Persistence/Repositories/TenantSettingRepository.cs
+````csharp
+ 1: namespace Explore.Persistence.Repositories;
+ 2: 
+ 3: using Explore.Application.Contracts.Persistence;
+ 4: using Explore.Domain;
+ 5: using Microsoft.EntityFrameworkCore;
+ 6: 
+ 7: public class TenantSettingRepository : GenericRepository<TenantSetting, Guid>, ITenantSettingRepository
+ 8: {
+ 9:     private readonly ExploreDbContext _dbContext;
+10: 
+11:     public TenantSettingRepository(ExploreDbContext dbContext) : base(dbContext)
+12:     {
+13:         _dbContext = dbContext;
+14:     }
+15: 
+16:     public async Task<TenantSetting?> GetByTenantAndKey(Guid tenantId, string key)
+17:     {
+18:         return await _dbContext.TenantSettingOverrides
+19:             .FirstOrDefaultAsync(s => s.TenantId == tenantId && s.SettingKey == key);
+20:     }
+21: 
+22:     public async Task<List<TenantSetting>> GetAllForTenant(Guid tenantId)
+23:     {
+24:         return await _dbContext.TenantSettingOverrides
+25:             .AsNoTracking()
+26:             .Where(s => s.TenantId == tenantId)
+27:             .ToListAsync();
+28:     }
+29: 
+30:     public async Task<bool> RemoveOverride(Guid tenantId, string key)
+31:     {
+32:         var setting = await _dbContext.TenantSettingOverrides
+33:             .FirstOrDefaultAsync(s => s.TenantId == tenantId && s.SettingKey == key);
+34: 
+35:         if (setting == null)
+36:             return false;
+37: 
+38:         _dbContext.TenantSettingOverrides.Remove(setting);
+39:         await _dbContext.SaveChangesAsync();
+40:         return true;
+41:     }
+42: }
+````
+
+## File: Explore.Persistence/Seed/DatabaseSeeder.cs
+````csharp
+  1: using Explore.Domain;
+  2: using Explore.Domain.Enums;
+  3: using Explore.Domain.Modules;
+  4: using Microsoft.EntityFrameworkCore;
+  5: using Microsoft.Extensions.Hosting;
+  6: 
+  7: namespace Explore.Persistence.Seed;
+  8: 
+  9: 
+ 10: 
+ 11: 
+ 12: 
+ 13: 
+ 14: 
+ 15: 
+ 16: 
+ 17: 
+ 18: 
+ 19: public static class DatabaseSeeder
+ 20: {
+ 21: 
+ 22: 
+ 23: 
+ 24: 
+ 25: 
+ 26: 
+ 27: 
+ 28:     public static async Task SeedAsync(
+ 29:         ExploreDbContext context,
+ 30:         IHostEnvironment environment,
+ 31:         CancellationToken cancellationToken = default)
+ 32:     {
+ 33: 
+ 34:         if (!environment.IsDevelopment())
+ 35:         {
+ 36:             return;
+ 37:         }
+ 38: 
+ 39:         await SeedDevelopmentDataAsync(context, cancellationToken);
+ 40:     }
+ 41: 
+ 42: 
+ 43: 
+ 44: 
+ 45: 
+ 46:     private static async Task SeedDevelopmentDataAsync(
+ 47:         ExploreDbContext context,
+ 48:         CancellationToken cancellationToken)
+ 49:     {
+ 50: 
+ 51:         if (await context.Tenants.AnyAsync(t => t.Id == SeedIds.DefaultTenantId, cancellationToken))
+ 52:         {
+ 53:             return;
+ 54:         }
+ 55: 
+ 56: 
+ 57:         await SeedTenantsAsync(context, cancellationToken);
+ 58:         await SeedUsersAsync(context, cancellationToken);
+ 59:         await SeedOrganizationsAsync(context, cancellationToken);
+ 60:         await SeedActorsAsync(context, cancellationToken);
+ 61:         await SeedOrganizationMembersAsync(context, cancellationToken);
+ 62:         await SeedStorageObjectsAsync(context, cancellationToken);
+ 63:         await SeedTenantSettingsAsync(context, cancellationToken);
+ 64:         await SeedTenantCapabilitiesAsync(context, cancellationToken);
+ 65:         await SeedLocationsAsync(context, cancellationToken);
+ 66:         await SeedCategoriesAsync(context, cancellationToken);
+ 67:         await SeedTagsAsync(context, cancellationToken);
+ 68:         await SeedUserRolesAsync(context, cancellationToken);
+ 69:         await SeedSampleEventsAsync(context, cancellationToken);
+ 70: 
+ 71:         await context.SaveChangesAsync(cancellationToken);
+ 72:     }
+ 73: 
+ 74:     private static async Task SeedTenantsAsync(ExploreDbContext context, CancellationToken ct)
+ 75:     {
+ 76:         if (!await context.Tenants.AnyAsync(ct))
+ 77:         {
+ 78:             context.Tenants.Add(SeedData.DefaultTenant);
+ 79:             await context.SaveChangesAsync(ct);
+ 80:         }
+ 81:     }
+ 82: 
+ 83:     private static async Task SeedUsersAsync(ExploreDbContext context, CancellationToken ct)
+ 84:     {
+ 85:         if (!await context.Users.AnyAsync(ct))
+ 86:         {
+ 87:             context.Users.Add(SeedData.SystemUser);
+ 88:             await context.SaveChangesAsync(ct);
+ 89:         }
+ 90:     }
+ 91: 
+ 92:     private static async Task SeedOrganizationsAsync(ExploreDbContext context, CancellationToken ct)
+ 93:     {
+ 94:         if (!await context.Organizations.AnyAsync(ct))
+ 95:         {
+ 96:             context.Organizations.Add(SeedData.IslamuOrganization);
+ 97:             await context.SaveChangesAsync(ct);
+ 98:         }
+ 99:     }
+100: 
+101:     private static async Task SeedActorsAsync(ExploreDbContext context, CancellationToken ct)
+102:     {
+103:         if (!await context.Actors.AnyAsync(ct))
+104:         {
+105:             context.Actors.AddRange(
+106:                 SeedData.SystemUserActor,
+107:                 SeedData.IslamuOrganizationActor);
+108:             await context.SaveChangesAsync(ct);
+109:         }
+110:     }
+111: 
+112:     private static async Task SeedOrganizationMembersAsync(ExploreDbContext context, CancellationToken ct)
+113:     {
+114:         if (!await context.OrganizationMembers.AnyAsync(ct))
+115:         {
+116:             context.OrganizationMembers.Add(SeedData.SystemUserIslamuMember);
+117:             await context.SaveChangesAsync(ct);
+118:         }
+119:     }
+120: 
+121:     private static async Task SeedStorageObjectsAsync(ExploreDbContext context, CancellationToken ct)
+122:     {
+123:         if (!await context.StorageObjects.AnyAsync(ct))
+124:         {
+125:             context.StorageObjects.AddRange(
+126:                 SeedData.DefaultEventImage,
+127:                 SeedData.DefaultProfileImage,
+128:                 SeedData.DefaultOrganizationLogo);
+129:             await context.SaveChangesAsync(ct);
+130:         }
+131:     }
+132: 
+133:     private static async Task SeedTenantSettingsAsync(ExploreDbContext context, CancellationToken ct)
+134:     {
+135:         if (!await context.Set<TenantSettings>().AnyAsync(ct))
+136:         {
+137:             context.Set<TenantSettings>().Add(SeedData.DefaultTenantSettings);
+138:             await context.SaveChangesAsync(ct);
+139:         }
+140:     }
+141: 
+142:     private static async Task SeedTenantCapabilitiesAsync(ExploreDbContext context, CancellationToken ct)
+143:     {
+144:         if (!await context.Set<TenantCapability>().AnyAsync(ct))
+145:         {
+146:             context.Set<TenantCapability>().AddRange(
+147:                 SeedData.DefaultTenantCoreCapability,
+148:                 SeedData.DefaultTenantIslamicCapability);
+149:             await context.SaveChangesAsync(ct);
+150:         }
+151:     }
+152: 
+153:     private static async Task SeedLocationsAsync(ExploreDbContext context, CancellationToken ct)
+154:     {
+155:         if (!await context.Locations.AnyAsync(ct))
+156:         {
+157:             context.Locations.Add(SeedData.OnlineLocation);
+158:             await context.SaveChangesAsync(ct);
+159:         }
+160:     }
+161: 
+162:     private static async Task SeedCategoriesAsync(ExploreDbContext context, CancellationToken ct)
+163:     {
+164:         if (!await context.Categories.AnyAsync(ct))
+165:         {
+166: 
+167:             context.Categories.AddRange(
+168:                 SeedData.IslamicStudiesCategory,
+169:                 SeedData.ArabicLanguageCategory,
+170:                 SeedData.CommunityEventsCategory);
+171:             await context.SaveChangesAsync(ct);
+172: 
+173: 
+174:             context.Categories.AddRange(
+175:                 SeedData.QuranCategory,
+176:                 SeedData.HadithCategory,
+177:                 SeedData.FiqhCategory,
+178:                 SeedData.AqeedahCategory,
+179:                 SeedData.SeerahCategory);
+180:             await context.SaveChangesAsync(ct);
+181:         }
+182:     }
+183: 
+184:     private static async Task SeedTagsAsync(ExploreDbContext context, CancellationToken ct)
+185:     {
+186:         if (!await context.Tags.AnyAsync(ct))
+187:         {
+188:             context.Tags.AddRange(
+189:                 SeedData.BeginnerTag,
+190:                 SeedData.IntermediateTag,
+191:                 SeedData.AdvancedTag,
+192:                 SeedData.FreeTag,
+193:                 SeedData.PaidTag,
+194:                 SeedData.OnlineTag,
+195:                 SeedData.InPersonTag);
+196:             await context.SaveChangesAsync(ct);
+197:         }
+198:     }
+199: 
+200:     private static async Task SeedUserRolesAsync(ExploreDbContext context, CancellationToken ct)
+201:     {
+202:         if (!await context.UserRoles.AnyAsync(ct))
+203:         {
+204:             context.UserRoles.AddRange(
+205:                 SeedData.SuperAdminRole,
+206:                 SeedData.AdminRole,
+207:                 SeedData.ModeratorRole,
+208:                 SeedData.UserRoleData);
+209:             await context.SaveChangesAsync(ct);
+210:         }
+211:     }
+212: 
+213:     private static async Task SeedSampleEventsAsync(ExploreDbContext context, CancellationToken ct)
+214:     {
+215:         if (!await context.Events.AnyAsync(ct))
+216:         {
+217:             context.Events.Add(SeedData.SampleEvent);
+218:             await context.SaveChangesAsync(ct);
+219:         }
+220:     }
+221: }
 ````
 
 ## File: Explore.Persistence/Seed/SeedIds.cs
@@ -142410,6 +143924,232 @@ README.md
 535: **Remember**: These rules ensure architectural consistency across all projects. Follow them without exception.
 ````
 
+## File: Event.Application.UnitTests/Features/Organizations/Commands/CreateOrganizationCommandHandlerTests.cs
+````csharp
+  1: using AutoMapper;
+  2: using Event.Application.UnitTests.Common;
+  3: using Explore.Application.Contracts.Identity;
+  4: using Explore.Application.Contracts.Infrastructure;
+  5: using Explore.Application.Contracts.Persistence;
+  6: using Explore.Application.DTOs.Organization;
+  7: using Explore.Application.Features.Organizations.Handlers.Commands;
+  8: using Explore.Application.Features.Organizations.Requests.Commands;
+  9: using Explore.Domain;
+ 10: using NSubstitute;
+ 11: using TUnit.Assertions;
+ 12: using TUnit.Core;
+ 13: 
+ 14: namespace Event.Application.UnitTests.Features.Organizations.Commands;
+ 15: 
+ 16: public class CreateOrganizationCommandHandlerTests
+ 17: {
+ 18:     private readonly IOrganizationRepository _organizationRepository;
+ 19:     private readonly IOrganizationMemberRepository _organizationMemberRepository;
+ 20:     private readonly IActorRepository _actorRepository;
+ 21:     private readonly IStorageObjectRepository _storageObjectRepository;
+ 22:     private readonly IUserContext _userContext;
+ 23:     private readonly ITenantContext _tenantContext;
+ 24:     private readonly IMapper _mapper;
+ 25:     private readonly CreateOrganizationCommandHandler _handler;
+ 26: 
+ 27:     public CreateOrganizationCommandHandlerTests()
+ 28:     {
+ 29:         _organizationRepository = Substitute.For<IOrganizationRepository>();
+ 30:         _organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
+ 31:         _actorRepository = Substitute.For<IActorRepository>();
+ 32:         _storageObjectRepository = Substitute.For<IStorageObjectRepository>();
+ 33:         _userContext = Substitute.For<IUserContext>();
+ 34:         _mapper = Substitute.For<IMapper>();
+ 35:         _tenantContext = Substitute.For<ITenantContext>();
+ 36: 
+ 37:         _handler = new CreateOrganizationCommandHandler(
+ 38:             _organizationRepository,
+ 39:             _organizationMemberRepository,
+ 40:             _actorRepository,
+ 41:             _storageObjectRepository,
+ 42:             _userContext,
+ 43:             _mapper,
+ 44:             _tenantContext
+ 45:         );
+ 46:     }
+ 47: 
+ 48:     [Test]
+ 49:     public async Task Handle_WithValidRequest_ReturnsSuccessResponse()
+ 50:     {
+ 51: 
+ 52:         var userId = Guid.NewGuid();
+ 53:         var organizationId = Guid.NewGuid();
+ 54:         var actorId = Guid.NewGuid();
+ 55:         var tenantId = Guid.NewGuid();
+ 56:         var command = new CreateOrganizationCommand
+ 57:         {
+ 58:             OrganizationDto = new CreateOrganizationDto
+ 59:             {
+ 60:                 FullName = "Test Organization",
+ 61:                 Email = "test@example.com",
+ 62:                 Country = "Belgium",
+ 63:                 City = "Brussels",
+ 64:                 Address = "123 Test Street",
+ 65:                 Postcode = 1000
+ 66:             }
+ 67:         };
+ 68: 
+ 69:         _tenantContext.TenantId.Returns(tenantId);
+ 70:         _userContext.GetRequiredUserId().Returns(userId);
+ 71: 
+ 72: 
+ 73:         var organization = new Organization { Id = organizationId, FullName = "Test Organization" };
+ 74:         _mapper.Map<Organization>(command.OrganizationDto).Returns(organization);
+ 75:         _organizationRepository.Create(Arg.Any<Organization>()).Returns(organization);
+ 76:         _organizationRepository.Update(Arg.Any<Organization>()).Returns(Task.CompletedTask);
+ 77: 
+ 78: 
+ 79:         var actor = new Actor { Id = actorId, DisplayName = "Test Organization" };
+ 80:         _actorRepository.Create(Arg.Any<Actor>()).Returns(actor);
+ 81: 
+ 82: 
+ 83:         _organizationMemberRepository.Create(Arg.Any<OrganizationMember>()).Returns(new OrganizationMember { Id = Guid.NewGuid() });
+ 84: 
+ 85: 
+ 86:         var result = await _handler.Handle(command, CancellationToken.None);
+ 87: 
+ 88: 
+ 89:         await Assert.That(result.Success).IsTrue();
+ 90:         await Assert.That(result.Id).IsEqualTo(organizationId);
+ 91:         await _organizationRepository.Received(1).Create(Arg.Any<Organization>());
+ 92:         await _actorRepository.Received(1).Create(Arg.Any<Actor>());
+ 93:         await _organizationMemberRepository.Received(1).Create(Arg.Any<OrganizationMember>());
+ 94:     }
+ 95: 
+ 96:     [Test]
+ 97:     public async Task Handle_CreatesOrganizationWithPendingStatus()
+ 98:     {
+ 99: 
+100:         var userId = Guid.NewGuid();
+101:         var organizationId = Guid.NewGuid();
+102:         var actorId = Guid.NewGuid();
+103:         var tenantId = Guid.NewGuid();
+104:         var command = new CreateOrganizationCommand
+105:         {
+106:             OrganizationDto = new CreateOrganizationDto
+107:             {
+108:                 FullName = "Test Organization",
+109:                 Email = "test@example.com",
+110:                 Country = "Belgium",
+111:                 City = "Brussels",
+112:                 Address = "123 Test Street",
+113:                 Postcode = 1000
+114:             }
+115:         };
+116: 
+117:         _tenantContext.TenantId.Returns(tenantId);
+118:         _userContext.GetRequiredUserId().Returns(userId);
+119: 
+120:         var organization = new Organization { Id = organizationId };
+121:         _mapper.Map<Organization>(command.OrganizationDto).Returns(organization);
+122:         _organizationRepository.Create(Arg.Any<Organization>()).Returns(organization);
+123:         _organizationRepository.Update(Arg.Any<Organization>()).Returns(Task.CompletedTask);
+124: 
+125:         var actor = new Actor { Id = actorId, DisplayName = "Test Organization" };
+126:         _actorRepository.Create(Arg.Any<Actor>()).Returns(actor);
+127:         _organizationMemberRepository.Create(Arg.Any<OrganizationMember>()).Returns(new OrganizationMember { Id = Guid.NewGuid() });
+128: 
+129: 
+130:         var result = await _handler.Handle(command, CancellationToken.None);
+131: 
+132: 
+133:         await Assert.That(result.Success).IsTrue();
+134: 
+135:         await _organizationRepository.Received(1).Create(Arg.Is<Organization>(o => o.ApprovalStatusId == 1));
+136:     }
+137: 
+138:     [Test]
+139:     public async Task Handle_SetsTenantIdFromContext()
+140:     {
+141: 
+142:         var userId = Guid.NewGuid();
+143:         var organizationId = Guid.NewGuid();
+144:         var actorId = Guid.NewGuid();
+145:         var tenantId = Guid.NewGuid();
+146:         var command = new CreateOrganizationCommand
+147:         {
+148:             OrganizationDto = new CreateOrganizationDto
+149:             {
+150:                 FullName = "Test Organization",
+151:                 Email = "test@example.com",
+152:                 Country = "Belgium",
+153:                 City = "Brussels",
+154:                 Address = "123 Test Street",
+155:                 Postcode = 1000
+156:             }
+157:         };
+158: 
+159:         _tenantContext.TenantId.Returns(tenantId);
+160:         _userContext.GetRequiredUserId().Returns(userId);
+161: 
+162:         var organization = new Organization { Id = organizationId };
+163:         _mapper.Map<Organization>(command.OrganizationDto).Returns(organization);
+164:         _organizationRepository.Create(Arg.Any<Organization>()).Returns(organization);
+165:         _organizationRepository.Update(Arg.Any<Organization>()).Returns(Task.CompletedTask);
+166: 
+167:         var actor = new Actor { Id = actorId, DisplayName = "Test Organization" };
+168:         _actorRepository.Create(Arg.Any<Actor>()).Returns(actor);
+169:         _organizationMemberRepository.Create(Arg.Any<OrganizationMember>()).Returns(new OrganizationMember { Id = Guid.NewGuid() });
+170: 
+171: 
+172:         var result = await _handler.Handle(command, CancellationToken.None);
+173: 
+174: 
+175:         await Assert.That(result.Success).IsTrue();
+176:         await _organizationRepository.Received(1).Create(Arg.Is<Organization>(o => o.TenantId == tenantId));
+177:     }
+178: 
+179:     [Test]
+180:     public async Task Handle_AddsCreatorAsMember()
+181:     {
+182: 
+183:         var userId = Guid.NewGuid();
+184:         var organizationId = Guid.NewGuid();
+185:         var actorId = Guid.NewGuid();
+186:         var tenantId = Guid.NewGuid();
+187:         var command = new CreateOrganizationCommand
+188:         {
+189:             OrganizationDto = new CreateOrganizationDto
+190:             {
+191:                 FullName = "Test Organization",
+192:                 Email = "test@example.com",
+193:                 Country = "Belgium",
+194:                 City = "Brussels",
+195:                 Address = "123 Test Street",
+196:                 Postcode = 1000
+197:             }
+198:         };
+199: 
+200:         _tenantContext.TenantId.Returns(tenantId);
+201:         _userContext.GetRequiredUserId().Returns(userId);
+202: 
+203:         var organization = new Organization { Id = organizationId };
+204:         _mapper.Map<Organization>(command.OrganizationDto).Returns(organization);
+205:         _organizationRepository.Create(Arg.Any<Organization>()).Returns(organization);
+206:         _organizationRepository.Update(Arg.Any<Organization>()).Returns(Task.CompletedTask);
+207: 
+208:         var actor = new Actor { Id = actorId, DisplayName = "Test Organization" };
+209:         _actorRepository.Create(Arg.Any<Actor>()).Returns(actor);
+210:         _organizationMemberRepository.Create(Arg.Any<OrganizationMember>()).Returns(new OrganizationMember { Id = Guid.NewGuid() });
+211: 
+212: 
+213:         var result = await _handler.Handle(command, CancellationToken.None);
+214: 
+215: 
+216:         await Assert.That(result.Success).IsTrue();
+217:         await _organizationMemberRepository.Received(1).Create(
+218:             Arg.Is<OrganizationMember>(m =>
+219:                 m.UserId == userId &&
+220:                 m.OrganizationId == organizationId));
+221:     }
+222: }
+````
+
 ## File: Event.MigrationService/Event.MigrationService.csproj
 ````
  1: <Project Sdk="Microsoft.NET.Sdk.Worker">
@@ -142459,7 +144199,7 @@ README.md
  15: 
  16: 
  17: 
- 18: [Route("api/v1/[controller]")]
+ 18: [Route("api/v1/actor")]
  19: [ApiController]
  20: [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
  21: public class ActorController : ControllerBase
@@ -142659,6 +144399,117 @@ README.md
 215: }
 ````
 
+## File: Explore.API/Controllers/IndexedDidController.cs
+````csharp
+  1: using MediatR;
+  2: using Explore.Application.Features.IndexedDids.Requests.Commands;
+  3: using Explore.Application.Features.IndexedDids.Requests.Queries;
+  4: using Explore.Application.Responses;
+  5: using Microsoft.AspNetCore.Authorization;
+  6: using Microsoft.AspNetCore.Mvc;
+  7: using Explore.Application.DTOs.IndexedDid;
+  8: using Explore.API.Hateoas;
+  9: using Explore.Application.Hateoas;
+ 10: 
+ 11: namespace Explore.API.Controllers
+ 12: {
+ 13:     [Route("api/v1/indexeddid")]
+ 14:     [ApiController]
+ 15:     [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
+ 16:     public class IndexedDidController : ControllerBase
+ 17:     {
+ 18:         private readonly IMediator _mediator;
+ 19:         private readonly ILogger<IndexedDidController> _logger;
+ 20:         private readonly IResourceAssembler<IndexedDidDto, IndexedDidListDto> _resourceAssembler;
+ 21: 
+ 22:         public IndexedDidController(
+ 23:             IMediator mediator,
+ 24:             ILogger<IndexedDidController> logger,
+ 25:             IResourceAssembler<IndexedDidDto, IndexedDidListDto> resourceAssembler)
+ 26:         {
+ 27:             _mediator = mediator;
+ 28:             _logger = logger;
+ 29:             _resourceAssembler = resourceAssembler;
+ 30:         }
+ 31: 
+ 32: 
+ 33:         [HttpGet(Name = RouteNames.GetIndexedDids)]
+ 34:         [AllowAnonymous]
+ 35:         public async Task<ActionResult<HalCollectionResource<IndexedDidListDto>>> GetAll()
+ 36:         {
+ 37:             var indexedDids = await _mediator.Send(new GetIndexedDidListRequest());
+ 38:             var halResource = _resourceAssembler.ToCollectionResource(
+ 39:                 indexedDids,
+ 40:                 RouteNames.GetIndexedDids,
+ 41:                 HttpContext);
+ 42:             return Ok(halResource);
+ 43:         }
+ 44: 
+ 45: 
+ 46:         [HttpGet("{did}", Name = RouteNames.GetIndexedDidByDid)]
+ 47:         [AllowAnonymous]
+ 48:         public async Task<ActionResult<HalResource<IndexedDidDto>>> GetById(string did)
+ 49:         {
+ 50:             var indexedDid = await _mediator.Send(new GetIndexedDidDetailsRequest { Did = did });
+ 51:             if (indexedDid == null)
+ 52:             {
+ 53:                 return NotFound(new { error = "IndexedDid not found" });
+ 54:             }
+ 55: 
+ 56:             var halResource = _resourceAssembler.ToResource(indexedDid, HttpContext);
+ 57:             return Ok(halResource);
+ 58:         }
+ 59: 
+ 60: 
+ 61:         [HttpPost]
+ 62:         [Authorize(Roles = "Admin")]
+ 63:         public async Task<ActionResult<BaseCommandResponse<string>>> Create([FromBody] CreateIndexedDidDto dto)
+ 64:         {
+ 65:             var command = new CreateIndexedDidCommand { IndexedDidDto = dto };
+ 66:             var response = await _mediator.Send(command);
+ 67:             return Ok(response);
+ 68:         }
+ 69: 
+ 70: 
+ 71:         [HttpPut("{did}")]
+ 72:         [Authorize(Roles = "Admin")]
+ 73:         public async Task<ActionResult<BaseCommandResponse<string>>> Update(string did, [FromBody] UpdateIndexedDidDto dto)
+ 74:         {
+ 75:             if (did != dto.Did)
+ 76:             {
+ 77:                 return BadRequest(new { error = "IndexedDid DID mismatch" });
+ 78:             }
+ 79: 
+ 80:             var command = new UpdateIndexedDidCommand { IndexedDidDto = dto };
+ 81:             var response = await _mediator.Send(command);
+ 82: 
+ 83:             if (!response.Success)
+ 84:             {
+ 85:                 return BadRequest(response);
+ 86:             }
+ 87: 
+ 88:             return Ok(response);
+ 89:         }
+ 90: 
+ 91: 
+ 92:         [HttpDelete("{did}")]
+ 93:         [Authorize(Roles = "Admin")]
+ 94:         public async Task<ActionResult> Delete(string did)
+ 95:         {
+ 96:             var command = new DeleteIndexedDidCommand { Did = did };
+ 97:             var result = await _mediator.Send(command);
+ 98: 
+ 99:             if (!result)
+100:             {
+101:                 return NotFound(new { error = "IndexedDid not found or you don't have permission to delete it" });
+102:             }
+103: 
+104:             return NoContent();
+105:         }
+106:     }
+107: }
+````
+
 ## File: Explore.API/Controllers/OrganizationReviewController.cs
 ````csharp
  1: using Explore.Application.DTOs.OrganizationReview;
@@ -142668,43 +144519,62 @@ README.md
  5: using Explore.Application.Responses;
  6: using MediatR;
  7: using Microsoft.AspNetCore.Mvc;
- 8: 
- 9: namespace Explore.API.Controllers
-10: {
-11:     [Route("api/v1/[controller]")]
-12:     [ApiController]
-13:     public class OrganizationReviewController : ControllerBase
-14:     {
-15:         private readonly IMediator _mediator;
-16: 
-17:         public OrganizationReviewController(IMediator mediator)
-18:         {
-19:             _mediator = mediator;
-20:         }
+ 8: using Explore.API.Hateoas;
+ 9: using Explore.Application.Hateoas;
+10: using Microsoft.AspNetCore.Authorization;
+11: 
+12: namespace Explore.API.Controllers
+13: {
+14:     [Route("api/v1/[controller]")]
+15:     [ApiController]
+16:     [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
+17:     public class OrganizationReviewController : ControllerBase
+18:     {
+19:         private readonly IMediator _mediator;
+20:         private readonly IResourceAssembler<OrganizationReviewDto, OrganizationReviewDto> _resourceAssembler;
 21: 
-22:         [HttpGet("{organizationId}")]
-23:         public async Task<ActionResult<List<OrganizationReviewDto>>> Get(Guid organizationId)
-24:         {
-25:             var reviews = await _mediator.Send(new GetOrganizationReviewsQuery { OrganizationId = organizationId });
-26:             return Ok(reviews);
-27:         }
-28: 
-29:         [HttpGet("user/{userId}")]
-30:         public async Task<ActionResult<List<OrganizationReviewDto>>> GetByUserId(Guid userId)
-31:         {
-32:             var reviews = await _mediator.Send(new GetMyReviewsQuery { UserId = userId });
-33:             return Ok(reviews);
-34:         }
-35: 
-36:         [HttpPost]
-37:         public async Task<ActionResult<BaseCommandResponse<Guid>>> Post([FromBody] CreateOrganizationReviewDto createOrganizationReviewDto)
-38:         {
-39:             var command = new CreateOrganizationReviewCommand { CreateOrganizationReviewDto = createOrganizationReviewDto };
-40:             var response = await _mediator.Send(command);
-41:             return Ok(response);
-42:         }
-43:     }
-44: }
+22:         public OrganizationReviewController(IMediator mediator, IResourceAssembler<OrganizationReviewDto, OrganizationReviewDto> resourceAssembler)
+23:         {
+24:             _mediator = mediator;
+25:             _resourceAssembler = resourceAssembler;
+26:         }
+27: 
+28:         [HttpGet(Name = RouteNames.GetOrganizationReviews)]
+29:         [AllowAnonymous]
+30:         [ProducesResponseType(typeof(HalCollectionResource<OrganizationReviewDto>), StatusCodes.Status200OK)]
+31:         public async Task<ActionResult<HalCollectionResource<OrganizationReviewDto>>> GetAll()
+32:         {
+33:             var reviews = await _mediator.Send(new GetOrganizationReviewsQuery());
+34:             var halResource = _resourceAssembler.ToCollectionResource(
+35:                 reviews,
+36:                 RouteNames.GetOrganizationReviews,
+37:                 HttpContext);
+38:             return Ok(halResource);
+39:         }
+40: 
+41:         [HttpGet("{organizationId}")]
+42:         public async Task<ActionResult<List<OrganizationReviewDto>>> Get(Guid organizationId)
+43:         {
+44:             var reviews = await _mediator.Send(new GetOrganizationReviewsQuery { OrganizationId = organizationId });
+45:             return Ok(reviews);
+46:         }
+47: 
+48:         [HttpGet("user/{userId}")]
+49:         public async Task<ActionResult<List<OrganizationReviewDto>>> GetByUserId(Guid userId)
+50:         {
+51:             var reviews = await _mediator.Send(new GetMyReviewsQuery { UserId = userId });
+52:             return Ok(reviews);
+53:         }
+54: 
+55:         [HttpPost]
+56:         public async Task<ActionResult<BaseCommandResponse<Guid>>> Post([FromBody] CreateOrganizationReviewDto createOrganizationReviewDto)
+57:         {
+58:             var command = new CreateOrganizationReviewCommand { CreateOrganizationReviewDto = createOrganizationReviewDto };
+59:             var response = await _mediator.Send(command);
+60:             return Ok(response);
+61:         }
+62:     }
+63: }
 ````
 
 ## File: Explore.API/Dockerfile
@@ -144706,6 +146576,32 @@ README.md
 33: }
 ````
 
+## File: Explore.Domain/UserRole.cs
+````csharp
+ 1: using System;
+ 2: using System.ComponentModel.DataAnnotations;
+ 3: using System.ComponentModel.DataAnnotations.Schema;
+ 4: 
+ 5: namespace Explore.Domain
+ 6: {
+ 7:     public class UserRole
+ 8:     {
+ 9:         public int Id { get; set; }
+10: 
+11:         public required string FullName { get; set; }
+12: 
+13:         public required string MasterCode { get; set; }
+14: 
+15:         public string? Description { get; set; }
+16: 
+17:         [ForeignKey("Tenant")]
+18:         public Guid TenantId { get; set; }
+19: 
+20:         public Tenant Tenant { get; set; } = null!;
+21:     }
+22: }
+````
+
 ## File: Explore.Infrastructure/InfrastructureServicesRegistration.cs
 ````csharp
   1: using Amazon;
@@ -145010,113 +146906,6 @@ README.md
 192: }
 ````
 
-## File: Explore.Persistence/Configurations/Entities/EventConfiguration.cs
-````csharp
-  1: using System;
-  2: using System.Collections.Generic;
-  3: using System.Text;
-  4: using Explore.Domain;
-  5: using Explore.Domain.Enums;
-  6: using Explore.Persistence.Seed;
-  7: using Microsoft.EntityFrameworkCore;
-  8: using Microsoft.EntityFrameworkCore.Metadata.Builders;
-  9: 
- 10: namespace Explore.Persistence.Configurations.Entities
- 11: {
- 12:     public class EventConfiguration : IEntityTypeConfiguration<Event>
- 13:     {
- 14:         public void Configure(EntityTypeBuilder<Event> builder)
- 15:         {
- 16:             builder.UseTptMappingStrategy();
- 17: 
- 18:             builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
- 19:             builder.Property(e => e.TotalViews).HasDefaultValue(0);
- 20: 
- 21:             builder.Property(e => e.Title).HasMaxLength(200).IsRequired();
- 22:             builder.Property(e => e.Description).HasMaxLength(5000);
- 23:             builder.Property(e => e.Slug).HasMaxLength(500);
- 24:             builder.Property(e => e.CurrencyCode).HasMaxLength(3);
- 25:             builder.Property(e => e.EventUrl).HasMaxLength(500);
- 26:             builder.Property(e => e.ExternalRegistrationUrl).HasMaxLength(500);
- 27:             builder.Property(e => e.Timezone).HasMaxLength(100);
- 28: 
- 29:             builder.HasOne(e => e.EventType)
- 30:                 .WithMany()
- 31:                 .HasForeignKey(e => e.EventTypeId)
- 32:                 .OnDelete(DeleteBehavior.Restrict);
- 33: 
- 34:             builder.HasOne(e => e.AudienceGender)
- 35:                 .WithMany()
- 36:                 .HasForeignKey(e => e.AudienceGenderId)
- 37:                 .OnDelete(DeleteBehavior.Restrict);
- 38: 
- 39:             builder.HasOne(e => e.AudienceAge)
- 40:                 .WithMany()
- 41:                 .HasForeignKey(e => e.AudienceAgeId)
- 42:                 .OnDelete(DeleteBehavior.Restrict);
- 43: 
- 44:             builder.HasOne(e => e.Actor)
- 45:                 .WithMany()
- 46:                 .HasForeignKey(e => e.ActorId)
- 47:                 .OnDelete(DeleteBehavior.Restrict);
- 48: 
- 49:             builder.HasOne(e => e.FeaturedImage)
- 50:                 .WithMany()
- 51:                 .HasForeignKey(e => e.FeaturedImageId)
- 52:                 .OnDelete(DeleteBehavior.Restrict);
- 53: 
- 54:             builder.HasOne(e => e.Madhab)
- 55:                 .WithMany()
- 56:                 .HasForeignKey(e => e.MadhabId)
- 57:                 .OnDelete(DeleteBehavior.Restrict);
- 58: 
- 59:             builder.HasOne(e => e.Tenant)
- 60:                 .WithMany()
- 61:                 .HasForeignKey(e => e.TenantId)
- 62:                 .OnDelete(DeleteBehavior.Restrict);
- 63: 
- 64:             builder.HasOne(e => e.VisibilityType)
- 65:                 .WithMany()
- 66:                 .HasForeignKey(e => e.VisibilityTypeId)
- 67:                 .OnDelete(DeleteBehavior.Restrict);
- 68: 
- 69:             builder.HasOne(e => e.EventStatus)
- 70:                 .WithMany()
- 71:                 .HasForeignKey(e => e.EventStatusId)
- 72:                 .OnDelete(DeleteBehavior.Restrict);
- 73: 
- 74:             builder.HasOne(e => e.EventFormat)
- 75:                 .WithMany()
- 76:                 .HasForeignKey(e => e.EventFormatId)
- 77:                 .OnDelete(DeleteBehavior.Restrict);
- 78: 
- 79:             builder.HasOne(e => e.AtprotoRecord)
- 80:                 .WithMany()
- 81:                 .HasForeignKey(e => e.AtprotoRecordId)
- 82:                 .OnDelete(DeleteBehavior.SetNull);
- 83: 
- 84: 
- 85:             builder.HasOne(e => e.IslamicAspect)
- 86:                 .WithOne(a => a.Event)
- 87:                 .HasForeignKey<EventIslamicAspect>(a => a.Id)
- 88:                 .OnDelete(DeleteBehavior.Cascade);
- 89: 
- 90:             builder.HasOne(e => e.TechAspect)
- 91:                 .WithOne(a => a.Event)
- 92:                 .HasForeignKey<EventTechAspect>(a => a.Id)
- 93:                 .OnDelete(DeleteBehavior.Cascade);
- 94: 
- 95: 
- 96:             builder.Property(e => e.MetadataJson)
- 97:                 .HasColumnType("jsonb");
- 98: 
- 99: 
-100: 
-101:         }
-102:     }
-103: }
-````
-
 ## File: Explore.Persistence/Configurations/Entities/EventTypeConfiguration.cs
 ````csharp
  1: using System;
@@ -145159,7 +146948,81 @@ README.md
 38: }
 ````
 
-## File: Explore.Persistence/Configurations/Entities/OrganizationMemberConfiguration.cs
+## File: Explore.Persistence/Configurations/Entities/OrganizationConfiguration.cs
+````csharp
+ 1: using System;
+ 2: using System.Collections.Generic;
+ 3: using System.Text;
+ 4: using Explore.Domain;
+ 5: using Explore.Domain.Enums;
+ 6: using Explore.Persistence.Seed;
+ 7: using Explore.Persistence.ValueGenerators;
+ 8: using Microsoft.EntityFrameworkCore;
+ 9: using Microsoft.EntityFrameworkCore.Metadata.Builders;
+10: 
+11: namespace Explore.Persistence.Configurations.Entities
+12: {
+13:     public class OrganizationConfiguration : IEntityTypeConfiguration<Organization>
+14:     {
+15:         public void Configure(EntityTypeBuilder<Organization> builder)
+16:         {
+17:             builder.Property(e => e.Id)
+18:                 .HasValueGenerator<GuidVersion7ValueGenerator>();
+19: 
+20:             builder.Property(e => e.ApprovalStatusId)
+21:                 .HasDefaultValue((int)ApprovalStatusEnum.Pending);
+22: 
+23: 
+24:             builder.Property(e => e.CreatedAt)
+25:                 .HasDefaultValueSql("NOW()")
+26:                 .IsRequired();
+27: 
+28:             builder.Property(e => e.FullName)
+29:                 .HasMaxLength(500)
+30:                 .IsRequired();
+31: 
+32:             builder.Property(e => e.Email)
+33:                 .HasMaxLength(500)
+34:                 .IsRequired();
+35: 
+36:             builder.Property(e => e.Country)
+37:                 .HasMaxLength(200);
+38: 
+39:             builder.Property(e => e.City)
+40:                 .HasMaxLength(200);
+41: 
+42:             builder.Property(e => e.Address)
+43:                 .HasMaxLength(500);
+44: 
+45:             builder.Property(e => e.Postcode)
+46:                 .HasMaxLength(50);
+47: 
+48:             builder.Property(e => e.WebsiteUrl)
+49:                 .HasMaxLength(500);
+50: 
+51:             builder.HasOne(e => e.ApprovalStatus)
+52:                 .WithMany()
+53:                 .HasForeignKey(e => e.ApprovalStatusId)
+54:                 .OnDelete(DeleteBehavior.Restrict);
+55: 
+56:             builder.HasOne(e => e.Tenant)
+57:                 .WithMany()
+58:                 .HasForeignKey(e => e.TenantId)
+59:                 .OnDelete(DeleteBehavior.Restrict);
+60: 
+61:             builder.HasOne(e => e.Actor)
+62:                 .WithMany()
+63:                 .HasForeignKey(e => e.ActorId)
+64:                 .OnDelete(DeleteBehavior.SetNull);
+65: 
+66: 
+67: 
+68:         }
+69:     }
+70: }
+````
+
+## File: Explore.Persistence/Configurations/Entities/StorageObjectConfiguration.cs
 ````csharp
  1: using System;
  2: using System.Collections.Generic;
@@ -145172,37 +147035,36 @@ README.md
  9: 
 10: namespace Explore.Persistence.Configurations.Entities
 11: {
-12:     public class OrganizationMemberConfiguration : IEntityTypeConfiguration<OrganizationMember>
+12:     public class StorageObjectConfiguration : IEntityTypeConfiguration<StorageObject>
 13:     {
-14:         public void Configure(EntityTypeBuilder<OrganizationMember> builder)
+14:         public void Configure(EntityTypeBuilder<StorageObject> builder)
 15:         {
 16:             builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
 17: 
-18:             builder.HasOne(m => m.Organization)
-19:                 .WithMany(o => o.Members)
-20:                 .HasForeignKey(m => m.OrganizationId)
-21:                 .OnDelete(DeleteBehavior.Cascade);
-22: 
-23:             builder.HasOne(m => m.User)
-24:                 .WithMany()
-25:                 .HasForeignKey(m => m.UserId)
-26:                 .OnDelete(DeleteBehavior.Cascade);
-27: 
-28:             builder.HasOne(m => m.OrganizationRole)
-29:                 .WithMany()
-30:                 .HasForeignKey(m => m.OrganizationRoleId)
-31:                 .OnDelete(DeleteBehavior.Restrict);
-32: 
-33:             builder.HasOne(m => m.OrganizationPosition)
-34:                 .WithMany()
-35:                 .HasForeignKey(m => m.OrganizationPositionId)
-36:                 .OnDelete(DeleteBehavior.Restrict);
+18:             builder.Property(e => e.Uri).HasMaxLength(1000).IsRequired();
+19:             builder.Property(e => e.FullName).HasMaxLength(500).IsRequired();
+20:             builder.Property(e => e.Extension).HasMaxLength(50).IsRequired();
+21: 
+22:             builder.HasOne(e => e.FileType)
+23:                 .WithMany()
+24:                 .HasForeignKey(e => e.FileTypeId)
+25:                 .OnDelete(DeleteBehavior.Restrict);
+26: 
+27:             builder.HasOne(e => e.Tenant)
+28:                 .WithMany()
+29:                 .HasForeignKey(e => e.TenantId)
+30:                 .OnDelete(DeleteBehavior.Restrict);
+31: 
+32:             builder.HasOne(e => e.Actor)
+33:                 .WithMany()
+34:                 .HasForeignKey(e => e.ActorId)
+35:                 .OnDelete(DeleteBehavior.SetNull);
+36: 
 37: 
 38: 
-39: 
-40:         }
-41:     }
-42: }
+39:         }
+40:     }
+41: }
 ````
 
 ## File: Explore.Persistence/Repositories/GenericRepository.cs
@@ -145348,10 +147210,12 @@ README.md
 31:       "WebFetch(domain:raw.githubusercontent.com)",
 32:       "mcp__tavily__tavily_research",
 33:       "WebFetch(domain:)",
-34:       "WebFetch(domain:www.nuget.org)"
-35:     ]
-36:   }
-37: }
+34:       "WebFetch(domain:www.nuget.org)",
+35:       "Bash(dotnet test:*)",
+36:       "Bash(dotnet build:*)"
+37:     ]
+38:   }
+39: }
 ````
 
 ## File: docs/TROUBLESHOOTING.md
@@ -146068,52 +147932,52 @@ README.md
  36: 
  37:         public int TotalViews { get; set; }
  38:         public bool IsRegistrationRequired { get; set; }
- 39:         public string? EventUrl { get; set; }
- 40: 
- 41:         [ForeignKey("Madhab")]
- 42:         public int? MadhabId { get; set; }
- 43:         public Madhab? Madhab { get; set; }
- 44: 
- 45:         [ForeignKey("Tenant")]
- 46:         public Guid TenantId { get; set; }
- 47:         public Tenant Tenant { get; set; }
- 48: 
- 49:         public string? Slug { get; set; }
- 50: 
- 51:         [ForeignKey("VisibilityType")]
- 52:         public int VisibilityTypeId { get; set; }
- 53:         public VisibilityType VisibilityType { get; set; }
- 54: 
- 55:         public int? SessionCount { get; set; }
- 56: 
- 57:         [ForeignKey("EventStatus")]
- 58:         public int EventStatusId { get; set; }
- 59:         public EventStatus EventStatus { get; set; }
- 60: 
- 61:         public string? ExternalRegistrationUrl { get; set; }
- 62:         public DateOnly? FirstSessionDate { get; set; }
- 63:         public DateOnly? LastSessionDate { get; set; }
- 64:         public string? Timezone { get; set; }
- 65: 
- 66:         [ForeignKey("EventFormat")]
- 67:         public int EventFormatId { get; set; }
- 68:         public EventFormat EventFormat { get; set; }
- 69: 
- 70:         [ForeignKey("AtprotoRecord")]
- 71:         public Guid? AtprotoRecordId { get; set; }
- 72:         public AtprotoRecord? AtprotoRecord { get; set; }
- 73: 
+ 39:         public bool IsUserReported { get; set; }
+ 40:         public string? EventUrl { get; set; }
+ 41: 
+ 42:         [ForeignKey("Madhab")]
+ 43:         public int? MadhabId { get; set; }
+ 44:         public Madhab? Madhab { get; set; }
+ 45: 
+ 46:         [ForeignKey("Tenant")]
+ 47:         public Guid TenantId { get; set; }
+ 48:         public Tenant Tenant { get; set; }
+ 49: 
+ 50:         public string? Slug { get; set; }
+ 51: 
+ 52:         [ForeignKey("VisibilityType")]
+ 53:         public int VisibilityTypeId { get; set; }
+ 54:         public VisibilityType VisibilityType { get; set; }
+ 55: 
+ 56:         public int? SessionCount { get; set; }
+ 57: 
+ 58:         [ForeignKey("EventStatus")]
+ 59:         public int EventStatusId { get; set; }
+ 60:         public EventStatus EventStatus { get; set; }
+ 61: 
+ 62:         public string? ExternalRegistrationUrl { get; set; }
+ 63:         public DateOnly? FirstSessionDate { get; set; }
+ 64:         public DateOnly? LastSessionDate { get; set; }
+ 65:         public string? Timezone { get; set; }
+ 66: 
+ 67:         [ForeignKey("EventFormat")]
+ 68:         public int EventFormatId { get; set; }
+ 69:         public EventFormat EventFormat { get; set; }
+ 70: 
+ 71:         [ForeignKey("AtprotoRecord")]
+ 72:         public Guid? AtprotoRecordId { get; set; }
+ 73:         public AtprotoRecord? AtprotoRecord { get; set; }
  74: 
- 75:         public DateTime CreatedAt { get; set; }
- 76:         public Guid? CreatedBy { get; set; }
- 77:         public DateTime? UpdatedAt { get; set; }
- 78:         public Guid? UpdatedBy { get; set; }
- 79: 
+ 75: 
+ 76:         public DateTime CreatedAt { get; set; }
+ 77:         public Guid? CreatedBy { get; set; }
+ 78:         public DateTime? UpdatedAt { get; set; }
+ 79:         public Guid? UpdatedBy { get; set; }
  80: 
- 81:         public bool IsDeleted { get; set; }
- 82:         public DateTime? DeletedAt { get; set; }
- 83:         public Guid? DeletedBy { get; set; }
- 84: 
+ 81: 
+ 82:         public bool IsDeleted { get; set; }
+ 83:         public DateTime? DeletedAt { get; set; }
+ 84:         public Guid? DeletedBy { get; set; }
  85: 
  86: 
  87: 
@@ -146121,21 +147985,22 @@ README.md
  89: 
  90: 
  91: 
- 92:         public EventIslamicAspect? IslamicAspect { get; set; }
- 93: 
+ 92: 
+ 93:         public EventIslamicAspect? IslamicAspect { get; set; }
  94: 
  95: 
  96: 
  97: 
- 98:         public EventTechAspect? TechAspect { get; set; }
- 99: 
+ 98: 
+ 99:         public EventTechAspect? TechAspect { get; set; }
 100: 
 101: 
 102: 
 103: 
-104:         public string? MetadataJson { get; set; }
-105:     }
-106: }
+104: 
+105:         public string? MetadataJson { get; set; }
+106:     }
+107: }
 ````
 
 ## File: Explore.Domain/User.cs
@@ -146179,6 +148044,161 @@ README.md
 37:         public Guid? DeletedBy { get; set; }
 38:     }
 39: }
+````
+
+## File: Explore.Persistence/Configurations/Entities/EventConfiguration.cs
+````csharp
+  1: using System;
+  2: using System.Collections.Generic;
+  3: using System.Text;
+  4: using Explore.Domain;
+  5: using Explore.Domain.Enums;
+  6: using Explore.Persistence.Seed;
+  7: using Microsoft.EntityFrameworkCore;
+  8: using Microsoft.EntityFrameworkCore.Metadata.Builders;
+  9: using Explore.Persistence.ValueGenerators;
+ 10: 
+ 11: namespace Explore.Persistence.Configurations.Entities
+ 12: {
+ 13:     public class EventConfiguration : IEntityTypeConfiguration<Event>
+ 14:     {
+ 15:         public void Configure(EntityTypeBuilder<Event> builder)
+ 16:         {
+ 17:             builder.UseTptMappingStrategy();
+ 18: 
+ 19:             builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
+ 20:             builder.Property(e => e.TotalViews).HasDefaultValue(0);
+ 21:             builder.Property(e => e.IsUserReported).HasDefaultValue(false);
+ 22: 
+ 23:             builder.Property(e => e.Title).HasMaxLength(200).IsRequired();
+ 24:             builder.Property(e => e.Description).HasMaxLength(5000);
+ 25:             builder.Property(e => e.Slug).HasMaxLength(500);
+ 26:             builder.Property(e => e.CurrencyCode).HasMaxLength(3);
+ 27:             builder.Property(e => e.EventUrl).HasMaxLength(500);
+ 28:             builder.Property(e => e.ExternalRegistrationUrl).HasMaxLength(500);
+ 29:             builder.Property(e => e.Timezone).HasMaxLength(100);
+ 30: 
+ 31:             builder.HasOne(e => e.EventType)
+ 32:                 .WithMany()
+ 33:                 .HasForeignKey(e => e.EventTypeId)
+ 34:                 .OnDelete(DeleteBehavior.Restrict);
+ 35: 
+ 36:             builder.HasOne(e => e.AudienceGender)
+ 37:                 .WithMany()
+ 38:                 .HasForeignKey(e => e.AudienceGenderId)
+ 39:                 .OnDelete(DeleteBehavior.Restrict);
+ 40: 
+ 41:             builder.HasOne(e => e.AudienceAge)
+ 42:                 .WithMany()
+ 43:                 .HasForeignKey(e => e.AudienceAgeId)
+ 44:                 .OnDelete(DeleteBehavior.Restrict);
+ 45: 
+ 46:             builder.HasOne(e => e.Actor)
+ 47:                 .WithMany()
+ 48:                 .HasForeignKey(e => e.ActorId)
+ 49:                 .OnDelete(DeleteBehavior.Restrict);
+ 50: 
+ 51:             builder.HasOne(e => e.FeaturedImage)
+ 52:                 .WithMany()
+ 53:                 .HasForeignKey(e => e.FeaturedImageId)
+ 54:                 .OnDelete(DeleteBehavior.Restrict);
+ 55: 
+ 56:             builder.HasOne(e => e.Madhab)
+ 57:                 .WithMany()
+ 58:                 .HasForeignKey(e => e.MadhabId)
+ 59:                 .OnDelete(DeleteBehavior.Restrict);
+ 60: 
+ 61:             builder.HasOne(e => e.Tenant)
+ 62:                 .WithMany()
+ 63:                 .HasForeignKey(e => e.TenantId)
+ 64:                 .OnDelete(DeleteBehavior.Restrict);
+ 65: 
+ 66:             builder.HasOne(e => e.VisibilityType)
+ 67:                 .WithMany()
+ 68:                 .HasForeignKey(e => e.VisibilityTypeId)
+ 69:                 .OnDelete(DeleteBehavior.Restrict);
+ 70: 
+ 71:             builder.HasOne(e => e.EventStatus)
+ 72:                 .WithMany()
+ 73:                 .HasForeignKey(e => e.EventStatusId)
+ 74:                 .OnDelete(DeleteBehavior.Restrict);
+ 75: 
+ 76:             builder.HasOne(e => e.EventFormat)
+ 77:                 .WithMany()
+ 78:                 .HasForeignKey(e => e.EventFormatId)
+ 79:                 .OnDelete(DeleteBehavior.Restrict);
+ 80: 
+ 81:             builder.HasOne(e => e.AtprotoRecord)
+ 82:                 .WithMany()
+ 83:                 .HasForeignKey(e => e.AtprotoRecordId)
+ 84:                 .OnDelete(DeleteBehavior.SetNull);
+ 85: 
+ 86: 
+ 87:             builder.HasOne(e => e.IslamicAspect)
+ 88:                 .WithOne(a => a.Event)
+ 89:                 .HasForeignKey<EventIslamicAspect>(a => a.Id)
+ 90:                 .OnDelete(DeleteBehavior.Cascade);
+ 91: 
+ 92:             builder.HasOne(e => e.TechAspect)
+ 93:                 .WithOne(a => a.Event)
+ 94:                 .HasForeignKey<EventTechAspect>(a => a.Id)
+ 95:                 .OnDelete(DeleteBehavior.Cascade);
+ 96: 
+ 97: 
+ 98:             builder.Property(e => e.MetadataJson)
+ 99:                 .HasColumnType("jsonb");
+100: 
+101: 
+102: 
+103:         }
+104:     }
+105: }
+````
+
+## File: Explore.Persistence/Configurations/Entities/OrganizationMemberConfiguration.cs
+````csharp
+ 1: using System;
+ 2: using System.Collections.Generic;
+ 3: using System.Text;
+ 4: using Explore.Domain;
+ 5: using Explore.Domain.Enums;
+ 6: using Explore.Persistence.Seed;
+ 7: using Microsoft.EntityFrameworkCore;
+ 8: using Microsoft.EntityFrameworkCore.Metadata.Builders;
+ 9: 
+10: namespace Explore.Persistence.Configurations.Entities
+11: {
+12:     public class OrganizationMemberConfiguration : IEntityTypeConfiguration<OrganizationMember>
+13:     {
+14:         public void Configure(EntityTypeBuilder<OrganizationMember> builder)
+15:         {
+16:             builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
+17: 
+18:             builder.HasOne(m => m.Organization)
+19:                 .WithMany(o => o.Members)
+20:                 .HasForeignKey(m => m.OrganizationId)
+21:                 .OnDelete(DeleteBehavior.Cascade);
+22: 
+23:             builder.HasOne(m => m.User)
+24:                 .WithMany()
+25:                 .HasForeignKey(m => m.UserId)
+26:                 .OnDelete(DeleteBehavior.Cascade);
+27: 
+28:             builder.HasOne(m => m.OrganizationRole)
+29:                 .WithMany()
+30:                 .HasForeignKey(m => m.OrganizationRoleId)
+31:                 .OnDelete(DeleteBehavior.Restrict);
+32: 
+33:             builder.HasOne(m => m.OrganizationPosition)
+34:                 .WithMany()
+35:                 .HasForeignKey(m => m.OrganizationPositionId)
+36:                 .OnDelete(DeleteBehavior.Restrict);
+37: 
+38: 
+39: 
+40:         }
+41:     }
+42: }
 ````
 
 ## File: Explore.Persistence/Explore.Persistence.csproj
@@ -146382,636 +148402,6 @@ README.md
 39: }
 ````
 
-## File: CLAUDE.md
-````markdown
-  1: # CLAUDE.md — ISLAMU Event Project Reference
-  2: 
-  3: > **Source of Truth for AI Agents and Team Collaboration**
-  4: >
-  5: > This document provides comprehensive context for working with the ISLAMU Event codebase.
-  6: > This file is the entrypoint. Detailed docs are imported from `docs/`.
-  7: > Last Updated: January 2026
-  8: 
-  9: You are an experienced, pragmatic software engineer. You don’t over-engineer a solution when a simple one works.
- 10: 
- 11: 
- 12: ## Documentation Template System
- 13: 
- 14: This project uses **project-agnostic documentation** with placeholder syntax `{Placeholder}`.
- 15: **Template Glossary**: [docs/TEMPLATE_GLOSSARY.md](docs/TEMPLATE_GLOSSARY.md) - Defines all placeholders
- 16: 
- 17: 
- 18: **Documentation Coverage**:
- 19: - ✅ Core Docs: ARCHITECTURE.md, API.md, BLAZOR.md, GOVERNANCE.md, QUICK_REFERENCE.md
- 20: - ✅ Operations: CONTRIBUTING.md, OPERATIONS.md, CONFIGURATION.md, TROUBLESHOOTING.md
- 21: - ✅ Domain Reference: DOMAIN.md (project-specific with generic patterns)
- 22: - ✅ Skills: blazor-bff-patterns (SKILL.md + 4 resources), and 7 other skills
- 23: - ✅ All use "Generic Template + Concrete Example" pattern
- 24: 
- 25: ## ⚠️ CRITICAL RULES - Quick Reference
- 26: 
- 27: **MUST READ**: Never violate them.
- 28: 
- 29: 
- 30: > ⚠️ **Rule #1:** Never assume an exception. Get explicit permission from me before breaking or bending any rule.
- 31: 
- 32: - Only write inside this repo project folder, never in users folder (not in C:\Users\*\.claude\ or anywhere outside this project folder)
- 33: - When getting build errors, stop building! Get the errors, fix them, skip building until fixed. Limited retry attempts, then fix without building until confident.
- 34: - NEVER run rm -rf commands or delete files/folders unless explicitly instructed - instead report files that should be deleted
- 35: - Never read .mcp.json file
- 36: 
- 37: **Some Technical API Rules**:
- 38: 1. **Repositories Return ENTITIES, Never DTOs** - Map to DTOs in handlers
- 39: 2. **Validators Use Manual Instantiation (NOT DI)** - `var validator = new CreateEventDtoValidator(_repo1, _repo2);`
- 40: 3. **Navigation Properties Are Readonly** - Use repository for writes: `_memberRepository.Create(member)`
- 41: 4. **Use int Instead of long** - Except size/cursor fields or absolutely necessary
- 42: 5. **No Default Values in Domain Entities** - Set in handler: `@event.TotalViews = 0;`
- 43: 6. **Commands Return BaseCommandResponse<Guid>** - Not just `Guid`
- 44: 7. **GET = AllowAnonymous, Write = Authorize, Admin = Roles** - Public read, protected write, role-based for admin operations
- 45: 8. **Extract UserId with Fallback** - `sub` → `nameidentifier` → `sid`
- 46: 9. **File-Scoped Namespaces** - `namespace Explore.Application.Features.Events;`
- 47: 10. **Entities Include Auditing Fields** - CreatedAt, CreatedBy, UpdatedAt, UpdatedBy, IsDeleted (soft delete)
- 48: 11. **Use Named Query Filters for Soft Delete** - EF Core 10+ `.HasQueryFilter(name: "SoftDelete", predicate: e => !e.IsDeleted)`
- 49: **Full Details**: [@docs/QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md)
- 50: 
- 51: ---
- 52: 
- 53: ## 🧱 Foundational Rules
- 54: 
- 55: - Doing it right is better than doing it fast. You are not in a rush.
- 56: - Never skip steps or take shortcuts.
- 57: - Tedious, systematic work is often the correct solution. Don't abandon an approach because it's repetitive—only if it's wrong.
- 58: - **One question at a time** - When gathering requirements or clarifying design, ask questions individually. Wait for each answer before proceeding to the next question.
- 59: - Honesty is a core value. If you're not fully truthful, our collaboration can't continue.
- 60: 
- 61: ---
- 62: 
- 63: ## 🤝 Our Relationship
- 64: 
- 65: - We are colleagues — equals working toward the same goal.
- 66: - Speak up immediately when you don’t know something or are over your head.
- 67: - Call out bad ideas, mistakes, or unreasonable expectations. I highly depends on this.
- 68: - Never agree just to be nice. Honest disagreement is better than fake consensus.
- 69: - If you disagree, cite technical reasons. If it’s intuition, say so.
- 70: - You have unreliable memory. Use your **journal** to record important facts, insights, and preferences before you forget.
- 71: - Search your journal before repeating research or reasoning.
- 72: - Discuss all **Important decisions** (refactors...) before implementation **or** before finalizing requirements that assume a particular approach.
- 73: - When something is identified as "a major decision" elevate its priority immediately.
- 74: 
- 75: ---
- 76: 
- 77: ## 🔧 Starting Work (Critical First Steps)
- 78: 
- 79: **Before starting ANY task, always run tests:**
- 80: 
- 81: 1. **Check test status**: `dotnet test`
- 82: 2. # Match CI/CD exactly
- 83: dotnet test Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release
- 84: dotnet test Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release
- 85: dotnet test Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release
- 86: dotnet test Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release
- 87: dotnet test Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release
- 88: dotnet test Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release
- 89: dotnet test Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release
- 90: 
- 91: 2. **If tests are failing:**
- 92:    - **STOP your planned work**
- 93:    - Fix the failing tests FIRST
- 94:    - Document what was broken and how you fixed it
- 95:    - Then resume your planned work
- 96: 3. **If tests are passing:**
- 97:    - Proceed with your work
- 98:    - Run tests frequently during development
- 99: 
-100: **Why this matters:**
-101: - Broken tests indicate the codebase is in an unknown state
-102: - Your changes built on broken tests compound the problem
-103: - It's unclear if YOUR changes break things or if they were already broken
-104: - Fixing tests first establishes a known-good baseline
-105: 
-106: **Example workflow:**
-107: ```bash
-108: # Start of session
-109: dotnet test
-110: # Match CI/CD exactly
-111: dotnet test Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release
-112: dotnet test Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release
-113: dotnet test Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release
-114: dotnet test Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release
-115: dotnet test Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release
-116: dotnet test Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release
-117: dotnet test Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release
-118: 
-119: # ❌ 3 tests failing
-120: 
-121: # DO NOT proceed with work yet
-122: # Fix the 3 failing tests
-123: 
-124: # Now tests pass - safe to proceed
-125: # ✅ All tests passing
-126: 
-127: # Now continue on your work
-128: ```
-129: 
-130: ---
-131: 
-132: ## 🚀 Proactiveness
-133: 
-134: When assigned a task, **do it completely**, including obvious follow-ups. However, distinguish between:
-135: 
-136: **Implementation tasks** (be proactive):
-137: - "Fix this bug"
-138: - "Add this feature"
-139: - "Write tests for X"
-140: - "Refactor this code"
-141: 
-142: **Design/planning tasks** (be systematic, not proactive):
-143: - "Let's discuss architecture"
-144: - "Help me design X"
-145: - "What are the requirements for Y?"
-146: - "Let's talk about..."
-147: 
-148: For design/planning: Pause and ask questions one at a time. Don't create implementations, templates, or code until explicitly requested or requirements are finalized.
-149: 
-150: Follow the prd skill at .claude/skills/prd/SKILL.md when planning
-151: 
-152: Pause to ask for confirmation when:
-153: - Multiple valid approaches exist and the choice matters.
-154: - The action deletes or restructures existing code.
-155: - You genuinely don't understand the task.
-156: - explicitly asked "how should I approach X?" — answer the question, don't start coding.
-157: - You're in **requirements gathering mode** - always wait for explicit direction.
-158: 
-159: Act autonomously for clear, low-risk tasks. Stop and ask when changes affect architecture, data integrity, or long-term behavior.
-160: 
-161: ---
-162: 
-163: ## 📝 Requirements Gathering
-164: 
-165: When designing new features or systems:
-166: 
-167: - **One question at a time** - Never batch multiple questions. Wait for answer before proceeding.
-168: - **Document as you go** - Capture decisions in real-time in a dedicated requirements document.
-169: - **Don't get ahead of yourself** - Resist the urge to implement or create templates before requirements are complete.
-170: - **Systematic over ad-hoc** - Work through structured questionnaires methodically.
-171: - **I may enhance your options** - Be open to improving or adding to the options you propose.
-172: - **Requirements before implementation** - Complete and review all requirements before any coding begins.
-173: 
-174: ---
-175: 
-176: ## 🧩 Designing Software
-177: 
-178: - **YAGNI** – "You Ain't Gonna Need It." The best code is no code.
-179: - When possible, architect for **extensibility and flexibility**, but never preemptively.
-180: 
-181: ---
-182: 
-183: ## ✅ Test-Driven Development (TDD)
-184: 
-185: For every new feature or bugfix:
-186: 
-187: 1. Write a failing test validating the desired behavior.  
-188: 2. Run it to confirm failure.  
-189: 3. Write *only* enough code to make the test pass.  
-190: 4. Run tests to confirm success.  
-191: 5. Refactor if needed while keeping tests green.
-192: 
-193: You may skip TDD only with given explicit permission.
-194: 
-195: ---
-196: 
-197: ## 💻 Writing Code
-198: 
-199: - Verify you have followed **all rules** before submitting work.
-200: - Make the **smallest reasonable changes** to achieve the desired result.
-201: - Prefer simple, clean, maintainable code over clever or complex solutions.
-202: - **Eliminate duplication aggressively:**
-203:   - Never copy-paste code - extract and import instead
-204:   - If the same logic appears twice, prepare to extract on third usage
-205:   - Before creating a new file with similar purpose, refactor the existing file
-206:   - Search codebase thoroughly before implementing functionality that might already exist
-207: - Never throw away or rewrite code without permission (except trivial cleanup or bugfixes).
-208: - Get approval before implementing **backward compatibility**.
-209: - Match the surrounding code style. Local consistency beats external style guides.
-210: - Don't manually adjust whitespace unless necessary; use a formatter instead: `dotnet format`.
-211: - Fix broken things immediately when you find them.
-212: 
-213: **Error handling:** Code must fail fast, log clearly, and handle expected errors gracefully.
-214: 
-215: ---
-216: 
-217: ## 🗂️ File Management & Organization
-218: 
-219: ### Before Creating a New File
-220: 
-221: **STOP and ask these questions:**
-222: 
-223: 1. **Does a similar file already exist?**
-224:    - Search the codebase thoroughly: `grep -r "class ClassName"`, `find . -name "*keyword*"`
-225:    - If similar file exists, **extend it** rather than duplicate
-226: 
-227: 2. **Will this create duplication?**
-228:    - If implementing similar functionality to an existing file, **refactor the existing file** instead
-229:    - Never create `FileV2.cs`, `FileEnhanced.cs`, `FileNew.cs` - these indicate you should be editing the original
-230:    - Bad: Creating both `WordPressClient.cs` and `WordPressEnhanced.cs`
-231:    - Good: Enhancing the existing `WordPressClient.cs`
-232: 
-233: 3. **Is this a test file?**
-234:    - **Ad-hoc test scripts → NO**: Put in proper test project
-235:    - **Integration/manual tests → MAYBE**: Only if truly cannot be automated
-236:    - **Never** create scripts for unit tests
-237: 
-238: 4. **Is this a backup or temporary file?**
-239:    - Use git branches and history, not backup files
-240:    - Add patterns to `.gitignore` immediately
-241: 
-242: ### When Replacing/Deprecating Files
-243: 
-244: If creating a replacement file (e.g., `new-cli.cs` replacing `old-script.cs`):
-245: 
-246: 1. **Delete the old file in the same PR** - Don't leave both
-247: 2. **Update all imports** that referenced the old file
-248: 4. **Update documentation** to reference only the new file
-249: 5. **Add migration notes** to git commit message
-250: 
-251: ### Duplication Detection Checklist
-252: 
-253: Before submitting code, check for these duplication patterns:
-254: 
-255: - [ ] **Complete file duplication** - Same class name in two files
-256: - [ ] **Logic duplication** - Same algorithm copied between files (>20 lines)
-257: - [ ] **Constant duplication** - Same constants defined in multiple files
-258: 
-259: **Rule of Three**: If the same code appears **3 times**, extract it to a shared utility following asp.net core conventions and clean architecture and this repo' convention. If it appears **twice** and you're adding a third, extract **before** adding.
-260: 
-261: ---
-262: 
-263: ## 📦 Shared Logic & Abstraction
-264: 
-265: ### Mandatory Extraction Scenarios
-266: 
-267: Extract shared logic when:
-268: 
-269: 1. **Same logic in 2+ files AND you're adding a 3rd usage**
-270:    - Extract **before** adding the third copy
-271:    - Example: `chunkArray` used in 3 places
-272: 
-273: 2. **Same class structure in 2+ files** (>100 lines shared)
-274:    - Create abstract base class with shared logic
-275:    - Example: LocalWhisper + MLXWhisper both traverse directories identically
-276: 
-277: 3. **Same algorithm repeated** (>20 lines)
-278:    - Extract to shared function
-279:    - Example: Retry logic, error handling patterns
-280: 
-281: 4. **Same constants/config in 2+ files**
-282:    - Extract to shared file
-283:    - Example: `FILE_STATUS` constants, supported file extensions
-284: 
-285: ### Abstraction Guidelines
-286: 
-287: - **Base classes** for shared **implementation** (template method pattern)
-288: - **Interfaces** for shared **contracts** (dependency inversion)
-289: - **Utility functions** for shared **algorithms** (pure functions)
-290: - **Never** copy-paste similar code - refactor to share instead
-291: 
-292: ### Red Flags - Stop and Refactor
-293: 
-294: If you're writing code and notice:
-295: 
-296: - ⚠️  "This is similar to what `FileX.cs` does..."
-297: - ⚠️  "I'll just copy this logic from here..."
-298: - ⚠️  "There's probably already a function for this..."
-299: - ⚠️  "This feels like I've written it before..."
-300: 
-301: **STOP** - Search the codebase first, then extract shared logic.
-302: 
-303: ---
-304: 
-305: ## 🧠 Naming
-306: 
-307: - Names must express **what** code does, not **how** it works or its history.
-308: - Don’t reference implementation details unless essential to meaning.
-309: - Avoid temporal or comparative names (“NewController”, “LegacyHandler”, “EnhancedService”).
-310: - Avoid pattern names unless they improve clarity.
-311: 
-312: ---
-313: 
-314: ## 💬 Code Comments
-315: 
-316: Comments explain **what** or **why**, never **how it changed** or **what used to be**.
-317: 
-318: - Don’t reference prior implementations (“refactored from…”, “used x instead of…”).
-319: - Don’t add meta-comments like “improved”, “better”, “new”, or “enhanced.”
-320: - Don’t leave instructional comments (“use this pattern”).
-321: - Remove outdated comments only when they describe behavior that no longer exists.
-322: - Don’t add temporal context (“recently refactored”, “moved”, “new”).
-323: - All files must start with a **two-line summary** beginning with `ABOUTME:` describing what the file does.
-324: 
-325: **Examples:**
-326: ```csharp
-327: // BAD: This uses FluentValidator for validation instead of manual checking
-328: // BAD: Refactored from old validation system
-329: // GOOD: Executes tools with validated arguments
-330: ```
-331: 
-332: If you find yourself writing “new”, “old”, “legacy”, “wrapper”, “unified”, or “enhanced”, stop and find a better description.
-333: 
-334: ---
-335: 
-336: ## 🧰 Version Control
-337: 
-338: - Ask how to handle uncommitted or untracked files before starting work.
-339: - If no branch exists for your task, create a **WIP** branch.
-340: - Track all non-trivial changes in git.
-341: - Commit frequently and atomically, with meaningful messages describing intent.
-342: - Never skip or disable pre-commit hooks.
-343: - Never use `git add -A` without first running `git status`.
-344: - **Never commit backup or temporary files:**
-345:   - Use `.gitignore` to prevent accidental commits
-346:   - If you see these in git, delete them immediately
-347: - **Clean up deprecated code in the same commit:**
-348:   - When adding a replacement file, delete the old one in the same PR
-349:   - Update all references to point to new implementation
-350:   - Remove old exports from barrel files
-351: - Commit your **journal** entries too.
-352: 
-353: ---
-354: 
-355: ## 🧪 Testing
-356: 
-357: ### Testing Standards
-358: 
-359: **CRITICAL RULE: Never commit or push with broken tests**
-360: 
-361: - **All test failures are YOUR responsibility**, even if you didn't cause them
-362: - If tests are broken when you start work, fix them FIRST before proceeding
-363: - If you break tests during your work, fix them IMMEDIATELY
-364: - If tests break during your work for unrelated reasons, fix them before committing
-365: - **Never** commit with the intention of "fixing tests in the next commit"
-366: - **Never** push broken tests to any branch (including WIP branches)
-367: 
-368: **Test Quality Standards:**
-369: 
-370: - Never delete failing tests — raise the issue with me.
-371: - Tests must cover all functionality comprehensively.
-372: - Never test mocked behavior; test real logic.
-373: - Never mock in end-to-end tests — use real APIs and data.
-374: - Never ignore logs or output — they often reveal the issue.
-375: - Test output must be **pristine** (no unexpected warnings or stack traces).
-376: - Intermittent failures count as full failures until proven otherwise.
-377: 
-378: ---
-379: 
-380: ## 📋 Issue Tracking
-381: 
-382: ### GitHub Issues for Work Items
-383: 
-384: **Use GitHub Issues for all significant work:**
-385: 
-386: - Create issues for features, bugs, refactors, and technical debt
-387: - **Break down to smallest complete unit of work** - each issue should be:
-388:   - Completable in a single PR
-389:   - Independently testable
-390:   - Deployable without dependencies (when possible)
-391:   - Estimated at 4 hours or less of work
-392: - If a task is larger than 4 hours, break it into multiple issues
-393: - Link related issues together (e.g., "Part 1 of 3: Delete duplicate files")
-394: 
-395: **Good issue breakdown:**
-396: - ✅ "Delete duplicate client implementation"
-397: - ✅ "Update imports after client deletion"
-398: - ✅ "Remove client from barrel exports" (15 min)
-399: 
-400: **Bad issue breakdown:**
-401: - ❌ "Fix all architectural issues" (too large, not specific)
-402: - ❌ "Refactor transcribers and fix tests and update docs" (multiple units of work)
-403: 
-404: 
-405: ## 🔍 Systematic Debugging Process
-406: 
-407: Always find the **root cause** — never patch symptoms or add workarounds.
-408: 
-409: ### Phase 1: Root Cause Investigation
-410: - Read error messages carefully.
-411: - Reproduce consistently.
-412: - Check recent changes (`git diff`, commits).
-413: 
-414: ### Phase 2: Pattern Analysis
-415: - Find similar working examples.
-416: - Compare against reference code.
-417: - Identify differences.
-418: - Understand dependencies.
-419: 
-420: ### Phase 3: Hypothesis and Testing
-421: 1. Form one hypothesis at a time.  
-422: 2. Make the smallest possible change to test it.  
-423: 3. Verify results before continuing.  
-424: 4. If you don’t know, say “I don’t understand X.”
-425: 
-426: ### Phase 4: Implementation
-427: - Always have a minimal failing test case.  
-428: - Never add multiple fixes at once.  
-429: - Never claim to follow a pattern without reading it fully.  
-430: - Test after every change.  
-431: - If the first fix fails, re-analyze instead of stacking patches.
-432: 
-433: ---
-434: 
-435: ## 🧾 Learning and Memory Management
-436: 
-437: Use your journal (`dev/active/journal.md`) to capture insights, failures, and patterns.
-438: 
-439: **For major architectural decisions or requirements**, create dedicated documents:
-440: - `docs/REQUIREMENTS_DECISIONS.md` - Structured Q&A format for feature design
-441: - `docs/ARCHITECTURAL_DECISIONS.md` - Major system design choices
-442: - `docs/journal.md` - General insights, patterns, failures
-443: 
-444: **Journal format** (`dev/active/journal.md`):
-445: 
-446: ```md
-447: ## Technical Insights
-448: - [Date] Learned how to optimize Zapier webhook retries for Xero sync.
-449: 
-450: ## Failed Approaches
-451: - [Date] Tried parsing PDFs with Regex—too brittle, switched to x solution.
-452: 
-453: ## Architectural Decisions
-454: - [Date] Chose x structure for y due to compliance flexibility.
-455: 
-456: ## User Feedback Patterns
-457: - [Date] customers confused by variant naming—need clearer labels.
-458: 
-459: ## Deferred Fixes
-460: - [Date] sync bug with atproto login—log for future fix.
-461: ```
-462: 
-463: - Each entry must be timestamped and formatted as above.
-464: - Review your journal weekly.
-465: - Search it before starting complex tasks.
-466: - Document architectural decisions and user feedback trends.
-467: - Record issues for later rather than fixing unrelated bugs mid-task.
-468: - Before starting complex tasks:
-469:   - Search the journal for relevant past experiences.
-470:   - Document architectural decisions and their outcomes.
-471:   - Track recurring user feedback or collaboration patterns.
-472:   - When you find something unrelated but worth fixing, log it instead of fixing it immediately.
-473:   - Review the journal weekly to reinforce learning and memory.
-474: 
-475: ---
-476: 
-477: ## 🔬 Research and Recommendations
-478: 
-479: When researching tools, technologies, or approaches:
-480: 
-481: - **Document comprehensively** - Create dedicated markdown files with findings.
-482: - **Provide context** - Executive summary tailored to CJ's specific workflow and preferences.
-483: - **Compare systematically** - Use tables/matrices for clear comparison.
-484: - **Recommendation clarity** - Be explicit about what you recommend and why.
-485: - **Ask clarifying questions** - End research with specific questions to guide next steps.
-486: - **Don't assume CJ's workflow** - Ask about primary tools and preferences before making assumptions.
-487: 
-488: ---
-489: 
-490: ## 🗄️ Code Archeology & Cleanup
-491: 
-492: ### When Making Changes, Look for Obsolete Code
-493: 
-494: While working in a file, actively search for:
-495: 
-496: 1. **Unused imports** - Remove immediately
-497: 2. **Commented-out code** - Delete (it's in git history)
-498: 3. **Dead functions** - Delete if no references found
-499: 4. **Backup files** - Never commit
-500: 5. **TODO comments older than 3 months** - Convert to GitHub issues or delete
-501: 6. **Deprecated patterns** - Refactor to current standards
-502: 
-503: ### Spotting Obsolete Code Patterns
-504: 
-505: These patterns indicate obsolete code to delete:
-506: 
-507: - Files with "old", "legacy", "deprecated" in name
-508: - Commented-out imports or functions
-509: - Duplicate implementations of same interface
-510: - Multiple files exporting the same class name
-511: 
-512: ### Regular Maintenance (Requested)
-513: 
-514: Periodically ask to run architectural reviews:
-515: 
-516: > "Would you like me to scan for duplicate code and obsolete files?"
-517: 
-518: This prevents accumulation of technical debt.
-519: 
-520: ---
-521: 
-522: ## 🏗️ Architectural Hygiene
-523: 
-524: ### Pre-Implementation Checklist
-525: 
-526: Before implementing a new feature or significant change:
-527: 
-528: - [ ] **Search for existing implementations**: `grep -r "class Name"`, `find . -name "*keyword*"`
-529: - [ ] **Review similar features**: Understand patterns already in use
-530: - [ ] **Identify shared logic**: Will this duplicate any existing functionality?
-531: - [ ] **Plan for reuse**: How can this be designed to avoid future duplication?
-532: 
-533: ### Post-Implementation Checklist
-534: 
-535: After implementing a feature:
-536: 
-537: - [ ] **Delete obsolete code**: If replacing functionality, delete old implementation
-538: - [ ] **Update all references**: Ensure no dangling imports to deleted code
-539: - [ ] **Extract duplicates**: If logic is similar to existing code, refactor to share
-540: - [ ] **Clean up test scaffolding**: Delete ad-hoc test scripts if proper tests exist
-541: - [ ] **Update documentation**: Remove references to deleted/obsolete files
-542: - [ ] **Verify exports**: Remove deleted files from `index.ts` barrel exports
-543: 
-544: ### Red Flags - Request Architectural Review
-545: 
-546: If you notice any of these, suggest an architectural review:
-547: 
-548: - Multiple files with same/similar class names
-549: - Same schema/type defined in 2+ places
-550: - 3+ test testing similar functionality
-551: - Logic duplicated across files (>50 lines)
-552: 
-553: **Phrase to use:**
-554: > "I noticed [pattern]. Would you like me to do an architectural review to identify duplication and suggest consolidation?"
-555: 
-556: ---
-557: 
-558: ## Project
-559: docs/PROJECT.md
-560: &
-561: README.md
-562: 
-563: ## Architecture & Technical Stack
-564: docs/ARCHITECTURE.md
-565: 
-566: ## Domain Model & Business Logic
-567: docs/DOMAIN.md
-568: 
-569: ## Security Architecture (AuthN/AuthZ)
-570: docs/SECURITY.md
-571: 
-572: ## API
-573: docs/API.md
-574: 
-575: ## Blazor Frontend (Server + WASM)
-576: docs/BLAZOR.md
-577: 
-578: ## Federation (W3C ATProto & ActivityPub)
-579: docs/FEDERATION.md
-580: 
-581: ## Configuration
-582: docs/CONFIGURATION.md
-583: 
-584: ## Operations (Deployment, Env Vars)
-585: docs/OPERATIONS.md
-586: 
-587: ## Governance
-588: docs/GOVERNANCE.md
-589: 
-590: ## Troubleshooting
-591: docs/TROUBLESHOOTING.md
-592: 
-593: ### Build Commands
-594: 
-595: ```bash
-596: # Restore dependencies
-597: dotnet restore
-598: 
-599: # Build the solution
-600: dotnet build
-601: 
-602: # Run All tests
-603: dotnet test
-604: 
-605: # Run specific test project
-606: dotnet test Event.Application.UnitTests
-607: ```
-608: 
-609: ### Database Schema
-610: schema/islamu-event.md
-611: 
-612: # 🛠️ Specialized Tooling (MCP)
-613: 
-614: ALWAYS use these mcp servers for their specific purposes when applicable!:
-615: 
-616: * **Context7**: Auto-use for documentation!, for libraries docs, setup steps, and complex library configs.
-617: * **Sequential Thinking**: Multi-step architecture, debugging, and refining hypotheses.
-618: * **Tavily**: Web scraping and data extraction.
-619: * **Perplexity**: Broad technical research and modern programming concepts.
-620: * **At-Explore**: ATProto integration and debugging.
-621: * **Playwrighter**: UI testing and automated web interactions (on request only).
-622: * **Chrome-DevTools**: Blazor frontend inspection and CSS/JS troubleshooting (on request only).
-623: 
-624: ## Context, plans, and task management
-625: ALWAYS refer to this file and all the files in @dev/active/ that contain context, plan, tasks...
-626: @dev/active/README.md
-````
-
 ## File: Explore.Application/Contracts/Persistence/IOrganizationRepository.cs
 ````csharp
  1: using System;
@@ -147117,12 +148507,13 @@ README.md
 66: 
 67: 
 68:         public int TotalViews { get; set; }
-69:         public string? EventUrl { get; set; }
-70: 
+69:         public bool IsUserReported { get; set; }
+70:         public string? EventUrl { get; set; }
 71: 
-72:         public Guid TenantId { get; set; }
-73:     }
-74: }
+72: 
+73:         public Guid TenantId { get; set; }
+74:     }
+75: }
 ````
 
 ## File: Explore.Application/DTOs/Organization/CreateOrganizationDto.cs
@@ -147788,6 +149179,630 @@ README.md
 406: [contribution-guidelines]: https://sites.plane.so/pages/b957e6c5278845feac5557d22bd54756
 ````
 
+## File: CLAUDE.md
+````markdown
+  1: # CLAUDE.md — ISLAMU Event Project Reference
+  2: 
+  3: > **Source of Truth for AI Agents and Team Collaboration**
+  4: >
+  5: > This document provides comprehensive context for working with the ISLAMU Event codebase.
+  6: > This file is the entrypoint. Detailed docs are imported from `docs/`.
+  7: > Last Updated: January 2026
+  8: 
+  9: You are an experienced, pragmatic software engineer. You don’t over-engineer a solution when a simple one works.
+ 10: 
+ 11: 
+ 12: ## Documentation Template System
+ 13: 
+ 14: This project uses **project-agnostic documentation** with placeholder syntax `{Placeholder}`.
+ 15: **Template Glossary**: [docs/TEMPLATE_GLOSSARY.md](docs/TEMPLATE_GLOSSARY.md) - Defines all placeholders
+ 16: 
+ 17: 
+ 18: **Documentation Coverage**:
+ 19: - ✅ Core Docs: ARCHITECTURE.md, API.md, BLAZOR.md, GOVERNANCE.md, QUICK_REFERENCE.md
+ 20: - ✅ Operations: CONTRIBUTING.md, OPERATIONS.md, CONFIGURATION.md, TROUBLESHOOTING.md
+ 21: - ✅ Domain Reference: DOMAIN.md (project-specific with generic patterns)
+ 22: - ✅ Skills: blazor-bff-patterns (SKILL.md + 4 resources), and 7 other skills
+ 23: - ✅ All use "Generic Template + Concrete Example" pattern
+ 24: 
+ 25: ## ⚠️ CRITICAL RULES - Quick Reference
+ 26: 
+ 27: **MUST READ**: Never violate them.
+ 28: 
+ 29: 
+ 30: > ⚠️ **Rule #1:** Never assume an exception. Get explicit permission from me before breaking or bending any rule.
+ 31: 
+ 32: - Only write inside this repo project folder, never in users folder (not in C:\Users\*\.claude\ or anywhere outside this project folder)
+ 33: - When getting build errors, stop building! Get the errors, fix them, skip building until fixed. Limited retry attempts, then fix without building until confident.
+ 34: - NEVER run rm -rf commands or delete files/folders unless explicitly instructed - instead report files that should be deleted
+ 35: - Never read .mcp.json file
+ 36: 
+ 37: **Some Technical API Rules**:
+ 38: 1. **Repositories Return ENTITIES, Never DTOs** - Map to DTOs in handlers
+ 39: 2. **Validators Use Manual Instantiation (NOT DI)** - `var validator = new CreateEventDtoValidator(_repo1, _repo2);`
+ 40: 3. **Navigation Properties Are Readonly** - Use repository for writes: `_memberRepository.Create(member)`
+ 41: 4. **Use int Instead of long** - Except size/cursor fields or absolutely necessary
+ 42: 5. **No Default Values in Domain Entities** - Set in handler: `@event.TotalViews = 0;`
+ 43: 6. **Commands Return BaseCommandResponse<Guid>** - Not just `Guid`
+ 44: 7. **GET = AllowAnonymous, Write = Authorize, Admin = Roles** - Public read, protected write, role-based for admin operations
+ 45: 8. **Extract UserId with Fallback** - `sub` → `nameidentifier` → `sid`
+ 46: 9. **File-Scoped Namespaces** - `namespace Explore.Application.Features.Events;`
+ 47: 10. **Entities Include Auditing Fields** - CreatedAt, CreatedBy, UpdatedAt, UpdatedBy, IsDeleted (soft delete)
+ 48: 11. **Use Named Query Filters for Soft Delete** - EF Core 10+ `.HasQueryFilter(name: "SoftDelete", predicate: e => !e.IsDeleted)`
+ 49: **Full Details**: [@docs/QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md)
+ 50: 
+ 51: ---
+ 52: 
+ 53: ## 🧱 Foundational Rules
+ 54: 
+ 55: - Doing it right is better than doing it fast. You are not in a rush.
+ 56: - Never skip steps or take shortcuts.
+ 57: - Tedious, systematic work is often the correct solution. Don't abandon an approach because it's repetitive—only if it's wrong.
+ 58: - **One question at a time** - When gathering requirements or clarifying design, ask questions individually. Wait for each answer before proceeding to the next question.
+ 59: - Honesty is a core value. If you're not fully truthful, our collaboration can't continue.
+ 60: 
+ 61: ---
+ 62: 
+ 63: ## 🤝 Our Relationship
+ 64: 
+ 65: - We are colleagues — equals working toward the same goal.
+ 66: - Speak up immediately when you don’t know something or are over your head.
+ 67: - Call out bad ideas, mistakes, or unreasonable expectations. I highly depends on this.
+ 68: - Never agree just to be nice. Honest disagreement is better than fake consensus.
+ 69: - If you disagree, cite technical reasons. If it’s intuition, say so.
+ 70: - You have unreliable memory. Use your **journal** to record important facts, insights, and preferences before you forget.
+ 71: - Search your journal before repeating research or reasoning.
+ 72: - Discuss all **Important decisions** (refactors...) before implementation **or** before finalizing requirements that assume a particular approach.
+ 73: - When something is identified as "a major decision" elevate its priority immediately.
+ 74: 
+ 75: ---
+ 76: 
+ 77: ## 🔧 Starting Work (Critical First Steps)
+ 78: 
+ 79: **Before starting ANY task, always run tests:**
+ 80: 
+ 81: 1. **Check test status**: `dotnet test`
+ 82: 2. # Match CI/CD exactly
+ 83: dotnet test Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release
+ 84: dotnet test Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release
+ 85: dotnet test Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release
+ 86: dotnet test Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release
+ 87: dotnet test Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release
+ 88: dotnet test Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release
+ 89: dotnet test Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release
+ 90: 
+ 91: 2. **If tests are failing:**
+ 92:    - **STOP your planned work**
+ 93:    - Fix the failing tests FIRST
+ 94:    - Document what was broken and how you fixed it
+ 95:    - Then resume your planned work
+ 96: 3. **If tests are passing:**
+ 97:    - Proceed with your work
+ 98:    - Run tests frequently during development
+ 99: 
+100: **Why this matters:**
+101: - Broken tests indicate the codebase is in an unknown state
+102: - Your changes built on broken tests compound the problem
+103: - It's unclear if YOUR changes break things or if they were already broken
+104: - Fixing tests first establishes a known-good baseline
+105: 
+106: **Example workflow:**
+107: ```bash
+108: # Start of session
+109: dotnet test
+110: 
+111: # ❌ 3 tests failing
+112: 
+113: # DO NOT proceed with work yet
+114: # Fix the 3 failing tests
+115: 
+116: # Now tests pass - safe to proceed
+117: # ✅ All tests passing
+118: 
+119: # Now continue on your work
+120: ```
+121: 
+122: ---
+123: 
+124: ## 🚀 Proactiveness
+125: 
+126: When assigned a task, **do it completely**, including obvious follow-ups. However, distinguish between:
+127: 
+128: **Implementation tasks** (be proactive):
+129: - "Fix this bug"
+130: - "Add this feature"
+131: - "Write tests for X"
+132: - "Refactor this code"
+133: 
+134: **Design/planning tasks** (be systematic, not proactive):
+135: - "Let's discuss architecture"
+136: - "Help me design X"
+137: - "What are the requirements for Y?"
+138: - "Let's talk about..."
+139: 
+140: For design/planning: Pause and ask questions one at a time. Don't create implementations, templates, or code until explicitly requested or requirements are finalized.
+141: 
+142: Follow the prd skill at .claude/skills/prd/SKILL.md when planning
+143: 
+144: Pause to ask for confirmation when:
+145: - Multiple valid approaches exist and the choice matters.
+146: - The action deletes or restructures existing code.
+147: - You genuinely don't understand the task.
+148: - explicitly asked "how should I approach X?" — answer the question, don't start coding.
+149: - You're in **requirements gathering mode** - always wait for explicit direction.
+150: 
+151: Act autonomously for clear, low-risk tasks. Stop and ask when changes affect architecture, data integrity, or long-term behavior.
+152: 
+153: ---
+154: 
+155: ## 📝 Requirements Gathering
+156: 
+157: When designing new features or systems:
+158: 
+159: - **One question at a time** - Never batch multiple questions. Wait for answer before proceeding.
+160: - **Document as you go** - Capture decisions in real-time in a dedicated requirements document.
+161: - **Don't get ahead of yourself** - Resist the urge to implement or create templates before requirements are complete.
+162: - **Systematic over ad-hoc** - Work through structured questionnaires methodically.
+163: - **I may enhance your options** - Be open to improving or adding to the options you propose.
+164: - **Requirements before implementation** - Complete and review all requirements before any coding begins.
+165: 
+166: ---
+167: 
+168: ## 🧩 Designing Software
+169: 
+170: - **YAGNI** – "You Ain't Gonna Need It." The best code is no code.
+171: - When possible, architect for **extensibility and flexibility**, but never preemptively.
+172: 
+173: ---
+174: 
+175: ## ✅ Test-Driven Development (TDD)
+176: 
+177: For every new feature or bugfix:
+178: 
+179: 1. Write a failing test validating the desired behavior.  
+180: 2. Run it to confirm failure.  
+181: 3. Write *only* enough code to make the test pass.  
+182: 4. Run tests to confirm success.  
+183: 5. Refactor if needed while keeping tests green.
+184: 
+185: You may skip TDD only with given explicit permission.
+186: 
+187: ---
+188: 
+189: ## 💻 Writing Code
+190: 
+191: - Verify you have followed **all rules** before submitting work.
+192: - Make the **smallest reasonable changes** to achieve the desired result.
+193: - Prefer simple, clean, maintainable code over clever or complex solutions.
+194: - **Eliminate duplication aggressively:**
+195:   - Never copy-paste code - extract and import instead
+196:   - If the same logic appears twice, prepare to extract on third usage
+197:   - Before creating a new file with similar purpose, refactor the existing file
+198:   - Search codebase thoroughly before implementing functionality that might already exist
+199: - Never throw away or rewrite code without permission (except trivial cleanup or bugfixes).
+200: - Get approval before implementing **backward compatibility**.
+201: - Match the surrounding code style. Local consistency beats external style guides.
+202: - Don't manually adjust whitespace unless necessary; use a formatter instead: `dotnet format`.
+203: - Fix broken things immediately when you find them.
+204: 
+205: **Error handling:** Code must fail fast, log clearly, and handle expected errors gracefully.
+206: 
+207: ---
+208: 
+209: ## 🗂️ File Management & Organization
+210: 
+211: ### Before Creating a New File
+212: 
+213: **STOP and ask these questions:**
+214: 
+215: 1. **Does a similar file already exist?**
+216:    - Search the codebase thoroughly: `grep -r "class ClassName"`, `find . -name "*keyword*"`
+217:    - If similar file exists, **extend it** rather than duplicate
+218: 
+219: 2. **Will this create duplication?**
+220:    - If implementing similar functionality to an existing file, **refactor the existing file** instead
+221:    - Never create `FileV2.cs`, `FileEnhanced.cs`, `FileNew.cs` - these indicate you should be editing the original
+222:    - Bad: Creating both `WordPressClient.cs` and `WordPressEnhanced.cs`
+223:    - Good: Enhancing the existing `WordPressClient.cs`
+224: 
+225: 3. **Is this a test file?**
+226:    - **Ad-hoc test scripts → NO**: Put in proper test project
+227:    - **Integration/manual tests → MAYBE**: Only if truly cannot be automated
+228:    - **Never** create scripts for unit tests
+229: 
+230: 4. **Is this a backup or temporary file?**
+231:    - Use git branches and history, not backup files
+232:    - Add patterns to `.gitignore` immediately
+233: 
+234: ### When Replacing/Deprecating Files
+235: 
+236: If creating a replacement file (e.g., `new-cli.cs` replacing `old-script.cs`):
+237: 
+238: 1. **Delete the old file in the same PR** - Don't leave both
+239: 2. **Update all imports** that referenced the old file
+240: 4. **Update documentation** to reference only the new file
+241: 5. **Add migration notes** to git commit message
+242: 
+243: ### Duplication Detection Checklist
+244: 
+245: Before submitting code, check for these duplication patterns:
+246: 
+247: - [ ] **Complete file duplication** - Same class name in two files
+248: - [ ] **Logic duplication** - Same algorithm copied between files (>20 lines)
+249: - [ ] **Constant duplication** - Same constants defined in multiple files
+250: 
+251: **Rule of Three**: If the same code appears **3 times**, extract it to a shared utility following asp.net core conventions and clean architecture and this repo' convention. If it appears **twice** and you're adding a third, extract **before** adding.
+252: 
+253: ---
+254: 
+255: ## 📦 Shared Logic & Abstraction
+256: 
+257: ### Mandatory Extraction Scenarios
+258: 
+259: Extract shared logic when:
+260: 
+261: 1. **Same logic in 2+ files AND you're adding a 3rd usage**
+262:    - Extract **before** adding the third copy
+263:    - Example: `chunkArray` used in 3 places
+264: 
+265: 2. **Same class structure in 2+ files** (>100 lines shared)
+266:    - Create abstract base class with shared logic
+267:    - Example: LocalWhisper + MLXWhisper both traverse directories identically
+268: 
+269: 3. **Same algorithm repeated** (>20 lines)
+270:    - Extract to shared function
+271:    - Example: Retry logic, error handling patterns
+272: 
+273: 4. **Same constants/config in 2+ files**
+274:    - Extract to shared file
+275:    - Example: `FILE_STATUS` constants, supported file extensions
+276: 
+277: ### Abstraction Guidelines
+278: 
+279: - **Base classes** for shared **implementation** (template method pattern)
+280: - **Interfaces** for shared **contracts** (dependency inversion)
+281: - **Utility functions** for shared **algorithms** (pure functions)
+282: - **Never** copy-paste similar code - refactor to share instead
+283: 
+284: ### Red Flags - Stop and Refactor
+285: 
+286: If you're writing code and notice:
+287: 
+288: - ⚠️  "This is similar to what `FileX.cs` does..."
+289: - ⚠️  "I'll just copy this logic from here..."
+290: - ⚠️  "There's probably already a function for this..."
+291: - ⚠️  "This feels like I've written it before..."
+292: 
+293: **STOP** - Search the codebase first, then extract shared logic.
+294: 
+295: ---
+296: 
+297: ## 🧠 Naming
+298: 
+299: - Names must express **what** code does, not **how** it works or its history.
+300: - Don’t reference implementation details unless essential to meaning.
+301: - Avoid temporal or comparative names (“NewController”, “LegacyHandler”, “EnhancedService”).
+302: - Avoid pattern names unless they improve clarity.
+303: 
+304: ---
+305: 
+306: ## 💬 Code Comments
+307: 
+308: Comments explain **what** or **why**, never **how it changed** or **what used to be**.
+309: 
+310: - Don’t reference prior implementations (“refactored from…”, “used x instead of…”).
+311: - Don’t add meta-comments like “improved”, “better”, “new”, or “enhanced.”
+312: - Don’t leave instructional comments (“use this pattern”).
+313: - Remove outdated comments only when they describe behavior that no longer exists.
+314: - Don’t add temporal context (“recently refactored”, “moved”, “new”).
+315: - All files must start with a **two-line summary** beginning with `ABOUTME:` describing what the file does.
+316: 
+317: **Examples:**
+318: ```csharp
+319: // BAD: This uses FluentValidator for validation instead of manual checking
+320: // BAD: Refactored from old validation system
+321: // GOOD: Executes tools with validated arguments
+322: ```
+323: 
+324: If you find yourself writing “new”, “old”, “legacy”, “wrapper”, “unified”, or “enhanced”, stop and find a better description.
+325: 
+326: ---
+327: 
+328: ## 🧰 Version Control
+329: 
+330: - Ask how to handle uncommitted or untracked files before starting work.
+331: - If no branch exists for your task, create a **WIP** branch.
+332: - Track all non-trivial changes in git.
+333: - Commit frequently and atomically, with meaningful messages describing intent.
+334: - Never skip or disable pre-commit hooks.
+335: - Never use `git add -A` without first running `git status`.
+336: - **Never commit backup or temporary files:**
+337:   - Use `.gitignore` to prevent accidental commits
+338:   - If you see these in git, delete them immediately
+339: - **Clean up deprecated code in the same commit:**
+340:   - When adding a replacement file, delete the old one in the same PR
+341:   - Update all references to point to new implementation
+342:   - Remove old exports from barrel files
+343: - Commit your **journal** entries too.
+344: 
+345: ---
+346: 
+347: ## 🧪 Testing
+348: 
+349: ### Testing Standards
+350: 
+351: **CRITICAL RULE: Never commit or push with broken tests**
+352: 
+353: - **All test failures are YOUR responsibility**, even if you didn't cause them
+354: - If tests are broken when you start work, fix them FIRST before proceeding
+355: - If you break tests during your work, fix them IMMEDIATELY
+356: - If tests break during your work for unrelated reasons, fix them before committing
+357: - **Never** commit with the intention of "fixing tests in the next commit"
+358: - **Never** push broken tests to any branch (including WIP branches)
+359: 
+360: **Test Quality Standards:**
+361: 
+362: - Never delete failing tests — raise the issue with me.
+363: - Tests must cover all functionality comprehensively.
+364: - Never test mocked behavior; test real logic.
+365: - Never mock in end-to-end tests — use real APIs and data.
+366: - Never ignore logs or output — they often reveal the issue.
+367: - Test output must be **pristine** (no unexpected warnings or stack traces).
+368: - Intermittent failures count as full failures until proven otherwise.
+369: 
+370: ---
+371: 
+372: ## 📋 Issue Tracking
+373: 
+374: ### GitHub Issues for Work Items
+375: 
+376: **Use GitHub Issues for all significant work:**
+377: 
+378: - Create issues for features, bugs, refactors, and technical debt
+379: - **Break down to smallest complete unit of work** - each issue should be:
+380:   - Completable in a single PR
+381:   - Independently testable
+382:   - Deployable without dependencies (when possible)
+383:   - Estimated at 4 hours or less of work
+384: - If a task is larger than 4 hours, break it into multiple issues
+385: - Link related issues together (e.g., "Part 1 of 3: Delete duplicate files")
+386: 
+387: **Good issue breakdown:**
+388: - ✅ "Delete duplicate client implementation"
+389: - ✅ "Update imports after client deletion"
+390: - ✅ "Remove client from barrel exports" (15 min)
+391: 
+392: **Bad issue breakdown:**
+393: - ❌ "Fix all architectural issues" (too large, not specific)
+394: - ❌ "Refactor transcribers and fix tests and update docs" (multiple units of work)
+395: 
+396: 
+397: ## 🔍 Systematic Debugging Process
+398: 
+399: Always find the **root cause** — never patch symptoms or add workarounds.
+400: 
+401: ### Phase 1: Root Cause Investigation
+402: - Read error messages carefully.
+403: - Reproduce consistently.
+404: - Check recent changes (`git diff`, commits).
+405: 
+406: ### Phase 2: Pattern Analysis
+407: - Find similar working examples.
+408: - Compare against reference code.
+409: - Identify differences.
+410: - Understand dependencies.
+411: 
+412: ### Phase 3: Hypothesis and Testing
+413: 1. Form one hypothesis at a time.  
+414: 2. Make the smallest possible change to test it.  
+415: 3. Verify results before continuing.  
+416: 4. If you don’t know, say “I don’t understand X.”
+417: 
+418: ### Phase 4: Implementation
+419: - Always have a minimal failing test case.  
+420: - Never add multiple fixes at once.  
+421: - Never claim to follow a pattern without reading it fully.  
+422: - Test after every change.  
+423: - If the first fix fails, re-analyze instead of stacking patches.
+424: 
+425: ---
+426: 
+427: ## 🧾 Learning and Memory Management
+428: 
+429: Use your journal (`dev/active/journal.md`) to capture insights, failures, and patterns.
+430: 
+431: **For major architectural decisions or requirements**, create dedicated documents:
+432: - `docs/REQUIREMENTS_DECISIONS.md` - Structured Q&A format for feature design
+433: - `docs/ARCHITECTURAL_DECISIONS.md` - Major system design choices
+434: - `docs/journal.md` - General insights, patterns, failures
+435: 
+436: **Journal format** (`dev/active/journal.md`):
+437: 
+438: ```md
+439: ## Technical Insights
+440: - [Date] Learned how to optimize Zapier webhook retries for Xero sync.
+441: 
+442: ## Failed Approaches
+443: - [Date] Tried parsing PDFs with Regex—too brittle, switched to x solution.
+444: 
+445: ## Architectural Decisions
+446: - [Date] Chose x structure for y due to compliance flexibility.
+447: 
+448: ## User Feedback Patterns
+449: - [Date] customers confused by variant naming—need clearer labels.
+450: 
+451: ## Deferred Fixes
+452: - [Date] sync bug with atproto login—log for future fix.
+453: ```
+454: 
+455: - Each entry must be timestamped and formatted as above.
+456: - Review your journal weekly.
+457: - Search it before starting complex tasks.
+458: - Document architectural decisions and user feedback trends.
+459: - Record issues for later rather than fixing unrelated bugs mid-task.
+460: - Before starting complex tasks:
+461:   - Search the journal for relevant past experiences.
+462:   - Document architectural decisions and their outcomes.
+463:   - Track recurring user feedback or collaboration patterns.
+464:   - When you find something unrelated but worth fixing, log it instead of fixing it immediately.
+465:   - Review the journal weekly to reinforce learning and memory.
+466: 
+467: ---
+468: 
+469: ## 🔬 Research and Recommendations
+470: 
+471: When researching tools, technologies, or approaches:
+472: 
+473: - **Document comprehensively** - Create dedicated markdown files with findings.
+474: - **Provide context** - Executive summary tailored to CJ's specific workflow and preferences.
+475: - **Compare systematically** - Use tables/matrices for clear comparison.
+476: - **Recommendation clarity** - Be explicit about what you recommend and why.
+477: - **Ask clarifying questions** - End research with specific questions to guide next steps.
+478: - **Don't assume CJ's workflow** - Ask about primary tools and preferences before making assumptions.
+479: 
+480: ---
+481: 
+482: ## 🗄️ Code Archeology & Cleanup
+483: 
+484: ### When Making Changes, Look for Obsolete Code
+485: 
+486: While working in a file, actively search for:
+487: 
+488: 1. **Unused imports** - Remove immediately
+489: 2. **Commented-out code** - Delete (it's in git history)
+490: 3. **Dead functions** - Delete if no references found
+491: 4. **Backup files** - Never commit
+492: 5. **TODO comments older than 3 months** - Convert to GitHub issues or delete
+493: 6. **Deprecated patterns** - Refactor to current standards
+494: 
+495: ### Spotting Obsolete Code Patterns
+496: 
+497: These patterns indicate obsolete code to delete:
+498: 
+499: - Files with "old", "legacy", "deprecated" in name
+500: - Commented-out imports or functions
+501: - Duplicate implementations of same interface
+502: - Multiple files exporting the same class name
+503: 
+504: ### Regular Maintenance (Requested)
+505: 
+506: Periodically ask to run architectural reviews:
+507: 
+508: > "Would you like me to scan for duplicate code and obsolete files?"
+509: 
+510: This prevents accumulation of technical debt.
+511: 
+512: ---
+513: 
+514: ## 🏗️ Architectural Hygiene
+515: 
+516: ### Pre-Implementation Checklist
+517: 
+518: Before implementing a new feature or significant change:
+519: 
+520: - [ ] **Search for existing implementations**: `grep -r "class Name"`, `find . -name "*keyword*"`
+521: - [ ] **Review similar features**: Understand patterns already in use
+522: - [ ] **Identify shared logic**: Will this duplicate any existing functionality?
+523: - [ ] **Plan for reuse**: How can this be designed to avoid future duplication?
+524: 
+525: ### Post-Implementation Checklist
+526: 
+527: After implementing a feature:
+528: 
+529: - [ ] **Delete obsolete code**: If replacing functionality, delete old implementation
+530: - [ ] **Update all references**: Ensure no dangling imports to deleted code
+531: - [ ] **Extract duplicates**: If logic is similar to existing code, refactor to share
+532: - [ ] **Clean up test scaffolding**: Delete ad-hoc test scripts if proper tests exist
+533: - [ ] **Update documentation**: Remove references to deleted/obsolete files
+534: - [ ] **Verify exports**: Remove deleted files from `index.ts` barrel exports
+535: 
+536: ### Red Flags - Request Architectural Review
+537: 
+538: If you notice any of these, suggest an architectural review:
+539: 
+540: - Multiple files with same/similar class names
+541: - Same schema/type defined in 2+ places
+542: - 3+ test testing similar functionality
+543: - Logic duplicated across files (>50 lines)
+544: 
+545: **Phrase to use:**
+546: > "I noticed [pattern]. Would you like me to do an architectural review to identify duplication and suggest consolidation?"
+547: 
+548: ---
+549: 
+550: ## Project
+551: docs/PROJECT.md
+552: &
+553: README.md
+554: 
+555: ## Architecture & Technical Stack
+556: docs/ARCHITECTURE.md
+557: 
+558: ## Domain Model & Business Logic
+559: docs/DOMAIN.md
+560: 
+561: ## Security Architecture (AuthN/AuthZ)
+562: docs/SECURITY.md
+563: 
+564: ## API
+565: docs/API.md
+566: 
+567: ## Blazor Frontend (Server + WASM)
+568: docs/BLAZOR.md
+569: 
+570: ## Federation (W3C ATProto & ActivityPub)
+571: docs/FEDERATION.md
+572: 
+573: ## Configuration
+574: docs/CONFIGURATION.md
+575: 
+576: ## Operations (Deployment, Env Vars)
+577: docs/OPERATIONS.md
+578: 
+579: ## Governance
+580: docs/GOVERNANCE.md
+581: 
+582: ## Troubleshooting
+583: docs/TROUBLESHOOTING.md
+584: 
+585: ### Build Commands
+586: 
+587: ```bash
+588: # Restore dependencies
+589: dotnet restore
+590: 
+591: # Build the solution
+592: dotnet build
+593: 
+594: # Run All tests
+595: dotnet test
+596: 
+597: # Run specific test project
+598: dotnet test Event.Application.UnitTests
+599: ```
+600: 
+601: ### Database Schema
+602: schema/islamu-event.md
+603: 
+604: # 🛠️ Specialized Tooling (MCP)
+605: 
+606: ALWAYS use these mcp servers for their specific purposes when applicable! NEVER bypass then when applicable. For example, if you need to work on tests, use Context7 mcp to find TUnit or BUnit documentation:
+607: 
+608: * **Context7**: Auto-use for documentation!, for libraries docs, setup steps, and complex library configs.
+609: * **Sequential Thinking**: Multi-step architecture, debugging, and refining hypotheses.
+610: * **Tavily**: Web scraping and data extraction.
+611: * **Perplexity**: Broad technical research and modern programming concepts.
+612: * **At-Explore**: ATProto integration and debugging.
+613: * **Playwrighter**: UI testing and automated web interactions (on request only).
+614: * **Chrome-DevTools**: Blazor frontend inspection and CSS/JS troubleshooting (on request only).
+615: 
+616: ## Context, plans, and task management
+617: ALWAYS refer to this file and all the files in @dev/active/ that contain context, plan, tasks...
+618: @dev/active/README.md
+619: 
+620: ALWAYS use the correct tools available for editing files or other actions, never bash or other manual methods when a tool is available.
+````
+
 ## File: Explore.Application/DTOs/Event/EventDto.cs
 ````csharp
   1: using System;
@@ -147867,30 +149882,31 @@ README.md
  75: 
  76: 
  77:         public int TotalViews { get; set; }
- 78:         public string? EventUrl { get; set; }
- 79: 
+ 78:         public bool IsUserReported { get; set; }
+ 79:         public string? EventUrl { get; set; }
  80: 
- 81:         public Guid? AtprotoRecordId { get; set; }
- 82:         public string? AtprotoRecordUri { get; set; }
- 83:         public string? AtprotoRecordCid { get; set; }
- 84: 
+ 81: 
+ 82:         public Guid? AtprotoRecordId { get; set; }
+ 83:         public string? AtprotoRecordUri { get; set; }
+ 84:         public string? AtprotoRecordCid { get; set; }
  85: 
  86: 
- 87:         public List<string> AvailableAspects { get; set; } = new();
- 88: 
+ 87: 
+ 88:         public List<string> AvailableAspects { get; set; } = new();
  89: 
- 90:         public EventAspects.EventIslamicAspectDto? IslamicAspect { get; set; }
- 91: 
+ 90: 
+ 91:         public EventAspects.EventIslamicAspectDto? IslamicAspect { get; set; }
  92: 
- 93:         public EventAspects.EventTechAspectDto? TechAspect { get; set; }
- 94: 
+ 93: 
+ 94:         public EventAspects.EventTechAspectDto? TechAspect { get; set; }
  95: 
- 96:         public string? MetadataJson { get; set; }
- 97: 
+ 96: 
+ 97:         public string? MetadataJson { get; set; }
  98: 
- 99:         public Guid TenantId { get; set; }
-100:     }
-101: }
+ 99: 
+100:         public Guid TenantId { get; set; }
+101:     }
+102: }
 ````
 
 ## File: Explore.Application/DTOs/Organization/OrganizationDto.cs
@@ -148115,83 +150131,84 @@ README.md
 146:             @event.ActorId = actorId;
 147:             @event.TotalViews = 0;
 148:             @event.TenantId = _tenantContext.TenantId;
-149: 
+149:             @event.IsUserReported = !request.EventDto.OrganizationId.HasValue;
 150: 
-151:             if (@event.EventStatusId == 0) @event.EventStatusId = 1;
-152:             if (@event.VisibilityTypeId == 0) @event.VisibilityTypeId = 1;
-153:             if (@event.EventFormatId == 0) @event.EventFormatId = 1;
-154: 
+151: 
+152:             if (@event.EventStatusId == 0) @event.EventStatusId = 1;
+153:             if (@event.VisibilityTypeId == 0) @event.VisibilityTypeId = 1;
+154:             if (@event.EventFormatId == 0) @event.EventFormatId = 1;
 155: 
-156:             @event = await _eventRepository.Create(@event);
-157:             Console.WriteLine($"[CREATE EVENT] Event created with ID: {@event.Id}");
-158: 
+156: 
+157:             @event = await _eventRepository.Create(@event);
+158:             Console.WriteLine($"[CREATE EVENT] Event created with ID: {@event.Id}");
 159: 
 160: 
-161:             if (request.EventDto.FeaturedImageId.HasValue)
-162:             {
-163:                 var storageObject = await _storageObjectRepository.GetById(request.EventDto.FeaturedImageId.Value);
-164:                 if (storageObject != null)
-165:                 {
-166:                     storageObject.ActorId = actorId;
-167:                     await _storageObjectRepository.Update(storageObject);
-168:                     Console.WriteLine($"[CREATE EVENT] StorageObject {storageObject.Id} ActorId updated to {actorId}");
-169:                 }
-170:             }
-171: 
+161: 
+162:             if (request.EventDto.FeaturedImageId.HasValue)
+163:             {
+164:                 var storageObject = await _storageObjectRepository.GetById(request.EventDto.FeaturedImageId.Value);
+165:                 if (storageObject != null)
+166:                 {
+167:                     storageObject.ActorId = actorId;
+168:                     await _storageObjectRepository.Update(storageObject);
+169:                     Console.WriteLine($"[CREATE EVENT] StorageObject {storageObject.Id} ActorId updated to {actorId}");
+170:                 }
+171:             }
 172: 
 173: 
 174: 
-175:             var eventSession = new EventSession
-176:             {
-177:                 EventId = @event.Id,
-178:                 TenantId = _tenantContext.TenantId,
-179:                 Title = @event.Title,
-180:                 Description = @event.Description,
-181:                 StartTime = request.EventDto.FirstSessionDate ?? DateTimeOffset.UtcNow,
-182:                 EndTime = request.EventDto.LastSessionDate ?? DateTimeOffset.UtcNow.AddHours(2),
-183:                 LocationId = null,
-184:                 MaxAudienceAttendees = null,
-185:                 CurrentAudienceAttendees = 0,
-186:                 RegistrationModeId = request.EventDto.IsRegistrationRequired ? 1 : null,
-187:                 Slug = GenerateSlug(@event.Title)
-188:             };
-189: 
-190:             await _eventSessionRepository.Create(eventSession);
-191:             Console.WriteLine($"[CREATE EVENT] Default EventSession created with ID: {eventSession.Id}");
-192: 
-193:             response.Success = true;
-194:             response.Id = @event.Id;
-195:             response.Message = "Event and session created successfully.";
-196: 
-197:             return response;
-198:         }
-199: 
+175: 
+176:             var eventSession = new EventSession
+177:             {
+178:                 EventId = @event.Id,
+179:                 TenantId = _tenantContext.TenantId,
+180:                 Title = @event.Title,
+181:                 Description = @event.Description,
+182:                 StartTime = request.EventDto.FirstSessionDate ?? DateTimeOffset.UtcNow,
+183:                 EndTime = request.EventDto.LastSessionDate ?? DateTimeOffset.UtcNow.AddHours(2),
+184:                 LocationId = null,
+185:                 MaxAudienceAttendees = null,
+186:                 CurrentAudienceAttendees = 0,
+187:                 RegistrationModeId = request.EventDto.IsRegistrationRequired ? 1 : null,
+188:                 Slug = GenerateSlug(@event.Title)
+189:             };
+190: 
+191:             await _eventSessionRepository.Create(eventSession);
+192:             Console.WriteLine($"[CREATE EVENT] Default EventSession created with ID: {eventSession.Id}");
+193: 
+194:             response.Success = true;
+195:             response.Id = @event.Id;
+196:             response.Message = "Event and session created successfully.";
+197: 
+198:             return response;
+199:         }
 200: 
 201: 
 202: 
-203:         private string GenerateSlug(string title)
-204:         {
-205:             if (string.IsNullOrWhiteSpace(title))
-206:                 return $"session-{Guid.NewGuid().ToString("N").Substring(0, 8)}";
-207: 
-208:             var slug = title.ToLowerInvariant()
-209:                 .Replace(" ", "-")
-210:                 .Replace("'", "")
-211:                 .Replace("\"", "")
-212:                 .Replace(".", "")
-213:                 .Replace(",", "");
-214: 
-215:             // Remove any non-alphanumeric characters except hyphens
-216:             slug = System.Text.RegularExpressions.Regex.Replace(slug, @"[^a-z0-9\-]", "");
-217: 
+203: 
+204:         private string GenerateSlug(string title)
+205:         {
+206:             if (string.IsNullOrWhiteSpace(title))
+207:                 return $"session-{Guid.NewGuid().ToString("N").Substring(0, 8)}";
+208: 
+209:             var slug = title.ToLowerInvariant()
+210:                 .Replace(" ", "-")
+211:                 .Replace("'", "")
+212:                 .Replace("\"", "")
+213:                 .Replace(".", "")
+214:                 .Replace(",", "");
+215: 
+216:             // Remove any non-alphanumeric characters except hyphens
+217:             slug = System.Text.RegularExpressions.Regex.Replace(slug, @"[^a-z0-9\-]", "");
 218: 
-219:             if (slug.Length > 50)
-220:                 slug = slug.Substring(0, 50);
-221: 
-222:             return slug;
-223:         }
-224:     }
-225: }
+219: 
+220:             if (slug.Length > 50)
+221:                 slug = slug.Substring(0, 50);
+222: 
+223:             return slug;
+224:         }
+225:     }
+226: }
 ````
 
 ## File: Explore.Domain/Organization.cs
@@ -148896,467 +150913,6 @@ README.md
 453: }
 ````
 
-## File: Explore.API/Program.cs
-````csharp
-  1: using Explore.API.BackgroundServices;
-  2: using Explore.API.Extensions;
-  3: using Explore.API.Middleware;
-  4: using Explore.API.Services;
-  5: using Explore.Application;
-  6: using Explore.Application.Contracts.Infrastructure;
-  7: using Explore.Infrastructure;
-  8: using Explore.Persistence;
-  9: using Explore.Persistence.Seed;
- 10: using Explore.Secrets.Extensions;
- 11: using Microsoft.AspNetCore.Authentication.JwtBearer;
- 12: using Microsoft.AspNetCore.HttpOverrides;
- 13: using Microsoft.Extensions.Diagnostics.HealthChecks;
- 14: using Microsoft.IdentityModel.Tokens;
- 15: 
- 16: using Scalar.AspNetCore;
- 17: using Serilog;
- 18: using System.Net.Http.Headers;
- 19: using System.Security.Claims;
- 20: using System.Text.RegularExpressions;
- 21: using Microsoft.EntityFrameworkCore;
- 22: using Microsoft.OpenApi;
- 23: using Polly.Bulkhead;
- 24: using static Microsoft.AspNetCore.Http.StatusCodes;
- 25: 
- 26: 
- 27: 
- 28: 
- 29: var isShuttingDown = false;
- 30: var shutdownCts = new CancellationTokenSource();
- 31: const int GracefulShutdownSeconds = 25;
- 32: 
- 33: var builder = WebApplication.CreateBuilder(args);
- 34: 
- 35: 
- 36: builder.WebHost.ConfigureKestrel(options =>
- 37: {
- 38:     options.Limits.KeepAliveTimeout = TimeSpan.FromSeconds(GracefulShutdownSeconds + 5);
- 39: });
- 40: 
- 41: 
- 42: builder.Host.ConfigureHostOptions(options =>
- 43: {
- 44:     options.ShutdownTimeout = TimeSpan.FromSeconds(GracefulShutdownSeconds + 5);
- 45: });
- 46: 
- 47: builder.AddServiceDefaults();
- 48: builder.Configuration.AddInfisicalCompatibility();
- 49: 
- 50: 
- 51: 
- 52: builder.Services.AddSecretManagement(builder.Configuration);
- 53: 
- 54: var authority = builder.Configuration["Keycloak:Authority"];
- 55: var realm = builder.Configuration["Keycloak:Realm"];
- 56: var audience = builder.Configuration["Keycloak:Audience"];
- 57: 
- 58: builder.Services.AddHttpContextAccessor();
- 59: 
- 60: 
- 61: 
- 62: 
- 63: 
- 64: builder.Services.ConfigureApplicationServices();
- 65: builder.Services.ConfigureInfrastructureServices(builder.Configuration);
- 66: 
- 67: 
- 68: var skipDbContext = builder.Environment.IsEnvironment("Testing");
- 69: builder.Services.CongfigurePersistenceServices(builder.Configuration, skipDbContextRegistration: skipDbContext);
- 70: 
- 71: 
- 72: builder.Services.AddScoped<ITenantContext, TenantContext>();
- 73: 
- 74: 
- 75: builder.Services.AddHateoas();
- 76: builder.Services.AddHateoasAssemblers();
- 77: 
- 78: builder.Services.AddControllers();
- 79: 
- 80: builder.Services.AddEndpointsApiExplorer();
- 81: 
- 82: builder.Services.AddSwaggerGenWithAuth(builder.Configuration);
- 83: 
- 84: 
- 85: 
- 86: 
- 87: builder.Services.AddOpenApi("explore-api", options =>
- 88: {
- 89:     options.AddDocumentTransformer<Explore.API.OpenApi.HalDtoSchemaTransformer>();
- 90: });
- 91: 
- 92: 
- 93: builder.Services.AddHttpClient();
- 94: 
- 95: 
- 96: builder.Services.AddHostedService<OpenApiExportService>();
- 97: 
- 98: 
- 99: builder.Services.AddHostedService<PdsSyncWorker>();
-100: 
-101: builder.Services.AddCors(options =>
-102: {
-103:     options.AddPolicy("InternalAppPolicy",
-104:         builder => builder.AllowAnyOrigin()
-105:             .AllowAnyMethod()
-106:             .AllowAnyHeader());
-107: 
-108:     options.AddPolicy("ExternalAppPolicy",
-109:         builder => builder.AllowAnyOrigin()
-110:             .AllowAnyMethod()
-111:             .AllowAnyHeader());
-112: 
-113:     options.AddPolicy("InternalWebsitePolicy",
-114:         builder => builder.WithOrigins("https://iloveibadah.app")
-115:             .AllowAnyHeader()
-116:             .AllowAnyMethod());
-117: 
-118:     options.AddPolicy("ExternalWebsitePolicy",
-119:         builder => builder.AllowAnyOrigin()
-120:             .WithMethods()
-121:             .WithHeaders());
-122: 
-123:     options.AddPolicy("DevPolicy",
-124:         builder => builder.AllowAnyOrigin()
-125:             .AllowAnyHeader()
-126:             .AllowAnyMethod());
-127: });
-128: 
-129: builder.Host.UseSerilog((ctx, lc) =>
-130:     lc.WriteTo.Console().ReadFrom.Configuration(ctx.Configuration));
-131: 
-132: 
-133: 
-134: 
-135: builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-136:     .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
-137:     {
-138: 
-139:         options.RequireHttpsMetadata = string.Equals(
-140:             builder.Configuration["Keycloak:RequireHttpsMetadata"],
-141:             "true",
-142:             StringComparison.OrdinalIgnoreCase
-143:         );
-144: 
-145:         options.Authority = authority;
-146:         options.MetadataAddress = builder.Configuration["Keycloak:MetadataAddress"];
-147: 
-148: 
-149: 
-150:         var validAudiences = new[]
-151:         {
-152:             "explore-api",
-153:             "explore-blazor-server",
-154:             "account"
-155:         };
-156: 
-157: 
-158:         options.TokenValidationParameters = new TokenValidationParameters
-159:         {
-160: 
-161: 
-162:             ValidateAudience = true,
-163:             AudienceValidator = (audiences, securityToken, validationParameters) =>
-164:             {
-165:                 var audienceList = audiences?.ToList() ?? new List<string>();
-166: 
-167: 
-168:                 if (audienceList.Any(aud => validAudiences.Contains(aud)))
-169:                 {
-170:                     return true;
-171:                 }
-172: 
-173: 
-174:                 if (securityToken is System.IdentityModel.Tokens.Jwt.JwtSecurityToken jwtToken)
-175:                 {
-176:                     var azp = jwtToken.Claims.FirstOrDefault(c => c.Type == "azp")?.Value;
-177:                     if (!string.IsNullOrEmpty(azp) && validAudiences.Contains(azp))
-178:                     {
-179:                         return true;
-180:                     }
-181: 
-182: 
-183:                     Console.WriteLine($"[JWT AudienceValidator] Token audiences: [{string.Join(", ", audienceList)}], azp: {azp ?? "(null)"}, valid audiences: [{string.Join(", ", validAudiences)}]");
-184:                 }
-185: 
-186:                 return false;
-187:             },
-188: 
-189: 
-190:             ValidateIssuer = true,
-191:             ValidIssuer = authority,
-192: 
-193: 
-194:             ValidateLifetime = true,
-195:             ClockSkew = TimeSpan.FromMinutes(5),
-196: 
-197: 
-198:             ValidateIssuerSigningKey = true,
-199: 
-200: 
-201:             NameClaimType = "preferred_username",
-202:             RoleClaimType = "roles"
-203:         };
-204: 
-205: 
-206:         if (builder.Environment.IsDevelopment())
-207:         {
-208:             options.BackchannelHttpHandler = new HttpClientHandler
-209:             {
-210:                 ServerCertificateCustomValidationCallback =
-211:                     HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
-212:             };
-213:         }
-214: 
-215: 
-216:         options.Events = new JwtBearerEvents
-217:         {
-218:             OnAuthenticationFailed = context =>
-219:             {
-220:                 var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-221:                 logger.LogWarning("[JWT] Authentication failed: {Error}", context.Exception?.Message);
-222: 
-223: 
-224:                 if (context.Exception is SecurityTokenValidationException stve)
-225:                 {
-226:                     logger.LogWarning("[JWT] Token validation error details: {Details}", stve.Message);
-227:                 }
-228:                 if (context.Exception?.InnerException != null)
-229:                 {
-230:                     logger.LogWarning("[JWT] Inner exception: {Inner}", context.Exception.InnerException.Message);
-231:                 }
-232: 
-233: 
-234:                 var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
-235:                 if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-236:                 {
-237:                     try
-238:                     {
-239:                         var token = authHeader.Substring(7);
-240:                         var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
-241:                         if (handler.CanReadToken(token))
-242:                         {
-243:                             var jwt = handler.ReadJwtToken(token);
-244:                             var aud = jwt.Audiences?.ToList() ?? new List<string>();
-245:                             var azp = jwt.Claims.FirstOrDefault(c => c.Type == "azp")?.Value;
-246:                             var iss = jwt.Issuer;
-247:                             var exp = jwt.ValidTo;
-248: 
-249:                             logger.LogWarning("[JWT] Token details - Issuer: {Issuer}, Audiences: [{Audiences}], Azp: {Azp}, Expires: {Exp}",
-250:                                 iss, string.Join(", ", aud), azp ?? "(null)", exp);
-251:                         }
-252:                     }
-253:                     catch (Exception ex)
-254:                     {
-255:                         logger.LogWarning("[JWT] Could not parse token for debugging: {Error}", ex.Message);
-256:                     }
-257:                 }
-258: 
-259:                 return Task.CompletedTask;
-260:             },
-261: 
-262:             OnTokenValidated = context =>
-263:             {
-264:                 var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-265:                 var claims = context.Principal?.Claims.Select(c => $"{c.Type}={c.Value}");
-266:                 logger.LogInformation("[JWT] Token validated successfully. Claims: {Claims}",
-267:                     string.Join(", ", claims ?? Array.Empty<string>()));
-268:                 return Task.CompletedTask;
-269:             },
-270: 
-271:             OnChallenge = context =>
-272:             {
-273:                 var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-274:                 logger.LogWarning("[JWT] Challenge issued. Error: {Error}, ErrorDescription: {Desc}",
-275:                     context.Error, context.ErrorDescription);
-276:                 return Task.CompletedTask;
-277:             },
-278: 
-279:             OnMessageReceived = context =>
-280:             {
-281:                 var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-282:                 var hasAuth = context.Request.Headers.ContainsKey("Authorization");
-283:                 var authHeader = hasAuth ? context.Request.Headers["Authorization"].ToString() : null;
-284:                 var tokenPreview = !string.IsNullOrEmpty(authHeader) && authHeader.Length > 20
-285:                     ? $"{authHeader[..20]}..."
-286:                     : authHeader;
-287: 
-288:                 logger.LogInformation("[JWT] Message received. Path: {Path}, Has Authorization: {HasAuth}, Header: {Token}",
-289:                     context.Request.Path, hasAuth, tokenPreview);
-290:                 return Task.CompletedTask;
-291:             }
-292:         };
-293:     });
-294: 
-295: builder.Services.AddAuthorizationBuilder();
-296: 
-297: 
-298: builder.Services.AddHsts(options =>
-299: {
-300:     options.Preload = true;
-301:     options.IncludeSubDomains = true;
-302:     options.MaxAge = TimeSpan.FromDays(365);
-303: 
-304: 
-305: });
-306: 
-307: 
-308: builder.Services.AddHttpsRedirection(options =>
-309: {
-310:     options.RedirectStatusCode = StatusCodes.Status308PermanentRedirect;
-311:     if (builder.Environment.IsDevelopment())
-312:     {
-313:         options.HttpsPort = 7039;
-314:     }
-315: });
-316: 
-317: 
-318: 
-319: builder.Services.AddHealthChecks()
-320:     .AddCheck("shutdown", () =>
-321:     {
-322:         if (isShuttingDown)
-323:             return HealthCheckResult.Unhealthy("Application is shutting down");
-324:         return HealthCheckResult.Healthy();
-325:     }, tags: ["live", "ready"])
-326:     .AddDbContextCheck<ExploreDbContext>("database", tags: ["ready"]);
-327: 
-328: var app = builder.Build();
-329: 
-330: 
-331: 
-332: 
-333: app.Lifetime.ApplicationStopping.Register(() =>
-334: {
-335:     isShuttingDown = true;
-336:     app.Logger.LogInformation(
-337:         "SIGTERM received. Starting graceful shutdown. Health checks return 503. " +
-338:         "Accepting requests for {Seconds} more seconds...",
-339:         GracefulShutdownSeconds);
-340: });
-341: 
-342: 
-343: Console.CancelKeyPress += (sender, e) =>
-344: {
-345:     app.Logger.LogWarning("SIGINT received. Initiating immediate shutdown...");
-346:     e.Cancel = false;
-347:     shutdownCts.Cancel();
-348:     Environment.Exit(0);
-349: };
-350: 
-351: 
-352: AppDomain.CurrentDomain.ProcessExit += (sender, e) =>
-353: {
-354:     if (!isShuttingDown)
-355:     {
-356:         isShuttingDown = true;
-357:         app.Logger.LogInformation(
-358:             "Process exit signal received. Graceful shutdown with {Seconds} second grace period...",
-359:             GracefulShutdownSeconds);
-360: 
-361: 
-362:         Thread.Sleep(TimeSpan.FromSeconds(GracefulShutdownSeconds));
-363:     }
-364: };
-365: 
-366: 
-367: 
-368: 
-369: if (!builder.Environment.IsEnvironment("Testing"))
-370: {
-371:     using var scope = app.Services.CreateScope();
-372:     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-373:     var db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
-374: 
-375:     try
-376:     {
-377:         logger.LogInformation("Applying database migrations...");
-378:         db.Database.Migrate();
-379:         logger.LogInformation("Database migrations completed successfully.");
-380: 
-381: 
-382:         DatabaseSeeder.SeedAsync(db, app.Environment).GetAwaiter().GetResult();
-383:         logger.LogInformation("Database seeding completed.");
-384:     }
-385:     catch (Exception ex)
-386:     {
-387:         logger.LogCritical(ex, "Database migration failed. Application cannot start.");
-388:         throw;
-389:     }
-390: }
-391: 
-392: 
-393: if (app.Environment.IsDevelopment())
-394: {
-395:     app.UseDeveloperExceptionPage();
-396:     Microsoft.IdentityModel.Logging.IdentityModelEventSource.ShowPII = true;
-397: 
-398: 
-399:     app.MapOpenApi();
-400:     app.UseSwagger();
-401:     app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Explore API v1"));
-402:     app.MapScalarApiReference();
-403:     app.UseCors("DevPolicy");
-404: 
-405:     app.MapPost("/admin/migrate", async (ExploreDbContext context, ILogger<Program> logger) =>
-406:         {
-407:             try
-408:             {
-409:                 logger.LogInformation(" Applying database migrations...");
-410:                 logger.LogInformation(builder.Configuration["ConnectionStrings:DefaultConnection"]);
-411:                 await context.Database.MigrateAsync();
-412:                 logger.LogInformation(" Database migrations applied successfully!");
-413:                 return Results.Ok(new { message = "Migrations applied successfully" });
-414:             }
-415:             catch (Exception ex)
-416:             {
-417:                 logger.LogError(ex, " An error occurred while migrating the database.");
-418:                 return Results.Problem("Migration failed: " + ex.Message);
-419:             }
-420:         })
-421:         .RequireAuthorization();
-422: }
-423: else
-424: {
-425:     app.UseCors("InternalAppPolicy");
-426:     app.UseExceptionHandler("/Error");
-427:     app.UseHsts();
-428: }
-429: 
-430: 
-431: 
-432: 
-433: 
-434: 
-435: 
-436: 
-437: 
-438: app.UseHttpsRedirection();
-439: 
-440: 
-441: app.UseHateoas();
-442: 
-443: app.UseRouting();
-444: app.UseAuthentication();
-445: app.UseAuthorization();
-446: app.UseMiddleware<ExceptionMiddleware>();
-447: app.MapControllers();
-448: 
-449: 
-450: app.MapDefaultEndpoints();
-451: 
-452: 
-453: 
-454: 
-455: 
-456: 
-457: app.Run();
-````
-
 ## File: Explore.Application/Explore.Application.csproj
 ````
  1: <Project Sdk="Microsoft.NET.Sdk">
@@ -149560,6 +151116,471 @@ README.md
 141:         return $"{handle}-{Guid.NewGuid().ToString("N").Substring(0, 6)}";
 142:     }
 143: }
+````
+
+## File: Explore.API/Program.cs
+````csharp
+  1: using Explore.API.BackgroundServices;
+  2: using Explore.API.Extensions;
+  3: using Explore.API.Middleware;
+  4: using Explore.API.Services;
+  5: using Explore.Application;
+  6: using Explore.Application.Contracts.Infrastructure;
+  7: using Explore.Infrastructure;
+  8: using Explore.Persistence;
+  9: using Explore.Persistence.Seed;
+ 10: using Explore.Secrets.Extensions;
+ 11: using Microsoft.AspNetCore.Authentication.JwtBearer;
+ 12: using Microsoft.AspNetCore.HttpOverrides;
+ 13: using Microsoft.Extensions.Diagnostics.HealthChecks;
+ 14: using Microsoft.IdentityModel.Tokens;
+ 15: 
+ 16: using Scalar.AspNetCore;
+ 17: using Serilog;
+ 18: using System.Net.Http.Headers;
+ 19: using System.Security.Claims;
+ 20: using System.Text.RegularExpressions;
+ 21: using Microsoft.EntityFrameworkCore;
+ 22: using Microsoft.OpenApi;
+ 23: using Polly.Bulkhead;
+ 24: using static Microsoft.AspNetCore.Http.StatusCodes;
+ 25: 
+ 26: 
+ 27: 
+ 28: 
+ 29: var isShuttingDown = false;
+ 30: var shutdownCts = new CancellationTokenSource();
+ 31: const int GracefulShutdownSeconds = 25;
+ 32: 
+ 33: var builder = WebApplication.CreateBuilder(args);
+ 34: 
+ 35: 
+ 36: builder.WebHost.ConfigureKestrel(options =>
+ 37: {
+ 38:     options.Limits.KeepAliveTimeout = TimeSpan.FromSeconds(GracefulShutdownSeconds + 5);
+ 39: });
+ 40: 
+ 41: 
+ 42: builder.Host.ConfigureHostOptions(options =>
+ 43: {
+ 44:     options.ShutdownTimeout = TimeSpan.FromSeconds(GracefulShutdownSeconds + 5);
+ 45: });
+ 46: 
+ 47: builder.AddServiceDefaults();
+ 48: builder.Configuration.AddInfisicalCompatibility();
+ 49: 
+ 50: 
+ 51: 
+ 52: builder.Services.AddSecretManagement(builder.Configuration);
+ 53: 
+ 54: var authority = builder.Configuration["Keycloak:Authority"];
+ 55: var realm = builder.Configuration["Keycloak:Realm"];
+ 56: var audience = builder.Configuration["Keycloak:Audience"];
+ 57: 
+ 58: builder.Services.AddHttpContextAccessor();
+ 59: builder.Services.AddRouting(options =>
+ 60: {
+ 61:     options.LowercaseUrls = true;
+ 62: });
+ 63: 
+ 64: 
+ 65: 
+ 66: 
+ 67: 
+ 68: builder.Services.ConfigureApplicationServices();
+ 69: builder.Services.ConfigureInfrastructureServices(builder.Configuration);
+ 70: 
+ 71: 
+ 72: var skipDbContext = builder.Environment.IsEnvironment("Testing");
+ 73: builder.Services.CongfigurePersistenceServices(builder.Configuration, skipDbContextRegistration: skipDbContext);
+ 74: 
+ 75: 
+ 76: builder.Services.AddScoped<ITenantContext, TenantContext>();
+ 77: 
+ 78: 
+ 79: builder.Services.AddHateoas();
+ 80: builder.Services.AddHateoasAssemblers();
+ 81: 
+ 82: builder.Services.AddControllers();
+ 83: 
+ 84: builder.Services.AddEndpointsApiExplorer();
+ 85: 
+ 86: builder.Services.AddSwaggerGenWithAuth(builder.Configuration);
+ 87: 
+ 88: 
+ 89: 
+ 90: 
+ 91: builder.Services.AddOpenApi("explore-api", options =>
+ 92: {
+ 93:     options.AddDocumentTransformer<Explore.API.OpenApi.HalDtoSchemaTransformer>();
+ 94: });
+ 95: 
+ 96: 
+ 97: builder.Services.AddHttpClient();
+ 98: 
+ 99: 
+100: builder.Services.AddHostedService<OpenApiExportService>();
+101: 
+102: 
+103: builder.Services.AddHostedService<PdsSyncWorker>();
+104: 
+105: builder.Services.AddCors(options =>
+106: {
+107:     options.AddPolicy("InternalAppPolicy",
+108:         builder => builder.AllowAnyOrigin()
+109:             .AllowAnyMethod()
+110:             .AllowAnyHeader());
+111: 
+112:     options.AddPolicy("ExternalAppPolicy",
+113:         builder => builder.AllowAnyOrigin()
+114:             .AllowAnyMethod()
+115:             .AllowAnyHeader());
+116: 
+117:     options.AddPolicy("InternalWebsitePolicy",
+118:         builder => builder.WithOrigins("https://iloveibadah.app")
+119:             .AllowAnyHeader()
+120:             .AllowAnyMethod());
+121: 
+122:     options.AddPolicy("ExternalWebsitePolicy",
+123:         builder => builder.AllowAnyOrigin()
+124:             .WithMethods()
+125:             .WithHeaders());
+126: 
+127:     options.AddPolicy("DevPolicy",
+128:         builder => builder.AllowAnyOrigin()
+129:             .AllowAnyHeader()
+130:             .AllowAnyMethod());
+131: });
+132: 
+133: builder.Host.UseSerilog((ctx, lc) =>
+134:     lc.WriteTo.Console().ReadFrom.Configuration(ctx.Configuration));
+135: 
+136: 
+137: 
+138: 
+139: builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+140:     .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
+141:     {
+142: 
+143:         options.RequireHttpsMetadata = string.Equals(
+144:             builder.Configuration["Keycloak:RequireHttpsMetadata"],
+145:             "true",
+146:             StringComparison.OrdinalIgnoreCase
+147:         );
+148: 
+149:         options.Authority = authority;
+150:         options.MetadataAddress = builder.Configuration["Keycloak:MetadataAddress"];
+151: 
+152: 
+153: 
+154:         var validAudiences = new[]
+155:         {
+156:             "explore-api",
+157:             "explore-blazor-server",
+158:             "account"
+159:         };
+160: 
+161: 
+162:         options.TokenValidationParameters = new TokenValidationParameters
+163:         {
+164: 
+165: 
+166:             ValidateAudience = true,
+167:             AudienceValidator = (audiences, securityToken, validationParameters) =>
+168:             {
+169:                 var audienceList = audiences?.ToList() ?? new List<string>();
+170: 
+171: 
+172:                 if (audienceList.Any(aud => validAudiences.Contains(aud)))
+173:                 {
+174:                     return true;
+175:                 }
+176: 
+177: 
+178:                 if (securityToken is System.IdentityModel.Tokens.Jwt.JwtSecurityToken jwtToken)
+179:                 {
+180:                     var azp = jwtToken.Claims.FirstOrDefault(c => c.Type == "azp")?.Value;
+181:                     if (!string.IsNullOrEmpty(azp) && validAudiences.Contains(azp))
+182:                     {
+183:                         return true;
+184:                     }
+185: 
+186: 
+187:                     Console.WriteLine($"[JWT AudienceValidator] Token audiences: [{string.Join(", ", audienceList)}], azp: {azp ?? "(null)"}, valid audiences: [{string.Join(", ", validAudiences)}]");
+188:                 }
+189: 
+190:                 return false;
+191:             },
+192: 
+193: 
+194:             ValidateIssuer = true,
+195:             ValidIssuer = authority,
+196: 
+197: 
+198:             ValidateLifetime = true,
+199:             ClockSkew = TimeSpan.FromMinutes(5),
+200: 
+201: 
+202:             ValidateIssuerSigningKey = true,
+203: 
+204: 
+205:             NameClaimType = "preferred_username",
+206:             RoleClaimType = "roles"
+207:         };
+208: 
+209: 
+210:         if (builder.Environment.IsDevelopment())
+211:         {
+212:             options.BackchannelHttpHandler = new HttpClientHandler
+213:             {
+214:                 ServerCertificateCustomValidationCallback =
+215:                     HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+216:             };
+217:         }
+218: 
+219: 
+220:         options.Events = new JwtBearerEvents
+221:         {
+222:             OnAuthenticationFailed = context =>
+223:             {
+224:                 var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+225:                 logger.LogWarning("[JWT] Authentication failed: {Error}", context.Exception?.Message);
+226: 
+227: 
+228:                 if (context.Exception is SecurityTokenValidationException stve)
+229:                 {
+230:                     logger.LogWarning("[JWT] Token validation error details: {Details}", stve.Message);
+231:                 }
+232:                 if (context.Exception?.InnerException != null)
+233:                 {
+234:                     logger.LogWarning("[JWT] Inner exception: {Inner}", context.Exception.InnerException.Message);
+235:                 }
+236: 
+237: 
+238:                 var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+239:                 if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+240:                 {
+241:                     try
+242:                     {
+243:                         var token = authHeader.Substring(7);
+244:                         var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+245:                         if (handler.CanReadToken(token))
+246:                         {
+247:                             var jwt = handler.ReadJwtToken(token);
+248:                             var aud = jwt.Audiences?.ToList() ?? new List<string>();
+249:                             var azp = jwt.Claims.FirstOrDefault(c => c.Type == "azp")?.Value;
+250:                             var iss = jwt.Issuer;
+251:                             var exp = jwt.ValidTo;
+252: 
+253:                             logger.LogWarning("[JWT] Token details - Issuer: {Issuer}, Audiences: [{Audiences}], Azp: {Azp}, Expires: {Exp}",
+254:                                 iss, string.Join(", ", aud), azp ?? "(null)", exp);
+255:                         }
+256:                     }
+257:                     catch (Exception ex)
+258:                     {
+259:                         logger.LogWarning("[JWT] Could not parse token for debugging: {Error}", ex.Message);
+260:                     }
+261:                 }
+262: 
+263:                 return Task.CompletedTask;
+264:             },
+265: 
+266:             OnTokenValidated = context =>
+267:             {
+268:                 var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+269:                 var claims = context.Principal?.Claims.Select(c => $"{c.Type}={c.Value}");
+270:                 logger.LogInformation("[JWT] Token validated successfully. Claims: {Claims}",
+271:                     string.Join(", ", claims ?? Array.Empty<string>()));
+272:                 return Task.CompletedTask;
+273:             },
+274: 
+275:             OnChallenge = context =>
+276:             {
+277:                 var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+278:                 logger.LogWarning("[JWT] Challenge issued. Error: {Error}, ErrorDescription: {Desc}",
+279:                     context.Error, context.ErrorDescription);
+280:                 return Task.CompletedTask;
+281:             },
+282: 
+283:             OnMessageReceived = context =>
+284:             {
+285:                 var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+286:                 var hasAuth = context.Request.Headers.ContainsKey("Authorization");
+287:                 var authHeader = hasAuth ? context.Request.Headers["Authorization"].ToString() : null;
+288:                 var tokenPreview = !string.IsNullOrEmpty(authHeader) && authHeader.Length > 20
+289:                     ? $"{authHeader[..20]}..."
+290:                     : authHeader;
+291: 
+292:                 logger.LogInformation("[JWT] Message received. Path: {Path}, Has Authorization: {HasAuth}, Header: {Token}",
+293:                     context.Request.Path, hasAuth, tokenPreview);
+294:                 return Task.CompletedTask;
+295:             }
+296:         };
+297:     });
+298: 
+299: builder.Services.AddAuthorizationBuilder();
+300: 
+301: 
+302: builder.Services.AddHsts(options =>
+303: {
+304:     options.Preload = true;
+305:     options.IncludeSubDomains = true;
+306:     options.MaxAge = TimeSpan.FromDays(365);
+307: 
+308: 
+309: });
+310: 
+311: 
+312: builder.Services.AddHttpsRedirection(options =>
+313: {
+314:     options.RedirectStatusCode = StatusCodes.Status308PermanentRedirect;
+315:     if (builder.Environment.IsDevelopment())
+316:     {
+317:         options.HttpsPort = 7039;
+318:     }
+319: });
+320: 
+321: 
+322: 
+323: builder.Services.AddHealthChecks()
+324:     .AddCheck("shutdown", () =>
+325:     {
+326:         if (isShuttingDown)
+327:             return HealthCheckResult.Unhealthy("Application is shutting down");
+328:         return HealthCheckResult.Healthy();
+329:     }, tags: ["live", "ready"])
+330:     .AddDbContextCheck<ExploreDbContext>("database", tags: ["ready"]);
+331: 
+332: var app = builder.Build();
+333: 
+334: 
+335: 
+336: 
+337: app.Lifetime.ApplicationStopping.Register(() =>
+338: {
+339:     isShuttingDown = true;
+340:     app.Logger.LogInformation(
+341:         "SIGTERM received. Starting graceful shutdown. Health checks return 503. " +
+342:         "Accepting requests for {Seconds} more seconds...",
+343:         GracefulShutdownSeconds);
+344: });
+345: 
+346: 
+347: Console.CancelKeyPress += (sender, e) =>
+348: {
+349:     app.Logger.LogWarning("SIGINT received. Initiating immediate shutdown...");
+350:     e.Cancel = false;
+351:     shutdownCts.Cancel();
+352:     Environment.Exit(0);
+353: };
+354: 
+355: 
+356: AppDomain.CurrentDomain.ProcessExit += (sender, e) =>
+357: {
+358:     if (!isShuttingDown)
+359:     {
+360:         isShuttingDown = true;
+361:         app.Logger.LogInformation(
+362:             "Process exit signal received. Graceful shutdown with {Seconds} second grace period...",
+363:             GracefulShutdownSeconds);
+364: 
+365: 
+366:         Thread.Sleep(TimeSpan.FromSeconds(GracefulShutdownSeconds));
+367:     }
+368: };
+369: 
+370: 
+371: 
+372: 
+373: if (!builder.Environment.IsEnvironment("Testing"))
+374: {
+375:     using var scope = app.Services.CreateScope();
+376:     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+377:     var db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+378: 
+379:     try
+380:     {
+381:         logger.LogInformation("Applying database migrations...");
+382:         db.Database.Migrate();
+383:         logger.LogInformation("Database migrations completed successfully.");
+384: 
+385: 
+386:         DatabaseSeeder.SeedAsync(db, app.Environment).GetAwaiter().GetResult();
+387:         logger.LogInformation("Database seeding completed.");
+388:     }
+389:     catch (Exception ex)
+390:     {
+391:         logger.LogCritical(ex, "Database migration failed. Application cannot start.");
+392:         throw;
+393:     }
+394: }
+395: 
+396: 
+397: if (app.Environment.IsDevelopment())
+398: {
+399:     app.UseDeveloperExceptionPage();
+400:     Microsoft.IdentityModel.Logging.IdentityModelEventSource.ShowPII = true;
+401: 
+402: 
+403:     app.MapOpenApi();
+404:     app.UseSwagger();
+405:     app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Explore API v1"));
+406:     app.MapScalarApiReference();
+407:     app.UseCors("DevPolicy");
+408: 
+409:     app.MapPost("/admin/migrate", async (ExploreDbContext context, ILogger<Program> logger) =>
+410:         {
+411:             try
+412:             {
+413:                 logger.LogInformation(" Applying database migrations...");
+414:                 logger.LogInformation(builder.Configuration["ConnectionStrings:DefaultConnection"]);
+415:                 await context.Database.MigrateAsync();
+416:                 logger.LogInformation(" Database migrations applied successfully!");
+417:                 return Results.Ok(new { message = "Migrations applied successfully" });
+418:             }
+419:             catch (Exception ex)
+420:             {
+421:                 logger.LogError(ex, " An error occurred while migrating the database.");
+422:                 return Results.Problem("Migration failed: " + ex.Message);
+423:             }
+424:         })
+425:         .RequireAuthorization();
+426: }
+427: else
+428: {
+429:     app.UseCors("InternalAppPolicy");
+430:     app.UseExceptionHandler("/Error");
+431:     app.UseHsts();
+432: }
+433: 
+434: 
+435: 
+436: 
+437: 
+438: 
+439: 
+440: 
+441: 
+442: app.UseHttpsRedirection();
+443: 
+444: 
+445: app.UseHateoas();
+446: 
+447: app.UseRouting();
+448: app.UseAuthentication();
+449: app.UseAuthorization();
+450: app.UseMiddleware<ExceptionMiddleware>();
+451: app.MapControllers();
+452: 
+453: 
+454: app.MapDefaultEndpoints();
+455: 
+456: 
+457: 
+458: 
+459: 
+460: 
+461: app.Run();
 ````
 
 ## File: Explore.API/swagger.json
@@ -167449,296 +169470,6 @@ README.md
 17883: }
 ````
 
-## File: Explore.Persistence/ExploreDbContext.cs
-````csharp
-  1: using Microsoft.EntityFrameworkCore;
-  2: using Explore.Domain;
-  3: using Explore.Domain.Federation;
-  4: using Explore.Domain.Interfaces;
-  5: using Explore.Domain.Modules;
-  6: using Explore.Application.Contracts.Infrastructure;
-  7: using Explore.Persistence.Configurations.Entities;
-  8: using StorageObject = Explore.Domain.StorageObject;
-  9: using Explore.Persistence.QueryFilters;
- 10: 
- 11: namespace Explore.Persistence
- 12: {
- 13:     public class ExploreDbContext : DbContext
- 14:     {
- 15: 
- 16: 
- 17: 
- 18: 
- 19: 
- 20:         public ITenantContext? TenantContext { get; set; }
- 21: 
- 22: 
- 23: 
- 24: 
- 25: 
- 26: 
- 27:         public ICurrentUserService? CurrentUserService { get; set; }
- 28: 
- 29: 
- 30: 
- 31: 
- 32: 
- 33:         public ExploreDbContext(DbContextOptions<ExploreDbContext> options) : base(options)
- 34:         {
- 35:         }
- 36: 
- 37:         protected override void OnModelCreating(ModelBuilder modelBuilder)
- 38:         {
- 39:             base.OnModelCreating(modelBuilder);
- 40: 
- 41: 
- 42:             modelBuilder.ApplyConfigurationsFromAssembly(typeof(ExploreDbContext).Assembly);
- 43: 
- 44: 
- 45:             ApplyGlobalQueryFilters(modelBuilder);
- 46:         }
- 47: 
- 48:         private void ApplyGlobalQueryFilters(ModelBuilder modelBuilder)
- 49:         {
- 50: 
- 51: 
- 52:             modelBuilder.Entity<Event>()
- 53:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId)
- 54:                 .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
- 55: 
- 56:             modelBuilder.Entity<EventSession>()
- 57:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId)
- 58:                 .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
- 59: 
- 60: 
- 61:             modelBuilder.Entity<EventRegistration>()
- 62:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
- 63:             modelBuilder.Entity<EventCategories>()
- 64:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
- 65:             modelBuilder.Entity<EventTags>()
- 66:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
- 67:             modelBuilder.Entity<EventSessionLanguage>()
- 68:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
- 69:             modelBuilder.Entity<EventSessionSpeaker>()
- 70:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
- 71:             modelBuilder.Entity<EventSessionAgendaItem>()
- 72:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
- 73: 
- 74: 
- 75: 
- 76:             modelBuilder.Entity<Organization>()
- 77:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId)
- 78:                 .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
- 79: 
- 80:             modelBuilder.Entity<OrganizationMember>()
- 81:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId)
- 82:                 .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
- 83: 
- 84: 
- 85:             modelBuilder.Entity<OrganizationReview>()
- 86:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
- 87: 
- 88: 
- 89: 
- 90:             modelBuilder.Entity<Actor>()
- 91:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId)
- 92:                 .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
- 93: 
- 94: 
- 95:             modelBuilder.Entity<ActorKeyStore>()
- 96:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
- 97: 
- 98: 
- 99: 
-100:             modelBuilder.Entity<User>()
-101:                 .HasQueryFilter(QueryFilterNames.SoftDelete, u => !u.IsDeleted);
-102: 
-103: 
-104:             modelBuilder.Entity<Location>()
-105:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
-106: 
-107: 
-108:             modelBuilder.Entity<StorageObject>()
-109:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
-110: 
-111: 
-112:             modelBuilder.Entity<Category>()
-113:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
-114:             modelBuilder.Entity<Tag>()
-115:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
-116:             modelBuilder.Entity<TagTypeTags>()
-117:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
-118: 
-119: 
-120:             modelBuilder.Entity<UserAuthenticationToken>()
-121:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
-122:             modelBuilder.Entity<UserExternalLogin>()
-123:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
-124:             modelBuilder.Entity<UserRole>()
-125:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
-126: 
-127: 
-128:             modelBuilder.Entity<TenantUser>()
-129:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
-130:             modelBuilder.Entity<TenantSettings>()
-131:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
-132:             modelBuilder.Entity<TenantSetting>()
-133:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
-134: 
-135: 
-136:             modelBuilder.Entity<TenantCapability>()
-137:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
-138:         }
-139: 
-140: 
-141: 
-142: 
-143: 
-144: 
-145:         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
-146:         {
-147:             var userId = GetCurrentUserId();
-148:             var now = DateTime.UtcNow;
-149: 
-150:             foreach (var entry in ChangeTracker.Entries())
-151:             {
-152: 
-153:                 if (entry.Entity is IAuditableEntity auditable)
-154:                 {
-155:                     switch (entry.State)
-156:                     {
-157:                         case EntityState.Added:
-158:                             auditable.CreatedAt = now;
-159:                             auditable.CreatedBy = userId;
-160:                             break;
-161: 
-162:                         case EntityState.Modified:
-163: 
-164:                             if (auditable.UpdatedAt == null || auditable.UpdatedAt == default(DateTime))
-165:                             {
-166:                                 auditable.UpdatedAt = now;
-167:                                 auditable.UpdatedBy = userId;
-168:                             }
-169:                             break;
-170:                     }
-171:                 }
-172: 
-173: 
-174:                 if (entry.Entity is ISoftDeletable deletable && entry.State == EntityState.Deleted)
-175:                 {
-176: 
-177:                     entry.State = EntityState.Modified;
-178: 
-179: 
-180:                     deletable.IsDeleted = true;
-181:                     deletable.DeletedAt = now;
-182:                     deletable.DeletedBy = userId;
-183: 
-184: 
-185:                     if (entry.Entity is IAuditableEntity auditableDeleted)
-186:                     {
-187:                         auditableDeleted.UpdatedAt = now;
-188:                         auditableDeleted.UpdatedBy = userId;
-189:                     }
-190:                 }
-191:             }
-192: 
-193:             return await base.SaveChangesAsync(cancellationToken);
-194:         }
-195: 
-196: 
-197: 
-198: 
-199: 
-200:         private Guid? GetCurrentUserId()
-201:         {
-202:             return CurrentUserService?.UserId;
-203:         }
-204: 
-205: 
-206:         public DbSet<Tenant> Tenants { get; set; }
-207:         public DbSet<TenantUser> TenantUsers { get; set; }
-208:         public DbSet<TenantSettings> TenantSettings { get; set; }
-209: 
-210: 
-211:         public DbSet<User> Users { get; set; }
-212:         public DbSet<UserRole> UserRoles { get; set; }
-213:         public DbSet<UserAuthenticationToken> UserAuthenticationTokens { get; set; }
-214:         public DbSet<UserExternalLogin> UserExternalLogins { get; set; }
-215: 
-216: 
-217:         public DbSet<Actor> Actors { get; set; }
-218:         public DbSet<ActorType> ActorTypes { get; set; }
-219:         public DbSet<DidCustodyType> DidCustodyTypes { get; set; }
-220:         public DbSet<ActorKeyStore> ActorKeyStores { get; set; }
-221: 
-222: 
-223:         public DbSet<Organization> Organizations { get; set; }
-224:         public DbSet<OrganizationMember> OrganizationMembers { get; set; }
-225:         public DbSet<OrganizationRole> OrganizationRoles { get; set; }
-226:         public DbSet<OrganizationPosition> OrganizationPositions { get; set; }
-227:         public DbSet<OrganizationReview> OrganizationReviews { get; set; }
-228: 
-229: 
-230:         public DbSet<Event> Events { get; set; }
-231:         public DbSet<EventSession> EventSessions { get; set; }
-232:         public DbSet<EventRegistration> EventRegistrations { get; set; }
-233:         public DbSet<EventSessionLanguage> EventSessionLanguages { get; set; }
-234:         public DbSet<EventSessionSpeaker> EventSessionSpeakers { get; set; }
-235:         public DbSet<EventSessionAgendaItem> EventSessionAgendaItems { get; set; }
-236:         public DbSet<EventIslamicAspect> EventIslamicAspects { get; set; }
-237:         public DbSet<EventTechAspect> EventTechAspects { get; set; }
-238: 
-239: 
-240:         public DbSet<EventType> EventTypes { get; set; }
-241:         public DbSet<EventStatus> EventStatuses { get; set; }
-242:         public DbSet<EventFormat> EventFormats { get; set; }
-243:         public DbSet<VisibilityType> VisibilityTypes { get; set; }
-244:         public DbSet<RegistrationMode> RegistrationModes { get; set; }
-245: 
-246: 
-247:         public DbSet<AudienceAge> AudienceAges { get; set; }
-248:         public DbSet<AudienceGender> AudienceGenders { get; set; }
-249:         public DbSet<Madhab> Madhabs { get; set; }
-250:         public DbSet<Language> Languages { get; set; }
-251:         public DbSet<ApprovalStatus> ApprovalStatuses { get; set; }
-252: 
-253: 
-254:         public DbSet<Category> Categories { get; set; }
-255:         public DbSet<Tag> Tags { get; set; }
-256:         public DbSet<TagType> TagTypes { get; set; }
-257:         public DbSet<TagTypeTags> TagTypeTags { get; set; }
-258:         public DbSet<EventCategories> EventCategories { get; set; }
-259:         public DbSet<EventTags> EventTags { get; set; }
-260: 
-261: 
-262:         public DbSet<Location> Locations { get; set; }
-263: 
-264: 
-265:         public DbSet<StorageObject> StorageObjects { get; set; }
-266:         public DbSet<FileType> FileTypes { get; set; }
-267:         public DbSet<OwnerType> OwnerTypes { get; set; }
-268: 
-269: 
-270:         public DbSet<SystemSetting> SystemSettings { get; set; }
-271:         public DbSet<TenantSetting> TenantSettingOverrides { get; set; }
-272:         public DbSet<AppSetting> AppSettings { get; set; }
-273: 
-274: 
-275:         public DbSet<ModuleDefinition> ModuleDefinitions { get; set; }
-276:         public DbSet<TenantCapability> TenantCapabilities { get; set; }
-277: 
-278: 
-279:         public DbSet<IndexedDid> IndexedDids { get; set; }
-280:         public DbSet<SyncState> SyncStates { get; set; }
-281:         public DbSet<AtprotoRecord> AtprotoRecords { get; set; }
-282: 
-283: 
-284:         public DbSet<PdsSyncOutbox> PdsSyncOutbox { get; set; }
-285:     }
-286: }
-````
-
 ## File: Explore.Persistence/Repositories/EventRepository.cs
 ````csharp
   1: using System;
@@ -167935,9 +169666,299 @@ README.md
  8:     "Domain": "Active (DDD)",
  9:     "Infra": "Active (EF Core)"
 10:   },
-11:   "RecentFocus": "Frontend (MyRegistrations.razor.cs)",
-12:   "LastUpdate": "2026-02-03 14:14:45"
+11:   "RecentFocus": "Frontend (CreateEvent.razor)",
+12:   "LastUpdate": "2026-02-06 15:01:17"
 13: }
+````
+
+## File: Explore.Persistence/ExploreDbContext.cs
+````csharp
+  1: using Microsoft.EntityFrameworkCore;
+  2: using Explore.Domain;
+  3: using Explore.Domain.Federation;
+  4: using Explore.Domain.Interfaces;
+  5: using Explore.Domain.Modules;
+  6: using Explore.Application.Contracts.Infrastructure;
+  7: using Explore.Persistence.Configurations.Entities;
+  8: using StorageObject = Explore.Domain.StorageObject;
+  9: using Explore.Persistence.QueryFilters;
+ 10: 
+ 11: namespace Explore.Persistence
+ 12: {
+ 13:     public class ExploreDbContext : DbContext
+ 14:     {
+ 15: 
+ 16: 
+ 17: 
+ 18: 
+ 19: 
+ 20:         public ITenantContext? TenantContext { get; set; }
+ 21: 
+ 22: 
+ 23: 
+ 24: 
+ 25: 
+ 26: 
+ 27:         public ICurrentUserService? CurrentUserService { get; set; }
+ 28: 
+ 29: 
+ 30: 
+ 31: 
+ 32: 
+ 33:         public ExploreDbContext(DbContextOptions<ExploreDbContext> options) : base(options)
+ 34:         {
+ 35:         }
+ 36: 
+ 37:         protected override void OnModelCreating(ModelBuilder modelBuilder)
+ 38:         {
+ 39:             base.OnModelCreating(modelBuilder);
+ 40: 
+ 41: 
+ 42:             modelBuilder.ApplyConfigurationsFromAssembly(typeof(ExploreDbContext).Assembly);
+ 43: 
+ 44: 
+ 45:             ApplyGlobalQueryFilters(modelBuilder);
+ 46:         }
+ 47: 
+ 48:         private void ApplyGlobalQueryFilters(ModelBuilder modelBuilder)
+ 49:         {
+ 50: 
+ 51: 
+ 52:             modelBuilder.Entity<Event>()
+ 53:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
+ 54:                 .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+ 55: 
+ 56:             modelBuilder.Entity<EventSession>()
+ 57:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
+ 58:                 .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+ 59: 
+ 60: 
+ 61:             modelBuilder.Entity<EventRegistration>()
+ 62:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+ 63:             modelBuilder.Entity<EventCategories>()
+ 64:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+ 65:             modelBuilder.Entity<EventTags>()
+ 66:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+ 67:             modelBuilder.Entity<EventSessionLanguage>()
+ 68:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+ 69:             modelBuilder.Entity<EventSessionSpeaker>()
+ 70:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+ 71:             modelBuilder.Entity<EventSessionAgendaItem>()
+ 72:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+ 73: 
+ 74: 
+ 75: 
+ 76:             modelBuilder.Entity<Organization>()
+ 77:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
+ 78:                 .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+ 79: 
+ 80:             modelBuilder.Entity<OrganizationMember>()
+ 81:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
+ 82:                 .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+ 83: 
+ 84: 
+ 85:             modelBuilder.Entity<OrganizationReview>()
+ 86:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+ 87: 
+ 88: 
+ 89: 
+ 90:             modelBuilder.Entity<Actor>()
+ 91:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
+ 92:                 .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+ 93: 
+ 94: 
+ 95:             modelBuilder.Entity<ActorKeyStore>()
+ 96:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+ 97: 
+ 98: 
+ 99: 
+100:             modelBuilder.Entity<User>()
+101:                 .HasQueryFilter(QueryFilterNames.SoftDelete, u => !u.IsDeleted);
+102: 
+103: 
+104:             modelBuilder.Entity<Location>()
+105:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+106: 
+107: 
+108:             modelBuilder.Entity<StorageObject>()
+109:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+110: 
+111: 
+112:             modelBuilder.Entity<Category>()
+113:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+114:             modelBuilder.Entity<Tag>()
+115:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+116:             modelBuilder.Entity<TagTypeTags>()
+117:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+118: 
+119: 
+120:             modelBuilder.Entity<UserAuthenticationToken>()
+121:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+122:             modelBuilder.Entity<UserExternalLogin>()
+123:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+124:             modelBuilder.Entity<UserRole>()
+125:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+126: 
+127: 
+128:             modelBuilder.Entity<TenantUser>()
+129:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+130:             modelBuilder.Entity<TenantSettings>()
+131:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+132:             modelBuilder.Entity<TenantSetting>()
+133:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+134: 
+135: 
+136:             modelBuilder.Entity<TenantCapability>()
+137:                 .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+138:         }
+139: 
+140: 
+141: 
+142: 
+143: 
+144: 
+145:         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+146:         {
+147:             var userId = GetCurrentUserId();
+148:             var now = DateTime.UtcNow;
+149: 
+150:             foreach (var entry in ChangeTracker.Entries())
+151:             {
+152: 
+153:                 if (entry.Entity is IAuditableEntity auditable)
+154:                 {
+155:                     switch (entry.State)
+156:                     {
+157:                         case EntityState.Added:
+158:                             auditable.CreatedAt = now;
+159:                             auditable.CreatedBy = userId;
+160:                             break;
+161: 
+162:                         case EntityState.Modified:
+163: 
+164:                             if (auditable.UpdatedAt == null || auditable.UpdatedAt == default(DateTime))
+165:                             {
+166:                                 auditable.UpdatedAt = now;
+167:                                 auditable.UpdatedBy = userId;
+168:                             }
+169:                             break;
+170:                     }
+171:                 }
+172: 
+173: 
+174:                 if (entry.Entity is ISoftDeletable deletable && entry.State == EntityState.Deleted)
+175:                 {
+176: 
+177:                     entry.State = EntityState.Modified;
+178: 
+179: 
+180:                     deletable.IsDeleted = true;
+181:                     deletable.DeletedAt = now;
+182:                     deletable.DeletedBy = userId;
+183: 
+184: 
+185:                     if (entry.Entity is IAuditableEntity auditableDeleted)
+186:                     {
+187:                         auditableDeleted.UpdatedAt = now;
+188:                         auditableDeleted.UpdatedBy = userId;
+189:                     }
+190:                 }
+191:             }
+192: 
+193:             return await base.SaveChangesAsync(cancellationToken);
+194:         }
+195: 
+196: 
+197: 
+198: 
+199: 
+200:         private Guid? GetCurrentUserId()
+201:         {
+202:             return CurrentUserService?.UserId;
+203:         }
+204: 
+205: 
+206:         public DbSet<Tenant> Tenants { get; set; }
+207:         public DbSet<TenantUser> TenantUsers { get; set; }
+208:         public DbSet<TenantSettings> TenantSettings { get; set; }
+209: 
+210: 
+211:         public DbSet<User> Users { get; set; }
+212:         public DbSet<UserRole> UserRoles { get; set; }
+213:         public DbSet<UserAuthenticationToken> UserAuthenticationTokens { get; set; }
+214:         public DbSet<UserExternalLogin> UserExternalLogins { get; set; }
+215: 
+216: 
+217:         public DbSet<Actor> Actors { get; set; }
+218:         public DbSet<ActorType> ActorTypes { get; set; }
+219:         public DbSet<DidCustodyType> DidCustodyTypes { get; set; }
+220:         public DbSet<ActorKeyStore> ActorKeyStores { get; set; }
+221: 
+222: 
+223:         public DbSet<Organization> Organizations { get; set; }
+224:         public DbSet<OrganizationMember> OrganizationMembers { get; set; }
+225:         public DbSet<OrganizationRole> OrganizationRoles { get; set; }
+226:         public DbSet<OrganizationPosition> OrganizationPositions { get; set; }
+227:         public DbSet<OrganizationReview> OrganizationReviews { get; set; }
+228: 
+229: 
+230:         public DbSet<Event> Events { get; set; }
+231:         public DbSet<EventSession> EventSessions { get; set; }
+232:         public DbSet<EventRegistration> EventRegistrations { get; set; }
+233:         public DbSet<EventSessionLanguage> EventSessionLanguages { get; set; }
+234:         public DbSet<EventSessionSpeaker> EventSessionSpeakers { get; set; }
+235:         public DbSet<EventSessionAgendaItem> EventSessionAgendaItems { get; set; }
+236:         public DbSet<EventIslamicAspect> EventIslamicAspects { get; set; }
+237:         public DbSet<EventTechAspect> EventTechAspects { get; set; }
+238: 
+239: 
+240:         public DbSet<EventType> EventTypes { get; set; }
+241:         public DbSet<EventStatus> EventStatuses { get; set; }
+242:         public DbSet<EventFormat> EventFormats { get; set; }
+243:         public DbSet<VisibilityType> VisibilityTypes { get; set; }
+244:         public DbSet<RegistrationMode> RegistrationModes { get; set; }
+245: 
+246: 
+247:         public DbSet<AudienceAge> AudienceAges { get; set; }
+248:         public DbSet<AudienceGender> AudienceGenders { get; set; }
+249:         public DbSet<Madhab> Madhabs { get; set; }
+250:         public DbSet<Language> Languages { get; set; }
+251:         public DbSet<ApprovalStatus> ApprovalStatuses { get; set; }
+252: 
+253: 
+254:         public DbSet<Category> Categories { get; set; }
+255:         public DbSet<Tag> Tags { get; set; }
+256:         public DbSet<TagType> TagTypes { get; set; }
+257:         public DbSet<TagTypeTags> TagTypeTags { get; set; }
+258:         public DbSet<EventCategories> EventCategories { get; set; }
+259:         public DbSet<EventTags> EventTags { get; set; }
+260: 
+261: 
+262:         public DbSet<Location> Locations { get; set; }
+263: 
+264: 
+265:         public DbSet<StorageObject> StorageObjects { get; set; }
+266:         public DbSet<FileType> FileTypes { get; set; }
+267:         public DbSet<OwnerType> OwnerTypes { get; set; }
+268: 
+269: 
+270:         public DbSet<SystemSetting> SystemSettings { get; set; }
+271:         public DbSet<TenantSetting> TenantSettingOverrides { get; set; }
+272:         public DbSet<AppSetting> AppSettings { get; set; }
+273: 
+274: 
+275:         public DbSet<ModuleDefinition> ModuleDefinitions { get; set; }
+276:         public DbSet<TenantCapability> TenantCapabilities { get; set; }
+277: 
+278: 
+279:         public DbSet<IndexedDid> IndexedDids { get; set; }
+280:         public DbSet<SyncState> SyncStates { get; set; }
+281:         public DbSet<AtprotoRecord> AtprotoRecords { get; set; }
+282: 
+283: 
+284:         public DbSet<PdsSyncOutbox> PdsSyncOutbox { get; set; }
+285:     }
+286: }
 ````
 
 ## File: Explore.Persistence/Repositories/OrganizationRepository.cs
@@ -173016,396 +175037,397 @@ README.md
 172:                 .ForMember(dest => dest.TenantId, opt => opt.Ignore())
 173:                 .ForMember(dest => dest.SessionCount, opt => opt.Ignore())
 174:                 .ForMember(dest => dest.AtprotoRecordId, opt => opt.Ignore())
-175: 
-176:                 .ForMember(dest => dest.FirstSessionDate, opt => opt.MapFrom(src =>
-177:                     src.FirstSessionDate.HasValue ? DateOnly.FromDateTime(src.FirstSessionDate.Value.DateTime) : (DateOnly?)null))
-178:                 .ForMember(dest => dest.LastSessionDate, opt => opt.MapFrom(src =>
-179:                     src.LastSessionDate.HasValue ? DateOnly.FromDateTime(src.LastSessionDate.Value.DateTime) : (DateOnly?)null));
-180:             CreateMap<UpdateEventDto, Event>();
-181: 
+175:                 .ForMember(dest => dest.IsUserReported, opt => opt.Ignore())
+176: 
+177:                 .ForMember(dest => dest.FirstSessionDate, opt => opt.MapFrom(src =>
+178:                     src.FirstSessionDate.HasValue ? DateOnly.FromDateTime(src.FirstSessionDate.Value.DateTime) : (DateOnly?)null))
+179:                 .ForMember(dest => dest.LastSessionDate, opt => opt.MapFrom(src =>
+180:                     src.LastSessionDate.HasValue ? DateOnly.FromDateTime(src.LastSessionDate.Value.DateTime) : (DateOnly?)null));
+181:             CreateMap<UpdateEventDto, Event>();
 182: 
 183: 
 184: 
-185:             CreateMap<EventType, EventTypeListDto>().ReverseMap();
-186: 
+185: 
+186:             CreateMap<EventType, EventTypeListDto>().ReverseMap();
 187: 
 188: 
 189: 
-190:             CreateMap<Organization, OrganizationDto>()
-191:                 .ForMember(dest => dest.ApprovalStatusFullName, opt => opt.MapFrom(src => src.ApprovalStatus != null ? src.ApprovalStatus.FullName : null))
-192:                 .ForMember(dest => dest.ApprovalStatusMasterCode, opt => opt.MapFrom(src => src.ApprovalStatus != null ? src.ApprovalStatus.MasterCode : null))
-193:                 .ForMember(dest => dest.TenantFullName, opt => opt.MapFrom(src => src.Tenant != null ? src.Tenant.FullName : null))
-194:                 .ForMember(dest => dest.ActorDisplayName, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.DisplayName : null))
-195:                 .ForMember(dest => dest.ActorHandle, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.Handle : null))
-196: 
-197:                 .ForMember(dest => dest.ActorProfilePictureId, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.ProfilePictureId : null))
-198:                 .ForMember(dest => dest.ActorProfilePictureUri, opt => opt.MapFrom(src => src.Actor != null && src.Actor.ProfilePicture != null ? src.Actor.ProfilePicture.Uri : null));
-199:             CreateMap<Organization, OrganizationListDto>()
-200:                 .ForMember(dest => dest.ApprovalStatusFullName, opt => opt.MapFrom(src => src.ApprovalStatus != null ? src.ApprovalStatus.FullName : null))
-201: 
-202:                 .ForMember(dest => dest.ActorProfilePictureId, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.ProfilePictureId : null))
-203:                 .ForMember(dest => dest.ActorProfilePictureUri, opt => opt.MapFrom(src => src.Actor != null && src.Actor.ProfilePicture != null ? src.Actor.ProfilePicture.Uri : null));
-204:             CreateMap<CreateOrganizationDto, Organization>();
-205:             CreateMap<UpdateOrganizationDto, Organization>();
-206:             CreateMap<UpdateOrganizationApprovalStatusDto, Organization>();
-207: 
+190: 
+191:             CreateMap<Organization, OrganizationDto>()
+192:                 .ForMember(dest => dest.ApprovalStatusFullName, opt => opt.MapFrom(src => src.ApprovalStatus != null ? src.ApprovalStatus.FullName : null))
+193:                 .ForMember(dest => dest.ApprovalStatusMasterCode, opt => opt.MapFrom(src => src.ApprovalStatus != null ? src.ApprovalStatus.MasterCode : null))
+194:                 .ForMember(dest => dest.TenantFullName, opt => opt.MapFrom(src => src.Tenant != null ? src.Tenant.FullName : null))
+195:                 .ForMember(dest => dest.ActorDisplayName, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.DisplayName : null))
+196:                 .ForMember(dest => dest.ActorHandle, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.Handle : null))
+197: 
+198:                 .ForMember(dest => dest.ActorProfilePictureId, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.ProfilePictureId : null))
+199:                 .ForMember(dest => dest.ActorProfilePictureUri, opt => opt.MapFrom(src => src.Actor != null && src.Actor.ProfilePicture != null ? src.Actor.ProfilePicture.Uri : null));
+200:             CreateMap<Organization, OrganizationListDto>()
+201:                 .ForMember(dest => dest.ApprovalStatusFullName, opt => opt.MapFrom(src => src.ApprovalStatus != null ? src.ApprovalStatus.FullName : null))
+202: 
+203:                 .ForMember(dest => dest.ActorProfilePictureId, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.ProfilePictureId : null))
+204:                 .ForMember(dest => dest.ActorProfilePictureUri, opt => opt.MapFrom(src => src.Actor != null && src.Actor.ProfilePicture != null ? src.Actor.ProfilePicture.Uri : null));
+205:             CreateMap<CreateOrganizationDto, Organization>();
+206:             CreateMap<UpdateOrganizationDto, Organization>();
+207:             CreateMap<UpdateOrganizationApprovalStatusDto, Organization>();
 208: 
 209: 
 210: 
-211:             CreateMap<OrganizationMember, OrganizationMemberDto>()
-212:                 .ForMember(dest => dest.OrganizationFullName, opt => opt.MapFrom(src => src.Organization != null ? src.Organization.FullName : null))
-213:                 .ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null))
-214:                 .ForMember(dest => dest.UserFullName, opt => opt.MapFrom(src => src.User != null ? $"{src.User.FirstName} {src.User.LastName}" : null))
-215:                 .ForMember(dest => dest.OrganizationRoleFullName, opt => opt.MapFrom(src => src.OrganizationRole != null ? src.OrganizationRole.FullName : null))
-216:                 .ForMember(dest => dest.OrganizationPositionFullName, opt => opt.MapFrom(src => src.OrganizationPosition != null ? src.OrganizationPosition.FullName : null));
-217:             CreateMap<AddOrganizationMemberDto, OrganizationMember>();
-218:             CreateMap<UpdateOrganizationMemberRoleDto, OrganizationMember>();
-219: 
+211: 
+212:             CreateMap<OrganizationMember, OrganizationMemberDto>()
+213:                 .ForMember(dest => dest.OrganizationFullName, opt => opt.MapFrom(src => src.Organization != null ? src.Organization.FullName : null))
+214:                 .ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null))
+215:                 .ForMember(dest => dest.UserFullName, opt => opt.MapFrom(src => src.User != null ? $"{src.User.FirstName} {src.User.LastName}" : null))
+216:                 .ForMember(dest => dest.OrganizationRoleFullName, opt => opt.MapFrom(src => src.OrganizationRole != null ? src.OrganizationRole.FullName : null))
+217:                 .ForMember(dest => dest.OrganizationPositionFullName, opt => opt.MapFrom(src => src.OrganizationPosition != null ? src.OrganizationPosition.FullName : null));
+218:             CreateMap<AddOrganizationMemberDto, OrganizationMember>();
+219:             CreateMap<UpdateOrganizationMemberRoleDto, OrganizationMember>();
 220: 
-221:             CreateMap<OrganizationMember, OrganizationInvitationDto>()
-222:                 .ForMember(dest => dest.OrganizationId, opt => opt.MapFrom(src => src.OrganizationId))
-223:                 .ForMember(dest => dest.OrganizationName, opt => opt.MapFrom(src => src.Organization != null ? src.Organization.FullName : null))
-224:                 .ForMember(dest => dest.Role, opt => opt.MapFrom(src => (Explore.Domain.Enums.OrganizationRoleEnum)src.OrganizationRoleId))
-225:                 .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null));
-226: 
+221: 
+222:             CreateMap<OrganizationMember, OrganizationInvitationDto>()
+223:                 .ForMember(dest => dest.OrganizationId, opt => opt.MapFrom(src => src.OrganizationId))
+224:                 .ForMember(dest => dest.OrganizationName, opt => opt.MapFrom(src => src.Organization != null ? src.Organization.FullName : null))
+225:                 .ForMember(dest => dest.Role, opt => opt.MapFrom(src => (Explore.Domain.Enums.OrganizationRoleEnum)src.OrganizationRoleId))
+226:                 .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null));
 227: 
 228: 
 229: 
-230:             CreateMap<ApprovalStatus, StatusTypeListDto>().ReverseMap();
-231: 
+230: 
+231:             CreateMap<ApprovalStatus, StatusTypeListDto>().ReverseMap();
 232: 
 233: 
 234: 
-235:             CreateMap<User, UserDto>()
-236:                 .ForMember(dest => dest.ActorDisplayName, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.DisplayName : null))
-237:                 .ForMember(dest => dest.ActorHandle, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.Handle : null));
-238:             CreateMap<UpdateUserDto, User>();
-239: 
+235: 
+236:             CreateMap<User, UserDto>()
+237:                 .ForMember(dest => dest.ActorDisplayName, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.DisplayName : null))
+238:                 .ForMember(dest => dest.ActorHandle, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.Handle : null));
+239:             CreateMap<UpdateUserDto, User>();
 240: 
 241: 
 242: 
-243:             CreateMap<OrganizationReview, OrganizationReviewDto>()
-244:                 .ForMember(dest => dest.OrganizationFullName, opt => opt.MapFrom(src => src.Organization != null ? src.Organization.FullName : null))
-245:                 .ForMember(dest => dest.UserFullName, opt => opt.MapFrom(src => src.User != null ? $"{src.User.FirstName} {src.User.LastName}" : null));
-246:             CreateMap<CreateOrganizationReviewDto, OrganizationReview>();
-247: 
+243: 
+244:             CreateMap<OrganizationReview, OrganizationReviewDto>()
+245:                 .ForMember(dest => dest.OrganizationFullName, opt => opt.MapFrom(src => src.Organization != null ? src.Organization.FullName : null))
+246:                 .ForMember(dest => dest.UserFullName, opt => opt.MapFrom(src => src.User != null ? $"{src.User.FirstName} {src.User.LastName}" : null));
+247:             CreateMap<CreateOrganizationReviewDto, OrganizationReview>();
 248: 
 249: 
 250: 
-251:             CreateMap<EventSession, EventSessionDto>()
-252:                 .ForMember(dest => dest.EventTitle, opt => opt.MapFrom(src => src.Event != null ? src.Event.Title : null))
-253:                 .ForMember(dest => dest.LocationFullName, opt => opt.MapFrom(src => src.Location != null ? src.Location.FullName : null));
-254:             CreateMap<EventSession, EventSessionListDto>()
-255:                 .ForMember(dest => dest.EventTitle, opt => opt.MapFrom(src => src.Event != null ? src.Event.Title : null))
-256:                 .ForMember(dest => dest.LocationFullName, opt => opt.MapFrom(src => src.Location != null ? src.Location.FullName : null));
-257:             CreateMap<CreateEventSessionDto, EventSession>();
-258:             CreateMap<UpdateEventSessionDto, EventSession>();
-259: 
+251: 
+252:             CreateMap<EventSession, EventSessionDto>()
+253:                 .ForMember(dest => dest.EventTitle, opt => opt.MapFrom(src => src.Event != null ? src.Event.Title : null))
+254:                 .ForMember(dest => dest.LocationFullName, opt => opt.MapFrom(src => src.Location != null ? src.Location.FullName : null));
+255:             CreateMap<EventSession, EventSessionListDto>()
+256:                 .ForMember(dest => dest.EventTitle, opt => opt.MapFrom(src => src.Event != null ? src.Event.Title : null))
+257:                 .ForMember(dest => dest.LocationFullName, opt => opt.MapFrom(src => src.Location != null ? src.Location.FullName : null));
+258:             CreateMap<CreateEventSessionDto, EventSession>();
+259:             CreateMap<UpdateEventSessionDto, EventSession>();
 260: 
 261: 
 262: 
-263:             CreateMap<Location, LocationDto>().ReverseMap();
-264:             CreateMap<Location, LocationListDto>().ReverseMap();
-265:             CreateMap<CreateLocationDto, Location>();
-266:             CreateMap<UpdateLocationDto, Location>();
-267: 
+263: 
+264:             CreateMap<Location, LocationDto>().ReverseMap();
+265:             CreateMap<Location, LocationListDto>().ReverseMap();
+266:             CreateMap<CreateLocationDto, Location>();
+267:             CreateMap<UpdateLocationDto, Location>();
 268: 
 269: 
 270: 
-271:             CreateMap<Category, CategoryDto>()
-272:                 .ForMember(dest => dest.ParentFullName, opt => opt.MapFrom(src => src.Parent != null ? src.Parent.FullName : null));
-273:             CreateMap<Category, CategoryListDto>()
-274:                 .ForMember(dest => dest.ParentFullName, opt => opt.MapFrom(src => src.Parent != null ? src.Parent.FullName : null));
-275:             CreateMap<CreateCategoryDto, Category>();
-276:             CreateMap<UpdateCategoryDto, Category>();
-277: 
+271: 
+272:             CreateMap<Category, CategoryDto>()
+273:                 .ForMember(dest => dest.ParentFullName, opt => opt.MapFrom(src => src.Parent != null ? src.Parent.FullName : null));
+274:             CreateMap<Category, CategoryListDto>()
+275:                 .ForMember(dest => dest.ParentFullName, opt => opt.MapFrom(src => src.Parent != null ? src.Parent.FullName : null));
+276:             CreateMap<CreateCategoryDto, Category>();
+277:             CreateMap<UpdateCategoryDto, Category>();
 278: 
 279: 
 280: 
-281:             CreateMap<Tag, TagDto>().ReverseMap();
-282:             CreateMap<Tag, TagListDto>();
-283:             CreateMap<CreateTagDto, Tag>();
-284:             CreateMap<UpdateTagDto, Tag>();
-285: 
+281: 
+282:             CreateMap<Tag, TagDto>().ReverseMap();
+283:             CreateMap<Tag, TagListDto>();
+284:             CreateMap<CreateTagDto, Tag>();
+285:             CreateMap<UpdateTagDto, Tag>();
 286: 
 287: 
 288: 
-289:             CreateMap<EventSessionAgendaItem, EventSessionAgendaItemDto>()
-290:                 .ForMember(dest => dest.EventSessionTitle, opt => opt.MapFrom(src => src.EventSession != null ? src.EventSession.Title : null));
-291:             CreateMap<EventSessionAgendaItem, EventSessionAgendaItemListDto>()
-292:                 .ForMember(dest => dest.EventSessionTitle, opt => opt.MapFrom(src => src.EventSession != null ? src.EventSession.Title : null));
-293:             CreateMap<CreateEventSessionAgendaItemDto, EventSessionAgendaItem>();
-294:             CreateMap<UpdateEventSessionAgendaItemDto, EventSessionAgendaItem>();
-295: 
+289: 
+290:             CreateMap<EventSessionAgendaItem, EventSessionAgendaItemDto>()
+291:                 .ForMember(dest => dest.EventSessionTitle, opt => opt.MapFrom(src => src.EventSession != null ? src.EventSession.Title : null));
+292:             CreateMap<EventSessionAgendaItem, EventSessionAgendaItemListDto>()
+293:                 .ForMember(dest => dest.EventSessionTitle, opt => opt.MapFrom(src => src.EventSession != null ? src.EventSession.Title : null));
+294:             CreateMap<CreateEventSessionAgendaItemDto, EventSessionAgendaItem>();
+295:             CreateMap<UpdateEventSessionAgendaItemDto, EventSessionAgendaItem>();
 296: 
 297: 
 298: 
-299:             CreateMap<EventSessionSpeaker, EventSessionSpeakerDto>()
-300:                 .ForMember(dest => dest.EventSessionTitle, opt => opt.MapFrom(src => src.EventSession != null ? src.EventSession.Title : null))
-301:                 .ForMember(dest => dest.ActorDisplayName, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.DisplayName : null));
-302:             CreateMap<EventSessionSpeaker, EventSessionSpeakerListDto>()
-303:                 .ForMember(dest => dest.EventSessionTitle, opt => opt.MapFrom(src => src.EventSession != null ? src.EventSession.Title : null))
-304:                 .ForMember(dest => dest.ActorDisplayName, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.DisplayName : null));
-305:             CreateMap<CreateEventSessionSpeakerDto, EventSessionSpeaker>();
-306:             CreateMap<UpdateEventSessionSpeakerDto, EventSessionSpeaker>();
-307: 
+299: 
+300:             CreateMap<EventSessionSpeaker, EventSessionSpeakerDto>()
+301:                 .ForMember(dest => dest.EventSessionTitle, opt => opt.MapFrom(src => src.EventSession != null ? src.EventSession.Title : null))
+302:                 .ForMember(dest => dest.ActorDisplayName, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.DisplayName : null));
+303:             CreateMap<EventSessionSpeaker, EventSessionSpeakerListDto>()
+304:                 .ForMember(dest => dest.EventSessionTitle, opt => opt.MapFrom(src => src.EventSession != null ? src.EventSession.Title : null))
+305:                 .ForMember(dest => dest.ActorDisplayName, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.DisplayName : null));
+306:             CreateMap<CreateEventSessionSpeakerDto, EventSessionSpeaker>();
+307:             CreateMap<UpdateEventSessionSpeakerDto, EventSessionSpeaker>();
 308: 
 309: 
 310: 
-311:             CreateMap<Language, LanguageDto>().ReverseMap();
-312:             CreateMap<Language, LanguageListDto>().ReverseMap();
-313: 
+311: 
+312:             CreateMap<Language, LanguageDto>().ReverseMap();
+313:             CreateMap<Language, LanguageListDto>().ReverseMap();
 314: 
 315: 
 316: 
-317:             CreateMap<EventSessionLanguage, EventSessionLanguageDto>()
-318:                 .ForMember(dest => dest.EventSessionTitle, opt => opt.MapFrom(src => src.EventSession != null ? src.EventSession.Title : null))
-319:                 .ForMember(dest => dest.LanguageFullName, opt => opt.MapFrom(src => src.Language != null ? src.Language.FullName : null))
-320:                 .ForMember(dest => dest.LanguageMasterCode, opt => opt.MapFrom(src => src.Language != null ? src.Language.MasterCode : null));
-321:             CreateMap<EventSessionLanguage, EventSessionLanguageListDto>();
-322:             CreateMap<CreateEventSessionLanguageDto, EventSessionLanguage>();
-323:             CreateMap<UpdateEventSessionLanguageDto, EventSessionLanguage>();
-324: 
+317: 
+318:             CreateMap<EventSessionLanguage, EventSessionLanguageDto>()
+319:                 .ForMember(dest => dest.EventSessionTitle, opt => opt.MapFrom(src => src.EventSession != null ? src.EventSession.Title : null))
+320:                 .ForMember(dest => dest.LanguageFullName, opt => opt.MapFrom(src => src.Language != null ? src.Language.FullName : null))
+321:                 .ForMember(dest => dest.LanguageMasterCode, opt => opt.MapFrom(src => src.Language != null ? src.Language.MasterCode : null));
+322:             CreateMap<EventSessionLanguage, EventSessionLanguageListDto>();
+323:             CreateMap<CreateEventSessionLanguageDto, EventSessionLanguage>();
+324:             CreateMap<UpdateEventSessionLanguageDto, EventSessionLanguage>();
 325: 
 326: 
 327: 
-328:             CreateMap<TagType, TagTypeDto>().ReverseMap();
-329:             CreateMap<TagType, TagTypeListDto>().ReverseMap();
-330: 
+328: 
+329:             CreateMap<TagType, TagTypeDto>().ReverseMap();
+330:             CreateMap<TagType, TagTypeListDto>().ReverseMap();
 331: 
 332: 
 333: 
-334:             CreateMap<Domain.TagTypeTags, TagTypeTagsDto>()
-335:                 .ForMember(dest => dest.TagFullName, opt => opt.MapFrom(src => src.Tag != null ? src.Tag.FullName : null))
-336:                 .ForMember(dest => dest.TagMasterCode, opt => opt.MapFrom(src => src.Tag != null ? src.Tag.MasterCode : null))
-337:                 .ForMember(dest => dest.TagTypeFullName, opt => opt.MapFrom(src => src.TagType != null ? src.TagType.FullName : null))
-338:                 .ForMember(dest => dest.TagTypeMasterCode, opt => opt.MapFrom(src => src.TagType != null ? src.TagType.MasterCode : null));
-339:             CreateMap<Domain.TagTypeTags, TagTypeTagsListDto>()
-340:                 .ForMember(dest => dest.TagFullName, opt => opt.MapFrom(src => src.Tag != null ? src.Tag.FullName : null))
-341:                 .ForMember(dest => dest.TagMasterCode, opt => opt.MapFrom(src => src.Tag != null ? src.Tag.MasterCode : null))
-342:                 .ForMember(dest => dest.TagTypeFullName, opt => opt.MapFrom(src => src.TagType != null ? src.TagType.FullName : null))
-343:                 .ForMember(dest => dest.TagTypeMasterCode, opt => opt.MapFrom(src => src.TagType != null ? src.TagType.MasterCode : null));
-344:             CreateMap<CreateTagTypeTagsDto, Domain.TagTypeTags>();
-345:             CreateMap<UpdateTagTypeTagsDto, Domain.TagTypeTags>();
-346: 
+334: 
+335:             CreateMap<Domain.TagTypeTags, TagTypeTagsDto>()
+336:                 .ForMember(dest => dest.TagFullName, opt => opt.MapFrom(src => src.Tag != null ? src.Tag.FullName : null))
+337:                 .ForMember(dest => dest.TagMasterCode, opt => opt.MapFrom(src => src.Tag != null ? src.Tag.MasterCode : null))
+338:                 .ForMember(dest => dest.TagTypeFullName, opt => opt.MapFrom(src => src.TagType != null ? src.TagType.FullName : null))
+339:                 .ForMember(dest => dest.TagTypeMasterCode, opt => opt.MapFrom(src => src.TagType != null ? src.TagType.MasterCode : null));
+340:             CreateMap<Domain.TagTypeTags, TagTypeTagsListDto>()
+341:                 .ForMember(dest => dest.TagFullName, opt => opt.MapFrom(src => src.Tag != null ? src.Tag.FullName : null))
+342:                 .ForMember(dest => dest.TagMasterCode, opt => opt.MapFrom(src => src.Tag != null ? src.Tag.MasterCode : null))
+343:                 .ForMember(dest => dest.TagTypeFullName, opt => opt.MapFrom(src => src.TagType != null ? src.TagType.FullName : null))
+344:                 .ForMember(dest => dest.TagTypeMasterCode, opt => opt.MapFrom(src => src.TagType != null ? src.TagType.MasterCode : null));
+345:             CreateMap<CreateTagTypeTagsDto, Domain.TagTypeTags>();
+346:             CreateMap<UpdateTagTypeTagsDto, Domain.TagTypeTags>();
 347: 
 348: 
 349: 
-350:             CreateMap<EventTags, EventTagsDto>()
-351:                 .ForMember(dest => dest.EventTitle, opt => opt.MapFrom(src => src.Event != null ? src.Event.Title : null))
-352:                 .ForMember(dest => dest.TagFullName, opt => opt.MapFrom(src => src.Tag != null ? src.Tag.FullName : null))
-353:                 .ForMember(dest => dest.TagMasterCode, opt => opt.MapFrom(src => src.Tag != null ? src.Tag.MasterCode : null));
-354:             CreateMap<EventTags, EventTagsListDto>()
-355:                 .ForMember(dest => dest.EventTitle, opt => opt.MapFrom(src => src.Event != null ? src.Event.Title : null))
-356:                 .ForMember(dest => dest.TagFullName, opt => opt.MapFrom(src => src.Tag != null ? src.Tag.FullName : null))
-357:                 .ForMember(dest => dest.TagMasterCode, opt => opt.MapFrom(src => src.Tag != null ? src.Tag.MasterCode : null));
-358:             CreateMap<CreateEventTagsDto, EventTags>();
-359:             CreateMap<UpdateEventTagsDto, EventTags>();
-360: 
+350: 
+351:             CreateMap<EventTags, EventTagsDto>()
+352:                 .ForMember(dest => dest.EventTitle, opt => opt.MapFrom(src => src.Event != null ? src.Event.Title : null))
+353:                 .ForMember(dest => dest.TagFullName, opt => opt.MapFrom(src => src.Tag != null ? src.Tag.FullName : null))
+354:                 .ForMember(dest => dest.TagMasterCode, opt => opt.MapFrom(src => src.Tag != null ? src.Tag.MasterCode : null));
+355:             CreateMap<EventTags, EventTagsListDto>()
+356:                 .ForMember(dest => dest.EventTitle, opt => opt.MapFrom(src => src.Event != null ? src.Event.Title : null))
+357:                 .ForMember(dest => dest.TagFullName, opt => opt.MapFrom(src => src.Tag != null ? src.Tag.FullName : null))
+358:                 .ForMember(dest => dest.TagMasterCode, opt => opt.MapFrom(src => src.Tag != null ? src.Tag.MasterCode : null));
+359:             CreateMap<CreateEventTagsDto, EventTags>();
+360:             CreateMap<UpdateEventTagsDto, EventTags>();
 361: 
 362: 
 363: 
-364:             CreateMap<EventCategories, EventCategoriesDto>()
-365:                 .ForMember(dest => dest.EventTitle, opt => opt.MapFrom(src => src.Event != null ? src.Event.Title : null))
-366:                 .ForMember(dest => dest.CategoryFullName, opt => opt.MapFrom(src => src.Category != null ? src.Category.FullName : null));
-367:             CreateMap<EventCategories, EventCategoriesListDto>()
-368:                 .ForMember(dest => dest.EventTitle, opt => opt.MapFrom(src => src.Event != null ? src.Event.Title : null))
-369:                 .ForMember(dest => dest.CategoryFullName, opt => opt.MapFrom(src => src.Category != null ? src.Category.FullName : null));
-370:             CreateMap<CreateEventCategoriesDto, EventCategories>();
-371:             CreateMap<UpdateEventCategoriesDto, EventCategories>();
-372: 
+364: 
+365:             CreateMap<EventCategories, EventCategoriesDto>()
+366:                 .ForMember(dest => dest.EventTitle, opt => opt.MapFrom(src => src.Event != null ? src.Event.Title : null))
+367:                 .ForMember(dest => dest.CategoryFullName, opt => opt.MapFrom(src => src.Category != null ? src.Category.FullName : null));
+368:             CreateMap<EventCategories, EventCategoriesListDto>()
+369:                 .ForMember(dest => dest.EventTitle, opt => opt.MapFrom(src => src.Event != null ? src.Event.Title : null))
+370:                 .ForMember(dest => dest.CategoryFullName, opt => opt.MapFrom(src => src.Category != null ? src.Category.FullName : null));
+371:             CreateMap<CreateEventCategoriesDto, EventCategories>();
+372:             CreateMap<UpdateEventCategoriesDto, EventCategories>();
 373: 
 374: 
 375: 
-376:             CreateMap<EventRegistration, EventRegistrationDto>()
-377:                 .ForMember(dest => dest.EventSessionTitle, opt => opt.MapFrom(src => src.EventSession != null ? src.EventSession.Title : null))
-378:                 .ForMember(dest => dest.UserFullName, opt => opt.MapFrom(src => src.User != null ? $"{src.User.FirstName} {src.User.LastName}" : null))
-379:                 .ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null))
-380:                 .ForMember(dest => dest.ApprovalStatusFullName, opt => opt.MapFrom(src => src.ApprovalStatus != null ? src.ApprovalStatus.FullName : null))
-381:                 .ForMember(dest => dest.ApprovalStatusMasterCode, opt => opt.MapFrom(src => src.ApprovalStatus != null ? src.ApprovalStatus.MasterCode : null));
-382:             CreateMap<EventRegistration, EventRegistrationListDto>()
-383:                 .ForMember(dest => dest.EventSessionTitle, opt => opt.MapFrom(src => src.EventSession != null ? src.EventSession.Title : null))
-384:                 .ForMember(dest => dest.UserFullName, opt => opt.MapFrom(src => src.User != null ? $"{src.User.FirstName} {src.User.LastName}" : null))
-385:                 .ForMember(dest => dest.ApprovalStatusFullName, opt => opt.MapFrom(src => src.ApprovalStatus != null ? src.ApprovalStatus.FullName : null))
-386:                 .ForMember(dest => dest.ApprovalStatusMasterCode, opt => opt.MapFrom(src => src.ApprovalStatus != null ? src.ApprovalStatus.MasterCode : null));
-387:             CreateMap<CreateEventRegistrationDto, EventRegistration>();
-388:             CreateMap<UpdateEventRegistrationDto, EventRegistration>();
-389: 
+376: 
+377:             CreateMap<EventRegistration, EventRegistrationDto>()
+378:                 .ForMember(dest => dest.EventSessionTitle, opt => opt.MapFrom(src => src.EventSession != null ? src.EventSession.Title : null))
+379:                 .ForMember(dest => dest.UserFullName, opt => opt.MapFrom(src => src.User != null ? $"{src.User.FirstName} {src.User.LastName}" : null))
+380:                 .ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null))
+381:                 .ForMember(dest => dest.ApprovalStatusFullName, opt => opt.MapFrom(src => src.ApprovalStatus != null ? src.ApprovalStatus.FullName : null))
+382:                 .ForMember(dest => dest.ApprovalStatusMasterCode, opt => opt.MapFrom(src => src.ApprovalStatus != null ? src.ApprovalStatus.MasterCode : null));
+383:             CreateMap<EventRegistration, EventRegistrationListDto>()
+384:                 .ForMember(dest => dest.EventSessionTitle, opt => opt.MapFrom(src => src.EventSession != null ? src.EventSession.Title : null))
+385:                 .ForMember(dest => dest.UserFullName, opt => opt.MapFrom(src => src.User != null ? $"{src.User.FirstName} {src.User.LastName}" : null))
+386:                 .ForMember(dest => dest.ApprovalStatusFullName, opt => opt.MapFrom(src => src.ApprovalStatus != null ? src.ApprovalStatus.FullName : null))
+387:                 .ForMember(dest => dest.ApprovalStatusMasterCode, opt => opt.MapFrom(src => src.ApprovalStatus != null ? src.ApprovalStatus.MasterCode : null));
+388:             CreateMap<CreateEventRegistrationDto, EventRegistration>();
+389:             CreateMap<UpdateEventRegistrationDto, EventRegistration>();
 390: 
 391: 
 392: 
-393:             CreateMap<RegistrationMode, RegistrationModeDto>().ReverseMap();
-394:             CreateMap<RegistrationMode, RegistrationModeListDto>().ReverseMap();
-395: 
+393: 
+394:             CreateMap<RegistrationMode, RegistrationModeDto>().ReverseMap();
+395:             CreateMap<RegistrationMode, RegistrationModeListDto>().ReverseMap();
 396: 
 397: 
 398: 
-399:             CreateMap<Madhab, MadhabDto>().ReverseMap();
-400:             CreateMap<Madhab, MadhabListDto>().ReverseMap();
-401: 
+399: 
+400:             CreateMap<Madhab, MadhabDto>().ReverseMap();
+401:             CreateMap<Madhab, MadhabListDto>().ReverseMap();
 402: 
 403: 
 404: 
-405:             CreateMap<Domain.EventStatus, EventStatusDto>().ReverseMap();
-406:             CreateMap<Domain.EventStatus, EventStatusListDto>().ReverseMap();
-407: 
+405: 
+406:             CreateMap<Domain.EventStatus, EventStatusDto>().ReverseMap();
+407:             CreateMap<Domain.EventStatus, EventStatusListDto>().ReverseMap();
 408: 
 409: 
 410: 
-411:             CreateMap<EventFormat, EventFormatDto>().ReverseMap();
-412:             CreateMap<EventFormat, EventFormatListDto>().ReverseMap();
-413: 
+411: 
+412:             CreateMap<EventFormat, EventFormatDto>().ReverseMap();
+413:             CreateMap<EventFormat, EventFormatListDto>().ReverseMap();
 414: 
 415: 
 416: 
-417:             CreateMap<VisibilityType, VisibilityTypeDto>().ReverseMap();
-418:             CreateMap<VisibilityType, VisibilityTypeListDto>().ReverseMap();
-419: 
+417: 
+418:             CreateMap<VisibilityType, VisibilityTypeDto>().ReverseMap();
+419:             CreateMap<VisibilityType, VisibilityTypeListDto>().ReverseMap();
 420: 
 421: 
 422: 
-423:             CreateMap<Domain.ActorType, ActorTypeDto>().ReverseMap();
-424:             CreateMap<Domain.ActorType, ActorTypeListDto>().ReverseMap();
-425: 
+423: 
+424:             CreateMap<Domain.ActorType, ActorTypeDto>().ReverseMap();
+425:             CreateMap<Domain.ActorType, ActorTypeListDto>().ReverseMap();
 426: 
 427: 
 428: 
-429:             CreateMap<Domain.DidCustodyType, DidCustodyTypeDto>().ReverseMap();
-430:             CreateMap<Domain.DidCustodyType, DidCustodyTypeListDto>().ReverseMap();
-431: 
+429: 
+430:             CreateMap<Domain.DidCustodyType, DidCustodyTypeDto>().ReverseMap();
+431:             CreateMap<Domain.DidCustodyType, DidCustodyTypeListDto>().ReverseMap();
 432: 
 433: 
 434: 
-435:             CreateMap<Domain.Actor, ActorDto>()
-436:                 .ForMember(dest => dest.ActorTypeMasterCode, opt => opt.MapFrom(src => src.ActorType != null ? src.ActorType.MasterCode : null))
-437:                 .ForMember(dest => dest.ActorTypeFullName, opt => opt.MapFrom(src => src.ActorType != null ? src.ActorType.FullName : null))
-438:                 .ForMember(dest => dest.DidCustodyTypeMasterCode, opt => opt.MapFrom(src => src.DidCustodyType != null ? src.DidCustodyType.MasterCode : null))
-439:                 .ForMember(dest => dest.DidCustodyTypeFullName, opt => opt.MapFrom(src => src.DidCustodyType != null ? src.DidCustodyType.FullName : null));
-440:             CreateMap<Domain.Actor, ActorListDto>()
-441:                 .ForMember(dest => dest.ActorTypeMasterCode, opt => opt.MapFrom(src => src.ActorType != null ? src.ActorType.MasterCode : null))
-442:                 .ForMember(dest => dest.ActorTypeFullName, opt => opt.MapFrom(src => src.ActorType != null ? src.ActorType.FullName : null))
-443:                 .ForMember(dest => dest.DidCustodyTypeMasterCode, opt => opt.MapFrom(src => src.DidCustodyType != null ? src.DidCustodyType.MasterCode : null))
-444:                 .ForMember(dest => dest.DidCustodyTypeFullName, opt => opt.MapFrom(src => src.DidCustodyType != null ? src.DidCustodyType.FullName : null));
-445:             CreateMap<CreateActorDto, Domain.Actor>();
-446:             CreateMap<UpdateActorDto, Domain.Actor>();
-447: 
+435: 
+436:             CreateMap<Domain.Actor, ActorDto>()
+437:                 .ForMember(dest => dest.ActorTypeMasterCode, opt => opt.MapFrom(src => src.ActorType != null ? src.ActorType.MasterCode : null))
+438:                 .ForMember(dest => dest.ActorTypeFullName, opt => opt.MapFrom(src => src.ActorType != null ? src.ActorType.FullName : null))
+439:                 .ForMember(dest => dest.DidCustodyTypeMasterCode, opt => opt.MapFrom(src => src.DidCustodyType != null ? src.DidCustodyType.MasterCode : null))
+440:                 .ForMember(dest => dest.DidCustodyTypeFullName, opt => opt.MapFrom(src => src.DidCustodyType != null ? src.DidCustodyType.FullName : null));
+441:             CreateMap<Domain.Actor, ActorListDto>()
+442:                 .ForMember(dest => dest.ActorTypeMasterCode, opt => opt.MapFrom(src => src.ActorType != null ? src.ActorType.MasterCode : null))
+443:                 .ForMember(dest => dest.ActorTypeFullName, opt => opt.MapFrom(src => src.ActorType != null ? src.ActorType.FullName : null))
+444:                 .ForMember(dest => dest.DidCustodyTypeMasterCode, opt => opt.MapFrom(src => src.DidCustodyType != null ? src.DidCustodyType.MasterCode : null))
+445:                 .ForMember(dest => dest.DidCustodyTypeFullName, opt => opt.MapFrom(src => src.DidCustodyType != null ? src.DidCustodyType.FullName : null));
+446:             CreateMap<CreateActorDto, Domain.Actor>();
+447:             CreateMap<UpdateActorDto, Domain.Actor>();
 448: 
 449: 
 450: 
-451:             CreateMap<Domain.OrganizationRole, OrganizationRoleDto>().ReverseMap();
-452:             CreateMap<Domain.OrganizationRole, OrganizationRoleListDto>().ReverseMap();
-453: 
+451: 
+452:             CreateMap<Domain.OrganizationRole, OrganizationRoleDto>().ReverseMap();
+453:             CreateMap<Domain.OrganizationRole, OrganizationRoleListDto>().ReverseMap();
 454: 
 455: 
 456: 
-457:             CreateMap<Domain.OrganizationPosition, OrganizationPositionDto>().ReverseMap();
-458:             CreateMap<Domain.OrganizationPosition, OrganizationPositionListDto>().ReverseMap();
-459: 
+457: 
+458:             CreateMap<Domain.OrganizationPosition, OrganizationPositionDto>().ReverseMap();
+459:             CreateMap<Domain.OrganizationPosition, OrganizationPositionListDto>().ReverseMap();
 460: 
 461: 
 462: 
-463:             CreateMap<Domain.UserRole, UserRoleDto>().ReverseMap();
-464:             CreateMap<Domain.UserRole, UserRoleListDto>().ReverseMap();
-465: 
+463: 
+464:             CreateMap<Domain.UserRole, UserRoleDto>().ReverseMap();
+465:             CreateMap<Domain.UserRole, UserRoleListDto>().ReverseMap();
 466: 
 467: 
 468: 
-469:             CreateMap<Domain.UserAuthenticationToken, UserAuthenticationTokenDto>()
-470:                 .ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null))
-471:                 .ForMember(dest => dest.UserFullName, opt => opt.MapFrom(src => src.User != null ? $"{src.User.FirstName} {src.User.LastName}" : null))
-472:                 .ForMember(dest => dest.TenantFullName, opt => opt.MapFrom(src => src.Tenant != null ? src.Tenant.FullName : null));
-473:             CreateMap<Domain.UserAuthenticationToken, UserAuthenticationTokenListDto>();
-474:             CreateMap<CreateUserAuthenticationTokenDto, Domain.UserAuthenticationToken>();
-475:             CreateMap<UpdateUserAuthenticationTokenDto, Domain.UserAuthenticationToken>();
-476: 
+469: 
+470:             CreateMap<Domain.UserAuthenticationToken, UserAuthenticationTokenDto>()
+471:                 .ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null))
+472:                 .ForMember(dest => dest.UserFullName, opt => opt.MapFrom(src => src.User != null ? $"{src.User.FirstName} {src.User.LastName}" : null))
+473:                 .ForMember(dest => dest.TenantFullName, opt => opt.MapFrom(src => src.Tenant != null ? src.Tenant.FullName : null));
+474:             CreateMap<Domain.UserAuthenticationToken, UserAuthenticationTokenListDto>();
+475:             CreateMap<CreateUserAuthenticationTokenDto, Domain.UserAuthenticationToken>();
+476:             CreateMap<UpdateUserAuthenticationTokenDto, Domain.UserAuthenticationToken>();
 477: 
 478: 
 479: 
-480:             CreateMap<Domain.UserExternalLogin, UserExternalLoginDto>()
-481:                 .ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null))
-482:                 .ForMember(dest => dest.UserFullName, opt => opt.MapFrom(src => src.User != null ? $"{src.User.FirstName} {src.User.LastName}" : null))
-483:                 .ForMember(dest => dest.TenantFullName, opt => opt.MapFrom(src => src.Tenant != null ? src.Tenant.FullName : null));
-484:             CreateMap<Domain.UserExternalLogin, UserExternalLoginListDto>();
-485:             CreateMap<CreateUserExternalLoginDto, Domain.UserExternalLogin>();
-486:             CreateMap<UpdateUserExternalLoginDto, Domain.UserExternalLogin>();
-487: 
+480: 
+481:             CreateMap<Domain.UserExternalLogin, UserExternalLoginDto>()
+482:                 .ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null))
+483:                 .ForMember(dest => dest.UserFullName, opt => opt.MapFrom(src => src.User != null ? $"{src.User.FirstName} {src.User.LastName}" : null))
+484:                 .ForMember(dest => dest.TenantFullName, opt => opt.MapFrom(src => src.Tenant != null ? src.Tenant.FullName : null));
+485:             CreateMap<Domain.UserExternalLogin, UserExternalLoginListDto>();
+486:             CreateMap<CreateUserExternalLoginDto, Domain.UserExternalLogin>();
+487:             CreateMap<UpdateUserExternalLoginDto, Domain.UserExternalLogin>();
 488: 
 489: 
 490: 
-491:             CreateMap<Domain.FileType, FileTypeDto>().ReverseMap();
-492:             CreateMap<Domain.FileType, FileTypeListDto>().ReverseMap();
-493: 
+491: 
+492:             CreateMap<Domain.FileType, FileTypeDto>().ReverseMap();
+493:             CreateMap<Domain.FileType, FileTypeListDto>().ReverseMap();
 494: 
 495: 
 496: 
-497:             CreateMap<Domain.StorageObject, StorageObjectDto>()
-498:                 .ForMember(dest => dest.FileTypeFullName, opt => opt.MapFrom(src => src.FileType != null ? src.FileType.FullName : null))
-499:                 .ForMember(dest => dest.TenantFullName, opt => opt.MapFrom(src => src.Tenant != null ? src.Tenant.FullName : null))
-500:                 .ForMember(dest => dest.ActorDisplayName, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.DisplayName : null));
-501:             CreateMap<Domain.StorageObject, StorageObjectListDto>()
-502:                 .ForMember(dest => dest.FileTypeFullName, opt => opt.MapFrom(src => src.FileType != null ? src.FileType.FullName : null));
-503:             CreateMap<CreateStorageObjectDto, Domain.StorageObject>();
-504:             CreateMap<UpdateStorageObjectDto, Domain.StorageObject>();
-505: 
+497: 
+498:             CreateMap<Domain.StorageObject, StorageObjectDto>()
+499:                 .ForMember(dest => dest.FileTypeFullName, opt => opt.MapFrom(src => src.FileType != null ? src.FileType.FullName : null))
+500:                 .ForMember(dest => dest.TenantFullName, opt => opt.MapFrom(src => src.Tenant != null ? src.Tenant.FullName : null))
+501:                 .ForMember(dest => dest.ActorDisplayName, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.DisplayName : null));
+502:             CreateMap<Domain.StorageObject, StorageObjectListDto>()
+503:                 .ForMember(dest => dest.FileTypeFullName, opt => opt.MapFrom(src => src.FileType != null ? src.FileType.FullName : null));
+504:             CreateMap<CreateStorageObjectDto, Domain.StorageObject>();
+505:             CreateMap<UpdateStorageObjectDto, Domain.StorageObject>();
 506: 
 507: 
 508: 
-509:             CreateMap<Domain.ActorKeyStore, ActorKeyStoreDto>()
-510:                 .ForMember(dest => dest.ActorDisplayName, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.DisplayName : null))
-511:                 .ForMember(dest => dest.ActorDid, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.Did : null))
-512:                 .ForMember(dest => dest.TenantFullName, opt => opt.MapFrom(src => src.Tenant != null ? src.Tenant.FullName : null));
-513:             CreateMap<Domain.ActorKeyStore, ActorKeyStoreListDto>();
-514:             CreateMap<CreateActorKeyStoreDto, Domain.ActorKeyStore>();
-515:             CreateMap<UpdateActorKeyStoreDto, Domain.ActorKeyStore>();
-516: 
+509: 
+510:             CreateMap<Domain.ActorKeyStore, ActorKeyStoreDto>()
+511:                 .ForMember(dest => dest.ActorDisplayName, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.DisplayName : null))
+512:                 .ForMember(dest => dest.ActorDid, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.Did : null))
+513:                 .ForMember(dest => dest.TenantFullName, opt => opt.MapFrom(src => src.Tenant != null ? src.Tenant.FullName : null));
+514:             CreateMap<Domain.ActorKeyStore, ActorKeyStoreListDto>();
+515:             CreateMap<CreateActorKeyStoreDto, Domain.ActorKeyStore>();
+516:             CreateMap<UpdateActorKeyStoreDto, Domain.ActorKeyStore>();
 517: 
 518: 
 519: 
-520:             CreateMap<Domain.IndexedDid, IndexedDidDto>().ReverseMap();
-521:             CreateMap<Domain.IndexedDid, IndexedDidListDto>().ReverseMap();
-522:             CreateMap<CreateIndexedDidDto, Domain.IndexedDid>();
-523:             CreateMap<UpdateIndexedDidDto, Domain.IndexedDid>();
-524: 
+520: 
+521:             CreateMap<Domain.IndexedDid, IndexedDidDto>().ReverseMap();
+522:             CreateMap<Domain.IndexedDid, IndexedDidListDto>().ReverseMap();
+523:             CreateMap<CreateIndexedDidDto, Domain.IndexedDid>();
+524:             CreateMap<UpdateIndexedDidDto, Domain.IndexedDid>();
 525: 
 526: 
 527: 
-528:             CreateMap<Domain.SyncState, SyncStateDto>().ReverseMap();
-529:             CreateMap<Domain.SyncState, SyncStateListDto>().ReverseMap();
-530:             CreateMap<CreateSyncStateDto, Domain.SyncState>();
-531:             CreateMap<UpdateSyncStateDto, Domain.SyncState>();
-532: 
+528: 
+529:             CreateMap<Domain.SyncState, SyncStateDto>().ReverseMap();
+530:             CreateMap<Domain.SyncState, SyncStateListDto>().ReverseMap();
+531:             CreateMap<CreateSyncStateDto, Domain.SyncState>();
+532:             CreateMap<UpdateSyncStateDto, Domain.SyncState>();
 533: 
 534: 
 535: 
-536:             CreateMap<Domain.AtprotoRecord, AtprotoRecordDto>().ReverseMap();
-537:             CreateMap<Domain.AtprotoRecord, AtprotoRecordListDto>();
-538:             CreateMap<CreateAtprotoRecordDto, Domain.AtprotoRecord>();
-539:             CreateMap<UpdateAtprotoRecordDto, Domain.AtprotoRecord>();
-540: 
+536: 
+537:             CreateMap<Domain.AtprotoRecord, AtprotoRecordDto>().ReverseMap();
+538:             CreateMap<Domain.AtprotoRecord, AtprotoRecordListDto>();
+539:             CreateMap<CreateAtprotoRecordDto, Domain.AtprotoRecord>();
+540:             CreateMap<UpdateAtprotoRecordDto, Domain.AtprotoRecord>();
 541: 
 542: 
 543: 
-544:             CreateMap<EventIslamicAspect, EventIslamicAspectDto>()
-545:                 .ForMember(dest => dest.MadhabName, opt => opt.MapFrom(src => src.Madhab != null ? src.Madhab.FullName : null))
-546:                 .ForMember(dest => dest.PrimaryLanguageName, opt => opt.MapFrom(src => src.PrimaryLanguage != null ? src.PrimaryLanguage.FullName : null));
-547: 
-548:             CreateMap<CreateUpdateIslamicAspectDto, EventIslamicAspect>();
-549: 
-550:             CreateMap<EventTechAspect, EventTechAspectDto>();
-551: 
-552:             CreateMap<CreateUpdateTechAspectDto, EventTechAspect>();
-553:         }
-554: 
+544: 
+545:             CreateMap<EventIslamicAspect, EventIslamicAspectDto>()
+546:                 .ForMember(dest => dest.MadhabName, opt => opt.MapFrom(src => src.Madhab != null ? src.Madhab.FullName : null))
+547:                 .ForMember(dest => dest.PrimaryLanguageName, opt => opt.MapFrom(src => src.PrimaryLanguage != null ? src.PrimaryLanguage.FullName : null));
+548: 
+549:             CreateMap<CreateUpdateIslamicAspectDto, EventIslamicAspect>();
+550: 
+551:             CreateMap<EventTechAspect, EventTechAspectDto>();
+552: 
+553:             CreateMap<CreateUpdateTechAspectDto, EventTechAspect>();
+554:         }
 555: 
 556: 
 557: 
-558:         private static List<string> GetAvailableAspects(Event src)
-559:         {
-560:             var aspects = new List<string>();
-561:             if (src.IslamicAspect != null) aspects.Add("Islamic");
-562:             if (src.TechAspect != null) aspects.Add("Tech");
-563:             return aspects;
-564:         }
-565:     }
-566: }
+558: 
+559:         private static List<string> GetAvailableAspects(Event src)
+560:         {
+561:             var aspects = new List<string>();
+562:             if (src.IslamicAspect != null) aspects.Add("Islamic");
+563:             if (src.TechAspect != null) aspects.Add("Tech");
+564:             return aspects;
+565:         }
+566:     }
+567: }
 ````

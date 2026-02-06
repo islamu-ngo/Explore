@@ -189,6 +189,7 @@ public class CreateEventWithSessionsCommandHandler : IRequestHandler<CreateEvent
             ActorId = actorId,
             TenantId = _tenantContext.TenantId,
             TotalViews = 0,
+            IsUserReported = !dto.OrganizationId.HasValue,
             // Computed from sessions
             FirstSessionDate = firstSessionDateOnly,
             LastSessionDate = lastSessionDateOnly,
