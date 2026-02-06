@@ -312,7 +312,7 @@ public class RotationAwareDbContextFactoryTests : IDisposable
 
         // Assert
         redacted.Should().NotContain("supersecret123");
-        redacted.Should().Contain("Password=***");
+        redacted.Should().Contain("password=***");
     }
 
     [Test]
@@ -329,7 +329,7 @@ public class RotationAwareDbContextFactoryTests : IDisposable
 
         // Assert
         redacted.Should().NotContain("mysecret");
-        redacted.Should().Contain("Pwd=***");
+        redacted.Should().Contain("pwd=***");
     }
 
     [Test]

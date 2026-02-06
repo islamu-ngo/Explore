@@ -53,6 +53,8 @@ public class EventListTests : IDisposable
         _ctx.Services.AddSingleton(Substitute.For<IDialogService>());
         _ctx.Services.AddSingleton(Substitute.For<ISnackbar>());
         _ctx.Services.AddSingleton(Substitute.For<ILogger<EventList>>());
+        _ctx.Services.AddSingleton(Substitute.For<IUserService>());
+        _ctx.Services.AddSingleton(Substitute.For<IAuthStateService>());
 
         // Setup default empty responses
         SetupDefaultMockResponses();

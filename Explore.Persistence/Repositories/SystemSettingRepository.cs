@@ -16,11 +16,11 @@ public class SystemSettingRepository : GenericRepository<SystemSetting, Guid>, I
         _dbContext = dbContext;
     }
 
-    public async Task<SystemSetting?> GetByKey(string key)
+    public async Task<SystemSetting?> GetByKey(string settingKey)
     {
         return await _dbContext.SystemSettings
             .AsNoTracking()
-            .FirstOrDefaultAsync(s => s.Key == key);
+            .FirstOrDefaultAsync(s => s.SettingKey == settingKey);
     }
 
     public async Task<List<SystemSetting>> GetAllSettings(string? category = null)
@@ -38,11 +38,11 @@ public class SystemSettingRepository : GenericRepository<SystemSetting, Guid>, I
             .ToListAsync();
     }
 
-    public async Task<bool> IsLocked(string key)
+    public async Task<bool> IsLocked(string settingKey)
     {
         var setting = await _dbContext.SystemSettings
             .AsNoTracking()
-            .FirstOrDefaultAsync(s => s.Key == key);
+            .FirstOrDefaultAsync(s => s.SettingKey == settingKey);
 
         return setting?.IsLocked ?? false;
     }

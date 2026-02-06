@@ -1,4 +1,5 @@
 using Explore.Domain;
+using Explore.Persistence.ValueGenerators;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -8,7 +9,7 @@ namespace Explore.Persistence.Configurations.Entities
     {
         public void Configure(EntityTypeBuilder<UserExternalLogin> builder)
         {
-            builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
+            builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
 
             builder.Property(e => e.Provider).HasMaxLength(255);
             builder.Property(e => e.ProviderKey).HasMaxLength(500);

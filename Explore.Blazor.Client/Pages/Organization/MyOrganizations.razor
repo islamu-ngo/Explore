@@ -7,28 +7,25 @@
 
 <PageTitle>My Organizations</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="my-organizations">
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-4 py-sm-8 py-md-12">
     <!-- Header -->
-    <div class="my-organizations__header">
+    <div class="d-flex flex-wrap align-end justify-space-between gap-4 mb-8">
         <div>
-            <MudText Typo="Typo.h4" Class="mb-1">My Organizations</MudText>
-            <MudText Typo="Typo.body2" Color="Color.Secondary">
-                Manage your organizations and create events
-            </MudText>
+            <MudText Typo="Typo.overline" Class="mud-text-secondary" Style="letter-spacing: 0.18em;">MANAGEMENT</MudText>
+            <MudText Typo="Typo.h4">My Organizations</MudText>
         </div>
         <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
                    StartIcon="@Icons.Material.Filled.Add"
-                   Href="/organization/create"
-                   Class="my-organizations__create-btn">
+                   Href="/organization/create">
             Create Organization
         </MudButton>
     </div>
 
     @if (_isLoading)
     {
-        <div class="my-organizations__loading">
-            <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+        <div class="d-flex flex-column align-center justify-center py-16">
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
             <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mt-4">
                 Loading your organizations...
             </MudText>
@@ -45,8 +42,8 @@
     }
     else if (_organizations == null || !_organizations.Any())
     {
-        <div class="my-organizations__empty">
-            <MudIcon Icon="@Icons.Material.Outlined.Business" Class="my-organizations__empty-icon" />
+        <div class="d-flex flex-column align-center justify-center py-16">
+            <MudIcon Icon="@Icons.Material.Outlined.Business" Size="Size.Large" Color="Color.Default" Style="width: 80px; height: 80px; opacity: 0.2;" />
             <MudText Typo="Typo.h5" Class="mt-4">No organizations yet</MudText>
             <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-6">
                 Create an organization to start hosting events
@@ -62,14 +59,17 @@
     else
     {
         <!-- Search -->
-        <MudTextField @bind-Value="_searchString"
-                      Placeholder="Search by name or email..."
-                      Adornment="Adornment.Start"
-                      AdornmentIcon="@Icons.Material.Filled.Search"
-                      Immediate="true"
-                      Variant="Variant.Outlined"
-                      Margin="Margin.Dense"
-                      Class="my-organizations__search mb-6" />
+        <MudGrid Class="mb-8">
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_searchString"
+                              Placeholder="Search by name or email..."
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Immediate="true"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense" />
+            </MudItem>
+        </MudGrid>
 
         @if (!FilteredOrganizations.Any())
         {
@@ -79,59 +79,54 @@
         }
         else
         {
-            <MudGrid Spacing="4">
+            <MudGrid>
                 @foreach (var org in FilteredOrganizations)
                 {
-                    <MudItem xs="12" sm="6" md="6" lg="4" xl="3">
-                        <MudCard Class="my-organizations__card" Elevation="0">
-                            <!-- Card Media / Banner -->
-                            <div class="my-organizations__card-media" style="background-color: @GetOrganizationColor(org.FullName);">
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudCard Class="h-100 d-flex flex-column">
+                            <div class="d-flex align-center justify-center py-8" style="background-color: @GetOrganizationColor(org.FullName); min-height: 120px;">
                                 <MudAvatar Size="Size.Large"
                                            Color="Color.Surface"
-                                           Variant="Variant.Filled"
-                                           Class="my-organizations__avatar">
-                                    <MudText Color="Color.Primary" Typo="Typo.h6">@GetInitials(org.FullName)</MudText>
+                                           Variant="Variant.Filled">
+                                    <MudText Color="Color.Primary" Typo="Typo.h5">@GetInitials(org.FullName)</MudText>
                                 </MudAvatar>
                             </div>
 
-                            <MudCardContent Class="my-organizations__content">
-                                <!-- Role Badge -->
-                                <div class="my-organizations__badges">
+                            <MudCardContent Class="flex-grow-1">
+                                <div class="mb-2">
                                     @if (org.CurrentUserRole.HasValue)
                                     {
                                         <MudChip T="string"
                                                  Size="Size.Small"
                                                  Color="@GetRoleColor(org.CurrentUserRole.Value)"
-                                                 Variant="Variant.Outlined"
-                                                 Class="my-organizations__role-chip">
+                                                 Variant="Variant.Outlined">
                                             @GetRoleName(org.CurrentUserRole.Value)
                                         </MudChip>
                                     }
                                 </div>
 
-                                <MudText Typo="Typo.h6" Class="my-organizations__card-title">@org.FullName</MudText>
+                                <MudText Typo="Typo.h6" Class="mb-4">@org.FullName</MudText>
 
-                                <div class="my-organizations__card-meta">
-                                    <div class="my-organizations__info-row mb-1">
+                                <div class="mt-auto">
+                                    <div class="d-flex align-center gap-1 mb-1">
                                         <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Color="Color.Secondary" />
                                         <MudText Typo="Typo.caption" Color="Color.Secondary" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                             @org.City, @org.Country
                                         </MudText>
                                     </div>
                                     
-                                    <div class="my-organizations__info-row">
+                                    <div class="d-flex align-center gap-1">
                                         <MudIcon Icon="@Icons.Material.Filled.Email" Size="Size.Small" Color="Color.Secondary" />
                                         <MudText Typo="Typo.caption" Color="Color.Secondary" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@org.Email</MudText>
                                     </div>
                                 </div>
                             </MudCardContent>
 
-                            <MudCardActions Class="my-organizations__actions">
+                            <MudCardActions>
                                 <MudButton Variant="Variant.Text"
                                            Color="Color.Primary"
                                            Href="@($"/organization/{org.Id}")"
-                                           EndIcon="@Icons.Material.Filled.ArrowForward"
-                                           Size="Size.Small">
+                                           EndIcon="@Icons.Material.Filled.ArrowForward">
                                     Details
                                 </MudButton>
                                 <MudSpacer />
@@ -140,8 +135,7 @@
                                     <MudButton Variant="Variant.Filled"
                                                Color="Color.Primary"
                                                StartIcon="@Icons.Material.Filled.Add"
-                                               Href="@($"/organization/{org.Id}/create-event")"
-                                               Size="Size.Small">
+                                               Href="@($"/organization/{org.Id}/create-event")">
                                         Event
                                     </MudButton>
                                 }
@@ -151,7 +145,7 @@
                 }
             </MudGrid>
 
-            <MudText Typo="Typo.caption" Align="Align.Center" Color="Color.Secondary" Class="mt-6">
+            <MudText Typo="Typo.body2" Align="Align.Center" Color="Color.Secondary" Class="mt-8 mb-8">
                 Showing @FilteredOrganizations.Count() of @_organizations.Count organization(s)
             </MudText>
         }

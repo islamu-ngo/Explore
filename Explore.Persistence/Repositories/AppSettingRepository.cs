@@ -16,11 +16,11 @@ public class AppSettingRepository : IAppSettingRepository
         _dbContext = dbContext;
     }
 
-    public async Task<AppSetting?> GetByKeyAsync(string key)
+    public async Task<AppSetting?> GetByKeyAsync(string configKey)
     {
         return await _dbContext.AppSettings
             .AsNoTracking()
-            .FirstOrDefaultAsync(s => s.Key == key);
+            .FirstOrDefaultAsync(s => s.ConfigKey == configKey);
     }
 
     public async Task<List<AppSetting>> GetByCategoryAsync(string? category = null)
@@ -34,7 +34,7 @@ public class AppSettingRepository : IAppSettingRepository
 
         return await query
             .OrderBy(s => s.Category)
-            .ThenBy(s => s.Key)
+            .ThenBy(s => s.ConfigKey)
             .ToListAsync();
     }
 
@@ -43,7 +43,7 @@ public class AppSettingRepository : IAppSettingRepository
         return await _dbContext.AppSettings
             .AsNoTracking()
             .Where(s => s.KeyVersion < currentKeyVersion)
-            .OrderBy(s => s.Key)
+            .OrderBy(s => s.ConfigKey)
             .ToListAsync();
     }
 
@@ -51,7 +51,7 @@ public class AppSettingRepository : IAppSettingRepository
     {
         return await _dbContext.AppSettings
             .AsNoTracking()
-            .OrderBy(s => s.Key)
+            .OrderBy(s => s.ConfigKey)
             .ToListAsync();
     }
 
@@ -69,9 +69,9 @@ public class AppSettingRepository : IAppSettingRepository
         await _dbContext.SaveChangesAsync();
     }
 
-    public async Task<bool> DeleteAsync(string key)
+    public async Task<bool> DeleteAsync(string configKey)
     {
-        var setting = await _dbContext.AppSettings.FirstOrDefaultAsync(s => s.Key == key);
+        var setting = await _dbContext.AppSettings.FirstOrDefaultAsync(s => s.ConfigKey == configKey);
         if (setting == null)
         {
             return false;
@@ -82,9 +82,9 @@ public class AppSettingRepository : IAppSettingRepository
         return true;
     }
 
-    public async Task<bool> ExistsAsync(string key)
+    public async Task<bool> ExistsAsync(string configKey)
     {
-        return await _dbContext.AppSettings.AnyAsync(s => s.Key == key);
+        return await _dbContext.AppSettings.AnyAsync(s => s.ConfigKey == configKey);
     }
 
     public async Task BulkUpdateAsync(IEnumerable<AppSetting> settings)

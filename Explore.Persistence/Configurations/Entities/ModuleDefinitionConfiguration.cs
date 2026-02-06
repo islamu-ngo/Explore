@@ -15,14 +15,14 @@ public class ModuleDefinitionConfiguration : IEntityTypeConfiguration<ModuleDefi
         builder.ToTable("ModuleDefinitions");
 
         builder.Property(m => m.Id).HasDefaultValueSql("uuidv7()");
-        builder.Property(m => m.Key).HasMaxLength(50).IsRequired();
+        builder.Property(m => m.ModuleKey).HasMaxLength(50).IsRequired();
         builder.Property(m => m.Name).HasMaxLength(100).IsRequired();
         builder.Property(m => m.Description).HasMaxLength(500);
         builder.Property(m => m.WizardSchemaUrl).HasMaxLength(500);
         builder.Property(m => m.IconName).HasMaxLength(50);
         builder.Property(m => m.Category).HasMaxLength(50);
 
-        builder.HasIndex(m => m.Key).IsUnique();
+        builder.HasIndex(m => m.ModuleKey).IsUnique();
         builder.HasIndex(m => m.DisplayOrder);
 
         // Seed default modules
@@ -30,7 +30,7 @@ public class ModuleDefinitionConfiguration : IEntityTypeConfiguration<ModuleDefi
             new ModuleDefinition
             {
                 Id = SeedIds.ModuleCoreId,
-                Key = "Mod_Core",
+                ModuleKey = "Mod_Core",
                 Name = "Core Events",
                 Description = "Basic event functionality - title, description, sessions, locations",
                 IconName = "Event",
@@ -42,7 +42,7 @@ public class ModuleDefinitionConfiguration : IEntityTypeConfiguration<ModuleDefi
             new ModuleDefinition
             {
                 Id = SeedIds.ModuleIslamicId,
-                Key = "Mod_Islamic",
+                ModuleKey = "Mod_Islamic",
                 Name = "Islamic Events",
                 Description = "Islamic-specific features: Madhab selection, prayer time scheduling, gender segregation",
                 IconName = "Mosque",
@@ -54,7 +54,7 @@ public class ModuleDefinitionConfiguration : IEntityTypeConfiguration<ModuleDefi
             new ModuleDefinition
             {
                 Id = SeedIds.ModuleTechId,
-                Key = "Mod_Tech",
+                ModuleKey = "Mod_Tech",
                 Name = "Tech Events",
                 Description = "Developer event features: GitHub repositories, skill levels, live coding sessions",
                 IconName = "Code",

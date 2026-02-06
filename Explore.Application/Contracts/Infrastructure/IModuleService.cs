@@ -80,7 +80,7 @@ public class ModuleInfo
     /// <summary>
     /// Unique module key (e.g., "Mod_Islamic", "Mod_Tech").
     /// </summary>
-    public string Key { get; init; } = string.Empty;
+    public string ModuleKey { get; init; } = string.Empty;
 
     /// <summary>
     /// Display name for the module.

@@ -508,6 +508,9 @@ public class AuthenticationFlowTests
 
         var authStateService = Substitute.For<IAuthStateService>();
         ctx.Services.AddSingleton(authStateService);
+
+        var userService = Substitute.For<IUserService>();
+        ctx.Services.AddSingleton(userService);
     }
 
     private static void RegisterOrganizationServices(BlazorTestContext ctx)

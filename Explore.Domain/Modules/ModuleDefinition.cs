@@ -18,7 +18,7 @@ public class ModuleDefinition
     /// Unique module key (e.g., "Mod_Core", "Mod_Islamic", "Mod_Tech").
     /// Used for programmatic lookups and configuration.
     /// </summary>
-    public string Key { get; set; } = string.Empty;
+    public string ModuleKey { get; set; } = string.Empty;
 
     /// <summary>
     /// Display name for the module shown in UI.

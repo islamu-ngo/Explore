@@ -16,11 +16,11 @@ public class ModuleDefinitionRepository : GenericRepository<ModuleDefinition, Gu
         _dbContext = dbContext;
     }
 
-    public async Task<ModuleDefinition?> GetByKey(string key)
+    public async Task<ModuleDefinition?> GetByKey(string moduleKey)
     {
         return await _dbContext.ModuleDefinitions
             .AsNoTracking()
-            .FirstOrDefaultAsync(m => m.Key == key);
+            .FirstOrDefaultAsync(m => m.ModuleKey == moduleKey);
     }
 
     public async Task<List<ModuleDefinition>> GetAllActive()
@@ -32,11 +32,11 @@ public class ModuleDefinitionRepository : GenericRepository<ModuleDefinition, Gu
             .ToListAsync();
     }
 
-    public async Task<bool> IsActive(string key)
+    public async Task<bool> IsActive(string moduleKey)
     {
         var module = await _dbContext.ModuleDefinitions
             .AsNoTracking()
-            .FirstOrDefaultAsync(m => m.Key == key);
+            .FirstOrDefaultAsync(m => m.ModuleKey == moduleKey);
 
         return module?.IsActive ?? false;
     }

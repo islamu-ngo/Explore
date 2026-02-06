@@ -34,40 +34,8 @@ namespace Explore.Persistence.Configurations.Entities
                 .HasForeignKey(e => e.ActorId)
                 .OnDelete(DeleteBehavior.SetNull);
 
-            builder.HasData(
-                new StorageObject
-                {
-                    Id = SeedIds.DefaultEventImageId,
-                    FileTypeId = (int)FileTypeEnum.Image,
-                    Uri = "https://placeholder.islamu.org/event-default.jpg",
-                    FullName = "Default Event Image",
-                    Extension = ".jpg",
-                    Size = 0,
-                    TenantId = SeedIds.DefaultTenantId,
-                    ActorId = SeedIds.SystemUserActorId
-                },
-                new StorageObject
-                {
-                    Id = SeedIds.DefaultProfileImageId,
-                    FileTypeId = (int)FileTypeEnum.Image,
-                    Uri = "https://placeholder.islamu.org/profile-default.jpg",
-                    FullName = "Default Profile Image",
-                    Extension = ".jpg",
-                    Size = 0,
-                    TenantId = SeedIds.DefaultTenantId,
-                    ActorId = SeedIds.SystemUserActorId
-                },
-                new StorageObject
-                {
-                    Id = SeedIds.DefaultOrganizationLogoId,
-                    FileTypeId = (int)FileTypeEnum.Image,
-                    Uri = "https://placeholder.islamu.org/org-default.jpg",
-                    FullName = "Default Organization Logo",
-                    Extension = ".jpg",
-                    Size = 0,
-                    TenantId = SeedIds.DefaultTenantId,
-                    ActorId = SeedIds.SystemUserActorId
-                });
+            // NOTE: Business entity seed data moved to DatabaseSeeder for conditional (Development-only) seeding.
+            // See Explore.Persistence/Seed/DatabaseSeeder.cs and SeedData.cs
         }
     }
 }

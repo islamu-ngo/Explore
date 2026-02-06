@@ -30,24 +30,7 @@ public class TenantCapabilityConfiguration : IEntityTypeConfiguration<TenantCapa
             .HasForeignKey(c => c.ModuleId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // Seed default tenant capabilities (Core + Islamic enabled)
-        builder.HasData(
-            new TenantCapability
-            {
-                Id = SeedIds.DefaultTenantCoreCapabilityId,
-                TenantId = SeedIds.DefaultTenantId,
-                ModuleId = SeedIds.ModuleCoreId,
-                IsEnabled = true,
-                EnabledAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-            },
-            new TenantCapability
-            {
-                Id = SeedIds.DefaultTenantIslamicCapabilityId,
-                TenantId = SeedIds.DefaultTenantId,
-                ModuleId = SeedIds.ModuleIslamicId,
-                IsEnabled = true,
-                EnabledAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-            }
-        );
+        // NOTE: Business entity seed data moved to DatabaseSeeder for conditional (Development-only) seeding.
+        // See Explore.Persistence/Seed/DatabaseSeeder.cs and SeedData.cs
     }
 }

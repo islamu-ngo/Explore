@@ -4,6 +4,7 @@ using System.Text;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence.Seed;
+using Explore.Persistence.ValueGenerators;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -14,8 +15,8 @@ namespace Explore.Persistence.Configurations.Entities
         public void Configure(EntityTypeBuilder<Organization> builder)
         {
             builder.Property(e => e.Id)
-                .HasDefaultValueSql("uuidv7()");
-            
+                .HasValueGenerator<GuidVersion7ValueGenerator>();
+
             builder.Property(e => e.ApprovalStatusId)
                 .HasDefaultValue((int)ApprovalStatusEnum.Pending);
 
@@ -62,22 +63,8 @@ namespace Explore.Persistence.Configurations.Entities
                 .HasForeignKey(e => e.ActorId)
                 .OnDelete(DeleteBehavior.SetNull);
 
-            builder.HasData(
-                new Organization
-                {
-                    Id = SeedIds.IslamuOrganizationId,
-                    FullName = "ISLAMU",
-                    WebsiteUrl = "https://islamu.ngo",
-                    Email = "contact@openislamu.org",
-                    Country = "Belgium",
-                    City = "Brussels",
-                    Postcode = "1070",
-                    Address = "Parc Du Peterbos",
-                    ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
-                    TenantId = SeedIds.DefaultTenantId,
-                    ActorId = SeedIds.IslamuOrganizationActorId,
-                    CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-                });
+            // NOTE: Business entity seed data moved to DatabaseSeeder for conditional (Development-only) seeding.
+            // See Explore.Persistence/Seed/DatabaseSeeder.cs and SeedData.cs
         }
     }
 }

@@ -12,9 +12,9 @@ public class AppSettingConfiguration : IEntityTypeConfiguration<AppSetting>
     public void Configure(EntityTypeBuilder<AppSetting> builder)
     {
         // Primary key on Key column (not GUID - settings are identified by key)
-        builder.HasKey(e => e.Key);
+        builder.HasKey(e => e.ConfigKey);
 
-        builder.Property(e => e.Key)
+        builder.Property(e => e.ConfigKey)
             .IsRequired()
             .HasMaxLength(256);
 
@@ -62,6 +62,6 @@ public class AppSettingConfiguration : IEntityTypeConfiguration<AppSetting>
         // Note: Uses snake_case column name 'key' to match UseSnakeCaseNamingConvention()
         builder.ToTable(t => t.HasCheckConstraint(
             "CK_AppSettings_NoHighValueSecrets",
-            "key NOT LIKE 'Database:%' AND key NOT LIKE 'Security:MasterKey%' AND key NOT LIKE 'ConnectionStrings:%'"));
+            "config_key NOT LIKE 'Database:%' AND config_key NOT LIKE 'Security:MasterKey%' AND config_key NOT LIKE 'ConnectionStrings:%'"));
     }
 }

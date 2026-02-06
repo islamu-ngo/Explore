@@ -6,6 +6,7 @@ using Explore.Domain.Enums;
 using Explore.Persistence.Seed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Explore.Persistence.ValueGenerators;
 
 namespace Explore.Persistence.Configurations.Entities
 {
@@ -15,7 +16,7 @@ namespace Explore.Persistence.Configurations.Entities
         {
             builder.UseTptMappingStrategy();
 
-            builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
+            builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
             builder.Property(e => e.TotalViews).HasDefaultValue(0);
 
             builder.Property(e => e.Title).HasMaxLength(200).IsRequired();
@@ -96,29 +97,8 @@ namespace Explore.Persistence.Configurations.Entities
             builder.Property(e => e.MetadataJson)
                 .HasColumnType("jsonb");
 
-            builder.HasData(
-                new Event
-                {
-                    Id = SeedIds.SampleEventId,
-                    Title = "Welcome to ISLAMU Events",
-                    Description = "This is a sample event to demonstrate the ISLAMU Events platform. Feel free to explore and create your own events!",
-                    Slug = "welcome-to-islamu-events",
-                    EventTypeId = (int)EventTypeEnum.Webinar,
-                    AudienceGenderId = (int)AudienceGenderEnum.Both,
-                    AudienceAgeId = (int)AudienceAgeEnum.AllAges,
-                    ActorId = SeedIds.IslamuOrganizationActorId,
-                    Price = 0,
-                    CurrencyCode = "EUR",
-                    FeaturedImageId = SeedIds.DefaultEventImageId,
-                    TotalViews = 0,
-                    IsRegistrationRequired = false,
-                    MadhabId = null,
-                    TenantId = SeedIds.DefaultTenantId,
-                    VisibilityTypeId = (int)VisibilityTypeEnum.Public,
-                    EventStatusId = (int)EventStatusEnum.Published,
-                    EventFormatId = (int)EventFormatEnum.Digital,
-                    Timezone = "Europe/Brussels"
-                });
+            // NOTE: Business entity seed data moved to DatabaseSeeder for conditional (Development-only) seeding.
+            // See Explore.Persistence/Seed/DatabaseSeeder.cs and SeedData.cs
         }
     }
 }

@@ -50,50 +50,50 @@ namespace Explore.Persistence
             // ===== Event Entities =====
             // Entities with both Tenant and Soft Delete filters (separate named filters for selective disabling)
             modelBuilder.Entity<Event>()
-                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId)
+                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
                 .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
 
             modelBuilder.Entity<EventSession>()
-                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId)
+                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
                 .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
 
             // Event-related entities (tenant only - no soft delete)
             modelBuilder.Entity<EventRegistration>()
-                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
             modelBuilder.Entity<EventCategories>()
-                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
             modelBuilder.Entity<EventTags>()
-                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
             modelBuilder.Entity<EventSessionLanguage>()
-                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
             modelBuilder.Entity<EventSessionSpeaker>()
-                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
             modelBuilder.Entity<EventSessionAgendaItem>()
-                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
 
             // ===== Organization Entities =====
             // Entities with both Tenant and Soft Delete filters
             modelBuilder.Entity<Organization>()
-                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId)
+                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
                 .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
 
             modelBuilder.Entity<OrganizationMember>()
-                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId)
+                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
                 .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
 
             // Organization review (tenant only - no soft delete)
             modelBuilder.Entity<OrganizationReview>()
-                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
 
             // ===== Actor Entities =====
             // Entities with both Tenant and Soft Delete filters
             modelBuilder.Entity<Actor>()
-                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId)
+                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
                 .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
 
             // Actor-related (tenant only - no soft delete)
             modelBuilder.Entity<ActorKeyStore>()
-                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
 
             // ===== User Entity =====
             // Soft Delete only (not tenant-scoped - global entity)
@@ -102,39 +102,39 @@ namespace Explore.Persistence
 
             // ===== Location Entity =====
             modelBuilder.Entity<Location>()
-                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
 
             // ===== Storage Entity =====
             modelBuilder.Entity<StorageObject>()
-                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
 
             // ===== Category and Tag Entities =====
             modelBuilder.Entity<Category>()
-                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
             modelBuilder.Entity<Tag>()
-                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
             modelBuilder.Entity<TagTypeTags>()
-                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
 
             // ===== User-Related Tenant Entities =====
             modelBuilder.Entity<UserAuthenticationToken>()
-                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
             modelBuilder.Entity<UserExternalLogin>()
-                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
             modelBuilder.Entity<UserRole>()
-                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
 
             // ===== Tenant Entities =====
             modelBuilder.Entity<TenantUser>()
-                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
             modelBuilder.Entity<TenantSettings>()
-                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
             modelBuilder.Entity<TenantSetting>()
-                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
 
             // ===== Module Governance Entities =====
             modelBuilder.Entity<TenantCapability>()
-                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == TenantContext.TenantId);
+                .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
         }
 
         /// <summary>

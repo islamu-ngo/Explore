@@ -35,15 +35,8 @@ namespace Explore.Persistence.Configurations.Entities
                 .HasForeignKey(m => m.OrganizationPositionId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            builder.HasData(
-                new OrganizationMember
-                {
-                    Id = SeedIds.SystemUserIslamuMemberId,
-                    OrganizationId = SeedIds.IslamuOrganizationId,
-                    UserId = SeedIds.SystemUserId,
-                    OrganizationRoleId = (int)OrganizationRoleEnum.Creator,
-                    OrganizationPositionId = (int)OrganizationPositionEnum.Founder
-                });
+            // NOTE: Business entity seed data moved to DatabaseSeeder for conditional (Development-only) seeding.
+            // See Explore.Persistence/Seed/DatabaseSeeder.cs and SeedData.cs
         }
     }
 }

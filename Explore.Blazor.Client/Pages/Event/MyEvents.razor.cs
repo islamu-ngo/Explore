@@ -171,7 +171,7 @@ public partial class MyEvents : ComponentBase
 
     private void OnSearch(string value) { _searchString = value; _currentPage = 1; }
     private void OnCategoryChanged(string value) { _selectedCategory = value; _isCategoryOpen = false; _currentPage = 1; }
-    private void OnOrganizationChanged(Guid organizationId) { _selectedOrganizationId = organizationId; _isOrganizationOpen = false; _currentPage = 1; }
+    private void OnOrganizationChanged(Guid? organizationId) { _selectedOrganizationId = organizationId ?? Guid.Empty; _isOrganizationOpen = false; _currentPage = 1; }
     private void OnPageChanged(int page) => _currentPage = page;
     private void ToggleOrganizationFilter() => _isOrganizationOpen = !_isOrganizationOpen;
     private void ToggleCategoryFilter() => _isCategoryOpen = !_isCategoryOpen;

@@ -34,7 +34,8 @@ namespace Explore.API.Middleware
             string result = JsonConvert.SerializeObject(new ErrorDetails()
             {
                 ErrorMessage = exception.Message,
-                ErrorType = "Failure"
+                ErrorType = "Failure",
+                StackTrace = exception.StackTrace
             });
 
             switch (exception)
@@ -68,6 +69,7 @@ namespace Explore.API.Middleware
     {
         public string ErrorType { get; set; }
         public string ErrorMessage { get; set; }
+        public string? StackTrace { get; set; }
     }
 }
 

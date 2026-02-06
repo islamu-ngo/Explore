@@ -24,6 +24,20 @@ public class EventRepositoryTests
         using var context = _fixture.CreateDbContext();
         var repository = new EventRepository(context);
 
+        // Setup dependent data
+        var tenant = new Tenant { FullName = "Test Tenant", Slug = "test-tenant-" + Guid.NewGuid().ToString("N")[..8], IsActive = true };
+        context.Tenants.Add(tenant);
+        
+        var user = new User { Email = "test@example.com", FirstName = "Test", LastName = "User" };
+        context.Users.Add(user);
+        
+        await context.SaveChangesAsync();
+        
+        var actor = new Actor { DisplayName = "Test Actor", ActorTypeId = 1, TenantId = tenant.Id, UserId = user.Id };
+        context.Actors.Add(actor);
+        
+        await context.SaveChangesAsync();
+
         var eventId = Guid.NewGuid();
         var @event = new Explore.Domain.Event
         {
@@ -32,11 +46,11 @@ public class EventRepositoryTests
             Description = "Test Description",
             FirstSessionDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
             LastSessionDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1).AddHours(2)),
-            EventTypeId = 1, // Assumes seeded data or defaults
+            EventTypeId = 1, 
             AudienceGenderId = 1,
             AudienceAgeId = 1,
-            ActorId = Guid.NewGuid(),
-            TenantId = Guid.NewGuid(),
+            ActorId = actor.Id,
+            TenantId = tenant.Id,
             VisibilityTypeId = 1,
             EventStatusId = 1,
             EventFormatId = 1,
@@ -65,8 +79,19 @@ public class EventRepositoryTests
         using var context = _fixture.CreateDbContext();
         var repository = new EventRepository(context);
         
-        // Ensure dependent entities exist (simplified for test)
-        // In a real scenario, you'd seed Reference Data first (EventTypes, etc.)
+        // Setup dependent data
+        var tenant = new Tenant { FullName = "Test Tenant", Slug = "test-tenant-" + Guid.NewGuid().ToString("N")[..8], IsActive = true };
+        context.Tenants.Add(tenant);
+        
+        var user = new User { Email = "test2@example.com", FirstName = "Test", LastName = "User" };
+        context.Users.Add(user);
+        
+        await context.SaveChangesAsync();
+        
+        var actor = new Actor { DisplayName = "Test Actor", ActorTypeId = 1, TenantId = tenant.Id, UserId = user.Id };
+        context.Actors.Add(actor);
+        
+        await context.SaveChangesAsync();
         
         var eventId = Guid.NewGuid();
         var @event = new Explore.Domain.Event
@@ -76,8 +101,8 @@ public class EventRepositoryTests
             EventTypeId = 1, 
             AudienceGenderId = 1,
             AudienceAgeId = 1,
-            ActorId = Guid.NewGuid(),
-            TenantId = Guid.NewGuid(),
+            ActorId = actor.Id,
+            TenantId = tenant.Id,
             VisibilityTypeId = 1,
             EventStatusId = 1,
             EventFormatId = 1,
@@ -93,6 +118,5 @@ public class EventRepositoryTests
         // Assert
         await Assert.That(result).IsNotNull();
         await Assert.That(result.Id).IsEqualTo(eventId);
-        // Verify includes (if data seeding was robust, we'd check .EventType is not null)
     }
 }

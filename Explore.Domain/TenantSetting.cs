@@ -29,7 +29,7 @@ public class TenantSetting : ITenantEntity
     /// <summary>
     /// The setting key being overridden (must match a SystemSetting.Key).
     /// </summary>
-    public string Key { get; set; } = string.Empty;
+    public string SettingKey { get; set; } = string.Empty;
 
     /// <summary>
     /// JSON-serialized value of the tenant's override.

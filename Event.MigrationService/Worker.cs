@@ -4,12 +4,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Event.MigrationService;
 
-public sealed class Worker(IServiceProvider serviceProvider, IHostApplicationLifetime lifetime, ILogger<Worker> logger) : BackgroundService
+public sealed class Worker(IServiceProvider serviceProvider, IHostApplicationLifetime lifetime, IHostEnvironment environment, ILogger<Worker> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         logger.LogInformation("Starting database migration...");
-        
+
         await using var scope = serviceProvider.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
 
@@ -20,7 +20,7 @@ public sealed class Worker(IServiceProvider serviceProvider, IHostApplicationLif
 
         // Run async seeding for data that requires conditional logic
         logger.LogInformation("Running database seeding...");
-        await DatabaseSeeder.SeedAsync(db, stoppingToken);
+        await DatabaseSeeder.SeedAsync(db, environment, stoppingToken);
         logger.LogInformation("Database seeding completed successfully.");
 
         lifetime.StopApplication();

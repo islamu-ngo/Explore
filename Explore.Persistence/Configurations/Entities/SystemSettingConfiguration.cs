@@ -19,10 +19,10 @@ public class SystemSettingConfiguration : IEntityTypeConfiguration<SystemSetting
             .HasDefaultValueSql("uuidv7()");
 
         // Unique constraint on setting key
-        builder.HasIndex(e => e.Key)
+        builder.HasIndex(e => e.SettingKey)
             .IsUnique();
 
-        builder.Property(e => e.Key)
+        builder.Property(e => e.SettingKey)
             .IsRequired()
             .HasMaxLength(256);
 
@@ -58,7 +58,7 @@ public class SystemSettingConfiguration : IEntityTypeConfiguration<SystemSetting
             new SystemSetting
             {
                 Id = SeedIds.SystemSettingDeploymentModeId,
-                Key = "deployment.mode",
+                SettingKey = "deployment.mode",
                 Value = "\"MultiTenant\"",
                 ValueType = SettingValueType.String,
                 IsLocked = true,
@@ -71,7 +71,7 @@ public class SystemSettingConfiguration : IEntityTypeConfiguration<SystemSetting
             new SystemSetting
             {
                 Id = SeedIds.SystemSettingMaxSessionsPerEventId,
-                Key = "events.max_sessions_per_event",
+                SettingKey = "events.max_sessions_per_event",
                 Value = "100",
                 ValueType = SettingValueType.Integer,
                 IsLocked = false,
@@ -83,7 +83,7 @@ public class SystemSettingConfiguration : IEntityTypeConfiguration<SystemSetting
             new SystemSetting
             {
                 Id = SeedIds.SystemSettingRequireApprovalId,
-                Key = "events.require_approval",
+                SettingKey = "events.require_approval",
                 Value = "false",
                 ValueType = SettingValueType.Boolean,
                 IsLocked = false,
@@ -95,7 +95,7 @@ public class SystemSettingConfiguration : IEntityTypeConfiguration<SystemSetting
             new SystemSetting
             {
                 Id = SeedIds.SystemSettingIslamicModuleId,
-                Key = "modules.islamic_enabled",
+                SettingKey = "modules.islamic_enabled",
                 Value = "true",
                 ValueType = SettingValueType.Boolean,
                 IsLocked = false,
@@ -107,7 +107,7 @@ public class SystemSettingConfiguration : IEntityTypeConfiguration<SystemSetting
             new SystemSetting
             {
                 Id = SeedIds.SystemSettingTechModuleId,
-                Key = "modules.tech_enabled",
+                SettingKey = "modules.tech_enabled",
                 Value = "true",
                 ValueType = SettingValueType.Boolean,
                 IsLocked = false,

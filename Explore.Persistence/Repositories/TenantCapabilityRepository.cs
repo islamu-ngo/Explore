@@ -43,7 +43,7 @@ public class TenantCapabilityRepository : GenericRepository<TenantCapability, Gu
             .AnyAsync(c => c.TenantId == tenantId
                 && c.IsEnabled
                 && c.Module != null
-                && c.Module.Key == moduleKey
+                && c.Module.ModuleKey == moduleKey
                 && c.Module.IsActive);
     }
 
@@ -52,6 +52,6 @@ public class TenantCapabilityRepository : GenericRepository<TenantCapability, Gu
         return await _dbContext.TenantCapabilities
             .AsNoTracking()
             .Include(c => c.Module)
-            .FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Module != null && c.Module.Key == moduleKey);
+            .FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Module != null && c.Module.ModuleKey == moduleKey);
     }
 }

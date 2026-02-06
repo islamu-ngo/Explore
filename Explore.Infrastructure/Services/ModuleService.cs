@@ -61,7 +61,7 @@ public class ModuleService : IModuleService
     {
         // Use cached enabled modules for the tenant
         var enabledModules = await GetEnabledModulesAsync(tenantId, cancellationToken);
-        return enabledModules.Any(m => m.Key.Equals(moduleKey, StringComparison.OrdinalIgnoreCase));
+        return enabledModules.Any(m => m.ModuleKey.Equals(moduleKey, StringComparison.OrdinalIgnoreCase));
     }
 
     public async Task<string?> GetModuleWizardSchemaUrlAsync(string moduleKey, CancellationToken cancellationToken = default)
@@ -136,7 +136,7 @@ public class ModuleService : IModuleService
         return new ModuleInfo
         {
             Id = module.Id,
-            Key = module.Key,
+            ModuleKey = module.ModuleKey,
             Name = module.Name,
             Description = module.Description,
             IconName = module.IconName,

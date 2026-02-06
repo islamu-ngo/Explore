@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <PackageReference Include="Testcontainers.PostgreSql" Version="4.10.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.2" />
     <PackageReference Include="TUnit" Version="1.11.18" />
   </ItemGroup>
 

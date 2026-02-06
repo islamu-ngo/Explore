@@ -1,6 +1,7 @@
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence.Seed;
+using Explore.Persistence.ValueGenerators;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -10,7 +11,7 @@ namespace Explore.Persistence.Configurations.Entities
     {
         public void Configure(EntityTypeBuilder<Actor> builder)
         {
-            builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
+            builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
 
             builder.Property(e => e.DisplayName).HasMaxLength(500).IsRequired();
             builder.Property(e => e.Did).HasMaxLength(500);
@@ -61,7 +62,7 @@ namespace Explore.Persistence.Configurations.Entities
                 .IsUnique()
                 .HasFilter("organization_id IS NOT NULL");
 
-            // Check constraint: Actor must be either User OR Organization (XOR), 
+            // Check constraint: Actor must be either User OR Organization (XOR),
             // OR it can be a Bot (both null for system actors)
             // For User type: UserId must be set, OrganizationId must be null
             // For Organization type: OrganizationId must be set, UserId must be null
@@ -72,31 +73,8 @@ namespace Explore.Persistence.Configurations.Entities
                 @"(user_id IS NULL AND organization_id IS NOT NULL)" // Organization actor
             ));
 
-            builder.HasData(
-                // System User's personal Actor
-                new Actor
-                {
-                    Id = SeedIds.SystemUserActorId,
-                    ActorTypeId = (int)ActorTypeEnum.User,
-                    TenantId = SeedIds.DefaultTenantId,
-                    DisplayName = "System Account",
-                    Handle = "system",
-                    Description = "System user account",
-                    UserId = SeedIds.SystemUserId,
-                    OrganizationId = null
-                },
-                // ISLAMU Organization Actor
-                new Actor
-                {
-                    Id = SeedIds.IslamuOrganizationActorId,
-                    ActorTypeId = (int)ActorTypeEnum.Organization,
-                    TenantId = SeedIds.DefaultTenantId,
-                    DisplayName = "ISLAMU",
-                    Handle = "islamu",
-                    Description = "ISLAMU NGO - Islamic Learning and Media Union",
-                    UserId = null,
-                    OrganizationId = SeedIds.IslamuOrganizationId
-                });
+            // NOTE: Business entity seed data moved to DatabaseSeeder for conditional (Development-only) seeding.
+            // See Explore.Persistence/Seed/DatabaseSeeder.cs and SeedData.cs
         }
     }
 }

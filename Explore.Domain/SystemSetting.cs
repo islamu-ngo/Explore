@@ -18,7 +18,7 @@ public class SystemSetting
     /// Unique key for the setting (e.g., "events.max_sessions", "email.from_address").
     /// Uses dot notation for namespacing.
     /// </summary>
-    public string Key { get; set; } = string.Empty;
+    public string SettingKey { get; set; } = string.Empty;
 
     /// <summary>
     /// JSON-serialized value of the setting.

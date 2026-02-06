@@ -136,7 +136,7 @@ public class StrategyResolver : IStrategyResolver
     {
         // For post-update, we check which strategies are applicable based on the event's aspects
         var enabledModules = await _moduleService.GetEnabledModulesAsync(tenantId, cancellationToken);
-        var enabledModuleKeys = enabledModules.Select(m => m.Key).ToHashSet();
+        var enabledModuleKeys = enabledModules.Select(m => m.ModuleKey).ToHashSet();
 
         foreach (var strategy in _strategies.Where(s => enabledModuleKeys.Contains(s.ModuleKey)))
         {
@@ -173,7 +173,7 @@ public class StrategyResolver : IStrategyResolver
     {
         var links = new List<StrategyLink>();
         var enabledModules = await _moduleService.GetEnabledModulesAsync(tenantId, cancellationToken);
-        var enabledModuleKeys = enabledModules.Select(m => m.Key).ToHashSet();
+        var enabledModuleKeys = enabledModules.Select(m => m.ModuleKey).ToHashSet();
 
         foreach (var strategy in _strategies.Where(s => enabledModuleKeys.Contains(s.ModuleKey)))
         {

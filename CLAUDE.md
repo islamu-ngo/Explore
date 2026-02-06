@@ -107,14 +107,6 @@ dotnet test Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --con
 ```bash
 # Start of session
 dotnet test
-# Match CI/CD exactly
-dotnet test Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release
-dotnet test Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release
-dotnet test Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release
-dotnet test Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release
-dotnet test Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release
-dotnet test Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release
-dotnet test Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release
 
 # ❌ 3 tests failing
 
@@ -611,7 +603,7 @@ schema/islamu-event.md
 
 # 🛠️ Specialized Tooling (MCP)
 
-ALWAYS use these mcp servers for their specific purposes when applicable!:
+ALWAYS use these mcp servers for their specific purposes when applicable! NEVER bypass then when applicable. For example, if you need to work on tests, use Context7 mcp to find TUnit or BUnit documentation:
 
 * **Context7**: Auto-use for documentation!, for libraries docs, setup steps, and complex library configs.
 * **Sequential Thinking**: Multi-step architecture, debugging, and refining hypotheses.
@@ -624,3 +616,5 @@ ALWAYS use these mcp servers for their specific purposes when applicable!:
 ## Context, plans, and task management
 ALWAYS refer to this file and all the files in @dev/active/ that contain context, plan, tasks...
 @dev/active/README.md
+
+ALWAYS use the correct tools available for editing files or other actions, never bash or other manual methods when a tool is available.

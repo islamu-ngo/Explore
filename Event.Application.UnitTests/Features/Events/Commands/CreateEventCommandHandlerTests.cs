@@ -82,16 +82,16 @@ public class CreateEventCommandHandlerTests
         };
 
         _userContext.GetRequiredUserId().Returns(userId);
-        
+
         // Mock Actor Resolution
-        var actor = new Actor { Id = actorId, UserId = userId };
+        var actor = new Actor { Id = actorId, UserId = userId, DisplayName = "Test Actor" };
         _actorRepository.GetActorByUserId(userId).Returns(actor);
 
         // Mock Validation Dependencies
         _audienceAgeRepository.Exists(Arg.Any<int>()).Returns(true);
         _audienceGenderRepository.Exists(Arg.Any<int>()).Returns(true);
         _eventTypeRepository.Exists(Arg.Any<int>()).Returns(true);
-        
+
         // Mock Mapping and Creation
         var eventEntity = new Explore.Domain.Event { Id = eventId };
         _mapper.Map<Explore.Domain.Event>(command.EventDto).Returns(eventEntity);
@@ -126,10 +126,10 @@ public class CreateEventCommandHandlerTests
         };
 
         _userContext.GetRequiredUserId().Returns(userId);
-        
+
         // Mock Admin Check Failure
         _organizationMemberRepository.IsUserAdminOfOrganization(organizationId, userId).Returns(false);
-        
+
         // Mock Validation Dependencies
         _organizationRepository.Exists(organizationId).Returns(true);
         _audienceAgeRepository.Exists(Arg.Any<int>()).Returns(true);

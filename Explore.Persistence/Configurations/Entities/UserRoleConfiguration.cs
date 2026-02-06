@@ -20,39 +20,9 @@ namespace Explore.Persistence.Configurations.Entities
                 .HasForeignKey(e => e.TenantId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            builder.HasData(
-                new UserRole
-                {
-                    Id = 1,
-                    MasterCode = "SUPER_ADMIN",
-                    FullName = "Super Administrator",
-                    Description = "Full system access across all tenants",
-                    TenantId = SeedIds.DefaultTenantId
-                },
-                new UserRole
-                {
-                    Id = 2,
-                    MasterCode = "ADMIN",
-                    FullName = "Administrator",
-                    Description = "Tenant administrator with full access within tenant",
-                    TenantId = SeedIds.DefaultTenantId
-                },
-                new UserRole
-                {
-                    Id = 3,
-                    MasterCode = "MODERATOR",
-                    FullName = "Moderator",
-                    Description = "Content moderation and user management",
-                    TenantId = SeedIds.DefaultTenantId
-                },
-                new UserRole
-                {
-                    Id = 4,
-                    MasterCode = "USER",
-                    FullName = "User",
-                    Description = "Standard user role",
-                    TenantId = SeedIds.DefaultTenantId
-                });
+            // NOTE: UserRole seed data moved to DatabaseSeeder for conditional (Development-only) seeding.
+            // UserRoles are tenant-scoped so they require the tenant to exist first.
+            // See Explore.Persistence/Seed/DatabaseSeeder.cs and SeedData.cs
         }
     }
 }

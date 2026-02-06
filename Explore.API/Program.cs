@@ -56,6 +56,10 @@ var realm = builder.Configuration["Keycloak:Realm"];
 var audience = builder.Configuration["Keycloak:Audience"]; // Should be "explore-api"
 
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddRouting(options =>
+{
+    options.LowercaseUrls = true;
+});
 
 //AddSwaggerDoc(builder.Services); moved to AddSwaggerGenWithAuth extension method
 
@@ -379,7 +383,7 @@ if (!builder.Environment.IsEnvironment("Testing"))
         logger.LogInformation("Database migrations completed successfully.");
 
         // Run seeding (most data uses HasData(), this is for runtime scenarios)
-        DatabaseSeeder.SeedAsync(db).GetAwaiter().GetResult();
+        DatabaseSeeder.SeedAsync(db, app.Environment).GetAwaiter().GetResult();
         logger.LogInformation("Database seeding completed.");
     }
     catch (Exception ex)

@@ -8,14 +8,14 @@
 
 <PageTitle>My Events</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="my-events">
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-4 py-sm-8 py-md-12">
     <!-- Header -->
-    <div class="my-events__header">
+    <div class="d-flex flex-wrap align-end justify-space-between gap-4 mb-8">
         <div>
-            <MudText Typo="Typo.overline" Class="my-events__kicker">Manage</MudText>
-            <MudText Typo="Typo.h5">My Events</MudText>
+            <MudText Typo="Typo.overline" Class="mud-text-secondary" Style="letter-spacing: 0.18em;">MANAGE</MudText>
+            <MudText Typo="Typo.h4">My Events</MudText>
         </div>
-        <div class="my-events__actions">
+        <div class="d-flex flex-wrap gap-3">
             <MudButton Variant="Variant.Outlined"
                        Color="Color.Primary"
                        StartIcon="@Icons.Material.Filled.Business"
@@ -33,7 +33,7 @@
 
     @if (_isLoading)
     {
-        <div class="my-events__loading">
+        <div class="d-flex flex-column align-center justify-center py-16">
             <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
             <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mt-4">
                 Loading your events...
@@ -52,85 +52,44 @@
     else
     {
         <!-- Filters -->
-        <div class="my-events__filters mb-4">
-            <!-- Organization Filter -->
-            <div class="my-events__filter-cell">
-                <MudPopover Open="@_isOrganizationOpen" Fixed="true" Class="my-events__filter-popover px-4 py-3">
-                    <div class="my-events__filter-dropdown">
-                        <MudText Typo="Typo.subtitle2">Organization</MudText>
-                        <div class="my-events__filter-options">
-                            <MudText Typo="Typo.body2"
-                                     Color="@(_selectedOrganizationId == Guid.Empty ? Color.Primary : Color.Default)"
-                                     Class="my-events__filter-option"
-                                     @onclick="@(() => OnOrganizationChanged(Guid.Empty))">
-                                All Organizations
-                            </MudText>
-                            @foreach (var org in _myOrganizations)
-                            {
-                                <MudText Typo="Typo.body2"
-                                         Color="@(_selectedOrganizationId == org.Id ? Color.Primary : Color.Default)"
-                                         Class="my-events__filter-option"
-                                         @onclick="@(() => OnOrganizationChanged(org.Id ?? Guid.Empty))">
-                                    @org.FullName
-                                </MudText>
-                            }
-                        </div>
-                    </div>
-                </MudPopover>
-                <MudPaper @onclick="ToggleOrganizationFilter" Class="my-events__filter-paper">
-                    <MudText Class="ml-2">@GetSelectedOrganizationName()</MudText>
-                    <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" />
-                </MudPaper>
-            </div>
-
-            <!-- Category Filter -->
-            <div class="my-events__filter-cell">
-                <MudPopover Open="@_isCategoryOpen" Fixed="true" Class="my-events__filter-popover px-4 py-3">
-                    <div class="my-events__filter-dropdown">
-                        <MudText Typo="Typo.subtitle2">Event Type</MudText>
-                        <div class="my-events__filter-options">
-                            <MudText Typo="Typo.body2"
-                                     Color="@(string.IsNullOrEmpty(_selectedCategory) ? Color.Primary : Color.Default)"
-                                     Class="my-events__filter-option"
-                                     @onclick="@(() => OnCategoryChanged(""))">
-                                All Types
-                            </MudText>
-                            @foreach (var eventType in UniqueEventTypes)
-                            {
-                                <MudText Typo="Typo.body2"
-                                         Color="@(_selectedCategory == eventType ? Color.Primary : Color.Default)"
-                                         Class="my-events__filter-option"
-                                         @onclick="@(() => OnCategoryChanged(eventType))">
-                                    @eventType
-                                </MudText>
-                            }
-                        </div>
-                    </div>
-                </MudPopover>
-                <MudPaper @onclick="ToggleCategoryFilter" Class="my-events__filter-paper">
-                    <MudText Class="ml-2">@(string.IsNullOrEmpty(_selectedCategory) ? "All Types" : _selectedCategory)</MudText>
-                    <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" />
-                </MudPaper>
-            </div>
-
-            <!-- Search -->
-            <div class="my-events__filter-cell my-events__filter-cell--search">
+        <MudGrid Class="mb-8">
+            <MudItem xs="12" sm="6" md="3">
+                <MudSelect T="Guid?" Value="@_selectedOrganizationId" ValueChanged="@((Guid? v) => OnOrganizationChanged(v))"
+                           Label="Organization" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
+                    <MudSelectItem T="Guid?" Value="@Guid.Empty">All Organizations</MudSelectItem>
+                    @foreach (var org in _myOrganizations)
+                    {
+                        <MudSelectItem T="Guid?" Value="@org.Id">@org.FullName</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudSelect T="string" Value="@_selectedCategory" ValueChanged="@((string? v) => OnCategoryChanged(v))"
+                           Label="Event Type" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
+                    <MudSelectItem T="string" Value="@("")">All Types</MudSelectItem>
+                    @foreach (var eventType in UniqueEventTypes)
+                    {
+                        <MudSelectItem T="string" Value="@eventType">@eventType</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="12" md="6">
                 <MudTextField @bind-Value="_searchString"
-                              Class="my-events__search-input"
                               Placeholder="Search events..."
                               Adornment="Adornment.Start"
                               AdornmentIcon="@Icons.Material.Filled.Search"
                               Immediate="true"
                               DebounceInterval="300"
                               TextChanged="OnSearch"
+                              Variant="Variant.Outlined"
                               Margin="Margin.Dense" />
-            </div>
-        </div>
+            </MudItem>
+        </MudGrid>
 
         @if (!FilteredEvents.Any())
         {
-            <div class="my-events__empty">
-                <MudIcon Icon="@Icons.Material.Outlined.Event" Class="my-events__empty-icon" />
+            <div class="d-flex flex-column align-center justify-center py-16">
+                <MudIcon Icon="@Icons.Material.Outlined.Event" Size="Size.Large" Color="Color.Default" Style="width: 80px; height: 80px; opacity: 0.2;" />
                 <MudText Typo="Typo.h6" Class="mt-4">No events found</MudText>
                 <MudText Typo="Typo.body2" Color="Color.Secondary">
                     @if (_events.Any())
@@ -147,23 +106,13 @@
         else
         {
             <!-- Event Cards -->
-            <MudGrid Spacing="4">
+            <MudGrid>
                 @foreach (var evt in FilteredEvents)
                 {
                     <MudItem xs="12" sm="6" md="4">
-                        <MudCard Elevation="0" Class="my-events__card">
-                            <!-- Card Media -->
-                            <MudCardMedia Image="@GetEventImageUrl(evt)"
-                                          Height="200"
-                                          Class="my-events__card-media" />
-
-                            <!-- Actions Menu -->
-                            <div class="my-events__actions-menu">
-                                <MudMenu Icon="@Icons.Material.Filled.MoreVert"
-                                         Dense="true"
-                                         Color="Color.Primary"
-                                         Variant="Variant.Filled"
-                                         Size="Size.Small">
+                        <MudCard Class="h-100 d-flex flex-column position-relative">
+                            <div style="position: absolute; top: 12px; right: 12px; z-index: 10;">
+                                <MudMenu Icon="@Icons.Material.Filled.MoreVert" Dense="true" Color="Color.Default" Variant="Variant.Filled" Size="Size.Small" Style="background: rgba(255,255,255,0.8); backdrop-filter: blur(4px); border-radius: 8px;">
                                     @if (CanEditEvent(evt))
                                     {
                                         <MudMenuItem OnClick="@(() => EditEvent(evt))">
@@ -185,67 +134,46 @@
                                 </MudMenu>
                             </div>
 
-                            <MudCardContent>
-                                <div class="my-events__card-badges">
-                                    <MudChip T="string" Size="Size.Small" Color="Color.Primary"
-                                             StartIcon="@Icons.Material.Filled.Category">
-                                        @(evt.EventTypeFullName ?? "Event")
-                                    </MudChip>
-                                    <MudChip T="string" Size="Size.Small" Color="Color.Info"
-                                             Variant="Variant.Outlined"
-                                             StartIcon="@Icons.Material.Filled.Business">
-                                        @(evt.ActorDisplayName ?? "Unknown")
-                                    </MudChip>
-                                </div>
-                                <MudText Typo="Typo.h6" Class="my-events__card-title">@evt.Title</MudText>
-                                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="my-events__card-description">
+                            <MudCardMedia Image="@GetEventImageUrl(evt)" Height="200" />
+                            
+                            <MudCardContent Class="flex-grow-1">
+                                <MudText Typo="Typo.button" Class="mud-text-disabled mb-1">@(evt.EventTypeFullName ?? "Event")</MudText>
+                                <MudText Typo="Typo.h6" Class="mb-4">@evt.Title</MudText>
+                                <MudText Typo="Typo.body2" Style="overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;">
                                     @evt.Description
                                 </MudText>
+                                
+                                <div class="d-flex align-center gap-2 mt-4">
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Business">
+                                        @(evt.ActorDisplayName ?? "Unknown")
+                                    </MudChip>
+                                    <div class="d-flex align-center gap-1 ml-auto">
+                                        <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Color="Color.Secondary" />
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@(evt.EventFormatFullName ?? "Online")</MudText>
+                                    </div>
+                                </div>
                             </MudCardContent>
 
-                            <MudCardActions Class="my-events__card-actions">
+                            <MudCardActions>
                                 <MudButton Variant="Variant.Text"
                                            Color="Color.Primary"
-                                           OnClick="@(() => EditEvent(evt))"
-                                           Disabled="@(!CanEditEvent(evt))"
-                                           Size="Size.Small">
-                                    Edit
+                                           Href="@($"/event/detail/{evt.Id}")"
+                                           EndIcon="@Icons.Material.Filled.ArrowForward">
+                                    Details
                                 </MudButton>
-                                <MudButton Variant="Variant.Text"
-                                           Color="Color.Primary"
-                                           OnClick="@(() => ViewEventDetails(evt))"
-                                           Size="Size.Small">
-                                    View
-                                </MudButton>
-                                <div class="my-events__card-format">
-                                    <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" />
-                                    <MudText Typo="Typo.caption">@(evt.EventFormatFullName ?? "Online")</MudText>
-                                </div>
+                                <MudSpacer />
+                                @if (CanEditEvent(evt))
+                                {
+                                    <MudButton Variant="Variant.Text" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Edit" OnClick="@(() => EditEvent(evt))">Edit</MudButton>
+                                }
                             </MudCardActions>
-                            <div class="my-events__card-footer pa-4 pt-0">
-                                <div class="my-events__card-organizer">
-                                    @if (!string.IsNullOrEmpty(evt.ActorProfilePictureUri))
-                                    {
-                                        <MudAvatar Size="Size.Small" Class="my-events__organizer-avatar">
-                                            <MudImage Src="@evt.ActorProfilePictureUri" Alt="@evt.ActorDisplayName" />
-                                        </MudAvatar>
-                                    }
-                                    else
-                                    {
-                                        <MudAvatar Size="Size.Small" Color="Color.Primary" Class="my-events__organizer-avatar">
-                                            @GetActorInitials(evt.ActorDisplayName)
-                                        </MudAvatar>
-                                    }
-                                    <MudText Typo="Typo.caption">@(evt.ActorDisplayName ?? "Community")</MudText>
-                                </div>
-                            </div>
                         </MudCard>
                     </MudItem>
                 }
             </MudGrid>
 
             <!-- Pagination -->
-            <div class="my-events__pagination">
+            <div class="d-flex justify-center mt-8 mb-4">
                 <MudPagination Count="@TotalPages"
                                Selected="@_currentPage"
                                SelectedChanged="OnPageChanged"
@@ -253,12 +181,10 @@
                                ShowFirstButton="true"
                                ShowLastButton="true" />
             </div>
-            <div class="my-events__results">
-                <MudText Typo="Typo.body2" Color="Color.Secondary">
-                    Showing @((_currentPage - 1) * ItemsPerPage + 1) - @Math.Min(_currentPage * ItemsPerPage, AllFilteredEvents.Count)
-                    of @AllFilteredEvents.Count events
-                </MudText>
-            </div>
+            <MudText Typo="Typo.body2" Align="Align.Center" Color="Color.Secondary" Class="mb-8">
+                Showing @((_currentPage - 1) * ItemsPerPage + 1) - @Math.Min(_currentPage * ItemsPerPage, AllFilteredEvents.Count)
+                of @AllFilteredEvents.Count events
+            </MudText>
         }
     }
 </MudContainer>

@@ -33,9 +33,9 @@ public class SettingsResolver : ISettingsResolver
         _cache = cache;
     }
 
-    public async Task<T?> GetSettingAsync<T>(string key, Guid? tenantId = null, CancellationToken cancellationToken = default)
+    public async Task<T?> GetSettingAsync<T>(string settingKey, Guid? tenantId = null, CancellationToken cancellationToken = default)
     {
-        var resolved = await GetSettingWithMetadataAsync(key, tenantId, cancellationToken);
+        var resolved = await GetSettingWithMetadataAsync(settingKey, tenantId, cancellationToken);
         if (resolved == null)
             return default;
 
@@ -49,11 +49,11 @@ public class SettingsResolver : ISettingsResolver
         }
     }
 
-    public async Task<ResolvedSetting?> GetSettingWithMetadataAsync(string key, Guid? tenantId = null, CancellationToken cancellationToken = default)
+    public async Task<ResolvedSetting?> GetSettingWithMetadataAsync(string settingKey, Guid? tenantId = null, CancellationToken cancellationToken = default)
     {
         // Get system setting first
         var systemSettings = await GetSystemSettingsAsync(cancellationToken);
-        var systemSetting = systemSettings.FirstOrDefault(s => s.Key == key);
+        var systemSetting = systemSettings.FirstOrDefault(s => s.SettingKey == settingKey);
 
         if (systemSetting == null)
             return null;
@@ -63,7 +63,7 @@ public class SettingsResolver : ISettingsResolver
         {
             return new ResolvedSetting
             {
-                Key = systemSetting.Key,
+                Key = systemSetting.SettingKey,
                 Value = systemSetting.Value,
                 ValueType = systemSetting.ValueType,
                 Source = systemSetting.IsLocked ? SettingSource.SystemLocked : SettingSource.SystemDefault,
@@ -76,13 +76,13 @@ public class SettingsResolver : ISettingsResolver
 
         // Check for tenant override
         var tenantSettings = await GetTenantSettingsAsync(tenantId.Value, cancellationToken);
-        var tenantOverride = tenantSettings.FirstOrDefault(s => s.Key == key);
+        var tenantOverride = tenantSettings.FirstOrDefault(s => s.SettingKey == settingKey);
 
         if (tenantOverride != null)
         {
             return new ResolvedSetting
             {
-                Key = key,
+                Key = settingKey,
                 Value = tenantOverride.Value,
                 ValueType = systemSetting.ValueType,
                 Source = SettingSource.TenantOverride,
@@ -96,7 +96,7 @@ public class SettingsResolver : ISettingsResolver
         // Fall back to system default
         return new ResolvedSetting
         {
-            Key = systemSetting.Key,
+            Key = systemSetting.SettingKey,
             Value = systemSetting.Value,
             ValueType = systemSetting.ValueType,
             Source = SettingSource.SystemDefault,
@@ -114,13 +114,13 @@ public class SettingsResolver : ISettingsResolver
             ? await GetTenantSettingsAsync(tenantId.Value, cancellationToken)
             : new List<TenantSetting>();
 
-        var tenantSettingsDict = tenantSettings.ToDictionary(s => s.Key, s => s.Value);
+        var tenantSettingsDict = tenantSettings.ToDictionary(s => s.SettingKey, s => s.Value);
 
         var result = systemSettings
             .Where(s => category == null || s.Category == category)
             .Select(s =>
             {
-                var hasOverride = tenantSettingsDict.TryGetValue(s.Key, out var overrideValue);
+                var hasOverride = tenantSettingsDict.TryGetValue(s.SettingKey, out var overrideValue);
                 var effectiveValue = s.IsLocked || !hasOverride ? s.Value : overrideValue!;
                 var source = s.IsLocked ? SettingSource.SystemLocked
                     : hasOverride ? SettingSource.TenantOverride
@@ -128,7 +128,7 @@ public class SettingsResolver : ISettingsResolver
 
                 return new ResolvedSetting
                 {
-                    Key = s.Key,
+                    Key = s.SettingKey,
                     Value = effectiveValue,
                     ValueType = s.ValueType,
                     Source = source,
@@ -143,18 +143,18 @@ public class SettingsResolver : ISettingsResolver
         return result;
     }
 
-    public async Task<bool> CanOverrideAsync(string key, CancellationToken cancellationToken = default)
+    public async Task<bool> CanOverrideAsync(string settingKey, CancellationToken cancellationToken = default)
     {
-        return !await _systemSettingRepository.IsLocked(key);
+        return !await _systemSettingRepository.IsLocked(settingKey);
     }
 
-    public async Task<bool> SetTenantOverrideAsync(string key, object value, Guid tenantId, CancellationToken cancellationToken = default)
+    public async Task<bool> SetTenantOverrideAsync(string settingKey, object value, Guid tenantId, CancellationToken cancellationToken = default)
     {
         // Check if setting exists and is not locked
-        if (!await CanOverrideAsync(key, cancellationToken))
+        if (!await CanOverrideAsync(settingKey, cancellationToken))
             return false;
 
-        var existingOverride = await _tenantSettingRepository.GetByTenantAndKey(tenantId, key);
+        var existingOverride = await _tenantSettingRepository.GetByTenantAndKey(tenantId, settingKey);
         var jsonValue = JsonSerializer.Serialize(value);
 
         if (existingOverride != null)
@@ -168,30 +168,30 @@ public class SettingsResolver : ISettingsResolver
             var newOverride = new TenantSetting
             {
                 TenantId = tenantId,
-                Key = key,
+                SettingKey = settingKey,
                 Value = jsonValue,
                 CreatedAt = DateTime.UtcNow
             };
             await _tenantSettingRepository.Create(newOverride);
         }
 
-        InvalidateCache(key, tenantId);
+        InvalidateCache(settingKey, tenantId);
         return true;
     }
 
-    public async Task<bool> RemoveTenantOverrideAsync(string key, Guid tenantId, CancellationToken cancellationToken = default)
+    public async Task<bool> RemoveTenantOverrideAsync(string settingKey, Guid tenantId, CancellationToken cancellationToken = default)
     {
-        var result = await _tenantSettingRepository.RemoveOverride(tenantId, key);
+        var result = await _tenantSettingRepository.RemoveOverride(tenantId, settingKey);
         if (result)
         {
-            InvalidateCache(key, tenantId);
+            InvalidateCache(settingKey, tenantId);
         }
         return result;
     }
 
-    public void InvalidateCache(string? key = null, Guid? tenantId = null)
+    public void InvalidateCache(string? settingKey = null, Guid? tenantId = null)
     {
-        if (key == null && tenantId == null)
+        if (settingKey == null && tenantId == null)
         {
             _cache.Remove(SystemSettingsCacheKey);
         }

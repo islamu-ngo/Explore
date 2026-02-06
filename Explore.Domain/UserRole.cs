@@ -20,6 +20,6 @@ namespace Explore.Domain
         [ForeignKey("Tenant")]
         public Guid TenantId { get; set; }
 
-        public required Tenant Tenant { get; set; }
+        public Tenant Tenant { get; set; } = null!;
     }
 }

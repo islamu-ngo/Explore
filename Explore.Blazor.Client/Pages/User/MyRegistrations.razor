@@ -6,64 +6,81 @@
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
-    <div class="d-flex justify-space-between align-center mb-4">
-        <MudText Typo="Typo.h4">My Registrations</MudText>
-        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ArrowBack" Href="/user/profile">
+<PageTitle>My Registrations</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-4 py-sm-8 py-md-12">
+    <!-- Header -->
+    <div class="d-flex flex-wrap align-end justify-space-between gap-4 mb-8">
+        <div>
+            <MudText Typo="Typo.overline" Class="mud-text-secondary" Style="letter-spacing: 0.18em;">PARTICIPANT</MudText>
+            <MudText Typo="Typo.h4">My Registrations</MudText>
+        </div>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ArrowBack" Href="/user/profile" Color="Color.Primary">
             Back to Profile
         </MudButton>
     </div>
 
-    <MudTextField @bind-Value="_searchString" Placeholder="Search events..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="mb-4" />
+    <!-- Filters -->
+    <MudGrid Class="mb-8">
+        <MudItem xs="12">
+            <MudTextField @bind-Value="_searchString" 
+                          Placeholder="Search events..." 
+                          Adornment="Adornment.Start" 
+                          AdornmentIcon="@Icons.Material.Filled.Search" 
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense" />
+        </MudItem>
+    </MudGrid>
 
     @if (_loading)
     {
-        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Class="d-block mx-auto" />
+        <div class="d-flex flex-column align-center justify-center py-16">
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+            <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mt-4">
+                Loading your registrations...
+            </MudText>
+        </div>
     }
     else if (!FilteredRegistrations.Any())
     {
-        <MudText Typo="Typo.body1" Align="Align.Center">No registrations found.</MudText>
+        <div class="d-flex flex-column align-center justify-center py-16">
+            <MudIcon Icon="@Icons.Material.Outlined.AppRegistration" Size="Size.Large" Color="Color.Default" Style="width: 80px; height: 80px; opacity: 0.2;" />
+            <MudText Typo="Typo.h6" Class="mt-4">No registrations found</MudText>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/events" Class="mt-4">Explore Events</MudButton>
+        </div>
     }
     else
     {
-        <MudGrid Spacing="4">
+        <!-- Registration Cards -->
+        <MudGrid>
             @foreach (var reg in FilteredRegistrations)
             {
-                <!-- Adjusted grid to match EventList: LG=4 (3 cols), XL=3 (4 cols) -->
-                <MudItem xs="12" sm="6" md="6" lg="4" xl="3">
-                    <MudCard Elevation="0" Class="my-registrations__card">
+                <MudItem xs="12" sm="6" md="4">
+                    <MudCard Class="h-100 d-flex flex-column">
                         <MudCardMedia Image="@(string.IsNullOrEmpty(reg.FeaturedImageUri) ? $"https://placehold.co/600x400?text={Uri.EscapeDataString(reg.EventTitle ?? "Event")}" : reg.FeaturedImageUri)" 
-                                      Height="180" 
-                                      Class="my-registrations__card-media" />
-                        <MudCardContent>
-                            <div class="my-registrations__badges mb-2">
-                                <MudChip T="string" Size="Size.Small" Color="@(reg.StatusId == 2 ? Color.Success : (reg.StatusId == 3 ? Color.Error : Color.Warning))" Variant="Variant.Outlined">
-                                    @(reg.Status ?? "Pending")
-                                </MudChip>
-                            </div>
+                                      Height="200" />
+                        <MudCardContent Class="flex-grow-1">
+                            <MudText Typo="Typo.button" Color="@(reg.StatusId == 2 ? Color.Success : (reg.StatusId == 3 ? Color.Error : Color.Warning))" Class="mb-1">
+                                @(reg.Status ?? "Pending")
+                            </MudText>
+                            <MudText Typo="Typo.h6" Class="mb-4">@reg.EventTitle</MudText>
                             
-                            <MudText Typo="Typo.h6" Class="my-registrations__card-title">@reg.EventTitle</MudText>
-                            
-                            <div class="my-registrations__card-meta mt-2">
-                                <div class="d-flex align-center gap-1">
-                                    <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" Color="Color.Secondary" />
-                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@reg.StartTime?.ToString("f")</MudText>
-                                </div>
+                            <div class="d-flex align-center gap-2 mt-auto pt-4">
+                                <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" Color="Color.Secondary" />
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@reg.StartTime?.ToString("f")</MudText>
                             </div>
                         </MudCardContent>
-                        <MudCardActions Class="pa-3 pt-0 card-actions">
+                        <MudCardActions>
                             <MudButton Variant="Variant.Text" 
                                        Color="Color.Primary" 
                                        EndIcon="@Icons.Material.Filled.ArrowForward"
-                                       Href="@($"/event/detail/{reg.EventId}")"
-                                       Size="Size.Small">
+                                       Href="@($"/event/detail/{reg.EventId}")">
                                 Details
                             </MudButton>
                             <MudSpacer />
                             <MudButton Variant="Variant.Text" 
                                        Color="Color.Error" 
-                                       OnClick="@(() => CancelRegistration(reg.RegistrationId))"
-                                       Size="Size.Small">
+                                       OnClick="@(() => CancelRegistration(reg.RegistrationId))">
                                 Cancel
                             </MudButton>
                         </MudCardActions>

@@ -1,4 +1,5 @@
 using Explore.Persistence;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -26,11 +27,11 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 {"Keycloak:Audience", "explore-api"},
                 {"Keycloak:RequireHttpsMetadata", "false"},
                 {"Keycloak:MetadataAddress", "https://auth.example.com/.well-known/openid-configuration"},
-                {"ISLAMU_EVENT_REGION", "us-east-1"},
-                {"ISLAMU_EVENT_PRIVATE_BUCKET_NAME", "test-bucket"},
-                {"ISLAMU_EVENT_PRIVATE_ACCESS_KEY_ID", "test-key"},
-                {"ISLAMU_EVENT_PRIVATE_SECRET_ACCESS_KEY_ID", "test-secret"},
-                {"ISLAMU_EVENT_S3_ENDPOINT", "https://s3.example.com"}
+                {"S3Settings:Region", "us-east-1"},
+                {"S3Settings:BucketName", "test-bucket"},
+                {"S3Settings:AccessKeyId", "test-key"},
+                {"S3Settings:SecretAccessKey", "test-secret"},
+                {"S3Settings:Endpoint", "https://s3.example.com"}
             };
             config.AddInMemoryCollection(inMemoryConfig);
         });
