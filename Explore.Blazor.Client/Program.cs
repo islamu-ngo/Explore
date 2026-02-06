@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MudBlazor.Services;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Configuration;
 using Explore.Blazor.Client.Services.Contracts;
 using Microsoft.AspNetCore.Components.Authorization;
 using System.Net.Http;
@@ -47,6 +48,11 @@ builder.Services.AddHttpClient<IEventApiClient, EventApiClient>(client =>
 })
 .AddHttpMessageHandler<BrowserCredentialsMessageHandler>()
 .AddHttpMessageHandler<BffUnauthorizedHandler>();
+
+// Register TenantConfiguration for single-tenant mode (default)
+// In WASM, configuration section may not be available, so defaults from TenantConfiguration class are used
+builder.Services.Configure<TenantConfiguration>(
+    builder.Configuration.GetSection(TenantConfiguration.SectionName));
 
 builder.Services.AddScoped<IEventService, EventService>();
 builder.Services.AddScoped<IOrganizationService, OrganizationService>();

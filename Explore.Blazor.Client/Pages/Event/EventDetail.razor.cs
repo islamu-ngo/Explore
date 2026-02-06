@@ -20,7 +20,6 @@ public partial class EventDetail : ComponentBase
     [Inject] private IDialogService DialogService { get; set; } = default!;
     [Inject] private IMapsService MapsService { get; set; } = default!;
     [Inject] private RouterStateService RouterState { get; set; } = default!;
-    [Inject] private ISnackbar Snackbar { get; set; } = default!;
     [Inject] private IUserService UserService { get; set; } = default!;
     [Inject] private Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
     [Inject] private IEventAspectService EventAspectService { get; set; } = default!;
@@ -404,8 +403,7 @@ public partial class EventDetail : ComponentBase
         if (result != null && !result.Canceled)
         {
             Logger.LogInformation("Registration completed for session {SessionId}", session.Id);
-            Snackbar.Add($"Successfully registered for {session.Title}!", Severity.Success);
-
+            
             // For single session flow, we update status here too
             if (_eventSessions != null && _eventSessions.Count == 1)
             {
@@ -619,18 +617,17 @@ public partial class EventDetail : ComponentBase
                 if (success)
                 {
                     _islamicAspect = null;
-                    Snackbar.Add("Islamic characteristics removed", Severity.Success);
                     StateHasChanged();
                 }
                 else
                 {
-                    Snackbar.Add("Failed to remove Islamic characteristics", Severity.Error);
+                    _errorMessage = "Failed to remove Islamic characteristics";
                 }
             }
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error deleting Islamic aspect for event {EventId}", EventId);
-                Snackbar.Add("An error occurred while removing Islamic characteristics", Severity.Error);
+                _errorMessage = "An error occurred while removing Islamic characteristics";
             }
         }
     }
@@ -654,18 +651,17 @@ public partial class EventDetail : ComponentBase
                 if (success)
                 {
                     _techAspect = null;
-                    Snackbar.Add("Tech characteristics removed", Severity.Success);
                     StateHasChanged();
                 }
                 else
                 {
-                    Snackbar.Add("Failed to remove Tech characteristics", Severity.Error);
+                    _errorMessage = "Failed to remove Tech characteristics";
                 }
             }
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error deleting Tech aspect for event {EventId}", EventId);
-                Snackbar.Add("An error occurred while removing Tech characteristics", Severity.Error);
+                _errorMessage = "An error occurred while removing Tech characteristics";
             }
         }
     }

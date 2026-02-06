@@ -25,7 +25,6 @@ public partial class CreateEvent
     [Inject] protected ITagService TagService { get; set; } = null!;
     [Inject] protected ILocationService LocationService { get; set; } = null!;
     [Inject] protected NavigationManager Navigation { get; set; } = null!;
-    [Inject] protected ISnackbar Snackbar { get; set; } = null!;
     [Inject] protected IDialogService DialogService { get; set; } = null!;
     [Inject] protected ILogger<CreateEvent> Logger { get; set; } = null!;
 
@@ -142,14 +141,12 @@ public partial class CreateEvent
                 _uploadedImageStorageObjectId = uploadResult.StorageObjectId;
                 _uploadError = null;
                 Logger.LogInformation("[CreateEvent] Featured image uploaded successfully. StorageObjectId: {StorageObjectId}", uploadResult.StorageObjectId);
-                Snackbar.Add("Image uploaded successfully!", Severity.Success);
             }
             else
             {
                 var errorMsg = uploadResult?.ErrorMessage ?? "Failed to upload image. Please try again.";
                 Logger.LogWarning("[CreateEvent] Image upload failed: {ErrorMessage}", errorMsg);
                 _uploadError = errorMsg;
-                Snackbar.Add(errorMsg, Severity.Error);
 
                 await ClearUploadState();
             }
@@ -158,7 +155,6 @@ public partial class CreateEvent
         {
             Logger.LogError(ex, "Exception during image upload for {FileName}", fileData.FileName);
             _uploadError = $"Upload error: {ex.Message}";
-            Snackbar.Add("An error occurred while uploading the image", Severity.Error);
 
             await ClearUploadState();
         }
@@ -375,14 +371,13 @@ public partial class CreateEvent
     {
         if (!ValidateForm())
         {
-            Snackbar.Add(errorMessage, Severity.Error);
             return;
         }
 
         // Don't allow submit while image is uploading
         if (_isUploadingImage)
         {
-            Snackbar.Add("Please wait for the image upload to complete.", Severity.Warning);
+            errorMessage = "Please wait for the image upload to complete.";
             return;
         }
 
@@ -467,7 +462,6 @@ public partial class CreateEvent
                     }
                 }
 
-                Snackbar.Add("Event created successfully!", Severity.Success);
                 Navigation.NavigateTo($"/event/detail/{createdEventId}");
             }
             else
@@ -478,7 +472,6 @@ public partial class CreateEvent
                     errorMsg += " Errors: " + string.Join(", ", response.Errors);
                 }
                 errorMessage = errorMsg;
-                Snackbar.Add(errorMessage, Severity.Error);
             }
         }
         catch (Exception ex)
@@ -535,7 +528,7 @@ public partial class CreateEvent
         {
             if (sessions.Count <= 1)
             {
-                Snackbar.Add("You must have at least one session.", Severity.Warning);
+                errorMessage = "You must have at least one session.";
                 return;
             }
 
@@ -558,7 +551,7 @@ public partial class CreateEvent
                     }
                     catch (Exception ex)
                     {
-                        Snackbar.Add($"Failed to delete session: {ex.Message}", Severity.Error);
+                        errorMessage = $"Failed to delete session: {ex.Message}";
                     }
                 }
             }

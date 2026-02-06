@@ -7,42 +7,44 @@
 @attribute [Authorize]
 
 <PageTitle>Create Event</PageTitle>
-<MudContainer Class="create-event" DisableGutters="true">
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
     @if (isLoading)
     {
-        <div class="create-event__loading">
+        <div class="d-flex flex-column align-center justify-center py-16">
             <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+            <MudText Typo="Typo.body1" Class="mt-4" Color="Color.Secondary">Loading...</MudText>
         </div>
     }
     else if (!_isRetrying)
     {
         <MudButton StartIcon="@Icons.Material.Filled.ArrowBack"
-                   Color="Color.Primary"
+                   Color="Color.Secondary"
                    Variant="Variant.Text"
                    OnClick="@(() => Navigation.NavigateTo("/events"))"
-                   Class="create-event__back-button">
+                   Class="mb-4 rounded-pill">
             Back to Events
         </MudButton>
 
-        <MudPaper Class="isl-card isl-form-card" Elevation="1">
-            <MudCardHeader>
-                <CardHeaderContent>
-                    <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
-                        <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Large" Color="Color.Primary" />
-                        <div>
-                            <MudText Typo="Typo.h5">Create Event</MudText>
-                            <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                @GetPublisherDescription()
-                            </MudText>
-                        </div>
-                    </MudStack>
-                </CardHeaderContent>
-            </MudCardHeader>
+        <MudPaper Elevation="0" Class="rounded-xl border-solid border-1 mud-border-lines-default overflow-hidden">
+            <div class="pa-6 border-b-1 mud-border-lines-default bg-surface">
+                <div class="d-flex align-center gap-4">
+                    <MudAvatar Rounded="true" Size="Size.Large" Color="Color.Primary" Variant="Variant.Filled">
+                        <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Medium" />
+                    </MudAvatar>
+                    <div>
+                        <MudText Typo="Typo.h5" Style="font-weight: 700;">Create Event</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            @GetPublisherDescription()
+                        </MudText>
+                    </div>
+                </div>
+            </div>
 
-            <MudCardContent>
+            <div class="pa-6">
                 @if (!string.IsNullOrWhiteSpace(errorMessage))
                 {
-                    <MudAlert Severity="Severity.Error" Class="mb-4" ShowCloseIcon="true" CloseIconClicked="@(() => errorMessage = string.Empty)">
+                    <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-6 rounded-lg" ShowCloseIcon="true" CloseIconClicked="@(() => errorMessage = string.Empty)">
                         @errorMessage
                     </MudAlert>
                 }
@@ -50,134 +52,149 @@
                 <EditForm Model="createDto" OnValidSubmit="@HandleSubmit">
                     <DataAnnotationsValidator />
 
-                    <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4">
+                    <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" Color="Color.Transparent" SliderColor="Color.Primary">
                         <MudTabPanel Text="Publish As" Icon="@Icons.Material.Filled.AccountCircle">
-                            <MudText Class="isl-form__section-title mb-3">Who is publishing this event?</MudText>
+                            <div class="py-6">
+                                <MudText Typo="Typo.h6" Class="mb-4">Who is publishing this event?</MudText>
 
-                            <MudRadioGroup @bind-Value="_publisherMode" T="string" Class="mb-4">
-                                <MudRadio Value="@("personal")" Color="Color.Primary" Dense="true">
-                                    <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
-                                        <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
-                                        <MudText>Myself (User Reported)</MudText>
+                                <MudRadioGroup @bind-Value="_publisherMode" T="string" Class="mb-6">
+                                    <MudStack Spacing="2">
+                                        <MudPaper Elevation="0" Class="pa-4 border-solid border-1 mud-border-lines-default rounded-lg">
+                                            <MudRadio Value="@("personal")" Color="Color.Primary">
+                                                <span class="d-flex align-center gap-2">
+                                                    <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
+                                                    <MudText>Myself (User Reported)</MudText>
+                                                </span>
+                                            </MudRadio>
+                                        </MudPaper>
+                                        
+                                        <MudPaper Elevation="0" Class="pa-4 border-solid border-1 mud-border-lines-default rounded-lg">
+                                            <MudRadio Value="@("organization")" Color="Color.Primary" Disabled="@(_myOrganizations == null || !_myOrganizations.Any())">
+                                                <span class="d-flex align-center gap-2">
+                                                    <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" />
+                                                    <MudText>An Organization</MudText>
+                                                </span>
+                                            </MudRadio>
+                                        </MudPaper>
                                     </MudStack>
-                                </MudRadio>
-                                <MudRadio Value="@("organization")" Color="Color.Primary" Dense="true"
-                                          Disabled="@(_myOrganizations == null || !_myOrganizations.Any())">
-                                    <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
-                                        <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" />
-                                        <MudText>An Organization</MudText>
-                                    </MudStack>
-                                </MudRadio>
-                            </MudRadioGroup>
+                                </MudRadioGroup>
 
-                            @if (_publisherMode == "personal")
-                            {
-                                <MudAlert Severity="Severity.Info" Class="mb-4" Variant="Variant.Outlined">
-                                    Events published in your name will be marked as <strong>User Reported</strong>.
-                                    These events are subject to community moderation.
-                                </MudAlert>
-                            }
-
-                            @if (_publisherMode == "organization")
-                            {
-                                @if (_myOrganizations != null && _myOrganizations.Any())
+                                @if (_publisherMode == "personal")
                                 {
-                                    <MudSelect Value="_selectedOrganizationId"
-                                               T="Guid?"
-                                               Label="Select Organization"
-                                               Variant="Variant.Outlined"
-                                               Required="true"
-                                               Class="mb-3"
-                                               ValueChanged="OnOrganizationSelected">
-                                        <MudSelectItem T="Guid?" Value="@((Guid?)null)">-- Select an organization --</MudSelectItem>
-                                        @foreach (var org in _myOrganizations)
-                                        {
-                                            <MudSelectItem T="Guid?" Value="@((Guid?)org.Id)">
-                                                @org.FullName @(org.CurrentUserRole.HasValue ? $"({GetRoleName((int)org.CurrentUserRole.Value)})" : "")
-                                            </MudSelectItem>
-                                        }
-                                    </MudSelect>
-                                }
-                                else
-                                {
-                                    <MudAlert Severity="Severity.Warning" Class="mb-4">
-                                        You are not a member of any organizations. Create or join an organization first.
+                                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-4">
+                                        Events published in your name will be marked as <strong>User Reported</strong>.
+                                        These events are subject to community moderation.
                                     </MudAlert>
                                 }
 
-                                @if (!string.IsNullOrEmpty(_organizationRoleError))
+                                @if (_publisherMode == "organization")
                                 {
-                                    <MudAlert Severity="Severity.Error" Class="mb-4">
-                                        @_organizationRoleError
-                                    </MudAlert>
+                                    @if (_myOrganizations != null && _myOrganizations.Any())
+                                    {
+                                        <MudSelect Value="_selectedOrganizationId"
+                                                   T="Guid?"
+                                                   Label="Select Organization"
+                                                   Variant="Variant.Outlined"
+                                                   AnchorOrigin="Origin.BottomCenter"
+                                                   Required="true"
+                                                   Class="mb-4"
+                                                   ValueChanged="OnOrganizationSelected">
+                                            <MudSelectItem T="Guid?" Value="@((Guid?)null)">-- Select an organization --</MudSelectItem>
+                                            @foreach (var org in _myOrganizations)
+                                            {
+                                                <MudSelectItem T="Guid?" Value="@((Guid?)org.Id)">
+                                                    @org.FullName @(org.CurrentUserRole.HasValue ? $"({GetRoleName((int)org.CurrentUserRole.Value)})" : "")
+                                                </MudSelectItem>
+                                            }
+                                        </MudSelect>
+                                    }
+                                    else
+                                    {
+                                        <MudAlert Severity="Severity.Warning" Class="mb-4">
+                                            You are not a member of any organizations. Create or join an organization first.
+                                        </MudAlert>
+                                    }
+
+                                    @if (!string.IsNullOrEmpty(_organizationRoleError))
+                                    {
+                                        <MudAlert Severity="Severity.Error" Class="mb-4">
+                                            @_organizationRoleError
+                                        </MudAlert>
+                                    }
                                 }
-                            }
+                            </div>
                         </MudTabPanel>
 
                         <MudTabPanel Text="General Info" Icon="@Icons.Material.Filled.Info">
-                            <MudGrid>
-                                <MudItem xs="12">
-                                    <MudTextField @bind-Value="createDto.Title"
-                                                  Label="Event Title"
-                                                  Variant="Variant.Outlined"
-                                                  Required
-                                                  FullWidth
-                                                  Class="mb-4" />
+                            <div class="py-6">
+                                <MudGrid Spacing="3">
+                                    <MudItem xs="12">
+                                        <MudTextField @bind-Value="createDto.Title"
+                                                      Label="Event Title"
+                                                      Variant="Variant.Outlined"
+                                                      Required
+                                                      FullWidth />
+                                    </MudItem>
+                                    
+                                    <MudItem xs="12">
+                                        <MudTextField @bind-Value="createDto.Description"
+                                                      Label="Description"
+                                                      Variant="Variant.Outlined"
+                                                      Lines="6"
+                                                      FullWidth />
+                                    </MudItem>
 
-                                    <MudTextField @bind-Value="createDto.Description"
-                                                  Label="Description"
-                                                  Variant="Variant.Outlined"
-                                                  Lines="6"
-                                                  FullWidth
-                                                  Class="mb-4" />
-
-                                    <MudSelect @bind-Value="createDto.EventTypeId"
-                                               Label="Event Type"
-                                               Variant="Variant.Outlined"
-                                               Required
-                                               Class="mb-4">
-                                        @if (eventTypes != null)
-                                        {
-                                            @foreach (var type in eventTypes)
+                                    <MudItem xs="12" md="6">
+                                        <MudSelect @bind-Value="createDto.EventTypeId"
+                                                   Label="Event Type"
+                                                   Variant="Variant.Outlined"
+                                                   AnchorOrigin="Origin.BottomCenter"
+                                                   Required>
+                                            @if (eventTypes != null)
                                             {
-                                                <MudSelectItem Value="@type.Id">@type.FullName</MudSelectItem>
+                                                @foreach (var type in eventTypes)
+                                                {
+                                                    <MudSelectItem Value="@type.Id">@type.FullName</MudSelectItem>
+                                                }
                                             }
-                                        }
-                                    </MudSelect>
+                                        </MudSelect>
+                                    </MudItem>
 
-                                    <MudText Class="isl-form__section-title mb-2 mt-2">Audience</MudText>
-                                    <MudGrid>
-                                        <MudItem xs="12" md="6">
-                                            <MudSelect @bind-Value="createDto.AudienceGenderId" Label="Gender" Variant="Variant.Outlined">
-                                                @if (audienceGenders != null)
-                                                {
-                                                    @foreach (var g in audienceGenders)
+                                    <MudItem xs="12">
+                                        <MudText Typo="Typo.subtitle2" Class="mb-2 mt-2" Color="Color.Secondary">Audience</MudText>
+                                        <MudGrid Spacing="2">
+                                            <MudItem xs="12" md="6">
+                                                <MudSelect @bind-Value="createDto.AudienceGenderId" Label="Gender" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter">
+                                                    @if (audienceGenders != null)
                                                     {
-                                                        <MudSelectItem Value="@g.Id">@g.FullName</MudSelectItem>
+                                                        @foreach (var g in audienceGenders)
+                                                        {
+                                                            <MudSelectItem Value="@g.Id">@g.FullName</MudSelectItem>
+                                                        }
                                                     }
-                                                }
-                                            </MudSelect>
-                                        </MudItem>
-                                        <MudItem xs="12" md="6">
-                                            <MudSelect @bind-Value="createDto.AudienceAgeId" Label="Age Group" Variant="Variant.Outlined">
-                                                @if (audienceAges != null)
-                                                {
-                                                    @foreach (var a in audienceAges)
+                                                </MudSelect>
+                                            </MudItem>
+                                            <MudItem xs="12" md="6">
+                                                <MudSelect @bind-Value="createDto.AudienceAgeId" Label="Age Group" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter">
+                                                    @if (audienceAges != null)
                                                     {
-                                                        <MudSelectItem Value="@a.Id">@a.FullName</MudSelectItem>
+                                                        @foreach (var a in audienceAges)
+                                                        {
+                                                            <MudSelectItem Value="@a.Id">@a.FullName</MudSelectItem>
+                                                        }
                                                     }
-                                                }
-                                            </MudSelect>
-                                        </MudItem>
-                                    </MudGrid>
-                                </MudItem>
-                            </MudGrid>
+                                                </MudSelect>
+                                            </MudItem>
+                                        </MudGrid>
+                                    </MudItem>
+                                </MudGrid>
+                            </div>
                         </MudTabPanel>
 
                         <MudTabPanel Text="Media" Icon="@Icons.Material.Filled.Image">
-                            <div class="d-flex justify-center">
+                            <div class="py-6 d-flex justify-center">
                                 <div style="max-width: 600px; width: 100%;">
-                                    <MudText Class="isl-form__section-title mb-3 text-center">Event Image</MudText>
+                                    <MudText Typo="Typo.h6" Class="mb-4 text-center">Event Image</MudText>
                                     <ImageUpload @ref="_imageUploadComponent"
                                                  @bind-PreviewUrl="imagePreviewUrl"
                                                  FileDataSelected="OnImageFileDataSelected"
@@ -187,12 +204,14 @@
                                                  PlaceholderText="Upload featured image" />
                                     @if (_isUploadingImage)
                                     {
-                                        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mt-2" />
-                                        <MudText Typo="Typo.caption" Color="Color.Secondary" Align="Align.Center">Uploading image...</MudText>
+                                        <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.Center" Class="mt-4">
+                                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Primary" />
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">Uploading image...</MudText>
+                                        </MudStack>
                                     }
                                     @if (_uploadError != null)
                                     {
-                                        <MudAlert Severity="Severity.Error" Class="mt-2" ShowCloseIcon="true" CloseIconClicked="@(() => _uploadError = null)">
+                                        <MudAlert Severity="Severity.Error" Class="mt-4" ShowCloseIcon="true" CloseIconClicked="@(() => _uploadError = null)">
                                             @_uploadError
                                         </MudAlert>
                                     }
@@ -201,103 +220,115 @@
                         </MudTabPanel>
 
                         <MudTabPanel Text="Sessions" Icon="@Icons.Material.Filled.EventAvailable">
-                            <MudText Class="isl-form__section-title mb-3">
-                                Event Sessions
-                                <MudText Typo="Typo.caption" Color="Color.Default" Class="ml-2">(Minimum 1 required)</MudText>
-                            </MudText>
+                            <div class="py-6">
+                                <div class="d-flex align-center gap-2 mb-4">
+                                    <MudText Typo="Typo.h6">Event Sessions</MudText>
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Info">Minimum 1 required</MudChip>
+                                </div>
 
-                            <div class="d-flex flex-column gap-4">
-                                @for (int i = 0; i < sessions.Count; i++)
-                                {
-                                    var index = i;
-                                    <MudCard Elevation="0" Class="pa-4 border-solid border-1 mud-border-lines-default rounded-lg">
-                                        <div class="d-flex justify-space-between align-center mb-4">
-                                            <MudText Typo="Typo.h6">Session @(index + 1)</MudText>
-                                            @if (sessions.Count > 1)
-                                            {
-                                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveSession(index))" />
-                                            }
-                                        </div>
+                                <MudStack Spacing="4">
+                                    @for (int i = 0; i < sessions.Count; i++)
+                                    {
+                                        var index = i;
+                                        <MudCard Elevation="0" Class="pa-4 border-solid border-1 mud-border-lines-default rounded-lg">
+                                            <div class="d-flex justify-space-between align-center mb-4">
+                                                <MudText Typo="Typo.subtitle1" Style="font-weight: 700;">Session @(index + 1)</MudText>
+                                                @if (sessions.Count > 1)
+                                                {
+                                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => RemoveSession(index))" />
+                                                }
+                                            </div>
 
-                                        <EventSessionEditor Session="sessions[index]"
-                                                            SessionChanged="@((s) => OnSessionChanged(index, s))"
-                                                            Index="index"
-                                                            ShowRemoveButton="false"
-                                                            ShowLocationSelector="true"
-                                                            Locations="locations"
-                                                            RegistrationModes="registrationModes"
-                                                            ShowLanguageSelector="true"
-                                                            Languages="languages" />
-                                    </MudCard>
-                                }
-                            </div>
+                                            <EventSessionEditor Session="sessions[index]"
+                                                                SessionChanged="@((s) => OnSessionChanged(index, s))"
+                                                                Index="index"
+                                                                ShowRemoveButton="false"
+                                                                ShowLocationSelector="true"
+                                                                Locations="locations"
+                                                                RegistrationModes="registrationModes"
+                                                                ShowLanguageSelector="true"
+                                                                Languages="languages" />
+                                        </MudCard>
+                                    }
+                                </MudStack>
 
-                            <div class="d-flex justify-center mt-4">
-                                <MudButton Variant="Variant.Outlined"
-                                           Color="Color.Primary"
-                                           StartIcon="@Icons.Material.Filled.Add"
-                                           OnClick="AddSession">
-                                    Add Another Session
-                                </MudButton>
+                                <div class="d-flex justify-center mt-6">
+                                    <MudButton Variant="Variant.Outlined"
+                                               Color="Color.Primary"
+                                               StartIcon="@Icons.Material.Filled.Add"
+                                               OnClick="AddSession"
+                                               Class="rounded-pill">
+                                        Add Another Session
+                                    </MudButton>
+                                </div>
                             </div>
                         </MudTabPanel>
 
                         <MudTabPanel Text="Settings" Icon="@Icons.Material.Filled.Settings">
-                            <MudGrid>
-                                <MudItem xs="12" md="6">
-                                    <MudText Class="isl-form__section-title mb-3">Format & Visibility</MudText>
-                                    <MudSelect @bind-Value="createDto.EventFormatId" Label="Format" Variant="Variant.Outlined" Class="mb-3">
-                                        @if (eventFormats != null)
-                                        {
-                                            @foreach (var f in eventFormats)
-                                            {
-                                                <MudSelectItem Value="@f.Id">@f.FullName</MudSelectItem>
-                                            }
-                                        }
-                                    </MudSelect>
-                                    <MudSelect @bind-Value="createDto.VisibilityTypeId" Label="Visibility" Variant="Variant.Outlined">
-                                        @if (visibilityTypes != null)
-                                        {
-                                            @foreach (var v in visibilityTypes)
-                                            {
-                                                <MudSelectItem Value="@v.Id">@v.FullName</MudSelectItem>
-                                            }
-                                        }
-                                    </MudSelect>
-                                </MudItem>
+                            <div class="py-6">
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12" md="6">
+                                        <MudText Typo="Typo.subtitle1" Class="mb-3" Style="font-weight: 700;">Format & Visibility</MudText>
+                                        <MudStack Spacing="3">
+                                            <MudSelect @bind-Value="createDto.EventFormatId" Label="Format" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter">
+                                                @if (eventFormats != null)
+                                                {
+                                                    @foreach (var f in eventFormats)
+                                                    {
+                                                        <MudSelectItem Value="@f.Id">@f.FullName</MudSelectItem>
+                                                    }
+                                                }
+                                            </MudSelect>
+                                            <MudSelect @bind-Value="createDto.VisibilityTypeId" Label="Visibility" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter">
+                                                @if (visibilityTypes != null)
+                                                {
+                                                    @foreach (var v in visibilityTypes)
+                                                    {
+                                                        <MudSelectItem Value="@v.Id">@v.FullName</MudSelectItem>
+                                                    }
+                                                }
+                                            </MudSelect>
+                                        </MudStack>
+                                    </MudItem>
 
-                                <MudItem xs="12" md="6">
-                                    <MudText Class="isl-form__section-title mb-3">Categorization</MudText>
-                                    <MudSelect T="Guid" Label="Categories" MultiSelection="true" @bind-SelectedValues="selectedCategoryIds" Variant="Variant.Outlined" Class="mb-3">
-                                        @if (allCategories != null)
-                                        {
-                                            @foreach (var c in allCategories)
-                                            {
-                                                <MudSelectItem Value="@c.Id">@c.FullName</MudSelectItem>
-                                            }
-                                        }
-                                    </MudSelect>
-                                    <MudSelect T="Guid" Label="Tags" MultiSelection="true" @bind-SelectedValues="selectedTagIds" Variant="Variant.Outlined">
-                                        @if (allTags != null)
-                                        {
-                                            @foreach (var t in allTags)
-                                            {
-                                                <MudSelectItem Value="@t.Id">@t.FullName</MudSelectItem>
-                                            }
-                                        }
-                                    </MudSelect>
-                                </MudItem>
-                            </MudGrid>
+                                    <MudItem xs="12" md="6">
+                                        <MudText Typo="Typo.subtitle1" Class="mb-3" Style="font-weight: 700;">Categorization</MudText>
+                                        <MudStack Spacing="3">
+                                            <MudSelect T="Guid" Label="Categories" MultiSelection="true" @bind-SelectedValues="selectedCategoryIds" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter">
+                                                @if (allCategories != null)
+                                                {
+                                                    @foreach (var c in allCategories)
+                                                    {
+                                                        <MudSelectItem Value="@c.Id">@c.FullName</MudSelectItem>
+                                                    }
+                                                }
+                                            </MudSelect>
+                                            <MudSelect T="Guid" Label="Tags" MultiSelection="true" @bind-SelectedValues="selectedTagIds" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter">
+                                                @if (allTags != null)
+                                                {
+                                                    @foreach (var t in allTags)
+                                                    {
+                                                        <MudSelectItem Value="@t.Id">@t.FullName</MudSelectItem>
+                                                    }
+                                                }
+                                            </MudSelect>
+                                        </MudStack>
+                                    </MudItem>
+                                </MudGrid>
+                            </div>
                         </MudTabPanel>
                     </MudTabs>
 
-                    <div class="d-flex justify-end mt-6 gap-2">
-                        <MudButton Variant="Variant.Text" OnClick="@(() => Navigation.NavigateTo("/events"))">Cancel</MudButton>
+                    <MudDivider Class="my-4" />
+
+                    <div class="d-flex justify-end gap-3">
+                        <MudButton Variant="Variant.Text" OnClick="@(() => Navigation.NavigateTo("/events"))" Class="rounded-pill">Cancel</MudButton>
                         <MudButton ButtonType="ButtonType.Submit"
                                    Variant="Variant.Filled"
                                    Color="Color.Primary"
                                    Disabled="@(isProcessing || _isUploadingImage || !string.IsNullOrEmpty(_organizationRoleError))"
-                                   StartIcon="@(isProcessing || _isUploadingImage ? null : Icons.Material.Filled.Save)">
+                                   StartIcon="@(isProcessing || _isUploadingImage ? null : Icons.Material.Filled.Save)"
+                                   Class="rounded-pill px-6">
                             @if (isProcessing)
                             {
                                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
@@ -315,7 +346,7 @@
                         </MudButton>
                     </div>
                 </EditForm>
-            </MudCardContent>
+            </div>
         </MudPaper>
     }
 </MudContainer>
