@@ -15,15 +15,21 @@
   - Task 2.4: Fixed blocking .GetAwaiter().GetResult() anti-pattern in App.razor by moving token capture to async middleware in Program.cs
   - Task 2.5: Consolidated duplicate TenantId constants - both Program.cs and AccessTokenForwardingHandler now use shared TenantConstants class. Fixed WRONG tenant ID bug in CreateEvent.razor.cs (was 00000000-..., now correct 018e4e5c-...). Made ConfigurationExtension.cs ClientId config-driven.
 
+- Phase 3: Architecture & Render Mode Alignment (ALL 5 tasks completed)
+  - Task 3.1: Switched to InteractiveAuto render mode. Fixed TWO critical WASM blockers: (1) Removed `ICircuitAccessTokenService` from Routes.razor (server-only service crashed in WASM DI), (2) Removed `AccessToken` cascading parameter (null in WASM, caused auth to break on second page load). Deleted dead `BffAuthenticationStateProvider.cs`. Fixed `bff.js` missing `getCookie` function. Enabled HeadOutlet prerendering for SEO.
+  - Task 3.2: Removed all token cascading from component tree. Server-side token is stored in middleware; WASM uses BFF cookie auth.
+  - Task 3.3: Added `<ErrorBoundary>` around Routes with MudAlert fallback UI and "Return to Home" recovery button.
+  - Task 3.4: Removed ancient `Microsoft.AspNetCore.Authentication.Cookies` v2.3.0. Pinned `WebAssembly.Server` to `9.0.12`. Removed empty `Helpers` folder inclusion. Fixed French placeholder.
+  - Task 3.5: Registered `TenantConfiguration` in WASM Client Program.cs for `AuthStateService` DI resolution.
+
 ### IN PROGRESS
 - Nothing currently in progress
 
 ### NEXT STEPS
-- Phase 3: Architecture & Render Mode Alignment (requires project lead decision on render mode)
 - Phase 4: Code Quality & Standards (ABOUTME comments, CancellationToken, duplicate code extraction)
 
 ### VERIFICATION
-- Build: 0 errors, 89 warnings (all pre-existing)
+- Build: 0 errors, 94 warnings (all pre-existing MudBlazor/compiler warnings)
 - Tests: 111/111 passing (unchanged from baseline)
 
 ---

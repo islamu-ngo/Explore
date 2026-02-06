@@ -11,101 +11,119 @@
 
 <PageTitle>Organization Details</PageTitle>
 
-@if (isLoading)
-{
-    <MudContainer MaxWidth="MaxWidth.Large" Class="organization-details organization-details--loading">
-        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
-        <MudText Typo="Typo.h6" Class="mt-4">Loading organization...</MudText>
-    </MudContainer>
-}
-else if (organization == null)
-{
-    <MudContainer MaxWidth="MaxWidth.Large" Class="organization-details organization-details--error">
-        <MudAlert Severity="Severity.Error">Organization not found.</MudAlert>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => NavigationManager.NavigateTo("/organization/my"))" Class="mt-4">
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-8">
+    @if (isLoading)
+    {
+        <div class="d-flex flex-column align-center justify-center py-16">
+            <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+            <MudText Typo="Typo.body1" Class="mt-4" Color="Color.Secondary">Loading organization...</MudText>
+        </div>
+    }
+    else if (organization == null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Filled">Organization not found.</MudAlert>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => NavigationManager.NavigateTo("/organization/my"))" Class="mt-4 rounded-pill">
             Back to My Organizations
         </MudButton>
-    </MudContainer>
-}
-else
-{
-    <MudContainer MaxWidth="MaxWidth.Large" Class="organization-details">
-        <MudButton StartIcon="@Icons.Material.Filled.ArrowBack"
-                   Color="Color.Primary"
-                   Variant="Variant.Text"
-                   OnClick="@(() => NavigationManager.NavigateTo("/organization/my"))"
-                   Class="mb-4">
-            Back to List
-        </MudButton>
+    }
+    else
+    {
+        <div class="d-flex justify-space-between align-center flex-wrap gap-4 mb-6">
+            <MudButton StartIcon="@Icons.Material.Filled.ArrowBack"
+                       Color="Color.Secondary"
+                       Variant="Variant.Text"
+                       OnClick="@(() => NavigationManager.NavigateTo("/organization/my"))"
+                       Class="rounded-pill">
+                Back to List
+            </MudButton>
 
-        <MudCard Elevation="3" Class="pa-2">
-            <MudCardHeader>
-                <CardHeaderAvatar>
-                    <MudAvatar Color="Color.Primary" Size="Size.Large" Variant="Variant.Filled">
+            <div class="d-flex gap-2">
+                @if (canEdit && !isEditMode)
+                {
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Success"
+                               StartIcon="@Icons.Material.Filled.Event"
+                               OnClick="@(() => NavigationManager.NavigateTo($"/organization/{Id}/create-event"))"
+                               Class="rounded-pill">
+                        Create Event
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Secondary"
+                               StartIcon="@Icons.Material.Filled.People"
+                               OnClick="@(() => NavigationManager.NavigateTo($"/organization/{Id}/members"))"
+                               Class="rounded-pill">
+                        Members
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Edit"
+                               OnClick="ToggleEditMode"
+                               Class="rounded-pill">
+                        Edit
+                    </MudButton>
+                }
+                else if (canEdit && isEditMode)
+                {
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Secondary"
+                               OnClick="ToggleEditMode"
+                               StartIcon="@Icons.Material.Filled.Cancel"
+                               Class="rounded-pill">
+                        Cancel
+                    </MudButton>
+                }
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-6 rounded-lg" ShowCloseIcon="true" CloseIconClicked="@(() => errorMessage = string.Empty)">
+                @errorMessage
+            </MudAlert>
+        }
+
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <MudAlert Severity="Severity.Success" Variant="Variant.Filled" Class="mb-6 rounded-lg" ShowCloseIcon="true" CloseIconClicked="@(() => successMessage = string.Empty)">
+                @successMessage
+            </MudAlert>
+        }
+
+        <MudCard Elevation="0" Class="rounded-xl border-solid border-1 mud-border-lines-default overflow-hidden">
+            <div class="pa-6 border-b-1 mud-border-lines-default bg-surface">
+                <div class="d-flex align-center gap-4">
+                    <MudAvatar Color="Color.Primary" Size="Size.Large" Variant="Variant.Filled" Rounded="true">
                         @organization.FullName.Substring(0, 1).ToUpper()
                     </MudAvatar>
-                </CardHeaderAvatar>
-                <CardHeaderContent>
-                    <div class="d-flex align-center gap-2 flex-wrap">
-                        <MudText Typo="Typo.h4" Class="mr-2">@organization.FullName</MudText>
-                        <MudChip T="string" Color="@GetStatusColor(organization.ApprovalStatusId ?? 0)" Size="Size.Small" Variant="Variant.Outlined">
-                            @(organization.ApprovalStatusFullName ?? "Pending")
-                        </MudChip>
+                    <div>
+                        <div class="d-flex align-center gap-3">
+                            <MudText Typo="Typo.h4" Style="font-weight: 800;">@organization.FullName</MudText>
+                            <MudChip T="string" Color="@GetStatusColor(organization.ApprovalStatusId ?? 0)" Size="Size.Small" Variant="Variant.Filled">
+                                @(organization.ApprovalStatusFullName ?? "Pending")
+                            </MudChip>
+                        </div>
+                        <MudText Typo="Typo.body1" Color="Color.Secondary">Registered Organization</MudText>
                     </div>
-                </CardHeaderContent>
-                <CardHeaderActions>
-                    @if (canEdit && !isEditMode)
-                    {
-                        <MudTooltip Text="Create Event">
-                            <MudButton Variant="Variant.Filled"
-                                       Color="Color.Success"
-                                       StartIcon="@Icons.Material.Filled.Event"
-                                       Size="Size.Small"
-                                       OnClick="@(() => NavigationManager.NavigateTo($"/organization/{Id}/create-event"))"
-                                       Class="mr-2">
-                                Create Event
-                            </MudButton>
-                        </MudTooltip>
-                        <MudTooltip Text="Manage Members">
-                            <MudIconButton Icon="@Icons.Material.Filled.People"
-                                           Color="Color.Secondary"
-                                           OnClick="@(() => NavigationManager.NavigateTo($"/organization/{Id}/members"))" />
-                        </MudTooltip>
-                        <MudTooltip Text="Edit Organization">
-                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                           Color="Color.Primary"
-                                           OnClick="ToggleEditMode" />
-                        </MudTooltip>
-                    }
-                    else if (canEdit && isEditMode)
-                    {
-                         <MudButton Variant="Variant.Outlined"
-                                   Color="Color.Secondary"
-                                   OnClick="ToggleEditMode"
-                                   StartIcon="@Icons.Material.Filled.Cancel"
-                                   Size="Size.Small">
-                            Cancel
-                        </MudButton>
-                    }
-                </CardHeaderActions>
-            </MudCardHeader>
+                </div>
+            </div>
 
-            <MudDivider Class="my-2" />
-
-            <MudCardContent>
+            <MudCardContent Class="pa-6">
                 @if (!isEditMode)
                 {
-                    <MudGrid>
+                    <MudGrid Spacing="4">
                         <MudItem xs="12" md="6">
-                            <MudList T="string" Dense="true" DisablePadding="true">
-                                <MudListItem Icon="@Icons.Material.Filled.Email" IconColor="Color.Primary">
-                                    <div class="d-flex flex-column">
-                                        <MudText Typo="Typo.caption" Color="Color.Secondary">Email</MudText>
+                            <MudText Typo="Typo.h6" Class="mb-4" Style="font-weight: 700;">General Information</MudText>
+                            <MudStack Spacing="3">
+                                <div class="d-flex align-center gap-3">
+                                    <MudIcon Icon="@Icons.Material.Filled.Email" Color="Color.Primary" Size="Size.Small" />
+                                    <div>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">Contact Email</MudText>
                                         <MudText Typo="Typo.body1">@organization.Email</MudText>
                                     </div>
-                                </MudListItem>
-                                <MudListItem Icon="@Icons.Material.Filled.Language" IconColor="Color.Primary">
-                                    <div class="d-flex flex-column">
+                                </div>
+                                <div class="d-flex align-center gap-3">
+                                    <MudIcon Icon="@Icons.Material.Filled.Language" Color="Color.Primary" Size="Size.Small" />
+                                    <div>
                                         <MudText Typo="Typo.caption" Color="Color.Secondary">Website</MudText>
                                         @if (!string.IsNullOrEmpty(organization.WebsiteUrl))
                                         {
@@ -113,31 +131,30 @@ else
                                         }
                                         else
                                         {
-                                            <MudText Typo="Typo.body1" Class="mud-text-secondary">Not provided</MudText>
+                                            <MudText Typo="Typo.body1" Color="Color.Secondary">Not provided</MudText>
                                         }
                                     </div>
-                                </MudListItem>
-                            </MudList>
+                                </div>
+                            </MudStack>
                         </MudItem>
+                        
                         <MudItem xs="12" md="6">
-                            <MudList T="string" Dense="true" DisablePadding="true">
-                                <MudListItem Icon="@Icons.Material.Filled.LocationOn" IconColor="Color.Primary">
-                                    <div class="d-flex flex-column">
-                                        <MudText Typo="Typo.caption" Color="Color.Secondary">Address</MudText>
-                                        <MudText Typo="Typo.body1">@organization.Address</MudText>
-                                        <MudText Typo="Typo.body1">@organization.Postcode @organization.City</MudText>
-                                        <MudText Typo="Typo.body1">@organization.Country</MudText>
-                                    </div>
-                                </MudListItem>
-                            </MudList>
+                            <MudText Typo="Typo.h6" Class="mb-4" Style="font-weight: 700;">Address</MudText>
+                            <div class="d-flex gap-3">
+                                <MudIcon Icon="@Icons.Material.Filled.LocationOn" Color="Color.Primary" Size="Size.Small" />
+                                <div>
+                                    <MudText Typo="Typo.body1">@organization.Address</MudText>
+                                    <MudText Typo="Typo.body1">@organization.Postcode @organization.City</MudText>
+                                    <MudText Typo="Typo.body1" Style="font-weight: 600;">@organization.Country</MudText>
+                                </div>
+                            </div>
                         </MudItem>
                     </MudGrid>
                 }
                 else
                 {
-                    <!-- Edit Form -->
                     <MudForm @ref="form" @bind-IsValid="@formValid">
-                        <MudGrid>
+                        <MudGrid Spacing="3">
                             <MudItem xs="12">
                                 <MudTextField @bind-Value="editModel.FullName"
                                               Label="Organization Name"
@@ -156,7 +173,7 @@ else
                                               AdornmentIcon="@Icons.Material.Filled.Email"
                                               Required="true"
                                               RequiredError="Email is required"
-                                              Validation="@(new Func<string, string>(ValidateEmail))" />
+                                              Validation="@(new Func<string, string?>(ValidateEmail))" />
                             </MudItem>
 
                             <MudItem xs="12" sm="6">
@@ -168,7 +185,7 @@ else
                             </MudItem>
 
                             <MudItem xs="12">
-                                <MudText Typo="Typo.subtitle1" Class="mt-4 mb-2" Color="Color.Primary">Location Details</MudText>
+                                <MudText Typo="Typo.subtitle1" Class="mt-4 mb-2" Color="Color.Primary" Style="font-weight: 700;">Location Details</MudText>
                                 <MudDivider Class="mb-4"/>
                             </MudItem>
 
@@ -187,11 +204,11 @@ else
                                                  Label="Postcode"
                                                  Variant="Variant.Outlined"
                                                  Adornment="Adornment.Start"
-                                                 AdornmentIcon="@Icons.Material.Filled.MarkunreadMailbox"
+                                                 AdornmentIcon="@Icons.Material.Filled.Pin"
                                                  Required="true"
                                                  RequiredError="Postcode is required"
-                                                 Min="1000"
-                                                 Max="99999" />
+                                                 HideSpinButtons="true"
+                                                 Min="1000" />
                             </MudItem>
 
                             <MudItem xs="12" sm="6">
@@ -214,12 +231,13 @@ else
                                               RequiredError="Country is required" />
                             </MudItem>
 
-                            <MudItem xs="12" Class="d-flex justify-end gap-2 mt-4">
+                            <MudItem xs="12" Class="d-flex justify-end gap-3 mt-6">
                                 <MudButton Variant="Variant.Filled"
                                            Color="Color.Primary"
                                            OnClick="SaveChanges"
                                            StartIcon="@Icons.Material.Filled.Save"
-                                           Disabled="!formValid || isSaving">
+                                           Disabled="!formValid || isSaving"
+                                           Class="rounded-pill px-8">
                                     @if (isSaving)
                                     {
                                         <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
@@ -236,19 +254,5 @@ else
                 }
             </MudCardContent>
         </MudCard>
-
-        @if (!string.IsNullOrEmpty(errorMessage))
-        {
-            <MudAlert Severity="Severity.Error" Class="mt-4" CloseIconClicked="@(() => errorMessage = string.Empty)" ShowCloseIcon="true">
-                @errorMessage
-            </MudAlert>
-        }
-
-        @if (!string.IsNullOrEmpty(successMessage))
-        {
-            <MudAlert Severity="Severity.Success" Class="mt-4" CloseIconClicked="@(() => successMessage = string.Empty)" ShowCloseIcon="true">
-                @successMessage
-            </MudAlert>
-        }
-    </MudContainer>
-}
+    }
+</MudContainer>

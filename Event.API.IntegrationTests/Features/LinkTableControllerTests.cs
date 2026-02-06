@@ -301,10 +301,11 @@ public class LinkTableControllerTests
     }
 
     [Test]
-    public async Task OrganizationReview_Delete_WithoutAuth_ShouldReturnUnauthorized()
+    public async Task OrganizationReview_Delete_ShouldReturnMethodNotAllowed()
     {
+        // OrganizationReview controller does not have a DELETE endpoint
         var response = await _fixture.Client.DeleteAsync($"/api/v1/organizationreview/{Guid.NewGuid()}");
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.MethodNotAllowed);
     }
 
     #endregion

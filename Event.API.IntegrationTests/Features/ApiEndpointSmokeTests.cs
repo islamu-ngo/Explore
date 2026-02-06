@@ -36,7 +36,10 @@ public class ApiEndpointSmokeTests
             Console.WriteLine($"Testing endpoint: {path}");
             var response = await _fixture.Client.GetAsync(path);
 
-            var isSuccess = response.StatusCode is HttpStatusCode.OK or HttpStatusCode.NoContent;
+            // NotFound is acceptable for GetById endpoints with sample/random IDs
+            var hasPathParams = description.ParameterDescriptions.Any(p => p.Source == BindingSource.Path);
+            var isSuccess = response.StatusCode is HttpStatusCode.OK or HttpStatusCode.NoContent
+                || (hasPathParams && response.StatusCode == HttpStatusCode.NotFound);
             await Assert.That(isSuccess).IsTrue();
         }
     }

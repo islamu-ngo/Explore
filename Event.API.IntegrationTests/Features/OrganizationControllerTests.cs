@@ -62,13 +62,13 @@ public class OrganizationControllerTests
     }
 
     [Test]
-    public async Task GetById_WithInvalidGuidFormat_ShouldReturnBadRequest()
+    public async Task GetById_WithInvalidGuidFormat_ShouldReturnNotFound()
     {
-        // Act
+        // Act - ASP.NET Core route constraints reject non-GUID strings with 404 (no route match)
         var response = await _fixture.Client.GetAsync($"{BaseUrl}/not-a-guid");
 
         // Assert
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
     }
 
     [Test]

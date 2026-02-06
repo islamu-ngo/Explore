@@ -11,7 +11,6 @@ public partial class OrganizationMembers
 {
     [Inject] protected IOrganizationMemberService MemberService { get; set; } = null!;
     [Inject] protected IOrganizationService OrganizationService { get; set; } = null!;
-    [Inject] protected ISnackbar Snackbar { get; set; } = null!;
     [Inject] protected IDialogService DialogService { get; set; } = null!;
     [Inject] protected NavigationManager Navigation { get; set; } = null!;
     [Inject] protected AuthenticationStateProvider AuthenticationStateProvider { get; set; } = null!;
@@ -22,6 +21,7 @@ public partial class OrganizationMembers
     private bool _loading = true;
     private string? currentUserId;
     private int? currentUserRole;
+    private string? _errorMessage;
 
     private string _searchString = "";
     private int? _roleFilter;
@@ -35,7 +35,6 @@ public partial class OrganizationMembers
 
     protected override async Task OnInitializedAsync()
     {
-        // Get route parameter from Blazouter
         var idStr = RouterState.GetParam("id");
         if (Guid.TryParse(idStr, out var id))
         {
@@ -66,6 +65,7 @@ public partial class OrganizationMembers
     private async Task LoadMembers()
     {
         _loading = true;
+        _errorMessage = null;
         try
         {
             Members = (await MemberService.GetMembersAsync(Id))?.ToList() ?? new List<OrganizationMemberDto>();
@@ -73,7 +73,7 @@ public partial class OrganizationMembers
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error loading members: {ex.Message}", Severity.Error);
+            _errorMessage = $"Error loading members: {ex.Message}";
         }
         finally
         {
@@ -141,16 +141,15 @@ public partial class OrganizationMembers
             {
                 if (!member.Id.HasValue)
                 {
-                    Snackbar.Add("Member ID is missing", Severity.Error);
+                    _errorMessage = "Member ID is missing";
                     return;
                 }
                 await MemberService.DeleteMemberAsync(member.Id.Value);
-                Snackbar.Add("Member removed.", Severity.Success);
                 await LoadMembers();
             }
             catch (Exception ex)
             {
-                Snackbar.Add($"Error removing member: {ex.Message}", Severity.Error);
+                _errorMessage = $"Error removing member: {ex.Message}";
             }
         }
     }
