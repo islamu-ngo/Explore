@@ -3,6 +3,7 @@
 
 using System.Net.Http.Json;
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Constants;
 using Explore.Blazor.Client.Helpers;
 using Microsoft.Extensions.Logging;
 
@@ -85,7 +86,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            var response = await _apiClient.GetOrganizationsAsync(pageNumber: 1, pageSize: 100);
+            var response = await _apiClient.GetOrganizationsAsync(pageNumber: ApiConstants.FirstPage, pageSize: ApiConstants.DefaultPageSize);
             return response?.GetItems() ?? new List<OrganizationListDto>();
         }
         catch (ApiException ex)
@@ -371,7 +372,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            var response = await _apiClient.GetCategoriesAsync(1, 100);
+            var response = await _apiClient.GetCategoriesAsync(ApiConstants.FirstPage, ApiConstants.DefaultPageSize);
             return response?.GetItems() ?? new List<CategoryListDto>();
         }
         catch (Exception ex)
@@ -451,7 +452,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            var response = await _apiClient.GetTagsAsync(1, 100);
+            var response = await _apiClient.GetTagsAsync(ApiConstants.FirstPage, ApiConstants.DefaultPageSize);
             return response?.GetItems() ?? new List<TagListDto>();
         }
         catch (Exception ex)
@@ -531,7 +532,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            var response = await _apiClient.GetLocationsAsync(1, 100);
+            var response = await _apiClient.GetLocationsAsync(ApiConstants.FirstPage, ApiConstants.DefaultPageSize);
             return response?.GetItems() ?? new List<LocationListDto>();
         }
         catch (Exception ex)

@@ -1,4 +1,5 @@
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Constants;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;
@@ -31,7 +32,7 @@ public class EventRegistrationService : IEventRegistrationService
         try
         {
             _logger.LogInformation("[REGISTRATION SERVICE] Fetching all registrations...");
-            var response = await _apiClient.EventRegistrationGETAsync(pageNumber: 1, pageSize: 100);
+            var response = await _apiClient.EventRegistrationGETAsync(pageNumber: ApiConstants.FirstPage, pageSize: ApiConstants.DefaultPageSize);
             _logger.LogInformation("[REGISTRATION SERVICE] Received {Count} registrations from {Total} total", response?.Items?.Count ?? 0, response?.TotalCount ?? 0);
             return response?.Items ?? new List<EventRegistrationListDto>();
         }

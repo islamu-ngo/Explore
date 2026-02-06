@@ -95,9 +95,7 @@ public partial class CreateEvent
             var org = _myOrganizations.FirstOrDefault(o => o.Id == orgId.Value);
             if (org?.CurrentUserRole != null)
             {
-                var role = (int)org.CurrentUserRole.Value;
-                // Only Creator (1), CoOwner (2), Admin (3) can publish events
-                if (role > 3)
+                if (!RoleHelper.CanManage(org.CurrentUserRole))
                 {
                     _organizationRoleError = "You don't have the authority to perform that action. Only Creator, Co-Owner, or Admin roles can publish events.";
                 }
@@ -585,14 +583,5 @@ public partial class CreateEvent
         return "Select who is publishing this event";
     }
 
-    private static string GetRoleName(int roleId) => roleId switch
-    {
-        1 => "Creator",
-        2 => "Co-Owner",
-        3 => "Admin",
-        4 => "Moderator",
-        5 => "Member",
-        6 => "Viewer",
-        _ => "Member"
-    };
+    private static string GetRoleName(int roleId) => RoleHelper.GetRoleName(roleId);
 }

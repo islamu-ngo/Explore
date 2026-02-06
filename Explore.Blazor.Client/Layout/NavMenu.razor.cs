@@ -1,4 +1,5 @@
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -77,11 +78,7 @@ public partial class NavMenu
 
     private string GetInitials(string? name)
     {
-        if (string.IsNullOrWhiteSpace(name)) return "?";
-        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length >= 2)
-            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
-        return name.Length >= 2 ? name[..2].ToUpper() : name.ToUpper();
+        return DisplayHelper.GetInitials(name);
     }
 
     private bool IsAdmin(ClaimsPrincipal user)

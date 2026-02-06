@@ -1,4 +1,5 @@
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Models.Enums;
 using Microsoft.AspNetCore.Components;
@@ -96,7 +97,7 @@ public partial class OrganizationDetails
                 Logger.LogWarning(ex, "Error loading members for permission check");
             }
 
-            canEdit = currentUserRole == 1 || currentUserRole == 2 || currentUserRole == 3;
+            canEdit = RoleHelper.CanManage(currentUserRole);
         }
     }
 

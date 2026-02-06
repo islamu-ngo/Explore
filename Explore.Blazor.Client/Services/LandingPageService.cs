@@ -1,4 +1,5 @@
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Constants;
 using Explore.Blazor.Client.Helpers;
 using Microsoft.Extensions.Logging;
 
@@ -54,7 +55,7 @@ public class LandingPageService : ILandingPageService
         try
         {
             _logger.LogDebug("Fetching featured events with count {Count}", count);
-            var response = await _apiClient.GetEventsAsync(pageNumber: 1, pageSize: 100);
+            var response = await _apiClient.GetEventsAsync(pageNumber: ApiConstants.FirstPage, pageSize: ApiConstants.DefaultPageSize);
             var events = response?.GetItems() ?? new List<EventListDto>();
 
             // Filter and sort for landing page display
@@ -96,7 +97,7 @@ public class LandingPageService : ILandingPageService
         try
         {
             _logger.LogDebug("Fetching upcoming events count");
-            var response = await _apiClient.GetEventsAsync(pageNumber: 1, pageSize: 100);
+            var response = await _apiClient.GetEventsAsync(pageNumber: ApiConstants.FirstPage, pageSize: ApiConstants.DefaultPageSize);
             var count = response?.TotalCount ?? 0;
             _logger.LogDebug("Retrieved {Count} upcoming events", count);
             return count;

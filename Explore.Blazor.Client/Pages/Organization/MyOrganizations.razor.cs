@@ -1,4 +1,5 @@
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
@@ -96,8 +97,7 @@ public partial class MyOrganizations : ComponentBase
     /// </summary>
     private static bool CanCreateEvents(OrganizationListDto org)
     {
-        return org.CurrentUserRole.HasValue &&
-               org.CurrentUserRole.Value is 1 or 2 or 3;
+        return RoleHelper.CanManage(org.CurrentUserRole);
     }
 
     /// <summary>
@@ -115,16 +115,7 @@ public partial class MyOrganizations : ComponentBase
     /// </summary>
     private static Color GetRoleColor(int roleId)
     {
-        return roleId switch
-        {
-            1 => Color.Warning,  // Creator
-            2 => Color.Success,  // CoOwner
-            3 => Color.Info,     // Admin
-            4 => Color.Default,  // Moderator
-            5 => Color.Default,  // Member
-            6 => Color.Default,  // Viewer
-            _ => Color.Default
-        };
+        return RoleHelper.GetRoleColor(roleId);
     }
 
     /// <summary>
@@ -132,16 +123,7 @@ public partial class MyOrganizations : ComponentBase
     /// </summary>
     private static string GetRoleName(int roleId)
     {
-        return roleId switch
-        {
-            1 => "Creator",
-            2 => "Co-Owner",
-            3 => "Admin",
-            4 => "Moderator",
-            5 => "Member",
-            6 => "Viewer",
-            _ => "Member"
-        };
+        return RoleHelper.GetRoleName(roleId);
     }
 
     /// <summary>
@@ -149,14 +131,6 @@ public partial class MyOrganizations : ComponentBase
     /// </summary>
     private static string GetInitials(string? name)
     {
-        if (string.IsNullOrWhiteSpace(name)) return "O";
-
-        var words = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        return words.Length switch
-        {
-            0 => "O",
-            1 => words[0][..Math.Min(2, words[0].Length)].ToUpperInvariant(),
-            _ => $"{words[0][0]}{words[1][0]}".ToUpperInvariant()
-        };
+        return DisplayHelper.GetInitials(name, "O");
     }
 }

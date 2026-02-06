@@ -457,7 +457,7 @@ public partial class EventList
 
     private string GetLocationText(EventListDto eventItem)
     {
-        if (eventItem.EventFormatId == 1) return "Online";
+        if (eventItem.EventFormatId == 2) return "Online";
         if (!string.IsNullOrEmpty(eventItem.EventFormatFullName)) return eventItem.EventFormatFullName;
         if (eventItem.EventFormatId.HasValue && eventFormatMap.TryGetValue(eventItem.EventFormatId.Value, out var formatName))
             return formatName;
@@ -466,38 +466,22 @@ public partial class EventList
 
     private string GetEventImage(EventListDto eventItem)
     {
-        if (!string.IsNullOrEmpty(eventItem.FeaturedImageUri)) return eventItem.FeaturedImageUri;
-        var encodedTitle = Uri.EscapeDataString(eventItem.Title.Length > 30 ? eventItem.Title.Substring(0, 30) + "..." : eventItem.Title);
-        var color = GetEventColorForEvent(eventItem);
-        return $"https://placehold.co/600x400/{color}/ffffff?text={encodedTitle}";
+        return ImageHelper.GetEventImageUrl(eventItem.FeaturedImageUri, eventItem.Title, GetEventColorForEvent(eventItem));
     }
 
     private string GetEventColorForEvent(EventListDto eventItem)
     {
-        var typeColors = new Dictionary<int, string>
-        {
-            { 1, "2196F3" }, { 2, "FF9800" }, { 3, "4CAF50" }, { 4, "E91E63" }, { 5, "9C27B0" },
-        };
-        if (eventItem.EventTypeId.HasValue && typeColors.TryGetValue(eventItem.EventTypeId.Value, out var color)) return color;
-        var colors = new[] { "2196F3", "FF9800", "4CAF50", "E91E63", "9C27B0", "607D8B" };
-        return colors[Math.Abs(eventItem.Title.GetHashCode()) % colors.Length];
+        var color = EventColorHelper.GetColorByTypeId(eventItem.EventTypeId);
+        return color != EventColorHelper.DefaultColor ? color : EventColorHelper.GetColorByHash(eventItem.Title);
     }
 
     private string GetTruncatedDescription(string? description)
     {
-        if (string.IsNullOrWhiteSpace(description)) return "No description available.";
-        var sentences = System.Text.RegularExpressions.Regex.Split(description, @"(?<=[.!?])\s+");
-        var result = string.Join(" ", sentences.Take(2));
-        if (sentences.Length > 2) result += "...";
-        if (result.Length > 150) result = result.Substring(0, 147) + "...";
-        return result;
+        return StringHelper.TruncateDescription(description);
     }
 
     private string GetActorInitials(string? displayName)
     {
-        if (string.IsNullOrWhiteSpace(displayName)) return "?";
-        var words = displayName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (words.Length >= 2) return $"{words[0][0]}{words[1][0]}".ToUpperInvariant();
-        return displayName.Length >= 2 ? displayName.Substring(0, 2).ToUpperInvariant() : displayName.ToUpperInvariant();
+        return DisplayHelper.GetInitials(displayName);
     }
 }

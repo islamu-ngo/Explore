@@ -6,47 +6,76 @@
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
-    <div class="d-flex justify-space-between align-center mb-4">
-        <MudText Typo="Typo.h4">My Reviews</MudText>
-        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ArrowBack" Href="/user/profile">
+<PageTitle>My Reviews</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
+    <div class="d-flex justify-space-between align-center mb-6 flex-wrap gap-4">
+        <div>
+            <MudText Typo="Typo.h4" Style="font-weight: 800;">My Reviews</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">Manage your reviews and feedback</MudText>
+        </div>
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.ArrowBack" Href="/user/profile" Class="rounded-pill">
             Back to Profile
         </MudButton>
     </div>
 
-    <MudTextField @bind-Value="_searchString" Placeholder="Search reviews..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="mb-4" />
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-6 rounded-lg" ShowCloseIcon="true" CloseIconClicked="@(() => _errorMessage = null)">
+            @_errorMessage
+        </MudAlert>
+    }
 
-    @if (_loading)
-    {
-        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Class="d-block mx-auto" />
-    }
-    else if (!FilteredReviews.Any())
-    {
-        <MudText Typo="Typo.body1" Align="Align.Center">No reviews found.</MudText>
-    }
-    else
-    {
-        <MudGrid>
-            @foreach (var review in FilteredReviews)
-            {
-                <MudItem xs="12">
-                    <MudCard>
-                        <MudCardHeader>
-                            <CardHeaderContent>
-                                <MudText Typo="Typo.h6">@review.OrganizationFullName</MudText>
-                                <MudRating ReadOnly="true" SelectedValue="@(review.Rating ?? 0)" />
-                            </CardHeaderContent>
-                            <CardHeaderActions>
-                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => DeleteReview(review))" />
-                            </CardHeaderActions>
-                        </MudCardHeader>
-                        <MudCardContent>
-                            <MudText>@review.Comment</MudText>
-                            <MudText Typo="Typo.caption" Class="mt-2">@(review.CreatedAt?.ToString("g") ?? "")</MudText>
-                        </MudCardContent>
-                    </MudCard>
-                </MudItem>
-            }
-        </MudGrid>
-    }
+    <MudPaper Elevation="0" Class="pa-4 border-solid border-1 mud-border-lines-default rounded-xl overflow-hidden">
+        <MudTextField @bind-Value="_searchString" 
+                      Placeholder="Search reviews..." 
+                      Adornment="Adornment.Start" 
+                      AdornmentIcon="@Icons.Material.Filled.Search" 
+                      Variant="Variant.Outlined" 
+                      Margin="Margin.Dense" 
+                      Class="mb-6 rounded-pill"
+                      Style="max-width: 400px;" />
+
+        @if (_loading)
+        {
+            <div class="d-flex justify-center py-12">
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+            </div>
+        }
+        else if (!FilteredReviews.Any())
+        {
+            <div class="d-flex flex-column align-center justify-center pa-12">
+                <MudIcon Icon="@Icons.Material.Filled.RateReview" Size="Size.Large" Color="Color.Default" />
+                <MudText Typo="Typo.h6" Class="mt-4" Style="font-weight: 700;">No reviews found</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">You haven't written any reviews yet.</MudText>
+            </div>
+        }
+        else
+        {
+            <MudGrid Spacing="3">
+                @foreach (var review in FilteredReviews)
+                {
+                    <MudItem xs="12">
+                        <MudCard Elevation="0" Class="border-solid border-1 mud-border-lines-default rounded-lg">
+                            <MudCardHeader>
+                                <CardHeaderContent>
+                                    <div class="d-flex justify-space-between align-start w-100">
+                                        <div>
+                                            <MudText Typo="Typo.h6" Style="font-weight: 700;">@review.OrganizationFullName</MudText>
+                                            <MudRating ReadOnly="true" SelectedValue="@(review.Rating ?? 0)" Size="Size.Small" />
+                                        </div>
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => DeleteReview(review))" Size="Size.Small" />
+                                    </div>
+                                </CardHeaderContent>
+                            </MudCardHeader>
+                            <MudCardContent>
+                                <MudText Typo="Typo.body2" Class="mb-2">@review.Comment</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@(review.CreatedAt?.ToString("MMMM dd, yyyy") ?? "")</MudText>
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+    </MudPaper>
 </MudContainer>

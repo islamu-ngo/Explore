@@ -11,7 +11,6 @@ public partial class Settings
 {
     [Inject] protected IUserService UserService { get; set; } = null!;
     [Inject] protected IImageStorageService ImageStorageService { get; set; } = null!;
-    [Inject] protected ISnackbar Snackbar { get; set; } = null!;
     [Inject] protected NavigationManager Navigation { get; set; } = null!;
 
     private UserDto? _user;
@@ -19,49 +18,38 @@ public partial class Settings
     private bool _isSaving = false;
     private bool _success;
     private MudForm _form = default!;
+    private string? _errorMessage;
+    private string? _successMessage;
 
     // Local image fields
-    private IBrowserFile? _selectedProfileImage;
+    private FileUploadData? _selectedProfileImageData;
     private string? _profileImagePreview;
 
     protected override async Task OnInitializedAsync()
     {
-        _loading = true;
-        try
-        {
-            _user = await UserService.GetCurrentUserAsync();
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error loading settings: {ex.Message}", Severity.Error);
-        }
-        finally
-        {
-            _loading = false;
-        }
+        await LoadUser();
     }
 
-    private void OnProfileImageSelected(IBrowserFile? file)
+    private void OnProfileImageFileDataSelected(FileUploadData? fileData)
     {
-        _selectedProfileImage = file;
+        _selectedProfileImageData = fileData;
     }
 
     private async Task LoadUser()
     {
         _loading = true;
+        _errorMessage = null;
         try
         {
             _user = await UserService.GetCurrentUserAsync();
             if (_user != null)
             {
-                // Initialize the preview with the user's current profile picture if it exists
-                // The API returns a presigned URL in ProfileImageUri
                 _profileImagePreview = _user.ProfileImageUri;
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error loading user: {ex.Message}", Severity.Error);
+            _errorMessage = $"Error loading user: {ex.Message}";
         }
         finally
         {
@@ -74,23 +62,26 @@ public partial class Settings
         if (_user == null) return;
 
         _isSaving = true;
+        _errorMessage = null;
+        _successMessage = null;
+
         try
         {
             Guid? profilePictureStorageId = null;
 
             // Upload a new profile picture if one was selected
-            if (_selectedProfileImage != null)
+            if (_selectedProfileImageData != null)
             {
-                var uploadResult = await ImageStorageService.UploadImageAndCreateRecordAsync(_selectedProfileImage);
+                var uploadResult = await ImageStorageService.UploadAndCreateRecordFromBytesAsync(_selectedProfileImageData);
                 if (uploadResult?.Success == true)
                 {
                     profilePictureStorageId = uploadResult.StorageObjectId;
                 }
                 else
                 {
-                    Snackbar.Add(uploadResult?.ErrorMessage ?? "Failed to upload profile picture.", Severity.Error);
+                    _errorMessage = uploadResult?.ErrorMessage ?? "Failed to upload profile picture.";
                     _isSaving = false;
-                    return; // Stop if upload fails
+                    return;
                 }
             }
 
@@ -107,17 +98,17 @@ public partial class Settings
             var result = await UserService.UpdateUserAsync(updateDto);
             if (result?.Success == true)
             {
-                Snackbar.Add("Settings saved successfully", Severity.Success);
-                await LoadUser(); // Refresh user data
+                _successMessage = "Settings saved successfully";
+                await LoadUser();
             }
             else
             {
-                Snackbar.Add(result?.Message ?? "Failed to save settings", Severity.Error);
+                _errorMessage = result?.Message ?? "Failed to save settings";
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error saving settings: {ex.Message}", Severity.Error);
+            _errorMessage = $"Error saving settings: {ex.Message}";
         }
         finally
         {

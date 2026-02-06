@@ -2,201 +2,173 @@
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Clients
 
-<div class="landing-guest">
-    <!-- HERO - Full width -->
-    <section class="landing-guest__hero">
-        <MudContainer MaxWidth="MaxWidth.Large">
-            <MudText Typo="Typo.overline" Class="landing-guest__kicker">Community • Events • Growth</MudText>
-            <MudText Typo="Typo.h2" Align="Align.Center" Class="landing-guest__hero-title">Never Miss a Muslim Event Again</MudText>
-            <MudText Typo="Typo.subtitle1" Align="Align.Center" Class="landing-guest__hero-sub">
+<div class="py-8">
+    <!-- HERO -->
+    <MudContainer MaxWidth="MaxWidth.Large" Class="mb-12">
+        <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="mb-8 text-center">
+            <MudText Typo="Typo.overline" Style="letter-spacing: 2px; color: var(--mud-palette-primary);">COMMUNITY • EVENTS • GROWTH</MudText>
+            <MudText Typo="Typo.h2" Style="font-weight: 800; line-height: 1.2;">Never Miss a Muslim Event Again</MudText>
+            <MudText Typo="Typo.h6" Color="Color.Secondary" Style="font-weight: 400; max-width: 800px;">
                 Lectures, workshops, charity drives, and social gatherings. Discover, connect, and grow with a thriving Muslim community.
             </MudText>
+        </MudStack>
 
-            <!-- CTA + image -->
-            <div class="landing-guest__register-strip">
-                <div class="landing-guest__glass-panel">
-                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Justify="Justify.Center">
-                        <MudButton Href="/login" Color="Color.Primary" Variant="Variant.Filled" Size="Size.Large" StartIcon="@Icons.Material.Filled.PersonAdd">
-                            Create Account
-                        </MudButton>
-                        <MudButton Href="/login" Color="Color.Secondary" Variant="Variant.Outlined" Size="Size.Large" StartIcon="@Icons.Material.Filled.Login">
-                            I already have one
-                        </MudButton>
+        <!-- CTA Box -->
+        <MudPaper Elevation="0" Class="rounded-xl overflow-hidden relative" Style="background: linear-gradient(135deg, var(--mud-palette-surface), var(--mud-palette-background-grey)); border: 1px solid var(--mud-palette-lines-default);">
+            <MudGrid>
+                <MudItem xs="12" md="6" Class="pa-8 d-flex flex-column justify-center align-start">
+                    <MudStack Spacing="6" Style="width: 100%;">
+                        <div class="d-flex gap-4 flex-wrap">
+                            <MudButton Href="/login" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" StartIcon="@Icons.Material.Filled.PersonAdd" Class="rounded-pill px-8 py-3">Create Account</MudButton>
+                            <MudButton Href="/login" Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Large" StartIcon="@Icons.Material.Filled.Login" Class="rounded-pill px-8 py-3">Log In</MudButton>
+                        </div>
+
+                        <MudDivider />
+
+                        <div class="d-flex justify-space-between gap-4">
+                            <div>
+                                <MudText Typo="Typo.h5" Style="font-weight: 700;">@_membersCount+</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Active Members</MudText>
+                            </div>
+                            <div>
+                                <MudText Typo="Typo.h5" Style="font-weight: 700;">@_eventsCount</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Upcoming Events</MudText>
+                            </div>
+                            <div>
+                                <MudText Typo="Typo.h5" Style="font-weight: 700;">98%</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Positive Feedback</MudText>
+                            </div>
+                        </div>
+
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">Free to join. Cancel anytime. No credit card required.</MudText>
                     </MudStack>
+                </MudItem>
+                <MudItem xs="12" md="6" Class="relative" Style="min-height: 400px;">
+                    <!-- Placeholder for image/illustration -->
+                    <div style="position: absolute; inset: 0; background: url('image/landing_image_nonuser.png') no-repeat center center / cover;"></div>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+    </MudContainer>
 
-                    <div class="landing-guest__stats">
-                        <div class="landing-guest__stat"><b>@_membersCount+</b><span>Active members</span></div>
-                        <div class="landing-guest__stat"><b>@_eventsCount</b><span>Upcoming events</span></div>
-                        <div class="landing-guest__stat"><b>98%</b><span>Positive feedback</span></div>
-                    </div>
+    <!-- BENEFITS -->
+    <MudContainer MaxWidth="MaxWidth.Large" Class="mb-16">
+        <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="mb-12 text-center">
+            <MudText Typo="Typo.h4" Style="font-weight: 700;">Why Join?</MudText>
+            <MudText Typo="Typo.body1" Color="Color.Secondary">Unlock access to exclusive Islamic content and opportunities.</MudText>
+        </MudStack>
 
-                    <MudText Typo="Typo.caption" Class="landing-guest__legal-text mt-2">
-                        Free to join. Cancel anytime. No credit card required.
-                    </MudText>
-                </div>
+        <MudGrid Spacing="4">
+            <MudItem xs="12" md="4">
+                <MudPaper Elevation="0" Class="pa-8 rounded-xl border-solid border-1 mud-border-lines-default h-100 d-flex flex-column align-center text-center">
+                    <MudAvatar Color="Color.Primary" Size="Size.Large" Variant="Variant.Outlined" Class="mb-6" Style="width: 80px; height: 80px;">
+                        <MudIcon Icon="@Icons.Material.Filled.AutoStories" Size="Size.Large" />
+                    </MudAvatar>
+                    <MudText Typo="Typo.h6" Style="font-weight: 700;" Class="mb-2">Knowledge & Faith</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Join Quran study circles, lectures, and themed workshops guided by trusted speakers.</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudPaper Elevation="0" Class="pa-8 rounded-xl border-solid border-1 mud-border-lines-default h-100 d-flex flex-column align-center text-center">
+                    <MudAvatar Color="Color.Secondary" Size="Size.Large" Variant="Variant.Outlined" Class="mb-6" Style="width: 80px; height: 80px;">
+                        <MudIcon Icon="@Icons.Material.Filled.Handshake" Size="Size.Large" />
+                    </MudAvatar>
+                    <MudText Typo="Typo.h6" Style="font-weight: 700;" Class="mb-2">Meet & Connect</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Make meaningful connections, collaborate on projects, and expand your network locally.</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudPaper Elevation="0" Class="pa-8 rounded-xl border-solid border-1 mud-border-lines-default h-100 d-flex flex-column align-center text-center">
+                    <MudAvatar Color="Color.Success" Size="Size.Large" Variant="Variant.Outlined" Class="mb-6" Style="width: 80px; height: 80px;">
+                        <MudIcon Icon="@Icons.Material.Filled.VolunteerActivism" Size="Size.Large" />
+                    </MudAvatar>
+                    <MudText Typo="Typo.h6" Style="font-weight: 700;" Class="mb-2">Act & Give Back</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Take part in charity drives, social causes, and community-building initiatives.</MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    </MudContainer>
 
-                <div class="landing-guest__hero-image-wrapper landing-guest__glass-panel">
-                    <img src="image/landing_image_nonuser.png" alt="Community and events illustration" class="landing-guest__hero-image" fetchpriority="high" width="600" height="400" />
-                </div>
+    <!-- UPCOMING -->
+    <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mb-16">
+        <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="mb-8 text-center">
+            <MudText Typo="Typo.overline" Color="Color.Primary">UPCOMING</MudText>
+            <MudText Typo="Typo.h4" Style="font-weight: 700;">Don't Miss These Events</MudText>
+        </MudStack>
+
+        @if (_isLoading)
+        {
+            <div class="d-flex justify-center py-12">
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
             </div>
-        </MudContainer>
-    </section>
-
-    <MudContainer MaxWidth="MaxWidth.Large">
-
-        <!-- BENEFITS -->
-        <section class="landing-guest__section" id="benefits">
-            <div class="landing-guest__section-header">
-                <MudText Typo="Typo.h4" Align="Align.Center">Why Join?</MudText>
-                <MudText Typo="Typo.subtitle2" Align="Align.Center" Class="landing-guest__section-subtitle">
-                    Unlock access to exclusive Islamic content and stay informed about every opportunity to learn and give back.
-                </MudText>
-            </div>
-
-            <div class="landing-guest__benefits-grid">
-                <div class="landing-guest__benefit-card">
-                    <MudStack Spacing="1">
-                        <MudIcon Icon="@Icons.Material.Filled.AutoStories" Size="Size.Large" Color="Color.Primary" />
-                        <MudText Typo="Typo.h6">Knowledge & Faith</MudText>
-                        <MudText Typo="Typo.body2" Color="Color.Secondary">
-                            Join Quran study circles, lectures, and themed workshops guided by trusted speakers.
-                        </MudText>
-                    </MudStack>
-                </div>
-
-                <div class="landing-guest__benefit-card">
-                    <MudStack Spacing="1">
-                        <MudIcon Icon="@Icons.Material.Filled.Handshake" Size="Size.Large" Color="Color.Secondary" />
-                        <MudText Typo="Typo.h6">Meet & Connect</MudText>
-                        <MudText Typo="Typo.body2" Color="Color.Secondary">
-                            Make meaningful connections, collaborate on projects, and expand your network locally.
-                        </MudText>
-                    </MudStack>
-                </div>
-
-                <div class="landing-guest__benefit-card">
-                    <MudStack Spacing="1">
-                        <MudIcon Icon="@Icons.Material.Filled.VolunteerActivism" Size="Size.Large" Color="Color.Success" />
-                        <MudText Typo="Typo.h6">Act & Give Back</MudText>
-                        <MudText Typo="Typo.body2" Color="Color.Secondary">
-                            Take part in charity drives, social causes, and community-building initiatives.
-                        </MudText>
-                    </MudStack>
-                </div>
-            </div>
-        </section>
-
-        <!-- UPCOMING EVENTS -->
-        <section class="landing-guest__section">
-            <MudStack Spacing="1" AlignItems="AlignItems.Center">
-                <MudText Typo="Typo.overline" Class="landing-guest__kicker">Upcoming</MudText>
-                <MudText Typo="Typo.h4" Align="Align.Center">Don't Miss These Events</MudText>
-                <MudText Typo="Typo.subtitle2" Align="Align.Center" Class="landing-guest__section-subtitle">
-                    Click any event to register and unlock full details.
-                </MudText>
-            </MudStack>
-
-            <div class="landing-guest__carousel-wrap">
-                <MudCarousel TData="object" AutoCycle="true" CycleInterval="7000" ShowArrows="true" FullHeight="false" Style="height: auto; min-height: 450px;">
-                    @if (_events.Any())
-                    {
-                        @foreach (var chunk in Chunk(_events, 3))
-                        {
-                            <MudCarouselItem Style="height: auto; padding: 20px 0;">
-                                <MudStack Row="true" Gap="4" Justify="Justify.Center" AlignItems="AlignItems.Stretch" Style="flex-wrap:wrap; height: 100%;">
-                                    @foreach (var evt in chunk)
-                                    {
-                                        <div class="landing-guest__event-card" @onclick="@(() => ScrollToRegister())">
-                                            <div class="landing-guest__card-media">
-                                                <div class="landing-guest__media-title">@evt.Title</div>
+        }
+        else if (_events.Any())
+        {
+            <MudCarousel TData="object" AutoCycle="true" CycleInterval="7000" ShowArrows="true" ShowBullets="true" Style="height: 460px;">
+                @foreach (var chunk in Chunk(_events, 3))
+                {
+                    <MudCarouselItem Transition="Transition.Slide" Color="Color.Transparent">
+                        <div class="d-flex justify-center gap-6 px-12 h-100 align-center">
+                            @foreach (var evt in chunk)
+                            {
+                                <MudCard Elevation="0" Class="border-solid border-1 mud-border-lines-default rounded-xl overflow-hidden d-flex flex-column h-100 cursor-pointer hover:mud-elevation-4 transition-all" Style="flex: 1; max-width: 400px;" @onclick="@(() => ScrollToRegister())">
+                                    <div style="height: 200px; background-color: var(--mud-palette-background-grey); position: relative;">
+                                        @if (!string.IsNullOrEmpty(evt.FeaturedImageUri))
+                                        {
+                                            <MudImage Src="@evt.FeaturedImageUri" ObjectFit="ObjectFit.Cover" Style="width: 100%; height: 100%;" />
+                                        }
+                                        else
+                                        {
+                                            <div class="d-flex justify-center align-center h-100">
+                                                <MudIcon Icon="@Icons.Material.Filled.Image" Size="Size.Large" Color="Color.Secondary" />
                                             </div>
-                                            <div class="landing-guest__card-content">
-                                                <div class="landing-guest__chips">
-                                                    <MudChip T="string" Variant="Variant.Filled" Size="Size.Small" Class="landing-guest__chip--type">
-                                                        @(evt.EventTypeFullName ?? "Event")
-                                                    </MudChip>
-                                                    <MudChip T="string" Variant="Variant.Outlined" Size="Size.Small" Class="landing-guest__chip--format">
-                                                        @(evt.EventFormatFullName ?? "Online")
-                                                    </MudChip>
-                                                    <MudChip T="string" Variant="Variant.Outlined" Size="Size.Small" Class="landing-guest__chip--price">
-                                                        @(evt.Price.HasValue && evt.Price > 0 ? $"{evt.CurrencyCode ?? "€"}{evt.Price:F2}" : "Free")
-                                                    </MudChip>
-                                                </div>
-                                                <MudText Typo="Typo.h6" Class="landing-guest__card-title">@evt.Title</MudText>
-                                                <MudText Typo="Typo.body2" Class="landing-guest__card-desc">@(TruncateText(evt.Description, 150))</MudText>
-
-                                                <div class="landing-guest__card-views">
-                                                    <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" />
-                                                    <span>@(evt.TotalViews > 0 ? $"{evt.TotalViews} views" : "Join community event")</span>
-                                                </div>
-                                            </div>
-                                            <div class="landing-guest__card-actions">
-                                                <MudButton Color="Color.Primary" Variant="Variant.Text" EndIcon="@Icons.Material.Filled.ArrowForward" Class="landing-guest__action-btn">
-                                                    VIEW DETAILS
-                                                </MudButton>
-                                                <div class="landing-guest__organizer">
-                                                    <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" />
-                                                    <span>@(evt.ActorDisplayName ?? "Community")</span>
-                                                </div>
-                                            </div>
+                                        }
+                                        <div class="absolute pa-3 d-flex gap-2" style="top: 0; left: 0;">
+                                            <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Filled">@(evt.EventTypeFullName ?? "Event")</MudChip>
                                         </div>
-                                    }
-                                </MudStack>
-                            </MudCarouselItem>
-                        }
-                    }
-                    else
-                    {
-                        <MudCarouselItem Style="height: auto; padding: 20px 0;">
-                            <MudStack AlignItems="AlignItems.Center" Spacing="3">
-                                @if (_isLoading)
-                                {
-                                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
-                                    <MudText>Loading events...</MudText>
-                                }
-                                else
-                                {
-                                    <MudText>No events available at the moment</MudText>
-                                }
-                            </MudStack>
-                        </MudCarouselItem>
-                    }
-                </MudCarousel>
+                                    </div>
+                                    <MudCardContent Class="flex-grow-1 d-flex flex-column pa-4">
+                                        <MudText Typo="Typo.h6" Class="mb-2" Style="font-weight: 700; line-height: 1.3;">@evt.Title</MudText>
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4 flex-grow-1">@TruncateText(evt.Description, 100)</MudText>
+                                        <MudButton Variant="Variant.Text" Color="Color.Primary" EndIcon="@Icons.Material.Filled.ArrowForward" Class="align-self-start px-0">View Details</MudButton>
+                                    </MudCardContent>
+                                </MudCard>
+                            }
+                        </div>
+                    </MudCarouselItem>
+                }
+            </MudCarousel>
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="justify-center">No upcoming events found.</MudAlert>
+        }
+    </MudContainer>
+
+    <!-- FAQ -->
+    <MudContainer MaxWidth="MaxWidth.Medium" Class="mb-16">
+        <MudText Typo="Typo.h5" Align="Align.Center" Style="font-weight: 700;" Class="mb-8">Frequently Asked Questions</MudText>
+        <MudExpansionPanels Elevation="0" Class="rounded-xl border-solid border-1 mud-border-lines-default overflow-hidden">
+            <MudExpansionPanel Text="Is registration free?">
+                <MudText Typo="Typo.body2">Yes, signing up is completely free. Some events might have a fee, but most are open to everyone.</MudText>
+            </MudExpansionPanel>
+            <MudExpansionPanel Text="How are events selected?">
+                <MudText Typo="Typo.body2">We carefully verify organizers and feature only trustworthy, relevant, and community-oriented events.</MudText>
+            </MudExpansionPanel>
+            <MudExpansionPanel Text="Can I cancel my participation?">
+                <MudText Typo="Typo.body2">Absolutely. You can cancel any event with one click from your dashboard.</MudText>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+    </MudContainer>
+
+    <!-- FINAL CTA -->
+    <MudContainer MaxWidth="MaxWidth.Large" Class="mb-12" id="register">
+        <MudPaper Elevation="0" Class="rounded-xl pa-12 text-center" Style="background: var(--mud-palette-primary-darken); color: white;">
+            <MudText Typo="Typo.h4" Style="font-weight: 800;" Class="mb-4">Ready to Join?</MudText>
+            <MudText Typo="Typo.h6" Style="opacity: 0.9; font-weight: 400;" Class="mb-8">Create your account now and get full access to all upcoming events.</MudText>
+            <div class="d-flex justify-center gap-4">
+                <MudButton Href="/login" Variant="Variant.Filled" Color="Color.Surface" Size="Size.Large" Style="color: var(--mud-palette-primary-darken); font-weight: 700;" Class="rounded-pill px-8">Sign Up Now</MudButton>
             </div>
-
-            <MudStack AlignItems="AlignItems.Center" Class="mt-2">
-                <MudText Typo="Typo.caption" Color="Color.Secondary">Ready to join? Click any event to sign up and get full access.</MudText>
-            </MudStack>
-        </section>
-
-        <!-- FAQ -->
-        <section class="landing-guest__section landing-guest__faq">
-            <MudText Typo="Typo.h5" Align="Align.Center">Frequently Asked Questions</MudText>
-            <MudText Typo="Typo.subtitle2" Align="Align.Center" Class="landing-guest__section-subtitle mb-2">All you need to know before getting started</MudText>
-
-            <MudExpansionPanels Elevation="0">
-                <MudExpansionPanel Text="Is registration free?" Dense="true">
-                    <MudText Typo="Typo.body2">Yes, signing up is completely free. Some events might have a fee, but most are open to everyone.</MudText>
-                </MudExpansionPanel>
-                <MudExpansionPanel Text="How are events selected?" Dense="true">
-                    <MudText Typo="Typo.body2">We carefully verify organizers and feature only trustworthy, relevant, and community-oriented events.</MudText>
-                </MudExpansionPanel>
-                <MudExpansionPanel Text="Can I cancel my participation?" Dense="true">
-                    <MudText Typo="Typo.body2">Absolutely. You can cancel any event with one click from your dashboard.</MudText>
-                </MudExpansionPanel>
-            </MudExpansionPanels>
-        </section>
-
-        <!-- CALL TO ACTION FINAL -->
-        <section class="landing-guest__section landing-guest__cta-final" id="register">
-            <div class="landing-guest__cta-box">
-                <MudText Typo="Typo.h5">Ready to Join the Community?</MudText>
-                <MudText Typo="Typo.body2" Class="landing-guest__section-subtitle mb-2">Create your account now and get full access to all upcoming events.</MudText>
-                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Justify="Justify.Center">
-                    <MudButton Href="/login" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.PersonAdd" Size="Size.Large">Sign Up</MudButton>
-                    <MudButton Href="/login" Color="Color.Default" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Visibility" Size="Size.Large">Explore First</MudButton>
-                </MudStack>
-            </div>
-        </section>
+        </MudPaper>
     </MudContainer>
 </div>

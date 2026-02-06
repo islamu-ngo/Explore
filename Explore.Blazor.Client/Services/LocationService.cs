@@ -1,6 +1,7 @@
 // ABOUTME: Service for managing location-related operations.
 
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Constants;
 using Explore.Blazor.Client.Helpers;
 using Microsoft.Extensions.Logging;
 
@@ -33,7 +34,7 @@ public class LocationService : ILocationService
     {
         try
         {
-            var result = await _apiClient.GetLocationsAsync(pageNumber: 1, pageSize: 100);
+            var result = await _apiClient.GetLocationsAsync(pageNumber: ApiConstants.FirstPage, pageSize: ApiConstants.DefaultPageSize);
             return result?.GetItems() ?? new List<LocationListDto>();
         }
         catch (ApiException ex)

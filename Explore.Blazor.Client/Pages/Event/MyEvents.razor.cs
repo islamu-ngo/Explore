@@ -1,5 +1,6 @@
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Components.Event;
+using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
@@ -95,7 +96,7 @@ public partial class MyEvents : ComponentBase
     {
         var org = _myOrganizations.FirstOrDefault(o => o.Id == evt.ActorId);
         if (org == null) return false;
-        return org.CurrentUserRole is 1 or 2 or 3;
+        return RoleHelper.CanManage(org.CurrentUserRole);
     }
 
     private void EditEvent(EventListDto evt)
@@ -178,15 +179,8 @@ public partial class MyEvents : ComponentBase
     private void NavigateToCreateEvent() => Navigation.NavigateTo("/organization/my");
     private void NavigateToCreateOrganization() => Navigation.NavigateTo("/organization/create");
 
-    private static string GetEventColorCode(EventListDto evt) => evt.EventTypeFullName?.ToLower() switch
-    {
-        var s when s?.Contains("conference") == true => "2196F3",
-        var s when s?.Contains("workshop") == true => "FF9800",
-        var s when s?.Contains("webinar") == true => "4CAF50",
-        var s when s?.Contains("seminar") == true => "E91E63",
-        var s when s?.Contains("training") == true => "9C27B0",
-        _ => "607D8B"
-    };
+    private static string GetEventColorCode(EventListDto evt) =>
+        EventColorHelper.GetColorByTypeName(evt.EventTypeFullName);
 
     private static string GetEventImageUrl(EventListDto evt)
     {

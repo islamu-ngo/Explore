@@ -2,25 +2,31 @@
 @using Explore.Blazor.Client.Services
 @using Microsoft.Extensions.Logging
 @inject IImageStorageService ImageStorageService
-@inject ISnackbar Snackbar
 @inject ILogger<ImageUpload> Logger
 
-<div class="image-upload">
-    <div class="image-upload__preview @(HasImage ? "image-upload__preview--has-image" : "")" style="@($"width: {Width}; height: {Height};")">
+<div class="d-flex flex-column gap-2" style="@($"width: {Width};")">
+    <div class="relative d-flex justify-center align-center overflow-hidden rounded-lg border-2 border-dashed mud-border-primary" 
+         style="@($"height: {Height}; background-color: var(--mud-palette-background-grey);")">
+        
         @if (!string.IsNullOrEmpty(PreviewUrl))
         {
-            <img class="image-upload__image" src="@PreviewUrl" alt="@(Alt ?? "Image preview")" />
+            <img src="@PreviewUrl" alt="@(Alt ?? "Image preview")" style="width: 100%; height: 100%; object-fit: cover;" />
         }
         else
         {
-            <div class="image-upload__placeholder">
+            <div class="d-flex flex-column align-center gap-2 pa-4 text-center">
                 <MudIcon Icon="@(Icon ?? Icons.Material.Filled.Image)" Size="Size.Large" Color="Color.Secondary" />
-                <MudText Typo="Typo.body2">@(PlaceholderText ?? "No image selected")</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">@(PlaceholderText ?? "No image selected")</MudText>
             </div>
         }
     </div>
 
-    <div class="image-upload__actions">
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Dense="true" Class="my-1" ShowCloseIcon="true" CloseIconClicked="@(() => _errorMessage = null)">@_errorMessage</MudAlert>
+    }
+
+    <div class="d-flex justify-center gap-2">
         <MudFileUpload T="IBrowserFile"
                        @ref="_fileUpload"
                        FilesChanged="OnFileSelected"
@@ -29,7 +35,8 @@
             <ActivatorContent>
                 <MudButton Variant="Variant.Outlined"
                            StartIcon="@Icons.Material.Filled.CloudUpload"
-                           Color="Color.Primary">
+                           Color="Color.Primary"
+                           Size="Size.Small">
                     @(UploadButtonText ?? "Select Image")
                 </MudButton>
             </ActivatorContent>
@@ -40,6 +47,7 @@
             <MudButton Variant="Variant.Text"
                        Color="Color.Error"
                        StartIcon="@Icons.Material.Filled.Delete"
+                       Size="Size.Small"
                        OnClick="RemoveImage">
                 Remove
             </MudButton>
@@ -48,7 +56,7 @@
 
     @if (!string.IsNullOrEmpty(HintText))
     {
-        <MudText Class="image-upload__hint">@HintText</MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Align="Align.Center">@HintText</MudText>
     }
 </div>
 
@@ -86,16 +94,18 @@
     private MudFileUpload<IBrowserFile>? _fileUpload;
     private bool _isReadingFile;
     private bool HasImage => !string.IsNullOrEmpty(PreviewUrl);
+    private string? _errorMessage;
 
     private async Task OnFileSelected(IBrowserFile? file)
     {
+        _errorMessage = null;
         if (file == null) return;
 
         // Validate file type
         var allowedTypes = new[] { "image/jpeg", "image/png", "image/gif", "image/webp" };
         if (!allowedTypes.Contains(file.ContentType.ToLower()))
         {
-            Snackbar.Add("Please select a valid image file (JPG, PNG, GIF, or WebP)", Severity.Error);
+            _errorMessage = "Please select a valid image file (JPG, PNG, GIF, or WebP)";
             return;
         }
 
@@ -103,7 +113,7 @@
         if (file.Size > MaxFileSize)
         {
             var maxSizeMB = MaxFileSize / (1024.0 * 1024.0);
-            Snackbar.Add($"File size must be less than {maxSizeMB:F1}MB", Severity.Error);
+            _errorMessage = $"File size must be less than {maxSizeMB:F1}MB";
             return;
         }
 
@@ -122,7 +132,7 @@
             if (fileData == null)
             {
                 Logger.LogError("[ImageUpload] ReadFileAsync returned null for {FileName}", file.Name);
-                Snackbar.Add("Failed to read the selected file. Please try again.", Severity.Error);
+                _errorMessage = "Failed to read the selected file. Please try again.";
                 await RemoveImage();
                 return;
             }
@@ -137,7 +147,7 @@
             if (string.IsNullOrEmpty(localPreview))
             {
                 Logger.LogWarning("[ImageUpload] Failed to generate preview for {FileName}", fileData.FileName);
-                Snackbar.Add("Failed to generate image preview", Severity.Warning);
+                _errorMessage = "Failed to generate image preview";
                 // Continue anyway - the upload might still work
             }
             else
@@ -207,7 +217,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error processing selected file {FileName}", file.Name);
-            Snackbar.Add($"An error occurred while processing the image: {ex.Message}", Severity.Error);
+            _errorMessage = $"An error occurred while processing the image: {ex.Message}";
             await RemoveImage();
         }
         finally
@@ -220,6 +230,7 @@
     public async Task RemoveImage()
     {
         PreviewUrl = null;
+        _errorMessage = null;
         await PreviewUrlChanged.InvokeAsync(null);
 
         // Notify parent that file was removed
@@ -240,12 +251,4 @@
 
         StateHasChanged();
     }
-
-    // NOTE: Removed OnParametersSetAsync that was invoking PreviewUrlChanged
-    // This was causing an infinite loop:
-    // 1. ImageUpload invokes PreviewUrlChanged
-    // 2. Parent updates bound property
-    // 3. Blazor re-renders ImageUpload with new PreviewUrl
-    // 4. OnParametersSetAsync invokes PreviewUrlChanged AGAIN -> infinite loop -> crash
-    // The callback should ONLY be invoked when the user actively selects a file.
 }

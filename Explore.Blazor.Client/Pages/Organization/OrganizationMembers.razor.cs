@@ -1,4 +1,5 @@
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -83,25 +84,12 @@ public partial class OrganizationMembers
 
     private Color GetRoleColor(int role)
     {
-        return role switch
-        {
-            1 => Color.Warning, // Creator
-            2 => Color.Success, // Co-Owner
-            3 => Color.Info,    // Admin
-            _ => Color.Default
-        };
+        return RoleHelper.GetRoleColor(role);
     }
 
     private string GetRoleName(int role)
     {
-        return role switch
-        {
-            1 => "Creator",
-            2 => "Co-Owner",
-            3 => "Admin",
-            4 => "Member",
-            _ => "Unknown"
-        };
+        return RoleHelper.GetRoleName(role);
     }
 
     private async Task OpenInviteDialog()

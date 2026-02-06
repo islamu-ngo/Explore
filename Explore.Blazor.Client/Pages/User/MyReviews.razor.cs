@@ -9,12 +9,12 @@ public partial class MyReviews
 {
     [Inject] protected IUserService UserService { get; set; } = null!;
     [Inject] protected IOrganizationReviewService OrganizationReviewService { get; set; } = null!;
-    [Inject] protected ISnackbar Snackbar { get; set; } = null!;
     [Inject] protected IDialogService DialogService { get; set; } = null!;
 
     private List<OrganizationReviewDto> _reviews = new();
     private bool _loading = true;
     private string _searchString = "";
+    private string? _errorMessage;
 
     private IEnumerable<OrganizationReviewDto> FilteredReviews =>
         string.IsNullOrWhiteSpace(_searchString)
@@ -30,6 +30,7 @@ public partial class MyReviews
     private async Task LoadReviews()
     {
         _loading = true;
+        _errorMessage = null;
         try
         {
             var user = await UserService.GetCurrentUserAsync();
@@ -43,7 +44,7 @@ public partial class MyReviews
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error loading reviews: {ex.Message}", Severity.Error);
+            _errorMessage = $"Error loading reviews: {ex.Message}";
         }
         finally
         {
@@ -53,14 +54,6 @@ public partial class MyReviews
 
     private async Task DeleteReview(OrganizationReviewDto review)
     {
-        var parameters = new DialogParameters
-        {
-            { "ContentText", "Are you sure you want to delete this review?" },
-            { "ButtonText", "Delete" },
-            { "Color", Color.Error }
-        };
-
-        // Note: SimpleDialog is not a standard MudBlazor component, using generic DialogService.ShowMessageBox instead or standard approach
         bool? result = await DialogService.ShowMessageBox(
             "Delete Review",
             "Are you sure you want to delete this review?",
@@ -71,12 +64,12 @@ public partial class MyReviews
             try
             {
                 // await OrganizationReviewService.DeleteOrganizationReviewAsync(review.Id);
-                Snackbar.Add("Review deletion not implemented yet", Severity.Info);
+                // Implementation pending in service
                 await LoadReviews();
             }
             catch (Exception ex)
             {
-                Snackbar.Add($"Error deleting review: {ex.Message}", Severity.Error);
+                _errorMessage = $"Error deleting review: {ex.Message}";
             }
         }
     }

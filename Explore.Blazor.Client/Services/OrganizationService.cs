@@ -1,6 +1,7 @@
 // ABOUTME: Service for managing organization-related operations.
 
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Constants;
 using Explore.Blazor.Client.Helpers;
 using Microsoft.Extensions.Logging;
 
@@ -91,7 +92,7 @@ public class OrganizationService : IOrganizationService
     {
         try
         {
-            var result = await _apiClient.GetMyOrganizationsAsync(pageNumber: 1, pageSize: 100);
+            var result = await _apiClient.GetMyOrganizationsAsync(pageNumber: ApiConstants.FirstPage, pageSize: ApiConstants.DefaultPageSize);
             return result?.GetItems() ?? new List<OrganizationListDto>();
         }
         catch (ApiException ex)
@@ -108,7 +109,7 @@ public class OrganizationService : IOrganizationService
         {
             // Note: This endpoint may not exist or may need HAL conversion
             // For now, we'll try the direct approach
-            var result = await _apiClient.GetMyOrganizationsAsync(pageNumber: 1, pageSize: 100);
+            var result = await _apiClient.GetMyOrganizationsAsync(pageNumber: ApiConstants.FirstPage, pageSize: ApiConstants.DefaultPageSize);
             return result?.GetItems() ?? new List<OrganizationListDto>();
         }
         catch (Exception ex)

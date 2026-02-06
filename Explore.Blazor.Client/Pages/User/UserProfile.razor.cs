@@ -1,4 +1,5 @@
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -170,24 +171,7 @@ public partial class UserProfile : ComponentBase
     /// </summary>
     private string GetInitials()
     {
-        if (UserData == null) return "?";
-
-        var firstInitial = !string.IsNullOrEmpty(UserData.FirstName)
-            ? UserData.FirstName[0].ToString().ToUpper()
-            : string.Empty;
-
-        var lastInitial = !string.IsNullOrEmpty(UserData.LastName)
-            ? UserData.LastName[0].ToString().ToUpper()
-            : string.Empty;
-
-        var initials = $"{firstInitial}{lastInitial}";
-
-        if (!string.IsNullOrEmpty(initials))
-            return initials;
-
-        return !string.IsNullOrEmpty(UserData.Username)
-            ? UserData.Username[0].ToString().ToUpper()
-            : "?";
+        return DisplayHelper.GetInitials(UserData?.FirstName, UserData?.LastName, UserData?.Username);
     }
 
     /// <summary>

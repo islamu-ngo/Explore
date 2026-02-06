@@ -1,6 +1,7 @@
 // ABOUTME: Service for managing tag-related operations.
 
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Constants;
 using Explore.Blazor.Client.Helpers;
 using Microsoft.Extensions.Logging;
 
@@ -35,7 +36,7 @@ public class TagService : ITagService
     {
         try
         {
-            var result = await _apiClient.GetTagsAsync(pageNumber: 1, pageSize: 100);
+            var result = await _apiClient.GetTagsAsync(pageNumber: ApiConstants.FirstPage, pageSize: ApiConstants.DefaultPageSize);
             return result?.GetItems() ?? new List<TagListDto>();
         }
         catch (ApiException ex)

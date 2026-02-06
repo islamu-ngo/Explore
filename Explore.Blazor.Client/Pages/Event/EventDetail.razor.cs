@@ -1,6 +1,7 @@
 using Blazouter.Services;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Components.Event;
+using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Contracts;
 using Microsoft.AspNetCore.Components;
@@ -268,15 +269,7 @@ public partial class EventDetail : ComponentBase
     /// </summary>
     private string GetEventColor()
     {
-        if (_eventDetails == null) return "607D8B";
-
-        return _eventDetails.EventTypeFullName?.ToLower() switch
-        {
-            var s when s?.Contains("conference") == true => "2196F3",
-            var s when s?.Contains("workshop") == true => "FF9800",
-            var s when s?.Contains("seminar") == true => "9C27B0",
-            _ => "607D8B"
-        };
+        return EventColorHelper.GetColorByTypeName(_eventDetails?.EventTypeFullName);
     }
 
     /// <summary>

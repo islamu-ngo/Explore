@@ -1,3 +1,4 @@
+using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Clients;
 using Microsoft.AspNetCore.Components;
@@ -59,10 +60,7 @@ public partial class LandingPageForNonUsers
 
     private static string TruncateText(string text, int maxLength)
     {
-        if (string.IsNullOrEmpty(text) || text.Length <= maxLength)
-            return text;
-
-        return text.Substring(0, maxLength) + "...";
+        return StringHelper.TruncateText(text, maxLength);
     }
 
     private IEnumerable<List<T>> Chunk<T>(IEnumerable<T> source, int size)

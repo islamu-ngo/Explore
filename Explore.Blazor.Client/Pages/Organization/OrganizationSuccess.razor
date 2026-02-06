@@ -13,21 +13,21 @@
                          Style="font-size: 4rem;" />
 
                 <MudText Typo="Typo.h4" Color="Color.Success">
-                    Organisatie Succesvol Ingediend!
+                    Organization Successfully Submitted!
                 </MudText>
 
                 <MudText Typo="Typo.body1" Class="text-center">
-                    Uw organisatie is succesvol ingediend voor review door ons admin team.
-                    U ontvangt binnen 3-5 werkdagen een email met de status van uw aanvraag.
+                    Your organization has been successfully submitted for review by our admin team.
+                    You will receive an email within 3-5 business days with the status of your request.
                 </MudText>
 
                 <MudAlert Severity="Severity.Info" Class="ma-4">
                     <MudText Typo="Typo.body2">
-                        <strong>Volgende stappen:</strong><br/>
-                        • Controleer uw email voor bevestiging<br/>
-                        • Wacht op goedkeuring van het admin team<br/>
-                        • Na goedkeuring kunt u beginnen met het creëren van evenementen<br/>
-                        • U krijgt toegang tot het organisatie dashboard
+                        <strong>Next steps:</strong><br/>
+                        • Check your email for confirmation<br/>
+                        • Wait for approval from the admin team<br/>
+                        • After approval, you can start creating events<br/>
+                        • You will gain access to the organization dashboard
                     </MudText>
                 </MudAlert>
 
@@ -36,14 +36,14 @@
                                Color="Color.Primary"
                                StartIcon="@Icons.Material.Filled.Home"
                                OnClick="@(() => NavigationManager.NavigateTo("/"))">
-                        Terug naar Home
+                        Return to Home
                     </MudButton>
 
                     <MudButton Variant="Variant.Outlined"
                                Color="Color.Primary"
                                StartIcon="@Icons.Material.Filled.Event"
                                OnClick="@(() => NavigationManager.NavigateTo("/events"))">
-                        Bekijk Events
+                        Browse Events
                     </MudButton>
                 </MudStack>
             </MudStack>
