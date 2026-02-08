@@ -35,8 +35,8 @@ public class GetEventDetailsRequestHandlerTests
         var eventId = Guid.NewGuid();
         var request = new GetEventDetailsRequest { Id = eventId };
 
-        var eventEntity = new Explore.Domain.Event { Id = eventId, Title = "Test Event" };
-        var eventDto = new EventDto { Id = eventId, Title = "Test Event" };
+        var eventEntity = new Explore.Domain.Event { Id = eventId, Title = "Test Event", Subtitle = "Test Subtitle" };
+        var eventDto = new EventDto { Id = eventId, Title = "Test Event", Subtitle = "Test Subtitle" };
 
         _eventRepository.GetEventWithDetails(eventId).Returns(eventEntity);
         _mapper.Map<EventDto>(eventEntity).Returns(eventDto);

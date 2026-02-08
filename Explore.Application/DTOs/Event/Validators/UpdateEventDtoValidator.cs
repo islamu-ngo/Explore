@@ -33,6 +33,9 @@ namespace Explore.Application.DTOs.Event.Validators
                 .NotEmpty().WithMessage("{PropertyName} is required.")
                 .MaximumLength(500).WithMessage("{PropertyName} must not exceed 500 characters.");
 
+            RuleFor(p => p.Subtitle)
+                .MaximumLength(200).WithMessage("{PropertyName} must not exceed 200 characters.");
+
             RuleFor(p => p.Description)
                 .NotEmpty().WithMessage("{PropertyName} is required.")
                 .NotNull()

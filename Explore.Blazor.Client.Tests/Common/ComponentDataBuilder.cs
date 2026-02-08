@@ -38,6 +38,7 @@ public static class ComponentDataBuilder
     public static Faker<EventListDto> EventListDto => new Faker<EventListDto>()
         .RuleFor(e => e.Id, f => Guid.NewGuid())
         .RuleFor(e => e.Title, f => f.Lorem.Sentence(3, 5))
+        .RuleFor(e => e.Subtitle, f => f.Lorem.Sentence(5, 10))
         .RuleFor(e => e.Description, f => f.Lorem.Paragraph())
         .RuleFor(e => e.Slug, f => f.Lorem.Slug(3))
         // DateTimeOffset? for FirstSessionDate (verified from API)
@@ -97,6 +98,7 @@ public static class ComponentDataBuilder
     public static Faker<EventDto> EventDto => new Faker<EventDto>()
         .RuleFor(e => e.Id, f => Guid.NewGuid())
         .RuleFor(e => e.Title, f => f.Lorem.Sentence(3, 5))
+        .RuleFor(e => e.Subtitle, f => f.Lorem.Sentence(5, 10))
         .RuleFor(e => e.Description, f => f.Lorem.Paragraphs(2))
         .RuleFor(e => e.Slug, f => f.Lorem.Slug(3))
         .RuleFor(e => e.TotalViews, f => f.Random.Int(0, 10000))
@@ -132,6 +134,7 @@ public static class ComponentDataBuilder
     /// </summary>
     public static Faker<CreateEventDto> CreateEventDto => new Faker<CreateEventDto>()
         .RuleFor(e => e.Title, f => f.Lorem.Sentence(3, 5))
+        .RuleFor(e => e.Subtitle, f => f.Lorem.Sentence(5, 10))
         .RuleFor(e => e.Description, f => f.Lorem.Paragraph())
         .RuleFor(e => e.EventTypeId, f => f.Random.Int(1, 5))
         .RuleFor(e => e.AudienceGenderId, f => f.Random.Int(1, 4))

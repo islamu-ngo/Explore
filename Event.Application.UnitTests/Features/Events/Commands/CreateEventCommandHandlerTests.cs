@@ -72,6 +72,7 @@ public class CreateEventCommandHandlerTests
             EventDto = new CreateEventDto
             {
                 Title = "Test Event",
+                Subtitle = "Test Subtitle",
                 Description = "Description",
                 FirstSessionDate = DateTimeOffset.UtcNow.AddDays(1),
                 LastSessionDate = DateTimeOffset.UtcNow.AddDays(1).AddHours(2),

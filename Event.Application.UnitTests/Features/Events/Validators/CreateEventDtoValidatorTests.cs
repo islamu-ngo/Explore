@@ -71,6 +71,24 @@ public class CreateEventDtoValidatorTests
     }
 
     [Test]
+    public async Task Validate_WithLongSubtitle_ReturnsError()
+    {
+        // Arrange
+        var dto = new CreateEventDto 
+        { 
+            Title = "Valid Title",
+            Subtitle = new string('a', 201) // Exceeds 200
+        };
+
+        // Act
+        var result = await _validator.ValidateAsync(dto);
+
+        // Assert
+        await Assert.That(result.IsValid).IsFalse();
+        await Assert.That(result.Errors.Any(e => e.PropertyName == "Subtitle")).IsTrue();
+    }
+
+    [Test]
     public async Task Validate_WithNonExistentReferences_ReturnsError()
     {
         // Arrange

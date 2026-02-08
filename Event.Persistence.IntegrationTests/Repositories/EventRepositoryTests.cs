@@ -43,6 +43,7 @@ public class EventRepositoryTests
         {
             Id = eventId,
             Title = "Integration Test Event",
+            Subtitle = "Integration Test Subtitle",
             Description = "Test Description",
             FirstSessionDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
             LastSessionDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1).AddHours(2)),

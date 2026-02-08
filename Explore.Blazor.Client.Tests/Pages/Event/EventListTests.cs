@@ -65,8 +65,8 @@ public class EventListTests : IDisposable
         // Sample data for rendering
         var sampleEvents = new List<EventListDto>
         {
-            new() { Id = Guid.NewGuid(), Title = "Test Event 1", Description = "Description 1", EventTypeFullName = "Conference", Price = 0, CurrencyCode = "USD", TotalViews = 100 },
-            new() { Id = Guid.NewGuid(), Title = "Test Event 2", Description = "Description 2", EventTypeFullName = "Workshop", Price = 50, CurrencyCode = "EUR", TotalViews = 200 }
+            new() { Id = Guid.NewGuid(), Title = "Test Event 1", Subtitle = "Subtitle 1", Description = "Description 1", EventTypeFullName = "Conference", Price = 0, CurrencyCode = "USD", TotalViews = 100 },
+            new() { Id = Guid.NewGuid(), Title = "Test Event 2", Subtitle = "Subtitle 2", Description = "Description 2", EventTypeFullName = "Workshop", Price = 50, CurrencyCode = "EUR", TotalViews = 200 }
         };
 
         var sampleCategories = new List<CategoryListDto>
@@ -177,9 +177,8 @@ public class EventListTests : IDisposable
         await Task.Delay(200);
 
         // Assert - Should have event cards with actions
-        await Assert.That(cut.Markup).Contains("Learn More");
+        await Assert.That(cut.Markup).Contains("Details");
         await Assert.That(cut.Markup).Contains("Quick Register");
-        await Assert.That(cut.Markup).Contains("100"); // TotalViews display
     }
 
     #endregion
@@ -239,21 +238,19 @@ public class EventListTests : IDisposable
     #region Pagination Tests
 
     [Test]
-    public async Task EventList_ShowsPagination_WhenManyEvents()
+    public async Task EventList_ShowsLoadMore_WhenManyEvents()
     {
-        // Arrange - Create more events than page size (default is 6)
-        var events = ComponentDataBuilder.EventListDto.Generate(12);
+        // Arrange - Create more events than page size (default batch is 12)
+        var events = ComponentDataBuilder.EventListDto.Generate(15);
         _eventService.GetAllEventsAsync().Returns(events);
 
         // Act - Use RenderMudComponent for MudBlazor components
         var cut = _ctx.RenderMudComponent<EventList>();
         await Task.Delay(200);
 
-        // Assert - Pagination should be present
-        // MudBlazor renders CSS class names like "mud-pagination" not component names
-        await Assert.That(cut.Markup).Contains("mud-pagination");
-        // MudPagination uses aria-labels like "Current page 1", not "Page 1"
-        await Assert.That(cut.Markup).Contains("Showing 1 - 6 of 12 events");
+        // Assert - Load More button should be present
+        await Assert.That(cut.Markup).Contains("Load More Events");
+        await Assert.That(cut.Markup).Contains("Showing 12 of 15 events");
     }
 
     [Test]
@@ -268,7 +265,7 @@ public class EventListTests : IDisposable
         await Task.Delay(200);
 
         // Assert - Should show total count
-        await Assert.That(cut.Markup).Contains("of 8 events");
+        await Assert.That(cut.Markup).Contains("Showing 8 of 8 events");
     }
 
     #endregion
