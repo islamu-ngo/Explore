@@ -9,6 +9,7 @@ namespace Explore.Application.DTOs.Event
         //edit: added it back need to investigate!: only ommited isRegistrationRequired cause no need to display it in list view (or maybe well.. like when user clicks on register from the listview page then directly go to form so will need it! TODO need to investigate)
         public Guid Id { get; set; }
         public string Title { get; set; }
+        public string? Subtitle { get; set; }
         public string? Description { get; set; }
         public string? Slug { get; set; }
 

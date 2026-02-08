@@ -2,6 +2,7 @@
 @using MudBlazor
 @using Explore.Blazor.Client.Components
 @using Explore.Blazor.Client.Components.Event
+@using Blazored.FluentValidation
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
@@ -50,7 +51,7 @@
                 }
 
                 <EditForm Model="createDto" OnValidSubmit="@HandleSubmit">
-                    <DataAnnotationsValidator />
+                    <FluentValidationValidator />
 
                     <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" Color="Color.Transparent" SliderColor="Color.Primary">
                         <MudTabPanel Text="Publish As" Icon="@Icons.Material.Filled.AccountCircle">
@@ -67,7 +68,7 @@
                                                 </span>
                                             </MudRadio>
                                         </MudPaper>
-                                        
+
                                         <MudPaper Elevation="0" Class="pa-4 border-solid border-1 mud-border-lines-default rounded-lg">
                                             <MudRadio Value="@("organization")" Color="Color.Primary" Disabled="@(_myOrganizations == null || !_myOrganizations.Any())">
                                                 <span class="d-flex align-center gap-2">
@@ -135,7 +136,14 @@
                                                       Required
                                                       FullWidth />
                                     </MudItem>
-                                    
+
+                                    <MudItem xs="12">
+                                        <MudTextField @bind-Value="createDto.Subtitle"
+                                                      Label="Event Subtitle (Short summary)"
+                                                      Variant="Variant.Outlined"
+                                                      FullWidth />
+                                    </MudItem>
+
                                     <MudItem xs="12">
                                         <MudTextField @bind-Value="createDto.Description"
                                                       Label="Description"
@@ -313,6 +321,40 @@
                                                 }
                                             </MudSelect>
                                         </MudStack>
+                                    </MudItem>
+
+                                    <MudItem xs="12">
+                                        <MudText Typo="Typo.subtitle1" Class="mb-3" Style="font-weight: 700;">Event Appearance</MudText>
+                                        <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
+                                            <MudGrid Spacing="3">
+                                                <MudItem xs="12" md="4">
+                                                    <MudTextField @bind-Value="_appearance.BackgroundColor"
+                                                                  Label="Background Color"
+                                                                  Variant="Variant.Outlined"
+                                                                  Placeholder="#0f172a" />
+                                                </MudItem>
+                                                <MudItem xs="12" md="5">
+                                                    <MudTextField @bind-Value="_appearance.BackgroundMediaUrl"
+                                                                  Label="Background Media URL (Image/GIF)"
+                                                                  Variant="Variant.Outlined"
+                                                                  Placeholder="https://..." />
+                                                </MudItem>
+                                                <MudItem xs="12" md="3">
+                                                    <MudSelect @bind-Value="_appearance.BackgroundEffect"
+                                                               Label="Effect"
+                                                               Variant="Variant.Outlined"
+                                                               AnchorOrigin="Origin.BottomCenter">
+                                                        <MudSelectItem Value="@("None")">None</MudSelectItem>
+                                                        <MudSelectItem Value="@("SoftOverlay")">Soft Overlay</MudSelectItem>
+                                                        <MudSelectItem Value="@("StrongOverlay")">Strong Overlay</MudSelectItem>
+                                                        <MudSelectItem Value="@("Blur")">Blur Overlay</MudSelectItem>
+                                                    </MudSelect>
+                                                </MudItem>
+                                            </MudGrid>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
+                                                This style is applied per event and can differ between events from the same organization.
+                                            </MudText>
+                                        </MudPaper>
                                     </MudItem>
                                 </MudGrid>
                             </div>

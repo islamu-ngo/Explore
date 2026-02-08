@@ -18,9 +18,10 @@ public partial class EventList
     [Inject] protected ILocationService LocationService { get; set; } = null!;
     [Inject] protected IEventRegistrationService RegistrationService { get; set; } = null!;
     [Inject] protected IDialogService DialogService { get; set; } = null!;
-    [Inject] protected ISnackbar Snackbar { get; set; } = null!;
     [Inject] protected ILogger<EventList> Logger { get; set; } = null!;
 
+    private string? _errorMessage;
+    private string? _successMessage;
     private string searchText = "";
     private string selectedDate = "";
     private Guid? selectedCategoryId;
@@ -35,9 +36,13 @@ public partial class EventList
     private bool isLoadingTag = false;
     private bool _dataLoaded = false;
 
-    // Pagination variables
-    private int currentPage = 1;
-    private int itemsPerPage = 6;
+    // Load More variables
+    private int displayedCount = 12;
+    private const int loadBatchSize = 12;
+
+    // Filter cache to avoid re-evaluating AllFilteredEvents multiple times per render
+    private List<EventListDto> _cachedFilteredEvents = new();
+    private bool _filtersDirty = true;
 
     // API Data
     private ICollection<EventListDto> allEvents = new List<EventListDto>();
@@ -54,8 +59,6 @@ public partial class EventList
     private Dictionary<int, string> eventTypeMap = new();
     private Dictionary<int, string> eventFormatMap = new();
 
-
-
     private ICollection<EventListDto>? eventsByCategory;
     private ICollection<EventListDto>? eventsByTag;
 
@@ -63,6 +66,8 @@ public partial class EventList
     [Inject] private Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider { get; set; } = null!;
 
     private HashSet<Guid> _registeredEventIds = new();
+    private Dictionary<Guid, Guid> _registrationIdByEventId = new();
+    private bool _isCancellingRegistration = false;
 
     [SupplyParameterFromQuery(Name = "q")]
     public string? SearchQuery { get; set; }
@@ -74,6 +79,7 @@ public partial class EventList
         if (!string.IsNullOrEmpty(SearchQuery))
         {
             searchText = SearchQuery;
+            InvalidateFilterCache();
         }
 
         await LoadDataAsync();
@@ -94,18 +100,17 @@ public partial class EventList
                     if (registrations != null)
                     {
                         var eventIds = new HashSet<Guid>();
+                        var regMap = new Dictionary<Guid, Guid>();
                         foreach (var reg in registrations)
                         {
-                            if (reg.EventSessionId.HasValue)
+                            if (reg.EventId.HasValue && reg.Id.HasValue)
                             {
-                                var session = await EventService.GetSessionByIdAsync(reg.EventSessionId.Value);
-                                if (session != null && session.EventId.HasValue)
-                                {
-                                    eventIds.Add(session.EventId.Value);
-                                }
+                                eventIds.Add(reg.EventId.Value);
+                                regMap[reg.EventId.Value] = reg.Id.Value;
                             }
                         }
                         _registeredEventIds = eventIds;
+                        _registrationIdByEventId = regMap;
                     }
                 }
             }
@@ -160,6 +165,7 @@ public partial class EventList
             sessionLanguages = (await sessionLanguagesTask)?.Cast<EventSessionLanguageListDto>().ToList() ?? new List<EventSessionLanguageListDto>();
 
             BuildLookupMaps();
+            InvalidateFilterCache();
             _dataLoaded = true;
         }
         catch (Exception ex)
@@ -176,122 +182,142 @@ public partial class EventList
     {
         get
         {
-            var filteredEvents = allEvents ?? Enumerable.Empty<EventListDto>();
-
-            if (!string.IsNullOrEmpty(searchText))
+            if (_filtersDirty)
             {
-                filteredEvents = filteredEvents.Where(e =>
-                    e.Title.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
-                    (e.Description?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false));
+                _cachedFilteredEvents = ComputeFilteredEvents();
+                _filtersDirty = false;
             }
-
-            if (selectedCategoryId.HasValue)
-            {
-                if (eventsByCategory != null && eventsByCategory.Any())
-                {
-                    var categoryEventIds = eventsByCategory.Select(e => e.Id).ToHashSet();
-                    filteredEvents = filteredEvents.Where(e => categoryEventIds.Contains(e.Id));
-                }
-                else if (!isLoadingCategory)
-                {
-                    filteredEvents = Enumerable.Empty<EventListDto>();
-                }
-            }
-
-            if (selectedTagId.HasValue)
-            {
-                if (eventsByTag != null && eventsByTag.Any())
-                {
-                    var tagEventIds = eventsByTag.Select(e => e.Id).ToHashSet();
-                    filteredEvents = filteredEvents.Where(e => tagEventIds.Contains(e.Id));
-                }
-                else if (!isLoadingTag)
-                {
-                    filteredEvents = Enumerable.Empty<EventListDto>();
-                }
-            }
-
-            if (selectedFormatId.HasValue)
-            {
-                filteredEvents = filteredEvents.Where(e => e.EventFormatId == selectedFormatId.Value);
-            }
-
-            if (selectedMadhabId.HasValue)
-            {
-                filteredEvents = filteredEvents.Where(e => e.MadhabId == selectedMadhabId.Value);
-            }
-
-            if (selectedLocationId.HasValue && allSessions.Any())
-            {
-                var locationEventIds = allSessions
-                    .Where(s => s.LocationId == selectedLocationId.Value)
-                    .Select(s => s.EventId)
-                    .ToHashSet();
-                filteredEvents = filteredEvents.Where(e => locationEventIds.Contains(e.Id));
-            }
-
-            if (selectedRegistrationModeId.HasValue && allSessions.Any())
-            {
-                var registrationEventIds = allSessions
-                    .Where(s => s.RegistrationModeId == selectedRegistrationModeId.Value)
-                    .Select(s => s.EventId)
-                    .ToHashSet();
-                filteredEvents = filteredEvents.Where(e => registrationEventIds.Contains(e.Id));
-            }
-
-            if (selectedLanguageId.HasValue && allSessions.Any() && sessionLanguages.Any())
-            {
-                var languageSessionIds = sessionLanguages
-                    .Where(l => l.LanguageId == selectedLanguageId.Value)
-                    .Select(l => l.EventSessionId)
-                    .ToHashSet();
-                var languageEventIds = allSessions
-                    .Where(s => languageSessionIds.Contains(s.Id))
-                    .Select(s => s.EventId)
-                    .ToHashSet();
-                filteredEvents = filteredEvents.Where(e => languageEventIds.Contains(e.Id));
-            }
-
-            if (!string.IsNullOrEmpty(selectedDate))
-            {
-                var today = DateTimeOffset.Now.Date;
-                filteredEvents = selectedDate switch
-                {
-                    "today" => filteredEvents.Where(e => e.FirstSessionDate.HasValue && e.FirstSessionDate.Value.Date == today),
-                    "tomorrow" => filteredEvents.Where(e => e.FirstSessionDate.HasValue && e.FirstSessionDate.Value.Date == today.AddDays(1)),
-                    "thisweek" => filteredEvents.Where(e => e.FirstSessionDate.HasValue && e.FirstSessionDate.Value.Date >= today && e.FirstSessionDate.Value.Date <= today.AddDays(7)),
-                    "thismonth" => filteredEvents.Where(e => e.FirstSessionDate.HasValue && e.FirstSessionDate.Value.Date >= today && e.FirstSessionDate.Value.Date <= today.AddDays(30)),
-                    _ => filteredEvents
-                };
-            }
-
-            return filteredEvents.ToList();
+            return _cachedFilteredEvents;
         }
     }
-    private List<EventListDto> FilteredEvents => AllFilteredEvents.Skip((currentPage - 1) * itemsPerPage).Take(itemsPerPage).ToList();
 
-    private int TotalPages => AllFilteredEvents.Any() ? (int)Math.Ceiling((double)AllFilteredEvents.Count / itemsPerPage) : 1;
+    private void InvalidateFilterCache()
+    {
+        _filtersDirty = true;
+        displayedCount = loadBatchSize; // Reset displayed count when filters change
+    }
+
+    private List<EventListDto> ComputeFilteredEvents()
+    {
+        var filteredEvents = allEvents ?? Enumerable.Empty<EventListDto>();
+
+        if (!string.IsNullOrEmpty(searchText))
+        {
+            filteredEvents = filteredEvents.Where(e =>
+                e.Title.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+                (e.Description?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false));
+        }
+
+        if (selectedCategoryId.HasValue)
+        {
+            if (eventsByCategory != null && eventsByCategory.Any())
+            {
+                var categoryEventIds = eventsByCategory.Select(e => e.Id).ToHashSet();
+                filteredEvents = filteredEvents.Where(e => categoryEventIds.Contains(e.Id));
+            }
+            else if (!isLoadingCategory)
+            {
+                filteredEvents = Enumerable.Empty<EventListDto>();
+            }
+        }
+
+        if (selectedTagId.HasValue)
+        {
+            if (eventsByTag != null && eventsByTag.Any())
+            {
+                var tagEventIds = eventsByTag.Select(e => e.Id).ToHashSet();
+                filteredEvents = filteredEvents.Where(e => tagEventIds.Contains(e.Id));
+            }
+            else if (!isLoadingTag)
+            {
+                filteredEvents = Enumerable.Empty<EventListDto>();
+            }
+        }
+
+        if (selectedFormatId.HasValue)
+        {
+            filteredEvents = filteredEvents.Where(e => e.EventFormatId == selectedFormatId.Value);
+        }
+
+        if (selectedMadhabId.HasValue)
+        {
+            filteredEvents = filteredEvents.Where(e => e.MadhabId == selectedMadhabId.Value);
+        }
+
+        if (selectedLocationId.HasValue && allSessions.Any())
+        {
+            var locationEventIds = allSessions
+                .Where(s => s.LocationId == selectedLocationId.Value)
+                .Select(s => s.EventId)
+                .ToHashSet();
+            filteredEvents = filteredEvents.Where(e => locationEventIds.Contains(e.Id));
+        }
+
+        if (selectedRegistrationModeId.HasValue && allSessions.Any())
+        {
+            var registrationEventIds = allSessions
+                .Where(s => s.RegistrationModeId == selectedRegistrationModeId.Value)
+                .Select(s => s.EventId)
+                .ToHashSet();
+            filteredEvents = filteredEvents.Where(e => registrationEventIds.Contains(e.Id));
+        }
+
+        if (selectedLanguageId.HasValue && allSessions.Any() && sessionLanguages.Any())
+        {
+            var languageSessionIds = sessionLanguages
+                .Where(l => l.LanguageId == selectedLanguageId.Value)
+                .Select(l => l.EventSessionId)
+                .ToHashSet();
+            var languageEventIds = allSessions
+                .Where(s => languageSessionIds.Contains(s.Id))
+                .Select(s => s.EventId)
+                .ToHashSet();
+            filteredEvents = filteredEvents.Where(e => languageEventIds.Contains(e.Id));
+        }
+
+        if (!string.IsNullOrEmpty(selectedDate))
+        {
+            var today = DateTimeOffset.Now.Date;
+            filteredEvents = selectedDate switch
+            {
+                "today" => filteredEvents.Where(e => e.FirstSessionDate.HasValue && e.FirstSessionDate.Value.Date == today),
+                "tomorrow" => filteredEvents.Where(e => e.FirstSessionDate.HasValue && e.FirstSessionDate.Value.Date == today.AddDays(1)),
+                "thisweek" => filteredEvents.Where(e => e.FirstSessionDate.HasValue && e.FirstSessionDate.Value.Date >= today && e.FirstSessionDate.Value.Date <= today.AddDays(7)),
+                "thismonth" => filteredEvents.Where(e => e.FirstSessionDate.HasValue && e.FirstSessionDate.Value.Date >= today && e.FirstSessionDate.Value.Date <= today.AddDays(30)),
+                _ => filteredEvents
+            };
+        }
+
+        return filteredEvents.ToList();
+    }
+
+    private List<EventListDto> FilteredEvents => AllFilteredEvents.Take(displayedCount).ToList();
+
+    private bool HasMoreEvents => displayedCount < AllFilteredEvents.Count;
+
+    private void LoadMore()
+    {
+        displayedCount += loadBatchSize;
+        StateHasChanged();
+    }
 
     private void OnDateChanged(string value)
     {
         selectedDate = value;
-        currentPage = 1;
+        InvalidateFilterCache();
     }
 
     private async Task OnCategoryChanged(Guid? categoryId)
     {
         selectedCategoryId = categoryId;
-        currentPage = 1;
-
+        
         if (categoryId.HasValue)
         {
             isLoadingCategory = true;
             try
             {
-                // Note: GetEventsByCategoryAsync is neutralized and returns ICollection<object>
-                // When API is updated, this can be properly typed
                 var rawEvents = await CategoryService.GetEventsByCategoryAsync(categoryId.Value);
-                eventsByCategory = new List<EventListDto>(); // Neutralized - returns empty
+                eventsByCategory = new List<EventListDto>(); // Neutralized
             }
             finally
             {
@@ -302,23 +328,21 @@ public partial class EventList
         {
             eventsByCategory = null;
         }
+        InvalidateFilterCache();
         StateHasChanged();
     }
 
     private async Task OnTagChanged(Guid? tagId)
     {
         selectedTagId = tagId;
-        currentPage = 1;
-
+        
         if (tagId.HasValue)
         {
             isLoadingTag = true;
             try
             {
-                // Note: GetEventsByTagAsync is neutralized and returns ICollection<object>
-                // When API is updated, this can be properly typed
                 var rawEvents = await TagService.GetEventsByTagAsync(tagId.Value);
-                eventsByTag = new List<EventListDto>(); // Neutralized - returns empty
+                eventsByTag = new List<EventListDto>(); // Neutralized
             }
             finally
             {
@@ -329,87 +353,41 @@ public partial class EventList
         {
             eventsByTag = null;
         }
+        InvalidateFilterCache();
         StateHasChanged();
     }
 
     private void OnFormatChanged(int? formatId)
     {
         selectedFormatId = formatId;
-        currentPage = 1;
+        InvalidateFilterCache();
     }
 
     private void OnMadhabChanged(int? madhabId)
     {
         selectedMadhabId = madhabId;
-        currentPage = 1;
+        InvalidateFilterCache();
     }
 
     private void OnLocationChanged(Guid? locationId)
     {
         selectedLocationId = locationId;
-        currentPage = 1;
+        InvalidateFilterCache();
     }
 
     private void OnRegistrationModeChanged(int? modeId)
     {
         selectedRegistrationModeId = modeId;
-        currentPage = 1;
+        InvalidateFilterCache();
     }
 
     private void OnLanguageChanged(int? languageId)
     {
         selectedLanguageId = languageId;
-        currentPage = 1;
+        InvalidateFilterCache();
     }
 
-    private string GetSelectedCategoryName()
-    {
-        if (!selectedCategoryId.HasValue) return "All Categories";
-        return categories.FirstOrDefault(c => c.Id == selectedCategoryId.Value)?.FullName ?? "Category";
-    }
-
-    private string GetSelectedTagName()
-    {
-        if (!selectedTagId.HasValue) return "All Tags";
-        return tags.FirstOrDefault(t => t.Id == selectedTagId.Value)?.FullName ?? "Tag";
-    }
-
-    private string GetSelectedFormatName()
-    {
-        if (!selectedFormatId.HasValue) return "All Formats";
-        return eventFormats?.FirstOrDefault(f => f.Id == selectedFormatId.Value)?.FullName ?? "Format";
-    }
-
-    private string GetSelectedMadhabName()
-    {
-        if (!selectedMadhabId.HasValue) return "All Madhabs";
-        return madhabs?.FirstOrDefault(m => m.Id == selectedMadhabId.Value)?.FullName ?? "Madhab";
-    }
-
-    private string GetSelectedLocationName()
-    {
-        if (!selectedLocationId.HasValue) return "All Locations";
-        var location = locations.FirstOrDefault(l => l.Id == selectedLocationId.Value);
-        if (location == null) return "Location";
-        return !string.IsNullOrEmpty(location.City) ? $"{location.FullName} - {location.City}" : location.FullName;
-    }
-
-    private string GetSelectedRegistrationModeName()
-    {
-        if (!selectedRegistrationModeId.HasValue) return "All Modes";
-        return registrationModes?.FirstOrDefault(m => m.Id == selectedRegistrationModeId.Value)?.FullName ?? "Mode";
-    }
-
-    private string GetSelectedLanguageName()
-    {
-        if (!selectedLanguageId.HasValue) return "All Languages";
-        return languages?.FirstOrDefault(l => l.Id == selectedLanguageId.Value)?.FullName ?? "Language";
-    }
-
-    private void OnPageChanged(int page)
-    {
-        currentPage = page;
-    }
+    // ... (helper methods like GetSelectedCategoryName can remain or be used for display)
 
     private async Task OpenDeleteDialog(EventListDto evt)
     {
@@ -419,9 +397,6 @@ public partial class EventList
         var result = await dialog.Result;
         if (result != null && !result.Canceled)
         {
-            // This is tricky because we don't have a direct reference to the list.
-            // We have to refetch or remove it from the source.
-            // For now, just reload the data.
             await LoadDataAsync();
             StateHasChanged();
         }
@@ -433,7 +408,7 @@ public partial class EventList
         var sessions = await EventService.GetSessionsByEventAsync(evt.Id.Value);
         if (sessions == null || !sessions.Any())
         {
-            Snackbar.Add("No sessions available for this event yet.", Severity.Warning);
+            _errorMessage = "No sessions available for this event yet.";
             return;
         }
         var primarySession = sessions.First();
@@ -443,7 +418,57 @@ public partial class EventList
         var result = await dialog.Result;
         if (result != null && !result.Canceled)
         {
-            Snackbar.Add("Successfully registered for event!", Severity.Success);
+            _successMessage = "Successfully registered for event!";
+            await LoadUserRegistrationsAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task CancelRegistrationAsync(EventListDto evt)
+    {
+        if (!evt.Id.HasValue) return;
+        var eventId = evt.Id.Value;
+
+        if (!_registrationIdByEventId.TryGetValue(eventId, out var registrationId))
+        {
+            _errorMessage = "Registration not found.";
+            return;
+        }
+
+        var confirm = await DialogService.ShowMessageBox(
+            "Cancel Registration",
+            $"Are you sure you want to cancel your registration for \"{evt.Title}\"?",
+            yesText: "Cancel Registration",
+            cancelText: "Keep Registration");
+
+        if (confirm != true) return;
+
+        _isCancellingRegistration = true;
+        StateHasChanged();
+
+        try
+        {
+            var success = await EventService.CancelEventRegistrationAsync(registrationId);
+            if (success)
+            {
+                _registeredEventIds.Remove(eventId);
+                _registrationIdByEventId.Remove(eventId);
+                _successMessage = "Registration cancelled.";
+            }
+            else
+            {
+                _errorMessage = "Failed to cancel registration. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error cancelling registration for event {EventId}", eventId);
+            _errorMessage = "An error occurred while cancelling registration.";
+        }
+        finally
+        {
+            _isCancellingRegistration = false;
+            StateHasChanged();
         }
     }
 

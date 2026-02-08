@@ -7,6 +7,7 @@ namespace Explore.Application.DTOs.Event
     public class CreateEventDto
     {
         public string Title { get; set; }
+        public string? Subtitle { get; set; }
         public string? Description { get; set; }
         public string? Slug { get; set; }
 
@@ -52,5 +53,6 @@ namespace Explore.Application.DTOs.Event
 
         // Metadata
         public string? EventUrl { get; set; }
+        public string? MetadataJson { get; set; }
     }
 }

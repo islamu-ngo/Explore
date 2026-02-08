@@ -101,6 +101,12 @@ else if (currentEvent != null && updateDto != null)
                                     <ValidationMessage For="@(() => updateDto.Title)" />
                                 </MudItem>
                                 <MudItem xs="12">
+                                    <MudTextField @bind-Value="updateDto.Subtitle"
+                                                  Label="Event Subtitle (Short summary)"
+                                                  Variant="Variant.Outlined"
+                                                  FullWidth />
+                                </MudItem>
+                                <MudItem xs="12">
                                     <MudTextField @bind-Value="updateDto.Description"
                                                   Label="Event Description"
                                                   Variant="Variant.Outlined"
@@ -178,6 +184,38 @@ else if (currentEvent != null && updateDto != null)
                                                     <MudSelectItem Value="@status.Id">@status.FullName</MudSelectItem>
                                                 }
                                             }
+                                        </MudSelect>
+                                    </MudItem>
+                                </MudGrid>
+                            </MudPaper>
+                        </div>
+
+                        <!-- Appearance -->
+                        <div>
+                            <MudText Typo="Typo.subtitle1" Class="mb-3" Style="font-weight: 700;">Event Appearance</MudText>
+                            <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
+                                <MudGrid Spacing="3">
+                                    <MudItem xs="12" sm="4">
+                                        <MudTextField @bind-Value="_appearance.BackgroundColor"
+                                                      Label="Background Color"
+                                                      Variant="Variant.Outlined"
+                                                      Placeholder="#0f172a" />
+                                    </MudItem>
+                                    <MudItem xs="12" sm="5">
+                                        <MudTextField @bind-Value="_appearance.BackgroundMediaUrl"
+                                                      Label="Background Media URL (Image/GIF)"
+                                                      Variant="Variant.Outlined"
+                                                      Placeholder="https://..." />
+                                    </MudItem>
+                                    <MudItem xs="12" sm="3">
+                                        <MudSelect @bind-Value="_appearance.BackgroundEffect"
+                                                   Label="Effect"
+                                                   Variant="Variant.Outlined"
+                                                   AnchorOrigin="Origin.BottomCenter">
+                                            <MudSelectItem Value="@("None")">None</MudSelectItem>
+                                            <MudSelectItem Value="@("SoftOverlay")">Soft Overlay</MudSelectItem>
+                                            <MudSelectItem Value="@("StrongOverlay")">Strong Overlay</MudSelectItem>
+                                            <MudSelectItem Value="@("Blur")">Blur Overlay</MudSelectItem>
                                         </MudSelect>
                                     </MudItem>
                                 </MudGrid>
@@ -262,6 +300,7 @@ else
 
     // Sessions
     private List<SessionEditorModel> sessions = new();
+    private EventAppearanceSettings _appearance = new();
 
     // Image upload state
     private FileUploadData? _selectedFileData;
@@ -306,6 +345,7 @@ else
                 {
                     Id = currentEvent.Id,
                     Title = currentEvent.Title,
+                    Subtitle = currentEvent.Subtitle,
                     Description = currentEvent.Description,
                     AudienceGenderId = currentEvent.AudienceGenderId,
                     AudienceAgeId = currentEvent.AudienceAgeId,
@@ -320,8 +360,10 @@ else
                     EventStatusId = currentEvent.EventStatusId,
                     VisibilityTypeId = currentEvent.VisibilityTypeId,
                     FirstSessionDate = currentEvent.FirstSessionDate,
-                    LastSessionDate = currentEvent.LastSessionDate
+                    LastSessionDate = currentEvent.LastSessionDate,
+                    MetadataJson = currentEvent.MetadataJson
                 };
+                _appearance = EventAppearanceMetadataHelper.Parse(currentEvent.MetadataJson);
 
                 if (currentEvent.FirstSessionDate.HasValue)
                 {
@@ -402,6 +444,8 @@ else
             {
                 updateDto.FeaturedImageId = _uploadedStorageObjectId.Value;
             }
+
+            updateDto.MetadataJson = EventAppearanceMetadataHelper.Upsert(updateDto.MetadataJson, _appearance);
 
             if (!updateDto.Id.HasValue)
             {

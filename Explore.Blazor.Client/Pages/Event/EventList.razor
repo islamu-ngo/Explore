@@ -9,114 +9,135 @@
 <PageTitle>Explore Events</PageTitle>
 
 <MudContainer Class="py-4 py-sm-8 py-md-12">
-    <MudText Typo="Typo.h3" Class="mb-8">Explore Events</MudText>
-    
-    <!-- Filters -->
-    <MudGrid Class="mb-8">
-        <MudItem xs="12" sm="6" md="4" lg="3">
-            <MudSelect T="string" Value="@selectedDate" ValueChanged="@((string d) => OnDateChanged(d))" 
-                       Label="Date" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
-                <MudSelectItem Value="@("")">Any Time</MudSelectItem>
-                <MudSelectItem Value="@("today")">Today</MudSelectItem>
-                <MudSelectItem Value="@("tomorrow")">Tomorrow</MudSelectItem>
-                <MudSelectItem Value="@("thisweek")">This Week</MudSelectItem>
-                <MudSelectItem Value="@("thismonth")">This Month</MudSelectItem>
-            </MudSelect>
-        </MudItem>
-        <MudItem xs="12" sm="6" md="4" lg="3">
-            <MudSelect T="Guid?" Value="@selectedCategoryId" ValueChanged="@(async (Guid? c) => await OnCategoryChanged(c))"
-                       Label="Category" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
-                <MudSelectItem T="Guid?" Value="@((Guid?)null)">All Categories</MudSelectItem>
-                @foreach (var category in categories)
-                {
-                    <MudSelectItem T="Guid?" Value="@category.Id">@category.FullName</MudSelectItem>
-                }
-            </MudSelect>
-        </MudItem>
-        <MudItem xs="12" sm="6" md="4" lg="3">
-            <MudSelect T="Guid?" Value="@selectedLocationId" ValueChanged="@((Guid? l) => OnLocationChanged(l))"
-                       Label="Location" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
-                <MudSelectItem T="Guid?" Value="@((Guid?)null)">All Locations</MudSelectItem>
-                @foreach (var location in locations)
-                {
-                    <MudSelectItem T="Guid?" Value="@location.Id">@location.FullName</MudSelectItem>
-                }
-            </MudSelect>
-        </MudItem>
-        <MudItem xs="12" sm="6" md="4" lg="3">
-            <MudSelect T="int?" Value="@selectedFormatId" ValueChanged="@((int? f) => OnFormatChanged(f))" 
-                       Label="Format" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
-                <MudSelectItem T="int?" Value="@((int?)null)">All Formats</MudSelectItem>
-                @if (eventFormats != null)
-                {
-                    @foreach (var format in eventFormats)
-                    {
-                        <MudSelectItem T="int?" Value="@format.Id">@format.FullName</MudSelectItem>
-                    }
-                }
-            </MudSelect>
-        </MudItem>
-        <MudItem xs="12" sm="6" md="4" lg="3">
-             <MudSelect T="int?" Value="@selectedMadhabId" ValueChanged="@((int? m) => OnMadhabChanged(m))" 
-                        Label="Madhab" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" 
-                        AnchorOrigin="Origin.BottomCenter" Clearable="true">
-                 <MudSelectItem T="int?" Value="@((int?)null)">All Madhabs</MudSelectItem>
-                 @if (madhabs != null)
-                 {
-                     @foreach (var madhab in madhabs)
-                     {
-                         <MudSelectItem T="int?" Value="@madhab.Id">@madhab.FullName</MudSelectItem>
-                     }
-                 }
-             </MudSelect>
-        </MudItem>
-        <MudItem xs="12" sm="6" md="4" lg="3">
-            <MudSelect T="int?" Value="@selectedRegistrationModeId" ValueChanged="@((int? r) => OnRegistrationModeChanged(r))" 
-                       Label="Registration" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" 
-                       AnchorOrigin="Origin.BottomCenter" Clearable="true">
-                <MudSelectItem T="int?" Value="@((int?)null)">All Modes</MudSelectItem>
-                @if (registrationModes != null)
-                {
-                    @foreach (var mode in registrationModes)
-                    {
-                        <MudSelectItem T="int?" Value="@mode.Id">@mode.FullName</MudSelectItem>
-                    }
-                }
-            </MudSelect>
-        </MudItem>
-        <MudItem xs="12" sm="6" md="4" lg="3">
-             <MudSelect T="int?" Value="@selectedLanguageId" ValueChanged="@((int? l) => OnLanguageChanged(l))" 
-                        Label="Language" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" 
-                        AnchorOrigin="Origin.BottomCenter" Clearable="true">
-                 <MudSelectItem T="int?" Value="@((int?)null)">All Languages</MudSelectItem>
-                 @if (languages != null)
-                 {
-                     @foreach (var language in languages)
-                     {
-                         <MudSelectItem T="int?" Value="@language.Id">@language.FullName</MudSelectItem>
-                     }
-                 }
-             </MudSelect>
-        </MudItem>
-        <MudItem xs="12" sm="6" md="4" lg="3">
-            <MudSelect T="Guid?" Value="@selectedTagId" ValueChanged="@(async (Guid? t) => await OnTagChanged(t))"
-                       Label="Tags" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
-                <MudSelectItem T="Guid?" Value="@((Guid?)null)">All Tags</MudSelectItem>
-                @foreach (var tag in tags)
-                {
-                    <MudSelectItem T="Guid?" Value="@tag.Id">@tag.FullName</MudSelectItem>
-                }
-            </MudSelect>
-        </MudItem>
-    </MudGrid>
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-6 rounded-lg" ShowCloseIcon="true" CloseIconClicked="@(() => _errorMessage = null)">
+            @_errorMessage
+        </MudAlert>
+    }
+    @if (!string.IsNullOrEmpty(_successMessage))
+    {
+        <MudAlert Severity="Severity.Success" Variant="Variant.Filled" Class="mb-6 rounded-lg" ShowCloseIcon="true" CloseIconClicked="@(() => _successMessage = null)">
+            @_successMessage
+        </MudAlert>
+    }
 
-    <MudGrid>
+    <div class="d-flex justify-space-between align-center mb-6">
+        <MudText Typo="Typo.h3" Style="font-weight: 800;">Explore Events</MudText>
+        @if (isLoading)
+        {
+            <MudProgressCircular Indeterminate="true" Size="Size.Small" Color="Color.Primary" />
+        }
+    </div>
+    
+    <!-- Sticky Filters Header -->
+    <div style="position: sticky; top: var(--mud-appbar-height); z-index: 10; background-color: var(--mud-palette-background); padding-top: 1rem; padding-bottom: 1rem; margin-bottom: 2rem; border-bottom: 1px solid var(--mud-palette-divider);">
+        <MudGrid Spacing="2">
+            <MudItem xs="6" sm="4" md="3" lg="2">
+                <MudSelect T="string" Value="@selectedDate" ValueChanged="@OnDateChanged" 
+                           Label="Date" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
+                    <MudSelectItem Value="@("")">Any Time</MudSelectItem>
+                    <MudSelectItem Value="@("today")">Today</MudSelectItem>
+                    <MudSelectItem Value="@("tomorrow")">Tomorrow</MudSelectItem>
+                    <MudSelectItem Value="@("thisweek")">This Week</MudSelectItem>
+                    <MudSelectItem Value="@("thismonth")">This Month</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6" sm="4" md="3" lg="2">
+                <MudSelect T="Guid?" Value="@selectedCategoryId" ValueChanged="@OnCategoryChanged"
+                           Label="Category" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
+                    <MudSelectItem T="Guid?" Value="@((Guid?)null)">All Categories</MudSelectItem>
+                    @foreach (var category in categories)
+                    {
+                        <MudSelectItem T="Guid?" Value="@category.Id">@category.FullName</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6" sm="4" md="3" lg="2">
+                <MudSelect T="Guid?" Value="@selectedLocationId" ValueChanged="@OnLocationChanged"
+                           Label="Location" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
+                    <MudSelectItem T="Guid?" Value="@((Guid?)null)">All Locations</MudSelectItem>
+                    @foreach (var location in locations)
+                    {
+                        <MudSelectItem T="Guid?" Value="@location.Id">@location.FullName</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6" sm="4" md="3" lg="2">
+                <MudSelect T="int?" Value="@selectedFormatId" ValueChanged="@OnFormatChanged" 
+                           Label="Format" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
+                    <MudSelectItem T="int?" Value="@((int?)null)">All Formats</MudSelectItem>
+                    @if (eventFormats != null)
+                    {
+                        @foreach (var format in eventFormats)
+                        {
+                            <MudSelectItem T="int?" Value="@format.Id">@format.FullName</MudSelectItem>
+                        }
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6" sm="4" md="3" lg="2">
+                 <MudSelect T="int?" Value="@selectedMadhabId" ValueChanged="@OnMadhabChanged" 
+                            Label="Madhab" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" 
+                            AnchorOrigin="Origin.BottomCenter" Clearable="true">
+                     <MudSelectItem T="int?" Value="@((int?)null)">All Madhabs</MudSelectItem>
+                     @if (madhabs != null)
+                     {
+                         @foreach (var madhab in madhabs)
+                         {
+                             <MudSelectItem T="int?" Value="@madhab.Id">@madhab.FullName</MudSelectItem>
+                         }
+                     }
+                 </MudSelect>
+            </MudItem>
+            <MudItem xs="6" sm="4" md="3" lg="2">
+                <MudSelect T="int?" Value="@selectedRegistrationModeId" ValueChanged="@OnRegistrationModeChanged" 
+                           Label="Registration" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" 
+                           AnchorOrigin="Origin.BottomCenter" Clearable="true">
+                    <MudSelectItem T="int?" Value="@((int?)null)">All Modes</MudSelectItem>
+                    @if (registrationModes != null)
+                    {
+                        @foreach (var mode in registrationModes)
+                        {
+                            <MudSelectItem T="int?" Value="@mode.Id">@mode.FullName</MudSelectItem>
+                        }
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6" sm="4" md="3" lg="2">
+                 <MudSelect T="int?" Value="@selectedLanguageId" ValueChanged="@OnLanguageChanged" 
+                            Label="Language" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" 
+                            AnchorOrigin="Origin.BottomCenter" Clearable="true">
+                     <MudSelectItem T="int?" Value="@((int?)null)">All Languages</MudSelectItem>
+                     @if (languages != null)
+                     {
+                         @foreach (var language in languages)
+                         {
+                             <MudSelectItem T="int?" Value="@language.Id">@language.FullName</MudSelectItem>
+                         }
+                     }
+                 </MudSelect>
+            </MudItem>
+            <MudItem xs="6" sm="4" md="3" lg="2">
+                <MudSelect T="Guid?" Value="@selectedTagId" ValueChanged="@OnTagChanged"
+                           Label="Tags" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
+                    <MudSelectItem T="Guid?" Value="@((Guid?)null)">All Tags</MudSelectItem>
+                    @foreach (var tag in tags)
+                    {
+                        <MudSelectItem T="Guid?" Value="@tag.Id">@tag.FullName</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+    </div>
+
+    <MudGrid Spacing="4">
         @if ((isLoading && !allEvents.Any()) || isLoadingCategory || isLoadingTag)
         {
             @for (int i = 0; i < 6; i++)
             {
-                <MudItem xs="12" sm="6" md="4">
-                    <MudCard>
+                <MudItem xs="12" sm="6" md="4" lg="3">
+                    <MudCard Class="h-100 d-flex flex-column rounded-xl border-solid border-1 mud-border-lines-default" Elevation="0">
                         <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
                         <MudCardContent>
                             <MudSkeleton Width="30%" Height="20px" Class="mb-2" />
@@ -124,11 +145,6 @@
                             <MudSkeleton Width="100%" Height="20px" />
                             <MudSkeleton Width="100%" Height="20px" />
                         </MudCardContent>
-                        <MudCardActions>
-                            <MudSkeleton Width="100px" Height="30px" Class="ml-2" />
-                            <MudSpacer />
-                            <MudSkeleton Width="40px" Height="30px" Class="mr-2" />
-                        </MudCardActions>
                     </MudCard>
                 </MudItem>
             }
@@ -149,36 +165,64 @@
         {
             @foreach (var evt in FilteredEvents)
             {
-                <MudItem xs="12" sm="6" md="4">
-                    <MudCard Class="h-100 d-flex flex-column">
+                <MudItem xs="12" sm="6" md="4" lg="3">
+                    <MudCard Class="h-100 d-flex flex-column rounded-xl border-solid border-1 mud-border-lines-default hover:mud-elevation-4 transition-all" Elevation="0" Style="overflow: hidden;">
                         <MudCardMedia Image="@(string.IsNullOrEmpty(evt.FeaturedImageUri) ? GetEventImage(evt) : evt.FeaturedImageUri)" Height="200" />
-                        <MudCardContent Class="flex-grow-1">
-                            <div class="d-flex align-center gap-2 mb-1">
-                                <MudText Typo="Typo.button" Class="mud-text-disabled">@GetEventTypeName(evt)</MudText>
+                        
+                        <MudCardContent Class="d-flex flex-column flex-grow-1 pt-4 pb-2 px-4">
+                            <div class="d-flex justify-space-between align-center mb-2">
+                                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text" Class="ml-n1">@GetEventTypeName(evt)</MudChip>
                                 @if (evt.IsUserReported == true)
                                 {
-                                    <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">User Reported</MudChip>
+                                    <MudTooltip Text="Community Reported">
+                                        <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Color="Color.Info" />
+                                    </MudTooltip>
                                 }
                             </div>
-                            <MudText Typo="Typo.h6" Class="mb-4">@evt.Title</MudText>
-                            <MudText Typo="Typo.body2" Style="overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;">
-                                @GetTruncatedDescription(evt.Description)
+
+                            <MudText Typo="Typo.h6" Style="font-weight: 700; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; min-height: 2.4em;" Class="mb-1">
+                                @evt.Title
                             </MudText>
-                        </MudCardContent>
-                        <MudCardActions>
-                            <MudButton Variant="Variant.Text" Color="Color.Primary" EndIcon="@Icons.Material.Filled.ArrowForward" OnClick="@(() => Navigation.NavigateTo($"/event/detail/{evt.Id}"))">Learn More</MudButton>
-                            <MudSpacer />
-                            @if (evt.TotalViews > 0)
+
+                            @if (!string.IsNullOrEmpty(evt.Subtitle))
                             {
-                                <MudButton Variant="Variant.Text" Disabled="true" StartIcon="@Icons.Material.Outlined.RemoveRedEye">@evt.TotalViews</MudButton>
-                            }
-                            @if (IsUserRegistered(evt.Id ?? Guid.Empty))
-                            {
-                                <MudButton Variant="Variant.Text" Color="Color.Success" Disabled="true" StartIcon="@Icons.Material.Filled.CheckCircle">Joined</MudButton>
+                                <MudText Typo="Typo.subtitle2" Color="Color.Primary" Style="font-weight: 500; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;" Class="mb-2">
+                                    @evt.Subtitle
+                                </MudText>
                             }
                             else
                             {
-                                <MudIconButton Icon="@Icons.Material.Outlined.AddCircleOutline" Color="Color.Primary" OnClick="@(() => OpenQuickRegisterDialog(evt))" Title="Quick Register" />
+                                <div style="height: 1.25rem;" class="mb-2"></div> <!-- Spacer to keep alignment -->
+                            }
+
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Style="overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; min-height: 4.5em;">
+                                @GetTruncatedDescription(evt.Description)
+                            </MudText>
+                            
+                            <MudDivider Class="mt-auto mb-2" />
+                            
+                            <div class="d-flex justify-space-between align-center">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    @(evt.FirstSessionDate?.ToString("MMM dd") ?? "TBD")
+                                </MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    @GetLocationText(evt)
+                                </MudText>
+                            </div>
+                        </MudCardContent>
+
+                        <MudCardActions Class="px-2 pb-2">
+                            <MudButton Variant="Variant.Text" Color="Color.Primary" FullWidth="true" EndIcon="@Icons.Material.Filled.ArrowForward" OnClick="@(() => Navigation.NavigateTo($"/event/detail/{evt.Id}"))">
+                                Details
+                            </MudButton>
+                            
+                            @if (IsUserRegistered(evt.Id ?? Guid.Empty))
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.EventAvailable" Color="Color.Success" Title="Registered" Disabled="true" />
+                            }
+                            else
+                            {
+                                <MudIconButton Icon="@Icons.Material.Outlined.AddCircleOutline" Color="Color.Secondary" OnClick="@(() => OpenQuickRegisterDialog(evt))" Title="Quick Register" />
                             }
                         </MudCardActions>
                     </MudCard>
@@ -187,16 +231,21 @@
         }
     </MudGrid>
 
-    <div class="d-flex justify-center mt-8 mb-4">
-        <MudPagination Count="@TotalPages"
-                       Selected="@currentPage"
-                       SelectedChanged="@((int page) => OnPageChanged(page))"
-                       Color="Color.Primary"
-                       ShowFirstButton="true"
-                       ShowLastButton="true" />
-    </div>
-    <MudText Typo="Typo.body2" Align="Align.Center" Color="Color.Secondary" Class="mb-8">
-        Showing @((currentPage - 1) * itemsPerPage + 1) - @(Math.Min(currentPage * itemsPerPage, AllFilteredEvents.Count)) of @AllFilteredEvents.Count events
+    @if (HasMoreEvents)
+    {
+        <div class="d-flex justify-center mt-12 mb-8">
+            <MudButton Variant="Variant.Outlined" 
+                       Color="Color.Primary" 
+                       Size="Size.Large" 
+                       OnClick="LoadMore" 
+                       Class="rounded-pill px-12">
+                Load More Events
+            </MudButton>
+        </div>
+    }
+    
+    <MudText Typo="Typo.caption" Align="Align.Center" Color="Color.Secondary" Class="d-block mb-8">
+        Showing @Math.Min(displayedCount, AllFilteredEvents.Count) of @AllFilteredEvents.Count events
     </MudText>
 
 </MudContainer>

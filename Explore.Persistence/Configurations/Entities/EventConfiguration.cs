@@ -21,6 +21,7 @@ namespace Explore.Persistence.Configurations.Entities
             builder.Property(e => e.IsUserReported).HasDefaultValue(false);
 
             builder.Property(e => e.Title).HasMaxLength(200).IsRequired();
+            builder.Property(e => e.Subtitle).HasMaxLength(200);
             builder.Property(e => e.Description).HasMaxLength(5000);
             builder.Property(e => e.Slug).HasMaxLength(500);
             builder.Property(e => e.CurrencyCode).HasMaxLength(3);
