@@ -6,23 +6,22 @@ using Explore.Application.DTOs.ActorType;
 using Explore.Application.Features.ActorTypes.Requests.Queries;
 using MediatR;
 
-namespace Explore.Application.Features.ActorTypes.Handlers.Queries
+namespace Explore.Application.Features.ActorTypes.Handlers.Queries;
+
+public class GetActorTypeDetailsRequestHandler : IRequestHandler<GetActorTypeDetailsRequest, ActorTypeDto>
 {
-    public class GetActorTypeDetailsRequestHandler : IRequestHandler<GetActorTypeDetailsRequest, ActorTypeDto>
+    private readonly IActorTypeRepository _actorTypeRepository;
+    private readonly IMapper _mapper;
+
+    public GetActorTypeDetailsRequestHandler(IActorTypeRepository actorTypeRepository, IMapper mapper)
     {
-        private readonly IActorTypeRepository _actorTypeRepository;
-        private readonly IMapper _mapper;
+        _actorTypeRepository = actorTypeRepository;
+        _mapper = mapper;
+    }
 
-        public GetActorTypeDetailsRequestHandler(IActorTypeRepository actorTypeRepository, IMapper mapper)
-        {
-            _actorTypeRepository = actorTypeRepository;
-            _mapper = mapper;
-        }
-
-        public async Task<ActorTypeDto> Handle(GetActorTypeDetailsRequest request, CancellationToken cancellationToken)
-        {
-            var actorType = await _actorTypeRepository.GetById(request.Id);
-            return _mapper.Map<ActorTypeDto>(actorType);
-        }
+    public async Task<ActorTypeDto> Handle(GetActorTypeDetailsRequest request, CancellationToken cancellationToken)
+    {
+        var actorType = await _actorTypeRepository.GetById(request.Id);
+        return _mapper.Map<ActorTypeDto>(actorType);
     }
 }

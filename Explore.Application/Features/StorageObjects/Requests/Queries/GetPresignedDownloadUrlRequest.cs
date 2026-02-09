@@ -1,5 +1,5 @@
-using MediatR;
 using Explore.Application.DTOs.StorageObject;
+using MediatR;
 
 namespace Explore.Application.Features.StorageObjects.Requests.Queries;
 

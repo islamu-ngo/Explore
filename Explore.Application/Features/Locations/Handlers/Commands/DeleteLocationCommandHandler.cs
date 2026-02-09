@@ -5,29 +5,28 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Locations.Requests.Commands;
 using MediatR;
 
-namespace Explore.Application.Features.Locations.Handlers.Commands
+namespace Explore.Application.Features.Locations.Handlers.Commands;
+
+public class DeleteLocationCommandHandler : IRequestHandler<DeleteLocationCommand, bool>
 {
-    public class DeleteLocationCommandHandler : IRequestHandler<DeleteLocationCommand, bool>
+    private readonly ILocationRepository _locationRepository;
+
+    public DeleteLocationCommandHandler(ILocationRepository locationRepository)
     {
-        private readonly ILocationRepository _locationRepository;
+        _locationRepository = locationRepository;
+    }
 
-        public DeleteLocationCommandHandler(ILocationRepository locationRepository)
+    public async Task<bool> Handle(DeleteLocationCommand request, CancellationToken cancellationToken)
+    {
+        var location = await _locationRepository.GetById(request.Id);
+
+        if (location == null)
         {
-            _locationRepository = locationRepository;
+            return false;
         }
 
-        public async Task<bool> Handle(DeleteLocationCommand request, CancellationToken cancellationToken)
-        {
-            var location = await _locationRepository.GetById(request.Id);
+        await _locationRepository.Delete(location);
 
-            if (location == null)
-            {
-                return false;
-            }
-
-            await _locationRepository.Delete(location);
-
-            return true;
-        }
+        return true;
     }
 }

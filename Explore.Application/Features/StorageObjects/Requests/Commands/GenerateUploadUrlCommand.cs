@@ -8,6 +8,6 @@ namespace Explore.Application.Features.StorageObjects.Requests.Commands;
 
 public class GenerateUploadUrlCommand : IRequest<UploadUrlResponseDto>
 {
-    public string FileName { get; set; } = string.Empty;
-    public string ContentType { get; set; } = string.Empty;
+    public required string FileName { get; set; } = string.Empty;
+    public required string ContentType { get; set; } = string.Empty;
 }

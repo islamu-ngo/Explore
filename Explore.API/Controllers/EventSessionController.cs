@@ -7,6 +7,7 @@ using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 
 namespace Explore.API.Controllers;
 
@@ -45,15 +46,16 @@ public class EventSessionController : ControllerBase
         "Send 'Prefer: return=minimal' header to strip links.")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(HalCollectionResource<EventSessionListDto>), StatusCodes.Status200OK)]
+    [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<EventSessionListDto>>> GetAll(
         [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 20)
+        [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(new GetEventSessionListRequest
         {
             PageNumber = pageNumber,
             PageSize = pageSize
-        });
+        }, cancellationToken);
 
         var halResource = _resourceAssembler.ToCollectionResource(
             result,
@@ -74,9 +76,10 @@ public class EventSessionController : ControllerBase
     [AllowAnonymous]
     [ProducesResponseType(typeof(HalResource<EventSessionDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<HalResource<EventSessionDto>>> GetById(Guid id)
+    [OutputCache(PolicyName = "DetailData")]
+    public async Task<ActionResult<HalResource<EventSessionDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        var session = await _mediator.Send(new GetEventSessionDetailsRequest { Id = id });
+        var session = await _mediator.Send(new GetEventSessionDetailsRequest { Id = id }, cancellationToken);
 
         if (session is null)
         {
@@ -95,9 +98,10 @@ public class EventSessionController : ControllerBase
     [EndpointDescription("Get all sessions for a specific event.")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(HalCollectionResource<EventSessionListDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<HalCollectionResource<EventSessionListDto>>> GetByEvent(Guid eventId)
+    [OutputCache(PolicyName = "ListData")]
+    public async Task<ActionResult<HalCollectionResource<EventSessionListDto>>> GetByEvent(Guid eventId, CancellationToken cancellationToken = default)
     {
-        var sessions = await _mediator.Send(new GetSessionsByEventRequest { EventId = eventId });
+        var sessions = await _mediator.Send(new GetSessionsByEventRequest { EventId = eventId }, cancellationToken);
 
         var halResource = _resourceAssembler.ToCollectionResource(
             sessions,
@@ -118,10 +122,10 @@ public class EventSessionController : ControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventSessionDto session)
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventSessionDto session, CancellationToken cancellationToken = default)
     {
         var command = new CreateEventSessionCommand { EventSessionDto = session };
-        var response = await _mediator.Send(command);
+        var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)
         {
@@ -146,7 +150,7 @@ public class EventSessionController : ControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventSessionDto session)
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventSessionDto session, CancellationToken cancellationToken = default)
     {
         if (id != session.Id)
         {
@@ -154,7 +158,7 @@ public class EventSessionController : ControllerBase
         }
 
         var command = new UpdateEventSessionCommand { EventSessionDto = session };
-        var response = await _mediator.Send(command);
+        var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)
         {
@@ -174,12 +178,12 @@ public class EventSessionController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult> Delete(Guid id)
+    public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         try
         {
             var command = new DeleteEventSessionCommand { Id = id };
-            var result = await _mediator.Send(command);
+            var result = await _mediator.Send(command, cancellationToken);
 
             if (!result)
             {

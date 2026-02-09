@@ -1,11 +1,10 @@
-using MediatR;
-using Explore.Application.DTOs.TenantUser;
 using System;
+using Explore.Application.DTOs.TenantUser;
+using MediatR;
 
-namespace Explore.Application.Features.TenantUsers.Requests.Queries
+namespace Explore.Application.Features.TenantUsers.Requests.Queries;
+
+public class GetTenantUserDetailsRequest : IRequest<TenantUserDto>
 {
-    public class GetTenantUserDetailsRequest : IRequest<TenantUserDto>
-    {
-        public Guid Id { get; set; }
-    }
+    public Guid Id { get; set; }
 }

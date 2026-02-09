@@ -1,12 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Explore.Domain;
 
-namespace Explore.Application.Contracts.Persistence
+namespace Explore.Application.Contracts.Persistence;
+
+public interface IApprovalStatusRepository : IGenericRepository<ApprovalStatus, int>
 {
-    public interface IApprovalStatusRepository : IGenericRepository<ApprovalStatus, int>
-    {
-        
-    }
+
 }

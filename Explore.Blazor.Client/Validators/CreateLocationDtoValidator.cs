@@ -1,13 +1,12 @@
 using Explore.Blazor.Client.Clients;
 using FluentValidation;
 
-namespace Explore.Blazor.Client.Validators
+namespace Explore.Blazor.Client.Validators;
+
+public class CreateLocationDtoValidator : AbstractValidator<CreateLocationDto>
 {
-    public class CreateLocationDtoValidator : AbstractValidator<CreateLocationDto>
+    public CreateLocationDtoValidator()
     {
-        public CreateLocationDtoValidator()
-        {
-            RuleFor(x => x.FullName).NotEmpty();
-        }
+        RuleFor(x => x.FullName).NotEmpty();
     }
 }

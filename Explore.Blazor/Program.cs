@@ -1,12 +1,15 @@
+using System.Net.Http.Headers;
+using Blazouter.Extensions;
+using Blazouter.Server.Extensions;
+using Explore.Blazor;
+using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Configuration;
+using Explore.Blazor.Client.Constants;
 using Explore.Blazor.Client.Pages;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Contracts;
-using Explore.Blazor.Client.Clients;
-using Explore.Blazor.Extensions;
 using Explore.Blazor.Components;
-using Blazouter.Extensions;
-using Blazouter.Server.Extensions;
+using Explore.Blazor.Extensions;
 using Explore.Blazor.Services;
 using Explore.Secrets.Extensions;
 using Microsoft.AspNetCore.Antiforgery;
@@ -14,20 +17,17 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Server;
+using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using MudBlazor.Services;
-using System.Net.Http.Headers;
-using Explore.Blazor;
-using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Components.Server;
 using Yarp.ReverseProxy.Configuration;
 using Yarp.ReverseProxy.Transforms;
-using Microsoft.AspNetCore.Http.Extensions;
-using Microsoft.AspNetCore.HttpOverrides;
-using Explore.Blazor.Client.Constants;
 
 // Graceful shutdown tracking for zero-downtime deployments
 // SIGTERM: 25 second grace period (health returns 503, still accepts requests)
@@ -74,6 +74,19 @@ builder.Services.AddScoped<ITagService, TagService>();
 builder.Services.AddScoped<IEventRegistrationService, EventRegistrationService>();
 builder.Services.AddScoped<ILocationService, LocationService>();
 builder.Services.AddScoped<IEventAspectService, EventAspectService>();
+builder.Services.AddScoped<IAudienceAgeService, AudienceAgeService>();
+builder.Services.AddScoped<IAudienceGenderService, AudienceGenderService>();
+builder.Services.AddScoped<IEventFormatService, EventFormatService>();
+builder.Services.AddScoped<IEventStatusService, EventStatusService>();
+builder.Services.AddScoped<IEventTypeService, EventTypeService>();
+builder.Services.AddScoped<ILanguageService, LanguageService>();
+builder.Services.AddScoped<IMadhabService, MadhabService>();
+builder.Services.AddScoped<IEventSessionSpeakerService, EventSessionSpeakerService>();
+builder.Services.AddScoped<IActorService, ActorService>();
+builder.Services.AddScoped<ILookupCacheService, LookupCacheService>();
+builder.Services.AddScoped<IInstanceOnboardingService, InstanceOnboardingService>();
+builder.Services.AddScoped<ITenantOnboardingService, TenantOnboardingService>();
+builder.Services.AddScoped<IPublicExperienceService, PublicExperienceService>();
 builder.Services.AddScoped<ICircuitAccessTokenService, CircuitAccessTokenService>();
 builder.Services.AddTransient<AccessTokenForwardingHandler>();
 // Configure multi-tenancy settings
@@ -120,7 +133,7 @@ builder.Services.AddHttpContextAccessor();
 // Get the API base URL - for InteractiveServer mode, we call the API directly
 // since there's no HttpContext during SignalR calls
 var exploreApiBaseUrl = builder.Configuration["ExploreApi:BaseUrl"] ?? "https://localhost:7039/";
-if (!exploreApiBaseUrl.EndsWith("/", StringComparison.Ordinal))
+if (!exploreApiBaseUrl.EndsWith('/'))
 {
     exploreApiBaseUrl += "/";
 }
@@ -325,13 +338,13 @@ builder.Services.AddReverseProxy()
                     new AuthenticationHeaderValue("Bearer", token);
             }
 
-            // Always add X-Tenant-Id header for multi-tenant isolation
-            // This ensures the API knows which tenant the request belongs to
-            if (!transformContext.ProxyRequest.Headers.Contains(TenantConstants.TenantIdHeaderName))
+            var incomingTenantId = httpContext.Request.Headers[TenantConstants.TenantIdHeaderName].FirstOrDefault();
+            if (!transformContext.ProxyRequest.Headers.Contains(TenantConstants.TenantIdHeaderName) &&
+                !string.IsNullOrWhiteSpace(incomingTenantId))
             {
                 transformContext.ProxyRequest.Headers.Add(
                     TenantConstants.TenantIdHeaderName,
-                    TenantConstants.DefaultTenantId.ToString());
+                    incomingTenantId);
             }
         });
     });
@@ -473,6 +486,20 @@ app.Use(async (ctx, next) =>
     await next();
 });
 
+// Resolve root entry through startup gate before endpoint routing.
+// This avoids ambiguous "/" endpoint matches and centralizes onboarding/home-page selection.
+app.Use(async (ctx, next) =>
+{
+    if (HttpMethods.IsGet(ctx.Request.Method) &&
+        string.Equals(ctx.Request.Path.Value, "/", StringComparison.Ordinal))
+    {
+        ctx.Response.Redirect("/startup");
+        return;
+    }
+
+    await next();
+});
+
 app.UseRouting();
 
 app.UseAuthentication();
@@ -537,7 +564,7 @@ static string GetSafeReturnUrl(HttpContext ctx, ILogger logger)
         return "/";
     }
 
-    if (returnUrl.StartsWith("/", StringComparison.Ordinal) &&
+    if (returnUrl.StartsWith('/') &&
         !returnUrl.StartsWith("//", StringComparison.Ordinal) &&
         !returnUrl.StartsWith("/\\", StringComparison.Ordinal))
     {
@@ -548,8 +575,8 @@ static string GetSafeReturnUrl(HttpContext ctx, ILogger logger)
     return "/";
 }
 
-// Authentication endpoints - using /auth/* paths to avoid conflict with Blazor routes
-// The Blazor shim components at /login and /logout will force-load these server endpoints
+// Authentication endpoints - using /auth/* paths to avoid conflict with Blazor routes.
+// The Blazor shim components at /login and /logout force-load these server endpoints.
 app.MapGet("/auth/challenge", async ctx =>
 {
     var returnUrl = GetSafeReturnUrl(ctx, app.Logger);

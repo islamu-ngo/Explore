@@ -33,7 +33,9 @@
       "WebFetch(domain:)",
       "WebFetch(domain:www.nuget.org)",
       "Bash(dotnet test:*)",
-      "Bash(dotnet build:*)"
+      "Bash(dotnet build:*)",
+      "Bash(dotnet format:*)",
+      "Bash(dotnet:*)"
     ]
   }
 }

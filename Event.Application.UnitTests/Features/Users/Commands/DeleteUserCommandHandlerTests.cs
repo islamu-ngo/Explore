@@ -6,6 +6,7 @@ using Explore.Application.Features.Users.Handlers.Commands;
 using Explore.Application.Features.Users.Requests.Commands;
 using Explore.Domain;
 using MediatR;
+using Microsoft.Extensions.Caching.Hybrid;
 using NSubstitute;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -16,13 +17,15 @@ public class DeleteUserCommandHandlerTests
 {
     private readonly IUserRepository _userRepository;
     private readonly IMapper _mapper;
+    private readonly HybridCache _cache;
     private readonly DeleteUserCommandHandler _handler;
 
     public DeleteUserCommandHandlerTests()
     {
         _userRepository = Substitute.For<IUserRepository>();
         _mapper = Substitute.For<IMapper>();
-        _handler = new DeleteUserCommandHandler(_userRepository, _mapper);
+        _cache = Substitute.For<HybridCache>();
+        _handler = new DeleteUserCommandHandler(_userRepository, _mapper, _cache);
     }
 
     [Test]

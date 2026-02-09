@@ -1,11 +1,10 @@
-using MediatR;
 using Explore.Application.DTOs.UserAuthenticationToken;
 using Explore.Application.Responses;
+using MediatR;
 
-namespace Explore.Application.Features.UserAuthenticationTokens.Requests.Commands
+namespace Explore.Application.Features.UserAuthenticationTokens.Requests.Commands;
+
+public class UpdateUserAuthenticationTokenCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public class UpdateUserAuthenticationTokenCommand : IRequest<BaseCommandResponse<Guid>>
-    {
-        public UpdateUserAuthenticationTokenDto UserAuthenticationTokenDto { get; set; }
-    }
+    public required UpdateUserAuthenticationTokenDto UserAuthenticationTokenDto { get; set; }
 }

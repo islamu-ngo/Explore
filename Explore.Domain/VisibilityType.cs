@@ -4,16 +4,15 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 
-namespace Explore.Domain
+namespace Explore.Domain;
+
+public class VisibilityType
 {
-    public class VisibilityType
-    {
-        public int Id { get; set; }
+    public int Id { get; set; }
 
-        public required string MasterCode { get; set; }
+    public required string MasterCode { get; set; }
 
-        public required string FullName { get; set; }
+    public required string FullName { get; set; }
 
-        public string? Description { get; set; }
-    }
+    public string? Description { get; set; }
 }

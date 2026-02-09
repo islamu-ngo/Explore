@@ -1,21 +1,20 @@
 using System;
 
-namespace Explore.Application.DTOs.UserAuthenticationToken
+namespace Explore.Application.DTOs.UserAuthenticationToken;
+
+public class UserAuthenticationTokenDto
 {
-    public class UserAuthenticationTokenDto
-    {
-        public Guid Id { get; set; }
-        public Guid UserId { get; set; }
-        public string UserEmail { get; set; }
-        public string UserFullName { get; set; }
-        public Guid TenantId { get; set; }
-        public string TenantFullName { get; set; }
-        public string Provider { get; set; }
-        public string AccessToken { get; set; }
-        public string RefreshToken { get; set; }
-        public string PdsHost { get; set; }
-        public string DpopKey { get; set; }
-        public string IdToken { get; set; }
-        public DateTime? ExpiresAt { get; set; }
-    }
+    public Guid Id { get; set; }
+    public Guid UserId { get; set; }
+    public required string UserEmail { get; set; }
+    public required string UserFullName { get; set; }
+    public Guid TenantId { get; set; }
+    public required string TenantFullName { get; set; }
+    public required string Provider { get; set; }
+    public required string AccessToken { get; set; }
+    public required string RefreshToken { get; set; }
+    public required string PdsHost { get; set; }
+    public required string DpopKey { get; set; }
+    public required string IdToken { get; set; }
+    public DateTime? ExpiresAt { get; set; }
 }

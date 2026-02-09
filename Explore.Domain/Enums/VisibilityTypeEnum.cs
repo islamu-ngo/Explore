@@ -1,10 +1,9 @@
-namespace Explore.Domain.Enums
+namespace Explore.Domain.Enums;
+
+public enum VisibilityTypeEnum
 {
-    public enum VisibilityTypeEnum
-    {
-        Public = 1,
-        Private = 2,
-        Unlisted = 3,
-        MembersOnly = 4
-    }
+    Public = 1,
+    Private = 2,
+    Unlisted = 3,
+    MembersOnly = 4
 }

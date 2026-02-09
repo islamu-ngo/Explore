@@ -91,7 +91,12 @@ public class AdminService : IAdminService
         }
         catch (ApiException ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] API error fetching organizations: {StatusCode}", ex.StatusCode);
+            _logger.LogError(ex, "[AdminService.GetOrganizationRequestsAsync] API error fetching organizations. StatusCode: {StatusCode}", ex.StatusCode);
+            return new List<OrganizationListDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[AdminService.GetOrganizationRequestsAsync] Unexpected error fetching organizations");
             return new List<OrganizationListDto>();
         }
     }
@@ -105,12 +110,17 @@ public class AdminService : IAdminService
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
         {
-            _logger.LogWarning("[ADMIN SERVICE] Organization not found: {OrganizationId}", id);
+            _logger.LogWarning("[AdminService.GetOrganizationDetailsAsync] Organization not found. OrganizationId: {OrganizationId}", id);
             return null;
         }
         catch (ApiException ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] API error fetching organization details: {StatusCode}", ex.StatusCode);
+            _logger.LogError(ex, "[AdminService.GetOrganizationDetailsAsync] API error fetching organization details. OrganizationId: {OrganizationId}, StatusCode: {StatusCode}", id, ex.StatusCode);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[AdminService.GetOrganizationDetailsAsync] Unexpected error fetching organization details. OrganizationId: {OrganizationId}", id);
             return null;
         }
     }
@@ -127,9 +137,14 @@ public class AdminService : IAdminService
         {
             return true;
         }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.ApproveOrganizationAsync] API error approving organization. OrganizationId: {OrganizationId}, StatusCode: {StatusCode}", id, ex.StatusCode);
+            return false;
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error approving organization");
+            _logger.LogError(ex, "[AdminService.ApproveOrganizationAsync] Unexpected error approving organization. OrganizationId: {OrganizationId}", id);
             return false;
         }
     }
@@ -146,9 +161,14 @@ public class AdminService : IAdminService
         {
             return true;
         }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.RejectOrganizationAsync] API error rejecting organization. OrganizationId: {OrganizationId}, StatusCode: {StatusCode}", id, ex.StatusCode);
+            return false;
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error rejecting organization");
+            _logger.LogError(ex, "[AdminService.RejectOrganizationAsync] Unexpected error rejecting organization. OrganizationId: {OrganizationId}", id);
             return false;
         }
     }
@@ -165,9 +185,14 @@ public class AdminService : IAdminService
         {
             return true;
         }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.RevertToPendingAsync] API error reverting organization to pending. OrganizationId: {OrganizationId}, StatusCode: {StatusCode}", id, ex.StatusCode);
+            return false;
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error reverting organization");
+            _logger.LogError(ex, "[AdminService.RevertToPendingAsync] Unexpected error reverting organization to pending. OrganizationId: {OrganizationId}", id);
             return false;
         }
     }
@@ -176,11 +201,16 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.EventTypeAllAsync();
+            return await _apiClient.EventtypeAllAsync();
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.GetEventTypesAsync] API error fetching event types. StatusCode: {StatusCode}", ex.StatusCode);
+            return new List<EventTypeListDto>();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error fetching event types");
+            _logger.LogError(ex, "[AdminService.GetEventTypesAsync] Unexpected error fetching event types");
             return new List<EventTypeListDto>();
         }
     }
@@ -189,11 +219,16 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.AudienceGenderAllAsync();
+            return await _apiClient.AudiencegenderAllAsync();
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.GetAudienceGendersAsync] API error fetching audience genders. StatusCode: {StatusCode}", ex.StatusCode);
+            return new List<AudienceGenderListDto>();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error fetching audience genders");
+            _logger.LogError(ex, "[AdminService.GetAudienceGendersAsync] Unexpected error fetching audience genders");
             return new List<AudienceGenderListDto>();
         }
     }
@@ -202,11 +237,16 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.AudienceAgeAllAsync();
+            return await _apiClient.AudienceageAllAsync();
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.GetAudienceAgesAsync] API error fetching audience ages. StatusCode: {StatusCode}", ex.StatusCode);
+            return new List<AudienceAgeListDto>();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error fetching audience ages");
+            _logger.LogError(ex, "[AdminService.GetAudienceAgesAsync] Unexpected error fetching audience ages");
             return new List<AudienceAgeListDto>();
         }
     }
@@ -215,11 +255,16 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.EventFormatAllAsync();
+            return await _apiClient.EventformatAllAsync();
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.GetEventFormatsAsync] API error fetching event formats. StatusCode: {StatusCode}", ex.StatusCode);
+            return new List<EventFormatListDto>();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error fetching event formats");
+            _logger.LogError(ex, "[AdminService.GetEventFormatsAsync] Unexpected error fetching event formats");
             return new List<EventFormatListDto>();
         }
     }
@@ -228,11 +273,16 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.EventStatusAllAsync();
+            return await _apiClient.EventstatusAllAsync();
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.GetEventStatusesAsync] API error fetching event statuses. StatusCode: {StatusCode}", ex.StatusCode);
+            return new List<EventStatusListDto>();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error fetching event statuses");
+            _logger.LogError(ex, "[AdminService.GetEventStatusesAsync] Unexpected error fetching event statuses");
             return new List<EventStatusListDto>();
         }
     }
@@ -243,9 +293,14 @@ public class AdminService : IAdminService
         {
             return await _apiClient.MadhabAllAsync();
         }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.GetMadhabsAsync] API error fetching madhabs. StatusCode: {StatusCode}", ex.StatusCode);
+            return new List<MadhabListDto>();
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error fetching madhabs");
+            _logger.LogError(ex, "[AdminService.GetMadhabsAsync] Unexpected error fetching madhabs");
             return new List<MadhabListDto>();
         }
     }
@@ -254,11 +309,16 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.VisibilityTypeAllAsync();
+            return await _apiClient.VisibilitytypeAllAsync();
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.GetVisibilityTypesAsync] API error fetching visibility types. StatusCode: {StatusCode}", ex.StatusCode);
+            return new List<VisibilityTypeListDto>();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error fetching visibility types");
+            _logger.LogError(ex, "[AdminService.GetVisibilityTypesAsync] Unexpected error fetching visibility types");
             return new List<VisibilityTypeListDto>();
         }
     }
@@ -267,11 +327,16 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.RegistrationModeAllAsync();
+            return await _apiClient.RegistrationmodeAllAsync();
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.GetRegistrationModesAsync] API error fetching registration modes. StatusCode: {StatusCode}", ex.StatusCode);
+            return new List<RegistrationModeListDto>();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error fetching registration modes");
+            _logger.LogError(ex, "[AdminService.GetRegistrationModesAsync] Unexpected error fetching registration modes");
             return new List<RegistrationModeListDto>();
         }
     }
@@ -282,9 +347,14 @@ public class AdminService : IAdminService
         {
             return await _apiClient.LanguageAllAsync();
         }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.GetLanguagesAsync] API error fetching languages. StatusCode: {StatusCode}", ex.StatusCode);
+            return new List<LanguageListDto>();
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error fetching languages");
+            _logger.LogError(ex, "[AdminService.GetLanguagesAsync] Unexpected error fetching languages");
             return new List<LanguageListDto>();
         }
     }
@@ -293,11 +363,16 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.OrganizationRoleAllAsync();
+            return await _apiClient.OrganizationroleAllAsync();
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.GetOrganizationRolesAsync] API error fetching organization roles. StatusCode: {StatusCode}", ex.StatusCode);
+            return new List<OrganizationRoleListDto>();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error fetching organization roles");
+            _logger.LogError(ex, "[AdminService.GetOrganizationRolesAsync] Unexpected error fetching organization roles");
             return new List<OrganizationRoleListDto>();
         }
     }
@@ -306,11 +381,11 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.OrganizationPositionAllAsync();
+            return await _apiClient.OrganizationpositionAllAsync();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error fetching organization positions");
+            _logger.LogError(ex, "[AdminService.GetOrganizationPositionsAsync] Unexpected error fetching organization positions");
             return new List<OrganizationPositionListDto>();
         }
     }
@@ -319,11 +394,16 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.ActorTypeAllAsync();
+            return await _apiClient.ActortypeAllAsync();
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.GetActorTypesAsync] API error fetching actor types. StatusCode: {StatusCode}", ex.StatusCode);
+            return new List<ActorTypeListDto>();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error fetching actor types");
+            _logger.LogError(ex, "[AdminService.GetActorTypesAsync] Unexpected error fetching actor types");
             return new List<ActorTypeListDto>();
         }
     }
@@ -332,11 +412,16 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.ApprovalStatusAllAsync();
+            return await _apiClient.ApprovalstatusAllAsync();
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.GetApprovalStatusesAsync] API error fetching approval statuses. StatusCode: {StatusCode}", ex.StatusCode);
+            return new List<StatusTypeListDto>();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error fetching approval statuses");
+            _logger.LogError(ex, "[AdminService.GetApprovalStatusesAsync] Unexpected error fetching approval statuses");
             return new List<StatusTypeListDto>();
         }
     }
@@ -345,11 +430,16 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.FileTypeAllAsync();
+            return await _apiClient.FiletypeAllAsync();
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.GetFileTypesAsync] API error fetching file types. StatusCode: {StatusCode}", ex.StatusCode);
+            return new List<FileTypeListDto>();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error fetching file types");
+            _logger.LogError(ex, "[AdminService.GetFileTypesAsync] Unexpected error fetching file types");
             return new List<FileTypeListDto>();
         }
     }
@@ -358,11 +448,16 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.DidCustodyTypeAllAsync();
+            return await _apiClient.DidcustodytypeAllAsync();
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.GetDidCustodyTypesAsync] API error fetching DID custody types. StatusCode: {StatusCode}", ex.StatusCode);
+            return new List<DidCustodyTypeListDto>();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error fetching DID custody types");
+            _logger.LogError(ex, "[AdminService.GetDidCustodyTypesAsync] Unexpected error fetching DID custody types");
             return new List<DidCustodyTypeListDto>();
         }
     }
@@ -375,9 +470,14 @@ public class AdminService : IAdminService
             var response = await _apiClient.GetCategoriesAsync(ApiConstants.FirstPage, ApiConstants.DefaultPageSize);
             return response?.GetItems() ?? new List<CategoryListDto>();
         }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.GetCategoriesAsync] API error fetching categories. StatusCode: {StatusCode}", ex.StatusCode);
+            return new List<CategoryListDto>();
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error fetching categories");
+            _logger.LogError(ex, "[AdminService.GetCategoriesAsync] Unexpected error fetching categories");
             return new List<CategoryListDto>();
         }
     }
@@ -391,11 +491,17 @@ public class AdminService : IAdminService
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
         {
+            _logger.LogWarning("[AdminService.GetCategoryByIdAsync] Category not found. CategoryId: {CategoryId}", id);
+            return null;
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.GetCategoryByIdAsync] API error fetching category. CategoryId: {CategoryId}, StatusCode: {StatusCode}", id, ex.StatusCode);
             return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error fetching category");
+            _logger.LogError(ex, "[AdminService.GetCategoryByIdAsync] Unexpected error fetching category. CategoryId: {CategoryId}", id);
             return null;
         }
     }
@@ -407,9 +513,14 @@ public class AdminService : IAdminService
             await _apiClient.CreateCategoryAsync(category);
             return true;
         }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.CreateCategoryAsync] API error creating category. StatusCode: {StatusCode}", ex.StatusCode);
+            return false;
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error creating category");
+            _logger.LogError(ex, "[AdminService.CreateCategoryAsync] Unexpected error creating category");
             return false;
         }
     }
@@ -420,15 +531,20 @@ public class AdminService : IAdminService
         {
             if (!category.Id.HasValue)
             {
-                _logger.LogWarning("[ADMIN SERVICE] Category ID is null");
+                _logger.LogWarning("[AdminService.UpdateCategoryAsync] Category ID is null, cannot update");
                 return false;
             }
             await _apiClient.UpdateCategoryAsync(category.Id.Value, category);
             return true;
         }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.UpdateCategoryAsync] API error updating category. CategoryId: {CategoryId}, StatusCode: {StatusCode}", category.Id, ex.StatusCode);
+            return false;
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error updating category");
+            _logger.LogError(ex, "[AdminService.UpdateCategoryAsync] Unexpected error updating category. CategoryId: {CategoryId}", category.Id);
             return false;
         }
     }
@@ -440,9 +556,14 @@ public class AdminService : IAdminService
             await _apiClient.DeleteCategoryAsync(id);
             return true;
         }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.DeleteCategoryAsync] API error deleting category. CategoryId: {CategoryId}, StatusCode: {StatusCode}", id, ex.StatusCode);
+            return false;
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error deleting category");
+            _logger.LogError(ex, "[AdminService.DeleteCategoryAsync] Unexpected error deleting category. CategoryId: {CategoryId}", id);
             return false;
         }
     }
@@ -455,9 +576,14 @@ public class AdminService : IAdminService
             var response = await _apiClient.GetTagsAsync(ApiConstants.FirstPage, ApiConstants.DefaultPageSize);
             return response?.GetItems() ?? new List<TagListDto>();
         }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.GetTagsAsync] API error fetching tags. StatusCode: {StatusCode}", ex.StatusCode);
+            return new List<TagListDto>();
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error fetching tags");
+            _logger.LogError(ex, "[AdminService.GetTagsAsync] Unexpected error fetching tags");
             return new List<TagListDto>();
         }
     }
@@ -471,11 +597,17 @@ public class AdminService : IAdminService
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
         {
+            _logger.LogWarning("[AdminService.GetTagByIdAsync] Tag not found. TagId: {TagId}", id);
+            return null;
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.GetTagByIdAsync] API error fetching tag. TagId: {TagId}, StatusCode: {StatusCode}", id, ex.StatusCode);
             return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error fetching tag");
+            _logger.LogError(ex, "[AdminService.GetTagByIdAsync] Unexpected error fetching tag. TagId: {TagId}", id);
             return null;
         }
     }
@@ -487,9 +619,14 @@ public class AdminService : IAdminService
             await _apiClient.CreateTagAsync(tag);
             return true;
         }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.CreateTagAsync] API error creating tag. StatusCode: {StatusCode}", ex.StatusCode);
+            return false;
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error creating tag");
+            _logger.LogError(ex, "[AdminService.CreateTagAsync] Unexpected error creating tag");
             return false;
         }
     }
@@ -500,15 +637,20 @@ public class AdminService : IAdminService
         {
             if (!tag.Id.HasValue)
             {
-                _logger.LogWarning("[ADMIN SERVICE] Tag ID is null");
+                _logger.LogWarning("[AdminService.UpdateTagAsync] Tag ID is null, cannot update");
                 return false;
             }
             await _apiClient.UpdateTagAsync(tag.Id.Value, tag);
             return true;
         }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.UpdateTagAsync] API error updating tag. TagId: {TagId}, StatusCode: {StatusCode}", tag.Id, ex.StatusCode);
+            return false;
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error updating tag");
+            _logger.LogError(ex, "[AdminService.UpdateTagAsync] Unexpected error updating tag. TagId: {TagId}", tag.Id);
             return false;
         }
     }
@@ -520,9 +662,14 @@ public class AdminService : IAdminService
             await _apiClient.DeleteTagAsync(id);
             return true;
         }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.DeleteTagAsync] API error deleting tag. TagId: {TagId}, StatusCode: {StatusCode}", id, ex.StatusCode);
+            return false;
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error deleting tag");
+            _logger.LogError(ex, "[AdminService.DeleteTagAsync] Unexpected error deleting tag. TagId: {TagId}", id);
             return false;
         }
     }
@@ -535,9 +682,14 @@ public class AdminService : IAdminService
             var response = await _apiClient.GetLocationsAsync(ApiConstants.FirstPage, ApiConstants.DefaultPageSize);
             return response?.GetItems() ?? new List<LocationListDto>();
         }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.GetLocationsAsync] API error fetching locations. StatusCode: {StatusCode}", ex.StatusCode);
+            return new List<LocationListDto>();
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error fetching locations");
+            _logger.LogError(ex, "[AdminService.GetLocationsAsync] Unexpected error fetching locations");
             return new List<LocationListDto>();
         }
     }
@@ -551,11 +703,17 @@ public class AdminService : IAdminService
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
         {
+            _logger.LogWarning("[AdminService.GetLocationByIdAsync] Location not found. LocationId: {LocationId}", id);
+            return null;
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.GetLocationByIdAsync] API error fetching location. LocationId: {LocationId}, StatusCode: {StatusCode}", id, ex.StatusCode);
             return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error fetching location");
+            _logger.LogError(ex, "[AdminService.GetLocationByIdAsync] Unexpected error fetching location. LocationId: {LocationId}", id);
             return null;
         }
     }
@@ -567,9 +725,14 @@ public class AdminService : IAdminService
             await _apiClient.CreateLocationAsync(location);
             return true;
         }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.CreateLocationAsync] API error creating location. StatusCode: {StatusCode}", ex.StatusCode);
+            return false;
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error creating location");
+            _logger.LogError(ex, "[AdminService.CreateLocationAsync] Unexpected error creating location");
             return false;
         }
     }
@@ -580,15 +743,20 @@ public class AdminService : IAdminService
         {
             if (!location.Id.HasValue)
             {
-                _logger.LogWarning("[ADMIN SERVICE] Location ID is null");
+                _logger.LogWarning("[AdminService.UpdateLocationAsync] Location ID is null, cannot update");
                 return false;
             }
             await _apiClient.UpdateLocationAsync(location.Id.Value, location);
             return true;
         }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.UpdateLocationAsync] API error updating location. LocationId: {LocationId}, StatusCode: {StatusCode}", location.Id, ex.StatusCode);
+            return false;
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error updating location");
+            _logger.LogError(ex, "[AdminService.UpdateLocationAsync] Unexpected error updating location. LocationId: {LocationId}", location.Id);
             return false;
         }
     }
@@ -600,10 +768,16 @@ public class AdminService : IAdminService
             await _apiClient.DeleteLocationAsync(id);
             return true;
         }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.DeleteLocationAsync] API error deleting location. LocationId: {LocationId}, StatusCode: {StatusCode}", id, ex.StatusCode);
+            return false;
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN SERVICE] Error deleting location");
+            _logger.LogError(ex, "[AdminService.DeleteLocationAsync] Unexpected error deleting location. LocationId: {LocationId}", id);
             return false;
         }
     }
 }
+

@@ -1,9 +1,8 @@
 using MediatR;
 
-namespace Explore.Application.Features.StorageObjects.Requests.Commands
+namespace Explore.Application.Features.StorageObjects.Requests.Commands;
+
+public class DeleteStorageObjectCommand : IRequest<bool>
 {
-    public class DeleteStorageObjectCommand : IRequest<bool>
-    {
-        public Guid Id { get; set; }
-    }
+    public Guid Id { get; set; }
 }

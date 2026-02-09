@@ -1,0 +1,275 @@
+@using MudBlazor
+@using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Clients
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Forms
+@inject UserService UserService
+@inject ISnackbar Snackbar
+
+<div class="settings-section">
+    <!-- Section Header -->
+    <div class="settings-section-header mb-6">
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">Personal Information</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Update your personal details and profile picture</MudText>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="d-flex flex-column align-center justify-center py-8">
+            <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+            <MudText Typo="Typo.body1" Class="mt-4" Color="Color.Secondary">Loading profile...</MudText>
+        </div>
+    }
+    else if (_user == null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Filled">Failed to load user profile.</MudAlert>
+    }
+    else
+    {
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-6 rounded-lg" ShowCloseIcon="true" CloseIconClicked="@(() => _errorMessage = null)">
+                @_errorMessage
+            </MudAlert>
+        }
+
+        @if (!string.IsNullOrEmpty(_successMessage))
+        {
+            <MudAlert Severity="Severity.Success" Variant="Variant.Filled" Class="mb-6 rounded-lg" ShowCloseIcon="true" CloseIconClicked="@(() => _successMessage = null)">
+                @_successMessage
+            </MudAlert>
+        }
+
+        <MudForm @ref="_form" @bind-IsValid="_success">
+            <!-- Profile Picture Section -->
+            <div class="settings-profile-picture mb-8">
+                <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Class="mb-4">Profile Picture</MudText>
+                <div class="d-flex align-center gap-6">
+                    <div style="width: 120px;">
+                        <ImageUpload @bind-PreviewUrl="_profileImagePreview"
+                                   FileDataSelected="OnProfileImageFileDataSelected"
+                                   PlaceholderText="Select Profile Picture"
+                                   UploadButtonText="Change"
+                                   Width="120px"
+                                   Height="120px"
+                                   HintText="JPG, PNG, GIF, WebP (Max 5MB)" 
+                                   Icon="@Icons.Material.Filled.Person" />
+                    </div>
+                    <div>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            Recommended: Square image, at least 400x400px
+                        </MudText>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Divider -->
+            <MudDivider Class="my-6" />
+
+            <!-- Name Section -->
+            <div class="settings-form-section mb-8">
+                <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Class="mb-4">Name</MudText>
+                <MudGrid Spacing="3">
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_user.FirstName" 
+                                      Label="First Name" 
+                                      Required="true" 
+                                      Variant="Variant.Outlined" 
+                                      Adornment="Adornment.Start" 
+                                      AdornmentIcon="@Icons.Material.Filled.Person" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_user.LastName" 
+                                      Label="Last Name" 
+                                      Required="true" 
+                                      Variant="Variant.Outlined"
+                                      Adornment="Adornment.Start" 
+                                      AdornmentIcon="@Icons.Material.Filled.Person" />
+                    </MudItem>
+                </MudGrid>
+            </div>
+
+            <!-- Divider -->
+            <MudDivider Class="my-6" />
+
+            <!-- Contact Section -->
+            <div class="settings-form-section mb-8">
+                <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Class="mb-4">Contact Information</MudText>
+                <MudGrid Spacing="3">
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="_user.Email" 
+                                      Label="Email" 
+                                      Variant="Variant.Outlined" 
+                                      ReadOnly="true" 
+                                      HelperText="Email cannot be changed"
+                                      Adornment="Adornment.Start" 
+                                      AdornmentIcon="@Icons.Material.Filled.Email" />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="_user.Username" 
+                                      Label="Username" 
+                                      Variant="Variant.Outlined" 
+                                      Adornment="Adornment.Start" 
+                                      AdornmentIcon="@Icons.Material.Filled.AlternateEmail" />
+                    </MudItem>
+                </MudGrid>
+            </div>
+
+            <!-- Divider -->
+            <MudDivider Class="my-6" />
+
+            <!-- Action Buttons -->
+            <div class="d-flex justify-end gap-3 mt-8">
+                <MudButton Variant="Variant.Outlined" 
+                           Color="Color.Default" 
+                           OnClick="ResetForm"
+                           Class="rounded-pill px-6">
+                    Cancel
+                </MudButton>
+                <MudButton Variant="Variant.Filled" 
+                           Color="Color.Primary" 
+                           OnClick="SaveSettings" 
+                           Disabled="@(!_success || _isSaving)" 
+                           StartIcon="@Icons.Material.Filled.Save"
+                           Class="rounded-pill px-6">
+                    @if (_isSaving)
+                    {
+                        <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+                        <span>Saving...</span>
+                    }
+                    else
+                    {
+                        <span>Save Changes</span>
+                    }
+                </MudButton>
+            </div>
+        </MudForm>
+    }
+</div>
+
+@code {
+    [Inject]
+    private IDialogService DialogService { get; set; } = null!;
+
+    private MudForm? _form;
+    private bool _loading = true;
+    private bool _isSaving = false;
+    private bool _success = true;
+    private string? _errorMessage;
+    private string? _successMessage;
+    private string? _profileImagePreview;
+    private UserDto? _user;
+    private UserDto? _originalUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUserDataAsync();
+    }
+
+    private async Task LoadUserDataAsync()
+    {
+        try
+        {
+            _loading = true;
+            _user = await UserService.GetCurrentUserAsync();
+            _originalUser = new UserDto
+            {
+                Id = _user?.Id,
+                FirstName = _user?.FirstName,
+                LastName = _user?.LastName,
+                Email = _user?.Email,
+                Username = _user?.Username,
+                ProfileImageUri = _user?.ProfileImageUri
+            };
+            _profileImagePreview = _user?.ProfileImageUri;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to load user profile: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task SaveSettings()
+    {
+        if (_user == null)
+            return;
+
+        try
+        {
+            _isSaving = true;
+            _errorMessage = null;
+            _successMessage = null;
+
+            var updateDto = new UpdateUserDto
+            {
+                Id = _user.Id,
+                FirstName = _user.FirstName,
+                LastName = _user.LastName,
+                Email = _user.Email,
+                Username = _user.Username
+            };
+
+            var result = await UserService.UpdateUserAsync(updateDto);
+            if (result?.Success == true)
+            {
+                _successMessage = "Profile updated successfully!";
+                _originalUser = new UserDto
+                {
+                    Id = _user.Id,
+                    FirstName = _user.FirstName,
+                    LastName = _user.LastName,
+                    Email = _user.Email,
+                    Username = _user.Username,
+                    ProfileImageUri = _user.ProfileImageUri
+                };
+            }
+            else
+            {
+                _errorMessage = result?.Message ?? "Failed to save profile";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to save profile: {ex.Message}";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void ResetForm()
+    {
+        if (_originalUser != null && _user != null)
+        {
+            _user.FirstName = _originalUser.FirstName;
+            _user.LastName = _originalUser.LastName;
+            _user.Username = _originalUser.Username;
+            _profileImagePreview = _originalUser.ProfileImageUri;
+            _errorMessage = null;
+            _successMessage = null;
+        }
+    }
+
+    private Task OnProfileImageFileDataSelected(FileUploadData? fileData)
+    {
+        try
+        {
+            if (_user != null && fileData != null)
+            {
+                var base64 = Convert.ToBase64String(fileData.Content);
+                _profileImagePreview = $"data:{fileData.ContentType};base64,{base64}";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to upload image: {ex.Message}";
+        }
+
+        return Task.CompletedTask;
+    }
+}

@@ -1,10 +1,9 @@
 using Explore.Application.DTOs.TagType;
 using MediatR;
 
-namespace Explore.Application.Features.TagTypeTags.Requests.Queries
+namespace Explore.Application.Features.TagTypeTags.Requests.Queries;
+
+public class GetTagTypesForTagRequest : IRequest<List<TagTypeListDto>>
 {
-    public class GetTagTypesForTagRequest : IRequest<List<TagTypeListDto>>
-    {
-        public Guid TagId { get; set; }
-    }
+    public Guid TagId { get; set; }
 }

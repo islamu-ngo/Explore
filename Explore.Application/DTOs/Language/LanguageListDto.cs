@@ -1,10 +1,9 @@
-namespace Explore.Application.DTOs.Language
+namespace Explore.Application.DTOs.Language;
+
+public class LanguageListDto
 {
-    public class LanguageListDto
-    {
-        public int Id { get; set; }
-        public string MasterCode { get; set; }
-        public string FullName { get; set; }
-        public string? Description { get; set; }
-    }
+    public int Id { get; set; }
+    public required string MasterCode { get; set; }
+    public required string FullName { get; set; }
+    public string? Description { get; set; }
 }

@@ -1,10 +1,9 @@
-using MediatR;
-using Explore.Application.DTOs.ActorKeyStore;
 using System.Collections.Generic;
+using Explore.Application.DTOs.ActorKeyStore;
+using MediatR;
 
-namespace Explore.Application.Features.ActorKeyStores.Requests.Queries
+namespace Explore.Application.Features.ActorKeyStores.Requests.Queries;
+
+public class GetActorKeyStoreListRequest : IRequest<List<ActorKeyStoreListDto>>
 {
-    public class GetActorKeyStoreListRequest : IRequest<List<ActorKeyStoreListDto>>
-    {
-    }
 }

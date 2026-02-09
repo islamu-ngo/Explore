@@ -1,11 +1,10 @@
+using System;
 using Explore.Application.DTOs.EventTags;
 using MediatR;
-using System;
 
-namespace Explore.Application.Features.EventTags.Requests.Queries
+namespace Explore.Application.Features.EventTags.Requests.Queries;
+
+public class GetEventTagsDetailsRequest : IRequest<EventTagsDto>
 {
-    public class GetEventTagsDetailsRequest : IRequest<EventTagsDto>
-    {
-        public Guid Id { get; set; }
-    }
+    public Guid Id { get; set; }
 }

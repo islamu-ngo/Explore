@@ -1,3 +1,7 @@
+using System.IO.Compression;
+using System.Net.Http.Headers;
+using System.Security.Claims;
+using System.Text.RegularExpressions;
 using Explore.API.BackgroundServices;
 using Explore.API.Extensions;
 using Explore.API.Middleware;
@@ -10,17 +14,16 @@ using Explore.Persistence.Seed;
 using Explore.Secrets.Extensions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.ResponseCompression;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
+using Polly.Bulkhead;
 //using Microsoft.OpenApi.Models;
 using Scalar.AspNetCore;
 using Serilog;
-using System.Net.Http.Headers;
-using System.Security.Claims;
-using System.Text.RegularExpressions;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.OpenApi;
-using Polly.Bulkhead;
 using static Microsoft.AspNetCore.Http.StatusCodes;
 
 // Graceful shutdown tracking for zero-downtime deployments
@@ -56,6 +59,47 @@ var realm = builder.Configuration["Keycloak:Realm"];
 var audience = builder.Configuration["Keycloak:Audience"]; // Should be "explore-api"
 
 builder.Services.AddHttpContextAccessor();
+
+// Performance: Response compression (Brotli + Gzip)
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+    options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(["application/json", "application/hal+json"]);
+});
+builder.Services.Configure<BrotliCompressionProviderOptions>(options => options.Level = CompressionLevel.Fastest);
+builder.Services.Configure<GzipCompressionProviderOptions>(options => options.Level = CompressionLevel.Fastest);
+
+// Performance: Output caching for read endpoints
+builder.Services.AddOutputCache(options =>
+{
+    options.AddBasePolicy(builder => builder.NoCache());
+    options.AddPolicy("LookupData", builder => builder
+        .Expire(TimeSpan.FromHours(1))
+        .Tag("lookup-data"));
+    options.AddPolicy("ListData", builder => builder
+        .Expire(TimeSpan.FromSeconds(30))
+        .SetVaryByQuery("pageNumber", "pageSize")
+        .Tag("list-data"));
+    options.AddPolicy("DetailData", builder => builder
+        .Expire(TimeSpan.FromSeconds(60))
+        .SetVaryByRouteValue("id")
+        .Tag("detail-data"));
+});
+
+// Performance: HybridCache (L1 in-memory + optional L2 distributed)
+builder.Services.AddHybridCache(options =>
+{
+    options.MaximumPayloadBytes = 1024 * 1024 * 10; // 10MB
+    options.MaximumKeyLength = 512;
+    options.DefaultEntryOptions = new HybridCacheEntryOptions
+    {
+        Expiration = TimeSpan.FromMinutes(30),
+        LocalCacheExpiration = TimeSpan.FromMinutes(5)
+    };
+});
+
 builder.Services.AddRouting(options =>
 {
     options.LowercaseUrls = true;
@@ -79,7 +123,14 @@ builder.Services.AddScoped<ITenantContext, TenantContext>();
 builder.Services.AddHateoas();
 builder.Services.AddHateoasAssemblers();
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.TypeInfoResolverChain.Add(
+            Explore.Application.Serialization.ExploreJsonContext.Default);
+        options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+        options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
+    });
 
 builder.Services.AddEndpointsApiExplorer();
 //builder.Services.AddSwaggerGen(); // moved to AddSwaggerGenWithAuth extension method
@@ -439,6 +490,7 @@ else
 //    KnownProxies = { }   // vide
 //});
 
+app.UseResponseCompression();
 app.UseHttpsRedirection();
 
 // HATEOAS: Process Prefer header for RFC 7240 support (return=minimal)
@@ -447,6 +499,7 @@ app.UseHateoas();
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseOutputCache();
 app.UseMiddleware<ExceptionMiddleware>();
 app.MapControllers();
 

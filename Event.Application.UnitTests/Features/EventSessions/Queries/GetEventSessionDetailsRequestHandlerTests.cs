@@ -39,7 +39,8 @@ public class GetEventSessionDetailsRequestHandlerTests
         var expectedDto = new EventSessionDto
         {
             Id = sessionId,
-            Title = "Test Session"
+            Title = "Test Session",
+            EventTitle = string.Empty
         };
 
         _eventSessionRepository.GetSessionWithDetails(sessionId).Returns(eventSession);
@@ -90,7 +91,8 @@ public class GetEventSessionDetailsRequestHandlerTests
         {
             Id = sessionId,
             LocationId = locationId,
-            LocationFullName = "Test Location"
+            LocationFullName = "Test Location",
+            EventTitle = string.Empty
         };
 
         _eventSessionRepository.GetSessionWithDetails(sessionId).Returns(eventSession);

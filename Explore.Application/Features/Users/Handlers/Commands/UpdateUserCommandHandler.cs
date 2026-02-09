@@ -1,11 +1,12 @@
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Users.Requests.Commands;
 using Explore.Application.Responses;
 using MediatR;
-using System;
-using System.Threading;
-using System.Threading.Tasks;
+using Microsoft.Extensions.Caching.Hybrid;
 
 namespace Explore.Application.Features.Users.Handlers.Commands;
 
@@ -15,17 +16,20 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, BaseC
     private readonly IActorRepository _actorRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly IMapper _mapper;
+    private readonly HybridCache _cache;
 
     public UpdateUserCommandHandler(
         IUserRepository userRepository,
         IActorRepository actorRepository,
         IStorageObjectRepository storageObjectRepository,
-        IMapper mapper)
+        IMapper mapper,
+        HybridCache cache)
     {
         _userRepository = userRepository;
         _actorRepository = actorRepository;
         _storageObjectRepository = storageObjectRepository;
         _mapper = mapper;
+        _cache = cache;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateUserCommand request, CancellationToken cancellationToken)
@@ -65,6 +69,8 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, BaseC
         response.Success = true;
         response.Message = "User updated successfully";
         response.Id = user.Id;
+
+        await _cache.RemoveAsync($"user:detail:{user.Id}", cancellationToken);
 
         return response;
     }

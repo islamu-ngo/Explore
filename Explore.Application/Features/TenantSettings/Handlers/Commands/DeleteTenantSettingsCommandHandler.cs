@@ -1,29 +1,28 @@
-using MediatR;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.TenantSettings;
 using Explore.Application.Features.TenantSettings.Requests.Commands;
+using MediatR;
 
-namespace Explore.Application.Features.TenantSettings.Handlers.Commands
+namespace Explore.Application.Features.TenantSettings.Handlers.Commands;
+
+public class DeleteTenantSettingsCommandHandler : IRequestHandler<DeleteTenantSettingsCommand, bool>
 {
-    public class DeleteTenantSettingsCommandHandler : IRequestHandler<DeleteTenantSettingsCommand, bool>
+    private readonly ITenantSettingsRepository _tenantSettingsRepository;
+
+    public DeleteTenantSettingsCommandHandler(ITenantSettingsRepository tenantSettingsRepository)
     {
-        private readonly ITenantSettingsRepository _tenantSettingsRepository;
+        _tenantSettingsRepository = tenantSettingsRepository;
+    }
 
-        public DeleteTenantSettingsCommandHandler(ITenantSettingsRepository tenantSettingsRepository)
+    public async Task<bool> Handle(DeleteTenantSettingsCommand request, CancellationToken cancellationToken)
+    {
+        var tenantSettings = await _tenantSettingsRepository.GetById(request.Id);
+        if (tenantSettings == null)
         {
-            _tenantSettingsRepository = tenantSettingsRepository;
+            return false;
         }
 
-        public async Task<bool> Handle(DeleteTenantSettingsCommand request, CancellationToken cancellationToken)
-        {
-            var tenantSettings = await _tenantSettingsRepository.GetById(request.Id);
-            if (tenantSettings == null)
-            {
-                return false;
-            }
-
-            await _tenantSettingsRepository.Delete(tenantSettings);
-            return true;
-        }
+        await _tenantSettingsRepository.Delete(tenantSettings);
+        return true;
     }
 }

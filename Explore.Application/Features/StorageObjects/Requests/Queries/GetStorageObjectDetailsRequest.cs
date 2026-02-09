@@ -1,10 +1,9 @@
-using MediatR;
 using Explore.Application.DTOs.StorageObject;
+using MediatR;
 
-namespace Explore.Application.Features.StorageObjects.Requests.Queries
+namespace Explore.Application.Features.StorageObjects.Requests.Queries;
+
+public class GetStorageObjectDetailsRequest : IRequest<StorageObjectDto?>
 {
-    public class GetStorageObjectDetailsRequest : IRequest<StorageObjectDto?>
-    {
-        public Guid Id { get; set; }
-    }
+    public Guid Id { get; set; }
 }

@@ -3,36 +3,38 @@ using Explore.Application.Features.TagTypes.Requests.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 
-namespace Explore.API.Controllers
+namespace Explore.API.Controllers;
+
+[Route("api/v1/[controller]")]
+[ApiController]
+public class TagTypeController : ControllerBase
 {
-    [Route("api/v1/[controller]")]
-    [ApiController]
-    public class TagTypeController : ControllerBase
+    private readonly IMediator _mediator;
+
+    public TagTypeController(IMediator mediator)
     {
-        private readonly IMediator _mediator;
+        _mediator = mediator;
+    }
 
-        public TagTypeController(IMediator mediator)
-        {
-            _mediator = mediator;
-        }
+    // GET: api/v1/tagtype
+    [HttpGet]
+    [AllowAnonymous]
+    [OutputCache(PolicyName = "LookupData")]
+    public async Task<ActionResult<List<TagTypeListDto>>> GetAll(CancellationToken cancellationToken = default)
+    {
+        var tagTypes = await _mediator.Send(new GetTagTypeListRequest(), cancellationToken);
+        return Ok(tagTypes);
+    }
 
-        // GET: api/v1/tagtype
-        [HttpGet]
-        [AllowAnonymous]
-        public async Task<ActionResult<List<TagTypeListDto>>> GetAll()
-        {
-            var tagTypes = await _mediator.Send(new GetTagTypeListRequest());
-            return Ok(tagTypes);
-        }
-
-        // GET: api/v1/tagtype/{id}
-        [HttpGet("{id}")]
-        [AllowAnonymous]
-        public async Task<ActionResult<TagTypeDto>> GetById(int id)
-        {
-            var tagType = await _mediator.Send(new GetTagTypeDetailsRequest { Id = id });
-            return Ok(tagType);
-        }
+    // GET: api/v1/tagtype/{id}
+    [HttpGet("{id}")]
+    [AllowAnonymous]
+    [OutputCache(PolicyName = "DetailData")]
+    public async Task<ActionResult<TagTypeDto>> GetById(int id, CancellationToken cancellationToken = default)
+    {
+        var tagType = await _mediator.Send(new GetTagTypeDetailsRequest { Id = id }, cancellationToken);
+        return Ok(tagType);
     }
 }

@@ -1,0 +1,27 @@
+// ABOUTME: DTO for tenant-level onboarding and runtime policy settings.
+// ABOUTME: Contains actionable policy values and delegation constraints from instance governance.
+
+namespace Explore.Application.DTOs.Onboarding;
+
+public class TenantPolicySettingsDto
+{
+    public bool AllowUserSubmittedEvents { get; set; } = true;
+    public bool RequireEventApproval { get; set; }
+    public bool RequireOrganizationVerification { get; set; } = true;
+    public bool CanTenantOmitVerification { get; set; }
+    public string PreferredHomePage { get; set; } = "EventList";
+    public string InstanceBaseDomain { get; set; } = string.Empty;
+    public string Subdomain { get; set; } = string.Empty;
+    public string CustomDomain { get; set; } = string.Empty;
+    public string BrandDisplayName { get; set; } = "ISLAMU Explore";
+    public string BrandLogoUrl { get; set; } = string.Empty;
+    public string BrandFaviconUrl { get; set; } = string.Empty;
+    public string BrandCustomCssUrl { get; set; } = string.Empty;
+    public bool CanOverrideHomePagePreference { get; set; } = true;
+    public bool CanOverrideSubdomain { get; set; } = true;
+    public bool CanOverrideCustomDomain { get; set; } = true;
+    public bool CanOverrideBrandDisplayName { get; set; } = true;
+    public bool CanOverrideBrandLogoUrl { get; set; } = true;
+    public bool CanOverrideBrandFaviconUrl { get; set; } = true;
+    public bool CanOverrideBrandCustomCssUrl { get; set; } = true;
+}

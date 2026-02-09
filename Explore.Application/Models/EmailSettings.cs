@@ -1,13 +1,12 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Explore.Application.Models
+namespace Explore.Application.Models;
+
+public class EmailSettings
 {
-    public class EmailSettings
-    {
-        public string ApiKey { get; set; }
-        public string FromAddress { get; set; }
-        public string FromName { get; set; }
-    }
+    public required string ApiKey { get; set; }
+    public required string FromAddress { get; set; }
+    public required string FromName { get; set; }
 }

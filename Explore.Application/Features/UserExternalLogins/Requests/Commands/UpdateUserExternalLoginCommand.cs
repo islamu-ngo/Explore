@@ -1,11 +1,10 @@
-using MediatR;
 using Explore.Application.DTOs.UserExternalLogin;
 using Explore.Application.Responses;
+using MediatR;
 
-namespace Explore.Application.Features.UserExternalLogins.Requests.Commands
+namespace Explore.Application.Features.UserExternalLogins.Requests.Commands;
+
+public class UpdateUserExternalLoginCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public class UpdateUserExternalLoginCommand : IRequest<BaseCommandResponse<Guid>>
-    {
-        public UpdateUserExternalLoginDto UserExternalLoginDto { get; set; }
-    }
+    public required UpdateUserExternalLoginDto UserExternalLoginDto { get; set; }
 }

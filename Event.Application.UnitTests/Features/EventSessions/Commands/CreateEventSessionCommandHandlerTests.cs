@@ -70,7 +70,7 @@ public class CreateEventSessionCommandHandlerTests
         _eventRepository.Exists(eventId).Returns(true);
 
         // Mock session creation
-        var eventSession = new EventSession { Id = sessionId };
+        var eventSession = new EventSession { Id = sessionId, Event = null!, Tenant = null! };
         _mapper.Map<EventSession>(command.EventSessionDto).Returns(eventSession);
         _eventSessionRepository.Create(Arg.Any<EventSession>()).Returns(eventSession);
 
@@ -175,7 +175,7 @@ public class CreateEventSessionCommandHandlerTests
         _locationRepository.Exists(locationId).Returns(true);
 
         // Mock session creation
-        var eventSession = new EventSession { Id = sessionId, LocationId = locationId };
+        var eventSession = new EventSession { Id = sessionId, LocationId = locationId, Event = null!, Tenant = null! };
         _mapper.Map<EventSession>(command.EventSessionDto).Returns(eventSession);
         _eventSessionRepository.Create(Arg.Any<EventSession>()).Returns(eventSession);
 

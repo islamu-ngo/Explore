@@ -1,11 +1,11 @@
 // ABOUTME: Background worker service that processes PDS synchronization outbox entries.
 // ABOUTME: Implements polling-based outbox pattern with exponential backoff for reliable AT Protocol sync.
 
-using Microsoft.Extensions.Options;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain.Federation;
 using Explore.Infrastructure;
+using Microsoft.Extensions.Options;
 
 namespace Explore.API.BackgroundServices;
 

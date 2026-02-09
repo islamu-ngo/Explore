@@ -1,0 +1,177 @@
+@page "/onboarding/tenant"
+@using MudBlazor
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject ITenantOnboardingService TenantOnboardingService
+@inject IUserService UserService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-8">
+    <MudPaper Class="pa-6">
+        <MudText Typo="Typo.h4" Class="mb-2">Tenant Onboarding</MudText>
+        <MudText Typo="Typo.body1" Class="mb-4">
+            Configure tenant-level policies for submissions, moderation, and organization verification.
+        </MudText>
+
+        @if (!string.IsNullOrWhiteSpace(_errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+        }
+
+        @if (_isLoading)
+        {
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (!_canEdit)
+        {
+            <MudAlert Severity="Severity.Warning" Class="mb-4">
+                You are authenticated but do not have tenant administrator permissions for this tenant.
+            </MudAlert>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/events">
+                Go to Events
+            </MudButton>
+        }
+        else
+        {
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.h6">Content Governance</MudText>
+                <MudSwitch T="bool" @bind-Value="_model.AllowUserSubmittedEvents" Color="Color.Primary">
+                    Allow users to submit events
+                </MudSwitch>
+
+                <MudSwitch T="bool" @bind-Value="_model.RequireEventApproval" Color="Color.Primary">
+                    Require approval before user-submitted events are published
+                </MudSwitch>
+
+                <MudSwitch T="bool"
+                           @bind-Value="_model.RequireOrganizationVerification"
+                           Disabled="@(!_model.CanTenantOmitVerification)"
+                           Color="Color.Primary">
+                    Require organization verification
+                </MudSwitch>
+
+                @if (!_model.CanTenantOmitVerification)
+                {
+                    <MudText Typo="Typo.caption">
+                        Organization verification is locked by instance policy and cannot be omitted.
+                    </MudText>
+                }
+
+                <MudDivider />
+                <MudText Typo="Typo.h6">Tenant Experience</MudText>
+                <MudSelect T="string"
+                           Label="Preferred Home Page"
+                           @bind-Value="_model.PreferredHomePage"
+                           Disabled="@(!_model.CanOverrideHomePagePreference)"
+                           Variant="Variant.Outlined">
+                    <MudSelectItem Value="@("EventList")">Event List</MudSelectItem>
+                    <MudSelectItem Value="@("LandingPage")">Landing Page</MudSelectItem>
+                </MudSelect>
+                @if (!_model.CanOverrideHomePagePreference)
+                {
+                    <MudText Typo="Typo.caption">Home page is locked by instance policy.</MudText>
+                }
+
+                <MudTextField Label="Subdomain"
+                              Variant="Variant.Outlined"
+                              Placeholder="tenant-slug"
+                              @bind-Value="_model.Subdomain"
+                              Disabled="@(!_model.CanOverrideSubdomain)"
+                              HelperText="@($"Base domain: {(_model.InstanceBaseDomain == string.Empty ? "(not configured)" : _model.InstanceBaseDomain)}")" />
+                @if (!_model.CanOverrideSubdomain)
+                {
+                    <MudText Typo="Typo.caption">Subdomain is locked by instance policy.</MudText>
+                }
+
+                <MudTextField Label="Custom Domain"
+                              Variant="Variant.Outlined"
+                              Placeholder="events.example.org"
+                              @bind-Value="_model.CustomDomain"
+                              Disabled="@(!_model.CanOverrideCustomDomain)" />
+                @if (!_model.CanOverrideCustomDomain)
+                {
+                    <MudText Typo="Typo.caption">Custom domains are disabled or locked by instance policy.</MudText>
+                }
+
+                <MudDivider />
+                <MudText Typo="Typo.h6">Tenant Branding</MudText>
+                <MudTextField Label="Brand Display Name"
+                              Variant="Variant.Outlined"
+                              @bind-Value="_model.BrandDisplayName"
+                              Disabled="@(!_model.CanOverrideBrandDisplayName)" />
+                <MudTextField Label="Brand Logo URL"
+                              Variant="Variant.Outlined"
+                              @bind-Value="_model.BrandLogoUrl"
+                              Disabled="@(!_model.CanOverrideBrandLogoUrl)" />
+                <MudTextField Label="Brand Favicon URL"
+                              Variant="Variant.Outlined"
+                              @bind-Value="_model.BrandFaviconUrl"
+                              Disabled="@(!_model.CanOverrideBrandFaviconUrl)" />
+                <MudTextField Label="Advanced: Custom CSS URL (Optional)"
+                              Variant="Variant.Outlined"
+                              @bind-Value="_model.BrandCustomCssUrl"
+                              Disabled="@(!_model.CanOverrideBrandCustomCssUrl)" />
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           OnClick="CompleteOnboardingAsync"
+                           Disabled="_isSaving">
+                    Complete Tenant Onboarding
+                </MudButton>
+            </MudStack>
+        }
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private TenantPolicySettingsModel _model = new();
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private bool _canEdit;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await UserService.SyncUserAsync();
+
+        var status = await TenantOnboardingService.GetStatusAsync();
+        if (status == null)
+        {
+            _errorMessage = "Unable to load tenant onboarding status.";
+            _isLoading = false;
+            return;
+        }
+
+        _canEdit = status.IsCurrentUserTenantAdministrator || status.IsCurrentUserInstanceAdministrator;
+
+        if (status.IsCompleted && _canEdit)
+        {
+            Navigation.NavigateTo("/events");
+            return;
+        }
+
+        _model = await TenantOnboardingService.GetSettingsAsync();
+        _isLoading = false;
+    }
+
+    private async Task CompleteOnboardingAsync()
+    {
+        _isSaving = true;
+        _errorMessage = null;
+
+        var response = await TenantOnboardingService.CompleteAsync(_model);
+        _isSaving = false;
+
+        if (response.Success)
+        {
+            Snackbar.Add("Tenant onboarding completed.", Severity.Success);
+            Navigation.NavigateTo("/", forceLoad: true);
+            return;
+        }
+
+        _errorMessage = string.IsNullOrWhiteSpace(response.Message)
+            ? "Failed to complete tenant onboarding."
+            : response.Message;
+    }
+}

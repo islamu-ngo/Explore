@@ -4,14 +4,23 @@
     Elements: __brand, __brand-icon, __brand-text, __brand-highlight, __description,
               __section, __heading, __link, __bottom, __copyright, __social, __social-btn
 -->
+@inject IPublicExperienceService PublicExperienceService
+
 <footer class="site-footer">
     <MudContainer MaxWidth="MaxWidth.Large">
         <MudGrid Spacing="4">
             <!-- Brand Column -->
             <MudItem xs="12" md="4">
                 <div class="site-footer__brand">
-                    <MudIcon Icon="@Icons.Material.Filled.Explore" Color="Color.Primary" Size="Size.Large" Class="site-footer__brand-icon" />
-                    <div class="site-footer__brand-text">ISLAMU<span class="site-footer__brand-highlight">Explore</span></div>
+                    @if (!string.IsNullOrWhiteSpace(_brandLogoUrl))
+                    {
+                        <MudImage Src="@_brandLogoUrl" Alt="@_brandDisplayName" Width="28" Height="28" Class="site-footer__brand-icon" />
+                    }
+                    else
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Explore" Color="Color.Primary" Size="Size.Large" Class="site-footer__brand-icon" />
+                    }
+                    <div class="site-footer__brand-text">@_brandDisplayName</div>
                 </div>
                 <MudText Class="site-footer__description">
                     Connecting Muslims through meaningful events, gatherings, and community building initiatives across the globe.
@@ -55,15 +64,36 @@
 
         <div class="site-footer__bottom">
             <div class="site-footer__copyright">
-                &copy; @DateTime.Now.Year ISLAMU Explore. All rights reserved.
+                &copy; @DateTime.Now.Year @_brandDisplayName. All rights reserved.
             </div>
 
             <div class="site-footer__social">
-                <MudIconButton Icon="@Icons.Custom.Brands.Facebook" Class="site-footer__social-btn" Size="Size.Small" />
-                <MudIconButton Icon="@Icons.Custom.Brands.Twitter" Class="site-footer__social-btn" Size="Size.Small" />
-                <MudIconButton Icon="@Icons.Custom.Brands.Instagram" Class="site-footer__social-btn" Size="Size.Small" />
-                <MudIconButton Icon="@Icons.Custom.Brands.LinkedIn" Class="site-footer__social-btn" Size="Size.Small" />
+                <MudIconButton Icon="@Icons.Custom.Brands.Facebook" AriaLabel="Facebook" Title="Visit our Facebook page" Class="site-footer__social-btn" Size="Size.Small" />
+                <MudIconButton Icon="@Icons.Custom.Brands.Twitter" AriaLabel="Twitter" Title="Visit our Twitter page" Class="site-footer__social-btn" Size="Size.Small" />
+                <MudIconButton Icon="@Icons.Custom.Brands.Instagram" AriaLabel="Instagram" Title="Visit our Instagram page" Class="site-footer__social-btn" Size="Size.Small" />
+                <MudIconButton Icon="@Icons.Custom.Brands.LinkedIn" AriaLabel="LinkedIn" Title="Visit our LinkedIn page" Class="site-footer__social-btn" Size="Size.Small" />
             </div>
         </div>
     </MudContainer>
 </footer>
+
+@code {
+    private string _brandDisplayName = "ISLAMU Explore";
+    private string _brandLogoUrl = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var settings = await PublicExperienceService.GetSettingsAsync();
+        if (settings == null)
+        {
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(settings.BrandDisplayName))
+        {
+            _brandDisplayName = settings.BrandDisplayName;
+        }
+
+        _brandLogoUrl = settings.BrandLogoUrl ?? string.Empty;
+    }
+}

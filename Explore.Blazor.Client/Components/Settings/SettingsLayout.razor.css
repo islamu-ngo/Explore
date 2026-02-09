@@ -1,0 +1,199 @@
+/* Settings Layout Styles - Google Account Settings Inspired */
+
+.settings-layout {
+    background: var(--mud-palette-background);
+}
+
+/* Header Styles */
+.settings-header {
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+    padding-bottom: 1.5rem;
+}
+
+/* Sidebar Navigation */
+.settings-sidebar {
+    position: sticky;
+    top: 1rem;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+}
+
+.settings-sidebar :deep(.mud-list) {
+    padding: 0;
+}
+
+.settings-sidebar :deep(.mud-list-item) {
+    padding: 0.75rem 1rem;
+    border-left: 3px solid transparent;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    color: var(--mud-palette-text-secondary);
+}
+
+.settings-sidebar :deep(.mud-list-item:hover) {
+    background-color: var(--mud-palette-action-default-hover);
+    color: var(--mud-palette-text-primary);
+}
+
+.settings-sidebar :deep(.mud-list-item.settings-nav-active) {
+    border-left-color: var(--mud-palette-primary);
+    background-color: var(--mud-palette-action-default-hover);
+    color: var(--mud-palette-primary);
+    font-weight: 600;
+}
+
+.settings-sidebar :deep(.mud-list-item-icon) {
+    margin-right: 1rem;
+}
+
+/* Content Area */
+.settings-content {
+    min-height: 500px;
+}
+
+/* Section Styles */
+.settings-section {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.settings-section-header {
+    margin-bottom: 2rem;
+}
+
+.settings-section-header :deep(.mud-typography) {
+    display: block;
+}
+
+/* Form Sections */
+.settings-form-section {
+    margin-bottom: 2rem;
+}
+
+.settings-form-section :deep(.mud-text-subtitle2) {
+    color: var(--mud-palette-text-primary);
+    margin-bottom: 1rem;
+}
+
+/* Profile Picture Section */
+.settings-profile-picture {
+    padding: 1.5rem;
+    background-color: var(--mud-palette-surface);
+    border-radius: var(--mud-default-border-radius);
+    border: 1px solid var(--mud-palette-lines-default);
+}
+
+/* Responsive Design */
+@media (max-width: 960px) {
+    .settings-sidebar {
+        position: relative;
+        top: 0;
+        max-height: none;
+        margin-bottom: 2rem;
+    }
+
+    .settings-sidebar :deep(.mud-list) {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .settings-sidebar :deep(.mud-list-item) {
+        flex: 1;
+        min-width: 150px;
+        border-left: none;
+        border-bottom: 3px solid transparent;
+        padding: 0.75rem;
+        text-align: center;
+    }
+
+    .settings-sidebar :deep(.mud-list-item.settings-nav-active) {
+        border-left: none;
+        border-bottom-color: var(--mud-palette-primary);
+    }
+
+    .settings-sidebar :deep(.mud-list-item-icon) {
+        margin-right: 0.5rem;
+    }
+}
+
+@media (max-width: 600px) {
+    .settings-sidebar :deep(.mud-list-item) {
+        flex: 1 1 calc(50% - 0.25rem);
+        min-width: auto;
+    }
+
+    .settings-section-header {
+        margin-bottom: 1.5rem;
+    }
+
+    .settings-form-section {
+        margin-bottom: 1.5rem;
+    }
+}
+
+/* Divider Styles */
+.settings-content :deep(.mud-divider) {
+    margin: 1.5rem 0;
+    opacity: 0.5;
+}
+
+/* Button Styles */
+.settings-content :deep(.mud-button) {
+    text-transform: none;
+    font-weight: 500;
+}
+
+/* Alert Styles */
+.settings-content :deep(.mud-alert) {
+    border-radius: var(--mud-default-border-radius);
+}
+
+/* Paper/Card Styles */
+.settings-content :deep(.mud-paper) {
+    transition: all 0.2s ease;
+}
+
+.settings-content :deep(.mud-paper:hover) {
+    box-shadow: var(--mud-shadow-2);
+}
+
+/* Switch Styles */
+.settings-content :deep(.mud-switch) {
+    margin: 0;
+}
+
+/* Text Field Styles */
+.settings-content :deep(.mud-text-field) {
+    margin-bottom: 0;
+}
+
+/* Grid Spacing */
+.settings-content :deep(.mud-grid) {
+    margin: -0.75rem;
+}
+
+.settings-content :deep(.mud-grid > .mud-item) {
+    padding: 0.75rem;
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+    .settings-sidebar {
+        background-color: var(--mud-palette-surface);
+    }
+
+    .settings-content {
+        background-color: var(--mud-palette-surface);
+    }
+}

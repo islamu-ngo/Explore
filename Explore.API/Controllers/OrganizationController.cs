@@ -7,6 +7,7 @@ using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 
 namespace Explore.API.Controllers;
 
@@ -44,15 +45,16 @@ public class OrganizationController : ControllerBase
         "Send 'Prefer: return=minimal' header to strip links.")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(HalCollectionResource<OrganizationListDto>), StatusCodes.Status200OK)]
+    [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<OrganizationListDto>>> GetAll(
         [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 20)
+        [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(new GetOrganizationListRequest
         {
             PageNumber = pageNumber,
             PageSize = pageSize
-        });
+        }, cancellationToken);
 
         var halResource = _resourceAssembler.ToCollectionResource(
             result,
@@ -75,7 +77,7 @@ public class OrganizationController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<HalCollectionResource<OrganizationListDto>>> GetMyOrganizations(
         [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 20)
+        [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
     {
         var userId = GetCurrentUserId();
         if (string.IsNullOrEmpty(userId))
@@ -88,7 +90,7 @@ public class OrganizationController : ControllerBase
             UserId = userId,
             PageNumber = pageNumber,
             PageSize = pageSize
-        });
+        }, cancellationToken);
 
         var halResource = _resourceAssembler.ToCollectionResource(
             result,
@@ -109,9 +111,10 @@ public class OrganizationController : ControllerBase
     [AllowAnonymous]
     [ProducesResponseType(typeof(HalResource<OrganizationDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<HalResource<OrganizationDto>>> GetById(Guid id)
+    [OutputCache(PolicyName = "DetailData")]
+    public async Task<ActionResult<HalResource<OrganizationDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        var organization = await _mediator.Send(new GetOrganizationDetailsRequest { Id = id });
+        var organization = await _mediator.Send(new GetOrganizationDetailsRequest { Id = id }, cancellationToken);
 
         if (organization is null)
         {
@@ -133,7 +136,7 @@ public class OrganizationController : ControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateOrganizationDto organization)
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateOrganizationDto organization, CancellationToken cancellationToken = default)
     {
         var userId = GetCurrentUserId();
 
@@ -143,7 +146,7 @@ public class OrganizationController : ControllerBase
             UserId = userId
         };
 
-        var response = await _mediator.Send(command);
+        var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)
         {
@@ -171,7 +174,7 @@ public class OrganizationController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(
         Guid id,
-        [FromBody] UpdateOrganizationDto updateDto)
+        [FromBody] UpdateOrganizationDto updateDto, CancellationToken cancellationToken = default)
     {
         var userId = GetCurrentUserId();
         if (string.IsNullOrEmpty(userId))
@@ -186,7 +189,7 @@ public class OrganizationController : ControllerBase
             OrganizationDto = updateDto
         };
 
-        var result = await _mediator.Send(command);
+        var result = await _mediator.Send(command, cancellationToken);
 
         if (!result.Success)
         {
@@ -210,7 +213,7 @@ public class OrganizationController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> UpdateApprovalStatus(
         Guid id,
-        [FromBody] UpdateOrganizationApprovalStatusDto approvalStatus)
+        [FromBody] UpdateOrganizationApprovalStatusDto approvalStatus, CancellationToken cancellationToken = default)
     {
         var command = new UpdateOrganizationCommand
         {
@@ -218,7 +221,7 @@ public class OrganizationController : ControllerBase
             OrganizationApprovalStatusDto = approvalStatus
         };
 
-        await _mediator.Send(command);
+        await _mediator.Send(command, cancellationToken);
         return NoContent();
     }
 
@@ -233,7 +236,7 @@ public class OrganizationController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult> Delete(Guid id)
+    public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         // TODO: Implement delete command
         // var command = new DeleteOrganizationCommand { Id = id };

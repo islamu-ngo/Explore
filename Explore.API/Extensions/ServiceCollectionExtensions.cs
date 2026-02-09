@@ -1,4 +1,4 @@
-﻿using Explore.API.OpenApi;
+using Explore.API.OpenApi;
 using Microsoft.OpenApi;
 
 namespace Explore.API.Extensions;

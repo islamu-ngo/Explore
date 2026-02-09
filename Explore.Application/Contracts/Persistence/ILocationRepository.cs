@@ -1,12 +1,11 @@
 using Explore.Domain;
 
-namespace Explore.Application.Contracts.Persistence
+namespace Explore.Application.Contracts.Persistence;
+
+public interface ILocationRepository : IGenericRepository<Location, Guid>
 {
-    public interface ILocationRepository : IGenericRepository<Location, Guid>
-    {
-        Task<List<Location>> GetLocationsByTenant(Guid tenantId);
-        Task<List<Location>> GetLocationsByCity(string city);
-        Task<List<Location>> GetLocationsByCountry(string country);
-        Task<(List<Location> Items, int TotalCount)> GetLocationsWithDetailsPaged(int pageNumber, int pageSize);
-    }
+    Task<List<Location>> GetLocationsByTenant(Guid tenantId);
+    Task<List<Location>> GetLocationsByCity(string city);
+    Task<List<Location>> GetLocationsByCountry(string country);
+    Task<(List<Location> Items, int TotalCount)> GetLocationsWithDetailsPaged(int pageNumber, int pageSize);
 }

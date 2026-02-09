@@ -43,11 +43,89 @@ This guide focuses on common issues when working on the **backend** projects:
 
 ## Build & Restore
 
-```powershell
-dotnet restore
-dotnet build
-dotnet test
+### Effective Commands for Error Visibility
+
+Basic `dotnet build` and `dotnet test` hide important error details. Use these commands instead:
+
+#### Building
+
+```bash
+# Clean summary with error/warning counts
+dotnet build --configuration Release --verbosity quiet
+
+# Full error details when you need them
+dotnet build --configuration Release --verbosity normal
 ```
+
+#### Running Tests
+
+**Always run test projects individually** — solution-level `dotnet test` fails if any project has MSBuild issues (e.g., placeholder projects without a test framework).
+
+```bash
+# Clean pass/fail summary per project
+dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet
+
+# Inline error details
+dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity normal
+```
+
+**Important:** Always use `--project` flag. Positional project path (e.g., `dotnet test path.csproj`) does not work reliably — use `dotnet test --project path.csproj`.
+
+#### Debugging Test Failures with TRX Reports
+
+When you need detailed failure analysis (failed test names, error messages, stack traces), generate a TRX report:
+
+```bash
+# Generate TRX report
+dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release -- --report-trx --report-trx-filename results.trx
+```
+
+**TRX file location:** `<ProjectDir>/bin/Release/net10.0/TestResults/results.trx`
+
+**Analyzing the TRX file** (use Grep tool, not bash grep):
+
+```
+# Find all failed tests
+Grep pattern: outcome="Failed"
+
+# Get full class.method names for failed tests
+Grep pattern: className=
+# Correlate testId from failed entries to className entries
+
+# Read error messages and stack traces
+Grep pattern: <Message>
+Grep pattern: <StackTrace>
+```
+
+**TRX workflow summary:**
+1. Generate TRX with `-- --report-trx --report-trx-filename results.trx`
+2. Grep for `outcome="Failed"` to find failed test entries and their `testId`
+3. Grep for `className=` with the `testId` to get the full `Namespace.Class.Method`
+4. Read the `<Message>` and `<StackTrace>` elements for error details
+
+#### Test Projects (Run Individually)
+
+```bash
+dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release
+dotnet test --project Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release
+dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release
+dotnet test --project Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release
+dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release
+dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release
+dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release
+```
+
+#### Known Pitfalls
+
+| Pitfall | Solution |
+|---------|----------|
+| `dotnet test` at solution level fails | Run each test project individually |
+| Positional project path doesn't work | Use `--project` flag: `dotnet test --project path.csproj` |
+| `findstr /i` fails on French-locale Windows | Use exact case patterns instead of `/i` flag |
+| `--treenode-filter` for TUnit filtering | Does not work reliably — use TRX reports instead |
+| Running test DLL directly | Causes MSBuild errors — always test via `.csproj` |
+| Basic `dotnet test` hides failures | Use `--verbosity normal` or TRX reports |
+| Basic `dotnet build` hides errors | Use `--verbosity quiet` for summary or `normal` for details |
 
 ### Common issues
 

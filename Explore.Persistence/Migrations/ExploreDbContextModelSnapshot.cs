@@ -27,8 +27,7 @@ namespace Explore.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<int>("ActorTypeId")
                         .HasColumnType("integer")
@@ -151,32 +150,6 @@ namespace Explore.Persistence.Migrations
                         {
                             t.HasCheckConstraint("CK_Actor_UserOrOrganization", "(user_id IS NOT NULL AND organization_id IS NULL) OR (user_id IS NULL AND organization_id IS NOT NULL)");
                         });
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000022"),
-                            ActorTypeId = 1,
-                            CreatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            Description = "System user account",
-                            DisplayName = "System Account",
-                            Handle = "system",
-                            IsDeleted = false,
-                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001"),
-                            UserId = new Guid("018e4e5c-7f00-7000-8000-000000000030")
-                        },
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000021"),
-                            ActorTypeId = 2,
-                            CreatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            Description = "ISLAMU NGO - Islamic Learning and Media Union",
-                            DisplayName = "ISLAMU",
-                            Handle = "islamu",
-                            IsDeleted = false,
-                            OrganizationId = new Guid("018e4e5c-7f00-7000-8000-000000000040"),
-                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
-                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.ActorKeyStore", b =>
@@ -259,37 +232,14 @@ namespace Explore.Persistence.Migrations
                         .HasName("pk_actor_types");
 
                     b.ToTable("actor_types", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Description = "Individual user actor",
-                            FullName = "User",
-                            MasterCode = "USER"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Description = "Organization actor",
-                            FullName = "Organization",
-                            MasterCode = "ORGANIZATION"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Description = "Automated bot actor",
-                            FullName = "Bot",
-                            MasterCode = "BOT"
-                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.AppSetting", b =>
                 {
-                    b.Property<string>("Key")
+                    b.Property<string>("ConfigKey")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)")
-                        .HasColumnName("key");
+                        .HasColumnName("config_key");
 
                     b.Property<string>("Category")
                         .HasMaxLength(100)
@@ -353,7 +303,7 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("value_type");
 
-                    b.HasKey("Key")
+                    b.HasKey("ConfigKey")
                         .HasName("pk_app_settings");
 
                     b.HasIndex("Category")
@@ -367,7 +317,7 @@ namespace Explore.Persistence.Migrations
 
                     b.ToTable("app_settings", null, t =>
                         {
-                            t.HasCheckConstraint("CK_AppSettings_NoHighValueSecrets", "key NOT LIKE 'Database:%' AND key NOT LIKE 'Security:MasterKey%' AND key NOT LIKE 'ConnectionStrings:%'");
+                            t.HasCheckConstraint("CK_AppSettings_NoHighValueSecrets", "config_key NOT LIKE 'Database:%' AND config_key NOT LIKE 'Security:MasterKey%' AND config_key NOT LIKE 'ConnectionStrings:%'");
                         });
                 });
 
@@ -395,29 +345,6 @@ namespace Explore.Persistence.Migrations
                         .HasName("pk_approval_statuses");
 
                     b.ToTable("approval_statuses", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Description = "Status is pending approval of Admin verifying the Existence of Legal Entity",
-                            FullName = "Pending",
-                            MasterCode = "PENDING"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Description = "Status has been approved by Admin after verifying the Existence of Legal Entity",
-                            FullName = "Approved",
-                            MasterCode = "APPROVED"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Description = "Status has been rejected by Admin after failing to verify the Existence of Legal Entity",
-                            FullName = "Rejected",
-                            MasterCode = "REJECTED"
-                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.AtprotoRecord", b =>
@@ -502,63 +429,6 @@ namespace Explore.Persistence.Migrations
                         .HasName("pk_audience_ages");
 
                     b.ToTable("audience_ages", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            FullName = "All Ages",
-                            MasterCode = "ALL_AGES"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            FullName = "Adults Only (18+)",
-                            MasterCode = "ADULTS_18_PLUS",
-                            MinAge = 18
-                        },
-                        new
-                        {
-                            Id = 3,
-                            FullName = "Teens & Adults (16+)",
-                            MasterCode = "TEENS_16_PLUS",
-                            MinAge = 16
-                        },
-                        new
-                        {
-                            Id = 4,
-                            FullName = "Preteens & Up (12+)",
-                            MasterCode = "PRETEENS_12_PLUS",
-                            MinAge = 12
-                        },
-                        new
-                        {
-                            Id = 5,
-                            FullName = "Young Children (0-6)",
-                            MasterCode = "CHILDREN_UNDER_6",
-                            MaxAge = 6
-                        },
-                        new
-                        {
-                            Id = 6,
-                            FullName = "Children (0-12)",
-                            MasterCode = "YOUTH_UNDER_12",
-                            MaxAge = 12
-                        },
-                        new
-                        {
-                            Id = 7,
-                            FullName = "Children & Young Teens (0-16)",
-                            MasterCode = "YOUTH_UNDER_16",
-                            MaxAge = 16
-                        },
-                        new
-                        {
-                            Id = 8,
-                            FullName = "Youth (0-18)",
-                            MasterCode = "YOUTH_UNDER_18",
-                            MaxAge = 18
-                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.AudienceGender", b =>
@@ -585,36 +455,6 @@ namespace Explore.Persistence.Migrations
                         .HasName("pk_audience_genders");
 
                     b.ToTable("audience_genders", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Description = "Only for Man Audience",
-                            FullName = "Man",
-                            MasterCode = "MAN"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Description = "Only for Woman Audience",
-                            FullName = "Woman",
-                            MasterCode = "WOMAN"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Description = "For Both Man and Woman but Segregated so no free mixing",
-                            FullName = "Both Segregated",
-                            MasterCode = "BOTH_SEGREGATED"
-                        },
-                        new
-                        {
-                            Id = 4,
-                            Description = "For Both Man and Woman but Free Mixing",
-                            FullName = "Both Free Mixing",
-                            MasterCode = "BOTH_FREE_MIXING"
-                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.Category", b =>
@@ -622,8 +462,7 @@ namespace Explore.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<string>("FullName")
                         .IsRequired()
@@ -655,69 +494,6 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_categories_tenant_id");
 
                     b.ToTable("categories", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000100"),
-                            FullName = "Islamic Studies",
-                            MasterCode = "ISLAMIC_STUDIES",
-                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
-                        },
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000101"),
-                            FullName = "Quran & Tafsir",
-                            MasterCode = "QURAN",
-                            ParentId = new Guid("018e4e5c-7f00-7000-8000-000000000100"),
-                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
-                        },
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000102"),
-                            FullName = "Hadith Sciences",
-                            MasterCode = "HADITH",
-                            ParentId = new Guid("018e4e5c-7f00-7000-8000-000000000100"),
-                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
-                        },
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000103"),
-                            FullName = "Fiqh (Islamic Jurisprudence)",
-                            MasterCode = "FIQH",
-                            ParentId = new Guid("018e4e5c-7f00-7000-8000-000000000100"),
-                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
-                        },
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000104"),
-                            FullName = "Aqeedah (Islamic Creed)",
-                            MasterCode = "AQEEDAH",
-                            ParentId = new Guid("018e4e5c-7f00-7000-8000-000000000100"),
-                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
-                        },
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000105"),
-                            FullName = "Seerah (Prophetic Biography)",
-                            MasterCode = "SEERAH",
-                            ParentId = new Guid("018e4e5c-7f00-7000-8000-000000000100"),
-                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
-                        },
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000106"),
-                            FullName = "Arabic Language",
-                            MasterCode = "ARABIC",
-                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
-                        },
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000107"),
-                            FullName = "Community Events",
-                            MasterCode = "COMMUNITY",
-                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
-                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.DidCustodyType", b =>
@@ -747,22 +523,6 @@ namespace Explore.Persistence.Migrations
                         .HasName("pk_did_custody_types");
 
                     b.ToTable("did_custody_types", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Description = "Platform manages the DID keys",
-                            FullName = "Custodial",
-                            MasterCode = "CUSTODIAL"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Description = "User manages their own DID keys",
-                            FullName = "Self-Custody",
-                            MasterCode = "SELF_CUSTODY"
-                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.Event", b =>
@@ -770,8 +530,7 @@ namespace Explore.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<Guid>("ActorId")
                         .HasColumnType("uuid")
@@ -781,11 +540,11 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("atproto_record_id");
 
-                    b.Property<int>("AudienceAgeId")
+                    b.Property<int?>("AudienceAgeId")
                         .HasColumnType("integer")
                         .HasColumnName("audience_age_id");
 
-                    b.Property<int>("AudienceGenderId")
+                    b.Property<int?>("AudienceGenderId")
                         .HasColumnType("integer")
                         .HasColumnName("audience_gender_id");
 
@@ -823,7 +582,7 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("event_status_id");
 
-                    b.Property<int>("EventTypeId")
+                    b.Property<int?>("EventTypeId")
                         .HasColumnType("integer")
                         .HasColumnName("event_type_id");
 
@@ -853,6 +612,12 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_registration_required");
 
+                    b.Property<bool>("IsUserReported")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_user_reported");
+
                     b.Property<DateOnly?>("LastSessionDate")
                         .HasColumnType("date")
                         .HasColumnName("last_session_date");
@@ -877,6 +642,11 @@ namespace Explore.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
                         .HasColumnName("slug");
+
+                    b.Property<string>("Subtitle")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("subtitle");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
@@ -941,40 +711,28 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("MadhabId")
                         .HasDatabaseName("ix_events_madhab_id");
 
-                    b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_events_tenant_id");
-
                     b.HasIndex("VisibilityTypeId")
                         .HasDatabaseName("ix_events_visibility_type_id");
+
+                    b.HasIndex("TenantId", "EventTypeId")
+                        .HasDatabaseName("ix_events_tenant_eventtype");
+
+                    b.HasIndex("TenantId", "Slug")
+                        .HasDatabaseName("ix_events_tenant_slug");
+
+                    b.HasIndex("TenantId", "ActorId", "CreatedAt")
+                        .IsDescending(false, false, true)
+                        .HasDatabaseName("ix_events_tenant_actor_created");
+
+                    b.HasIndex("TenantId", "FirstSessionDate", "LastSessionDate")
+                        .HasDatabaseName("ix_events_tenant_daterange");
+
+                    b.HasIndex("TenantId", "IsDeleted", "EventStatusId")
+                        .HasDatabaseName("ix_events_tenant_active_status");
 
                     b.ToTable("events", (string)null);
 
                     b.UseTptMappingStrategy();
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000060"),
-                            ActorId = new Guid("018e4e5c-7f00-7000-8000-000000000021"),
-                            AudienceAgeId = 1,
-                            AudienceGenderId = 3,
-                            CreatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            CurrencyCode = "EUR",
-                            Description = "This is a sample event to demonstrate the ISLAMU Events platform. Feel free to explore and create your own events!",
-                            EventFormatId = 2,
-                            EventStatusId = 2,
-                            EventTypeId = 2,
-                            FeaturedImageId = new Guid("018e4e5c-7f00-7000-8000-000000000050"),
-                            IsDeleted = false,
-                            IsRegistrationRequired = false,
-                            Price = 0m,
-                            Slug = "welcome-to-islamu-events",
-                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001"),
-                            Timezone = "Europe/Brussels",
-                            Title = "Welcome to ISLAMU Events",
-                            TotalViews = 0,
-                            VisibilityTypeId = 1
-                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.EventCategories", b =>
@@ -988,6 +746,14 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("category_id");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
                     b.Property<Guid>("EventId")
                         .HasColumnType("uuid")
                         .HasColumnName("event_id");
@@ -995,6 +761,14 @@ namespace Explore.Persistence.Migrations
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
 
                     b.HasKey("Id")
                         .HasName("pk_event_categories");
@@ -1038,29 +812,6 @@ namespace Explore.Persistence.Migrations
                         .HasName("pk_event_formats");
 
                     b.ToTable("event_formats", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Description = "Event takes place at a physical location",
-                            FullName = "Local (In-Person)",
-                            MasterCode = "LOCAL"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Description = "Event takes place online",
-                            FullName = "Digital (Online)",
-                            MasterCode = "DIGITAL"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Description = "Event takes place both in-person and online",
-                            FullName = "Hybrid",
-                            MasterCode = "HYBRID"
-                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.EventIslamicAspect", b =>
@@ -1125,6 +876,14 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("atproto_record_id");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
                     b.Property<Guid>("EventSessionId")
                         .HasColumnType("uuid")
                         .HasColumnName("event_session_id");
@@ -1132,6 +891,14 @@ namespace Explore.Persistence.Migrations
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
@@ -1146,14 +913,15 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("AtprotoRecordId")
                         .HasDatabaseName("ix_event_registrations_atproto_record_id");
 
-                    b.HasIndex("EventSessionId")
-                        .HasDatabaseName("ix_event_registrations_event_session_id");
-
                     b.HasIndex("TenantId")
                         .HasDatabaseName("ix_event_registrations_tenant_id");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_event_registrations_user_id");
+                        .HasDatabaseName("ix_eventregistrations_user");
+
+                    b.HasIndex("EventSessionId", "UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_eventregistrations_session_user");
 
                     b.ToTable("event_registrations", (string)null);
                 });
@@ -1410,43 +1178,6 @@ namespace Explore.Persistence.Migrations
                         .HasName("pk_event_statuses");
 
                     b.ToTable("event_statuses", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Description = "Event is in draft state and not visible to the public",
-                            FullName = "Draft",
-                            MasterCode = "DRAFT"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Description = "Event is published and visible to the public",
-                            FullName = "Published",
-                            MasterCode = "PUBLISHED"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Description = "Event has been cancelled",
-                            FullName = "Cancelled",
-                            MasterCode = "CANCELLED"
-                        },
-                        new
-                        {
-                            Id = 4,
-                            Description = "Event has been completed",
-                            FullName = "Completed",
-                            MasterCode = "COMPLETED"
-                        },
-                        new
-                        {
-                            Id = 5,
-                            Description = "Event has been archived",
-                            FullName = "Archived",
-                            MasterCode = "ARCHIVED"
-                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.EventTags", b =>
@@ -1455,6 +1186,14 @@ namespace Explore.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
 
                     b.Property<Guid>("EventId")
                         .HasColumnType("uuid")
@@ -1467,6 +1206,14 @@ namespace Explore.Persistence.Migrations
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
 
                     b.HasKey("Id")
                         .HasName("pk_event_tags");
@@ -1569,26 +1316,6 @@ namespace Explore.Persistence.Migrations
                         .HasName("pk_event_types");
 
                     b.ToTable("event_types", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            FullName = "Conference",
-                            MasterCode = "CONFERENCE"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            FullName = "Webinar",
-                            MasterCode = "WEBINAR"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            FullName = "Workshop",
-                            MasterCode = "WORKSHOP"
-                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.Federation.PdsSyncOutbox", b =>
@@ -1710,43 +1437,6 @@ namespace Explore.Persistence.Migrations
                         .HasName("pk_file_types");
 
                     b.ToTable("file_types", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Description = "Image file (PNG, JPG, GIF, etc.)",
-                            FullName = "Image",
-                            MasterCode = "IMAGE"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Description = "Document file (PDF, DOC, etc.)",
-                            FullName = "Document",
-                            MasterCode = "DOCUMENT"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Description = "Video file (MP4, AVI, etc.)",
-                            FullName = "Video",
-                            MasterCode = "VIDEO"
-                        },
-                        new
-                        {
-                            Id = 4,
-                            Description = "Audio file (MP3, WAV, etc.)",
-                            FullName = "Audio",
-                            MasterCode = "AUDIO"
-                        },
-                        new
-                        {
-                            Id = 5,
-                            Description = "Other file type",
-                            FullName = "Other",
-                            MasterCode = "OTHER"
-                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.IndexedDid", b =>
@@ -1789,6 +1479,75 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("indexed_dids", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.InstanceAdministrator", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("GrantedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("granted_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid?>("GrantedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("granted_by");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_instance_administrators");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_instance_administrators_user_id");
+
+                    b.ToTable("InstanceAdministrators", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.InstanceBootstrapState", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<Guid?>("CompletedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("completed_by_user_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<bool>("IsCompleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_completed");
+
+                    b.Property<string>("SelectedDeploymentMode")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("selected_deployment_mode");
+
+                    b.HasKey("Id")
+                        .HasName("pk_instance_bootstrap_states");
+
+                    b.ToTable("InstanceBootstrapStates", (string)null);
+                });
+
             modelBuilder.Entity("Explore.Domain.Language", b =>
                 {
                     b.Property<int>("Id")
@@ -1816,92 +1575,6 @@ namespace Explore.Persistence.Migrations
                         .HasName("pk_languages");
 
                     b.ToTable("languages", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Description = "Arabic language",
-                            FullName = "Arabic",
-                            MasterCode = "AR"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Description = "English language",
-                            FullName = "English",
-                            MasterCode = "EN"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Description = "French language",
-                            FullName = "French",
-                            MasterCode = "FR"
-                        },
-                        new
-                        {
-                            Id = 4,
-                            Description = "Turkish language",
-                            FullName = "Turkish",
-                            MasterCode = "TR"
-                        },
-                        new
-                        {
-                            Id = 5,
-                            Description = "Urdu language",
-                            FullName = "Urdu",
-                            MasterCode = "UR"
-                        },
-                        new
-                        {
-                            Id = 6,
-                            Description = "Indonesian language",
-                            FullName = "Indonesian",
-                            MasterCode = "ID"
-                        },
-                        new
-                        {
-                            Id = 7,
-                            Description = "Malay language",
-                            FullName = "Malay",
-                            MasterCode = "MS"
-                        },
-                        new
-                        {
-                            Id = 8,
-                            Description = "Bengali language",
-                            FullName = "Bengali",
-                            MasterCode = "BN"
-                        },
-                        new
-                        {
-                            Id = 9,
-                            Description = "Persian/Farsi language",
-                            FullName = "Persian",
-                            MasterCode = "FA"
-                        },
-                        new
-                        {
-                            Id = 10,
-                            Description = "German language",
-                            FullName = "German",
-                            MasterCode = "DE"
-                        },
-                        new
-                        {
-                            Id = 11,
-                            Description = "Dutch language",
-                            FullName = "Dutch",
-                            MasterCode = "NL"
-                        },
-                        new
-                        {
-                            Id = 12,
-                            Description = "Spanish language",
-                            FullName = "Spanish",
-                            MasterCode = "ES"
-                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.Location", b =>
@@ -1909,8 +1582,7 @@ namespace Explore.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<string>("Address")
                         .IsRequired()
@@ -1962,23 +1634,13 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_locations");
 
-                    b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_locations_tenant_id");
+                    b.HasIndex("TenantId", "City")
+                        .HasDatabaseName("ix_locations_tenant_city");
+
+                    b.HasIndex("TenantId", "Country")
+                        .HasDatabaseName("ix_locations_tenant_country");
 
                     b.ToTable("locations", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000300"),
-                            Address = "Virtual",
-                            City = "Virtual",
-                            Country = "Internet",
-                            FullName = "Online / Virtual",
-                            Postcode = "00000",
-                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001"),
-                            Timezone = "UTC"
-                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.Madhab", b =>
@@ -2008,43 +1670,6 @@ namespace Explore.Persistence.Migrations
                         .HasName("pk_madhabs");
 
                     b.ToTable("madhabs", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Description = "Hanafi school of Islamic jurisprudence",
-                            FullName = "Hanafi",
-                            MasterCode = "HANAFI"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Description = "Maliki school of Islamic jurisprudence",
-                            FullName = "Maliki",
-                            MasterCode = "MALIKI"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Description = "Shafi'i school of Islamic jurisprudence",
-                            FullName = "Shafi'i",
-                            MasterCode = "SHAFII"
-                        },
-                        new
-                        {
-                            Id = 4,
-                            Description = "Hanbali school of Islamic jurisprudence",
-                            FullName = "Hanbali",
-                            MasterCode = "HANBALI"
-                        },
-                        new
-                        {
-                            Id = 5,
-                            Description = "Other Islamic jurisprudence approach",
-                            FullName = "Other",
-                            MasterCode = "OTHER"
-                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.Modules.ModuleDefinition", b =>
@@ -2082,11 +1707,11 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
-                    b.Property<string>("Key")
+                    b.Property<string>("ModuleKey")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
-                        .HasColumnName("key");
+                        .HasColumnName("module_key");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -2109,49 +1734,11 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("DisplayOrder")
                         .HasDatabaseName("ix_module_definitions_display_order");
 
-                    b.HasIndex("Key")
+                    b.HasIndex("ModuleKey")
                         .IsUnique()
-                        .HasDatabaseName("ix_module_definitions_key");
+                        .HasDatabaseName("ix_module_definitions_module_key");
 
                     b.ToTable("ModuleDefinitions", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000600"),
-                            Category = "Core",
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Basic event functionality - title, description, sessions, locations",
-                            DisplayOrder = 0,
-                            IconName = "Event",
-                            IsActive = true,
-                            Key = "Mod_Core",
-                            Name = "Core Events"
-                        },
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000601"),
-                            Category = "Domain",
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Islamic-specific features: Madhab selection, prayer time scheduling, gender segregation",
-                            DisplayOrder = 1,
-                            IconName = "Mosque",
-                            IsActive = true,
-                            Key = "Mod_Islamic",
-                            Name = "Islamic Events"
-                        },
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000602"),
-                            Category = "Domain",
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Developer event features: GitHub repositories, skill levels, live coding sessions",
-                            DisplayOrder = 2,
-                            IconName = "Code",
-                            IsActive = true,
-                            Key = "Mod_Tech",
-                            Name = "Tech Events"
-                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.Modules.TenantCapability", b =>
@@ -2165,6 +1752,14 @@ namespace Explore.Persistence.Migrations
                     b.Property<string>("ConfigurationJson")
                         .HasColumnType("jsonb")
                         .HasColumnName("configuration_json");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
 
                     b.Property<DateTime>("EnabledAt")
                         .HasColumnType("timestamp with time zone")
@@ -2186,6 +1781,14 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id");
 
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
                     b.HasKey("Id")
                         .HasName("pk_tenant_capabilities");
 
@@ -2197,24 +1800,6 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_tenant_capabilities_tenant_id_module_id");
 
                     b.ToTable("TenantCapabilities", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000610"),
-                            EnabledAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsEnabled = true,
-                            ModuleId = new Guid("018e4e5c-7f00-7000-8000-000000000600"),
-                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
-                        },
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000611"),
-                            EnabledAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsEnabled = true,
-                            ModuleId = new Guid("018e4e5c-7f00-7000-8000-000000000601"),
-                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
-                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.Organization", b =>
@@ -2222,15 +1807,13 @@ namespace Explore.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<Guid?>("ActorId")
                         .HasColumnType("uuid")
                         .HasColumnName("actor_id");
 
                     b.Property<string>("Address")
-                        .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
                         .HasColumnName("address");
@@ -2242,13 +1825,11 @@ namespace Explore.Persistence.Migrations
                         .HasColumnName("approval_status_id");
 
                     b.Property<string>("City")
-                        .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("city");
 
                     b.Property<string>("Country")
-                        .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("country");
@@ -2287,8 +1868,11 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
 
+                    b.Property<string>("MetadataJson")
+                        .HasColumnType("text")
+                        .HasColumnName("metadata_json");
+
                     b.Property<string>("Postcode")
-                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("postcode");
@@ -2319,28 +1903,13 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("ApprovalStatusId")
                         .HasDatabaseName("ix_organizations_approval_status_id");
 
-                    b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_organizations_tenant_id");
+                    b.HasIndex("TenantId", "FullName")
+                        .HasDatabaseName("ix_organizations_tenant_name");
+
+                    b.HasIndex("TenantId", "IsDeleted", "ApprovalStatusId")
+                        .HasDatabaseName("ix_organizations_tenant_active_status");
 
                     b.ToTable("organizations", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000040"),
-                            ActorId = new Guid("018e4e5c-7f00-7000-8000-000000000021"),
-                            Address = "Parc Du Peterbos",
-                            ApprovalStatusId = 2,
-                            City = "Brussels",
-                            Country = "Belgium",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Email = "contact@openislamu.org",
-                            FullName = "ISLAMU",
-                            IsDeleted = false,
-                            Postcode = "1070",
-                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001"),
-                            WebsiteUrl = "https://islamu.ngo"
-                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.OrganizationMember", b =>
@@ -2402,9 +1971,6 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_organization_members");
 
-                    b.HasIndex("OrganizationId")
-                        .HasDatabaseName("ix_organization_members_organization_id");
-
                     b.HasIndex("OrganizationPositionId")
                         .HasDatabaseName("ix_organization_members_organization_position_id");
 
@@ -2415,22 +1981,13 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_organization_members_tenant_id");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_organization_members_user_id");
+                        .HasDatabaseName("ix_orgmembers_user");
+
+                    b.HasIndex("OrganizationId", "UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_orgmembers_org_user");
 
                     b.ToTable("organization_members", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000041"),
-                            CreatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            IsDeleted = false,
-                            OrganizationId = new Guid("018e4e5c-7f00-7000-8000-000000000040"),
-                            OrganizationPositionId = 1,
-                            OrganizationRoleId = 1,
-                            TenantId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            UserId = new Guid("018e4e5c-7f00-7000-8000-000000000030")
-                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.OrganizationPosition", b =>
@@ -2460,106 +2017,6 @@ namespace Explore.Persistence.Migrations
                         .HasName("pk_organization_positions");
 
                     b.ToTable("organization_positions", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Description = "Organization founder",
-                            FullName = "Founder",
-                            MasterCode = "FOUNDER"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Description = "Organization director",
-                            FullName = "Director",
-                            MasterCode = "DIRECTOR"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Description = "Organization manager",
-                            FullName = "Manager",
-                            MasterCode = "MANAGER"
-                        },
-                        new
-                        {
-                            Id = 4,
-                            Description = "Teacher or instructor",
-                            FullName = "Teacher",
-                            MasterCode = "TEACHER"
-                        },
-                        new
-                        {
-                            Id = 6,
-                            Description = "Organization secretary",
-                            FullName = "Secretary",
-                            MasterCode = "SECRETARY"
-                        },
-                        new
-                        {
-                            Id = 7,
-                            Description = "Organization treasurer",
-                            FullName = "Treasurer",
-                            MasterCode = "TREASURER"
-                        },
-                        new
-                        {
-                            Id = 8,
-                            Description = "Event or activity coordinator",
-                            FullName = "Coordinator",
-                            MasterCode = "COORDINATOR"
-                        },
-                        new
-                        {
-                            Id = 9,
-                            Description = "Organization volunteer",
-                            FullName = "Volunteer",
-                            MasterCode = "VOLUNTEER"
-                        },
-                        new
-                        {
-                            Id = 10,
-                            Description = "Organization intern",
-                            FullName = "Intern",
-                            MasterCode = "INTERN"
-                        },
-                        new
-                        {
-                            Id = 11,
-                            Description = "Organization advisor",
-                            FullName = "Advisor",
-                            MasterCode = "ADVISOR"
-                        },
-                        new
-                        {
-                            Id = 12,
-                            Description = "Organization consultant",
-                            FullName = "Consultant",
-                            MasterCode = "CONSULTANT"
-                        },
-                        new
-                        {
-                            Id = 14,
-                            Description = "Supervisor",
-                            FullName = "Supervisor",
-                            MasterCode = "SUPERVISOR"
-                        },
-                        new
-                        {
-                            Id = 15,
-                            Description = "Assistant",
-                            FullName = "Assistant",
-                            MasterCode = "ASSISTANT"
-                        },
-                        new
-                        {
-                            Id = 16,
-                            Description = "General staff member",
-                            FullName = "Staff",
-                            MasterCode = "STAFF"
-                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.OrganizationReview", b =>
@@ -2575,9 +2032,13 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("character varying(2000)")
                         .HasColumnName("comment");
 
-                    b.Property<DateTimeOffset>("CreatedAt")
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
 
                     b.Property<Guid>("EventId")
                         .HasColumnType("uuid")
@@ -2601,9 +2062,13 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id");
 
-                    b.Property<DateTimeOffset>("UpdatedAt")
+                    b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
@@ -2654,50 +2119,6 @@ namespace Explore.Persistence.Migrations
                         .HasName("pk_organization_roles");
 
                     b.ToTable("organization_roles", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Description = "Organization creator with full ownership",
-                            FullName = "Creator",
-                            MasterCode = "CREATOR"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Description = "Co-owner with near-full access",
-                            FullName = "Co-Owner",
-                            MasterCode = "CO_OWNER"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Description = "Organization Administrator with management access",
-                            FullName = "Administrator",
-                            MasterCode = "ADMIN"
-                        },
-                        new
-                        {
-                            Id = 4,
-                            Description = "Organization Moderator with limited access",
-                            FullName = "Moderator",
-                            MasterCode = "MODERATOR"
-                        },
-                        new
-                        {
-                            Id = 5,
-                            Description = "Regular organization member",
-                            FullName = "Member",
-                            MasterCode = "MEMBER"
-                        },
-                        new
-                        {
-                            Id = 6,
-                            Description = "Read-only access to organization",
-                            FullName = "Viewer",
-                            MasterCode = "VIEWER"
-                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.OwnerType", b =>
@@ -2756,36 +2177,6 @@ namespace Explore.Persistence.Migrations
                         .HasName("pk_registration_modes");
 
                     b.ToTable("registration_modes", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Description = "Anyone can register",
-                            FullName = "Open",
-                            MasterCode = "OPEN"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Description = "Registration requires approval",
-                            FullName = "Approval Required",
-                            MasterCode = "APPROVAL_REQUIRED"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Description = "Only invited users can register",
-                            FullName = "Invite Only",
-                            MasterCode = "INVITE_ONLY"
-                        },
-                        new
-                        {
-                            Id = 4,
-                            Description = "Registration is closed",
-                            FullName = "Closed",
-                            MasterCode = "CLOSED"
-                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.StorageObject", b =>
@@ -2799,6 +2190,14 @@ namespace Explore.Persistence.Migrations
                     b.Property<Guid?>("ActorId")
                         .HasColumnType("uuid")
                         .HasColumnName("actor_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
 
                     b.Property<string>("Extension")
                         .IsRequired()
@@ -2824,6 +2223,14 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id");
 
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
                     b.Property<string>("Uri")
                         .IsRequired()
                         .HasMaxLength(1000)
@@ -2843,41 +2250,6 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_storage_objects_tenant_id");
 
                     b.ToTable("storage_objects", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000050"),
-                            ActorId = new Guid("018e4e5c-7f00-7000-8000-000000000022"),
-                            Extension = ".jpg",
-                            FileTypeId = 1,
-                            FullName = "Default Event Image",
-                            Size = 0L,
-                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001"),
-                            Uri = "https://placeholder.islamu.org/event-default.jpg"
-                        },
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000051"),
-                            ActorId = new Guid("018e4e5c-7f00-7000-8000-000000000022"),
-                            Extension = ".jpg",
-                            FileTypeId = 1,
-                            FullName = "Default Profile Image",
-                            Size = 0L,
-                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001"),
-                            Uri = "https://placeholder.islamu.org/profile-default.jpg"
-                        },
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000052"),
-                            ActorId = new Guid("018e4e5c-7f00-7000-8000-000000000022"),
-                            Extension = ".jpg",
-                            FileTypeId = 1,
-                            FullName = "Default Organization Logo",
-                            Size = 0L,
-                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001"),
-                            Uri = "https://placeholder.islamu.org/org-default.jpg"
-                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.SyncState", b =>
@@ -2940,6 +2312,10 @@ namespace Explore.Persistence.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("NOW()");
 
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
                     b.Property<string>("Description")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)")
@@ -2957,15 +2333,19 @@ namespace Explore.Persistence.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("is_locked");
 
-                    b.Property<string>("Key")
+                    b.Property<string>("SettingKey")
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)")
-                        .HasColumnName("key");
+                        .HasColumnName("setting_key");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
 
                     b.Property<string>("Value")
                         .IsRequired()
@@ -2979,74 +2359,11 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_system_settings");
 
-                    b.HasIndex("Key")
+                    b.HasIndex("SettingKey")
                         .IsUnique()
-                        .HasDatabaseName("ix_system_settings_key");
+                        .HasDatabaseName("ix_system_settings_setting_key");
 
                     b.ToTable("system_settings", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000500"),
-                            AllowedValues = "[\"SingleTenant\", \"MultiTenant\"]",
-                            Category = "System",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Deployment mode of the application",
-                            DisplayOrder = 1,
-                            IsLocked = true,
-                            Key = "deployment.mode",
-                            Value = "\"MultiTenant\"",
-                            ValueType = 0
-                        },
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000501"),
-                            Category = "Events",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Maximum number of sessions allowed per event",
-                            DisplayOrder = 1,
-                            IsLocked = false,
-                            Key = "events.max_sessions_per_event",
-                            Value = "100",
-                            ValueType = 1
-                        },
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000502"),
-                            Category = "Events",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Whether events require admin approval before publishing",
-                            DisplayOrder = 2,
-                            IsLocked = false,
-                            Key = "events.require_approval",
-                            Value = "false",
-                            ValueType = 2
-                        },
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000503"),
-                            Category = "Modules",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Enable Islamic event module",
-                            DisplayOrder = 1,
-                            IsLocked = false,
-                            Key = "modules.islamic_enabled",
-                            Value = "true",
-                            ValueType = 2
-                        },
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000504"),
-                            Category = "Modules",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Enable Tech event module",
-                            DisplayOrder = 2,
-                            IsLocked = false,
-                            Key = "modules.tech_enabled",
-                            Value = "true",
-                            ValueType = 2
-                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.Tag", b =>
@@ -3054,8 +2371,7 @@ namespace Explore.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<string>("FullName")
                         .IsRequired()
@@ -3080,57 +2396,6 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_tags_tenant_id");
 
                     b.ToTable("tags", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000200"),
-                            FullName = "Beginner",
-                            MasterCode = "BEGINNER",
-                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
-                        },
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000201"),
-                            FullName = "Intermediate",
-                            MasterCode = "INTERMEDIATE",
-                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
-                        },
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000202"),
-                            FullName = "Advanced",
-                            MasterCode = "ADVANCED",
-                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
-                        },
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000203"),
-                            FullName = "Free",
-                            MasterCode = "FREE",
-                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
-                        },
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000204"),
-                            FullName = "Paid",
-                            MasterCode = "PAID",
-                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
-                        },
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000205"),
-                            FullName = "Online",
-                            MasterCode = "ONLINE",
-                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
-                        },
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000206"),
-                            FullName = "In-Person",
-                            MasterCode = "IN_PERSON",
-                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
-                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.TagType", b =>
@@ -3160,36 +2425,6 @@ namespace Explore.Persistence.Migrations
                         .HasName("pk_tag_types");
 
                     b.ToTable("tag_types", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Description = "Topic-based tags for content categorization",
-                            FullName = "Topic",
-                            MasterCode = "TOPIC"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Description = "Skill level requirements (beginner, intermediate, advanced)",
-                            FullName = "Skill Level",
-                            MasterCode = "SKILL"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Description = "Language-based tags",
-                            FullName = "Language",
-                            MasterCode = "LANGUAGE"
-                        },
-                        new
-                        {
-                            Id = 4,
-                            Description = "Target audience tags",
-                            FullName = "Audience",
-                            MasterCode = "AUDIENCE"
-                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.TagTypeTags", b =>
@@ -3231,8 +2466,7 @@ namespace Explore.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<string>("FullName")
                         .IsRequired()
@@ -3258,15 +2492,125 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_tenants_slug");
 
                     b.ToTable("tenants", (string)null);
+                });
 
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000001"),
-                            FullName = "ISLAMU Default Tenant",
-                            IsActive = true,
-                            Slug = "default"
-                        });
+            modelBuilder.Entity("Explore.Domain.TenantAdministrator", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("GrantedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("granted_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid?>("GrantedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("granted_by");
+
+                    b.Property<int>("TenantAdministratorRoleId")
+                        .HasColumnType("integer")
+                        .HasColumnName("tenant_administrator_role_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_tenant_administrators");
+
+                    b.HasIndex("TenantAdministratorRoleId")
+                        .HasDatabaseName("ix_tenant_administrators_tenant_administrator_role_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_tenant_administrators_user_id");
+
+                    b.HasIndex("TenantId", "UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_tenant_administrators_tenant_id_user_id");
+
+                    b.ToTable("TenantAdministrators", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.TenantAdministratorRole", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_tenant_administrator_roles");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_tenant_administrator_roles_master_code");
+
+                    b.ToTable("TenantAdministratorRoles", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.TenantOnboardingState", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<Guid?>("CompletedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("completed_by_user_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<bool>("IsCompleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_completed");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_tenant_onboarding_states");
+
+                    b.HasIndex("TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_tenant_onboarding_states_tenant_id");
+
+                    b.ToTable("TenantOnboardingStates", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantSetting", b =>
@@ -3274,8 +2618,7 @@ namespace Explore.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
@@ -3287,11 +2630,11 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
-                    b.Property<string>("Key")
+                    b.Property<string>("SettingKey")
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)")
-                        .HasColumnName("key");
+                        .HasColumnName("setting_key");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
@@ -3313,9 +2656,9 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_tenant_setting_overrides");
 
-                    b.HasIndex("TenantId", "Key")
+                    b.HasIndex("TenantId", "SettingKey")
                         .IsUnique()
-                        .HasDatabaseName("ix_tenant_setting_overrides_tenant_id_key");
+                        .HasDatabaseName("ix_tenant_setting_overrides_tenant_id_setting_key");
 
                     b.ToTable("tenant_setting_overrides", (string)null);
                 });
@@ -3325,8 +2668,7 @@ namespace Explore.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
@@ -3339,13 +2681,6 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_tenant_settings_tenant_id");
 
                     b.ToTable("tenant_settings", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000400"),
-                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
-                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantUser", b =>
@@ -3387,8 +2722,7 @@ namespace Explore.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<Guid?>("ActorId")
                         .HasColumnType("uuid")
@@ -3469,21 +2803,6 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_users_email");
 
                     b.ToTable("users", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("018e4e5c-7f00-7000-8000-000000000030"),
-                            ActorId = new Guid("018e4e5c-7f00-7000-8000-000000000022"),
-                            AuthProvider = "system",
-                            AuthProviderId = "system",
-                            CreatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            Email = "system@islamu.org",
-                            EmailVerified = true,
-                            FirstName = "System",
-                            IsDeleted = false,
-                            LastName = "Account"
-                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.UserAuthenticationToken", b =>
@@ -3491,13 +2810,20 @@ namespace Explore.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<string>("AccessToken")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
                         .HasColumnName("access_token");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
 
                     b.Property<string>("DpopKey")
                         .HasMaxLength(500)
@@ -3533,6 +2859,14 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id");
 
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
@@ -3554,8 +2888,15 @@ namespace Explore.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
 
                     b.Property<string>("Provider")
                         .HasMaxLength(255)
@@ -3575,6 +2916,14 @@ namespace Explore.Persistence.Migrations
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
@@ -3626,40 +2975,6 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_user_roles_tenant_id");
 
                     b.ToTable("user_roles", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Description = "Full system access across all tenants",
-                            FullName = "Super Administrator",
-                            MasterCode = "SUPER_ADMIN",
-                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Description = "Tenant administrator with full access within tenant",
-                            FullName = "Administrator",
-                            MasterCode = "ADMIN",
-                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Description = "Content moderation and user management",
-                            FullName = "Moderator",
-                            MasterCode = "MODERATOR",
-                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
-                        },
-                        new
-                        {
-                            Id = 4,
-                            Description = "Standard user role",
-                            FullName = "User",
-                            MasterCode = "USER",
-                            TenantId = new Guid("018e4e5c-7f00-7000-8000-000000000001")
-                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.VisibilityType", b =>
@@ -3689,36 +3004,6 @@ namespace Explore.Persistence.Migrations
                         .HasName("pk_visibility_types");
 
                     b.ToTable("visibility_types", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Description = "Visible to everyone",
-                            FullName = "Public",
-                            MasterCode = "PUBLIC"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Description = "Only visible to invited members",
-                            FullName = "Private",
-                            MasterCode = "PRIVATE"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Description = "Not listed publicly but accessible via direct link",
-                            FullName = "Unlisted",
-                            MasterCode = "UNLISTED"
-                        },
-                        new
-                        {
-                            Id = 4,
-                            Description = "Only visible to organization members",
-                            FullName = "Members Only",
-                            MasterCode = "MEMBERS_ONLY"
-                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.Actor", b =>
@@ -3834,14 +3119,12 @@ namespace Explore.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("AudienceAgeId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
                         .HasConstraintName("fk_events_audience_ages_audience_age_id");
 
                     b.HasOne("Explore.Domain.AudienceGender", "AudienceGender")
                         .WithMany()
                         .HasForeignKey("AudienceGenderId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
                         .HasConstraintName("fk_events_audience_genders_audience_gender_id");
 
                     b.HasOne("Explore.Domain.EventFormat", "EventFormat")
@@ -3862,7 +3145,6 @@ namespace Explore.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("EventTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
                         .HasConstraintName("fk_events_event_types_event_type_id");
 
                     b.HasOne("Explore.Domain.StorageObject", "FeaturedImage")
@@ -4183,6 +3465,18 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Event");
                 });
 
+            modelBuilder.Entity("Explore.Domain.InstanceAdministrator", b =>
+                {
+                    b.HasOne("Explore.Domain.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_instance_administrators_users_user_id");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Explore.Domain.Location", b =>
                 {
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
@@ -4398,6 +3692,48 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Tag");
 
                     b.Navigation("TagType");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.TenantAdministrator", b =>
+                {
+                    b.HasOne("Explore.Domain.TenantAdministratorRole", "TenantAdministratorRole")
+                        .WithMany()
+                        .HasForeignKey("TenantAdministratorRoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_tenant_administrators_tenant_administrator_roles_tenant_admi");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_tenant_administrators_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_tenant_administrators_users_user_id");
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("TenantAdministratorRole");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Explore.Domain.TenantOnboardingState", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_tenant_onboarding_states_tenants_tenant_id");
 
                     b.Navigation("Tenant");
                 });

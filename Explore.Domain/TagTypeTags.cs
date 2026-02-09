@@ -2,22 +2,21 @@ using System;
 using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Interfaces;
 
-namespace Explore.Domain
+namespace Explore.Domain;
+
+public class TagTypeTags : ITenantEntity
 {
-    public class TagTypeTags : ITenantEntity
-    {
-        public Guid Id { get; set; }
+    public Guid Id { get; set; }
 
-        [ForeignKey("Tag")]
-        public Guid TagId { get; set; }
-        public Tag Tag { get; set; }
+    [ForeignKey("Tag")]
+    public Guid TagId { get; set; }
+    public required Tag Tag { get; set; }
 
-        [ForeignKey("TagType")]
-        public int TagTypeId { get; set; }
-        public TagType TagType { get; set; }
+    [ForeignKey("TagType")]
+    public int TagTypeId { get; set; }
+    public required TagType TagType { get; set; }
 
-        [ForeignKey("Tenant")]
-        public Guid TenantId { get; set; }
-        public Tenant Tenant { get; set; }
-    }
+    [ForeignKey("Tenant")]
+    public Guid TenantId { get; set; }
+    public required Tenant Tenant { get; set; }
 }

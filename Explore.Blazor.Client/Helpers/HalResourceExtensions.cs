@@ -105,8 +105,20 @@ public static class HalResourceExtensions
     /// </summary>
     public static TagDto ToDto(this HalResourceOfTagDto halResource)
     {
-        var json = JsonConvert.SerializeObject(halResource, JsonSettings);
-        return JsonConvert.DeserializeObject<TagDto>(json, JsonSettings) ?? new TagDto();
+        try
+        {
+            var json = JsonConvert.SerializeObject(halResource, JsonSettings);
+            return JsonConvert.DeserializeObject<TagDto>(json, JsonSettings) ?? new TagDto();
+        }
+        catch (JsonSerializationException)
+        {
+            return new TagDto
+            {
+                Id = halResource.Id,
+                FullName = halResource.FullName ?? string.Empty,
+                MasterCode = halResource.MasterCode ?? string.Empty
+            };
+        }
     }
 
     // ========== Location Extensions ==========

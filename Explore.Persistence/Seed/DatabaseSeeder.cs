@@ -1,5 +1,5 @@
-// ABOUTME: Database seeding infrastructure for conditional and runtime-dependent data.
-// Provides development-only seeding separate from lookup table HasData().
+// ABOUTME: Database seeding infrastructure for lookup tables (all environments) and business entities (dev-only).
+// Lookup tables are seeded at runtime via LookupTableSeeder to avoid EF Core circular FK migration bug (#36682).
 
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -10,19 +10,18 @@ using Microsoft.Extensions.Hosting;
 namespace Explore.Persistence.Seed;
 
 /// <summary>
-/// Database seeder for conditional/runtime-dependent data.
+/// Database seeder orchestrator. Called after migrations in application startup.
 ///
 /// Architecture:
-/// - Lookup/enum tables: Seeded via HasData() in configurations (always applied via migrations)
-/// - Business entities: Seeded via this class (conditionally applied at runtime)
+/// - Lookup/enum tables: Seeded via LookupTableSeeder (runs in ALL environments)
+/// - Business entities: Seeded via this class (Development environment only)
 ///
-/// Business entity seeding is ONLY applied in Development environment.
 /// Production databases start empty (except lookup tables) and are populated via API/UI.
 /// </summary>
 public static class DatabaseSeeder
 {
     /// <summary>
-    /// Seeds development data if in Development environment.
+    /// Seeds lookup tables (all environments) and development data (dev only).
     /// Called after migrations in the application startup.
     /// </summary>
     /// <param name="context">The database context</param>
@@ -33,7 +32,10 @@ public static class DatabaseSeeder
         IHostEnvironment environment,
         CancellationToken cancellationToken = default)
     {
-        // Only seed business entities in Development
+        // Lookup tables must exist in ALL environments (previously seeded via HasData in migrations)
+        await LookupTableSeeder.SeedAsync(context, cancellationToken);
+
+        // Business entities only in Development
         if (!environment.IsDevelopment())
         {
             return;

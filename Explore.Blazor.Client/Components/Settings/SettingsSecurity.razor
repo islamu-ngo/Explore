@@ -1,0 +1,122 @@
+@using MudBlazor
+
+<div class="settings-section">
+    <!-- Section Header -->
+    <div class="settings-section-header mb-6">
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">Security</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Manage your account security and login settings</MudText>
+    </div>
+
+    <!-- Password Section -->
+    <div class="settings-form-section mb-8">
+        <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Class="mb-4">Password</MudText>
+        <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
+            <div class="d-flex justify-space-between align-center">
+                <div>
+                    <MudText Typo="Typo.body1" Style="font-weight: 500;">Change your password</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Update your password regularly to keep your account secure</MudText>
+                </div>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Edit" Class="rounded-pill">
+                    Change Password
+                </MudButton>
+            </div>
+        </MudPaper>
+    </div>
+
+    <!-- Divider -->
+    <MudDivider Class="my-6" />
+
+    <!-- Two-Factor Authentication Section -->
+    <div class="settings-form-section mb-8">
+        <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Class="mb-4">Two-Factor Authentication</MudText>
+        <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
+            <div class="d-flex justify-space-between align-center">
+                <div>
+                    <MudText Typo="Typo.body1" Style="font-weight: 500;">Add an extra layer of security</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Require a verification code in addition to your password</MudText>
+                </div>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Security" Class="rounded-pill">
+                    Enable 2FA
+                </MudButton>
+            </div>
+        </MudPaper>
+    </div>
+
+    <!-- Divider -->
+    <MudDivider Class="my-6" />
+
+    <!-- Active Sessions Section -->
+    <div class="settings-form-section mb-8">
+        <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Class="mb-4">Active Sessions</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">Manage devices where you're signed in</MudText>
+        
+        <MudStack Spacing="2">
+            <!-- Current Session -->
+            <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
+                <div class="d-flex justify-space-between align-center">
+                    <div class="d-flex align-center gap-3">
+                        <MudIcon Icon="@Icons.Material.Filled.Computer" Size="Size.Large" Color="Color.Primary" />
+                        <div>
+                            <MudText Typo="Typo.body1" Style="font-weight: 500;">Windows - Chrome</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Last active: Just now</MudText>
+                        </div>
+                    </div>
+                    <MudChip T="string" Label="true" Color="Color.Success" Variant="Variant.Filled" Size="Size.Small">Current</MudChip>
+                </div>
+            </MudPaper>
+
+            <!-- Other Sessions -->
+            <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
+                <div class="d-flex justify-space-between align-center">
+                    <div class="d-flex align-center gap-3">
+                        <MudIcon Icon="@Icons.Material.Filled.Smartphone" Size="Size.Large" Color="Color.Secondary" />
+                        <div>
+                            <MudText Typo="Typo.body1" Style="font-weight: 500;">iPhone - Safari</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Last active: 2 hours ago</MudText>
+                        </div>
+                    </div>
+                    <MudButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small">Sign Out</MudButton>
+                </div>
+            </MudPaper>
+        </MudStack>
+
+        <MudButton Variant="Variant.Text" Color="Color.Error" StartIcon="@Icons.Material.Filled.Logout" Class="mt-4">
+            Sign Out All Other Sessions
+        </MudButton>
+    </div>
+
+    <!-- Divider -->
+    <MudDivider Class="my-6" />
+
+    <!-- Login Activity Section -->
+    <div class="settings-form-section">
+        <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Class="mb-4">Login Activity</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">Recent login attempts to your account</MudText>
+        
+        <MudStack Spacing="2">
+            <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
+                <div class="d-flex justify-space-between align-center">
+                    <div>
+                        <MudText Typo="Typo.body1" Style="font-weight: 500;">Windows - Chrome</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">192.168.1.1 • Today at 10:30 AM</MudText>
+                    </div>
+                    <MudChip T="string" Label="true" Color="Color.Success" Variant="Variant.Filled" Size="Size.Small">Success</MudChip>
+                </div>
+            </MudPaper>
+
+            <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
+                <div class="d-flex justify-space-between align-center">
+                    <div>
+                        <MudText Typo="Typo.body1" Style="font-weight: 500;">iPhone - Safari</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">203.0.113.45 • Yesterday at 3:15 PM</MudText>
+                    </div>
+                    <MudChip T="string" Label="true" Color="Color.Success" Variant="Variant.Filled" Size="Size.Small">Success</MudChip>
+                </div>
+            </MudPaper>
+        </MudStack>
+    </div>
+</div>
+
+@code {
+    // Security settings logic will be implemented here
+}

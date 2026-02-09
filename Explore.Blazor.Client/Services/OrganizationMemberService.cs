@@ -35,7 +35,7 @@ public class OrganizationMemberService : IOrganizationMemberService
     {
         try
         {
-            var response = await _apiClient.OrganizationMemberAllAsync(organizationId);
+            var response = await _apiClient.OrganizationmemberAllAsync(organizationId);
             return response ?? new List<OrganizationMemberDto>();
         }
         catch (ApiException ex)
@@ -54,7 +54,7 @@ public class OrganizationMemberService : IOrganizationMemberService
     {
         try
         {
-            return await _apiClient.OrganizationMemberPOSTAsync(member);
+            return await _apiClient.OrganizationmemberPOSTAsync(member);
         }
         catch (ApiException ex)
         {
@@ -145,7 +145,7 @@ public class OrganizationMemberService : IOrganizationMemberService
     {
         try
         {
-            return await _apiClient.OrganizationMemberDELETEAsync(memberId);
+            return await _apiClient.OrganizationmemberDELETEAsync(memberId);
         }
         catch (ApiException ex)
         {
@@ -159,3 +159,4 @@ public class OrganizationMemberService : IOrganizationMemberService
         }
     }
 }
+

@@ -1,0 +1,70 @@
+/* Security Section Styles */
+
+.settings-section {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.settings-section-header {
+    margin-bottom: 2rem;
+}
+
+.settings-form-section {
+    margin-bottom: 2rem;
+}
+
+.settings-form-section :deep(.mud-text-subtitle2) {
+    color: var(--mud-palette-text-primary);
+    margin-bottom: 1rem;
+    display: block;
+}
+
+.settings-content :deep(.mud-divider) {
+    margin: 1.5rem 0;
+    opacity: 0.5;
+}
+
+.settings-content :deep(.mud-paper) {
+    transition: all 0.2s ease;
+}
+
+.settings-content :deep(.mud-paper:hover) {
+    box-shadow: var(--mud-shadow-2);
+}
+
+.settings-content :deep(.mud-button) {
+    text-transform: none;
+    font-weight: 500;
+}
+
+.settings-content :deep(.mud-chip) {
+    font-weight: 500;
+}
+
+.settings-content :deep(.mud-stack) {
+    gap: 1rem;
+}
+
+@media (max-width: 600px) {
+    .settings-section-header {
+        margin-bottom: 1.5rem;
+    }
+
+    .settings-form-section {
+        margin-bottom: 1.5rem;
+    }
+
+    .settings-content :deep(.mud-paper) {
+        padding: 1rem !important;
+    }
+}

@@ -7,6 +7,7 @@ using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 
 namespace Explore.API.Controllers;
 
@@ -45,15 +46,16 @@ public class TagController : ControllerBase
         "Send 'Prefer: return=minimal' header to strip links.")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(HalCollectionResource<TagListDto>), StatusCodes.Status200OK)]
+    [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<TagListDto>>> GetAll(
         [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 20)
+        [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(new GetTagListRequest
         {
             PageNumber = pageNumber,
             PageSize = pageSize
-        });
+        }, cancellationToken);
 
         var halResource = _resourceAssembler.ToCollectionResource(
             result,
@@ -74,9 +76,10 @@ public class TagController : ControllerBase
     [AllowAnonymous]
     [ProducesResponseType(typeof(HalResource<TagDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<HalResource<TagDto>>> GetById(Guid id)
+    [OutputCache(PolicyName = "DetailData")]
+    public async Task<ActionResult<HalResource<TagDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        var tag = await _mediator.Send(new GetTagDetailsRequest { Id = id });
+        var tag = await _mediator.Send(new GetTagDetailsRequest { Id = id }, cancellationToken);
 
         if (tag is null)
         {
@@ -98,10 +101,10 @@ public class TagController : ControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateTagDto tag)
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateTagDto tag, CancellationToken cancellationToken = default)
     {
         var command = new CreateTagCommand { TagDto = tag };
-        var response = await _mediator.Send(command);
+        var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)
         {
@@ -126,7 +129,7 @@ public class TagController : ControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateTagDto tag)
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateTagDto tag, CancellationToken cancellationToken = default)
     {
         if (id != tag.Id)
         {
@@ -134,7 +137,7 @@ public class TagController : ControllerBase
         }
 
         var command = new UpdateTagCommand { TagDto = tag };
-        var response = await _mediator.Send(command);
+        var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)
         {
@@ -154,12 +157,12 @@ public class TagController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult> Delete(Guid id)
+    public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         try
         {
             var command = new DeleteTagCommand { Id = id };
-            var result = await _mediator.Send(command);
+            var result = await _mediator.Send(command, cancellationToken);
 
             if (!result)
             {

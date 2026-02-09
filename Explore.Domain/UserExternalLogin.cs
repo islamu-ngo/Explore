@@ -8,24 +8,27 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Text;
 using Explore.Domain.Interfaces;
 
-namespace Explore.Domain
+namespace Explore.Domain;
+
+public class UserExternalLogin : ITenantEntity, IAuditableEntity
 {
-    public class UserExternalLogin : ITenantEntity
-    {
-        public Guid Id { get; set; }
+    public Guid Id { get; set; }
 
-        [ForeignKey("User")]
-        public Guid UserId { get; set; }
+    [ForeignKey("User")]
+    public Guid UserId { get; set; }
+    public required User User { get; set; }
 
-        public required User User { get; set; }
+    [ForeignKey("Tenant")]
+    public Guid TenantId { get; set; }
+    public required Tenant Tenant { get; set; }
 
-        [ForeignKey("Tenant")]
-        public Guid TenantId { get; set; }
+    public string? Provider { get; set; }
+    public string? ProviderKey { get; set; }
+    public string? ProviderDisplayName { get; set; }
 
-        public required Tenant Tenant { get; set; }
-
-        public string? Provider { get; set; }
-        public string? ProviderKey { get; set; }
-        public string? ProviderDisplayName { get; set; }
-    }
+    // Audit fields
+    public DateTime CreatedAt { get; set; }
+    public Guid? CreatedBy { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public Guid? UpdatedBy { get; set; }
 }

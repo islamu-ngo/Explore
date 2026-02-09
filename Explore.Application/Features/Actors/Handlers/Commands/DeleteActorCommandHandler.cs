@@ -1,6 +1,6 @@
-using MediatR;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Actors.Requests.Commands;
+using MediatR;
 
 namespace Explore.Application.Features.Actors.Handlers.Commands;
 

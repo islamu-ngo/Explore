@@ -1,5 +1,5 @@
-using FluentValidation;
 using Explore.Application.Contracts.Persistence;
+using FluentValidation;
 
 namespace Explore.Application.DTOs.Actor.Validators;
 
@@ -32,7 +32,7 @@ public class CreateActorDtoValidator : AbstractValidator<CreateActorDto>
 
         // ===== XOR Validation: Actor must be User OR Organization (exactly one) =====
         RuleFor(x => x)
-            .Must(x => (x.UserId.HasValue && !x.OrganizationId.HasValue) || 
+            .Must(x => (x.UserId.HasValue && !x.OrganizationId.HasValue) ||
                        (!x.UserId.HasValue && x.OrganizationId.HasValue))
             .WithMessage("Actor must have exactly one of UserId or OrganizationId set (not both, not neither).");
 

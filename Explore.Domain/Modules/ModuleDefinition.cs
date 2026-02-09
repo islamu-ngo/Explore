@@ -18,12 +18,12 @@ public class ModuleDefinition
     /// Unique module key (e.g., "Mod_Core", "Mod_Islamic", "Mod_Tech").
     /// Used for programmatic lookups and configuration.
     /// </summary>
-    public string ModuleKey { get; set; } = string.Empty;
+    public required string ModuleKey { get; set; }
 
     /// <summary>
     /// Display name for the module shown in UI.
     /// </summary>
-    public string Name { get; set; } = string.Empty;
+    public required string Name { get; set; }
 
     /// <summary>
     /// Description of what this module provides.
@@ -51,7 +51,7 @@ public class ModuleDefinition
     /// Whether this module is globally enabled.
     /// When false, no tenant can use this module.
     /// </summary>
-    public bool IsActive { get; set; } = true;
+    public bool IsActive { get; set; }
 
     /// <summary>
     /// Category grouping for admin UI (e.g., "Domain", "Integration", "Analytics").

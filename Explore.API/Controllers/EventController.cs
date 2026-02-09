@@ -1,15 +1,16 @@
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.EventAspects;
-using Explore.Application.Features.Events.Requests.Commands;
-using Explore.Application.Features.Events.Requests.Queries;
 using Explore.Application.Features.EventAspects.Requests.Commands;
 using Explore.Application.Features.EventAspects.Requests.Queries;
+using Explore.Application.Features.Events.Requests.Commands;
+using Explore.Application.Features.Events.Requests.Queries;
 using Explore.Application.Hateoas;
 using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 
 namespace Explore.API.Controllers;
 
@@ -51,15 +52,16 @@ public class EventController : ControllerBase
         "Send 'Prefer: return=minimal' header to strip links.")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(HalCollectionResource<EventListDto>), StatusCodes.Status200OK)]
+    [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<EventListDto>>> GetAll(
         [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 20)
+        [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(new GetEventListRequest
         {
             PageNumber = pageNumber,
             PageSize = pageSize
-        });
+        }, cancellationToken);
 
         var halResource = _resourceAssembler.ToCollectionResource(
             result,
@@ -82,7 +84,7 @@ public class EventController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<HalCollectionResource<EventListDto>>> GetMyEvents(
         [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 20)
+        [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -105,7 +107,7 @@ public class EventController : ControllerBase
                 UserId = userId,
                 PageNumber = pageNumber,
                 PageSize = pageSize
-            });
+            }, cancellationToken);
 
             _logger.LogInformation("Retrieved {Count} events", result?.Items?.Count ?? 0);
 
@@ -134,9 +136,10 @@ public class EventController : ControllerBase
     [AllowAnonymous]
     [ProducesResponseType(typeof(HalResource<EventDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<HalResource<EventDto>>> GetById(Guid id)
+    [OutputCache(PolicyName = "DetailData")]
+    public async Task<ActionResult<HalResource<EventDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        var @event = await _mediator.Send(new GetEventDetailsRequest { Id = id });
+        var @event = await _mediator.Send(new GetEventDetailsRequest { Id = id }, cancellationToken);
 
         if (@event is null)
         {
@@ -159,10 +162,10 @@ public class EventController : ControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventDto @event)
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventDto @event, CancellationToken cancellationToken = default)
     {
         var command = new CreateEventCommand { EventDto = @event };
-        var response = await _mediator.Send(command);
+        var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)
         {
@@ -187,10 +190,10 @@ public class EventController : ControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> CreateWithSessions([FromBody] CreateEventWithSessionsDto dto)
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> CreateWithSessions([FromBody] CreateEventWithSessionsDto dto, CancellationToken cancellationToken = default)
     {
         var command = new CreateEventWithSessionsCommand { EventWithSessionsDto = dto };
-        var response = await _mediator.Send(command);
+        var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)
         {
@@ -215,7 +218,7 @@ public class EventController : ControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventDto @event)
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventDto @event, CancellationToken cancellationToken = default)
     {
         if (id != @event.Id)
         {
@@ -223,7 +226,7 @@ public class EventController : ControllerBase
         }
 
         var command = new UpdateEventCommand { EventDto = @event };
-        var response = await _mediator.Send(command);
+        var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)
         {
@@ -244,7 +247,7 @@ public class EventController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult> Delete(Guid id)
+    public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -256,7 +259,7 @@ public class EventController : ControllerBase
             }
 
             var command = new DeleteEventCommand { Id = id, UserId = userId };
-            var result = await _mediator.Send(command);
+            var result = await _mediator.Send(command, cancellationToken);
 
             if (!result)
             {
@@ -295,9 +298,10 @@ public class EventController : ControllerBase
     [AllowAnonymous]
     [ProducesResponseType(typeof(EventIslamicAspectDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<EventIslamicAspectDto>> GetIslamicAspect(Guid id)
+    [OutputCache(PolicyName = "DetailData")]
+    public async Task<ActionResult<EventIslamicAspectDto>> GetIslamicAspect(Guid id, CancellationToken cancellationToken = default)
     {
-        var aspect = await _mediator.Send(new GetEventIslamicAspectRequest { EventId = id });
+        var aspect = await _mediator.Send(new GetEventIslamicAspectRequest { EventId = id }, cancellationToken);
 
         if (aspect == null)
         {
@@ -322,7 +326,7 @@ public class EventController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpsertIslamicAspect(
         Guid id,
-        [FromBody] CreateUpdateIslamicAspectDto aspectDto)
+        [FromBody] CreateUpdateIslamicAspectDto aspectDto, CancellationToken cancellationToken = default)
     {
         var command = new UpsertEventIslamicAspectCommand
         {
@@ -330,7 +334,7 @@ public class EventController : ControllerBase
             AspectDto = aspectDto
         };
 
-        var response = await _mediator.Send(command);
+        var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)
         {
@@ -355,9 +359,9 @@ public class EventController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult> DeleteIslamicAspect(Guid id)
+    public async Task<ActionResult> DeleteIslamicAspect(Guid id, CancellationToken cancellationToken = default)
     {
-        var result = await _mediator.Send(new DeleteEventIslamicAspectCommand { EventId = id });
+        var result = await _mediator.Send(new DeleteEventIslamicAspectCommand { EventId = id }, cancellationToken);
 
         if (!result)
         {
@@ -377,9 +381,10 @@ public class EventController : ControllerBase
     [AllowAnonymous]
     [ProducesResponseType(typeof(EventTechAspectDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<EventTechAspectDto>> GetTechAspect(Guid id)
+    [OutputCache(PolicyName = "DetailData")]
+    public async Task<ActionResult<EventTechAspectDto>> GetTechAspect(Guid id, CancellationToken cancellationToken = default)
     {
-        var aspect = await _mediator.Send(new GetEventTechAspectRequest { EventId = id });
+        var aspect = await _mediator.Send(new GetEventTechAspectRequest { EventId = id }, cancellationToken);
 
         if (aspect == null)
         {
@@ -404,7 +409,7 @@ public class EventController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpsertTechAspect(
         Guid id,
-        [FromBody] CreateUpdateTechAspectDto aspectDto)
+        [FromBody] CreateUpdateTechAspectDto aspectDto, CancellationToken cancellationToken = default)
     {
         var command = new UpsertEventTechAspectCommand
         {
@@ -412,7 +417,7 @@ public class EventController : ControllerBase
             AspectDto = aspectDto
         };
 
-        var response = await _mediator.Send(command);
+        var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)
         {
@@ -437,9 +442,9 @@ public class EventController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult> DeleteTechAspect(Guid id)
+    public async Task<ActionResult> DeleteTechAspect(Guid id, CancellationToken cancellationToken = default)
     {
-        var result = await _mediator.Send(new DeleteEventTechAspectCommand { EventId = id });
+        var result = await _mediator.Send(new DeleteEventTechAspectCommand { EventId = id }, cancellationToken);
 
         if (!result)
         {

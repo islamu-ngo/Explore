@@ -1,7 +1,7 @@
-using Explore.Blazor.Client.Clients;
-using Explore.Blazor.Client.Services.Contracts;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Services.Contracts;
 
 namespace Explore.Blazor.Client.Services;
 
@@ -16,11 +16,12 @@ public class AudienceGenderService : IAudienceGenderService
 
     public async Task<ICollection<AudienceGenderListDto>> GetAudienceGendersAsync()
     {
-        return await _client.AudienceGenderAllAsync();
+        return await _client.AudiencegenderAllAsync();
     }
 
     public async Task<AudienceGenderDto> GetAudienceGenderByIdAsync(int id)
     {
-        return await _client.AudienceGenderAsync(id);
+        return await _client.AudiencegenderAsync(id);
     }
 }
+

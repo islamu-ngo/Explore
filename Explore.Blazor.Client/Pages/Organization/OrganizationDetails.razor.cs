@@ -1,12 +1,12 @@
+using Blazouter.Services;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Helpers;
-using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Models.Enums;
+using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Logging;
 using MudBlazor;
-using Blazouter.Services;
 
 namespace Explore.Blazor.Client.Pages.Organization;
 
@@ -32,6 +32,7 @@ public partial class OrganizationDetails
     private int? currentUserRole;
 
     private UpdateOrganizationDto editModel = new();
+    private OrganizationAppearanceSettings _appearance = new();
     private MudForm? form;
     private bool formValid;
 
@@ -74,8 +75,11 @@ public partial class OrganizationDetails
                 Country = organization.Country,
                 City = organization.City,
                 Postcode = int.TryParse(organization.Postcode, out var pc) ? pc : 0,
-                Address = organization.Address
+                Address = organization.Address,
+                MetadataJson = organization.MetadataJson
             };
+
+            _appearance = OrganizationAppearanceMetadataHelper.Parse(organization.MetadataJson);
         }
     }
 
@@ -156,6 +160,7 @@ public partial class OrganizationDetails
             errorMessage = string.Empty;
             successMessage = string.Empty;
 
+            editModel.MetadataJson = OrganizationAppearanceMetadataHelper.Upsert(editModel.MetadataJson, _appearance);
             var success = await OrganizationService.UpdateOrganizationAsync(Id, editModel!);
 
             if (success?.Success == true)

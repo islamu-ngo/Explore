@@ -13,8 +13,15 @@
     <div class="navbar__content">
         <!-- Brand -->
         <a href="/" class="navbar__brand" aria-label="Home">
-            <MudIcon Icon="@Icons.Material.Filled.Explore" Color="Color.Primary" Size="Size.Large" Class="navbar__brand-icon" />
-            <div class="navbar__brand-text">ISLAMU<span class="navbar__brand-highlight">Explore</span></div>
+            @if (!string.IsNullOrWhiteSpace(_brandLogoUrl))
+            {
+                <MudImage Src="@_brandLogoUrl" Alt="@_brandDisplayName" Class="navbar__brand-icon" Width="28" Height="28" />
+            }
+            else
+            {
+                <MudIcon Icon="@Icons.Material.Filled.Explore" Color="Color.Primary" Size="Size.Large" Class="navbar__brand-icon" />
+            }
+            <div class="navbar__brand-text">@_brandDisplayName</div>
         </a>
 
         <!-- Global Search -->
@@ -33,7 +40,7 @@
 
         <!-- Center Navigation -->
         <div class="navbar__links">
-            <NavLink href="/" class="navbar__link" Match="NavLinkMatch.All" ActiveClass="navbar__link--active">
+            <NavLink href="/events" class="navbar__link" Match="NavLinkMatch.Prefix" ActiveClass="navbar__link--active">
                 Events
             </NavLink>
         </div>
@@ -50,11 +57,12 @@
                 <Authorized>
                     <!-- User Dropdown -->
                     <div class="navbar__user-dropdown">
-                        <div class="navbar__user-btn" @onclick="ToggleDropdown" @onclick:stopPropagation>
+                        <div class="navbar__user-btn" @onclick="ToggleDropdown" @onclick:stopPropagation
+                             role="button" tabindex="0" aria-expanded="@_dropdownOpen" aria-haspopup="true" aria-label="User menu">
                             @if (!string.IsNullOrEmpty(_currentUser?.ProfileImageUri))
                             {
                                 <MudAvatar Size="Size.Small" Class="navbar__user-avatar">
-                                    <MudImage Src="@_currentUser.ProfileImageUri" Alt="Profile" />
+                                    <MudImage Src="@_currentUser.ProfileImageUri" Alt="@($"{context.User.Identity?.Name}'s profile picture")" />
                                 </MudAvatar>
                             }
                             else
@@ -135,5 +143,5 @@
 @* Overlay to close dropdown when clicking outside *@
 @if (_dropdownOpen)
 {
-    <div class="navbar__dropdown-overlay" @onclick="CloseDropdown"></div>
+    <div class="navbar__dropdown-overlay" @onclick="CloseDropdown" aria-hidden="true"></div>
 }

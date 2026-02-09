@@ -37,7 +37,7 @@ public partial class MyRegistrations
             if (user != null && user.Id.HasValue)
             {
                 var registrations = await EventService.GetRegistrationsByUserAsync(user.Id.Value);
-                
+
                 var tasks = registrations.Select(async r =>
                 {
                     var vm = new MyRegistrationViewModel

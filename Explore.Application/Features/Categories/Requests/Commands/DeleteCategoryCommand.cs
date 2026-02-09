@@ -1,10 +1,9 @@
 using System;
 using MediatR;
 
-namespace Explore.Application.Features.Categories.Requests.Commands
+namespace Explore.Application.Features.Categories.Requests.Commands;
+
+public class DeleteCategoryCommand : IRequest<bool>
 {
-    public class DeleteCategoryCommand : IRequest<bool>
-    {
-        public Guid Id { get; set; }
-    }
+    public Guid Id { get; set; }
 }

@@ -1,9 +1,8 @@
 using MediatR;
 
-namespace Explore.Application.Features.Tenants.Requests.Commands
+namespace Explore.Application.Features.Tenants.Requests.Commands;
+
+public class DeleteTenantCommand : IRequest<bool>
 {
-    public class DeleteTenantCommand : IRequest<bool>
-    {
-        public Guid Id { get; set; }
-    }
+    public Guid Id { get; set; }
 }

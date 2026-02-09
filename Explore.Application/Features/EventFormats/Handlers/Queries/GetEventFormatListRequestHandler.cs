@@ -7,23 +7,22 @@ using Explore.Application.DTOs.EventFormat;
 using Explore.Application.Features.EventFormats.Requests.Queries;
 using MediatR;
 
-namespace Explore.Application.Features.EventFormats.Handlers.Queries
+namespace Explore.Application.Features.EventFormats.Handlers.Queries;
+
+public class GetEventFormatListRequestHandler : IRequestHandler<GetEventFormatListRequest, List<EventFormatListDto>>
 {
-    public class GetEventFormatListRequestHandler : IRequestHandler<GetEventFormatListRequest, List<EventFormatListDto>>
+    private readonly IEventFormatRepository _eventFormatRepository;
+    private readonly IMapper _mapper;
+
+    public GetEventFormatListRequestHandler(IEventFormatRepository eventFormatRepository, IMapper mapper)
     {
-        private readonly IEventFormatRepository _eventFormatRepository;
-        private readonly IMapper _mapper;
+        _eventFormatRepository = eventFormatRepository;
+        _mapper = mapper;
+    }
 
-        public GetEventFormatListRequestHandler(IEventFormatRepository eventFormatRepository, IMapper mapper)
-        {
-            _eventFormatRepository = eventFormatRepository;
-            _mapper = mapper;
-        }
-
-        public async Task<List<EventFormatListDto>> Handle(GetEventFormatListRequest request, CancellationToken cancellationToken)
-        {
-            var eventFormats = await _eventFormatRepository.GetAll();
-            return _mapper.Map<List<EventFormatListDto>>(eventFormats);
-        }
+    public async Task<List<EventFormatListDto>> Handle(GetEventFormatListRequest request, CancellationToken cancellationToken)
+    {
+        var eventFormats = await _eventFormatRepository.GetAll();
+        return _mapper.Map<List<EventFormatListDto>>(eventFormats);
     }
 }

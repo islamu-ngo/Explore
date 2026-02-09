@@ -1,6 +1,7 @@
 using Explore.Blazor.Client.Clients;
-using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Components;
+using Explore.Blazor.Client.Helpers;
+using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Extensions.Logging;
@@ -20,12 +21,13 @@ public partial class CreateOrganization
     private bool confirmInformation = false;
     private bool isSubmitting = false;
     private string logoPreview = string.Empty;
-    
+
     private ImageUpload? _imageUpload;
     private FileUploadData? _selectedLogoData;
     private bool _isUploadingLogo = false;
     private Guid? _uploadedLogoStorageObjectId = null;
     private string? _logoUploadError;
+    private OrganizationAppearanceSettings _appearance = new();
 
     private bool submitSuccess = false;
     private string errorMessage = string.Empty;
@@ -45,6 +47,7 @@ public partial class CreateOrganization
 
         try
         {
+            organization.MetadataJson = OrganizationAppearanceMetadataHelper.Upsert(organization.MetadataJson, _appearance);
             var createdOrganization = await OrganizationService.CreateOrganizationAsync(organization);
 
             if (createdOrganization != null)

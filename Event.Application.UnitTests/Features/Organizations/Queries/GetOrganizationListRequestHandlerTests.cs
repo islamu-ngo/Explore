@@ -50,7 +50,12 @@ public class GetOrganizationListRequestHandlerTests
         {
             Id = o.Id,
             FullName = o.FullName,
-            Email = o.Email
+            Email = o.Email,
+            Country = string.Empty,
+            City = string.Empty,
+            Postcode = string.Empty,
+            Address = string.Empty,
+            ApprovalStatusFullName = string.Empty
         }).ToList();
 
         _organizationRepository.GetOrganizationsWithDetailsPaged(1, 20)
@@ -83,7 +88,12 @@ public class GetOrganizationListRequestHandlerTests
         {
             Id = o.Id,
             FullName = o.FullName,
-            Email = o.Email
+            Email = o.Email,
+            Country = string.Empty,
+            City = string.Empty,
+            Postcode = string.Empty,
+            Address = string.Empty,
+            ApprovalStatusFullName = string.Empty
         }).ToList();
 
         _organizationRepository.GetOrganizationsWithDetailsPaged(2, 10)

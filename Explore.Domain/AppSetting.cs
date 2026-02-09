@@ -29,13 +29,13 @@ public class AppSetting : IAuditableEntity
     /// - Database:* keys (connection strings must use secret manager)
     /// - Security:MasterKey* keys (master keys must use secret manager)
     /// </remarks>
-    public string ConfigKey { get; set; } = string.Empty;
+    public required string ConfigKey { get; set; }
 
     /// <summary>
     /// AES-256-GCM encrypted value as base64 string.
     /// Format: base64(nonce[12] + tag[16] + ciphertext)
     /// </summary>
-    public string EncryptedValue { get; set; } = string.Empty;
+    public required string EncryptedValue { get; set; }
 
     /// <summary>
     /// Version of the encryption key used to encrypt this value.

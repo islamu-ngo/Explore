@@ -27,7 +27,7 @@ public class S3UploadMessageHandler : DelegatingHandler
         // Set CORS mode for cross-origin S3 requests
         // This is required for browser to allow PUT requests to external origins (Hetzner Object Storage)
         request.SetBrowserRequestMode(BrowserRequestMode.Cors);
-        
+
         // Do NOT include credentials for S3 pre-signed URL requests
         // Pre-signed URLs contain all authentication in the URL itself
         request.SetBrowserRequestCredentials(BrowserRequestCredentials.Omit);

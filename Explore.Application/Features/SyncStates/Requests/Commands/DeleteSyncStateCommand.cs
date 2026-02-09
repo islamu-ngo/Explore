@@ -1,9 +1,8 @@
 using MediatR;
 
-namespace Explore.Application.Features.SyncStates.Requests.Commands
+namespace Explore.Application.Features.SyncStates.Requests.Commands;
+
+public class DeleteSyncStateCommand : IRequest<bool>
 {
-    public class DeleteSyncStateCommand : IRequest<bool>
-    {
-        public int Id { get; set; }
-    }
+    public int Id { get; set; }
 }

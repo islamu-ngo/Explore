@@ -1,11 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Explore.Application.DTOs.Organization
+namespace Explore.Application.DTOs.Organization;
+
+public class UpdateOrganizationApprovalStatusDto
 {
-    public class UpdateOrganizationApprovalStatusDto
-    {
-        public int ApprovalStatusId { get; set; }
-    }
+    public int ApprovalStatusId { get; set; }
 }

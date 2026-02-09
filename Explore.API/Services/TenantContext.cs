@@ -1,8 +1,12 @@
-// ABOUTME: Provides tenant context for multi-tenant data isolation.
-// ABOUTME: Respects deployment mode - single-tenant skips resolution, multi-tenant uses header/subdomain.
+// ABOUTME: Provides tenant context for multi-tenant data isolation with runtime mode awareness.
+// ABOUTME: Resolves tenant from header/custom-domain/subdomain with fallback to default tenant.
 
+using System.Text.Json;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Domain.Constants;
 using Explore.Infrastructure;
+using Explore.Persistence;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 namespace Explore.API.Services;
@@ -15,6 +19,7 @@ namespace Explore.API.Services;
 public class TenantContext : ITenantContext
 {
     private const string TenantIdHeaderName = "X-Tenant-Id";
+    private const string ResolvedTenantContextItemKey = "__resolved_tenant_id";
 
     /// <summary>
     /// Fallback default tenant ID matching the seeded tenant in the database.
@@ -25,13 +30,16 @@ public class TenantContext : ITenantContext
 
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly DeploymentSettings _deploymentSettings;
+    private readonly IDbContextFactory<ExploreDbContext>? _dbContextFactory;
 
     public TenantContext(
         IHttpContextAccessor httpContextAccessor,
-        IOptions<DeploymentSettings> deploymentSettings)
+        IOptions<DeploymentSettings> deploymentSettings,
+        IDbContextFactory<ExploreDbContext>? dbContextFactory = null)
     {
         _httpContextAccessor = httpContextAccessor;
         _deploymentSettings = deploymentSettings.Value;
+        _dbContextFactory = dbContextFactory;
     }
 
     /// <summary>
@@ -43,13 +51,6 @@ public class TenantContext : ITenantContext
     {
         get
         {
-            // SingleTenant mode: Always use configured default tenant
-            if (_deploymentSettings.IsSingleTenant)
-            {
-                return GetDefaultTenantId();
-            }
-
-            // MultiTenant mode: Resolve from request
             return ResolveTenantFromRequest();
         }
     }
@@ -76,51 +77,311 @@ public class TenantContext : ITenantContext
             return GetDefaultTenantId();
         }
 
+        if (httpContext.Items.TryGetValue(ResolvedTenantContextItemKey, out var cached) &&
+            cached is Guid cachedTenantId &&
+            cachedTenantId != Guid.Empty)
+        {
+            return cachedTenantId;
+        }
+
         // Priority 1: X-Tenant-Id header (explicit tenant selection)
         if (httpContext.Request.Headers.TryGetValue(TenantIdHeaderName, out var tenantIdHeader) &&
             Guid.TryParse(tenantIdHeader.FirstOrDefault(), out var tenantId))
         {
+            httpContext.Items[ResolvedTenantContextItemKey] = tenantId;
             return tenantId;
         }
 
-        // Priority 2: Subdomain resolution (e.g., tech-hub.islamu.app)
-        var host = httpContext.Request.Host.Host;
-        var subdomain = ExtractSubdomain(host);
-        if (!string.IsNullOrEmpty(subdomain))
+        // If no DB factory is available (e.g., some test setups), use config fallback behavior.
+        if (_dbContextFactory == null)
         {
-            // TODO: Look up tenant by subdomain from database/cache
-            // For now, fall through to default
-            // var tenant = _tenantRepository.GetBySubdomain(subdomain);
-            // if (tenant != null) return tenant.Id;
+            var fallbackMode = _deploymentSettings.IsSingleTenant ? "SingleTenant" : "MultiTenant";
+            if (fallbackMode.Equals("SingleTenant", StringComparison.OrdinalIgnoreCase))
+            {
+                var defaultTenantId = GetDefaultTenantId();
+                httpContext.Items[ResolvedTenantContextItemKey] = defaultTenantId;
+                return defaultTenantId;
+            }
+
+            var hostFromRequest = GetRequestHost(httpContext);
+            var fallbackSubdomain = ExtractFallbackSubdomain(hostFromRequest);
+            if (!string.IsNullOrWhiteSpace(fallbackSubdomain))
+            {
+                // No persistence lookup available in this mode; keep deterministic fallback.
+                var defaultTenantId = GetDefaultTenantId();
+                httpContext.Items[ResolvedTenantContextItemKey] = defaultTenantId;
+                return defaultTenantId;
+            }
+
+            var fallbackTenant = GetDefaultTenantId();
+            httpContext.Items[ResolvedTenantContextItemKey] = fallbackTenant;
+            return fallbackTenant;
         }
 
-        // Priority 3: Default tenant
-        return GetDefaultTenantId();
+        using var dbContext = _dbContextFactory.CreateDbContext();
+        var runtimeMode = ResolveRuntimeDeploymentMode(dbContext);
+        if (runtimeMode.Equals("SingleTenant", StringComparison.OrdinalIgnoreCase))
+        {
+            var defaultTenantId = GetDefaultTenantId();
+            httpContext.Items[ResolvedTenantContextItemKey] = defaultTenantId;
+            return defaultTenantId;
+        }
+
+        var host = GetRequestHost(httpContext);
+
+        // Priority 2: Custom domain
+        var customDomainTenantId = TryResolveTenantByCustomDomain(dbContext, host);
+        if (customDomainTenantId.HasValue)
+        {
+            httpContext.Items[ResolvedTenantContextItemKey] = customDomainTenantId.Value;
+            return customDomainTenantId.Value;
+        }
+
+        // Priority 3: Subdomain
+        var subdomainTenantId = TryResolveTenantBySubdomain(dbContext, host);
+        if (subdomainTenantId.HasValue)
+        {
+            httpContext.Items[ResolvedTenantContextItemKey] = subdomainTenantId.Value;
+            return subdomainTenantId.Value;
+        }
+
+        // Priority 4: Default tenant
+        var fallbackTenantId = GetDefaultTenantId();
+        httpContext.Items[ResolvedTenantContextItemKey] = fallbackTenantId;
+        return fallbackTenantId;
+    }
+
+    private string ResolveRuntimeDeploymentMode(ExploreDbContext dbContext)
+    {
+        try
+        {
+            var rawSetting = dbContext.SystemSettings
+                .AsNoTracking()
+                .Where(s => s.SettingKey == GovernanceSettingKeys.DeploymentMode)
+                .Select(s => s.Value)
+                .FirstOrDefault();
+
+            var modeFromSettings = DeserializeString(rawSetting, string.Empty);
+            if (modeFromSettings.Equals("SingleTenant", StringComparison.OrdinalIgnoreCase))
+            {
+                return "SingleTenant";
+            }
+
+            if (modeFromSettings.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase))
+            {
+                return "MultiTenant";
+            }
+        }
+        catch
+        {
+            // Fall back to static configuration if runtime settings cannot be read.
+        }
+
+        return _deploymentSettings.IsSingleTenant ? "SingleTenant" : "MultiTenant";
+    }
+
+    private static string GetRequestHost(HttpContext httpContext)
+    {
+        var forwardedHost = httpContext.Request.Headers["X-Forwarded-Host"].FirstOrDefault();
+        var candidate = string.IsNullOrWhiteSpace(forwardedHost)
+            ? httpContext.Request.Host.Value
+            : forwardedHost.Split(',')[0].Trim();
+
+        return NormalizeHost(candidate);
+    }
+
+    private Guid? TryResolveTenantByCustomDomain(ExploreDbContext dbContext, string host)
+    {
+        if (string.IsNullOrWhiteSpace(host))
+        {
+            return null;
+        }
+
+        var allowCustomDomainsRaw = dbContext.SystemSettings
+            .AsNoTracking()
+            .Where(s => s.SettingKey == GovernanceSettingKeys.DomainsAllowTenantCustomDomain)
+            .Select(s => s.Value)
+            .FirstOrDefault();
+
+        if (!DeserializeBoolean(allowCustomDomainsRaw, true))
+        {
+            return null;
+        }
+
+        var serializedHost = JsonSerializer.Serialize(host);
+        var tenantId = dbContext.TenantSettingOverrides
+            .AsNoTracking()
+            .IgnoreQueryFilters()
+            .Where(s => s.SettingKey == GovernanceSettingKeys.DomainsTenantCustomDomain && s.Value == serializedHost)
+            .Select(s => s.TenantId)
+            .FirstOrDefault();
+
+        if (tenantId == Guid.Empty)
+        {
+            return null;
+        }
+
+        return dbContext.Tenants.AsNoTracking().Any(t => t.Id == tenantId && t.IsActive)
+            ? tenantId
+            : null;
+    }
+
+    private Guid? TryResolveTenantBySubdomain(ExploreDbContext dbContext, string host)
+    {
+        if (string.IsNullOrWhiteSpace(host))
+        {
+            return null;
+        }
+
+        var baseDomainRaw = dbContext.SystemSettings
+            .AsNoTracking()
+            .Where(s => s.SettingKey == GovernanceSettingKeys.DomainsInstanceBaseDomain)
+            .Select(s => s.Value)
+            .FirstOrDefault();
+
+        var baseDomain = NormalizeHost(DeserializeString(baseDomainRaw, string.Empty));
+        var candidateSubdomain = ExtractSubdomainFromBaseDomain(host, baseDomain) ?? ExtractFallbackSubdomain(host);
+        if (string.IsNullOrWhiteSpace(candidateSubdomain))
+        {
+            return null;
+        }
+
+        var serializedSubdomain = JsonSerializer.Serialize(candidateSubdomain);
+        var tenantId = dbContext.TenantSettingOverrides
+            .AsNoTracking()
+            .IgnoreQueryFilters()
+            .Where(s => s.SettingKey == GovernanceSettingKeys.DomainsTenantSubdomain && s.Value == serializedSubdomain)
+            .Select(s => s.TenantId)
+            .FirstOrDefault();
+
+        if (tenantId != Guid.Empty && dbContext.Tenants.AsNoTracking().Any(t => t.Id == tenantId && t.IsActive))
+        {
+            return tenantId;
+        }
+
+        var slugTenant = dbContext.Tenants
+            .AsNoTracking()
+            .FirstOrDefault(t => t.IsActive && t.Slug.ToLower() == candidateSubdomain);
+
+        return slugTenant?.Id;
+    }
+
+    private static string? ExtractSubdomainFromBaseDomain(string host, string baseDomain)
+    {
+        if (string.IsNullOrWhiteSpace(baseDomain))
+        {
+            return null;
+        }
+
+        if (host.Equals(baseDomain, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var suffix = "." + baseDomain;
+        if (!host.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var prefix = host[..^suffix.Length];
+        if (string.IsNullOrWhiteSpace(prefix))
+        {
+            return null;
+        }
+
+        var firstLabel = prefix.Split('.', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+        return NormalizeSubdomain(firstLabel);
     }
 
     /// <summary>
-    /// Extracts the subdomain from a host string.
+    /// Fallback subdomain extraction for hosts where no explicit base domain is configured.
     /// Returns null if no subdomain or if it's a common prefix (www, api).
     /// </summary>
-    private static string? ExtractSubdomain(string host)
+    private static string? ExtractFallbackSubdomain(string host)
     {
-        // Remove port if present
-        var hostWithoutPort = host.Split(':')[0];
+        var hostWithoutPort = NormalizeHost(host);
+        var parts = hostWithoutPort.Split('.', StringSplitOptions.RemoveEmptyEntries);
 
-        // Split by dots
-        var parts = hostWithoutPort.Split('.');
-
-        // Need at least 3 parts for a subdomain (subdomain.domain.tld)
         if (parts.Length < 3)
+        {
             return null;
+        }
 
-        var subdomain = parts[0];
+        var subdomain = NormalizeSubdomain(parts[0]);
+        if (string.IsNullOrWhiteSpace(subdomain))
+        {
+            return null;
+        }
 
-        // Ignore common non-tenant subdomains
         var ignoredSubdomains = new[] { "www", "api", "app", "admin", "localhost" };
         if (ignoredSubdomains.Contains(subdomain, StringComparer.OrdinalIgnoreCase))
+        {
             return null;
+        }
 
         return subdomain;
+    }
+
+    private static string NormalizeHost(string? host)
+    {
+        if (string.IsNullOrWhiteSpace(host))
+        {
+            return string.Empty;
+        }
+
+        var normalized = host.Trim().ToLowerInvariant();
+        normalized = normalized.Replace("https://", string.Empty, StringComparison.OrdinalIgnoreCase);
+        normalized = normalized.Replace("http://", string.Empty, StringComparison.OrdinalIgnoreCase);
+
+        var withoutPort = normalized.Split(':')[0].Trim();
+        return withoutPort.Trim('/');
+    }
+
+    private static string? NormalizeSubdomain(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var normalized = value.Trim().ToLowerInvariant();
+        normalized = new string(normalized.Where(c => char.IsLetterOrDigit(c) || c == '-').ToArray());
+        return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
+    }
+
+    private static bool DeserializeBoolean(string? rawValue, bool fallback)
+    {
+        if (string.IsNullOrWhiteSpace(rawValue))
+        {
+            return fallback;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<bool>(rawValue);
+        }
+        catch
+        {
+            return bool.TryParse(rawValue, out var parsed) ? parsed : fallback;
+        }
+    }
+
+    private static string DeserializeString(string? rawValue, string fallback)
+    {
+        if (string.IsNullOrWhiteSpace(rawValue))
+        {
+            return fallback;
+        }
+
+        try
+        {
+            var deserialized = JsonSerializer.Deserialize<string>(rawValue);
+            return deserialized ?? fallback;
+        }
+        catch
+        {
+            return rawValue.Trim('"');
+        }
     }
 }

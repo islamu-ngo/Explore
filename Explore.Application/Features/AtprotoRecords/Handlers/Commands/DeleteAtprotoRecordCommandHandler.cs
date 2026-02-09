@@ -1,30 +1,29 @@
-using MediatR;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.AtprotoRecords.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
+using MediatR;
 
-namespace Explore.Application.Features.AtprotoRecords.Handlers.Commands
+namespace Explore.Application.Features.AtprotoRecords.Handlers.Commands;
+
+public class DeleteAtprotoRecordCommandHandler : IRequestHandler<DeleteAtprotoRecordCommand, bool>
 {
-    public class DeleteAtprotoRecordCommandHandler : IRequestHandler<DeleteAtprotoRecordCommand, bool>
+    private readonly IAtprotoRecordRepository _atprotoRecordRepository;
+
+    public DeleteAtprotoRecordCommandHandler(IAtprotoRecordRepository atprotoRecordRepository)
     {
-        private readonly IAtprotoRecordRepository _atprotoRecordRepository;
+        _atprotoRecordRepository = atprotoRecordRepository;
+    }
 
-        public DeleteAtprotoRecordCommandHandler(IAtprotoRecordRepository atprotoRecordRepository)
+    public async Task<bool> Handle(DeleteAtprotoRecordCommand request, CancellationToken cancellationToken)
+    {
+        var atprotoRecord = await _atprotoRecordRepository.GetById(request.Id);
+        if (atprotoRecord == null)
         {
-            _atprotoRecordRepository = atprotoRecordRepository;
+            return false;
         }
 
-        public async Task<bool> Handle(DeleteAtprotoRecordCommand request, CancellationToken cancellationToken)
-        {
-            var atprotoRecord = await _atprotoRecordRepository.GetById(request.Id);
-            if (atprotoRecord == null)
-            {
-                return false;
-            }
-
-            await _atprotoRecordRepository.Delete(atprotoRecord);
-            return true;
-        }
+        await _atprotoRecordRepository.Delete(atprotoRecord);
+        return true;
     }
 }

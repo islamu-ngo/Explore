@@ -4,28 +4,27 @@ using Explore.Application.DTOs.AudienceAge;
 using Explore.Application.Features.AudienceAges.Requests.Queries;
 using MediatR;
 
-namespace Explore.Application.Features.AudienceAges.Handlers.Queries
+namespace Explore.Application.Features.AudienceAges.Handlers.Queries;
+
+public class GetAudienceAgeDetailsRequestHandler : IRequestHandler<GetAudienceAgeDetailsRequest, AudienceAgeDto>
 {
-    public class GetAudienceAgeDetailsRequestHandler : IRequestHandler<GetAudienceAgeDetailsRequest, AudienceAgeDto>
+    private readonly IAudienceAgeRepository _audienceAgeRepository;
+    private readonly IMapper _mapper;
+
+    public GetAudienceAgeDetailsRequestHandler(IAudienceAgeRepository audienceAgeRepository, IMapper mapper)
     {
-        private readonly IAudienceAgeRepository _audienceAgeRepository;
-        private readonly IMapper _mapper;
+        _audienceAgeRepository = audienceAgeRepository;
+        _mapper = mapper;
+    }
 
-        public GetAudienceAgeDetailsRequestHandler(IAudienceAgeRepository audienceAgeRepository, IMapper mapper)
+    public async Task<AudienceAgeDto> Handle(GetAudienceAgeDetailsRequest request, CancellationToken cancellationToken)
+    {
+        var audienceAge = await _audienceAgeRepository.GetById(request.Id);
+        if (audienceAge == null)
         {
-            _audienceAgeRepository = audienceAgeRepository;
-            _mapper = mapper;
+            return null;
         }
 
-        public async Task<AudienceAgeDto> Handle(GetAudienceAgeDetailsRequest request, CancellationToken cancellationToken)
-        {
-            var audienceAge = await _audienceAgeRepository.GetById(request.Id);
-            if (audienceAge == null)
-            {
-                return null;
-            }
-
-            return _mapper.Map<AudienceAgeDto>(audienceAge);
-        }
+        return _mapper.Map<AudienceAgeDto>(audienceAge);
     }
 }

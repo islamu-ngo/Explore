@@ -6,15 +6,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Bunit;
 using Bunit.TestDoubles;
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
-using MudBlazor.Services;
-using NSubstitute;
-using TUnit.Core;
-using TUnit.Assertions;
-using TUnit.Assertions.Extensions;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Layout;
 using Explore.Blazor.Client.Pages;
@@ -23,6 +14,15 @@ using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Contracts;
 using Explore.Blazor.Client.Tests.Common;
 using Explore.Blazor.Client.Tests.Common.Authentication;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using MudBlazor.Services;
+using NSubstitute;
+using TUnit.Assertions;
+using TUnit.Assertions.Extensions;
+using TUnit.Core;
 
 namespace Explore.Blazor.Client.Tests.Integration;
 
@@ -154,7 +154,7 @@ public class AuthenticationFlowTests
         RegisterOrganizationServices(ctx);
 
         // Act
-        var cut = ctx.RenderComponent<CreateOrganization>();
+        var cut = ctx.RenderMudComponent<CreateOrganization>();
 
         // Assert - Page renders (auth checked on submit, not on load)
         await Assert.That(cut).IsNotNull();
@@ -171,7 +171,7 @@ public class AuthenticationFlowTests
         RegisterOrganizationServices(ctx);
 
         // Act
-        var cut = ctx.RenderComponent<CreateOrganization>();
+        var cut = ctx.RenderMudComponent<CreateOrganization>();
 
         // Assert - Should render the organization creation form
         await Assert.That(cut).IsNotNull();
@@ -511,6 +511,16 @@ public class AuthenticationFlowTests
 
         var userService = Substitute.For<IUserService>();
         ctx.Services.AddSingleton(userService);
+
+        var publicExperienceService = Substitute.For<IPublicExperienceService>();
+        publicExperienceService.GetSettingsAsync()
+            .Returns(Task.FromResult<PublicExperienceSettingsModel?>(new PublicExperienceSettingsModel
+            {
+                PreferredHomePage = "EventList",
+                BrandDisplayName = "ISLAMU Explore"
+            }));
+        publicExperienceService.ResolveHomeRoute(Arg.Any<PublicExperienceSettingsModel?>()).Returns("/events");
+        ctx.Services.AddSingleton(publicExperienceService);
     }
 
     private static void RegisterOrganizationServices(BlazorTestContext ctx)

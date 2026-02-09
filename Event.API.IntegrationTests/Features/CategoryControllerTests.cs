@@ -102,6 +102,7 @@ public class CategoryControllerTests
         var updateDto = new UpdateCategoryDto
         {
             Id = id,
+            MasterCode = string.Empty,
             FullName = "Updated Category"
         };
 

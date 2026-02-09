@@ -1,0 +1,12 @@
+// ABOUTME: DTO describing first-run onboarding status and current user admin bootstrap context.
+// ABOUTME: Used by startup routing and onboarding UI to decide login, onboarding, or normal flow.
+
+namespace Explore.Application.DTOs.Onboarding;
+
+public class InstanceOnboardingStatusDto
+{
+    public bool IsCompleted { get; set; }
+    public bool IsAuthenticated { get; set; }
+    public bool IsCurrentUserInstanceAdmin { get; set; }
+    public string? SelectedDeploymentMode { get; set; }
+}

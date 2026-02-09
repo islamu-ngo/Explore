@@ -2,10 +2,9 @@ using System;
 using Explore.Application.DTOs.EventSessionSpeaker;
 using MediatR;
 
-namespace Explore.Application.Features.EventSessionSpeakers.Requests.Queries
+namespace Explore.Application.Features.EventSessionSpeakers.Requests.Queries;
+
+public class GetEventSessionSpeakerDetailsRequest : IRequest<EventSessionSpeakerDto>
 {
-    public class GetEventSessionSpeakerDetailsRequest : IRequest<EventSessionSpeakerDto>
-    {
-        public Guid Id { get; set; }
-    }
+    public Guid Id { get; set; }
 }

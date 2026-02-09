@@ -1,4 +1,3 @@
-using MediatR;
 using AutoMapper;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
@@ -6,6 +5,7 @@ using Explore.Application.DTOs.Actor.Validators;
 using Explore.Application.Features.Actors.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
+using MediatR;
 
 namespace Explore.Application.Features.Actors.Handlers.Commands;
 

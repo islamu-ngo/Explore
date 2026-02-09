@@ -2,10 +2,10 @@
 // Allows users to create events as themselves (user-reported) or as an organization they have admin rights to.
 
 using Explore.Blazor.Client.Clients;
-using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Components;
-using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Components.Event;
+using Explore.Blazor.Client.Helpers;
+using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Extensions.Logging;
@@ -50,7 +50,7 @@ public partial class CreateEvent
     private bool isLoading = true;
     private bool _isRetrying = false;
     private bool _dataLoaded = false;
-    private int? selectedMadhabId;
+    private int? selectedMadhabId = null;
     private string errorMessage = string.Empty;
 
     // Image upload state
@@ -67,6 +67,7 @@ public partial class CreateEvent
 
     // Sessions
     private List<SessionEditorModel> sessions = new();
+    private EventAppearanceSettings _appearance = new();
 
     private bool isProcessing = false;
     private Guid createdEventId = Guid.Empty;
@@ -187,18 +188,9 @@ public partial class CreateEvent
 
     private void SetDefaultValues()
     {
-        if (eventTypes?.Any() == true && createDto.EventTypeId == 0)
-        {
-            createDto.EventTypeId = eventTypes.First().Id;
-        }
-        if (audienceGenders?.Any() == true && createDto.AudienceGenderId == 0)
-        {
-            createDto.AudienceGenderId = audienceGenders.First().Id;
-        }
-        if (audienceAges?.Any() == true && createDto.AudienceAgeId == 0)
-        {
-            createDto.AudienceAgeId = audienceAges.First().Id;
-        }
+        // EventTypeId, AudienceGenderId, AudienceAgeId are now optional (nullable)
+        // We do NOT want to auto-select the first item.
+
         if (eventFormats?.Any() == true && createDto.EventFormatId == 0)
         {
             createDto.EventFormatId = eventFormats.First().Id;
@@ -311,7 +303,7 @@ public partial class CreateEvent
     {
         errorMessage = string.Empty;
 
-        // Validate publisher selection
+        // Validate publisher selection (business logic - not covered by FluentValidation)
         if (_publisherMode == "organization")
         {
             if (!_selectedOrganizationId.HasValue)
@@ -326,35 +318,7 @@ public partial class CreateEvent
             }
         }
 
-        if (string.IsNullOrWhiteSpace(createDto.Title))
-        {
-            errorMessage = "Event title is required.";
-            return false;
-        }
-
-        if (createDto.EventTypeId == 0)
-        {
-            errorMessage = "Please select an event type.";
-            return false;
-        }
-
-        if (createDto.AudienceGenderId == 0)
-        {
-            errorMessage = "Please select target gender.";
-            return false;
-        }
-
-        if (createDto.AudienceAgeId == 0)
-        {
-            errorMessage = "Please select target age group.";
-            return false;
-        }
-
-        if (createDto.VisibilityTypeId == 0)
-        {
-            errorMessage = "Please select visibility type.";
-            return false;
-        }
+        // DTO field validation (Title, EventTypeId, etc.) is handled by CreateEventDtoValidator via FluentValidation
 
         if (sessions == null || !sessions.Any())
         {
@@ -398,6 +362,7 @@ public partial class CreateEvent
             createDto.OrganizationId = _publisherMode == "organization" ? _selectedOrganizationId : null;
             createDto.FeaturedImageId = featuredImageId;
             createDto.MadhabId = selectedMadhabId;
+            createDto.MetadataJson = EventAppearanceMetadataHelper.Upsert(createDto.MetadataJson, _appearance);
 
             // Calculate Event Start/End dates from Sessions
             var earliestStart = sessions.Min(s => DateTimeHelper.ConvertLocalToUtc(s.StartTime));
@@ -456,7 +421,7 @@ public partial class CreateEvent
 
                     if (createResponse?.Success == true && createResponse.Id.HasValue)
                     {
-                         await SaveSessionLanguages(sessionModel, createResponse.Id.Value, tenantId);
+                        await SaveSessionLanguages(sessionModel, createResponse.Id.Value, tenantId);
                     }
                 }
 

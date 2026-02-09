@@ -112,7 +112,7 @@
                     <MudItem xs="12" sm="6" md="4">
                         <MudCard Class="h-100 d-flex flex-column position-relative">
                             <div style="position: absolute; top: 12px; right: 12px; z-index: 10;">
-                                <MudMenu Icon="@Icons.Material.Filled.MoreVert" Dense="true" Color="Color.Default" Variant="Variant.Filled" Size="Size.Small" Style="background: rgba(255,255,255,0.8); backdrop-filter: blur(4px); border-radius: 8px;">
+                                <MudMenu Icon="@Icons.Material.Filled.MoreVert" AriaLabel="Event options" Dense="true" Color="Color.Default" Variant="Variant.Filled" Size="Size.Small" Style="background: rgba(255,255,255,0.8); backdrop-filter: blur(4px); border-radius: 8px;">
                                     @if (CanEditEvent(evt))
                                     {
                                         <MudMenuItem OnClick="@(() => EditEvent(evt))">

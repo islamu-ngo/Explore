@@ -79,6 +79,9 @@ dlldata.c
 # Benchmark Results
 BenchmarkDotNet.Artifacts/
 
+# csharp-ls
+.store
+
 # .NET
 project.lock.json
 project.fragment.lock.json

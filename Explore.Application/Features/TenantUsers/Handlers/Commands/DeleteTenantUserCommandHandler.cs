@@ -1,29 +1,28 @@
-using MediatR;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.TenantUser;
 using Explore.Application.Features.TenantUsers.Requests.Commands;
+using MediatR;
 
-namespace Explore.Application.Features.TenantUsers.Handlers.Commands
+namespace Explore.Application.Features.TenantUsers.Handlers.Commands;
+
+public class DeleteTenantUserCommandHandler : IRequestHandler<DeleteTenantUserCommand, bool>
 {
-    public class DeleteTenantUserCommandHandler : IRequestHandler<DeleteTenantUserCommand, bool>
+    private readonly ITenantUserRepository _tenantUserRepository;
+
+    public DeleteTenantUserCommandHandler(ITenantUserRepository tenantUserRepository)
     {
-        private readonly ITenantUserRepository _tenantUserRepository;
+        _tenantUserRepository = tenantUserRepository;
+    }
 
-        public DeleteTenantUserCommandHandler(ITenantUserRepository tenantUserRepository)
+    public async Task<bool> Handle(DeleteTenantUserCommand request, CancellationToken cancellationToken)
+    {
+        var tenantUser = await _tenantUserRepository.GetById(request.Id);
+        if (tenantUser == null)
         {
-            _tenantUserRepository = tenantUserRepository;
+            return false;
         }
 
-        public async Task<bool> Handle(DeleteTenantUserCommand request, CancellationToken cancellationToken)
-        {
-            var tenantUser = await _tenantUserRepository.GetById(request.Id);
-            if (tenantUser == null)
-            {
-                return false;
-            }
-
-            await _tenantUserRepository.Delete(tenantUser);
-            return true;
-        }
+        await _tenantUserRepository.Delete(tenantUser);
+        return true;
     }
 }

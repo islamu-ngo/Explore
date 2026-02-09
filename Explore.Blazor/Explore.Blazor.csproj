@@ -15,17 +15,17 @@
 
 
   <ItemGroup>
-    <PackageReference Include="Blazouter" Version="1.0.13" />
-    <PackageReference Include="Blazouter.Server" Version="1.0.13" />
-    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.23.0" />
+    <PackageReference Include="Blazouter" />
+    <PackageReference Include="Blazouter.Server" />
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" />
     <ProjectReference Include="..\Explore.Blazor.Client\Explore.Blazor.Client.csproj" />
     <ProjectReference Include="..\Explore.Secrets\Explore.Secrets.csproj" />
     <ProjectReference Include="..\Explore.ServiceDefaults\Explore.ServiceDefaults.csproj" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="9.0.9" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="9.0.12" />
-    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.1" />
-    <PackageReference Include="Microsoft.OpenApi" Version="2.3.6" />
-    <PackageReference Include="Yarp.ReverseProxy" Version="2.3.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="Microsoft.OpenApi" />
+    <PackageReference Include="Yarp.ReverseProxy" />
   </ItemGroup>
 
 

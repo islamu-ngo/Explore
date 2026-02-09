@@ -1,9 +1,8 @@
 using MediatR;
 
-namespace Explore.Application.Features.UserExternalLogins.Requests.Commands
+namespace Explore.Application.Features.UserExternalLogins.Requests.Commands;
+
+public class DeleteUserExternalLoginCommand : IRequest<bool>
 {
-    public class DeleteUserExternalLoginCommand : IRequest<bool>
-    {
-        public Guid Id { get; set; }
-    }
+    public Guid Id { get; set; }
 }

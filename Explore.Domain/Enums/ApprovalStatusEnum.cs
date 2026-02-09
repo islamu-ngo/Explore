@@ -1,13 +1,12 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Explore.Domain.Enums
+namespace Explore.Domain.Enums;
+
+public enum ApprovalStatusEnum
 {
-    public enum ApprovalStatusEnum
-    {
-        Pending = 1,
-        Approved = 2,
-        Rejected = 3
-    }
+    Pending = 1,
+    Approved = 2,
+    Rejected = 3
 }

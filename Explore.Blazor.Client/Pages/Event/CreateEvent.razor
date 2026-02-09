@@ -153,16 +153,16 @@
                                     </MudItem>
 
                                     <MudItem xs="12" md="6">
-                                        <MudSelect @bind-Value="createDto.EventTypeId"
+                                        <MudSelect T="int?" @bind-Value="createDto.EventTypeId"
                                                    Label="Event Type"
                                                    Variant="Variant.Outlined"
-                                                   AnchorOrigin="Origin.BottomCenter"
-                                                   Required>
+                                                   AnchorOrigin="Origin.BottomCenter">
+                                            <MudSelectItem T="int?" Value="@((int?)null)">-- Select Event Type --</MudSelectItem>
                                             @if (eventTypes != null)
                                             {
                                                 @foreach (var type in eventTypes)
                                                 {
-                                                    <MudSelectItem Value="@type.Id">@type.FullName</MudSelectItem>
+                                                    <MudSelectItem T="int?" Value="@((int?)type.Id)">@type.FullName</MudSelectItem>
                                                 }
                                             }
                                         </MudSelect>
@@ -172,23 +172,25 @@
                                         <MudText Typo="Typo.subtitle2" Class="mb-2 mt-2" Color="Color.Secondary">Audience</MudText>
                                         <MudGrid Spacing="2">
                                             <MudItem xs="12" md="6">
-                                                <MudSelect @bind-Value="createDto.AudienceGenderId" Label="Gender" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter">
+                                                <MudSelect T="int?" @bind-Value="createDto.AudienceGenderId" Label="Gender" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter">
+                                                    <MudSelectItem T="int?" Value="@((int?)null)">-- Any --</MudSelectItem>
                                                     @if (audienceGenders != null)
                                                     {
                                                         @foreach (var g in audienceGenders)
                                                         {
-                                                            <MudSelectItem Value="@g.Id">@g.FullName</MudSelectItem>
+                                                            <MudSelectItem T="int?" Value="@((int?)g.Id)">@g.FullName</MudSelectItem>
                                                         }
                                                     }
                                                 </MudSelect>
                                             </MudItem>
                                             <MudItem xs="12" md="6">
-                                                <MudSelect @bind-Value="createDto.AudienceAgeId" Label="Age Group" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter">
+                                                <MudSelect T="int?" @bind-Value="createDto.AudienceAgeId" Label="Age Group" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter">
+                                                    <MudSelectItem T="int?" Value="@((int?)null)">-- Any --</MudSelectItem>
                                                     @if (audienceAges != null)
                                                     {
                                                         @foreach (var a in audienceAges)
                                                         {
-                                                            <MudSelectItem Value="@a.Id">@a.FullName</MudSelectItem>
+                                                            <MudSelectItem T="int?" Value="@((int?)a.Id)">@a.FullName</MudSelectItem>
                                                         }
                                                     }
                                                 </MudSelect>

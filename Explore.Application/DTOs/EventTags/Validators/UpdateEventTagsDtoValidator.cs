@@ -4,48 +4,47 @@ using System.Threading.Tasks;
 using Explore.Application.Contracts.Persistence;
 using FluentValidation;
 
-namespace Explore.Application.DTOs.EventTags.Validators
+namespace Explore.Application.DTOs.EventTags.Validators;
+
+public class UpdateEventTagsDtoValidator : AbstractValidator<UpdateEventTagsDto>
 {
-    public class UpdateEventTagsDtoValidator : AbstractValidator<UpdateEventTagsDto>
+    private readonly IEventRepository _eventRepository;
+    private readonly ITagRepository _tagRepository;
+    private readonly IEventTagsRepository _eventTagsRepository;
+
+    public UpdateEventTagsDtoValidator(
+        IEventRepository eventRepository,
+        ITagRepository tagRepository,
+        IEventTagsRepository eventTagsRepository)
     {
-        private readonly IEventRepository _eventRepository;
-        private readonly ITagRepository _tagRepository;
-        private readonly IEventTagsRepository _eventTagsRepository;
+        _eventRepository = eventRepository;
+        _tagRepository = tagRepository;
+        _eventTagsRepository = eventTagsRepository;
 
-        public UpdateEventTagsDtoValidator(
-            IEventRepository eventRepository,
-            ITagRepository tagRepository,
-            IEventTagsRepository eventTagsRepository)
-        {
-            _eventRepository = eventRepository;
-            _tagRepository = tagRepository;
-            _eventTagsRepository = eventTagsRepository;
+        RuleFor(x => x.Id)
+            .NotEmpty().WithMessage("{PropertyName} is required");
 
-            RuleFor(x => x.Id)
-                .NotEmpty().WithMessage("{PropertyName} is required");
+        RuleFor(x => x.EventId)
+            .NotEmpty().WithMessage("{PropertyName} is required")
+            .MustAsync(EventExists)
+            .WithMessage("{PropertyName} not found");
 
-            RuleFor(x => x.EventId)
-                .NotEmpty().WithMessage("{PropertyName} is required")
-                .MustAsync(EventExists)
-                .WithMessage("{PropertyName} not found");
+        RuleFor(x => x.TagId)
+            .NotEmpty().WithMessage("{PropertyName} is required")
+            .MustAsync(TagExists)
+            .WithMessage("{PropertyName} not found");
 
-            RuleFor(x => x.TagId)
-                .NotEmpty().WithMessage("{PropertyName} is required")
-                .MustAsync(TagExists)
-                .WithMessage("{PropertyName} not found");
+        // TenantId is set by the handler from context, not by the client
+        // No validation needed here
+    }
 
-            // TenantId is set by the handler from context, not by the client
-            // No validation needed here
-        }
+    private async Task<bool> EventExists(Guid eventId, CancellationToken cancellationToken)
+    {
+        return await _eventRepository.Exists(eventId);
+    }
 
-        private async Task<bool> EventExists(Guid eventId, CancellationToken cancellationToken)
-        {
-            return await _eventRepository.Exists(eventId);
-        }
-
-        private async Task<bool> TagExists(Guid tagId, CancellationToken cancellationToken)
-        {
-            return await _tagRepository.Exists(tagId);
-        }
+    private async Task<bool> TagExists(Guid tagId, CancellationToken cancellationToken)
+    {
+        return await _tagRepository.Exists(tagId);
     }
 }

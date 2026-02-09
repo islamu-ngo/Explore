@@ -1,12 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Explore.Application.Models;
 
-namespace Explore.Application.Contracts.Infrastructure
+namespace Explore.Application.Contracts.Infrastructure;
+
+public interface IEmailSender
 {
-    public interface IEmailSender
-    {
-        Task<bool> SendEmail(Email email);
-    }
+    Task<bool> SendEmail(Email email);
 }

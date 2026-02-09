@@ -43,10 +43,10 @@ public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
 
         var context = new ExploreDbContext(options);
         context.Database.EnsureCreated();
-        
+
         // Seed lookups required for integration tests
         Explore.Persistence.Seed.LookupTableSeeder.SeedAsync(context).GetAwaiter().GetResult();
-        
+
         return context;
     }
 }

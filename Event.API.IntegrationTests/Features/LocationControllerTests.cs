@@ -105,7 +105,11 @@ public class LocationControllerTests
         var updateDto = new UpdateLocationDto
         {
             Id = id,
-            FullName = "Updated Location"
+            FullName = "Updated Location",
+            Address = string.Empty,
+            Postcode = string.Empty,
+            Country = string.Empty,
+            City = string.Empty
         };
 
         // Act

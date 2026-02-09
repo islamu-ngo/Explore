@@ -1,0 +1,58 @@
+# ==============================================================================
+#  CODEX AGENT RULES - SAFETY CONFIGURATION
+# ==============================================================================
+#  This file whitelists READ-ONLY commands so the agent can explore your code
+#  without constantly asking for permission.
+# ==============================================================================
+
+# --- POWERSHELL FILE READING (Fixes your specific "Get-Content" loop) ---
+prefix_rule(pattern=["Get-Content"], decision="allow")
+prefix_rule(pattern=["type"], decision="allow")
+prefix_rule(pattern=["Select-String"], decision="allow")
+
+# --- BASH / LINUX FILE READING ---
+prefix_rule(pattern=["cat"], decision="allow")
+prefix_rule(pattern=["head"], decision="allow")
+prefix_rule(pattern=["tail"], decision="allow")
+prefix_rule(pattern=["more"], decision="allow")
+prefix_rule(pattern=["less"], decision="allow")
+
+# --- DIRECTORY LISTING (Safe exploration) ---
+prefix_rule(pattern=["ls"], decision="allow")
+prefix_rule(pattern=["dir"], decision="allow")
+prefix_rule(pattern=["Get-ChildItem"], decision="allow")
+prefix_rule(pattern=["tree"], decision="allow")
+prefix_rule(pattern=["pwd"], decision="allow")  # Print Working Directory
+
+# --- FILE INFORMATION (Size, Type, Count) ---
+prefix_rule(pattern=["du"], decision="allow")   # Disk Usage
+prefix_rule(pattern=["file"], decision="allow") # Check file encoding/type
+prefix_rule(pattern=["wc"], decision="allow")   # Word/Line count
+
+# --- SEARCH TOOLS (Safe & Fast context gathering) ---
+prefix_rule(pattern=["rg"], decision="allow")       # Ripgrep (Highly recommended)
+prefix_rule(pattern=["grep"], decision="allow")     # Standard grep
+prefix_rule(pattern=["find"], decision="allow")     # File finder
+prefix_rule(pattern=["findstr"], decision="allow")  # Windows string search
+
+# --- GIT READ-ONLY (Safe status checks) ---
+# NOTE: We allow checking status/diffs, but NOT committing or pushing.
+prefix_rule(pattern=["git", "status"], decision="allow")
+prefix_rule(pattern=["git", "log"], decision="allow")
+prefix_rule(pattern=["git", "diff"], decision="allow")
+prefix_rule(pattern=["git", "branch"], decision="allow")
+prefix_rule(pattern=["git", "show"], decision="allow")
+
+# --- FILE WRITING (Safe exploration) ---
+prefix_rule(pattern=["Set-Content"], decision="allow")
+
+# --- DEVELOPMENT TOOLS (.NET) ---
+# Allows compiling and testing, but requires manual approval for "run" or "publish"
+prefix_rule(pattern=["dotnet", "build"], decision="allow")
+prefix_rule(pattern=["dotnet", "test"], decision="allow")
+prefix_rule(pattern=["dotnet", "restore"], decision="allow")
+prefix_rule(pattern=["dotnet", "clean"], decision="allow")
+
+# --- OPTIONAL: Directory Creation ---
+# Uncomment the line below if you trust the agent to create folders automatically
+# prefix_rule(pattern=["mkdir"], decision="allow")

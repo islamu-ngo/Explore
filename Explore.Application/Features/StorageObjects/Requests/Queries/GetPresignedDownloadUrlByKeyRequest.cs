@@ -1,5 +1,5 @@
-using MediatR;
 using Explore.Application.DTOs.StorageObject;
+using MediatR;
 
 namespace Explore.Application.Features.StorageObjects.Requests.Queries;
 
@@ -11,7 +11,7 @@ public class GetPresignedDownloadUrlByKeyRequest : IRequest<PresignedDownloadUrl
     /// <summary>
     /// The object key (path) in S3-compatible storage.
     /// </summary>
-    public string ObjectKey { get; set; } = string.Empty;
+    public required string ObjectKey { get; set; } = string.Empty;
 
     /// <summary>
     /// The expiration time in minutes for the presigned URL. Default is 60.

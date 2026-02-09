@@ -1,13 +1,15 @@
 // ABOUTME: System-wide configuration setting with optional locking to prevent tenant overrides.
 // Part of the 3-tier cascading settings engine (System → Tenant → Event).
 
+using Explore.Domain.Interfaces;
+
 namespace Explore.Domain;
 
 /// <summary>
 /// System-wide configuration setting that serves as the default value for all tenants.
 /// When IsLocked is true, tenants cannot override this setting.
 /// </summary>
-public class SystemSetting
+public class SystemSetting : IAuditableEntity
 {
     /// <summary>
     /// Unique identifier for the setting.
@@ -18,12 +20,12 @@ public class SystemSetting
     /// Unique key for the setting (e.g., "events.max_sessions", "email.from_address").
     /// Uses dot notation for namespacing.
     /// </summary>
-    public string SettingKey { get; set; } = string.Empty;
+    public required string SettingKey { get; set; }
 
     /// <summary>
     /// JSON-serialized value of the setting.
     /// </summary>
-    public string Value { get; set; } = string.Empty;
+    public required string Value { get; set; }
 
     /// <summary>
     /// Data type of the value for validation purposes.
@@ -63,9 +65,19 @@ public class SystemSetting
     public DateTime CreatedAt { get; set; }
 
     /// <summary>
+    /// Who created this setting.
+    /// </summary>
+    public Guid? CreatedBy { get; set; }
+
+    /// <summary>
     /// When the setting was last modified.
     /// </summary>
     public DateTime? UpdatedAt { get; set; }
+
+    /// <summary>
+    /// Who last modified this setting.
+    /// </summary>
+    public Guid? UpdatedBy { get; set; }
 }
 
 /// <summary>

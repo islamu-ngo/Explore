@@ -32,7 +32,7 @@ This project uses **project-agnostic documentation** with placeholder syntax `{P
 - Only write inside this repo project folder, never in users folder (not in C:\Users\*\.claude\ or anywhere outside this project folder)
 - When getting build errors, stop building! Get the errors, fix them, skip building until fixed. Limited retry attempts, then fix without building until confident.
 - NEVER run rm -rf commands or delete files/folders unless explicitly instructed - instead report files that should be deleted
-- Never read .mcp.json file
+- Never write scripts or execute scripts files!
 
 **Some Technical API Rules**:
 1. **Repositories Return ENTITIES, Never DTOs** - Map to DTOs in handlers
@@ -67,7 +67,7 @@ This project uses **project-agnostic documentation** with placeholder syntax `{P
 - Call out bad ideas, mistakes, or unreasonable expectations. I highly depends on this.
 - Never agree just to be nice. Honest disagreement is better than fake consensus.
 - If you disagree, cite technical reasons. If it’s intuition, say so.
-- You have unreliable memory. Use your **journal** to record important facts, insights, and preferences before you forget.
+- You have unreliable memory. Use your **journal** (`dev/_journal/journal.md`) to record important facts, insights, and preferences before you forget. 
 - Search your journal before repeating research or reasoning.
 - Discuss all **Important decisions** (refactors...) before implementation **or** before finalizing requirements that assume a particular approach.
 - When something is identified as "a major decision" elevate its priority immediately.
@@ -76,26 +76,50 @@ This project uses **project-agnostic documentation** with placeholder syntax `{P
 
 ## 🔧 Starting Work (Critical First Steps)
 
-**Before starting ANY task, always run tests:**
+**Before starting ANY task, always build and run tests:**
 
-1. **Check test status**: `dotnet test`
-2. # Match CI/CD exactly
-dotnet test Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release
-dotnet test Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release
-dotnet test Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release
-dotnet test Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release
-dotnet test Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release
-dotnet test Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release
-dotnet test Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release
+1. **Build first** (catches compilation errors with clear output):
+```bash
+dotnet build --configuration Release --verbosity quiet
+```
 
-2. **If tests are failing:**
+2. **Run each test project individually** (do NOT use solution-level `dotnet test` — it fails if any project has issues):
+```bash
+dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet
+dotnet test --project Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet
+dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
+dotnet test --project Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release --verbosity quiet
+dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet
+dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet
+dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet
+```
+
+3. **If tests are failing — get detailed failure info:**
+```bash
+# Generate TRX report for detailed failure analysis
+dotnet test --project <ProjectPath> --configuration Release -- --report-trx --report-trx-filename results.trx
+
+# Then search TRX for failed tests (use Grep tool on the TRX file):
+#   Pattern: outcome="Failed"  → finds failed test entries
+#   Pattern: className=        → correlate testId to get full Class.Method names
+#   Pattern: <Message>         → read error messages and stack traces
+```
+
+4. **If tests are failing:**
    - **STOP your planned work**
    - Fix the failing tests FIRST
    - Document what was broken and how you fixed it
    - Then resume your planned work
-3. **If tests are passing:**
+5. **If tests are passing:**
    - Proceed with your work
    - Run tests frequently during development
+
+**Important notes:**
+- Always use `--project` flag (positional project arguments don't work reliably)
+- Use `--verbosity quiet` for clean pass/fail summaries
+- Use `--verbosity normal` when you need to see error details inline
+- Solution-level `dotnet test` will fail if any test project has MSBuild issues (e.g., placeholder projects)
+- On French-locale Windows, `findstr /i` may not work — use exact case patterns instead
 
 **Why this matters:**
 - Broken tests indicate the codebase is in an unknown state
@@ -105,18 +129,17 @@ dotnet test Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --con
 
 **Example workflow:**
 ```bash
-# Start of session
-dotnet test
+# Start of session — build first
+dotnet build --configuration Release --verbosity quiet
 
-# ❌ 3 tests failing
+# Run tests per project
+dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet
 
-# DO NOT proceed with work yet
-# Fix the 3 failing tests
+# ❌ 3 tests failing? Generate TRX for details:
+dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release -- --report-trx --report-trx-filename results.trx
 
-# Now tests pass - safe to proceed
-# ✅ All tests passing
-
-# Now continue on your work
+# Search TRX for failures (use Grep tool, not bash grep)
+# Fix the failing tests FIRST, then resume your work
 ```
 
 ---
@@ -231,6 +254,65 @@ You may skip TDD only with given explicit permission.
    - Use git branches and history, not backup files
    - Add patterns to `.gitignore` immediately
 
+### Red Flags - Stop and Refactor
+
+If you're writing and notice:
+
+- ⚠️  "This is similar to what this part of the books is about..."
+- ⚠️  "I'll just copy this from here..."
+- ⚠️  "There's probably already a chapter or page for this..."
+- ⚠️  "This feels like I've written it before..."
+
+**STOP** - Search the Book first
+
+## 🧾 Learning and Memory Management
+
+Use your journal (`dev/_journal/journal.md`) to capture insights, failures, and patterns.
+
+**For major decisions or requirements**, create dedicated documents:
+- `dev/_journal/MAJOR_DECISIONS.md`
+- `dev/_journal/journal.md` - General insights, patterns, failures
+
+**Journal format** (`dev/_journal/journal.md`):
+
+```md
+## Failed Approaches
+- [Date] Tried X approach for Y problem, but it failed because Z.
+
+## Key Decisions
+- [Date] Refactored for consistency and fixing logical flow in Bugman X manuscript.
+
+## Deferred Fixes
+- [Date] Fix inconsistent character names in Chapter 4.
+```
+
+- Each entry must be timestamped and formatted as above.
+- Review your journal weekly.
+- Search it before starting complex tasks.
+- Document architectural decisions and user feedback trends.
+- Record issues for later rather than fixing unrelated things mid-task.
+- Before starting complex tasks:
+  - Search the journal for relevant past experiences.
+  - Document decisions and their outcomes.
+  - Track recurring user feedback or collaboration patterns.
+  - When you find something unrelated but worth fixing, log it instead of fixing it immediately.
+  - Review the journal weekly to reinforce learning and memory.
+
+---
+
+## 🔬 Research and Recommendations
+
+When researching tools, technologies, or approaches:
+
+- **Document comprehensively** - Create dedicated markdown files with findings.
+- **Provide context** - Executive summary tailored to Author's specific workflow and preferences.
+- **Compare systematically** - Use tables/matrices for clear comparison.
+- **Recommendation clarity** - Be explicit about what you recommend and why.
+- **Ask clarifying questions** - End research with specific questions to guide next steps.
+- **Don't assume Author's workflow** - Ask about primary tools and preferences before making assumptions.
+
+---
+
 ### When Replacing/Deprecating Files
 
 If creating a replacement file (e.g., `new-cli.cs` replacing `old-script.cs`):
@@ -340,7 +422,6 @@ If you find yourself writing “new”, “old”, “legacy”, “wrapper”, 
   - When adding a replacement file, delete the old one in the same PR
   - Update all references to point to new implementation
   - Remove old exports from barrel files
-- Commit your **journal** entries too.
 
 ---
 
@@ -582,21 +663,35 @@ docs/GOVERNANCE.md
 ## Troubleshooting
 docs/TROUBLESHOOTING.md
 
+## Codebase Structure (File/Folder Map)
+docs/CODEBASE_STRUCTURE.md
+
+## Naming Conventions
+docs/NAMING_CONVENTIONS.md
+
+## Codebase Insights (Non-Intuitive Patterns)
+docs/CODEBASE_INSIGHTS.md
+
 ### Build Commands
 
 ```bash
 # Restore dependencies
 dotnet restore
 
-# Build the solution
-dotnet build
+# Build (use --verbosity quiet for clean error/warning summary)
+dotnet build --configuration Release --verbosity quiet
 
-# Run All tests
-dotnet test
+# Run a specific test project (always use --project flag)
+dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet
 
-# Run specific test project
-dotnet test Event.Application.UnitTests
+# Generate TRX report for detailed test failure analysis
+dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release -- --report-trx --report-trx-filename results.trx
+# TRX file location: <ProjectDir>/bin/Release/net10.0/TestResults/results.trx
 ```
+
+**Do NOT use:**
+- Positional project path without `--project` flag
+- `findstr /i` on French-locale Windows (locale issues)
 
 ### Database Schema
 schema/islamu-event.md
@@ -618,3 +713,12 @@ ALWAYS refer to this file and all the files in @dev/active/ that contain context
 @dev/active/README.md
 
 ALWAYS use the correct tools available for editing files or other actions, never bash or other manual methods when a tool is available.
+
+# SHELL BEHAVIOR RULES
+1. **FORBIDDEN COMMANDS:** You are strictly forbidden from using:
+   - `rm` (remove)
+   - `rm -rf`
+   - `mv` (move/overwrite without checking)
+   - `> ` (overwrite redirection)
+
+Instead: report to user wich files should be removed at the end of your response!

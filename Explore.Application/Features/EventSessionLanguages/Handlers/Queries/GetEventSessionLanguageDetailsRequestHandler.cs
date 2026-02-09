@@ -6,23 +6,22 @@ using Explore.Application.DTOs.EventSessionLanguage;
 using Explore.Application.Features.EventSessionLanguages.Requests.Queries;
 using MediatR;
 
-namespace Explore.Application.Features.EventSessionLanguages.Handlers.Queries
+namespace Explore.Application.Features.EventSessionLanguages.Handlers.Queries;
+
+public class GetEventSessionLanguageDetailsRequestHandler : IRequestHandler<GetEventSessionLanguageDetailsRequest, EventSessionLanguageDto>
 {
-    public class GetEventSessionLanguageDetailsRequestHandler : IRequestHandler<GetEventSessionLanguageDetailsRequest, EventSessionLanguageDto>
+    private readonly IEventSessionLanguageRepository _repository;
+    private readonly IMapper _mapper;
+
+    public GetEventSessionLanguageDetailsRequestHandler(IEventSessionLanguageRepository repository, IMapper mapper)
     {
-        private readonly IEventSessionLanguageRepository _repository;
-        private readonly IMapper _mapper;
+        _repository = repository;
+        _mapper = mapper;
+    }
 
-        public GetEventSessionLanguageDetailsRequestHandler(IEventSessionLanguageRepository repository, IMapper mapper)
-        {
-            _repository = repository;
-            _mapper = mapper;
-        }
-
-        public async Task<EventSessionLanguageDto> Handle(GetEventSessionLanguageDetailsRequest request, CancellationToken cancellationToken)
-        {
-            var eventSessionLanguage = await _repository.GetById(request.Id);
-            return _mapper.Map<EventSessionLanguageDto>(eventSessionLanguage);
-        }
+    public async Task<EventSessionLanguageDto> Handle(GetEventSessionLanguageDetailsRequest request, CancellationToken cancellationToken)
+    {
+        var eventSessionLanguage = await _repository.GetById(request.Id);
+        return _mapper.Map<EventSessionLanguageDto>(eventSessionLanguage);
     }
 }

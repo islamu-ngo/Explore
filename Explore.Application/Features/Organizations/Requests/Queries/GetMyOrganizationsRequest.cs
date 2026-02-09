@@ -6,7 +6,7 @@ namespace Explore.Application.Features.Organizations.Requests.Queries;
 
 public class GetMyOrganizationsRequest : IRequest<PaginatedResult<OrganizationListDto>>
 {
-    public string UserId { get; set; } = string.Empty;
+    public required string UserId { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets the page number (1-based). Defaults to 1.

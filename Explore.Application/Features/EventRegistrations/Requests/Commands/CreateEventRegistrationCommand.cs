@@ -1,12 +1,11 @@
+using System;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.Responses;
 using MediatR;
-using System;
 
-namespace Explore.Application.Features.EventRegistrations.Requests.Commands
+namespace Explore.Application.Features.EventRegistrations.Requests.Commands;
+
+public class CreateEventRegistrationCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public class CreateEventRegistrationCommand : IRequest<BaseCommandResponse<Guid>>
-    {
-        public CreateEventRegistrationDto EventRegistrationDto { get; set; }
-    }
+    public required CreateEventRegistrationDto EventRegistrationDto { get; set; }
 }

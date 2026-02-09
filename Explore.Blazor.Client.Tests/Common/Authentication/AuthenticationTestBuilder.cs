@@ -1,6 +1,6 @@
+using System.Security.Claims;
 using Bunit.TestDoubles;
 using Microsoft.AspNetCore.Components.Authorization;
-using System.Security.Claims;
 
 namespace Explore.Blazor.Client.Tests.Common.Authentication;
 

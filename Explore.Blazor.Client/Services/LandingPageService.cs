@@ -70,7 +70,12 @@ public class LandingPageService : ILandingPageService
         }
         catch (ApiException ex)
         {
-            _logger.LogError(ex, "API error fetching featured events. StatusCode: {StatusCode}", ex.StatusCode);
+            _logger.LogError(ex, "[LandingPageService.GetFeaturedEventsAsync] API error fetching featured events. StatusCode: {StatusCode}", ex.StatusCode);
+            return new List<EventListDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[LandingPageService.GetFeaturedEventsAsync] Unexpected error fetching featured events");
             return new List<EventListDto>();
         }
     }
@@ -86,7 +91,7 @@ public class LandingPageService : ILandingPageService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error fetching members count");
+            _logger.LogError(ex, "[LandingPageService.GetTotalMembersCountAsync] Unexpected error fetching members count");
             return 1200; // Fallback value
         }
     }
@@ -104,7 +109,12 @@ public class LandingPageService : ILandingPageService
         }
         catch (ApiException ex)
         {
-            _logger.LogError(ex, "API error fetching events count. StatusCode: {StatusCode}", ex.StatusCode);
+            _logger.LogError(ex, "[LandingPageService.GetUpcomingEventsCountAsync] API error fetching events count. StatusCode: {StatusCode}", ex.StatusCode);
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[LandingPageService.GetUpcomingEventsCountAsync] Unexpected error fetching events count");
             return 0;
         }
     }

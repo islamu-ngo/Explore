@@ -2,10 +2,9 @@ using System;
 using Explore.Application.DTOs.Tag;
 using MediatR;
 
-namespace Explore.Application.Features.Tags.Requests.Queries
+namespace Explore.Application.Features.Tags.Requests.Queries;
+
+public class GetTagDetailsRequest : IRequest<TagDto>
 {
-    public class GetTagDetailsRequest : IRequest<TagDto>
-    {
-        public Guid Id { get; set; }
-    }
+    public Guid Id { get; set; }
 }

@@ -3,10 +3,10 @@
 
 namespace Explore.Infrastructure.Services;
 
-using Microsoft.Extensions.Caching.Memory;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain.Modules;
+using Microsoft.Extensions.Caching.Memory;
 
 /// <summary>
 /// Service for module governance and discovery with caching.
@@ -97,7 +97,9 @@ public class ModuleService : IModuleService
         var capability = new TenantCapability
         {
             TenantId = tenantId,
+            Tenant = null!,
             ModuleId = module.Id,
+            Module = null!,
             IsEnabled = true,
             EnabledAt = DateTime.UtcNow,
             EnabledBy = enabledBy

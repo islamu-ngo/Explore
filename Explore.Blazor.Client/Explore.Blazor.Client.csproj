@@ -9,19 +9,20 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Blazouter" Version="1.0.13" />
-    <PackageReference Include="Blazouter.WebAssembly" Version="1.0.13" />
-    <PackageReference Include="FluentValidation" Version="11.9.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="9.*" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Authentication" Version="9.0.9" />
-    <PackageReference Include="Microsoft.Extensions.ApiDescription.Client" Version="9.0.0">
+    <PackageReference Include="Blazored.FluentValidation" />
+    <PackageReference Include="Blazouter" />
+    <PackageReference Include="Blazouter.WebAssembly" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Authentication" />
+    <PackageReference Include="Microsoft.Extensions.ApiDescription.Client">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.1" />
-    <PackageReference Include="MudBlazor" Version="8.13.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="NSwag.ApiDescription.Client" Version="14.4.0">
+    <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="MudBlazor" />
+    <PackageReference Include="Newtonsoft.Json" />
+    <PackageReference Include="NSwag.ApiDescription.Client">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
@@ -74,27 +75,17 @@
   </UsingTask>
 
   <!-- NSwag Client Generation - Runs BEFORE compilation -->
-  <Target Name="GenerateApiClient"
-          BeforeTargets="CoreCompile"
-          Inputs="..\Explore.API\swagger.json"
-          Outputs="Clients\EventApiClient.g.cs"
-          Condition="Exists('..\Explore.API\swagger.json')">
+  <Target Name="GenerateApiClient" BeforeTargets="CoreCompile" Inputs="..\Explore.API\swagger.json" Outputs="Clients\EventApiClient.g.cs" Condition="Exists('..\Explore.API\swagger.json')">
     <Message Importance="high" Text="NSwag: Regenerating API client from swagger.json..." />
-    <Exec Command="dotnet nswag run nswag.json"
-          WorkingDirectory="$(ProjectDir)"
-          ConsoleToMSBuild="true" />
+    <Exec Command="dotnet nswag run nswag.json" WorkingDirectory="$(ProjectDir)" ConsoleToMSBuild="true" />
     <!-- Fix NSwag bug: 'return default(void)!;' is invalid C# for void methods (204 No Content responses) -->
-    <ReplaceFileText InputFilename="$(MSBuildProjectDirectory)\Clients\EventApiClient.g.cs"
-                     MatchExpression="return default\(void\)!;"
-                     ReplacementText="return;" />
+    <ReplaceFileText InputFilename="$(MSBuildProjectDirectory)\Clients\EventApiClient.g.cs" MatchExpression="return default\(void\)!;" ReplacementText="return;" />
     <Message Importance="high" Text="NSwag: API client regenerated and patched successfully." />
   </Target>
 
   <!-- Fix NSwag void return bug - ALWAYS runs before compilation (no Inputs/Outputs skip) -->
   <Target Name="FixNSwagVoidReturns" BeforeTargets="CoreCompile">
-    <ReplaceFileText InputFilename="$(MSBuildProjectDirectory)\Clients\EventApiClient.g.cs"
-                     MatchExpression="return default\(void\)!;"
-                     ReplacementText="return;" />
+    <ReplaceFileText InputFilename="$(MSBuildProjectDirectory)\Clients\EventApiClient.g.cs" MatchExpression="return default\(void\)!;" ReplacementText="return;" />
   </Target>
 
   <!-- Exclude generated file from source analysis (it's auto-generated) -->

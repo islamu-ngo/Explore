@@ -1,9 +1,8 @@
 using MediatR;
 
-namespace Explore.Application.Features.TagTypeTags.Requests.Commands
+namespace Explore.Application.Features.TagTypeTags.Requests.Commands;
+
+public class DeleteTagTypeTagsCommand : IRequest<bool>
 {
-    public class DeleteTagTypeTagsCommand : IRequest<bool>
-    {
-        public Guid Id { get; set; }
-    }
+    public Guid Id { get; set; }
 }

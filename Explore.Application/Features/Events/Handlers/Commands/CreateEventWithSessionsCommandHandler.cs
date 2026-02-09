@@ -187,9 +187,14 @@ public class CreateEventWithSessionsCommandHandler : IRequestHandler<CreateEvent
             Timezone = dto.Timezone,
             EventUrl = dto.EventUrl,
             ActorId = actorId,
+            Actor = null!,
             TenantId = _tenantContext.TenantId,
+            Tenant = null!,
             TotalViews = 0,
             IsUserReported = !dto.OrganizationId.HasValue,
+            VisibilityType = null!,
+            EventStatus = null!,
+            EventFormat = null!,
             // Computed from sessions
             FirstSessionDate = firstSessionDateOnly,
             LastSessionDate = lastSessionDateOnly,
@@ -220,7 +225,9 @@ public class CreateEventWithSessionsCommandHandler : IRequestHandler<CreateEvent
             var eventSession = new EventSession
             {
                 EventId = @event.Id,
+                Event = null!,
                 TenantId = _tenantContext.TenantId,
+                Tenant = null!,
                 Title = string.IsNullOrWhiteSpace(sessionDto.Title) ? @event.Title : sessionDto.Title,
                 Description = sessionDto.Description,
                 StartTime = sessionDto.StartTime,
@@ -241,8 +248,11 @@ public class CreateEventWithSessionsCommandHandler : IRequestHandler<CreateEvent
                 var sessionLanguage = new EventSessionLanguage
                 {
                     EventSessionId = eventSession.Id,
+                    EventSession = null!,
                     LanguageId = languageId,
-                    TenantId = _tenantContext.TenantId
+                    Language = null!,
+                    TenantId = _tenantContext.TenantId,
+                    Tenant = null!
                 };
 
                 await _eventSessionLanguageRepository.Create(sessionLanguage);

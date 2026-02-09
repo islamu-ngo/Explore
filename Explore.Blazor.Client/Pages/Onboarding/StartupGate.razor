@@ -1,0 +1,79 @@
+@page "/startup"
+@using MudBlazor
+@inject IInstanceOnboardingService InstanceOnboardingService
+@inject ITenantOnboardingService TenantOnboardingService
+@inject IPublicExperienceService PublicExperienceService
+@inject NavigationManager Navigation
+@inject ILogger<StartupGate> Logger
+
+<MudContainer Class="d-flex justify-center align-center" Style="min-height: 60vh;">
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Filled">
+            @_error
+        </MudAlert>
+    }
+    else
+    {
+        <MudStack AlignItems="AlignItems.Center" Spacing="3">
+            <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+            <MudText Typo="Typo.h6">Preparing your workspace...</MudText>
+            <MudText Typo="Typo.caption">Checking instance and tenant onboarding status.</MudText>
+        </MudStack>
+    }
+</MudContainer>
+
+@code {
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ResolveStartupRouteAsync();
+    }
+
+    private async Task ResolveStartupRouteAsync()
+    {
+        try
+        {
+            var instanceStatus = await InstanceOnboardingService.GetStatusAsync();
+            if (instanceStatus == null)
+            {
+                _error = "Could not determine onboarding status. Try refreshing.";
+                return;
+            }
+
+            if (!instanceStatus.IsCompleted)
+            {
+                if (!instanceStatus.IsAuthenticated)
+                {
+                    Navigation.NavigateTo("/login?returnUrl=/startup", forceLoad: true);
+                    return;
+                }
+
+                Navigation.NavigateTo("/onboarding/instance");
+                return;
+            }
+
+            if (instanceStatus.IsAuthenticated)
+            {
+                var tenantStatus = await TenantOnboardingService.GetStatusAsync();
+                if (tenantStatus != null &&
+                    !tenantStatus.IsCompleted &&
+                    (tenantStatus.IsCurrentUserTenantAdministrator || tenantStatus.IsCurrentUserInstanceAdministrator))
+                {
+                    Navigation.NavigateTo("/onboarding/tenant");
+                    return;
+                }
+            }
+
+            var publicSettings = await PublicExperienceService.GetSettingsAsync();
+            var homeRoute = PublicExperienceService.ResolveHomeRoute(publicSettings);
+            Navigation.NavigateTo(homeRoute);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Startup routing failed.");
+            _error = "Startup routing failed. Try refreshing.";
+        }
+    }
+}

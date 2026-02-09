@@ -1,0 +1,75 @@
+@using MudBlazor
+@using Microsoft.AspNetCore.Components
+
+<div class="settings-layout">
+    <MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
+        <!-- Header -->
+        <div class="settings-header mb-8">
+            <MudText Typo="Typo.h4" Style="font-weight: 800;">Account Settings</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">Manage your account settings and preferences</MudText>
+        </div>
+
+        <!-- Main Layout: Sidebar + Content -->
+        <MudGrid Spacing="4">
+            <!-- Sidebar Navigation -->
+            <MudItem xs="12" sm="12" md="3">
+                <MudPaper Elevation="0" Class="settings-sidebar pa-0 rounded-lg border-solid border-1 mud-border-lines-default">
+                    <MudList T="string" Dense="false" DisablePadding="true">
+                        <MudListItem Icon="@Icons.Material.Filled.Person" 
+                                     Text="Personal Info" 
+                                     Class="@GetNavItemClass("personal")"
+                                     OnClick="@(() => SelectSection("personal"))" />
+                        <MudListItem Icon="@Icons.Material.Filled.Security" 
+                                     Text="Security" 
+                                     Class="@GetNavItemClass("security")"
+                                     OnClick="@(() => SelectSection("security"))" />
+                        <MudListItem Icon="@Icons.Material.Filled.PrivacyTip" 
+                                     Text="Privacy" 
+                                     Class="@GetNavItemClass("privacy")"
+                                     OnClick="@(() => SelectSection("privacy"))" />
+                        <MudListItem Icon="@Icons.Material.Filled.Notifications" 
+                                     Text="Notifications" 
+                                     Class="@GetNavItemClass("notifications")"
+                                     OnClick="@(() => SelectSection("notifications"))" />
+                    </MudList>
+                </MudPaper>
+            </MudItem>
+
+            <!-- Content Area -->
+            <MudItem xs="12" sm="12" md="9">
+                <MudPaper Elevation="0" Class="settings-content pa-6 rounded-lg border-solid border-1 mud-border-lines-default">
+                    @if (CurrentSection == "personal")
+                    {
+                        <SettingsPersonalInfo />
+                    }
+                    else if (CurrentSection == "security")
+                    {
+                        <SettingsSecurity />
+                    }
+                    else if (CurrentSection == "privacy")
+                    {
+                        <SettingsPrivacy />
+                    }
+                    else if (CurrentSection == "notifications")
+                    {
+                        <SettingsNotifications />
+                    }
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    </MudContainer>
+</div>
+
+@code {
+    private string CurrentSection { get; set; } = "personal";
+
+    private void SelectSection(string section)
+    {
+        CurrentSection = section;
+    }
+
+    private string GetNavItemClass(string section)
+    {
+        return CurrentSection == section ? "settings-nav-active" : "";
+    }
+}

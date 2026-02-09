@@ -5,10 +5,10 @@
 namespace Explore.Infrastructure.Services;
 
 using System.Text.Json;
-using Microsoft.Extensions.Caching.Memory;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Microsoft.Extensions.Caching.Memory;
 
 /// <summary>
 /// Resolves settings through the cascading settings engine with caching.
@@ -168,6 +168,7 @@ public class SettingsResolver : ISettingsResolver
             var newOverride = new TenantSetting
             {
                 TenantId = tenantId,
+                Tenant = null!,
                 SettingKey = settingKey,
                 Value = jsonValue,
                 CreatedAt = DateTime.UtcNow

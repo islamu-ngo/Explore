@@ -151,9 +151,9 @@ public partial class EventService : IEventService
         }
     }
 
-    public Task<ICollection<EventTypeListDto>> GetEventTypesAsync() => _apiClient.EventTypeAllAsync();
+    public Task<ICollection<EventTypeListDto>> GetEventTypesAsync() => _apiClient.EventtypeAllAsync();
 
-    public Task<ICollection<EventFormatListDto>> GetEventFormatsAsync() => _apiClient.EventFormatAllAsync();
+    public Task<ICollection<EventFormatListDto>> GetEventFormatsAsync() => _apiClient.EventformatAllAsync();
 
     public async Task<ICollection<EventSessionListDto>> GetAllSessionsAsync()
     {
@@ -190,17 +190,17 @@ public partial class EventService : IEventService
 
     public Task<bool> DeleteSessionLanguageAsync(int sessionLanguageId) => throw new NotImplementedException();
 
-    public Task<BaseCommandResponseOfGuid?> RegisterForEventSessionAsync(CreateEventRegistrationDto registration) => _apiClient.EventRegistrationPOSTAsync(registration);
+    public Task<BaseCommandResponseOfGuid?> RegisterForEventSessionAsync(CreateEventRegistrationDto registration) => _apiClient.EventregistrationPOSTAsync(registration);
 
     public Task<ICollection<EventRegistrationListDto>> GetRegistrationsForSessionAsync(Guid sessionId) => _apiClient.BySessionAsync(sessionId);
 
     public Task<ICollection<EventRegistrationListDto>> GetRegistrationsByUserAsync(Guid userId) => _apiClient.ByUserAsync(userId);
 
-    public Task<BaseCommandResponseOfGuid?> UpdateRegistrationAsync(UpdateEventRegistrationDto registration) => _apiClient.EventRegistrationPUTAsync(registration.Id ?? Guid.Empty, registration);
+    public Task<BaseCommandResponseOfGuid?> UpdateRegistrationAsync(UpdateEventRegistrationDto registration) => _apiClient.EventregistrationPUTAsync(registration.Id ?? Guid.Empty, registration);
 
     public async Task<bool> CancelEventRegistrationAsync(Guid registrationId)
     {
-        try { await _apiClient.EventRegistrationDELETEAsync(registrationId); return true; } catch { return false; }
+        try { await _apiClient.EventregistrationDELETEAsync(registrationId); return true; } catch { return false; }
     }
 
     public async Task<EventSessionDto?> GetSessionByIdAsync(Guid sessionId)
@@ -217,3 +217,4 @@ public partial class EventService : IEventService
         }
     }
 }
+

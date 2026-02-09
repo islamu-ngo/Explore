@@ -102,6 +102,7 @@ public class TagControllerTests
         var updateDto = new UpdateTagDto
         {
             Id = id,
+            MasterCode = string.Empty,
             FullName = "Updated Tag"
         };
 

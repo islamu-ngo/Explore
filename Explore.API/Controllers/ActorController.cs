@@ -7,6 +7,7 @@ using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 
 namespace Explore.API.Controllers;
 
@@ -48,15 +49,16 @@ public class ActorController : ControllerBase
         "Send 'Prefer: return=minimal' header to strip links.")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(HalCollectionResource<ActorListDto>), StatusCodes.Status200OK)]
+    [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<ActorListDto>>> GetAll(
         [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 20)
+        [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(new GetActorListRequest
         {
             PageNumber = pageNumber,
             PageSize = pageSize
-        });
+        }, cancellationToken);
 
         var halResource = _resourceAssembler.ToCollectionResource(
             result,
@@ -77,9 +79,10 @@ public class ActorController : ControllerBase
     [AllowAnonymous]
     [ProducesResponseType(typeof(HalResource<ActorDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<HalResource<ActorDto>>> GetById(Guid id)
+    [OutputCache(PolicyName = "DetailData")]
+    public async Task<ActionResult<HalResource<ActorDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        var actor = await _mediator.Send(new GetActorDetailsRequest { Id = id });
+        var actor = await _mediator.Send(new GetActorDetailsRequest { Id = id }, cancellationToken);
 
         if (actor is null)
         {
@@ -99,9 +102,10 @@ public class ActorController : ControllerBase
     [AllowAnonymous]
     [ProducesResponseType(typeof(HalResource<ActorDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<HalResource<ActorDto>>> GetByDid(string did)
+    [OutputCache(PolicyName = "DetailData")]
+    public async Task<ActionResult<HalResource<ActorDto>>> GetByDid(string did, CancellationToken cancellationToken = default)
     {
-        var actor = await _mediator.Send(new GetActorByDidRequest { Did = did });
+        var actor = await _mediator.Send(new GetActorByDidRequest { Did = did }, cancellationToken);
 
         if (actor is null)
         {
@@ -120,9 +124,10 @@ public class ActorController : ControllerBase
     [EndpointDescription("Get all actors belonging to a specific tenant.")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(HalCollectionResource<ActorListDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<HalCollectionResource<ActorListDto>>> GetByTenant(Guid tenantId)
+    [OutputCache(PolicyName = "ListData")]
+    public async Task<ActionResult<HalCollectionResource<ActorListDto>>> GetByTenant(Guid tenantId, CancellationToken cancellationToken = default)
     {
-        var actors = await _mediator.Send(new GetActorsByTenantRequest { TenantId = tenantId });
+        var actors = await _mediator.Send(new GetActorsByTenantRequest { TenantId = tenantId }, cancellationToken);
 
         var halResource = _resourceAssembler.ToCollectionResource(
             actors,
@@ -143,10 +148,10 @@ public class ActorController : ControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateActorDto dto)
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateActorDto dto, CancellationToken cancellationToken = default)
     {
         var command = new CreateActorCommand { ActorDto = dto };
-        var response = await _mediator.Send(command);
+        var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)
         {
@@ -171,7 +176,7 @@ public class ActorController : ControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateActorDto dto)
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateActorDto dto, CancellationToken cancellationToken = default)
     {
         if (id != dto.Id)
         {
@@ -179,7 +184,7 @@ public class ActorController : ControllerBase
         }
 
         var command = new UpdateActorCommand { ActorDto = dto };
-        var response = await _mediator.Send(command);
+        var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)
         {
@@ -200,10 +205,10 @@ public class ActorController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult> Delete(Guid id)
+    public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var command = new DeleteActorCommand { Id = id };
-        var result = await _mediator.Send(command);
+        var result = await _mediator.Send(command, cancellationToken);
 
         if (!result)
         {

@@ -244,7 +244,7 @@ public class ImageStorageService : IImageStorageService
             const long maxFileSize = 10 * 1024 * 1024; // 10MB max
             await using var stream = file.OpenReadStream(maxAllowedSize: maxFileSize);
             using var content = new StreamContent(stream);
-            
+
             // CRITICAL: Content-Type MUST match what was used to generate the pre-signed URL
             content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
 
@@ -258,7 +258,7 @@ public class ImageStorageService : IImageStorageService
                 var errorContent = await response.Content.ReadAsStringAsync();
                 _logger.LogError("S3 upload failed: {StatusCode} - {ReasonPhrase} - {ErrorContent}",
                     (int)response.StatusCode, response.ReasonPhrase, errorContent);
-                
+
                 // Log additional debug info for common error codes
                 if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
                 {
@@ -432,13 +432,13 @@ public class ImageStorageService : IImageStorageService
             BaseCommandResponseOfGuid? createResponse = null;
             try
             {
-                createResponse = await _apiClient.StorageObjectPOSTAsync(createDto);
+                createResponse = await _apiClient.StorageobjectPOSTAsync(createDto);
                 _logger.LogInformation("StorageObject API response received: Success={Success}, Id={Id}, Message={Message}",
                     createResponse?.Success, createResponse?.Id, createResponse?.Message);
             }
             catch (Exception apiEx)
             {
-                _logger.LogError(apiEx, "Exception calling StorageObjectPOSTAsync for {FileName}", fileData.FileName);
+                _logger.LogError(apiEx, "Exception calling StorageobjectPOSTAsync for {FileName}", fileData.FileName);
                 return new ImageUploadResult
                 {
                     Success = false,
@@ -530,7 +530,7 @@ public class ImageStorageService : IImageStorageService
             };
 
             _logger.LogInformation("Creating StorageObject record");
-            var createResponse = await _apiClient.StorageObjectPOSTAsync(createDto);
+            var createResponse = await _apiClient.StorageobjectPOSTAsync(createDto);
 
             if (createResponse?.Success == true)
             {
@@ -725,3 +725,4 @@ internal class BaseCommandResponse
     public Guid Id { get; set; }
     public List<string>? Errors { get; set; }
 }
+

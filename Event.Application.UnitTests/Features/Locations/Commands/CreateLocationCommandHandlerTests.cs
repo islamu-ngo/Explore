@@ -54,7 +54,7 @@ public class CreateLocationCommandHandlerTests
 
         _tenantContext.TenantId.Returns(tenantId);
 
-        var location = new Location { Id = locationId };
+        var location = new Location { Id = locationId, Tenant = null! };
         _mapper.Map<Location>(command.LocationDto).Returns(location);
         _locationRepository.Create(Arg.Any<Location>()).Returns(location);
 
@@ -162,7 +162,7 @@ public class CreateLocationCommandHandlerTests
 
         _tenantContext.TenantId.Returns(tenantId);
 
-        var location = new Location { Id = locationId };
+        var location = new Location { Id = locationId, Tenant = null! };
         _mapper.Map<Location>(command.LocationDto).Returns(location);
         _locationRepository.Create(Arg.Any<Location>()).Returns(location);
 

@@ -17,17 +17,17 @@ public class PdsSyncOutbox
     /// <summary>
     /// Actor DID that owns the record (e.g., "did:plc:xxx").
     /// </summary>
-    public string Did { get; set; } = string.Empty;
+    public required string Did { get; set; }
 
     /// <summary>
     /// AT Protocol collection NSID (e.g., "app.islamu.event").
     /// </summary>
-    public string Collection { get; set; } = string.Empty;
+    public required string Collection { get; set; }
 
     /// <summary>
     /// Record key within the collection (TID format).
     /// </summary>
-    public string RecordKey { get; set; } = string.Empty;
+    public required string RecordKey { get; set; }
 
     /// <summary>
     /// Operation type: create, update, or delete.

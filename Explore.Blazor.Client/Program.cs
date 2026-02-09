@@ -1,19 +1,22 @@
+using System.Net.Http;
 using Blazouter.Extensions;
-using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using MudBlazor.Services;
-using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Configuration;
+using Explore.Blazor.Client.Routing.Guards;
+using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Contracts;
 using Microsoft.AspNetCore.Components.Authorization;
-using System.Net.Http;
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.AspNetCore.Components.WebAssembly.Http;
+using Microsoft.Extensions.DependencyInjection;
+using MudBlazor.Services;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
 builder.Services.AddMudServices();
 builder.Services.AddBlazouter();
+builder.Services.AddScoped<AuthenticatedRouteGuard>();
+builder.Services.AddScoped<AdminRouteGuard>();
 
 // Register the message handler that adds credentials to requests
 builder.Services.AddTransient<BrowserCredentialsMessageHandler>();
@@ -77,6 +80,10 @@ builder.Services.AddScoped<IMadhabService, MadhabService>();
 builder.Services.AddScoped<IEventSessionSpeakerService, EventSessionSpeakerService>();
 builder.Services.AddScoped<IActorService, ActorService>();
 builder.Services.AddScoped<IEventAspectService, EventAspectService>();
+builder.Services.AddScoped<ILookupCacheService, LookupCacheService>();
+builder.Services.AddScoped<IInstanceOnboardingService, InstanceOnboardingService>();
+builder.Services.AddScoped<ITenantOnboardingService, TenantOnboardingService>();
+builder.Services.AddScoped<IPublicExperienceService, PublicExperienceService>();
 
 // Register AuthStateService for centralized auth context
 builder.Services.AddScoped<IAuthStateService, AuthStateService>();

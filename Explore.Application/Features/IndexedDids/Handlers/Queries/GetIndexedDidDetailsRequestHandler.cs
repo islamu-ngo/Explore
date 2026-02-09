@@ -1,32 +1,31 @@
-using MediatR;
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.IndexedDid;
-using Explore.Domain;
 using Explore.Application.Features.IndexedDids.Requests.Queries;
+using Explore.Domain;
+using MediatR;
 
-namespace Explore.Application.Features.IndexedDids.Handlers.Queries
+namespace Explore.Application.Features.IndexedDids.Handlers.Queries;
+
+public class GetIndexedDidDetailsRequestHandler : IRequestHandler<GetIndexedDidDetailsRequest, IndexedDidDto?>
 {
-    public class GetIndexedDidDetailsRequestHandler : IRequestHandler<GetIndexedDidDetailsRequest, IndexedDidDto?>
+    private readonly IIndexedDidRepository _indexedDidRepository;
+    private readonly IMapper _mapper;
+
+    public GetIndexedDidDetailsRequestHandler(IIndexedDidRepository indexedDidRepository, IMapper mapper)
     {
-        private readonly IIndexedDidRepository _indexedDidRepository;
-        private readonly IMapper _mapper;
+        _indexedDidRepository = indexedDidRepository;
+        _mapper = mapper;
+    }
 
-        public GetIndexedDidDetailsRequestHandler(IIndexedDidRepository indexedDidRepository, IMapper mapper)
+    public async Task<IndexedDidDto?> Handle(GetIndexedDidDetailsRequest request, CancellationToken cancellationToken)
+    {
+        var indexedDid = await _indexedDidRepository.GetIndexedDidByDid(request.Did);
+        if (indexedDid == null)
         {
-            _indexedDidRepository = indexedDidRepository;
-            _mapper = mapper;
+            return null;
         }
 
-        public async Task<IndexedDidDto?> Handle(GetIndexedDidDetailsRequest request, CancellationToken cancellationToken)
-        {
-            var indexedDid = await _indexedDidRepository.GetIndexedDidByDid(request.Did);
-            if (indexedDid == null)
-            {
-                return null;
-            }
-
-            return _mapper.Map<IndexedDidDto>(indexedDid);
-        }
+        return _mapper.Map<IndexedDidDto>(indexedDid);
     }
 }

@@ -26,43 +26,6 @@ public class ModuleDefinitionConfiguration : IEntityTypeConfiguration<ModuleDefi
         builder.HasIndex(m => m.DisplayOrder);
 
         // Seed default modules
-        builder.HasData(
-            new ModuleDefinition
-            {
-                Id = SeedIds.ModuleCoreId,
-                ModuleKey = "Mod_Core",
-                Name = "Core Events",
-                Description = "Basic event functionality - title, description, sessions, locations",
-                IconName = "Event",
-                Category = "Core",
-                DisplayOrder = 0,
-                IsActive = true,
-                CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-            },
-            new ModuleDefinition
-            {
-                Id = SeedIds.ModuleIslamicId,
-                ModuleKey = "Mod_Islamic",
-                Name = "Islamic Events",
-                Description = "Islamic-specific features: Madhab selection, prayer time scheduling, gender segregation",
-                IconName = "Mosque",
-                Category = "Domain",
-                DisplayOrder = 1,
-                IsActive = true,
-                CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-            },
-            new ModuleDefinition
-            {
-                Id = SeedIds.ModuleTechId,
-                ModuleKey = "Mod_Tech",
-                Name = "Tech Events",
-                Description = "Developer event features: GitHub repositories, skill levels, live coding sessions",
-                IconName = "Code",
-                Category = "Domain",
-                DisplayOrder = 2,
-                IsActive = true,
-                CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-            }
-        );
     }
 }
+

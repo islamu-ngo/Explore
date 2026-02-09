@@ -2,10 +2,9 @@ using Explore.Application.DTOs.EventSessionLanguage;
 using Explore.Application.Responses;
 using MediatR;
 
-namespace Explore.Application.Features.EventSessionLanguages.Requests.Commands
+namespace Explore.Application.Features.EventSessionLanguages.Requests.Commands;
+
+public class CreateEventSessionLanguageCommand : IRequest<BaseCommandResponse<int>>
 {
-    public class CreateEventSessionLanguageCommand : IRequest<BaseCommandResponse<int>>
-    {
-        public CreateEventSessionLanguageDto EventSessionLanguageDto { get; set; }
-    }
+    public required CreateEventSessionLanguageDto EventSessionLanguageDto { get; set; }
 }

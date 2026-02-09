@@ -1,3 +1,5 @@
+namespace Explore.Domain.Enums;
+
 public enum OrganizationPositionEnum
 {
     Founder = 1,
@@ -11,7 +13,7 @@ public enum OrganizationPositionEnum
     Intern = 10,
     Advisor = 11,
     Consultant = 12,
-    Supervisor = 14, 
+    Supervisor = 14,
     Assistant = 15,
     Staff = 16
 }

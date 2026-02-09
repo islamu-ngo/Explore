@@ -11,7 +11,7 @@ namespace Explore.Persistence.Seed;
 /// Centralized seed data objects for business entities.
 /// All seed data references SeedIds for consistent, deterministic IDs.
 ///
-/// NOTE: Lookup/enum tables are seeded via HasData() in their configurations.
+/// NOTE: Lookup/enum tables are seeded via LookupTableSeeder at runtime.
 /// This class contains business entity seed data that may be conditionally applied.
 /// </summary>
 public static class SeedData
@@ -53,7 +53,9 @@ public static class SeedData
         Postcode = "1070",
         Address = "Parc Du Peterbos",
         ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
+        ApprovalStatus = null!,
         TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!,
         ActorId = SeedIds.IslamuOrganizationActorId,
         CreatedAt = SeedTimestamp
     };
@@ -63,7 +65,9 @@ public static class SeedData
     {
         Id = SeedIds.SystemUserActorId,
         ActorTypeId = (int)ActorTypeEnum.User,
+        ActorType = null!,
         TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!,
         DisplayName = "System Account",
         Handle = "system",
         Description = "System user account",
@@ -75,7 +79,9 @@ public static class SeedData
     {
         Id = SeedIds.IslamuOrganizationActorId,
         ActorTypeId = (int)ActorTypeEnum.Organization,
+        ActorType = null!,
         TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!,
         DisplayName = "ISLAMU",
         Handle = "islamu",
         Description = "ISLAMU NGO - Islamic Learning and Media Union",
@@ -88,9 +94,13 @@ public static class SeedData
     {
         Id = SeedIds.SystemUserIslamuMemberId,
         OrganizationId = SeedIds.IslamuOrganizationId,
+        Organization = null!,
         UserId = SeedIds.SystemUserId,
+        User = null!,
         TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!,
         OrganizationRoleId = (int)OrganizationRoleEnum.Creator,
+        OrganizationRole = null!,
         OrganizationPositionId = (int)OrganizationPositionEnum.Founder,
         CreatedAt = SeedTimestamp
     };
@@ -104,7 +114,9 @@ public static class SeedData
         Extension = ".jpg",
         Size = 0,
         FileTypeId = (int)FileTypeEnum.Image,
+        FileType = null!,
         TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!,
         ActorId = SeedIds.SystemUserActorId
     };
 
@@ -116,7 +128,9 @@ public static class SeedData
         Extension = ".jpg",
         Size = 0,
         FileTypeId = (int)FileTypeEnum.Image,
+        FileType = null!,
         TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!,
         ActorId = SeedIds.SystemUserActorId
     };
 
@@ -128,7 +142,9 @@ public static class SeedData
         Extension = ".jpg",
         Size = 0,
         FileTypeId = (int)FileTypeEnum.Image,
+        FileType = null!,
         TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!,
         ActorId = SeedIds.SystemUserActorId
     };
 
@@ -136,7 +152,8 @@ public static class SeedData
     public static TenantSettings DefaultTenantSettings => new()
     {
         Id = SeedIds.DefaultTenantSettingsId,
-        TenantId = SeedIds.DefaultTenantId
+        TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!
     };
 
     // ===== Tenant Capabilities =====
@@ -144,7 +161,9 @@ public static class SeedData
     {
         Id = SeedIds.DefaultTenantCoreCapabilityId,
         TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!,
         ModuleId = SeedIds.ModuleCoreId,
+        Module = null!,
         IsEnabled = true,
         EnabledAt = SeedTimestamp
     };
@@ -153,7 +172,9 @@ public static class SeedData
     {
         Id = SeedIds.DefaultTenantIslamicCapabilityId,
         TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!,
         ModuleId = SeedIds.ModuleIslamicId,
+        Module = null!,
         IsEnabled = true,
         EnabledAt = SeedTimestamp
     };
@@ -168,7 +189,8 @@ public static class SeedData
         Country = "Internet",
         City = "Virtual",
         Timezone = "UTC",
-        TenantId = SeedIds.DefaultTenantId
+        TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!
     };
 
     // ===== Categories =====
@@ -178,6 +200,7 @@ public static class SeedData
         MasterCode = "ISLAMIC_STUDIES",
         FullName = "Islamic Studies",
         TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!,
         ParentId = null
     };
 
@@ -187,6 +210,7 @@ public static class SeedData
         MasterCode = "QURAN",
         FullName = "Quran & Tafsir",
         TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!,
         ParentId = SeedIds.IslamicStudiesCategoryId
     };
 
@@ -196,6 +220,7 @@ public static class SeedData
         MasterCode = "HADITH",
         FullName = "Hadith Sciences",
         TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!,
         ParentId = SeedIds.IslamicStudiesCategoryId
     };
 
@@ -205,6 +230,7 @@ public static class SeedData
         MasterCode = "FIQH",
         FullName = "Fiqh (Islamic Jurisprudence)",
         TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!,
         ParentId = SeedIds.IslamicStudiesCategoryId
     };
 
@@ -214,6 +240,7 @@ public static class SeedData
         MasterCode = "AQEEDAH",
         FullName = "Aqeedah (Islamic Creed)",
         TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!,
         ParentId = SeedIds.IslamicStudiesCategoryId
     };
 
@@ -223,6 +250,7 @@ public static class SeedData
         MasterCode = "SEERAH",
         FullName = "Seerah (Prophetic Biography)",
         TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!,
         ParentId = SeedIds.IslamicStudiesCategoryId
     };
 
@@ -232,6 +260,7 @@ public static class SeedData
         MasterCode = "ARABIC",
         FullName = "Arabic Language",
         TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!,
         ParentId = null
     };
 
@@ -241,6 +270,7 @@ public static class SeedData
         MasterCode = "COMMUNITY",
         FullName = "Community Events",
         TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!,
         ParentId = null
     };
 
@@ -250,7 +280,8 @@ public static class SeedData
         Id = SeedIds.BeginnerTagId,
         MasterCode = "BEGINNER",
         FullName = "Beginner",
-        TenantId = SeedIds.DefaultTenantId
+        TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!
     };
 
     public static Tag IntermediateTag => new()
@@ -258,7 +289,8 @@ public static class SeedData
         Id = SeedIds.IntermediateTagId,
         MasterCode = "INTERMEDIATE",
         FullName = "Intermediate",
-        TenantId = SeedIds.DefaultTenantId
+        TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!
     };
 
     public static Tag AdvancedTag => new()
@@ -266,7 +298,8 @@ public static class SeedData
         Id = SeedIds.AdvancedTagId,
         MasterCode = "ADVANCED",
         FullName = "Advanced",
-        TenantId = SeedIds.DefaultTenantId
+        TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!
     };
 
     public static Tag FreeTag => new()
@@ -274,7 +307,8 @@ public static class SeedData
         Id = SeedIds.FreeTagId,
         MasterCode = "FREE",
         FullName = "Free",
-        TenantId = SeedIds.DefaultTenantId
+        TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!
     };
 
     public static Tag PaidTag => new()
@@ -282,7 +316,8 @@ public static class SeedData
         Id = SeedIds.PaidTagId,
         MasterCode = "PAID",
         FullName = "Paid",
-        TenantId = SeedIds.DefaultTenantId
+        TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!
     };
 
     public static Tag OnlineTag => new()
@@ -290,7 +325,8 @@ public static class SeedData
         Id = SeedIds.OnlineTagId,
         MasterCode = "ONLINE",
         FullName = "Online",
-        TenantId = SeedIds.DefaultTenantId
+        TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!
     };
 
     public static Tag InPersonTag => new()
@@ -298,7 +334,8 @@ public static class SeedData
         Id = SeedIds.InPersonTagId,
         MasterCode = "IN_PERSON",
         FullName = "In-Person",
-        TenantId = SeedIds.DefaultTenantId
+        TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!
     };
 
     // ===== Sample Event (Development Only) =====
@@ -312,6 +349,7 @@ public static class SeedData
         AudienceGenderId = (int)AudienceGenderEnum.Both,
         AudienceAgeId = (int)AudienceAgeEnum.AllAges,
         ActorId = SeedIds.IslamuOrganizationActorId,
+        Actor = null!,
         Price = 0,
         CurrencyCode = "EUR",
         FeaturedImageId = SeedIds.DefaultEventImageId,
@@ -319,9 +357,13 @@ public static class SeedData
         IsRegistrationRequired = false,
         MadhabId = null,
         TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!,
         VisibilityTypeId = (int)VisibilityTypeEnum.Public,
+        VisibilityType = null!,
         EventStatusId = (int)EventStatusEnum.Published,
+        EventStatus = null!,
         EventFormatId = (int)EventFormatEnum.Digital,
+        EventFormat = null!,
         Timezone = "Europe/Brussels"
     };
 
@@ -332,7 +374,8 @@ public static class SeedData
         FullName = "Super Administrator",
         MasterCode = "SUPER_ADMIN",
         Description = "Full system access",
-        TenantId = SeedIds.DefaultTenantId
+        TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!
     };
 
     public static UserRole AdminRole => new()
@@ -341,7 +384,8 @@ public static class SeedData
         FullName = "Administrator",
         MasterCode = "ADMIN",
         Description = "Organization administrator",
-        TenantId = SeedIds.DefaultTenantId
+        TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!
     };
 
     public static UserRole ModeratorRole => new()
@@ -350,7 +394,8 @@ public static class SeedData
         FullName = "Moderator",
         MasterCode = "MODERATOR",
         Description = "Content moderator",
-        TenantId = SeedIds.DefaultTenantId
+        TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!
     };
 
     public static UserRole UserRoleData => new()
@@ -359,6 +404,7 @@ public static class SeedData
         FullName = "User",
         MasterCode = "USER",
         Description = "Standard user",
-        TenantId = SeedIds.DefaultTenantId
+        TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!
     };
 }

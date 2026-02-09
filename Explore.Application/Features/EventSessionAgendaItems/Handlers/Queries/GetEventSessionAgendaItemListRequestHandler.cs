@@ -8,27 +8,26 @@ using Explore.Application.Features.EventSessionAgendaItems.Requests.Queries;
 using Explore.Application.Responses;
 using MediatR;
 
-namespace Explore.Application.Features.EventSessionAgendaItems.Handlers.Queries
+namespace Explore.Application.Features.EventSessionAgendaItems.Handlers.Queries;
+
+public class GetEventSessionAgendaItemListRequestHandler : IRequestHandler<GetEventSessionAgendaItemListRequest, PaginatedResult<EventSessionAgendaItemListDto>>
 {
-    public class GetEventSessionAgendaItemListRequestHandler : IRequestHandler<GetEventSessionAgendaItemListRequest, PaginatedResult<EventSessionAgendaItemListDto>>
+    private readonly IEventSessionAgendaItemRepository _agendaItemRepository;
+    private readonly IMapper _mapper;
+
+    public GetEventSessionAgendaItemListRequestHandler(
+        IEventSessionAgendaItemRepository agendaItemRepository,
+        IMapper mapper)
     {
-        private readonly IEventSessionAgendaItemRepository _agendaItemRepository;
-        private readonly IMapper _mapper;
+        _agendaItemRepository = agendaItemRepository;
+        _mapper = mapper;
+    }
 
-        public GetEventSessionAgendaItemListRequestHandler(
-            IEventSessionAgendaItemRepository agendaItemRepository,
-            IMapper mapper)
-        {
-            _agendaItemRepository = agendaItemRepository;
-            _mapper = mapper;
-        }
-
-        public async Task<PaginatedResult<EventSessionAgendaItemListDto>> Handle(GetEventSessionAgendaItemListRequest request, CancellationToken cancellationToken)
-        {
-            var (pageNumber, pageSize) = PaginatedResult<EventSessionAgendaItemListDto>.NormalizeParameters(request.PageNumber, request.PageSize);
-            var (agendaItems, totalCount) = await _agendaItemRepository.GetAgendaItemsWithDetailsPaged(pageNumber, pageSize);
-            var dtos = _mapper.Map<List<EventSessionAgendaItemListDto>>(agendaItems);
-            return PaginatedResult<EventSessionAgendaItemListDto>.Create(dtos, totalCount, pageNumber, pageSize);
-        }
+    public async Task<PaginatedResult<EventSessionAgendaItemListDto>> Handle(GetEventSessionAgendaItemListRequest request, CancellationToken cancellationToken)
+    {
+        var (pageNumber, pageSize) = PaginatedResult<EventSessionAgendaItemListDto>.NormalizeParameters(request.PageNumber, request.PageSize);
+        var (agendaItems, totalCount) = await _agendaItemRepository.GetAgendaItemsWithDetailsPaged(pageNumber, pageSize);
+        var dtos = _mapper.Map<List<EventSessionAgendaItemListDto>>(agendaItems);
+        return PaginatedResult<EventSessionAgendaItemListDto>.Create(dtos, totalCount, pageNumber, pageSize);
     }
 }

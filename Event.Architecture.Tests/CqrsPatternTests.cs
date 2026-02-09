@@ -1,7 +1,7 @@
 namespace Event.Architecture.Tests;
 
-using NetArchTest.Rules;
 using System.Reflection;
+using NetArchTest.Rules;
 
 /// <summary>
 /// Tests that enforce CQRS (Command Query Responsibility Segregation) patterns.

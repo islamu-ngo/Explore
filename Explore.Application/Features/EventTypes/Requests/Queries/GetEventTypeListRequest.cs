@@ -1,12 +1,11 @@
-﻿using Explore.Application.DTOs.EventType;
+using Explore.Application.DTOs.EventType;
 using MediatR;
 
-namespace Explore.Application.Features.EventTypes.Requests.Queries
+namespace Explore.Application.Features.EventTypes.Requests.Queries;
+
+public class GetEventTypeListRequest : IRequest<List<EventTypeListDto>>
 {
-    public class GetEventTypeListRequest : IRequest<List<EventTypeListDto>>
-    {
-        public int Id { get; set; }
-        public string FullName { get; set; }
-        public string? Description { get; set; }
-    }
+    public int Id { get; set; }
+    public required string FullName { get; set; }
+    public string? Description { get; set; }
 }

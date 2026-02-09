@@ -7,6 +7,7 @@ using Explore.Application.DTOs.Organization;
 using Explore.Application.Features.Organizations.Handlers.Commands;
 using Explore.Application.Features.Organizations.Requests.Commands;
 using Explore.Domain;
+using Microsoft.Extensions.Caching.Hybrid;
 using NSubstitute;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -22,6 +23,7 @@ public class CreateOrganizationCommandHandlerTests
     private readonly IUserContext _userContext;
     private readonly ITenantContext _tenantContext;
     private readonly IMapper _mapper;
+    private readonly HybridCache _cache;
     private readonly CreateOrganizationCommandHandler _handler;
 
     public CreateOrganizationCommandHandlerTests()
@@ -33,6 +35,7 @@ public class CreateOrganizationCommandHandlerTests
         _userContext = Substitute.For<IUserContext>();
         _mapper = Substitute.For<IMapper>();
         _tenantContext = Substitute.For<ITenantContext>();
+        _cache = Substitute.For<HybridCache>();
 
         _handler = new CreateOrganizationCommandHandler(
             _organizationRepository,
@@ -41,7 +44,8 @@ public class CreateOrganizationCommandHandlerTests
             _storageObjectRepository,
             _userContext,
             _mapper,
-            _tenantContext
+            _tenantContext,
+            _cache
         );
     }
 
@@ -70,17 +74,24 @@ public class CreateOrganizationCommandHandlerTests
         _userContext.GetRequiredUserId().Returns(userId);
 
         // Mock Organization creation
-        var organization = new Organization { Id = organizationId, FullName = "Test Organization" };
+        var organization = new Organization
+        {
+            Id = organizationId,
+            FullName = "Test Organization",
+            ApprovalStatus = null!,
+            Tenant = null!
+        };
         _mapper.Map<Organization>(command.OrganizationDto).Returns(organization);
         _organizationRepository.Create(Arg.Any<Organization>()).Returns(organization);
         _organizationRepository.Update(Arg.Any<Organization>()).Returns(Task.CompletedTask);
 
         // Mock Actor creation
-        var actor = new Actor { Id = actorId, DisplayName = "Test Organization" };
+        var actor = new Actor { Id = actorId, DisplayName = "Test Organization", ActorType = null!, Tenant = null! };
         _actorRepository.Create(Arg.Any<Actor>()).Returns(actor);
 
         // Mock OrganizationMember creation
-        _organizationMemberRepository.Create(Arg.Any<OrganizationMember>()).Returns(new OrganizationMember { Id = Guid.NewGuid() });
+        _organizationMemberRepository.Create(Arg.Any<OrganizationMember>()).Returns(
+            new OrganizationMember { Id = Guid.NewGuid(), Organization = null!, User = null!, OrganizationRole = null!, Tenant = null! });
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -117,14 +128,21 @@ public class CreateOrganizationCommandHandlerTests
         _tenantContext.TenantId.Returns(tenantId);
         _userContext.GetRequiredUserId().Returns(userId);
 
-        var organization = new Organization { Id = organizationId };
+        var organization = new Organization
+        {
+            Id = organizationId,
+            FullName = string.Empty,
+            ApprovalStatus = null!,
+            Tenant = null!
+        };
         _mapper.Map<Organization>(command.OrganizationDto).Returns(organization);
         _organizationRepository.Create(Arg.Any<Organization>()).Returns(organization);
         _organizationRepository.Update(Arg.Any<Organization>()).Returns(Task.CompletedTask);
 
-        var actor = new Actor { Id = actorId, DisplayName = "Test Organization" };
+        var actor = new Actor { Id = actorId, DisplayName = "Test Organization", ActorType = null!, Tenant = null! };
         _actorRepository.Create(Arg.Any<Actor>()).Returns(actor);
-        _organizationMemberRepository.Create(Arg.Any<OrganizationMember>()).Returns(new OrganizationMember { Id = Guid.NewGuid() });
+        _organizationMemberRepository.Create(Arg.Any<OrganizationMember>()).Returns(
+            new OrganizationMember { Id = Guid.NewGuid(), Organization = null!, User = null!, OrganizationRole = null!, Tenant = null! });
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -159,14 +177,21 @@ public class CreateOrganizationCommandHandlerTests
         _tenantContext.TenantId.Returns(tenantId);
         _userContext.GetRequiredUserId().Returns(userId);
 
-        var organization = new Organization { Id = organizationId };
+        var organization = new Organization
+        {
+            Id = organizationId,
+            FullName = string.Empty,
+            ApprovalStatus = null!,
+            Tenant = null!
+        };
         _mapper.Map<Organization>(command.OrganizationDto).Returns(organization);
         _organizationRepository.Create(Arg.Any<Organization>()).Returns(organization);
         _organizationRepository.Update(Arg.Any<Organization>()).Returns(Task.CompletedTask);
 
-        var actor = new Actor { Id = actorId, DisplayName = "Test Organization" };
+        var actor = new Actor { Id = actorId, DisplayName = "Test Organization", ActorType = null!, Tenant = null! };
         _actorRepository.Create(Arg.Any<Actor>()).Returns(actor);
-        _organizationMemberRepository.Create(Arg.Any<OrganizationMember>()).Returns(new OrganizationMember { Id = Guid.NewGuid() });
+        _organizationMemberRepository.Create(Arg.Any<OrganizationMember>()).Returns(
+            new OrganizationMember { Id = Guid.NewGuid(), Organization = null!, User = null!, OrganizationRole = null!, Tenant = null! });
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -200,14 +225,21 @@ public class CreateOrganizationCommandHandlerTests
         _tenantContext.TenantId.Returns(tenantId);
         _userContext.GetRequiredUserId().Returns(userId);
 
-        var organization = new Organization { Id = organizationId };
+        var organization = new Organization
+        {
+            Id = organizationId,
+            FullName = string.Empty,
+            ApprovalStatus = null!,
+            Tenant = null!
+        };
         _mapper.Map<Organization>(command.OrganizationDto).Returns(organization);
         _organizationRepository.Create(Arg.Any<Organization>()).Returns(organization);
         _organizationRepository.Update(Arg.Any<Organization>()).Returns(Task.CompletedTask);
 
-        var actor = new Actor { Id = actorId, DisplayName = "Test Organization" };
+        var actor = new Actor { Id = actorId, DisplayName = "Test Organization", ActorType = null!, Tenant = null! };
         _actorRepository.Create(Arg.Any<Actor>()).Returns(actor);
-        _organizationMemberRepository.Create(Arg.Any<OrganizationMember>()).Returns(new OrganizationMember { Id = Guid.NewGuid() });
+        _organizationMemberRepository.Create(Arg.Any<OrganizationMember>()).Returns(
+            new OrganizationMember { Id = Guid.NewGuid(), Organization = null!, User = null!, OrganizationRole = null!, Tenant = null! });
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);

@@ -1,9 +1,8 @@
-using MediatR;
 using Explore.Application.DTOs.IndexedDid;
+using MediatR;
 
-namespace Explore.Application.Features.IndexedDids.Requests.Queries
+namespace Explore.Application.Features.IndexedDids.Requests.Queries;
+
+public class GetIndexedDidListRequest : IRequest<List<IndexedDidListDto>>
 {
-    public class GetIndexedDidListRequest : IRequest<List<IndexedDidListDto>>
-    {
-    }
 }

@@ -2,27 +2,26 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.TagTypeTags.Requests.Commands;
 using MediatR;
 
-namespace Explore.Application.Features.TagTypeTags.Handlers.Commands
+namespace Explore.Application.Features.TagTypeTags.Handlers.Commands;
+
+public class DeleteTagTypeTagsCommandHandler : IRequestHandler<DeleteTagTypeTagsCommand, bool>
 {
-    public class DeleteTagTypeTagsCommandHandler : IRequestHandler<DeleteTagTypeTagsCommand, bool>
+    private readonly ITagTypeTagsRepository _repository;
+
+    public DeleteTagTypeTagsCommandHandler(ITagTypeTagsRepository repository)
     {
-        private readonly ITagTypeTagsRepository _repository;
+        _repository = repository;
+    }
 
-        public DeleteTagTypeTagsCommandHandler(ITagTypeTagsRepository repository)
+    public async Task<bool> Handle(DeleteTagTypeTagsCommand request, CancellationToken cancellationToken)
+    {
+        var tagTypeTags = await _repository.GetById(request.Id);
+        if (tagTypeTags == null)
         {
-            _repository = repository;
+            return false;
         }
 
-        public async Task<bool> Handle(DeleteTagTypeTagsCommand request, CancellationToken cancellationToken)
-        {
-            var tagTypeTags = await _repository.GetById(request.Id);
-            if (tagTypeTags == null)
-            {
-                return false;
-            }
-
-            await _repository.Delete(tagTypeTags);
-            return true;
-        }
+        await _repository.Delete(tagTypeTags);
+        return true;
     }
 }

@@ -1,10 +1,9 @@
-using MediatR;
 using System;
+using MediatR;
 
-namespace Explore.Application.Features.EventTags.Requests.Commands
+namespace Explore.Application.Features.EventTags.Requests.Commands;
+
+public class DeleteEventTagsCommand : IRequest<bool>
 {
-    public class DeleteEventTagsCommand : IRequest<bool>
-    {
-        public Guid Id { get; set; }
-    }
+    public Guid Id { get; set; }
 }

@@ -1,10 +1,9 @@
 using Explore.Application.DTOs.RegistrationMode;
 using MediatR;
 
-namespace Explore.Application.Features.RegistrationModes.Requests.Queries
+namespace Explore.Application.Features.RegistrationModes.Requests.Queries;
+
+public class GetRegistrationModeDetailsRequest : IRequest<RegistrationModeDto>
 {
-    public class GetRegistrationModeDetailsRequest : IRequest<RegistrationModeDto>
-    {
-        public int Id { get; set; }
-    }
+    public int Id { get; set; }
 }

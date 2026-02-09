@@ -1,1 +1,1 @@
-﻿// TUnit entry point - tests are discovered automatically
+// TUnit entry point - tests are discovered automatically

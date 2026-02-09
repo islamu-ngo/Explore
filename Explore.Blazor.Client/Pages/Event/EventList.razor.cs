@@ -1,7 +1,7 @@
 using Explore.Blazor.Client.Clients;
-using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Components.Event;
 using Explore.Blazor.Client.Helpers;
+using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
 using MudBlazor;
@@ -310,7 +310,7 @@ public partial class EventList
     private async Task OnCategoryChanged(Guid? categoryId)
     {
         selectedCategoryId = categoryId;
-        
+
         if (categoryId.HasValue)
         {
             isLoadingCategory = true;
@@ -335,7 +335,7 @@ public partial class EventList
     private async Task OnTagChanged(Guid? tagId)
     {
         selectedTagId = tagId;
-        
+
         if (tagId.HasValue)
         {
             isLoadingTag = true;

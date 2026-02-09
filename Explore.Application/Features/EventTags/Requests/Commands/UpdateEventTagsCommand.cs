@@ -1,12 +1,11 @@
+using System;
 using Explore.Application.DTOs.EventTags;
 using Explore.Application.Responses;
 using MediatR;
-using System;
 
-namespace Explore.Application.Features.EventTags.Requests.Commands
+namespace Explore.Application.Features.EventTags.Requests.Commands;
+
+public class UpdateEventTagsCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public class UpdateEventTagsCommand : IRequest<BaseCommandResponse<Guid>>
-    {
-        public UpdateEventTagsDto EventTagsDto { get; set; }
-    }
+    public required UpdateEventTagsDto EventTagsDto { get; set; }
 }

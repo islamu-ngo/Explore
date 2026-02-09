@@ -1,5 +1,5 @@
-using FluentValidation;
 using Explore.Application.Contracts.Persistence;
+using FluentValidation;
 
 namespace Explore.Application.DTOs.Actor.Validators;
 
@@ -32,8 +32,7 @@ public class UpdateActorDtoValidator : AbstractValidator<UpdateActorDto>
             .NotEmpty().WithMessage("Actor type is required")
             .MustAsync(async (actorTypeId, cancellation) =>
             {
-                var actorType = await _actorTypeRepository.Exists(actorTypeId);
-                return actorType != null;
+                return await _actorTypeRepository.Exists(actorTypeId);
             }).WithMessage("Invalid actor type");
 
         RuleFor(x => x.DidCustodyTypeId)
@@ -42,8 +41,7 @@ public class UpdateActorDtoValidator : AbstractValidator<UpdateActorDto>
                 if (!didCustodyTypeId.HasValue)
                     return true;
 
-                var didCustodyType = await _didCustodyTypeRepository.Exists(didCustodyTypeId.Value);
-                return didCustodyType != null;
+                return await _didCustodyTypeRepository.Exists(didCustodyTypeId.Value);
             })
             .When(x => x.DidCustodyTypeId.HasValue)
             .WithMessage("Invalid DID custody type");
@@ -54,8 +52,7 @@ public class UpdateActorDtoValidator : AbstractValidator<UpdateActorDto>
                 if (!profilePictureId.HasValue)
                     return true;
 
-                var storageObject = await _storageObjectRepository.Exists(profilePictureId.Value);
-                return storageObject != null;
+                return await _storageObjectRepository.Exists(profilePictureId.Value);
             })
             .When(x => x.ProfilePictureId.HasValue)
             .WithMessage("Invalid profile picture");

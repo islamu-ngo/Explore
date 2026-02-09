@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Optimize>true</Optimize>
+    <NoWarn>$(NoWarn);CA1707;CA1716;CA1816;MSB3277</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Explore.Application\Explore.Application.csproj" />
+    <ProjectReference Include="..\Explore.Domain\Explore.Domain.csproj" />
+    <ProjectReference Include="..\Explore.Persistence\Explore.Persistence.csproj" />
+  </ItemGroup>
+</Project>

@@ -105,7 +105,9 @@ public class StorageObjectControllerTests
         var updateDto = new UpdateStorageObjectDto
         {
             Id = id,
-            FullName = "updated-file.png"
+            FullName = "updated-file.png",
+            Uri = string.Empty,
+            Extension = string.Empty
         };
 
         // Act

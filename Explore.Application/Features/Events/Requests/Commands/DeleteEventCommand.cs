@@ -1,11 +1,10 @@
 using System;
 using MediatR;
 
-namespace Explore.Application.Features.Events.Requests.Commands
+namespace Explore.Application.Features.Events.Requests.Commands;
+
+public class DeleteEventCommand : IRequest<bool>
 {
-    public class DeleteEventCommand : IRequest<bool>
-    {
-        public Guid Id { get; set; }
-        public string UserId { get; set; }
-    }
+    public Guid Id { get; set; }
+    public required string UserId { get; set; }
 }

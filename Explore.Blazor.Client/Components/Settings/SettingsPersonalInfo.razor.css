@@ -1,0 +1,74 @@
+/* Personal Info Section Styles */
+
+.settings-section {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.settings-section-header {
+    margin-bottom: 2rem;
+}
+
+.settings-profile-picture {
+    padding: 1.5rem;
+    background-color: var(--mud-palette-surface);
+    border-radius: var(--mud-default-border-radius);
+    border: 1px solid var(--mud-palette-lines-default);
+    margin-bottom: 1.5rem;
+}
+
+.settings-form-section {
+    margin-bottom: 2rem;
+}
+
+.settings-form-section :deep(.mud-text-subtitle2) {
+    color: var(--mud-palette-text-primary);
+    margin-bottom: 1rem;
+    display: block;
+}
+
+.settings-content :deep(.mud-divider) {
+    margin: 1.5rem 0;
+    opacity: 0.5;
+}
+
+.settings-content :deep(.mud-button) {
+    text-transform: none;
+    font-weight: 500;
+}
+
+.settings-content :deep(.mud-text-field) {
+    margin-bottom: 0;
+}
+
+.settings-content :deep(.mud-grid) {
+    margin: -0.75rem;
+}
+
+.settings-content :deep(.mud-grid > .mud-item) {
+    padding: 0.75rem;
+}
+
+@media (max-width: 600px) {
+    .settings-section-header {
+        margin-bottom: 1.5rem;
+    }
+
+    .settings-form-section {
+        margin-bottom: 1.5rem;
+    }
+
+    .settings-profile-picture {
+        padding: 1rem;
+    }
+}

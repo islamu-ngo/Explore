@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -8,8 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NetArchTest.Rules" Version="1.3.2" />
-    <PackageReference Include="TUnit" Version="1.11.28" />
+    <PackageReference Include="NetArchTest.Rules" />
+    <PackageReference Include="TUnit" />
   </ItemGroup>
 
   <ItemGroup>

@@ -4,12 +4,12 @@
 namespace Explore.Secrets.Configuration;
 
 using System.Data;
+using Explore.Secrets.Abstractions;
+using Explore.Secrets.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Npgsql;
-using Explore.Secrets.Abstractions;
-using Explore.Secrets.Services;
 
 /// <summary>
 /// Configuration provider that loads encrypted settings from the database.

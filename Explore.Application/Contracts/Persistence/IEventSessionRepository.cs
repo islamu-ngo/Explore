@@ -1,12 +1,11 @@
 using Explore.Domain;
 
-namespace Explore.Application.Contracts.Persistence
+namespace Explore.Application.Contracts.Persistence;
+
+public interface IEventSessionRepository : IGenericRepository<EventSession, Guid>
 {
-    public interface IEventSessionRepository : IGenericRepository<EventSession, Guid>
-    {
-        Task<EventSession?> GetSessionWithDetails(Guid id);
-        Task<List<EventSession>> GetSessionsByEvent(Guid eventId);
-        Task<List<EventSession>> GetSessionsByLocation(Guid locationId);
-        Task<(List<EventSession> Items, int TotalCount)> GetSessionsWithDetailsPaged(int pageNumber, int pageSize);
-    }
+    Task<EventSession?> GetSessionWithDetails(Guid id);
+    Task<List<EventSession>> GetSessionsByEvent(Guid eventId);
+    Task<List<EventSession>> GetSessionsByLocation(Guid locationId);
+    Task<(List<EventSession> Items, int TotalCount)> GetSessionsWithDetailsPaged(int pageNumber, int pageSize);
 }

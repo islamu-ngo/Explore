@@ -1,11 +1,10 @@
+using System;
 using Explore.Application.DTOs.User;
 using MediatR;
-using System;
 
-namespace Explore.Application.Features.Users.Requests.Queries
+namespace Explore.Application.Features.Users.Requests.Queries;
+
+public class GetUserRequest : IRequest<UserDto>
 {
-    public class GetUserRequest : IRequest<UserDto>
-    {
-        public Guid UserId { get; set; }
-    }
+    public Guid UserId { get; set; }
 }

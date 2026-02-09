@@ -29,74 +29,59 @@
     }
     else
     {
-        <!-- Header Section -->
-        <MudCard Elevation="0" Class="rounded-xl border-solid border-1 mud-border-lines-default overflow-hidden mb-6">
-            <div class="pa-6 border-b-1 mud-border-lines-default bg-surface">
-                <div class="d-flex justify-space-between align-center flex-wrap gap-4">
-                    <div class="d-flex align-center gap-6">
-                        <MudAvatar Size="Size.Large" Style="width: 100px; height: 100px; font-size: 2rem;">
-                            @if (!string.IsNullOrEmpty(UserData?.ProfileImageUri))
-                            {
-                                <MudImage Src="@UserData.ProfileImageUri" Alt="Profile picture" ObjectFit="ObjectFit.Cover" />
-                            }
-                            else
-                            {
-                                @GetInitials()
-                            }
-                        </MudAvatar>
+        <!-- Modern Hero Profile Header -->
+        <MudCard Elevation="0" Outlined="true" Class="rounded-xl overflow-hidden mb-6 position-relative">
+            <!-- Hero Banner -->
+            <div style="height: 200px; background: linear-gradient(135deg, var(--mud-palette-primary) 0%, color-mix(in srgb, var(--mud-palette-primary) 60%, black) 100%);"></div>
+            
+            <div class="px-6 pb-6" style="margin-top: -50px;">
+                <div class="d-flex flex-column align-center">
+                    <!-- Avatar -->
+                    <MudAvatar Style="width: 120px; height: 120px; font-size: 3rem; border: 4px solid var(--mud-palette-surface);" Class="mb-4 elevation-4">
+                        @if (!string.IsNullOrEmpty(UserData?.ProfileImageUri))
+                        {
+                            <MudImage Src="@UserData.ProfileImageUri" Alt="Profile picture" ObjectFit="ObjectFit.Cover" />
+                        }
+                        else
+                        {
+                            @GetInitials()
+                        }
+                    </MudAvatar>
 
-                        <div>
-                            <MudText Typo="Typo.h4" Style="font-weight: 800;">@GetFullName()</MudText>
-                            <div class="d-flex align-center gap-2 mt-1">
-                                <MudText Typo="Typo.body1" Color="Color.Secondary">@@@GetUsername()</MudText>
-                                @if (!string.IsNullOrEmpty(GetDisplayLocation()) && GetDisplayLocation() != "Location not set")
-                                {
-                                    <MudText Typo="Typo.body1" Color="Color.Secondary">•</MudText>
-                                    <div class="d-flex align-center gap-1">
-                                        <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Color="Color.Secondary" />
-                                        <MudText Typo="Typo.body1" Color="Color.Secondary">@GetDisplayLocation()</MudText>
-                                    </div>
-                                }
-                            </div>
+                    <!-- User Info -->
+                    <MudText Typo="Typo.h4" Style="font-weight: 800;" Align="Align.Center">@GetFullName()</MudText>
+                    <MudText Typo="Typo.body1" Color="Color.Secondary" Align="Align.Center" Class="mb-4">@@@GetUsername()</MudText>
+
+                    @if (!string.IsNullOrEmpty(GetDisplayLocation()) && GetDisplayLocation() != "Location not set")
+                    {
+                        <div class="d-flex align-center gap-1 mb-6">
+                            <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Color="Color.Secondary" />
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">@GetDisplayLocation()</MudText>
                         </div>
-                    </div>
+                    }
 
-                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Edit" Href="/settings" Class="rounded-pill">Edit Profile</MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Edit" Href="/settings" Class="rounded-pill px-6">Edit Profile</MudButton>
                 </div>
             </div>
 
-            <div class="pa-6">
-                <MudGrid Spacing="6">
-                    <MudItem xs="12" sm="6">
-                        <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg d-flex align-center gap-4">
-                            <MudAvatar Color="Color.Primary" Variant="Variant.Outlined" Size="Size.Large">
-                                <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Medium" />
-                            </MudAvatar>
-                            <div>
-                                <MudText Typo="Typo.h5" Style="font-weight: 700;">@EventsAttended</MudText>
-                                <MudText Typo="Typo.body2" Color="Color.Secondary">Events Attended</MudText>
-                            </div>
-                        </MudPaper>
-                    </MudItem>
-                    <MudItem xs="12" sm="6">
-                        <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg d-flex align-center gap-4">
-                            <MudAvatar Color="Color.Secondary" Variant="Variant.Outlined" Size="Size.Large">
-                                <MudIcon Icon="@Icons.Material.Filled.RateReview" Size="Size.Medium" />
-                            </MudAvatar>
-                            <div>
-                                <MudText Typo="Typo.h5" Style="font-weight: 700;">@ReviewsGiven</MudText>
-                                <MudText Typo="Typo.body2" Color="Color.Secondary">Reviews Given</MudText>
-                            </div>
-                        </MudPaper>
-                    </MudItem>
-                </MudGrid>
+            <!-- Stats Bar -->
+            <MudDivider />
+            <div class="d-flex justify-center gap-16 py-6">
+                <div class="text-center">
+                    <MudText Typo="Typo.h5" Style="font-weight: 800; color: var(--mud-palette-primary);">@EventsAttended</MudText>
+                    <MudText Typo="Typo.caption" Style="text-transform: uppercase; letter-spacing: 1px; font-weight: 600;" Color="Color.Secondary">Events</MudText>
+                </div>
+                <div class="text-center">
+                    <MudText Typo="Typo.h5" Style="font-weight: 800; color: var(--mud-palette-primary);">@ReviewsGiven</MudText>
+                    <MudText Typo="Typo.caption" Style="text-transform: uppercase; letter-spacing: 1px; font-weight: 600;" Color="Color.Secondary">Reviews</MudText>
+                </div>
             </div>
         </MudCard>
 
         <MudGrid Spacing="6">
             <!-- Left Column: About -->
             <MudItem xs="12" md="4">
-                <MudCard Elevation="0" Class="rounded-xl border-solid border-1 mud-border-lines-default h-100">
+                <MudCard Elevation="0" Outlined="true" Class="rounded-xl h-100">
                     <MudCardHeader>
                         <CardHeaderContent>
                             <MudText Typo="Typo.h6" Style="font-weight: 700;">About</MudText>
@@ -128,7 +113,7 @@
 
             <!-- Right Column: Reviews -->
             <MudItem xs="12" md="8">
-                <MudCard Elevation="0" Class="rounded-xl border-solid border-1 mud-border-lines-default h-100">
+                <MudCard Elevation="0" Outlined="true" Class="rounded-xl h-100">
                     <MudCardHeader>
                         <CardHeaderContent>
                             <div class="d-flex justify-space-between align-center w-100">

@@ -4,29 +4,28 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Tags.Requests.Commands;
 using MediatR;
 
-namespace Explore.Application.Features.Tags.Handlers.Commands
+namespace Explore.Application.Features.Tags.Handlers.Commands;
+
+public class DeleteTagCommandHandler : IRequestHandler<DeleteTagCommand, bool>
 {
-    public class DeleteTagCommandHandler : IRequestHandler<DeleteTagCommand, bool>
+    private readonly ITagRepository _tagRepository;
+
+    public DeleteTagCommandHandler(ITagRepository tagRepository)
     {
-        private readonly ITagRepository _tagRepository;
+        _tagRepository = tagRepository;
+    }
 
-        public DeleteTagCommandHandler(ITagRepository tagRepository)
+    public async Task<bool> Handle(DeleteTagCommand request, CancellationToken cancellationToken)
+    {
+        var tag = await _tagRepository.GetById(request.Id);
+
+        if (tag == null)
         {
-            _tagRepository = tagRepository;
+            return false;
         }
 
-        public async Task<bool> Handle(DeleteTagCommand request, CancellationToken cancellationToken)
-        {
-            var tag = await _tagRepository.GetById(request.Id);
+        await _tagRepository.Delete(tag);
 
-            if (tag == null)
-            {
-                return false;
-            }
-
-            await _tagRepository.Delete(tag);
-
-            return true;
-        }
+        return true;
     }
 }

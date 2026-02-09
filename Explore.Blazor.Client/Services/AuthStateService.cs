@@ -1,7 +1,7 @@
-using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using Explore.Blazor.Client.Configuration;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.Extensions.Options;
 
 namespace Explore.Blazor.Client.Services;
 

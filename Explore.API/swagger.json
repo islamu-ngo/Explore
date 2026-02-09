@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "https://localhost:51176/"
+      "url": "https://localhost:55162/"
     }
   ],
   "paths": {
@@ -22,7 +22,7 @@
         }
       }
     },
-    "/api/v1/Actor": {
+    "/api/v1/actor": {
       "get": {
         "tags": [
           "Actor"
@@ -147,7 +147,7 @@
         }
       }
     },
-    "/api/v1/Actor/{id}": {
+    "/api/v1/actor/{id}": {
       "get": {
         "tags": [
           "Actor"
@@ -369,7 +369,7 @@
         }
       }
     },
-    "/api/v1/Actor/by-did/{did}": {
+    "/api/v1/actor/by-did/{did}": {
       "get": {
         "tags": [
           "Actor"
@@ -421,7 +421,7 @@
         }
       }
     },
-    "/api/v1/Actor/by-tenant/{tenantId}": {
+    "/api/v1/actor/by-tenant/{tenantId}": {
       "get": {
         "tags": [
           "Actor"
@@ -459,7 +459,7 @@
         }
       }
     },
-    "/api/v1/ActorKeyStore": {
+    "/api/v1/actorkeystore": {
       "get": {
         "tags": [
           "ActorKeyStore"
@@ -568,7 +568,7 @@
         }
       }
     },
-    "/api/v1/ActorKeyStore/{id}": {
+    "/api/v1/actorkeystore/{id}": {
       "get": {
         "tags": [
           "ActorKeyStore"
@@ -773,7 +773,7 @@
         }
       }
     },
-    "/api/v1/ActorType": {
+    "/api/v1/actortype": {
       "get": {
         "tags": [
           "ActorType"
@@ -813,7 +813,7 @@
         }
       }
     },
-    "/api/v1/ActorType/{id}": {
+    "/api/v1/actortype/{id}": {
       "get": {
         "tags": [
           "ActorType"
@@ -879,7 +879,7 @@
         }
       }
     },
-    "/api/v1/ApprovalStatus": {
+    "/api/v1/approvalstatus": {
       "get": {
         "tags": [
           "ApprovalStatus"
@@ -949,7 +949,7 @@
         }
       }
     },
-    "/api/v1/ApprovalStatus/{id}": {
+    "/api/v1/approvalstatus/{id}": {
       "get": {
         "tags": [
           "ApprovalStatus"
@@ -1063,7 +1063,7 @@
         }
       }
     },
-    "/api/v1/AtprotoRecord": {
+    "/api/v1/atprotorecord": {
       "get": {
         "tags": [
           "AtprotoRecord"
@@ -1148,7 +1148,7 @@
         }
       }
     },
-    "/api/v1/AtprotoRecord/{id}": {
+    "/api/v1/atprotorecord/{id}": {
       "get": {
         "tags": [
           "AtprotoRecord"
@@ -1267,7 +1267,7 @@
         }
       }
     },
-    "/api/v1/AudienceAge": {
+    "/api/v1/audienceage": {
       "get": {
         "tags": [
           "AudienceAge"
@@ -1307,7 +1307,7 @@
         }
       }
     },
-    "/api/v1/AudienceAge/{id}": {
+    "/api/v1/audienceage/{id}": {
       "get": {
         "tags": [
           "AudienceAge"
@@ -1373,7 +1373,7 @@
         }
       }
     },
-    "/api/v1/AudienceGender": {
+    "/api/v1/audiencegender": {
       "get": {
         "tags": [
           "AudienceGender"
@@ -1413,7 +1413,7 @@
         }
       }
     },
-    "/api/v1/AudienceGender/{id}": {
+    "/api/v1/audiencegender/{id}": {
       "get": {
         "tags": [
           "AudienceGender"
@@ -1479,7 +1479,7 @@
         }
       }
     },
-    "/api/v1/Category": {
+    "/api/v1/category": {
       "get": {
         "tags": [
           "Category"
@@ -1604,7 +1604,7 @@
         }
       }
     },
-    "/api/v1/Category/{id}": {
+    "/api/v1/category/{id}": {
       "get": {
         "tags": [
           "Category"
@@ -1811,7 +1811,7 @@
         }
       }
     },
-    "/api/v1/DidCustodyType": {
+    "/api/v1/didcustodytype": {
       "get": {
         "tags": [
           "DidCustodyType"
@@ -1851,7 +1851,7 @@
         }
       }
     },
-    "/api/v1/DidCustodyType/{id}": {
+    "/api/v1/didcustodytype/{id}": {
       "get": {
         "tags": [
           "DidCustodyType"
@@ -1917,7 +1917,7 @@
         }
       }
     },
-    "/api/v1/Event": {
+    "/api/v1/event": {
       "get": {
         "tags": [
           "Event"
@@ -2042,7 +2042,7 @@
         }
       }
     },
-    "/api/v1/Event/my": {
+    "/api/v1/event/my": {
       "get": {
         "tags": [
           "Event"
@@ -2112,7 +2112,7 @@
         }
       }
     },
-    "/api/v1/Event/{id}": {
+    "/api/v1/event/{id}": {
       "get": {
         "tags": [
           "Event"
@@ -2334,7 +2334,7 @@
         }
       }
     },
-    "/api/v1/Event/with-sessions": {
+    "/api/v1/event/with-sessions": {
       "post": {
         "tags": [
           "Event"
@@ -2405,7 +2405,7 @@
         }
       }
     },
-    "/api/v1/Event/{id}/aspects/islamic": {
+    "/api/v1/event/{id}/aspects/islamic": {
       "get": {
         "tags": [
           "Event"
@@ -2612,7 +2612,7 @@
         }
       }
     },
-    "/api/v1/Event/{id}/aspects/tech": {
+    "/api/v1/event/{id}/aspects/tech": {
       "get": {
         "tags": [
           "Event"
@@ -2819,7 +2819,7 @@
         }
       }
     },
-    "/api/v1/EventFormat": {
+    "/api/v1/eventformat": {
       "get": {
         "tags": [
           "EventFormat"
@@ -2859,7 +2859,7 @@
         }
       }
     },
-    "/api/v1/EventFormat/{id}": {
+    "/api/v1/eventformat/{id}": {
       "get": {
         "tags": [
           "EventFormat"
@@ -2925,7 +2925,7 @@
         }
       }
     },
-    "/api/v1/EventRegistration": {
+    "/api/v1/eventregistration": {
       "get": {
         "tags": [
           "EventRegistration"
@@ -3073,7 +3073,7 @@
         }
       }
     },
-    "/api/v1/EventRegistration/{id}": {
+    "/api/v1/eventregistration/{id}": {
       "get": {
         "tags": [
           "EventRegistration"
@@ -3318,7 +3318,7 @@
         }
       }
     },
-    "/api/v1/EventRegistration/by-session/{eventSessionId}": {
+    "/api/v1/eventregistration/by-session/{eventSessionId}": {
       "get": {
         "tags": [
           "EventRegistration"
@@ -3369,7 +3369,7 @@
         }
       }
     },
-    "/api/v1/EventRegistration/by-user/{userId}": {
+    "/api/v1/eventregistration/by-user/{userId}": {
       "get": {
         "tags": [
           "EventRegistration"
@@ -3420,7 +3420,7 @@
         }
       }
     },
-    "/api/v1/EventSessionAgendaItem": {
+    "/api/v1/eventsessionagendaitem": {
       "get": {
         "tags": [
           "EventSessionAgendaItem"
@@ -3528,7 +3528,7 @@
         }
       }
     },
-    "/api/v1/EventSessionAgendaItem/{id}": {
+    "/api/v1/eventsessionagendaitem/{id}": {
       "get": {
         "tags": [
           "EventSessionAgendaItem"
@@ -3653,7 +3653,7 @@
         }
       }
     },
-    "/api/v1/EventSessionAgendaItem/by-session/{sessionId}": {
+    "/api/v1/eventsessionagendaitem/by-session/{sessionId}": {
       "get": {
         "tags": [
           "EventSessionAgendaItem"
@@ -3704,7 +3704,7 @@
         }
       }
     },
-    "/api/v1/EventSession": {
+    "/api/v1/eventsession": {
       "get": {
         "tags": [
           "EventSession"
@@ -3829,7 +3829,7 @@
         }
       }
     },
-    "/api/v1/EventSession/{id}": {
+    "/api/v1/eventsession/{id}": {
       "get": {
         "tags": [
           "EventSession"
@@ -4036,7 +4036,7 @@
         }
       }
     },
-    "/api/v1/EventSession/by-event/{eventId}": {
+    "/api/v1/eventsession/by-event/{eventId}": {
       "get": {
         "tags": [
           "EventSession"
@@ -4074,7 +4074,7 @@
         }
       }
     },
-    "/api/v1/EventStatus": {
+    "/api/v1/eventstatus": {
       "get": {
         "tags": [
           "EventStatus"
@@ -4114,7 +4114,7 @@
         }
       }
     },
-    "/api/v1/EventStatus/{id}": {
+    "/api/v1/eventstatus/{id}": {
       "get": {
         "tags": [
           "EventStatus"
@@ -4180,7 +4180,7 @@
         }
       }
     },
-    "/api/v1/EventType": {
+    "/api/v1/eventtype": {
       "get": {
         "tags": [
           "EventType"
@@ -4250,7 +4250,7 @@
         }
       }
     },
-    "/api/v1/EventType/{id}": {
+    "/api/v1/eventtype/{id}": {
       "get": {
         "tags": [
           "EventType"
@@ -4364,7 +4364,7 @@
         }
       }
     },
-    "/api/v1/FileType": {
+    "/api/v1/filetype": {
       "get": {
         "tags": [
           "FileType"
@@ -4404,7 +4404,7 @@
         }
       }
     },
-    "/api/v1/FileType/{id}": {
+    "/api/v1/filetype/{id}": {
       "get": {
         "tags": [
           "FileType"
@@ -4470,37 +4470,24 @@
         }
       }
     },
-    "/api/v1/IndexedDid": {
+    "/api/v1/indexeddid": {
       "get": {
         "tags": [
           "IndexedDid"
         ],
+        "operationId": "GetIndexedDids",
         "responses": {
           "200": {
             "description": "OK",
             "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/IndexedDidListDto"
-                  }
-                }
-              },
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/IndexedDidListDto"
-                  }
+                  "$ref": "#/components/schemas/HalCollectionResourceOfIndexedDidListDto"
                 }
               },
-              "text/json": {
+              "application/hal\u002Bjson": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/IndexedDidListDto"
-                  }
+                  "$ref": "#/components/schemas/HalCollectionResourceOfIndexedDidListDto"
                 }
               }
             }
@@ -4535,17 +4522,12 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfstring"
-                }
-              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfstring"
                 }
               },
-              "text/json": {
+              "application/hal\u002Bjson": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfstring"
                 }
@@ -4555,11 +4537,12 @@
         }
       }
     },
-    "/api/v1/IndexedDid/{did}": {
+    "/api/v1/indexeddid/{did}": {
       "get": {
         "tags": [
           "IndexedDid"
         ],
+        "operationId": "GetIndexedDidByDid",
         "parameters": [
           {
             "name": "did",
@@ -4574,19 +4557,14 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/IndexedDidDto"
-                }
-              },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/IndexedDidDto"
+                  "$ref": "#/components/schemas/HalResourceOfIndexedDidDto"
                 }
               },
-              "text/json": {
+              "application/hal\u002Bjson": {
                 "schema": {
-                  "$ref": "#/components/schemas/IndexedDidDto"
+                  "$ref": "#/components/schemas/HalResourceOfIndexedDidDto"
                 }
               }
             }
@@ -4631,17 +4609,12 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfstring"
-                }
-              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfstring"
                 }
               },
-              "text/json": {
+              "application/hal\u002Bjson": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfstring"
                 }
@@ -4666,12 +4639,258 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
           }
         }
       }
     },
-    "/api/v1/Language": {
+    "/api/v1/instanceonboarding/status": {
+      "get": {
+        "tags": [
+          "InstanceOnboarding"
+        ],
+        "summary": "Get Instance Onboarding Status",
+        "description": "Returns whether first-run onboarding is completed and whether the current user is instance admin.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceOnboardingStatusDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceOnboardingStatusDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceOnboardingStatusDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/instanceonboarding/settings": {
+      "get": {
+        "tags": [
+          "InstanceOnboarding"
+        ],
+        "summary": "Get Instance Governance Settings",
+        "description": "Returns instance governance settings. If onboarding is already complete, only instance admins can access this endpoint.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceGovernanceSettingsDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceGovernanceSettingsDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceGovernanceSettingsDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "InstanceOnboarding"
+        ],
+        "summary": "Update Instance Governance Settings",
+        "description": "Updates instance governance settings at runtime. Requires instance administrator membership.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstanceGovernanceSettingsDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstanceGovernanceSettingsDto"
+              }
+            },
+            "application/*\u002Bjson": {
+              "schema": {
+                "$ref": "#/components/schemas/InstanceGovernanceSettingsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/instanceonboarding/complete": {
+      "post": {
+        "tags": [
+          "InstanceOnboarding"
+        ],
+        "summary": "Complete Instance Onboarding",
+        "description": "Completes first-run onboarding, assigns the current user as instance admin, and persists instance governance settings.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstanceGovernanceSettingsDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstanceGovernanceSettingsDto"
+              }
+            },
+            "application/*\u002Bjson": {
+              "schema": {
+                "$ref": "#/components/schemas/InstanceGovernanceSettingsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/language": {
       "get": {
         "tags": [
           "Language"
@@ -4711,7 +4930,7 @@
         }
       }
     },
-    "/api/v1/Language/{id}": {
+    "/api/v1/language/{id}": {
       "get": {
         "tags": [
           "Language"
@@ -4757,7 +4976,7 @@
         }
       }
     },
-    "/api/v1/Location": {
+    "/api/v1/location": {
       "get": {
         "tags": [
           "Location"
@@ -4882,7 +5101,7 @@
         }
       }
     },
-    "/api/v1/Location/{id}": {
+    "/api/v1/location/{id}": {
       "get": {
         "tags": [
           "Location"
@@ -5089,7 +5308,7 @@
         }
       }
     },
-    "/api/v1/Location/by-city/{city}": {
+    "/api/v1/location/by-city/{city}": {
       "get": {
         "tags": [
           "Location"
@@ -5126,7 +5345,7 @@
         }
       }
     },
-    "/api/v1/Location/by-country/{country}": {
+    "/api/v1/location/by-country/{country}": {
       "get": {
         "tags": [
           "Location"
@@ -5163,7 +5382,7 @@
         }
       }
     },
-    "/api/v1/Madhab": {
+    "/api/v1/madhab": {
       "get": {
         "tags": [
           "Madhab"
@@ -5203,7 +5422,7 @@
         }
       }
     },
-    "/api/v1/Madhab/{id}": {
+    "/api/v1/madhab/{id}": {
       "get": {
         "tags": [
           "Madhab"
@@ -5269,7 +5488,7 @@
         }
       }
     },
-    "/api/v1/Module/available": {
+    "/api/v1/module/available": {
       "get": {
         "tags": [
           "Module"
@@ -5309,7 +5528,7 @@
         }
       }
     },
-    "/api/v1/Module/enabled": {
+    "/api/v1/module/enabled": {
       "get": {
         "tags": [
           "Module"
@@ -5349,7 +5568,7 @@
         }
       }
     },
-    "/api/v1/Module/{moduleKey}/enabled": {
+    "/api/v1/module/{moduleKey}/enabled": {
       "get": {
         "tags": [
           "Module"
@@ -5390,7 +5609,7 @@
         }
       }
     },
-    "/api/v1/Module/{moduleKey}/schema": {
+    "/api/v1/module/{moduleKey}/schema": {
       "get": {
         "tags": [
           "Module"
@@ -5451,7 +5670,7 @@
         }
       }
     },
-    "/api/v1/Module/{moduleKey}/enable": {
+    "/api/v1/module/{moduleKey}/enable": {
       "post": {
         "tags": [
           "Module"
@@ -5552,7 +5771,7 @@
         }
       }
     },
-    "/api/v1/Module/{moduleKey}/disable": {
+    "/api/v1/module/{moduleKey}/disable": {
       "post": {
         "tags": [
           "Module"
@@ -5653,7 +5872,7 @@
         }
       }
     },
-    "/api/v1/Organization": {
+    "/api/v1/organization": {
       "get": {
         "tags": [
           "Organization"
@@ -5778,7 +5997,7 @@
         }
       }
     },
-    "/api/v1/Organization/my": {
+    "/api/v1/organization/my": {
       "get": {
         "tags": [
           "Organization"
@@ -5848,7 +6067,7 @@
         }
       }
     },
-    "/api/v1/Organization/{id}": {
+    "/api/v1/organization/{id}": {
       "get": {
         "tags": [
           "Organization"
@@ -6070,7 +6289,7 @@
         }
       }
     },
-    "/api/v1/Organization/updatestatustype/{id}": {
+    "/api/v1/organization/updatestatustype/{id}": {
       "put": {
         "tags": [
           "Organization"
@@ -6159,7 +6378,7 @@
         }
       }
     },
-    "/api/v1/OrganizationMember/{organizationId}": {
+    "/api/v1/organizationmember/{organizationId}": {
       "get": {
         "tags": [
           "OrganizationMember"
@@ -6208,7 +6427,7 @@
         }
       }
     },
-    "/api/v1/OrganizationMember": {
+    "/api/v1/organizationmember": {
       "post": {
         "tags": [
           "OrganizationMember"
@@ -6257,7 +6476,7 @@
         }
       }
     },
-    "/api/v1/OrganizationMember/role": {
+    "/api/v1/organizationmember/role": {
       "put": {
         "tags": [
           "OrganizationMember"
@@ -6306,7 +6525,7 @@
         }
       }
     },
-    "/api/v1/OrganizationMember/invitations": {
+    "/api/v1/organizationmember/invitations": {
       "get": {
         "tags": [
           "OrganizationMember"
@@ -6344,7 +6563,7 @@
         }
       }
     },
-    "/api/v1/OrganizationMember/invitations/{id}/accept": {
+    "/api/v1/organizationmember/invitations/{id}/accept": {
       "post": {
         "tags": [
           "OrganizationMember"
@@ -6384,7 +6603,7 @@
         }
       }
     },
-    "/api/v1/OrganizationMember/invitations/{id}/decline": {
+    "/api/v1/organizationmember/invitations/{id}/decline": {
       "post": {
         "tags": [
           "OrganizationMember"
@@ -6424,7 +6643,7 @@
         }
       }
     },
-    "/api/v1/OrganizationMember/{id}": {
+    "/api/v1/organizationmember/{id}": {
       "delete": {
         "tags": [
           "OrganizationMember"
@@ -6464,7 +6683,7 @@
         }
       }
     },
-    "/api/v1/OrganizationPosition": {
+    "/api/v1/organizationposition": {
       "get": {
         "tags": [
           "OrganizationPosition"
@@ -6504,7 +6723,7 @@
         }
       }
     },
-    "/api/v1/OrganizationPosition/{id}": {
+    "/api/v1/organizationposition/{id}": {
       "get": {
         "tags": [
           "OrganizationPosition"
@@ -6570,105 +6789,30 @@
         }
       }
     },
-    "/api/v1/OrganizationReview/{organizationId}": {
+    "/api/v1/organizationreview": {
       "get": {
         "tags": [
           "OrganizationReview"
         ],
-        "parameters": [
-          {
-            "name": "organizationId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
+        "operationId": "GetOrganizationReviews",
         "responses": {
           "200": {
             "description": "OK",
             "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/OrganizationReviewDto"
-                  }
-                }
-              },
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/OrganizationReviewDto"
-                  }
+                  "$ref": "#/components/schemas/HalCollectionResourceOfOrganizationReviewDto"
                 }
               },
-              "text/json": {
+              "application/hal\u002Bjson": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/OrganizationReviewDto"
-                  }
+                  "$ref": "#/components/schemas/HalCollectionResourceOfOrganizationReviewDto"
                 }
               }
             }
           }
         }
-      }
-    },
-    "/api/v1/OrganizationReview/user/{userId}": {
-      "get": {
-        "tags": [
-          "OrganizationReview"
-        ],
-        "parameters": [
-          {
-            "name": "userId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/OrganizationReviewDto"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/OrganizationReviewDto"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/OrganizationReviewDto"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/OrganizationReview": {
+      },
       "post": {
         "tags": [
           "OrganizationReview"
@@ -6697,17 +6841,12 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
                 }
               },
-              "text/json": {
+              "application/hal\u002Bjson": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
                 }
@@ -6717,7 +6856,89 @@
         }
       }
     },
-    "/api/v1/OrganizationRole": {
+    "/api/v1/organizationreview/{organizationId}": {
+      "get": {
+        "tags": [
+          "OrganizationReview"
+        ],
+        "parameters": [
+          {
+            "name": "organizationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrganizationReviewDto"
+                  }
+                }
+              },
+              "application/hal\u002Bjson": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrganizationReviewDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizationreview/user/{userId}": {
+      "get": {
+        "tags": [
+          "OrganizationReview"
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrganizationReviewDto"
+                  }
+                }
+              },
+              "application/hal\u002Bjson": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrganizationReviewDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizationrole": {
       "get": {
         "tags": [
           "OrganizationRole"
@@ -6757,7 +6978,7 @@
         }
       }
     },
-    "/api/v1/OrganizationRole/{id}": {
+    "/api/v1/organizationrole/{id}": {
       "get": {
         "tags": [
           "OrganizationRole"
@@ -6823,7 +7044,38 @@
         }
       }
     },
-    "/api/v1/RegistrationMode": {
+    "/api/v1/publicexperience/settings": {
+      "get": {
+        "tags": [
+          "PublicExperience"
+        ],
+        "summary": "Get Public Experience Settings",
+        "description": "Returns effective home-page and white-label settings for the current tenant context.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicExperienceSettingsDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicExperienceSettingsDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicExperienceSettingsDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/registrationmode": {
       "get": {
         "tags": [
           "RegistrationMode"
@@ -6863,7 +7115,7 @@
         }
       }
     },
-    "/api/v1/RegistrationMode/{id}": {
+    "/api/v1/registrationmode/{id}": {
       "get": {
         "tags": [
           "RegistrationMode"
@@ -6929,7 +7181,7 @@
         }
       }
     },
-    "/api/v1/StorageObject": {
+    "/api/v1/storageobject": {
       "get": {
         "tags": [
           "StorageObject"
@@ -7077,7 +7329,7 @@
         }
       }
     },
-    "/api/v1/StorageObject/{id}": {
+    "/api/v1/storageobject/{id}": {
       "get": {
         "tags": [
           "StorageObject"
@@ -7322,7 +7574,7 @@
         }
       }
     },
-    "/api/v1/StorageObject/file/{fileKey}": {
+    "/api/v1/storageobject/file/{fileKey}": {
       "get": {
         "tags": [
           "StorageObject"
@@ -7346,7 +7598,7 @@
         }
       }
     },
-    "/api/v1/StorageObject/{id}/presigned-url": {
+    "/api/v1/storageobject/{id}/presigned-url": {
       "get": {
         "tags": [
           "StorageObject"
@@ -7421,7 +7673,7 @@
         }
       }
     },
-    "/api/v1/StorageObject/presigned-url-by-key/{objectKey}": {
+    "/api/v1/storageobject/presigned-url-by-key/{objectKey}": {
       "get": {
         "tags": [
           "StorageObject"
@@ -7495,7 +7747,7 @@
         }
       }
     },
-    "/api/v1/StorageObject/generate-upload-url": {
+    "/api/v1/storageobject/generate-upload-url": {
       "post": {
         "tags": [
           "StorageObject"
@@ -7586,7 +7838,7 @@
         }
       }
     },
-    "/api/v1/SyncState": {
+    "/api/v1/syncstate": {
       "get": {
         "tags": [
           "SyncState"
@@ -7671,7 +7923,7 @@
         }
       }
     },
-    "/api/v1/SyncState/{id}": {
+    "/api/v1/syncstate/{id}": {
       "get": {
         "tags": [
           "SyncState"
@@ -7802,7 +8054,7 @@
         }
       }
     },
-    "/api/v1/Tag": {
+    "/api/v1/tag": {
       "get": {
         "tags": [
           "Tag"
@@ -7927,7 +8179,7 @@
         }
       }
     },
-    "/api/v1/Tag/{id}": {
+    "/api/v1/tag/{id}": {
       "get": {
         "tags": [
           "Tag"
@@ -8134,7 +8386,7 @@
         }
       }
     },
-    "/api/v1/TagType": {
+    "/api/v1/tagtype": {
       "get": {
         "tags": [
           "TagType"
@@ -8172,7 +8424,7 @@
         }
       }
     },
-    "/api/v1/TagType/{id}": {
+    "/api/v1/tagtype/{id}": {
       "get": {
         "tags": [
           "TagType"
@@ -8216,7 +8468,7 @@
         }
       }
     },
-    "/api/v1/Tenant": {
+    "/api/v1/tenant": {
       "get": {
         "tags": [
           "Tenant"
@@ -8325,7 +8577,7 @@
         }
       }
     },
-    "/api/v1/Tenant/{id}": {
+    "/api/v1/tenant/{id}": {
       "get": {
         "tags": [
           "Tenant"
@@ -8530,7 +8782,249 @@
         }
       }
     },
-    "/api/v1/TenantSettings": {
+    "/api/v1/tenantonboarding/status": {
+      "get": {
+        "tags": [
+          "TenantOnboarding"
+        ],
+        "summary": "Get Tenant Onboarding Status",
+        "description": "Returns whether the current tenant onboarding has been completed and whether the current user can complete it.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantOnboardingStatusDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantOnboardingStatusDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantOnboardingStatusDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tenantonboarding/settings": {
+      "get": {
+        "tags": [
+          "TenantOnboarding"
+        ],
+        "summary": "Get Tenant Policy Settings",
+        "description": "Returns effective tenant policy settings used for tenant onboarding and runtime settings management.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantPolicySettingsDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantPolicySettingsDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantPolicySettingsDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "TenantOnboarding"
+        ],
+        "summary": "Update Tenant Policy Settings",
+        "description": "Updates tenant policy settings after onboarding.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantPolicySettingsDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantPolicySettingsDto"
+              }
+            },
+            "application/*\u002Bjson": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantPolicySettingsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tenantonboarding/complete": {
+      "post": {
+        "tags": [
+          "TenantOnboarding"
+        ],
+        "summary": "Complete Tenant Onboarding",
+        "description": "Completes tenant onboarding and persists tenant policy answers.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantPolicySettingsDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantPolicySettingsDto"
+              }
+            },
+            "application/*\u002Bjson": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantPolicySettingsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tenantsettings": {
       "get": {
         "tags": [
           "TenantSettings"
@@ -8639,7 +9133,7 @@
         }
       }
     },
-    "/api/v1/TenantSettings/{id}": {
+    "/api/v1/tenantsettings/{id}": {
       "get": {
         "tags": [
           "TenantSettings"
@@ -8844,7 +9338,7 @@
         }
       }
     },
-    "/api/v1/TenantUser": {
+    "/api/v1/tenantuser": {
       "get": {
         "tags": [
           "TenantUser"
@@ -8953,7 +9447,7 @@
         }
       }
     },
-    "/api/v1/TenantUser/{id}": {
+    "/api/v1/tenantuser/{id}": {
       "get": {
         "tags": [
           "TenantUser"
@@ -9158,7 +9652,7 @@
         }
       }
     },
-    "/api/v1/UserAuthenticationToken": {
+    "/api/v1/userauthenticationtoken": {
       "get": {
         "tags": [
           "UserAuthenticationToken"
@@ -9267,7 +9761,7 @@
         }
       }
     },
-    "/api/v1/UserAuthenticationToken/{id}": {
+    "/api/v1/userauthenticationtoken/{id}": {
       "get": {
         "tags": [
           "UserAuthenticationToken"
@@ -9472,7 +9966,7 @@
         }
       }
     },
-    "/api/v1/User/sync": {
+    "/api/v1/user/sync": {
       "post": {
         "tags": [
           "User"
@@ -9503,7 +9997,7 @@
         }
       }
     },
-    "/api/v1/User": {
+    "/api/v1/user": {
       "get": {
         "tags": [
           "User"
@@ -9589,7 +10083,7 @@
         }
       }
     },
-    "/api/v1/User/{userId}/organizations": {
+    "/api/v1/user/{userId}/organizations": {
       "get": {
         "tags": [
           "User"
@@ -9640,7 +10134,7 @@
         }
       }
     },
-    "/api/v1/UserExternalLogin": {
+    "/api/v1/userexternallogin": {
       "get": {
         "tags": [
           "UserExternalLogin"
@@ -9749,7 +10243,7 @@
         }
       }
     },
-    "/api/v1/UserExternalLogin/{id}": {
+    "/api/v1/userexternallogin/{id}": {
       "get": {
         "tags": [
           "UserExternalLogin"
@@ -9954,7 +10448,7 @@
         }
       }
     },
-    "/api/v1/UserRole": {
+    "/api/v1/userrole": {
       "get": {
         "tags": [
           "UserRole"
@@ -9994,7 +10488,7 @@
         }
       }
     },
-    "/api/v1/UserRole/{id}": {
+    "/api/v1/userrole/{id}": {
       "get": {
         "tags": [
           "UserRole"
@@ -10060,7 +10554,7 @@
         }
       }
     },
-    "/api/v1/VisibilityType": {
+    "/api/v1/visibilitytype": {
       "get": {
         "tags": [
           "VisibilityType"
@@ -10100,7 +10594,7 @@
         }
       }
     },
-    "/api/v1/VisibilityType/{id}": {
+    "/api/v1/visibilitytype/{id}": {
       "get": {
         "tags": [
           "VisibilityType"
@@ -10291,6 +10785,14 @@
         }
       },
       "ActorKeyStoreDto": {
+        "required": [
+          "actorDisplayName",
+          "actorDid",
+          "tenantFullName",
+          "keyPurpose",
+          "privateKeyEncrypted",
+          "publicKey"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -10333,6 +10835,11 @@
         }
       },
       "ActorKeyStoreListDto": {
+        "required": [
+          "actorDisplayName",
+          "actorDid",
+          "keyPurpose"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -10461,6 +10968,10 @@
         }
       },
       "ActorTypeDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -10486,6 +10997,10 @@
         }
       },
       "ActorTypeListDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -10511,6 +11026,9 @@
         }
       },
       "AddOrganizationMemberDto": {
+        "required": [
+          "email"
+        ],
         "type": "object",
         "properties": {
           "organizationId": {
@@ -10526,6 +11044,11 @@
         }
       },
       "AtprotoRecordDto": {
+        "required": [
+          "did",
+          "collection",
+          "recordKey"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -10563,6 +11086,11 @@
         }
       },
       "AtprotoRecordListDto": {
+        "required": [
+          "did",
+          "collection",
+          "recordKey"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -10588,6 +11116,10 @@
         }
       },
       "AudienceAgeDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -10631,6 +11163,10 @@
         }
       },
       "AudienceAgeListDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -10674,6 +11210,10 @@
         }
       },
       "AudienceGenderDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -10699,6 +11239,10 @@
         }
       },
       "AudienceGenderListDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -10811,6 +11355,10 @@
         }
       },
       "CategoryDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -10843,6 +11391,10 @@
         }
       },
       "CategoryListDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -10964,6 +11516,11 @@
         }
       },
       "CreateActorKeyStoreDto": {
+        "required": [
+          "keyPurpose",
+          "privateKeyEncrypted",
+          "publicKey"
+        ],
         "type": "object",
         "properties": {
           "actorId": {
@@ -10989,6 +11546,11 @@
         }
       },
       "CreateAtprotoRecordDto": {
+        "required": [
+          "did",
+          "collection",
+          "recordKey"
+        ],
         "type": "object",
         "properties": {
           "did": {
@@ -11022,6 +11584,10 @@
         }
       },
       "CreateCategoryDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "masterCode": {
@@ -11044,10 +11610,19 @@
         }
       },
       "CreateEventDto": {
+        "required": [
+          "title"
+        ],
         "type": "object",
         "properties": {
           "title": {
             "type": "string"
+          },
+          "subtitle": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "description": {
             "type": [
@@ -11064,6 +11639,7 @@
           "eventTypeId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
+              "null",
               "integer",
               "string"
             ],
@@ -11072,6 +11648,7 @@
           "audienceGenderId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
+              "null",
               "integer",
               "string"
             ],
@@ -11080,6 +11657,7 @@
           "audienceAgeId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
+              "null",
               "integer",
               "string"
             ],
@@ -11181,6 +11759,12 @@
               "null",
               "string"
             ]
+          },
+          "metadataJson": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -11218,6 +11802,9 @@
         }
       },
       "CreateEventSessionAgendaItemDto": {
+        "required": [
+          "title"
+        ],
         "type": "object",
         "properties": {
           "eventSessionId": {
@@ -11380,6 +11967,9 @@
         }
       },
       "CreateEventWithSessionsDto": {
+        "required": [
+          "title"
+        ],
         "type": "object",
         "properties": {
           "title": {
@@ -11513,6 +12103,10 @@
         }
       },
       "CreateIndexedDidDto": {
+        "required": [
+          "did",
+          "pdsHost"
+        ],
         "type": "object",
         "properties": {
           "did": {
@@ -11550,6 +12144,13 @@
         }
       },
       "CreateLocationDto": {
+        "required": [
+          "fullName",
+          "address",
+          "postcode",
+          "country",
+          "city"
+        ],
         "type": "object",
         "properties": {
           "fullName": {
@@ -11598,6 +12199,13 @@
         }
       },
       "CreateOrganizationDto": {
+        "required": [
+          "fullName",
+          "email",
+          "country",
+          "city",
+          "address"
+        ],
         "type": "object",
         "properties": {
           "fullName": {
@@ -11635,6 +12243,12 @@
               "string"
             ],
             "format": "uuid"
+          },
+          "metadataJson": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -11670,6 +12284,11 @@
         }
       },
       "CreateStorageObjectDto": {
+        "required": [
+          "uri",
+          "fullName",
+          "extension"
+        ],
         "type": "object",
         "properties": {
           "fileTypeId": {
@@ -11711,6 +12330,9 @@
         }
       },
       "CreateSyncStateDto": {
+        "required": [
+          "service"
+        ],
         "type": "object",
         "properties": {
           "service": {
@@ -11734,6 +12356,10 @@
         }
       },
       "CreateTagDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "masterCode": {
@@ -11749,6 +12375,10 @@
         }
       },
       "CreateTenantDto": {
+        "required": [
+          "fullName",
+          "slug"
+        ],
         "type": "object",
         "properties": {
           "fullName": {
@@ -11897,6 +12527,14 @@
         }
       },
       "CreateUserAuthenticationTokenDto": {
+        "required": [
+          "provider",
+          "accessToken",
+          "refreshToken",
+          "pdsHost",
+          "dpopKey",
+          "idToken"
+        ],
         "type": "object",
         "properties": {
           "userId": {
@@ -11935,6 +12573,11 @@
         }
       },
       "CreateUserExternalLoginDto": {
+        "required": [
+          "provider",
+          "providerKey",
+          "providerDisplayName"
+        ],
         "type": "object",
         "properties": {
           "userId": {
@@ -11957,6 +12600,10 @@
         }
       },
       "DidCustodyTypeDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -11982,6 +12629,10 @@
         }
       },
       "DidCustodyTypeListDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -12007,6 +12658,17 @@
         }
       },
       "EventDto": {
+        "required": [
+          "title",
+          "actorDisplayName",
+          "actorTypeFullName",
+          "eventStatusFullName",
+          "eventStatusMasterCode",
+          "visibilityTypeFullName",
+          "visibilityTypeMasterCode",
+          "eventFormatFullName",
+          "eventFormatMasterCode"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -12015,6 +12677,12 @@
           },
           "title": {
             "type": "string"
+          },
+          "subtitle": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "description": {
             "type": [
@@ -12031,44 +12699,65 @@
           "eventTypeId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
+              "null",
               "integer",
               "string"
             ],
             "format": "int32"
           },
           "eventTypeFullName": {
-            "type": "string"
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "eventTypeMasterCode": {
-            "type": "string"
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "audienceGenderId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
+              "null",
               "integer",
               "string"
             ],
             "format": "int32"
           },
           "audienceGenderFullName": {
-            "type": "string"
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "audienceGenderMasterCode": {
-            "type": "string"
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "audienceAgeId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
+              "null",
               "integer",
               "string"
             ],
             "format": "int32"
           },
           "audienceAgeFullName": {
-            "type": "string"
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "audienceAgeMasterCode": {
-            "type": "string"
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "audienceAgeMinAge": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -12265,6 +12954,9 @@
             ],
             "format": "int32"
           },
+          "isUserReported": {
+            "type": "boolean"
+          },
           "eventUrl": {
             "type": [
               "null",
@@ -12430,6 +13122,10 @@
         }
       },
       "EventFormatDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -12455,6 +13151,10 @@
         }
       },
       "EventFormatListDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -12546,6 +13246,17 @@
         }
       },
       "EventListDto": {
+        "required": [
+          "title",
+          "eventTypeFullName",
+          "audienceGenderFullName",
+          "audienceAgeFullName",
+          "actorDisplayName",
+          "actorTypeFullName",
+          "eventStatusFullName",
+          "visibilityTypeFullName",
+          "eventFormatFullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -12554,6 +13265,12 @@
           },
           "title": {
             "type": "string"
+          },
+          "subtitle": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "description": {
             "type": [
@@ -12768,6 +13485,9 @@
             ],
             "format": "int32"
           },
+          "isUserReported": {
+            "type": "boolean"
+          },
           "eventUrl": {
             "type": [
               "null",
@@ -12940,6 +13660,9 @@
         }
       },
       "EventSessionAgendaItemDto": {
+        "required": [
+          "title"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -12993,6 +13716,9 @@
         }
       },
       "EventSessionAgendaItemListDto": {
+        "required": [
+          "title"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -13029,6 +13755,9 @@
         }
       },
       "EventSessionDto": {
+        "required": [
+          "eventTitle"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -13235,6 +13964,9 @@
         }
       },
       "EventSessionListDto": {
+        "required": [
+          "eventTitle"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -13385,6 +14117,10 @@
         }
       },
       "EventStatusDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -13410,6 +14146,10 @@
         }
       },
       "EventStatusListDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -13497,6 +14237,10 @@
         }
       },
       "EventTypeListDto": {
+        "required": [
+          "fullName",
+          "masterCode"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -13522,6 +14266,10 @@
         }
       },
       "FileTypeDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -13547,6 +14295,10 @@
         }
       },
       "FileTypeListDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -13606,6 +14358,14 @@
           }
         }
       },
+      "HalCollectionEmbeddedOfIndexedDidListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array"
+          }
+        }
+      },
       "HalCollectionEmbeddedOfLocationListDto": {
         "type": "object",
         "properties": {
@@ -13615,6 +14375,14 @@
         }
       },
       "HalCollectionEmbeddedOfOrganizationListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array"
+          }
+        }
+      },
+      "HalCollectionEmbeddedOfOrganizationReviewDto": {
         "type": "object",
         "properties": {
           "items": {
@@ -13838,6 +14606,58 @@
           }
         }
       },
+      "HalCollectionResourceOfIndexedDidListDto": {
+        "type": "object",
+        "properties": {
+          "pageNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalPages": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "hasPrevious": {
+            "type": "boolean"
+          },
+          "hasNext": {
+            "type": "boolean"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            }
+          },
+          "_embedded": {
+            "$ref": "#/components/schemas/HalCollectionEmbeddedOfIndexedDidListDto"
+          }
+        }
+      },
       "HalCollectionResourceOfLocationListDto": {
         "type": "object",
         "properties": {
@@ -13939,6 +14759,58 @@
           },
           "_embedded": {
             "$ref": "#/components/schemas/HalCollectionEmbeddedOfOrganizationListDto"
+          }
+        }
+      },
+      "HalCollectionResourceOfOrganizationReviewDto": {
+        "type": "object",
+        "properties": {
+          "pageNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalPages": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "hasPrevious": {
+            "type": "boolean"
+          },
+          "hasNext": {
+            "type": "boolean"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            }
+          },
+          "_embedded": {
+            "$ref": "#/components/schemas/HalCollectionEmbeddedOfOrganizationReviewDto"
           }
         }
       },
@@ -14266,6 +15138,12 @@
           "title": {
             "type": "string"
           },
+          "subtitle": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "description": {
             "type": [
               "null",
@@ -14281,44 +15159,65 @@
           "eventTypeId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
+              "null",
               "integer",
               "string"
             ],
             "format": "int32"
           },
           "eventTypeFullName": {
-            "type": "string"
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "eventTypeMasterCode": {
-            "type": "string"
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "audienceGenderId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
+              "null",
               "integer",
               "string"
             ],
             "format": "int32"
           },
           "audienceGenderFullName": {
-            "type": "string"
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "audienceGenderMasterCode": {
-            "type": "string"
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "audienceAgeId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
+              "null",
               "integer",
               "string"
             ],
             "format": "int32"
           },
           "audienceAgeFullName": {
-            "type": "string"
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "audienceAgeMasterCode": {
-            "type": "string"
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "audienceAgeMinAge": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -14514,6 +15413,9 @@
               "string"
             ],
             "format": "int32"
+          },
+          "isUserReported": {
+            "type": "boolean"
           },
           "eventUrl": {
             "type": [
@@ -14857,6 +15759,7 @@
           }
         }
       },
+      "HalResourceOfIndexedDidDto": {},
       "HalResourceOfLocationDto": {
         "type": "object",
         "properties": {
@@ -14970,6 +15873,12 @@
           },
           "address": {
             "type": "string"
+          },
+          "metadataJson": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "approvalStatusId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -15116,68 +16025,99 @@
           }
         }
       },
-      "IndexedDidDto": {
+      "InstanceGovernanceSettingsDto": {
         "type": "object",
         "properties": {
-          "did": {
+          "deploymentMode": {
             "type": "string"
           },
-          "handle": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "pdsHost": {
-            "type": "string"
-          },
-          "signingKey": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "isActive": {
+          "allowTenantSelfServiceRegistration": {
             "type": "boolean"
           },
-          "lastIndexedAt": {
-            "type": "string",
-            "format": "date-time"
+          "defaultPublicHomePage": {
+            "type": "string"
           },
-          "lastSeenAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
+          "enableIslamicModule": {
+            "type": "boolean"
+          },
+          "enableTechModule": {
+            "type": "boolean"
+          },
+          "allowUserSubmittedEvents": {
+            "type": "boolean"
+          },
+          "requireOrganizationVerification": {
+            "type": "boolean"
+          },
+          "allowTenantToOmitVerification": {
+            "type": "boolean"
+          },
+          "instanceBaseDomain": {
+            "type": "string"
+          },
+          "allowTenantCustomDomains": {
+            "type": "boolean"
+          },
+          "defaultBrandDisplayName": {
+            "type": "string"
+          },
+          "defaultBrandLogoUrl": {
+            "type": "string"
+          },
+          "defaultBrandFaviconUrl": {
+            "type": "string"
+          },
+          "defaultBrandCustomCssUrl": {
+            "type": "string"
+          },
+          "lockTenantHomePagePreference": {
+            "type": "boolean"
+          },
+          "lockTenantSubdomain": {
+            "type": "boolean"
+          },
+          "lockTenantCustomDomain": {
+            "type": "boolean"
+          },
+          "lockTenantBrandDisplayName": {
+            "type": "boolean"
+          },
+          "lockTenantBrandLogoUrl": {
+            "type": "boolean"
+          },
+          "lockTenantBrandFaviconUrl": {
+            "type": "boolean"
+          },
+          "lockTenantBrandCustomCssUrl": {
+            "type": "boolean"
           }
         }
       },
-      "IndexedDidListDto": {
+      "InstanceOnboardingStatusDto": {
         "type": "object",
         "properties": {
-          "did": {
-            "type": "string"
+          "isCompleted": {
+            "type": "boolean"
           },
-          "handle": {
+          "isAuthenticated": {
+            "type": "boolean"
+          },
+          "isCurrentUserInstanceAdmin": {
+            "type": "boolean"
+          },
+          "selectedDeploymentMode": {
             "type": [
               "null",
               "string"
             ]
-          },
-          "pdsHost": {
-            "type": "string"
-          },
-          "isActive": {
-            "type": "boolean"
-          },
-          "lastIndexedAt": {
-            "type": "string",
-            "format": "date-time"
           }
         }
       },
       "LanguageDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -15203,6 +16143,10 @@
         }
       },
       "LanguageListDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -15228,6 +16172,13 @@
         }
       },
       "LocationDto": {
+        "required": [
+          "fullName",
+          "address",
+          "postcode",
+          "country",
+          "city"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -15280,6 +16231,12 @@
         }
       },
       "LocationListDto": {
+        "required": [
+          "fullName",
+          "address",
+          "city",
+          "country"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -15307,6 +16264,10 @@
         }
       },
       "MadhabDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -15332,6 +16293,10 @@
         }
       },
       "MadhabListDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -15388,7 +16353,7 @@
             "type": "string",
             "format": "uuid"
           },
-          "key": {
+          "moduleKey": {
             "type": "string"
           },
           "name": {
@@ -15449,6 +16414,14 @@
         }
       },
       "OrganizationDto": {
+        "required": [
+          "fullName",
+          "email",
+          "country",
+          "city",
+          "postcode",
+          "address"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -15478,6 +16451,12 @@
           },
           "address": {
             "type": "string"
+          },
+          "metadataJson": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "approvalStatusId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -15544,6 +16523,10 @@
         }
       },
       "OrganizationInvitationDto": {
+        "required": [
+          "organizationName",
+          "email"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -15566,6 +16549,15 @@
         }
       },
       "OrganizationListDto": {
+        "required": [
+          "fullName",
+          "email",
+          "country",
+          "city",
+          "postcode",
+          "address",
+          "approvalStatusFullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -15595,6 +16587,12 @@
           },
           "address": {
             "type": "string"
+          },
+          "metadataJson": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "approvalStatusId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -15707,6 +16705,10 @@
         }
       },
       "OrganizationPositionDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -15732,6 +16734,10 @@
         }
       },
       "OrganizationPositionListDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -15804,6 +16810,10 @@
         }
       },
       "OrganizationRoleDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -15832,6 +16842,10 @@
         "type": "integer"
       },
       "OrganizationRoleListDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -16063,7 +17077,47 @@
           }
         }
       },
+      "PublicExperienceSettingsDto": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "deploymentMode": {
+            "type": "string"
+          },
+          "preferredHomePage": {
+            "type": "string"
+          },
+          "brandDisplayName": {
+            "type": "string"
+          },
+          "brandLogoUrl": {
+            "type": "string"
+          },
+          "brandFaviconUrl": {
+            "type": "string"
+          },
+          "brandCustomCssUrl": {
+            "type": "string"
+          },
+          "instanceBaseDomain": {
+            "type": "string"
+          },
+          "subdomain": {
+            "type": "string"
+          },
+          "customDomain": {
+            "type": "string"
+          }
+        }
+      },
       "RegistrationModeDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -16089,6 +17143,10 @@
         }
       },
       "RegistrationModeListDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -16117,6 +17175,10 @@
         "type": "integer"
       },
       "StatusTypeListDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -16142,6 +17204,11 @@
         }
       },
       "StorageObjectDto": {
+        "required": [
+          "uri",
+          "fullName",
+          "extension"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -16211,6 +17278,11 @@
         }
       },
       "StorageObjectListDto": {
+        "required": [
+          "uri",
+          "fullName",
+          "extension"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -16255,6 +17327,9 @@
         }
       },
       "SyncStateDto": {
+        "required": [
+          "service"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -16290,6 +17365,9 @@
         }
       },
       "SyncStateListDto": {
+        "required": [
+          "service"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -16318,6 +17396,10 @@
         }
       },
       "TagDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -16337,6 +17419,10 @@
         }
       },
       "TagListDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -16352,6 +17438,10 @@
         }
       },
       "TagTypeDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -16377,6 +17467,10 @@
         }
       },
       "TagTypeListDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -16396,6 +17490,10 @@
         }
       },
       "TenantDto": {
+        "required": [
+          "fullName",
+          "slug"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -16414,6 +17512,10 @@
         }
       },
       "TenantListDto": {
+        "required": [
+          "fullName",
+          "slug"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -16431,7 +17533,93 @@
           }
         }
       },
+      "TenantOnboardingStatusDto": {
+        "type": "object",
+        "properties": {
+          "isCompleted": {
+            "type": "boolean"
+          },
+          "isAuthenticated": {
+            "type": "boolean"
+          },
+          "isCurrentUserTenantAdministrator": {
+            "type": "boolean"
+          },
+          "isCurrentUserInstanceAdministrator": {
+            "type": "boolean"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "TenantPolicySettingsDto": {
+        "type": "object",
+        "properties": {
+          "allowUserSubmittedEvents": {
+            "type": "boolean"
+          },
+          "requireEventApproval": {
+            "type": "boolean"
+          },
+          "requireOrganizationVerification": {
+            "type": "boolean"
+          },
+          "canTenantOmitVerification": {
+            "type": "boolean"
+          },
+          "preferredHomePage": {
+            "type": "string"
+          },
+          "instanceBaseDomain": {
+            "type": "string"
+          },
+          "subdomain": {
+            "type": "string"
+          },
+          "customDomain": {
+            "type": "string"
+          },
+          "brandDisplayName": {
+            "type": "string"
+          },
+          "brandLogoUrl": {
+            "type": "string"
+          },
+          "brandFaviconUrl": {
+            "type": "string"
+          },
+          "brandCustomCssUrl": {
+            "type": "string"
+          },
+          "canOverrideHomePagePreference": {
+            "type": "boolean"
+          },
+          "canOverrideSubdomain": {
+            "type": "boolean"
+          },
+          "canOverrideCustomDomain": {
+            "type": "boolean"
+          },
+          "canOverrideBrandDisplayName": {
+            "type": "boolean"
+          },
+          "canOverrideBrandLogoUrl": {
+            "type": "boolean"
+          },
+          "canOverrideBrandFaviconUrl": {
+            "type": "boolean"
+          },
+          "canOverrideBrandCustomCssUrl": {
+            "type": "boolean"
+          }
+        }
+      },
       "TenantSettingsDto": {
+        "required": [
+          "tenantFullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -16452,6 +17640,9 @@
         }
       },
       "TenantSettingsListDto": {
+        "required": [
+          "tenantFullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -16472,6 +17663,12 @@
         }
       },
       "TenantUserDto": {
+        "required": [
+          "userEmail",
+          "userFullName",
+          "tenantFullName",
+          "userRoleName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -16513,6 +17710,12 @@
         }
       },
       "TenantUserListDto": {
+        "required": [
+          "userEmail",
+          "userFullName",
+          "tenantFullName",
+          "userRoleName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -16637,6 +17840,11 @@
         }
       },
       "UpdateActorKeyStoreDto": {
+        "required": [
+          "keyPurpose",
+          "privateKeyEncrypted",
+          "publicKey"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -16666,6 +17874,11 @@
         }
       },
       "UpdateAtprotoRecordDto": {
+        "required": [
+          "did",
+          "collection",
+          "recordKey"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -16703,6 +17916,10 @@
         }
       },
       "UpdateCategoryDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -16725,6 +17942,9 @@
         }
       },
       "UpdateEventDto": {
+        "required": [
+          "title"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -16733,6 +17953,12 @@
           },
           "title": {
             "type": "string"
+          },
+          "subtitle": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "description": {
             "type": [
@@ -16749,6 +17975,7 @@
           "eventTypeId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
+              "null",
               "integer",
               "string"
             ],
@@ -16757,6 +17984,7 @@
           "audienceGenderId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
+              "null",
               "integer",
               "string"
             ],
@@ -16765,6 +17993,7 @@
           "audienceAgeId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
+              "null",
               "integer",
               "string"
             ],
@@ -16860,6 +18089,12 @@
               "null",
               "string"
             ]
+          },
+          "metadataJson": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -16901,6 +18136,9 @@
         }
       },
       "UpdateEventSessionAgendaItemDto": {
+        "required": [
+          "title"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -17006,6 +18244,10 @@
         }
       },
       "UpdateIndexedDidDto": {
+        "required": [
+          "did",
+          "pdsHost"
+        ],
         "type": "object",
         "properties": {
           "did": {
@@ -17043,6 +18285,13 @@
         }
       },
       "UpdateLocationDto": {
+        "required": [
+          "fullName",
+          "address",
+          "postcode",
+          "country",
+          "city"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -17104,6 +18353,13 @@
         }
       },
       "UpdateOrganizationDto": {
+        "required": [
+          "fullName",
+          "email",
+          "country",
+          "city",
+          "address"
+        ],
         "type": "object",
         "properties": {
           "fullName": {
@@ -17134,6 +18390,12 @@
           },
           "address": {
             "type": "string"
+          },
+          "metadataJson": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -17150,6 +18412,11 @@
         }
       },
       "UpdateStorageObjectDto": {
+        "required": [
+          "uri",
+          "fullName",
+          "extension"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -17195,6 +18462,9 @@
         }
       },
       "UpdateSyncStateDto": {
+        "required": [
+          "service"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -17226,6 +18496,10 @@
         }
       },
       "UpdateTagDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -17245,6 +18519,10 @@
         }
       },
       "UpdateTenantDto": {
+        "required": [
+          "fullName",
+          "slug"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -17301,6 +18579,14 @@
         }
       },
       "UpdateUserAuthenticationTokenDto": {
+        "required": [
+          "provider",
+          "accessToken",
+          "refreshToken",
+          "pdsHost",
+          "dpopKey",
+          "idToken"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -17389,6 +18675,11 @@
         }
       },
       "UpdateUserExternalLoginDto": {
+        "required": [
+          "provider",
+          "providerKey",
+          "providerDisplayName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -17415,6 +18706,10 @@
         }
       },
       "UploadRequestDto": {
+        "required": [
+          "fileName",
+          "contentType"
+        ],
         "type": "object",
         "properties": {
           "fileName": {
@@ -17448,6 +18743,17 @@
         }
       },
       "UserAuthenticationTokenDto": {
+        "required": [
+          "userEmail",
+          "userFullName",
+          "tenantFullName",
+          "provider",
+          "accessToken",
+          "refreshToken",
+          "pdsHost",
+          "dpopKey",
+          "idToken"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -17499,6 +18805,10 @@
         }
       },
       "UserAuthenticationTokenListDto": {
+        "required": [
+          "userEmail",
+          "provider"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -17529,6 +18839,11 @@
         }
       },
       "UserDto": {
+        "required": [
+          "email",
+          "firstName",
+          "lastName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -17593,6 +18908,14 @@
         }
       },
       "UserExternalLoginDto": {
+        "required": [
+          "userEmail",
+          "userFullName",
+          "tenantFullName",
+          "provider",
+          "providerKey",
+          "providerDisplayName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -17628,6 +18951,11 @@
         }
       },
       "UserExternalLoginListDto": {
+        "required": [
+          "userEmail",
+          "provider",
+          "providerDisplayName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -17654,6 +18982,10 @@
         }
       },
       "UserRoleDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -17679,6 +19011,10 @@
         }
       },
       "UserRoleListDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -17704,6 +19040,10 @@
         }
       },
       "VisibilityTypeDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -17729,6 +19069,10 @@
         }
       },
       "VisibilityTypeListDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -17814,6 +19158,9 @@
       "name": "IndexedDid"
     },
     {
+      "name": "InstanceOnboarding"
+    },
+    {
       "name": "Language"
     },
     {
@@ -17841,6 +19188,9 @@
       "name": "OrganizationRole"
     },
     {
+      "name": "PublicExperience"
+    },
+    {
       "name": "RegistrationMode"
     },
     {
@@ -17857,6 +19207,9 @@
     },
     {
       "name": "Tenant"
+    },
+    {
+      "name": "TenantOnboarding"
     },
     {
       "name": "TenantSettings"

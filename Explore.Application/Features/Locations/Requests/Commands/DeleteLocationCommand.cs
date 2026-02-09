@@ -1,10 +1,9 @@
 using System;
 using MediatR;
 
-namespace Explore.Application.Features.Locations.Requests.Commands
+namespace Explore.Application.Features.Locations.Requests.Commands;
+
+public class DeleteLocationCommand : IRequest<bool>
 {
-    public class DeleteLocationCommand : IRequest<bool>
-    {
-        public Guid Id { get; set; }
-    }
+    public Guid Id { get; set; }
 }

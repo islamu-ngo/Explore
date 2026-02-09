@@ -1,10 +1,9 @@
-using MediatR;
-using Explore.Application.DTOs.Tenant;
 using System.Collections.Generic;
+using Explore.Application.DTOs.Tenant;
+using MediatR;
 
-namespace Explore.Application.Features.Tenants.Requests.Queries
+namespace Explore.Application.Features.Tenants.Requests.Queries;
+
+public class GetTenantListRequest : IRequest<List<TenantListDto>>
 {
-    public class GetTenantListRequest : IRequest<List<TenantListDto>>
-    {
-    }
 }

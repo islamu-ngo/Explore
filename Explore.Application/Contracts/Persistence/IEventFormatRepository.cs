@@ -1,8 +1,7 @@
 using Explore.Domain;
 
-namespace Explore.Application.Contracts.Persistence
+namespace Explore.Application.Contracts.Persistence;
+
+public interface IEventFormatRepository : IGenericRepository<EventFormat, int>
 {
-    public interface IEventFormatRepository : IGenericRepository<EventFormat, int>
-    {
-    }
 }

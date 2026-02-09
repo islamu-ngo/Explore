@@ -1,0 +1,133 @@
+@using MudBlazor
+
+<div class="settings-section">
+    <!-- Section Header -->
+    <div class="settings-section-header mb-6">
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">Privacy</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Control who can see your information and activity</MudText>
+    </div>
+
+    <!-- Profile Visibility Section -->
+    <div class="settings-form-section mb-8">
+        <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Class="mb-4">Profile Visibility</MudText>
+        <MudStack Spacing="3">
+            <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
+                <div class="d-flex justify-space-between align-center">
+                    <div>
+                        <MudText Typo="Typo.body1" Style="font-weight: 500;">Public Profile</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Anyone can view your profile and activity</MudText>
+                    </div>
+                    <MudSwitch T="bool" @bind-Checked="_isPublicProfile" Color="Color.Primary" />
+                </div>
+            </MudPaper>
+
+            <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
+                <div class="d-flex justify-space-between align-center">
+                    <div>
+                        <MudText Typo="Typo.body1" Style="font-weight: 500;">Show Email Address</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Display your email on your profile</MudText>
+                    </div>
+                    <MudSwitch T="bool" @bind-Checked="_showEmail" Color="Color.Primary" />
+                </div>
+            </MudPaper>
+
+            <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
+                <div class="d-flex justify-space-between align-center">
+                    <div>
+                        <MudText Typo="Typo.body1" Style="font-weight: 500;">Show Activity Status</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Let others see when you're online</MudText>
+                    </div>
+                    <MudSwitch T="bool" @bind-Checked="_showActivityStatus" Color="Color.Primary" />
+                </div>
+            </MudPaper>
+        </MudStack>
+    </div>
+
+    <!-- Divider -->
+    <MudDivider Class="my-6" />
+
+    <!-- Data & Privacy Section -->
+    <div class="settings-form-section mb-8">
+        <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Class="mb-4">Data & Privacy</MudText>
+        <MudStack Spacing="3">
+            <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
+                <div class="d-flex justify-space-between align-center">
+                    <div>
+                        <MudText Typo="Typo.body1" Style="font-weight: 500;">Allow Analytics</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Help us improve by sharing usage data</MudText>
+                    </div>
+                    <MudSwitch T="bool" @bind-Checked="_allowAnalytics" Color="Color.Primary" />
+                </div>
+            </MudPaper>
+
+            <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
+                <div class="d-flex justify-space-between align-center">
+                    <div>
+                        <MudText Typo="Typo.body1" Style="font-weight: 500;">Marketing Communications</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Receive emails about new features and updates</MudText>
+                    </div>
+                    <MudSwitch T="bool" @bind-Checked="_allowMarketing" Color="Color.Primary" />
+                </div>
+            </MudPaper>
+        </MudStack>
+    </div>
+
+    <!-- Divider -->
+    <MudDivider Class="my-6" />
+
+    <!-- Blocked Users Section -->
+    <div class="settings-form-section mb-8">
+        <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Class="mb-4">Blocked Users</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">Manage users you've blocked</MudText>
+        
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+            You haven't blocked any users yet.
+        </MudAlert>
+    </div>
+
+    <!-- Divider -->
+    <MudDivider Class="my-6" />
+
+    <!-- Data Download Section -->
+    <div class="settings-form-section mb-8">
+        <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Class="mb-4">Download Your Data</MudText>
+        <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
+            <div class="d-flex justify-space-between align-center">
+                <div>
+                    <MudText Typo="Typo.body1" Style="font-weight: 500;">Export Your Data</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Download a copy of your personal data in JSON format</MudText>
+                </div>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Download" Class="rounded-pill">
+                    Download
+                </MudButton>
+            </div>
+        </MudPaper>
+    </div>
+
+    <!-- Divider -->
+    <MudDivider Class="my-6" />
+
+    <!-- Delete Account Section -->
+    <div class="settings-form-section">
+        <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Class="mb-4">Delete Account</MudText>
+        <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg border-error">
+            <div class="d-flex justify-space-between align-center">
+                <div>
+                    <MudText Typo="Typo.body1" Style="font-weight: 500;">Permanently delete your account</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">This action cannot be undone. All your data will be permanently deleted.</MudText>
+                </div>
+                <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Delete" Class="rounded-pill">
+                    Delete Account
+                </MudButton>
+            </div>
+        </MudPaper>
+    </div>
+</div>
+
+@code {
+    private bool _isPublicProfile = true;
+    private bool _showEmail = false;
+    private bool _showActivityStatus = true;
+    private bool _allowAnalytics = true;
+    private bool _allowMarketing = false;
+}

@@ -1,9 +1,8 @@
-namespace Explore.Domain.Enums
+namespace Explore.Domain.Enums;
+
+public enum ActorTypeEnum
 {
-    public enum ActorTypeEnum
-    {
-        User = 1,
-        Organization = 2,
-        Bot = 3
-    }
+    User = 1,
+    Organization = 2,
+    Bot = 3
 }

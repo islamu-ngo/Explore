@@ -12,16 +12,12 @@
 </MudContainer>
 
 @code {
-    private bool _hasNavigated;
-
     protected override void OnAfterRender(bool firstRender)
     {
-        if (!firstRender || _hasNavigated)
+        if (!firstRender)
         {
             return;
         }
-
-        _hasNavigated = true;
 
         // Navigate to the server authentication endpoint (not /login which is this Blazor component)
         var query = new Uri(Navigation.Uri).Query;

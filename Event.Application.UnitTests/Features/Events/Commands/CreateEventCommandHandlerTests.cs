@@ -7,6 +7,7 @@ using Explore.Application.Features.Events.Handlers.Commands;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
+using Microsoft.Extensions.Caching.Hybrid;
 using NSubstitute;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -27,6 +28,7 @@ public class CreateEventCommandHandlerTests
     private readonly IUserContext _userContext;
     private readonly ITenantContext _tenantContext;
     private readonly IMapper _mapper;
+    private readonly HybridCache _cache;
     private readonly CreateEventCommandHandler _handler;
 
     public CreateEventCommandHandlerTests()
@@ -43,6 +45,7 @@ public class CreateEventCommandHandlerTests
         _userContext = Substitute.For<IUserContext>();
         _tenantContext = Substitute.For<ITenantContext>();
         _mapper = Substitute.For<IMapper>();
+        _cache = Substitute.For<HybridCache>();
 
         _handler = new CreateEventCommandHandler(
             _eventRepository,
@@ -56,7 +59,8 @@ public class CreateEventCommandHandlerTests
             _storageObjectRepository,
             _userContext,
             _tenantContext,
-            _mapper
+            _mapper,
+            _cache
         );
     }
 
@@ -85,7 +89,7 @@ public class CreateEventCommandHandlerTests
         _userContext.GetRequiredUserId().Returns(userId);
 
         // Mock Actor Resolution
-        var actor = new Actor { Id = actorId, UserId = userId, DisplayName = "Test Actor" };
+        var actor = new Actor { Id = actorId, UserId = userId, DisplayName = "Test Actor", ActorType = null!, Tenant = null! };
         _actorRepository.GetActorByUserId(userId).Returns(actor);
 
         // Mock Validation Dependencies
@@ -94,7 +98,16 @@ public class CreateEventCommandHandlerTests
         _eventTypeRepository.Exists(Arg.Any<int>()).Returns(true);
 
         // Mock Mapping and Creation
-        var eventEntity = new Explore.Domain.Event { Id = eventId };
+        var eventEntity = new Explore.Domain.Event
+        {
+            Id = eventId,
+            Title = "Test Event",
+            Actor = null!,
+            Tenant = null!,
+            VisibilityType = null!,
+            EventStatus = null!,
+            EventFormat = null!
+        };
         _mapper.Map<Explore.Domain.Event>(command.EventDto).Returns(eventEntity);
         _eventRepository.Create(Arg.Any<Explore.Domain.Event>()).Returns(eventEntity);
 
@@ -106,6 +119,60 @@ public class CreateEventCommandHandlerTests
         await Assert.That(result.Id).IsEqualTo(eventId);
         await _eventRepository.Received(1).Create(Arg.Any<Explore.Domain.Event>());
         await _eventSessionRepository.Received(1).Create(Arg.Any<EventSession>());
+    }
+
+    [Test]
+    public async Task Handle_WithOptionalFieldsNull_ReturnsSuccessResponse()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var command = new CreateEventCommand
+        {
+            EventDto = new CreateEventDto
+            {
+                Title = "Generic Event",
+                Subtitle = "Test Subtitle",
+                Description = "Description",
+                FirstSessionDate = DateTimeOffset.UtcNow.AddDays(1),
+                LastSessionDate = DateTimeOffset.UtcNow.AddDays(1).AddHours(2),
+                EventTypeId = null, // Generic import
+                AudienceGenderId = null,
+                AudienceAgeId = null
+            }
+        };
+
+        _userContext.GetRequiredUserId().Returns(userId);
+
+        // Mock Actor Resolution
+        var actor = new Actor { Id = actorId, UserId = userId, DisplayName = "Test Actor", ActorType = null!, Tenant = null! };
+        _actorRepository.GetActorByUserId(userId).Returns(actor);
+
+        // Mock Validation Dependencies (Ensure Exists is NOT called for nulls, or if called, we don't care because validator skips check)
+        // Note: The validator code only calls Exists if id.HasValue.
+
+        // Mock Mapping and Creation
+        var eventEntity = new Explore.Domain.Event
+        {
+            Id = eventId,
+            Title = "Test Event",
+            Actor = null!,
+            Tenant = null!,
+            VisibilityType = null!,
+            EventStatus = null!,
+            EventFormat = null!
+        };
+        _mapper.Map<Explore.Domain.Event>(command.EventDto).Returns(eventEntity);
+        _eventRepository.Create(Arg.Any<Explore.Domain.Event>()).Returns(eventEntity);
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Id).IsEqualTo(eventId);
+        await _eventRepository.Received(1).Create(Arg.Any<Explore.Domain.Event>());
     }
 
     [Test]

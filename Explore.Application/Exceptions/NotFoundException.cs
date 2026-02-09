@@ -1,13 +1,12 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Explore.Application.Exceptions
+namespace Explore.Application.Exceptions;
+
+public class NotFoundException : ApplicationException
 {
-    public class NotFoundException : ApplicationException
+    public NotFoundException(string name, object key) : base($"{name} ({key}) was not found")
     {
-        public NotFoundException(string name, object key) : base($"{name} ({key}) was not found")
-        {
-        }
     }
 }

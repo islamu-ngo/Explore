@@ -7,6 +7,7 @@ using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 
 namespace Explore.API.Controllers;
 
@@ -45,15 +46,16 @@ public class LocationController : ControllerBase
         "Send 'Prefer: return=minimal' header to strip links.")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(HalCollectionResource<LocationListDto>), StatusCodes.Status200OK)]
+    [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<LocationListDto>>> GetAll(
         [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 20)
+        [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(new GetLocationListRequest
         {
             PageNumber = pageNumber,
             PageSize = pageSize
-        });
+        }, cancellationToken);
 
         var halResource = _resourceAssembler.ToCollectionResource(
             result,
@@ -73,9 +75,10 @@ public class LocationController : ControllerBase
     [AllowAnonymous]
     [ProducesResponseType(typeof(HalResource<LocationDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<HalResource<LocationDto>>> GetById(Guid id)
+    [OutputCache(PolicyName = "DetailData")]
+    public async Task<ActionResult<HalResource<LocationDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        var location = await _mediator.Send(new GetLocationDetailsRequest { Id = id });
+        var location = await _mediator.Send(new GetLocationDetailsRequest { Id = id }, cancellationToken);
 
         if (location is null)
         {
@@ -94,9 +97,10 @@ public class LocationController : ControllerBase
     [EndpointDescription("Get all locations in a specific city.")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(HalCollectionResource<LocationListDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<HalCollectionResource<LocationListDto>>> GetByCity(string city)
+    [OutputCache(PolicyName = "ListData")]
+    public async Task<ActionResult<HalCollectionResource<LocationListDto>>> GetByCity(string city, CancellationToken cancellationToken = default)
     {
-        var locations = await _mediator.Send(new GetLocationsByCityRequest { City = city });
+        var locations = await _mediator.Send(new GetLocationsByCityRequest { City = city }, cancellationToken);
 
         var halResource = _resourceAssembler.ToCollectionResource(
             locations,
@@ -114,9 +118,10 @@ public class LocationController : ControllerBase
     [EndpointDescription("Get all locations in a specific country.")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(HalCollectionResource<LocationListDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<HalCollectionResource<LocationListDto>>> GetByCountry(string country)
+    [OutputCache(PolicyName = "ListData")]
+    public async Task<ActionResult<HalCollectionResource<LocationListDto>>> GetByCountry(string country, CancellationToken cancellationToken = default)
     {
-        var locations = await _mediator.Send(new GetLocationsByCountryRequest { Country = country });
+        var locations = await _mediator.Send(new GetLocationsByCountryRequest { Country = country }, cancellationToken);
 
         var halResource = _resourceAssembler.ToCollectionResource(
             locations,
@@ -137,10 +142,10 @@ public class LocationController : ControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateLocationDto location)
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateLocationDto location, CancellationToken cancellationToken = default)
     {
         var command = new CreateLocationCommand { LocationDto = location };
-        var response = await _mediator.Send(command);
+        var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)
         {
@@ -165,7 +170,7 @@ public class LocationController : ControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateLocationDto location)
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateLocationDto location, CancellationToken cancellationToken = default)
     {
         if (id != location.Id)
         {
@@ -173,7 +178,7 @@ public class LocationController : ControllerBase
         }
 
         var command = new UpdateLocationCommand { LocationDto = location };
-        var response = await _mediator.Send(command);
+        var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)
         {
@@ -193,12 +198,12 @@ public class LocationController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult> Delete(Guid id)
+    public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         try
         {
             var command = new DeleteLocationCommand { Id = id };
-            var result = await _mediator.Send(command);
+            var result = await _mediator.Send(command, cancellationToken);
 
             if (!result)
             {

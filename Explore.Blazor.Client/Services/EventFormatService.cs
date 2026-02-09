@@ -1,7 +1,7 @@
-using Explore.Blazor.Client.Clients;
-using Explore.Blazor.Client.Services.Contracts;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Services.Contracts;
 
 namespace Explore.Blazor.Client.Services;
 
@@ -16,11 +16,12 @@ public class EventFormatService : IEventFormatService
 
     public async Task<ICollection<EventFormatListDto>> GetEventFormatsAsync()
     {
-        return await _client.EventFormatAllAsync();
+        return await _client.EventformatAllAsync();
     }
 
     public async Task<EventFormatDto> GetEventFormatByIdAsync(int id)
     {
-        return await _client.EventFormatAsync(id);
+        return await _client.EventformatAsync(id);
     }
 }
+

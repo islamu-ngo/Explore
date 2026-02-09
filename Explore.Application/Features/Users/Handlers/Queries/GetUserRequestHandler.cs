@@ -1,13 +1,14 @@
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 using AutoMapper;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.User;
 using Explore.Application.Features.Users.Requests.Queries;
 using MediatR;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Explore.Application.Features.Users.Handlers.Queries;
 
@@ -17,40 +18,60 @@ public class GetUserRequestHandler : IRequestHandler<GetUserRequest, UserDto>
     private readonly IObjectStorageService _objectStorageService;
     private readonly IMapper _mapper;
     private readonly ILogger<GetUserRequestHandler> _logger;
+    private readonly HybridCache _cache;
 
     public GetUserRequestHandler(
         IUserRepository userRepository,
         IObjectStorageService objectStorageService,
         IMapper mapper,
-        ILogger<GetUserRequestHandler> logger)
+        ILogger<GetUserRequestHandler> logger,
+        HybridCache cache)
     {
         _userRepository = userRepository;
         _objectStorageService = objectStorageService;
         _mapper = mapper;
         _logger = logger;
+        _cache = cache;
     }
 
     public async Task<UserDto> Handle(GetUserRequest request, CancellationToken cancellationToken)
     {
-        var user = await _userRepository.GetUserWithDetails(request.UserId);
+        var cacheKey = $"user:detail:{request.UserId}";
 
-        if (user == null)
-        {
-            return null;
-        }
+        var userDto = await _cache.GetOrCreateAsync(
+            cacheKey,
+            async _ =>
+            {
+                var user = await _userRepository.GetUserWithDetails(request.UserId);
+                if (user == null)
+                {
+                    return null;
+                }
 
-        var userDto = _mapper.Map<UserDto>(user);
+                var dto = _mapper.Map<UserDto>(user);
 
-        // Generate presigned URL for profile picture if it exists
-        if (user.Actor?.ProfilePicture != null)
+                if (user.Actor?.ProfilePicture != null)
+                {
+                    dto.ProfileImageKey = user.Actor.ProfilePicture.Uri;
+                    dto.ProfileImageUri = user.Actor.ProfilePicture.Uri;
+                }
+                else if (!string.IsNullOrEmpty(user.Actor?.ProfilePictureUri))
+                {
+                    dto.ProfileImageUri = user.Actor.ProfilePictureUri;
+                }
+
+                return dto;
+            },
+            new HybridCacheEntryOptions
+            {
+                Expiration = TimeSpan.FromMinutes(5),
+                LocalCacheExpiration = TimeSpan.FromMinutes(1)
+            },
+            cancellationToken: cancellationToken);
+
+        if (userDto != null && !string.IsNullOrEmpty(userDto.ProfileImageKey))
         {
-            userDto.ProfileImageKey = user.Actor.ProfilePicture.Uri;
-            userDto.ProfileImageUri = ResolveImageUrl(user.Actor.ProfilePicture.Uri);
-        }
-        else if (!string.IsNullOrEmpty(user.Actor?.ProfilePictureUri))
-        {
-            // Fallback to ATProto profile picture URI if available
-            userDto.ProfileImageUri = user.Actor.ProfilePictureUri;
+            userDto.ProfileImageUri = ResolveImageUrl(userDto.ProfileImageKey);
         }
 
         return userDto;

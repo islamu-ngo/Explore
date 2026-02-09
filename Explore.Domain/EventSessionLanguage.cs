@@ -2,22 +2,21 @@ using System;
 using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Interfaces;
 
-namespace Explore.Domain
+namespace Explore.Domain;
+
+public class EventSessionLanguage : ITenantEntity
 {
-    public class EventSessionLanguage : ITenantEntity
-    {
-        public int Id { get; set; }
+    public int Id { get; set; }
 
-        [ForeignKey("EventSession")]
-        public Guid EventSessionId { get; set; }
-        public EventSession EventSession { get; set; }
+    [ForeignKey("EventSession")]
+    public Guid EventSessionId { get; set; }
+    public required EventSession EventSession { get; set; }
 
-        [ForeignKey("Language")]
-        public int LanguageId { get; set; }
-        public Language Language { get; set; }
+    [ForeignKey("Language")]
+    public int LanguageId { get; set; }
+    public required Language Language { get; set; }
 
-        [ForeignKey("Tenant")]
-        public Guid TenantId { get; set; }
-        public Tenant Tenant { get; set; }
-    }
+    [ForeignKey("Tenant")]
+    public Guid TenantId { get; set; }
+    public required Tenant Tenant { get; set; }
 }

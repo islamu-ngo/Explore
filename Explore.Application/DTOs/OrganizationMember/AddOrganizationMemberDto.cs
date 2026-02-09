@@ -1,12 +1,11 @@
-using Explore.Domain.Enums;
 using System;
+using Explore.Domain.Enums;
 
-namespace Explore.Application.DTOs.OrganizationMember
+namespace Explore.Application.DTOs.OrganizationMember;
+
+public class AddOrganizationMemberDto
 {
-    public class AddOrganizationMemberDto
-    {
-        public Guid OrganizationId { get; set; }
-        public string Email { get; set; }
-        public OrganizationRoleEnum Role { get; set; } = OrganizationRoleEnum.Member;
-    }
+    public Guid OrganizationId { get; set; }
+    public required string Email { get; set; }
+    public OrganizationRoleEnum Role { get; set; } = OrganizationRoleEnum.Member;
 }

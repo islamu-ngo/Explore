@@ -1,10 +1,10 @@
+using Blazouter.Services;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
 using MudBlazor;
-using Blazouter.Services;
 
 namespace Explore.Blazor.Client.Pages.Organization;
 
@@ -21,6 +21,8 @@ public partial class OrganizationProfile
     private OrganizationDto? _organization;
     private bool _isLoading = true;
     private List<OrganizationReviewDto> _reviews = new();
+    private OrganizationAppearanceSettings _appearance = new();
+    private string _bannerStyle = OrganizationAppearanceMetadataHelper.BuildBannerStyle(new OrganizationAppearanceSettings(), "#1f6feb");
 
     private string? _errorMessage;
 
@@ -41,6 +43,8 @@ public partial class OrganizationProfile
             // Load organization and its reviews
             _organization = await OrganizationService.GetOrganizationByIdAsync(Id);
             _reviews = (await OrganizationReviewService.GetReviewsByOrganizationId(Id)).ToList();
+            _appearance = OrganizationAppearanceMetadataHelper.Parse(_organization?.MetadataJson);
+            _bannerStyle = OrganizationAppearanceMetadataHelper.BuildBannerStyle(_appearance, "#1f6feb");
             Logger.LogDebug("Loaded organization {OrganizationId} with {ReviewCount} reviews", Id, _reviews.Count);
         }
         catch (Exception ex)

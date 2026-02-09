@@ -1,9 +1,8 @@
 using System;
 
-namespace Explore.Application.DTOs.TenantSettings
+namespace Explore.Application.DTOs.TenantSettings;
+
+public class CreateTenantSettingsDto
 {
-    public class CreateTenantSettingsDto
-    {
-        public Guid TenantId { get; set; }
-    }
+    public Guid TenantId { get; set; }
 }

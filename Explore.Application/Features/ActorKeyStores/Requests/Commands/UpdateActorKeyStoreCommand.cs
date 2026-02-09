@@ -1,11 +1,10 @@
-using MediatR;
 using Explore.Application.DTOs.ActorKeyStore;
 using Explore.Application.Responses;
+using MediatR;
 
-namespace Explore.Application.Features.ActorKeyStores.Requests.Commands
+namespace Explore.Application.Features.ActorKeyStores.Requests.Commands;
+
+public class UpdateActorKeyStoreCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public class UpdateActorKeyStoreCommand : IRequest<BaseCommandResponse<Guid>>
-    {
-        public UpdateActorKeyStoreDto ActorKeyStoreDto { get; set; }
-    }
+    public required UpdateActorKeyStoreDto ActorKeyStoreDto { get; set; }
 }

@@ -1,15 +1,15 @@
 using System;
 
-namespace Explore.Application.DTOs.Organization
+namespace Explore.Application.DTOs.Organization;
+
+public class UpdateOrganizationDto
 {
-    public class UpdateOrganizationDto
-    {
-        public string FullName { get; set; }
-        public string? WebsiteUrl { get; set; }
-        public string Email { get; set; }
-        public string Country { get; set; }
-        public string City { get; set; }
-        public int Postcode { get; set; }
-        public string Address { get; set; }
-    }
+    public required string FullName { get; set; }
+    public string? WebsiteUrl { get; set; }
+    public required string Email { get; set; }
+    public required string Country { get; set; }
+    public required string City { get; set; }
+    public int Postcode { get; set; }
+    public required string Address { get; set; }
+    public string? MetadataJson { get; set; }
 }

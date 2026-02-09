@@ -1,10 +1,10 @@
+using Blazouter.Services;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using MudBlazor;
-using Blazouter.Services;
 
 namespace Explore.Blazor.Client.Pages.Organization;
 

@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
@@ -9,6 +10,12 @@ namespace Explore.Blazor.Client.Services;
 
 public sealed class BffUnauthorizedHandler : DelegatingHandler
 {
+    private static readonly string[] AnonymousApiPathPrefixes =
+    [
+        "/api/v1/publicexperience/settings",
+        "/api/v1/instanceonboarding/status"
+    ];
+
     private readonly NavigationManager _nav;
     private readonly ILogger<BffUnauthorizedHandler> _logger;
 
@@ -23,7 +30,7 @@ public sealed class BffUnauthorizedHandler : DelegatingHandler
         HttpResponseMessage response;
         try
         {
-            response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            response = await base.SendAsync(request, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -34,32 +41,62 @@ public sealed class BffUnauthorizedHandler : DelegatingHandler
         if (response.StatusCode == HttpStatusCode.Unauthorized)
         {
             var path = request.RequestUri?.AbsolutePath ?? string.Empty;
-
-            // If this appears to be an API call (starts with /api) or the Accept header does not include text/html,
-            // do not force a full-page redirect to /login. Let the app handle 401 responses for API calls.
-            var isApiCall = path.StartsWith("/api", System.StringComparison.OrdinalIgnoreCase);
-            var acceptHtml = request.Headers.Accept?.Any(h => h.MediaType?.Equals("text/html", System.StringComparison.OrdinalIgnoreCase) == true) == true;
-
-            if (!isApiCall && acceptHtml)
+            var currentRelativePath = _nav.ToBaseRelativePath(_nav.Uri);
+            if (string.IsNullOrWhiteSpace(currentRelativePath))
             {
-                // Avoid redirecting when already navigating to login endpoints
-                if (!path.StartsWith("/login", System.StringComparison.OrdinalIgnoreCase) && !path.StartsWith("/auth", System.StringComparison.OrdinalIgnoreCase))
-                {
-                    _logger.LogWarning("BFF handler: received 401 for {Method} {Uri} - redirecting to /login", request.Method, request.RequestUri);
-
-                    // Force full page load to hit server login endpoint which triggers the BFF/OIDC challenge
-                    var returnUrl = Uri.EscapeDataString(_nav.ToBaseRelativePath(_nav.Uri));
-                    var loginUrl = $"/login?returnUrl={returnUrl}";
-
-                    // Navigate with full page load so the server can start auth flow
-                    _nav.NavigateTo(loginUrl, forceLoad: true);
-                }
+                currentRelativePath = "/";
+            }
+            else if (!currentRelativePath.StartsWith('/'))
+            {
+                currentRelativePath = "/" + currentRelativePath;
             }
             else
             {
-                _logger.LogInformation("BFF handler: received 401 for API or non-HTML request {Method} {Uri} - returning 401 response to client", request.Method, request.RequestUri);
-                // Do not redirect for API calls; return response so application code can handle 401 gracefully
+                var queryIndex = currentRelativePath.IndexOf('?', System.StringComparison.Ordinal);
+                if (queryIndex >= 0)
+                {
+                    currentRelativePath = currentRelativePath[..queryIndex];
+                }
             }
+
+            // Avoid redirect loops when the request itself is part of authentication endpoints.
+            if (path.StartsWith("/login", System.StringComparison.OrdinalIgnoreCase) ||
+                path.StartsWith("/logout", System.StringComparison.OrdinalIgnoreCase) ||
+                path.StartsWith("/auth", System.StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogDebug("BFF handler: received 401 from auth endpoint {Method} {Uri}", request.Method, request.RequestUri);
+                return response;
+            }
+
+            // Avoid redirect loops when the user is already on auth pages.
+            if (currentRelativePath.StartsWith("/login", System.StringComparison.OrdinalIgnoreCase) ||
+                currentRelativePath.StartsWith("/logout", System.StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogDebug("BFF handler: suppressing 401 redirect while on auth page {CurrentPath}", currentRelativePath);
+                return response;
+            }
+
+            // Keep anonymous startup/public endpoints non-interruptive.
+            if (AnonymousApiPathPrefixes.Any(prefix => path.StartsWith(prefix, System.StringComparison.OrdinalIgnoreCase)))
+            {
+                _logger.LogDebug("BFF handler: received 401 from anonymous endpoint {Method} {Uri}", request.Method, request.RequestUri);
+                return response;
+            }
+
+            _logger.LogWarning("BFF handler: received 401 for {Method} {Uri} - redirecting to /login", request.Method, request.RequestUri);
+
+            var relativeCurrentPath = _nav.ToBaseRelativePath(_nav.Uri);
+            if (string.IsNullOrWhiteSpace(relativeCurrentPath))
+            {
+                relativeCurrentPath = "/";
+            }
+            else if (!relativeCurrentPath.StartsWith('/'))
+            {
+                relativeCurrentPath = "/" + relativeCurrentPath;
+            }
+
+            var returnUrl = Uri.EscapeDataString(relativeCurrentPath);
+            _nav.NavigateTo($"/login?returnUrl={returnUrl}", forceLoad: true);
         }
 
         return response;

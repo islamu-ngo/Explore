@@ -9,59 +9,58 @@ using Explore.Application.Features.EventTags.Requests.Commands;
 using Explore.Application.Responses;
 using MediatR;
 
-namespace Explore.Application.Features.EventTags.Handlers.Commands
+namespace Explore.Application.Features.EventTags.Handlers.Commands;
+
+public class UpdateEventTagsCommandHandler : IRequestHandler<UpdateEventTagsCommand, BaseCommandResponse<Guid>>
 {
-    public class UpdateEventTagsCommandHandler : IRequestHandler<UpdateEventTagsCommand, BaseCommandResponse<Guid>>
+    private readonly IEventTagsRepository _eventTagsRepository;
+    private readonly IEventRepository _eventRepository;
+    private readonly ITagRepository _tagRepository;
+    private readonly IMapper _mapper;
+
+    public UpdateEventTagsCommandHandler(
+        IEventTagsRepository eventTagsRepository,
+        IEventRepository eventRepository,
+        ITagRepository tagRepository,
+        IMapper mapper)
     {
-        private readonly IEventTagsRepository _eventTagsRepository;
-        private readonly IEventRepository _eventRepository;
-        private readonly ITagRepository _tagRepository;
-        private readonly IMapper _mapper;
+        _eventTagsRepository = eventTagsRepository;
+        _eventRepository = eventRepository;
+        _tagRepository = tagRepository;
+        _mapper = mapper;
+    }
 
-        public UpdateEventTagsCommandHandler(
-            IEventTagsRepository eventTagsRepository,
-            IEventRepository eventRepository,
-            ITagRepository tagRepository,
-            IMapper mapper)
+    public async Task<BaseCommandResponse<Guid>> Handle(UpdateEventTagsCommand request, CancellationToken cancellationToken)
+    {
+        var response = new BaseCommandResponse<Guid>();
+
+        var validator = new UpdateEventTagsDtoValidator(_eventRepository, _tagRepository, _eventTagsRepository);
+        var validationResult = await validator.ValidateAsync(request.EventTagsDto, cancellationToken);
+
+        if (!validationResult.IsValid)
         {
-            _eventTagsRepository = eventTagsRepository;
-            _eventRepository = eventRepository;
-            _tagRepository = tagRepository;
-            _mapper = mapper;
-        }
-
-        public async Task<BaseCommandResponse<Guid>> Handle(UpdateEventTagsCommand request, CancellationToken cancellationToken)
-        {
-            var response = new BaseCommandResponse<Guid>();
-
-            var validator = new UpdateEventTagsDtoValidator(_eventRepository, _tagRepository, _eventTagsRepository);
-            var validationResult = await validator.ValidateAsync(request.EventTagsDto);
-
-            if (!validationResult.IsValid)
-            {
-                response.Success = false;
-                response.Message = "Event Tag update failed.";
-                response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-                return response;
-            }
-
-            var eventTags = await _eventTagsRepository.GetById(request.EventTagsDto.Id);
-
-            if (eventTags == null)
-            {
-                response.Success = false;
-                response.Message = "Event Tag not found.";
-                return response;
-            }
-
-            _mapper.Map(request.EventTagsDto, eventTags);
-            await _eventTagsRepository.Update(eventTags);
-
-            response.Success = true;
-            response.Id = eventTags.Id;
-            response.Message = "Event Tag updated successfully.";
-
+            response.Success = false;
+            response.Message = "Event Tag update failed.";
+            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
             return response;
         }
+
+        var eventTags = await _eventTagsRepository.GetById(request.EventTagsDto.Id);
+
+        if (eventTags == null)
+        {
+            response.Success = false;
+            response.Message = "Event Tag not found.";
+            return response;
+        }
+
+        _mapper.Map(request.EventTagsDto, eventTags);
+        await _eventTagsRepository.Update(eventTags);
+
+        response.Success = true;
+        response.Id = eventTags.Id;
+        response.Message = "Event Tag updated successfully.";
+
+        return response;
     }
 }

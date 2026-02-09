@@ -1,5 +1,5 @@
-using MediatR;
 using Explore.Application.DTOs.Actor;
+using MediatR;
 
 namespace Explore.Application.Features.Actors.Requests.Queries;
 

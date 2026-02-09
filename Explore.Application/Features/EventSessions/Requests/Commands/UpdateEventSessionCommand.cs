@@ -3,10 +3,9 @@ using Explore.Application.DTOs.EventSession;
 using Explore.Application.Responses;
 using MediatR;
 
-namespace Explore.Application.Features.EventSessions.Requests.Commands
+namespace Explore.Application.Features.EventSessions.Requests.Commands;
+
+public class UpdateEventSessionCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public class UpdateEventSessionCommand : IRequest<BaseCommandResponse<Guid>>
-    {
-        public UpdateEventSessionDto EventSessionDto { get; set; }
-    }
+    public required UpdateEventSessionDto EventSessionDto { get; set; }
 }

@@ -1,14 +1,13 @@
 using Explore.Blazor.Client.Clients;
 using FluentValidation;
 
-namespace Explore.Blazor.Client.Validators
+namespace Explore.Blazor.Client.Validators;
+
+public class CreateTagDtoValidator : AbstractValidator<CreateTagDto>
 {
-    public class CreateTagDtoValidator : AbstractValidator<CreateTagDto>
+    public CreateTagDtoValidator()
     {
-        public CreateTagDtoValidator()
-        {
-            RuleFor(x => x.FullName).NotEmpty();
-            RuleFor(x => x.MasterCode).NotEmpty();
-        }
+        RuleFor(x => x.FullName).NotEmpty();
+        RuleFor(x => x.MasterCode).NotEmpty();
     }
 }

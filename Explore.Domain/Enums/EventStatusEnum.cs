@@ -1,11 +1,10 @@
-namespace Explore.Domain.Enums
+namespace Explore.Domain.Enums;
+
+public enum EventStatusEnum
 {
-    public enum EventStatusEnum
-    {
-        Draft = 1,
-        Published = 2,
-        Cancelled = 3,
-        Completed = 4,
-        Archived = 5
-    }
+    Draft = 1,
+    Published = 2,
+    Cancelled = 3,
+    Completed = 4,
+    Archived = 5
 }

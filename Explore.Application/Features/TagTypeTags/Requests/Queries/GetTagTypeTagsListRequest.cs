@@ -1,9 +1,8 @@
 using Explore.Application.DTOs.TagTypeTags;
 using MediatR;
 
-namespace Explore.Application.Features.TagTypeTags.Requests.Queries
+namespace Explore.Application.Features.TagTypeTags.Requests.Queries;
+
+public class GetTagTypeTagsListRequest : IRequest<List<TagTypeTagsListDto>>
 {
-    public class GetTagTypeTagsListRequest : IRequest<List<TagTypeTagsListDto>>
-    {
-    }
 }

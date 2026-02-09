@@ -28,6 +28,7 @@ public class PdsSyncOutboxRepository : GenericRepository<PdsSyncOutbox, Guid>, I
         var now = DateTime.UtcNow;
 
         return await _dbContext.PdsSyncOutbox
+            .AsNoTracking()
             .Where(o => o.Status == PdsSyncStatus.Pending &&
                         (o.NextRetryAt == null || o.NextRetryAt <= now))
             .OrderBy(o => o.CreatedAt)
@@ -43,6 +44,7 @@ public class PdsSyncOutboxRepository : GenericRepository<PdsSyncOutbox, Guid>, I
     public async Task<List<PdsSyncOutbox>> GetBySourceEntity(string sourceEntityType, Guid sourceEntityId)
     {
         return await _dbContext.PdsSyncOutbox
+            .AsNoTracking()
             .Where(o => o.SourceEntityType == sourceEntityType && o.SourceEntityId == sourceEntityId)
             .OrderByDescending(o => o.CreatedAt)
             .ToListAsync();
@@ -103,6 +105,7 @@ public class PdsSyncOutboxRepository : GenericRepository<PdsSyncOutbox, Guid>, I
     public async Task<List<PdsSyncOutbox>> GetFailedEntries(int limit = 100)
     {
         return await _dbContext.PdsSyncOutbox
+            .AsNoTracking()
             .Where(o => o.Status == PdsSyncStatus.Failed)
             .OrderByDescending(o => o.CreatedAt)
             .Take(limit)

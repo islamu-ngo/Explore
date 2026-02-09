@@ -13,5 +13,5 @@ public class CreateEventWithSessionsCommand : IRequest<BaseCommandResponse<Guid>
     /// <summary>
     /// The event and sessions data.
     /// </summary>
-    public CreateEventWithSessionsDto EventWithSessionsDto { get; set; }
+    public required CreateEventWithSessionsDto EventWithSessionsDto { get; set; }
 }

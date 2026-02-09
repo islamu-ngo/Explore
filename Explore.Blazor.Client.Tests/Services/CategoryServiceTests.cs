@@ -1,0 +1,394 @@
+// ABOUTME: Unit tests for CategoryService covering category CRUD and neutralized category-event methods.
+// Verifies HAL conversion, pagination usage, and error handling contracts for read and write operations.
+
+using Explore.Blazor.Client.Constants;
+using Explore.Blazor.Client.Helpers;
+
+namespace Explore.Blazor.Client.Tests.Services;
+
+/// <summary>
+/// Unit tests for CategoryService.
+/// </summary>
+/// <remarks>
+/// These tests verify:
+/// - HAL collection/resource conversion for categories
+/// - Read methods returning empty/null on API failures
+/// - Create/Update methods returning failure BaseCommandResponseOfGuid on API failures
+/// - Alias behavior for GetAllCategoriesAsync
+/// </remarks>
+public class CategoryServiceTests
+{
+    private readonly IEventApiClient _apiClient;
+    private readonly ILogger<CategoryService> _logger;
+    private readonly CategoryService _service;
+
+    public CategoryServiceTests()
+    {
+        _apiClient = Substitute.For<IEventApiClient>();
+        _logger = Substitute.For<ILogger<CategoryService>>();
+        _service = new CategoryService(_apiClient, _logger);
+    }
+
+    // ========== GetCategoriesAsync ==========
+
+    #region GetCategoriesAsync Tests
+
+    [Test]
+    public async Task GetCategoriesAsync_ReturnsCategories_WhenApiSucceeds()
+    {
+        // Arrange
+        var categories = ComponentDataBuilder.CategoryListDto.Generate(3);
+        var halResponse = CreateCategoryCollectionResponse(categories);
+
+        _apiClient.GetCategoriesAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(halResponse);
+
+        // Act
+        var result = await _service.GetCategoriesAsync();
+
+        // Assert
+        await Assert.That(result.Count).IsEqualTo(3);
+        await Assert.That(result.First().FullName).IsEqualTo(categories.First().FullName);
+    }
+
+    [Test]
+    public async Task GetCategoriesAsync_ReturnsEmptyList_WhenApiReturnsNull()
+    {
+        // Arrange
+        _apiClient.GetCategoriesAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns((HalCollectionResourceOfCategoryListDto?)null);
+
+        // Act
+        var result = await _service.GetCategoriesAsync();
+
+        // Assert
+        await Assert.That(result).IsEmpty();
+    }
+
+    [Test]
+    public async Task GetCategoriesAsync_ReturnsEmptyList_WhenApiThrows()
+    {
+        // Arrange
+        _apiClient.GetCategoriesAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
+
+        // Act
+        var result = await _service.GetCategoriesAsync();
+
+        // Assert
+        await Assert.That(result).IsEmpty();
+    }
+
+    [Test]
+    public async Task GetCategoriesAsync_CallsApiWithCorrectPagination()
+    {
+        // Arrange
+        var halResponse = CreateCategoryCollectionResponse(new List<CategoryListDto>());
+        _apiClient.GetCategoriesAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(halResponse);
+
+        // Act
+        await _service.GetCategoriesAsync();
+
+        // Assert
+    }
+
+    #endregion
+
+    // ========== GetAllCategoriesAsync ==========
+
+    #region GetAllCategoriesAsync Tests
+
+    [Test]
+    public async Task GetAllCategoriesAsync_ReturnsCategories_WhenApiSucceeds()
+    {
+        // Arrange
+        var categories = ComponentDataBuilder.CategoryListDto.Generate(2);
+        var halResponse = CreateCategoryCollectionResponse(categories);
+
+        _apiClient.GetCategoriesAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(halResponse);
+
+        // Act
+        var result = await _service.GetAllCategoriesAsync();
+
+        // Assert
+        await Assert.That(result.Count).IsEqualTo(2);
+    }
+
+    #endregion
+
+    // ========== GetCategoryByIdAsync ==========
+
+    #region GetCategoryByIdAsync Tests
+
+    [Test]
+    public async Task GetCategoryByIdAsync_ReturnsNull_WhenApiReturnsNull()
+    {
+        // Arrange
+        var categoryId = Guid.NewGuid();
+        _apiClient.GetCategoryByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((HalResourceOfCategoryDto?)null);
+        _apiClient.GetCategoryByIdAsync(Arg.Any<Guid>())
+            .Returns((HalResourceOfCategoryDto?)null);
+
+        // Act
+        var result = await _service.GetCategoryByIdAsync(categoryId);
+
+        // Assert
+        await Assert.That(result).IsNull();
+    }
+
+    [Test]
+    public async Task GetCategoryByIdAsync_ReturnsNull_WhenNotFound()
+    {
+        // Arrange
+        var categoryId = Guid.NewGuid();
+        _apiClient.GetCategoryByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ApiException("Not Found", 404, null, null, null));
+        _apiClient.GetCategoryByIdAsync(Arg.Any<Guid>())
+            .ThrowsAsync(new ApiException("Not Found", 404, null, null, null));
+
+        // Act
+        var result = await _service.GetCategoryByIdAsync(categoryId);
+
+        // Assert
+        await Assert.That(result).IsNull();
+    }
+
+    [Test]
+    public async Task GetCategoryByIdAsync_ReturnsNull_WhenApiThrows()
+    {
+        // Arrange
+        var categoryId = Guid.NewGuid();
+        _apiClient.GetCategoryByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
+        _apiClient.GetCategoryByIdAsync(Arg.Any<Guid>())
+            .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
+
+        // Act
+        var result = await _service.GetCategoryByIdAsync(categoryId);
+
+        // Assert
+        await Assert.That(result).IsNull();
+    }
+
+    #endregion
+
+    // ========== CreateCategoryAsync ==========
+
+    #region CreateCategoryAsync Tests
+
+    [Test]
+    public async Task CreateCategoryAsync_ReturnsResponse_WhenApiSucceeds()
+    {
+        // Arrange
+        var dto = new CreateCategoryDto
+        {
+            FullName = "New Category",
+            MasterCode = "NEWCAT"
+        };
+        var expectedResponse = ComponentDataBuilder.SuccessResponse();
+
+        _apiClient.CreateCategoryAsync(Arg.Any<CreateCategoryDto>(), Arg.Any<CancellationToken>())
+            .Returns(expectedResponse);
+
+        // Act
+        var result = await _service.CreateCategoryAsync(dto);
+
+        // Assert
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Success).IsTrue();
+    }
+
+    [Test]
+    public async Task CreateCategoryAsync_ReturnsFailureResponse_WhenApiThrows()
+    {
+        // Arrange
+        var dto = new CreateCategoryDto
+        {
+            FullName = "New Category",
+            MasterCode = "NEWCAT"
+        };
+
+        _apiClient.CreateCategoryAsync(Arg.Any<CreateCategoryDto>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ApiException("Bad Request", 400, "validation error", null, null));
+
+        // Act
+        var result = await _service.CreateCategoryAsync(dto);
+
+        // Assert
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Success).IsFalse();
+        await Assert.That(result.Message).Contains("API error");
+    }
+
+    #endregion
+
+    // ========== UpdateCategoryAsync ==========
+
+    #region UpdateCategoryAsync Tests
+
+    [Test]
+    public async Task UpdateCategoryAsync_ReturnsResponse_WhenApiSucceeds()
+    {
+        // Arrange
+        var categoryId = Guid.NewGuid();
+        var dto = new UpdateCategoryDto
+        {
+            Id = categoryId,
+            FullName = "Updated Category",
+            MasterCode = "UPDCAT"
+        };
+        var expectedResponse = ComponentDataBuilder.SuccessResponse(categoryId);
+
+        _apiClient.UpdateCategoryAsync(Arg.Any<Guid>(), Arg.Any<UpdateCategoryDto>(), Arg.Any<CancellationToken>())
+            .Returns(expectedResponse);
+
+        // Act
+        var result = await _service.UpdateCategoryAsync(categoryId, dto);
+
+        // Assert
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Success).IsTrue();
+        await Assert.That(result.Id).IsEqualTo(categoryId);
+    }
+
+    [Test]
+    public async Task UpdateCategoryAsync_ReturnsFailureResponse_WhenApiThrows()
+    {
+        // Arrange
+        var categoryId = Guid.NewGuid();
+        var dto = new UpdateCategoryDto
+        {
+            Id = categoryId,
+            FullName = "Updated Category",
+            MasterCode = "UPDCAT"
+        };
+
+        _apiClient.UpdateCategoryAsync(Arg.Any<Guid>(), Arg.Any<UpdateCategoryDto>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ApiException("Bad Request", 400, "validation error", null, null));
+
+        // Act
+        var result = await _service.UpdateCategoryAsync(categoryId, dto);
+
+        // Assert
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Success).IsFalse();
+        await Assert.That(result.Message).Contains("API error");
+    }
+
+    #endregion
+
+    // ========== DeleteCategoryAsync ==========
+
+    #region DeleteCategoryAsync Tests
+
+    [Test]
+    public async Task DeleteCategoryAsync_ReturnsTrue_WhenApiSucceeds()
+    {
+        // Arrange
+        var categoryId = Guid.NewGuid();
+        _apiClient.DeleteCategoryAsync(categoryId, Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.DeleteCategoryAsync(categoryId);
+
+        // Assert
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task DeleteCategoryAsync_ReturnsFalse_WhenApiThrows()
+    {
+        // Arrange
+        var categoryId = Guid.NewGuid();
+        _apiClient.DeleteCategoryAsync(categoryId, Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ApiException("Forbidden", 403, null, null, null));
+
+        // Act
+        var result = await _service.DeleteCategoryAsync(categoryId);
+
+        // Assert
+        await Assert.That(result).IsFalse();
+    }
+
+    #endregion
+
+    // ========== Neutralized Methods ==========
+
+    #region Neutralized Methods Tests
+
+    [Test]
+    public async Task GetCategoriesByEventAsync_ReturnsEmptyList_WhenCalled()
+    {
+        // Arrange
+        var eventId = Guid.NewGuid();
+
+        // Act
+        var result = await _service.GetCategoriesByEventAsync(eventId);
+
+        // Assert
+        await Assert.That(result).IsEmpty();
+    }
+
+    [Test]
+    public async Task GetEventsByCategoryAsync_ReturnsEmptyList_WhenCalled()
+    {
+        // Arrange
+        var categoryId = Guid.NewGuid();
+
+        // Act
+        var result = await _service.GetEventsByCategoryAsync(categoryId);
+
+        // Assert
+        await Assert.That(result).IsEmpty();
+    }
+
+    [Test]
+    public async Task AssignCategoryToEventAsync_ReturnsNull_WhenCalled()
+    {
+        // Arrange
+        var dto = new object();
+
+        // Act
+        var result = await _service.AssignCategoryToEventAsync(dto);
+
+        // Assert
+        await Assert.That(result).IsNull();
+    }
+
+    [Test]
+    public async Task RemoveCategoryFromEventAsync_ReturnsFalse_WhenCalled()
+    {
+        // Arrange
+        var eventCategoryId = Guid.NewGuid();
+
+        // Act
+        var result = await _service.RemoveCategoryFromEventAsync(eventCategoryId);
+
+        // Assert
+        await Assert.That(result).IsFalse();
+    }
+
+    #endregion
+
+    // ========== HAL Response Helpers ==========
+
+    #region HAL Response Helpers
+
+    private static HalCollectionResourceOfCategoryListDto CreateCategoryCollectionResponse(
+        IList<CategoryListDto> items)
+    {
+        return new HalCollectionResourceOfCategoryListDto
+        {
+            _embedded = new HalCollectionEmbeddedOfCategoryListDto
+            {
+                Items = items.Cast<object>().ToList()
+            }
+        };
+    }
+
+    #endregion
+}

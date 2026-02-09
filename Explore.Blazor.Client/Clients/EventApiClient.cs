@@ -1,18 +1,17 @@
-using Explore.Blazor.Client.Constants;
-
 namespace Explore.Blazor.Client.Clients;
 
 /// <summary>
-/// Partial class extending the NSwag-generated EventApiClient to add tenant header to all requests.
+/// Partial class extending NSwag-generated EventApiClient.
+/// Tenant context is resolved server-side from forwarded host or explicit X-Tenant-Id when provided.
 /// </summary>
 public partial class EventApiClient
 {
     /// <summary>
-    /// Called before each request. Adds the X-Tenant-Id header with the default tenant ID.
+    /// Called before each request.
     /// </summary>
     partial void PrepareRequest(System.Net.Http.HttpClient client, System.Net.Http.HttpRequestMessage request, string url)
     {
-        // Add tenant ID header to every request
-        request.Headers.Add(TenantConstants.TenantIdHeaderName, TenantConstants.DefaultTenantId.ToString());
+        // Intentionally left empty.
+        // Host/subdomain/custom-domain resolution is handled by the API tenant context.
     }
 }

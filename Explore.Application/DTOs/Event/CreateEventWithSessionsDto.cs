@@ -13,7 +13,7 @@ public class CreateEventWithSessionsDto
     /// <summary>
     /// Event title (required).
     /// </summary>
-    public string Title { get; set; }
+    public required string Title { get; set; }
 
     /// <summary>
     /// Optional event description.

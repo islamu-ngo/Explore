@@ -1,11 +1,11 @@
 // ABOUTME: Manages access token storage for Blazor Server circuits and token forwarding to API requests.
 // ABOUTME: Contains CircuitAccessTokenService (scoped token store) and AccessTokenForwardingHandler (HTTP message handler).
 
+using System.Collections.Concurrent;
+using System.IdentityModel.Tokens.Jwt;
 using Explore.Blazor.Client.Constants;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
-using System.Collections.Concurrent;
-using System.IdentityModel.Tokens.Jwt;
 
 namespace Explore.Blazor.Services;
 
@@ -282,18 +282,45 @@ public class AccessTokenForwardingHandler : DelegatingHandler
         }
         else if (string.IsNullOrEmpty(token))
         {
-            _logger.LogWarning("[AccessTokenForwardingHandler] No token available for {Path} - request will likely fail with 401", request.RequestUri?.PathAndQuery);
+            var path = request.RequestUri?.PathAndQuery ?? string.Empty;
+            if (IsAnonymousAllowedPath(path))
+            {
+                _logger.LogDebug("[AccessTokenForwardingHandler] No token needed for anonymous endpoint {Path}", path);
+            }
+            else
+            {
+                _logger.LogWarning("[AccessTokenForwardingHandler] No token available for {Path} - request will likely fail with 401", path);
+            }
         }
 
-        // Always add X-Tenant-Id header for multi-tenant isolation
-        // This ensures the API knows which tenant the request belongs to
-        if (!request.Headers.Contains(TenantConstants.TenantIdHeaderName))
+        var incomingTenantHeader = httpContext?.Request.Headers[TenantConstants.TenantIdHeaderName].FirstOrDefault();
+        if (!request.Headers.Contains(TenantConstants.TenantIdHeaderName) &&
+            !string.IsNullOrWhiteSpace(incomingTenantHeader))
         {
-            request.Headers.Add(TenantConstants.TenantIdHeaderName, TenantConstants.DefaultTenantId.ToString());
-            _logger.LogDebug("[AccessTokenForwardingHandler] Added {Header}: {TenantId} to {Path}",
-                TenantConstants.TenantIdHeaderName, TenantConstants.DefaultTenantId, request.RequestUri?.PathAndQuery);
+            request.Headers.Add(TenantConstants.TenantIdHeaderName, incomingTenantHeader);
+            _logger.LogDebug("[AccessTokenForwardingHandler] Forwarded tenant header {Header}: {TenantId} to {Path}",
+                TenantConstants.TenantIdHeaderName, incomingTenantHeader, request.RequestUri?.PathAndQuery);
+        }
+
+        var forwardedHost = httpContext?.Request.Headers["X-Forwarded-Host"].FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(forwardedHost))
+        {
+            forwardedHost = httpContext?.Request.Host.Value;
+        }
+
+        if (!request.Headers.Contains("X-Forwarded-Host") && !string.IsNullOrWhiteSpace(forwardedHost))
+        {
+            request.Headers.Add("X-Forwarded-Host", forwardedHost);
+            _logger.LogDebug("[AccessTokenForwardingHandler] Forwarded host header X-Forwarded-Host: {Host} to {Path}",
+                forwardedHost, request.RequestUri?.PathAndQuery);
         }
 
         return await base.SendAsync(request, cancellationToken);
+    }
+
+    private static bool IsAnonymousAllowedPath(string pathAndQuery)
+    {
+        return pathAndQuery.Contains("/api/v1/PublicExperience/settings", StringComparison.OrdinalIgnoreCase)
+            || pathAndQuery.Contains("/api/v1/InstanceOnboarding/status", StringComparison.OrdinalIgnoreCase);
     }
 }

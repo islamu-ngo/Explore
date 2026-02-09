@@ -317,13 +317,10 @@ public class KeyRotationServiceTests : IDisposable
             .Returns(Task.CompletedTask);
 
         var progressReports = new List<KeyRotationProgress>();
-        var progress = new Progress<KeyRotationProgress>(p => progressReports.Add(p));
+        var progress = new SynchronousProgress<KeyRotationProgress>(p => progressReports.Add(p));
 
         // Act
         var result = await service.ReEncryptAllAsync(getSettings, updateSetting, progress);
-
-        // Allow progress reports to be processed
-        await Task.Delay(50);
 
         // Assert
         progressReports.Should().HaveCount(2);
@@ -464,5 +461,14 @@ public class KeyRotationServiceTests : IDisposable
     public void Dispose()
     {
         _encryptionService?.Dispose();
+    }
+
+    /// <summary>
+    /// Synchronous IProgress implementation that avoids the SynchronizationContext
+    /// race conditions inherent in <see cref="Progress{T}"/> during unit tests.
+    /// </summary>
+    private sealed class SynchronousProgress<T>(Action<T> handler) : IProgress<T>
+    {
+        public void Report(T value) => handler(value);
     }
 }

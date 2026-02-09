@@ -54,68 +54,6 @@ public class SystemSettingConfiguration : IEntityTypeConfiguration<SystemSetting
             .HasDefaultValueSql("NOW()");
 
         // Seed initial system settings using centralized SeedIds
-        builder.HasData(
-            new SystemSetting
-            {
-                Id = SeedIds.SystemSettingDeploymentModeId,
-                SettingKey = "deployment.mode",
-                Value = "\"MultiTenant\"",
-                ValueType = SettingValueType.String,
-                IsLocked = true,
-                AllowedValues = "[\"SingleTenant\", \"MultiTenant\"]",
-                Description = "Deployment mode of the application",
-                Category = "System",
-                DisplayOrder = 1,
-                CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-            },
-            new SystemSetting
-            {
-                Id = SeedIds.SystemSettingMaxSessionsPerEventId,
-                SettingKey = "events.max_sessions_per_event",
-                Value = "100",
-                ValueType = SettingValueType.Integer,
-                IsLocked = false,
-                Description = "Maximum number of sessions allowed per event",
-                Category = "Events",
-                DisplayOrder = 1,
-                CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-            },
-            new SystemSetting
-            {
-                Id = SeedIds.SystemSettingRequireApprovalId,
-                SettingKey = "events.require_approval",
-                Value = "false",
-                ValueType = SettingValueType.Boolean,
-                IsLocked = false,
-                Description = "Whether events require admin approval before publishing",
-                Category = "Events",
-                DisplayOrder = 2,
-                CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-            },
-            new SystemSetting
-            {
-                Id = SeedIds.SystemSettingIslamicModuleId,
-                SettingKey = "modules.islamic_enabled",
-                Value = "true",
-                ValueType = SettingValueType.Boolean,
-                IsLocked = false,
-                Description = "Enable Islamic event module",
-                Category = "Modules",
-                DisplayOrder = 1,
-                CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-            },
-            new SystemSetting
-            {
-                Id = SeedIds.SystemSettingTechModuleId,
-                SettingKey = "modules.tech_enabled",
-                Value = "true",
-                ValueType = SettingValueType.Boolean,
-                IsLocked = false,
-                Description = "Enable Tech event module",
-                Category = "Modules",
-                DisplayOrder = 2,
-                CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-            }
-        );
     }
 }
+

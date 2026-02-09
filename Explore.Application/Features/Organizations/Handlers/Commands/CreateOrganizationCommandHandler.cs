@@ -10,6 +10,7 @@ using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using MediatR;
+using Microsoft.Extensions.Caching.Hybrid;
 
 namespace Explore.Application.Features.Organizations.Handlers.Commands;
 
@@ -22,6 +23,7 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
     private readonly IUserContext _userContext;
     private readonly IMapper _mapper;
     private readonly ITenantContext _tenantContext;
+    private readonly HybridCache _cache;
 
     public CreateOrganizationCommandHandler(
         IOrganizationRepository organizationRepository,
@@ -30,7 +32,8 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
         IStorageObjectRepository storageObjectRepository,
         IUserContext userContext,
         IMapper mapper,
-        ITenantContext tenantContext)
+        ITenantContext tenantContext,
+        HybridCache cache)
     {
         _organizationRepository = organizationRepository;
         _organizationMemberRepository = organizationMemberRepository;
@@ -39,6 +42,7 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
         _userContext = userContext;
         _mapper = mapper;
         _tenantContext = tenantContext;
+        _cache = cache;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateOrganizationCommand request, CancellationToken cancellationToken)
@@ -66,7 +70,9 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
         var organizationActor = new Actor
         {
             ActorTypeId = (int)ActorTypeEnum.Organization,
+            ActorType = null!,
             TenantId = _tenantContext.TenantId,
+            Tenant = null!,
             DisplayName = organization.FullName,
             Handle = GenerateHandle(organization.FullName),
             Description = null,
@@ -100,10 +106,14 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
         var organizationMember = new OrganizationMember
         {
             OrganizationId = organization.Id,
+            Organization = null!,
             UserId = currentUserId,
+            User = null!,
             OrganizationRoleId = (int)OrganizationRoleEnum.Creator,
+            OrganizationRole = null!,
             OrganizationPositionId = null, // No position assigned initially
-            TenantId = _tenantContext.TenantId // Required for multi-tenant isolation
+            TenantId = _tenantContext.TenantId, // Required for multi-tenant isolation
+            Tenant = null!
         };
 
         await _organizationMemberRepository.Create(organizationMember);
@@ -112,6 +122,9 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
         response.Success = true;
         response.Message = "Organization created successfully. You are now the creator and admin of this organization.";
         response.Id = organization.Id;
+
+        await _cache.RemoveAsync($"organization:detail:{organization.Id}", cancellationToken);
+
         return response;
     }
 

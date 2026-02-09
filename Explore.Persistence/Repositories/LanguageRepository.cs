@@ -1,12 +1,11 @@
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 
-namespace Explore.Persistence.Repositories
+namespace Explore.Persistence.Repositories;
+
+public class LanguageRepository : GenericRepository<Language, int>, ILanguageRepository
 {
-    public class LanguageRepository : GenericRepository<Language, int>, ILanguageRepository
+    public LanguageRepository(ExploreDbContext dbContext) : base(dbContext)
     {
-        public LanguageRepository(ExploreDbContext dbContext) : base(dbContext)
-        {
-        }
     }
 }

@@ -45,9 +45,28 @@ public class CreateEventDtoValidatorTests
             AudienceAgeId = 1
         };
 
-        _eventTypeRepository.Exists(dto.EventTypeId).Returns(true);
-        _audienceGenderRepository.Exists(dto.AudienceGenderId).Returns(true);
-        _audienceAgeRepository.Exists(dto.AudienceAgeId).Returns(true);
+        _eventTypeRepository.Exists(dto.EventTypeId.Value).Returns(true);
+        _audienceGenderRepository.Exists(dto.AudienceGenderId.Value).Returns(true);
+        _audienceAgeRepository.Exists(dto.AudienceAgeId.Value).Returns(true);
+
+        // Act
+        var result = await _validator.ValidateAsync(dto);
+
+        // Assert
+        await Assert.That(result.IsValid).IsTrue();
+    }
+
+    [Test]
+    public async Task Validate_WithNullOptionalFields_ReturnsTrue()
+    {
+        // Arrange
+        var dto = new CreateEventDto
+        {
+            Title = "Valid Event",
+            EventTypeId = null,
+            AudienceGenderId = null,
+            AudienceAgeId = null
+        };
 
         // Act
         var result = await _validator.ValidateAsync(dto);
@@ -74,8 +93,8 @@ public class CreateEventDtoValidatorTests
     public async Task Validate_WithLongSubtitle_ReturnsError()
     {
         // Arrange
-        var dto = new CreateEventDto 
-        { 
+        var dto = new CreateEventDto
+        {
             Title = "Valid Title",
             Subtitle = new string('a', 201) // Exceeds 200
         };
@@ -100,9 +119,9 @@ public class CreateEventDtoValidatorTests
             AudienceAgeId = 99
         };
 
-        _eventTypeRepository.Exists(dto.EventTypeId).Returns(false);
-        _audienceGenderRepository.Exists(dto.AudienceGenderId).Returns(false);
-        _audienceAgeRepository.Exists(dto.AudienceAgeId).Returns(false);
+        _eventTypeRepository.Exists(dto.EventTypeId.Value).Returns(false);
+        _audienceGenderRepository.Exists(dto.AudienceGenderId.Value).Returns(false);
+        _audienceAgeRepository.Exists(dto.AudienceAgeId.Value).Returns(false);
 
         // Act
         var result = await _validator.ValidateAsync(dto);

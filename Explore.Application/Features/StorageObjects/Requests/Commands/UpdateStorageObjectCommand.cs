@@ -1,11 +1,10 @@
-using MediatR;
 using Explore.Application.DTOs.StorageObject;
 using Explore.Application.Responses;
+using MediatR;
 
-namespace Explore.Application.Features.StorageObjects.Requests.Commands
+namespace Explore.Application.Features.StorageObjects.Requests.Commands;
+
+public class UpdateStorageObjectCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public class UpdateStorageObjectCommand : IRequest<BaseCommandResponse<Guid>>
-    {
-        public UpdateStorageObjectDto StorageObjectDto { get; set; }
-    }
+    public required UpdateStorageObjectDto StorageObjectDto { get; set; }
 }

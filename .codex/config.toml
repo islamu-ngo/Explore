@@ -1,6 +1,6 @@
 [mcp_servers.context7]
-command = "npx"
-args = ["-y", "@upstash/context7-mcp"]
+url = "https://mcp.context7.com/mcp"
+http_headers = { "CONTEXT7_API_KEY" = "ctx7sk-7280a8a2-f4a8-47f1-a601-a944ff28abe3" }
 
 [mcp_servers.chrome_devtools]
 url = "http://localhost:3000/mcp"

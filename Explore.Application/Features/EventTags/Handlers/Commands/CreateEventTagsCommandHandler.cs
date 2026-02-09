@@ -10,57 +10,56 @@ using Explore.Application.Features.EventTags.Requests.Commands;
 using Explore.Application.Responses;
 using MediatR;
 
-namespace Explore.Application.Features.EventTags.Handlers.Commands
+namespace Explore.Application.Features.EventTags.Handlers.Commands;
+
+public class CreateEventTagsCommandHandler : IRequestHandler<CreateEventTagsCommand, BaseCommandResponse<Guid>>
 {
-    public class CreateEventTagsCommandHandler : IRequestHandler<CreateEventTagsCommand, BaseCommandResponse<Guid>>
+    private readonly IEventTagsRepository _eventTagsRepository;
+    private readonly IEventRepository _eventRepository;
+    private readonly ITagRepository _tagRepository;
+    private readonly ITenantContext _tenantContext;
+    private readonly IMapper _mapper;
+
+    public CreateEventTagsCommandHandler(
+        IEventTagsRepository eventTagsRepository,
+        IEventRepository eventRepository,
+        ITagRepository tagRepository,
+        ITenantContext tenantContext,
+        IMapper mapper)
     {
-        private readonly IEventTagsRepository _eventTagsRepository;
-        private readonly IEventRepository _eventRepository;
-        private readonly ITagRepository _tagRepository;
-        private readonly ITenantContext _tenantContext;
-        private readonly IMapper _mapper;
+        _eventTagsRepository = eventTagsRepository;
+        _eventRepository = eventRepository;
+        _tagRepository = tagRepository;
+        _tenantContext = tenantContext;
+        _mapper = mapper;
+    }
 
-        public CreateEventTagsCommandHandler(
-            IEventTagsRepository eventTagsRepository,
-            IEventRepository eventRepository,
-            ITagRepository tagRepository,
-            ITenantContext tenantContext,
-            IMapper mapper)
+    public async Task<BaseCommandResponse<Guid>> Handle(CreateEventTagsCommand request, CancellationToken cancellationToken)
+    {
+        var response = new BaseCommandResponse<Guid>();
+
+        var validator = new CreateEventTagsDtoValidator(_eventRepository, _tagRepository, _eventTagsRepository);
+        var validationResult = await validator.ValidateAsync(request.EventTagsDto, cancellationToken);
+
+        if (!validationResult.IsValid)
         {
-            _eventTagsRepository = eventTagsRepository;
-            _eventRepository = eventRepository;
-            _tagRepository = tagRepository;
-            _tenantContext = tenantContext;
-            _mapper = mapper;
-        }
-
-        public async Task<BaseCommandResponse<Guid>> Handle(CreateEventTagsCommand request, CancellationToken cancellationToken)
-        {
-            var response = new BaseCommandResponse<Guid>();
-
-            var validator = new CreateEventTagsDtoValidator(_eventRepository, _tagRepository, _eventTagsRepository);
-            var validationResult = await validator.ValidateAsync(request.EventTagsDto);
-
-            if (!validationResult.IsValid)
-            {
-                response.Success = false;
-                response.Message = "Event Tag assignment failed.";
-                response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-                return response;
-            }
-
-            var eventTags = _mapper.Map<Domain.EventTags>(request.EventTagsDto);
-
-            // Set TenantId from the request context
-            eventTags.TenantId = _tenantContext.TenantId;
-
-            eventTags = await _eventTagsRepository.Create(eventTags);
-
-            response.Success = true;
-            response.Id = eventTags.Id;
-            response.Message = "Event Tag assigned successfully.";
-
+            response.Success = false;
+            response.Message = "Event Tag assignment failed.";
+            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
             return response;
         }
+
+        var eventTags = _mapper.Map<Domain.EventTags>(request.EventTagsDto);
+
+        // Set TenantId from the request context
+        eventTags.TenantId = _tenantContext.TenantId;
+
+        eventTags = await _eventTagsRepository.Create(eventTags);
+
+        response.Success = true;
+        response.Id = eventTags.Id;
+        response.Message = "Event Tag assigned successfully.";
+
+        return response;
     }
 }

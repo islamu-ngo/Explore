@@ -2,30 +2,35 @@ using System;
 using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Interfaces;
 
-namespace Explore.Domain
+namespace Explore.Domain;
+
+public class EventRegistration : ITenantEntity, IAuditableEntity
 {
-    public class EventRegistration : ITenantEntity
-    {
-        public Guid Id { get; set; }
+    public Guid Id { get; set; }
 
-        [ForeignKey("User")]
-        public Guid UserId { get; set; }
-        public User User { get; set; }
+    [ForeignKey("User")]
+    public Guid UserId { get; set; }
+    public required User User { get; set; }
 
-        [ForeignKey("EventSession")]
-        public Guid EventSessionId { get; set; }
-        public EventSession EventSession { get; set; }
+    [ForeignKey("EventSession")]
+    public Guid EventSessionId { get; set; }
+    public required EventSession EventSession { get; set; }
 
-        [ForeignKey("ApprovalStatus")]
-        public int? ApprovalStatusId { get; set; }
-        public ApprovalStatus? ApprovalStatus { get; set; }
+    [ForeignKey("ApprovalStatus")]
+    public int? ApprovalStatusId { get; set; }
+    public ApprovalStatus? ApprovalStatus { get; set; }
 
-        [ForeignKey("Tenant")]
-        public Guid TenantId { get; set; }
-        public Tenant Tenant { get; set; }
+    [ForeignKey("Tenant")]
+    public Guid TenantId { get; set; }
+    public required Tenant Tenant { get; set; }
 
-        [ForeignKey("AtprotoRecord")]
-        public Guid? AtprotoRecordId { get; set; }
-        public AtprotoRecord? AtprotoRecord { get; set; }
-    }
+    [ForeignKey("AtprotoRecord")]
+    public Guid? AtprotoRecordId { get; set; }
+    public AtprotoRecord? AtprotoRecord { get; set; }
+
+    // Audit fields
+    public DateTime CreatedAt { get; set; }
+    public Guid? CreatedBy { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public Guid? UpdatedBy { get; set; }
 }

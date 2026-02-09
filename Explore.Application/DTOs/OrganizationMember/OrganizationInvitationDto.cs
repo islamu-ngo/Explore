@@ -1,15 +1,14 @@
+using System;
 using Explore.Application.DTOs.Organization;
 using Explore.Domain.Enums;
-using System;
 
-namespace Explore.Application.DTOs.OrganizationMember
+namespace Explore.Application.DTOs.OrganizationMember;
+
+public class OrganizationInvitationDto
 {
-    public class OrganizationInvitationDto
-    {
-        public Guid Id { get; set; }
-        public Guid OrganizationId { get; set; }
-        public string OrganizationName { get; set; }
-        public OrganizationRoleEnum Role { get; set; }
-        public string Email { get; set; }
-    }
+    public Guid Id { get; set; }
+    public Guid OrganizationId { get; set; }
+    public required string OrganizationName { get; set; }
+    public OrganizationRoleEnum Role { get; set; }
+    public required string Email { get; set; }
 }

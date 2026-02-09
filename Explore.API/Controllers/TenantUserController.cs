@@ -8,114 +8,116 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 
-namespace Explore.API.Controllers
+namespace Explore.API.Controllers;
+
+[Route("api/v1/[controller]")]
+[ApiController]
+public class TenantUserController : ControllerBase
 {
-    [Route("api/v1/[controller]")]
-    [ApiController]
-    public class TenantUserController : ControllerBase
+    private readonly IMediator _mediator;
+
+    public TenantUserController(IMediator mediator)
     {
-        private readonly IMediator _mediator;
+        _mediator = mediator;
+    }
 
-        public TenantUserController(IMediator mediator)
+    // GET: api/v1/tenantuser
+    [HttpGet]
+    [EndpointSummary("Get all Tenant Users")]
+    [EndpointDescription("Retrieve a list of all tenant users")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(List<TenantUserListDto>), StatusCodes.Status200OK)]
+    [OutputCache(PolicyName = "ListData")]
+    public async Task<ActionResult<List<TenantUserListDto>>> GetAll(CancellationToken cancellationToken = default)
+    {
+        var tenantUsers = await _mediator.Send(new GetTenantUserListRequest(), cancellationToken);
+        return Ok(tenantUsers);
+    }
+
+    // GET: api/v1/tenantuser/{id}
+    [HttpGet("{id}")]
+    [EndpointSummary("Get Tenant User by ID")]
+    [EndpointDescription("Retrieve details of a specific tenant user")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(TenantUserDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [OutputCache(PolicyName = "DetailData")]
+    public async Task<ActionResult<TenantUserDto>> GetById(Guid id, CancellationToken cancellationToken = default)
+    {
+        var tenantUser = await _mediator.Send(new GetTenantUserDetailsRequest { Id = id }, cancellationToken);
+        if (tenantUser == null)
         {
-            _mediator = mediator;
+            return NotFound();
         }
 
-        // GET: api/v1/tenantuser
-        [HttpGet]
-        [EndpointSummary("Get all Tenant Users")]
-        [EndpointDescription("Retrieve a list of all tenant users")]
-        [Authorize(Roles = "Admin")]
-        [ProducesResponseType(typeof(List<TenantUserListDto>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<List<TenantUserListDto>>> GetAll()
+        return Ok(tenantUser);
+    }
+
+    // POST: api/v1/tenantuser
+    [HttpPost]
+    [EndpointSummary("Create new Tenant User")]
+    [EndpointDescription("Create a new tenant user association")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(BaseCommandResponse<int>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<BaseCommandResponse<int>>> Create([FromBody] CreateTenantUserDto dto, CancellationToken cancellationToken = default)
+    {
+        var command = new CreateTenantUserCommand { TenantUserDto = dto };
+        var response = await _mediator.Send(command, cancellationToken);
+
+        if (!response.Success)
         {
-            var tenantUsers = await _mediator.Send(new GetTenantUserListRequest());
-            return Ok(tenantUsers);
+            return BadRequest(response);
         }
 
-        // GET: api/v1/tenantuser/{id}
-        [HttpGet("{id}")]
-        [EndpointSummary("Get Tenant User by ID")]
-        [EndpointDescription("Retrieve details of a specific tenant user")]
-        [Authorize(Roles = "Admin")]
-        [ProducesResponseType(typeof(TenantUserDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<TenantUserDto>> GetById(Guid id)
-        {
-            var tenantUser = await _mediator.Send(new GetTenantUserDetailsRequest { Id = id });
-            if (tenantUser == null)
-            {
-                return NotFound();
-            }
+        return Ok(response);
+    }
 
-            return Ok(tenantUser);
+    // PUT: api/v1/tenantuser/{id}
+    [HttpPut("{id}")]
+    [EndpointSummary("Update Tenant User")]
+    [EndpointDescription("Update an existing tenant user association")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateTenantUserDto dto, CancellationToken cancellationToken = default)
+    {
+        if (id != dto.Id)
+        {
+            return BadRequest(new { error = "Tenant User ID mismatch" });
         }
 
-        // POST: api/v1/tenantuser
-        [HttpPost]
-        [EndpointSummary("Create new Tenant User")]
-        [EndpointDescription("Create a new tenant user association")]
-        [Authorize(Roles = "Admin")]
-        [ProducesResponseType(typeof(BaseCommandResponse<int>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<BaseCommandResponse<int>>> Create([FromBody] CreateTenantUserDto dto)
+        var command = new UpdateTenantUserCommand { TenantUserDto = dto };
+        var response = await _mediator.Send(command, cancellationToken);
+
+        if (!response.Success)
         {
-            var command = new CreateTenantUserCommand { TenantUserDto = dto };
-            var response = await _mediator.Send(command);
-
-            if (!response.Success)
-            {
-                return BadRequest(response);
-            }
-
-            return Ok(response);
+            return BadRequest(response);
         }
 
-        // PUT: api/v1/tenantuser/{id}
-        [HttpPut("{id}")]
-        [EndpointSummary("Update Tenant User")]
-        [EndpointDescription("Update an existing tenant user association")]
-        [Authorize(Roles = "Admin")]
-        [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateTenantUserDto dto)
+        return Ok(response);
+    }
+
+    // DELETE: api/v1/tenantuser/{id}
+    [HttpDelete("{id}")]
+    [EndpointSummary("Delete Tenant User")]
+    [EndpointDescription("Delete a tenant user association")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
+    {
+        var command = new DeleteTenantUserCommand { Id = id };
+        var result = await _mediator.Send(command, cancellationToken);
+
+        if (!result)
         {
-            if (id != dto.Id)
-            {
-                return BadRequest(new { error = "Tenant User ID mismatch" });
-            }
-
-            var command = new UpdateTenantUserCommand { TenantUserDto = dto };
-            var response = await _mediator.Send(command);
-
-            if (!response.Success)
-            {
-                return BadRequest(response);
-            }
-
-            return Ok(response);
+            return NotFound(new { error = "Tenant User not found" });
         }
 
-        // DELETE: api/v1/tenantuser/{id}
-        [HttpDelete("{id}")]
-        [EndpointSummary("Delete Tenant User")]
-        [EndpointDescription("Delete a tenant user association")]
-        [Authorize(Roles = "Admin")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult> Delete(Guid id)
-        {
-            var command = new DeleteTenantUserCommand { Id = id };
-            var result = await _mediator.Send(command);
-
-            if (!result)
-            {
-                return NotFound(new { error = "Tenant User not found" });
-            }
-
-            return NoContent();
-        }
+        return NoContent();
     }
 }

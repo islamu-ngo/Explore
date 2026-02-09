@@ -32,7 +32,7 @@ public class OrganizationReviewService : IOrganizationReviewService
     {
         try
         {
-            var response = await _apiClient.OrganizationReviewAllAsync(organizationId);
+            var response = await _apiClient.OrganizationreviewAllAsync(organizationId);
             return response ?? new List<OrganizationReviewDto>();
         }
         catch (ApiException ex)
@@ -51,7 +51,7 @@ public class OrganizationReviewService : IOrganizationReviewService
     {
         try
         {
-            var response = await _apiClient.UserAsync(userId);
+            var response = await _apiClient.UserAllAsync(userId);
             return response ?? new List<OrganizationReviewDto>();
         }
         catch (ApiException ex)
@@ -70,7 +70,7 @@ public class OrganizationReviewService : IOrganizationReviewService
     {
         try
         {
-            return await _apiClient.OrganizationReviewAsync(review);
+            return await _apiClient.OrganizationreviewAsync(review);
         }
         catch (ApiException ex)
         {
@@ -84,3 +84,4 @@ public class OrganizationReviewService : IOrganizationReviewService
         }
     }
 }
+

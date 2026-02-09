@@ -1,12 +1,11 @@
-using MediatR;
+using System;
 using Explore.Application.DTOs.TenantUser;
 using Explore.Application.Responses;
-using System;
+using MediatR;
 
-namespace Explore.Application.Features.TenantUsers.Requests.Commands
+namespace Explore.Application.Features.TenantUsers.Requests.Commands;
+
+public class CreateTenantUserCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public class CreateTenantUserCommand : IRequest<BaseCommandResponse<Guid>>
-    {
-        public CreateTenantUserDto TenantUserDto { get; set; }
-    }
+    public required CreateTenantUserDto TenantUserDto { get; set; }
 }

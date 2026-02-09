@@ -1,10 +1,9 @@
 using Explore.Application.DTOs.ActorType;
 using MediatR;
 
-namespace Explore.Application.Features.ActorTypes.Requests.Queries
+namespace Explore.Application.Features.ActorTypes.Requests.Queries;
+
+public class GetActorTypeDetailsRequest : IRequest<ActorTypeDto>
 {
-    public class GetActorTypeDetailsRequest : IRequest<ActorTypeDto>
-    {
-        public int Id { get; set; }
-    }
+    public int Id { get; set; }
 }

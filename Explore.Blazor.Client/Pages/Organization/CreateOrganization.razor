@@ -81,6 +81,33 @@
                                                   Variant="Variant.Outlined"
                                                   Adornment="Adornment.Start"
                                                   AdornmentIcon="@Icons.Material.Filled.Language" />
+
+                                    <MudText Typo="Typo.subtitle2" Color="Color.Primary">Organization Page Appearance (Optional)</MudText>
+                                    <MudGrid Spacing="2">
+                                        <MudItem xs="12" sm="4">
+                                            <MudTextField @bind-Value="_appearance.BackgroundColor"
+                                                          Label="Background Color"
+                                                          Variant="Variant.Outlined"
+                                                          InputType="InputType.Color" />
+                                        </MudItem>
+                                        <MudItem xs="12" sm="8">
+                                            <MudTextField @bind-Value="_appearance.BackgroundMediaUrl"
+                                                          Label="Background Media URL"
+                                                          Variant="Variant.Outlined"
+                                                          Placeholder="https://... (image or GIF)" />
+                                        </MudItem>
+                                        <MudItem xs="12" sm="6">
+                                            <MudSelect T="string"
+                                                       Label="Background Effect"
+                                                       Variant="Variant.Outlined"
+                                                       @bind-Value="_appearance.BackgroundEffect">
+                                                <MudSelectItem Value="@("None")">None</MudSelectItem>
+                                                <MudSelectItem Value="@("SoftOverlay")">Soft Overlay</MudSelectItem>
+                                                <MudSelectItem Value="@("StrongOverlay")">Strong Overlay</MudSelectItem>
+                                                <MudSelectItem Value="@("Blur")">Blur</MudSelectItem>
+                                            </MudSelect>
+                                        </MudItem>
+                                    </MudGrid>
                                 </MudStack>
                             </MudItem>
                         </MudGrid>
@@ -94,16 +121,16 @@
                                 <MudTextField @bind-Value="organization.Email"
                                               Label="Contact Email"
                                               Variant="Variant.Outlined"
-                                              InputType="InputType.Email" 
+                                              InputType="InputType.Email"
                                               Required
                                               Adornment="Adornment.Start"
                                               AdornmentIcon="@Icons.Material.Filled.Email" />
                             </MudItem>
-                            
+
                             <MudItem xs="12">
                                 <MudTextField @bind-Value="organization.Address"
                                               Label="Street Address"
-                                              Variant="Variant.Outlined" 
+                                              Variant="Variant.Outlined"
                                               Required
                                               Adornment="Adornment.Start"
                                               AdornmentIcon="@Icons.Material.Filled.Home" />
@@ -122,7 +149,7 @@
                             <MudItem xs="12" md="4">
                                 <MudTextField @bind-Value="organization.City"
                                               Label="City"
-                                              Variant="Variant.Outlined" 
+                                              Variant="Variant.Outlined"
                                               Required
                                               Adornment="Adornment.Start"
                                               AdornmentIcon="@Icons.Material.Filled.LocationCity" />
@@ -130,8 +157,8 @@
 
                             <MudItem xs="12" md="4">
                                 <MudSelect @bind-Value="organization.Country"
-                                           Label="Country" 
-                                           Variant="Variant.Outlined" 
+                                           Label="Country"
+                                           Variant="Variant.Outlined"
                                            AnchorOrigin="Origin.BottomCenter"
                                            Required>
                                     <MudSelectItem Value="@("Netherlands")">Netherlands</MudSelectItem>
@@ -175,14 +202,14 @@
                                     </MudStack>
                                 </MudPaper>
                             </MudItem>
-                            
+
                             <MudItem xs="12" md="6">
                                 <MudText Typo="Typo.subtitle1" Style="font-weight: 700;" Class="mb-4">Confirm Details</MudText>
                                 <MudStack Spacing="2">
                                     <MudCheckBox @bind-Value="acceptTerms"
                                                  Color="Color.Primary"
                                                  Label="I agree to the Terms and Conditions" />
-                                    
+
                                     <MudCheckBox @bind-Value="confirmInformation"
                                                  Color="Color.Primary"
                                                  Label="I confirm that all information is accurate" />

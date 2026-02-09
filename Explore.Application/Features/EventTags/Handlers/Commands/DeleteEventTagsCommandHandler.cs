@@ -5,28 +5,27 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.EventTags.Requests.Commands;
 using MediatR;
 
-namespace Explore.Application.Features.EventTags.Handlers.Commands
+namespace Explore.Application.Features.EventTags.Handlers.Commands;
+
+public class DeleteEventTagsCommandHandler : IRequestHandler<DeleteEventTagsCommand, bool>
 {
-    public class DeleteEventTagsCommandHandler : IRequestHandler<DeleteEventTagsCommand, bool>
+    private readonly IEventTagsRepository _eventTagsRepository;
+
+    public DeleteEventTagsCommandHandler(IEventTagsRepository eventTagsRepository)
     {
-        private readonly IEventTagsRepository _eventTagsRepository;
+        _eventTagsRepository = eventTagsRepository;
+    }
 
-        public DeleteEventTagsCommandHandler(IEventTagsRepository eventTagsRepository)
+    public async Task<bool> Handle(DeleteEventTagsCommand request, CancellationToken cancellationToken)
+    {
+        var eventTags = await _eventTagsRepository.GetById(request.Id);
+
+        if (eventTags == null)
         {
-            _eventTagsRepository = eventTagsRepository;
+            return false;
         }
 
-        public async Task<bool> Handle(DeleteEventTagsCommand request, CancellationToken cancellationToken)
-        {
-            var eventTags = await _eventTagsRepository.GetById(request.Id);
-
-            if (eventTags == null)
-            {
-                return false;
-            }
-
-            await _eventTagsRepository.Delete(eventTags);
-            return true;
-        }
+        await _eventTagsRepository.Delete(eventTags);
+        return true;
     }
 }

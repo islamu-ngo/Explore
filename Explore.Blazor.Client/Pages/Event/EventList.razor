@@ -31,7 +31,7 @@
     </div>
     
     <!-- Sticky Filters Header -->
-    <div style="position: sticky; top: var(--mud-appbar-height); z-index: 10; background-color: var(--mud-palette-background); padding-top: 1rem; padding-bottom: 1rem; margin-bottom: 2rem; border-bottom: 1px solid var(--mud-palette-divider);">
+    <div style="position: sticky; top: calc(var(--mud-appbar-height) + var(--announcement-bar-height, 0px)); z-index: 10; background-color: var(--mud-palette-background); padding-top: 1rem; padding-bottom: 1rem; margin-bottom: 2rem; border-bottom: 1px solid var(--mud-palette-divider); backdrop-filter: blur(10px); background-color: color-mix(in srgb, var(--mud-palette-background) 80%, transparent);">
         <MudGrid Spacing="2">
             <MudItem xs="6" sm="4" md="3" lg="2">
                 <MudSelect T="string" Value="@selectedDate" ValueChanged="@OnDateChanged" 
@@ -166,12 +166,12 @@
             @foreach (var evt in FilteredEvents)
             {
                 <MudItem xs="12" sm="6" md="4" lg="3">
-                    <MudCard Class="h-100 d-flex flex-column rounded-xl border-solid border-1 mud-border-lines-default hover:mud-elevation-4 transition-all" Elevation="0" Style="overflow: hidden;">
+                    <MudCard Class="h-100 d-flex flex-column rounded-xl hover:mud-elevation-0 transition-all event-card" Outlined="true" Elevation="0" Style="overflow: hidden; background-color: var(--mud-palette-surface);">
                         <MudCardMedia Image="@(string.IsNullOrEmpty(evt.FeaturedImageUri) ? GetEventImage(evt) : evt.FeaturedImageUri)" Height="200" />
                         
                         <MudCardContent Class="d-flex flex-column flex-grow-1 pt-4 pb-2 px-4">
                             <div class="d-flex justify-space-between align-center mb-2">
-                                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text" Class="ml-n1">@GetEventTypeName(evt)</MudChip>
+                                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text" Class="ml-n1 font-weight-bold">@GetEventTypeName(evt)</MudChip>
                                 @if (evt.IsUserReported == true)
                                 {
                                     <MudTooltip Text="Community Reported">

@@ -1,0 +1,35 @@
+@* ABOUTME: Shared error state component for displaying API errors with retry capability. *@
+@* ABOUTME: Used across all pages for consistent error presentation. *@
+
+@if (!string.IsNullOrEmpty(ErrorMessage))
+{
+    <MudAlert Severity="Severity.Error" 
+              Variant="Variant.Outlined" 
+              Class="mb-4"
+              ShowCloseIcon="true"
+              CloseIconClicked="OnDismiss">
+        @ErrorMessage
+    </MudAlert>
+    
+    @if (OnRetry.HasDelegate)
+    {
+        <MudButton Variant="Variant.Filled" 
+                   Color="Color.Primary" 
+                   StartIcon="@Icons.Material.Filled.Refresh"
+                   OnClick="OnRetry"
+                   Class="mb-4">
+            @RetryText
+        </MudButton>
+    }
+}
+
+@code {
+    [Parameter] public string? ErrorMessage { get; set; }
+    [Parameter] public EventCallback OnRetry { get; set; }
+    [Parameter] public string RetryText { get; set; } = "Try Again";
+    
+    private void OnDismiss()
+    {
+        ErrorMessage = null;
+    }
+}

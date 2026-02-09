@@ -19,6 +19,7 @@ public class TenantSettingRepository : GenericRepository<TenantSetting, Guid>, I
     public async Task<TenantSetting?> GetByTenantAndKey(Guid tenantId, string key)
     {
         return await _dbContext.TenantSettingOverrides
+            .AsNoTracking()
             .FirstOrDefaultAsync(s => s.TenantId == tenantId && s.SettingKey == key);
     }
 

@@ -71,7 +71,7 @@
                                 @(_eventDetails.EventFormatFullName ?? "Online")
                             </MudChip>
                         </div>
-                        
+
                         <MudText Typo="Typo.h3" Style="font-weight: 800;" Class="mb-4">@_eventDetails.Title</MudText>
 
                         <div class="d-flex align-center gap-3">
@@ -85,17 +85,33 @@
                         </div>
                     </div>
 
-                    <!-- Featured Image -->
-                    <MudPaper Elevation="0" Class="rounded-xl overflow-hidden" Style="aspect-ratio: 16/9; position: relative;">
+                    <!-- Hero Section -->
+                    <div class="rounded-xl overflow-hidden position-relative" style="height: 400px;">
                         @if (!string.IsNullOrEmpty(_eventDetails.FeaturedImageUri))
                         {
-                            <MudImage Src="@_eventDetails.FeaturedImageUri" Alt="@_eventDetails.Title" ObjectFit="ObjectFit.Cover" Style="width: 100%; height: 100%;" />
+                            <div style="background-image: url('@_eventDetails.FeaturedImageUri'); background-size: cover; background-position: center; width: 100%; height: 100%;"></div>
+                        }
+                        else if (!string.IsNullOrWhiteSpace(_appearance.BackgroundMediaUrl))
+                        {
+                             <div style="background-image: url('@_appearance.BackgroundMediaUrl'); background-size: cover; background-position: center; width: 100%; height: 100%;"></div>
                         }
                         else
                         {
-                            <MudImage Src="@($"https://dummyimage.com/1600x900/{GetEventColor()}/ffffff&text={Uri.EscapeDataString(_eventDetails.Title)}")" Alt="@_eventDetails.Title" ObjectFit="ObjectFit.Cover" Style="width: 100%; height: 100%;" />
+                            <div style="background-color: @GetEventColor(); width: 100%; height: 100%;"></div>
                         }
-                    </MudPaper>
+                        
+                        <!-- Gradient Overlay -->
+                        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.6));"></div>
+                        
+                        <!-- Hero Content -->
+                        <div style="position: absolute; bottom: 0; left: 0; width: 100%; padding: 2rem;">
+                            <MudText Typo="Typo.h2" Style="font-weight: 800; color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">@_eventDetails.Title</MudText>
+                            @if (!string.IsNullOrEmpty(_eventDetails.Subtitle))
+                            {
+                                <MudText Typo="Typo.h5" Style="font-weight: 500; color: rgba(255,255,255,0.9); text-shadow: 0 1px 2px rgba(0,0,0,0.3);">@_eventDetails.Subtitle</MudText>
+                            }
+                        </div>
+                    </div>
 
                     <!-- Description -->
                     <MudPaper Elevation="0" Class="pa-6 border-solid border-1 mud-border-lines-default rounded-xl">
@@ -179,8 +195,8 @@
 
             <!-- Sidebar (Sticky) -->
             <MudItem xs="12" md="4">
-                <div style="position: sticky; top: 24px;">
-                    <MudPaper Elevation="4" Class="pa-6 rounded-xl">
+                <div style="position: sticky; top: calc(var(--mud-appbar-height) + var(--announcement-bar-height, 0px) + 24px);">
+                    <MudPaper Elevation="0" Outlined="true" Class="pa-6 rounded-xl border-solid border-1 mud-border-lines-default">
                         <div class="d-flex justify-space-between align-center mb-6">
                             <MudText Typo="Typo.h4" Color="Color.Primary" Style="font-weight: 800;">
                                 @(_eventDetails.Price.HasValue && _eventDetails.Price > 0 ? $"{_eventDetails.CurrencyCode ?? "€"}{_eventDetails.Price:F2}" : "Free")
@@ -207,6 +223,24 @@
                             <MudAlert Severity="Severity.Success" Variant="Variant.Text" Dense="true" Class="mb-4">
                                 You are registered for this event!
                             </MudAlert>
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Error"
+                                       Size="Size.Small"
+                                       FullWidth="true"
+                                       Class="mb-4 rounded-lg"
+                                       OnClick="CancelRegistrationAsync"
+                                       Disabled="_isCancellingRegistration"
+                                       StartIcon="@(_isCancellingRegistration ? null : Icons.Material.Filled.EventBusy)">
+                                @if (_isCancellingRegistration)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                    <span>Cancelling...</span>
+                                }
+                                else
+                                {
+                                    <span>Cancel Registration</span>
+                                }
+                            </MudButton>
                         }
 
                         <MudDivider Class="mb-6" />
@@ -237,10 +271,10 @@
 
                         <MudText Typo="Typo.subtitle2" Class="mb-2">Share</MudText>
                         <div class="d-flex gap-2">
-                            <MudIconButton Icon="@Icons.Custom.Brands.Facebook" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default" />
-                            <MudIconButton Icon="@Icons.Custom.Brands.Twitter" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default" />
-                            <MudIconButton Icon="@Icons.Custom.Brands.LinkedIn" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default" />
-                            <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default" Title="Copy Link" />
+                            <MudIconButton Icon="@Icons.Custom.Brands.Facebook" AriaLabel="Share on Facebook" Title="Share on Facebook" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default" />
+                            <MudIconButton Icon="@Icons.Custom.Brands.Twitter" AriaLabel="Share on Twitter" Title="Share on Twitter" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default" />
+                            <MudIconButton Icon="@Icons.Custom.Brands.LinkedIn" AriaLabel="Share on LinkedIn" Title="Share on LinkedIn" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default" />
+                            <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" AriaLabel="Copy event link" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default" Title="Copy Link" />
                         </div>
 
                     </MudPaper>

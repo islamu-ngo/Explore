@@ -1,10 +1,9 @@
-using MediatR;
-using Explore.Application.DTOs.UserAuthenticationToken;
 using System.Collections.Generic;
+using Explore.Application.DTOs.UserAuthenticationToken;
+using MediatR;
 
-namespace Explore.Application.Features.UserAuthenticationTokens.Requests.Queries
+namespace Explore.Application.Features.UserAuthenticationTokens.Requests.Queries;
+
+public class GetUserAuthenticationTokenListRequest : IRequest<List<UserAuthenticationTokenListDto>>
 {
-    public class GetUserAuthenticationTokenListRequest : IRequest<List<UserAuthenticationTokenListDto>>
-    {
-    }
 }

@@ -1,9 +1,9 @@
-using MediatR;
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Actor.Validators;
 using Explore.Application.Features.Actors.Requests.Commands;
 using Explore.Application.Responses;
+using MediatR;
 
 namespace Explore.Application.Features.Actors.Handlers.Commands;
 
@@ -39,7 +39,7 @@ public class UpdateActorCommandHandler : IRequestHandler<UpdateActorCommand, Bas
             _storageObjectRepository,
             _actorRepository);
 
-        var validationResult = await validator.ValidateAsync(request.ActorDto);
+        var validationResult = await validator.ValidateAsync(request.ActorDto, cancellationToken);
 
         if (!validationResult.IsValid)
         {

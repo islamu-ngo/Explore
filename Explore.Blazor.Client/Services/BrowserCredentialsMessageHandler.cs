@@ -27,32 +27,32 @@ public class BrowserCredentialsMessageHandler : DelegatingHandler
     {
         // Enable sending cookies with the request (required for authentication)
         request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
-        
+
         // Ensure the request mode allows requests (SameOrigin for BFF)
         request.SetBrowserRequestMode(BrowserRequestMode.SameOrigin);
-        
-        _logger?.LogDebug("[WASM HTTP] {Method} {Uri} - Credentials: Include, Mode: SameOrigin", 
+
+        _logger?.LogDebug("[WASM HTTP] {Method} {Uri} - Credentials: Include, Mode: SameOrigin",
             request.Method, request.RequestUri?.PathAndQuery);
 
         try
         {
             var response = await base.SendAsync(request, cancellationToken);
-            
-            _logger?.LogDebug("[WASM HTTP] {Method} {Uri} - Response: {StatusCode}", 
+
+            _logger?.LogDebug("[WASM HTTP] {Method} {Uri} - Response: {StatusCode}",
                 request.Method, request.RequestUri?.PathAndQuery, (int)response.StatusCode);
 
             // Log warning for auth-related failures
             if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
-                _logger?.LogWarning("[WASM HTTP] {Method} {Uri} - Unauthorized (401). User may need to re-authenticate.", 
+                _logger?.LogWarning("[WASM HTTP] {Method} {Uri} - Unauthorized (401). User may need to re-authenticate.",
                     request.Method, request.RequestUri?.PathAndQuery);
             }
-            
+
             return response;
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "[WASM HTTP] {Method} {Uri} - Request failed", 
+            _logger?.LogError(ex, "[WASM HTTP] {Method} {Uri} - Request failed",
                 request.Method, request.RequestUri?.PathAndQuery);
             throw;
         }

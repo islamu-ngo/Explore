@@ -6,23 +6,22 @@ using Explore.Application.DTOs.OrganizationRole;
 using Explore.Application.Features.OrganizationRoles.Requests.Queries;
 using MediatR;
 
-namespace Explore.Application.Features.OrganizationRoles.Handlers.Queries
+namespace Explore.Application.Features.OrganizationRoles.Handlers.Queries;
+
+public class GetOrganizationRoleDetailsRequestHandler : IRequestHandler<GetOrganizationRoleDetailsRequest, OrganizationRoleDto>
 {
-    public class GetOrganizationRoleDetailsRequestHandler : IRequestHandler<GetOrganizationRoleDetailsRequest, OrganizationRoleDto>
+    private readonly IOrganizationRoleRepository _organizationRoleRepository;
+    private readonly IMapper _mapper;
+
+    public GetOrganizationRoleDetailsRequestHandler(IOrganizationRoleRepository organizationRoleRepository, IMapper mapper)
     {
-        private readonly IOrganizationRoleRepository _organizationRoleRepository;
-        private readonly IMapper _mapper;
+        _organizationRoleRepository = organizationRoleRepository;
+        _mapper = mapper;
+    }
 
-        public GetOrganizationRoleDetailsRequestHandler(IOrganizationRoleRepository organizationRoleRepository, IMapper mapper)
-        {
-            _organizationRoleRepository = organizationRoleRepository;
-            _mapper = mapper;
-        }
-
-        public async Task<OrganizationRoleDto> Handle(GetOrganizationRoleDetailsRequest request, CancellationToken cancellationToken)
-        {
-            var organizationRole = await _organizationRoleRepository.GetById(request.Id);
-            return _mapper.Map<OrganizationRoleDto>(organizationRole);
-        }
+    public async Task<OrganizationRoleDto> Handle(GetOrganizationRoleDetailsRequest request, CancellationToken cancellationToken)
+    {
+        var organizationRole = await _organizationRoleRepository.GetById(request.Id);
+        return _mapper.Map<OrganizationRoleDto>(organizationRole);
     }
 }

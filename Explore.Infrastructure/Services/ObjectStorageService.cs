@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Text;
 using System.IO;
+using System.Text;
 using Amazon.S3;
 using Amazon.S3.Model;
 using Explore.Application.Contracts.Infrastructure;

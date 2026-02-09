@@ -9,60 +9,59 @@ using Explore.Application.Features.EventSessionSpeakers.Requests.Commands;
 using Explore.Application.Responses;
 using MediatR;
 
-namespace Explore.Application.Features.EventSessionSpeakers.Handlers.Commands
+namespace Explore.Application.Features.EventSessionSpeakers.Handlers.Commands;
+
+public class UpdateEventSessionSpeakerCommandHandler : IRequestHandler<UpdateEventSessionSpeakerCommand, BaseCommandResponse<Guid>>
 {
-    public class UpdateEventSessionSpeakerCommandHandler : IRequestHandler<UpdateEventSessionSpeakerCommand, BaseCommandResponse<Guid>>
+    private readonly IEventSessionSpeakerRepository _speakerRepository;
+    private readonly IActorRepository _actorRepository;
+    private readonly IEventSessionRepository _eventSessionRepository;
+    private readonly IMapper _mapper;
+
+    public UpdateEventSessionSpeakerCommandHandler(
+        IEventSessionSpeakerRepository speakerRepository,
+        IActorRepository actorRepository,
+        IEventSessionRepository eventSessionRepository,
+        IMapper mapper)
     {
-        private readonly IEventSessionSpeakerRepository _speakerRepository;
-        private readonly IActorRepository _actorRepository;
-        private readonly IEventSessionRepository _eventSessionRepository;
-        private readonly IMapper _mapper;
+        _speakerRepository = speakerRepository;
+        _actorRepository = actorRepository;
+        _eventSessionRepository = eventSessionRepository;
+        _mapper = mapper;
+    }
 
-        public UpdateEventSessionSpeakerCommandHandler(
-            IEventSessionSpeakerRepository speakerRepository,
-            IActorRepository actorRepository,
-            IEventSessionRepository eventSessionRepository,
-            IMapper mapper)
+    public async Task<BaseCommandResponse<Guid>> Handle(UpdateEventSessionSpeakerCommand request, CancellationToken cancellationToken)
+    {
+        var response = new BaseCommandResponse<Guid>();
+
+        var validator = new UpdateEventSessionSpeakerDtoValidator(_actorRepository, _eventSessionRepository);
+        var validationResult = await validator.ValidateAsync(request.SpeakerDto, cancellationToken);
+
+        if (!validationResult.IsValid)
         {
-            _speakerRepository = speakerRepository;
-            _actorRepository = actorRepository;
-            _eventSessionRepository = eventSessionRepository;
-            _mapper = mapper;
-        }
-
-        public async Task<BaseCommandResponse<Guid>> Handle(UpdateEventSessionSpeakerCommand request, CancellationToken cancellationToken)
-        {
-            var response = new BaseCommandResponse<Guid>();
-
-            var validator = new UpdateEventSessionSpeakerDtoValidator(_actorRepository, _eventSessionRepository);
-            var validationResult = await validator.ValidateAsync(request.SpeakerDto);
-
-            if (!validationResult.IsValid)
-            {
-                response.Success = false;
-                response.Message = "Speaker assignment update failed.";
-                response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-                return response;
-            }
-
-            var speaker = await _speakerRepository.GetById(request.SpeakerDto.Id);
-
-            if (speaker == null)
-            {
-                response.Success = false;
-                response.Message = "Speaker assignment not found.";
-                return response;
-            }
-
-            _mapper.Map(request.SpeakerDto, speaker);
-
-            await _speakerRepository.Update(speaker);
-
-            response.Success = true;
-            response.Id = speaker.Id;
-            response.Message = "Speaker assignment updated successfully.";
-
+            response.Success = false;
+            response.Message = "Speaker assignment update failed.";
+            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
             return response;
         }
+
+        var speaker = await _speakerRepository.GetById(request.SpeakerDto.Id);
+
+        if (speaker == null)
+        {
+            response.Success = false;
+            response.Message = "Speaker assignment not found.";
+            return response;
+        }
+
+        _mapper.Map(request.SpeakerDto, speaker);
+
+        await _speakerRepository.Update(speaker);
+
+        response.Success = true;
+        response.Id = speaker.Id;
+        response.Message = "Speaker assignment updated successfully.";
+
+        return response;
     }
 }

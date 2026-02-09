@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using AutoMapper;
@@ -7,76 +7,92 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event;
 using Explore.Application.Features.Events.Requests.Queries;
 using MediatR;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
 
-namespace Explore.Application.Features.Events.Handlers.Queries
+namespace Explore.Application.Features.Events.Handlers.Queries;
+
+public class GetEventDetailsRequestHandler : IRequestHandler<GetEventDetailsRequest, EventDto>
 {
-    public class GetEventDetailsRequestHandler : IRequestHandler<GetEventDetailsRequest, EventDto>
+    private readonly IEventRepository _eventRepository;
+    private readonly IMapper _mapper;
+    private readonly IObjectStorageService _objectStorageService;
+    private readonly ILogger<GetEventDetailsRequestHandler> _logger;
+    private readonly HybridCache _cache;
+
+    public GetEventDetailsRequestHandler(
+        IEventRepository eventRepository,
+        IMapper mapper,
+        IObjectStorageService objectStorageService,
+        ILogger<GetEventDetailsRequestHandler> logger,
+        HybridCache cache)
     {
-        private readonly IEventRepository _eventRepository;
-        private readonly IMapper _mapper;
-        private readonly IObjectStorageService _objectStorageService;
-        private readonly ILogger<GetEventDetailsRequestHandler> _logger;
+        _eventRepository = eventRepository;
+        _mapper = mapper;
+        _objectStorageService = objectStorageService;
+        _logger = logger;
+        _cache = cache;
+    }
 
-        public GetEventDetailsRequestHandler(
-            IEventRepository eventRepository,
-            IMapper mapper,
-            IObjectStorageService objectStorageService,
-            ILogger<GetEventDetailsRequestHandler> logger)
+    public async Task<EventDto> Handle(GetEventDetailsRequest request, CancellationToken cancellationToken)
+    {
+        var cacheKey = $"event:detail:{request.Id}";
+
+        var eventDto = await _cache.GetOrCreateAsync(
+            cacheKey,
+            async _ =>
+            {
+                var @event = await _eventRepository.GetEventWithDetails(request.Id);
+                return _mapper.Map<EventDto>(@event);
+            },
+            new HybridCacheEntryOptions
+            {
+                Expiration = TimeSpan.FromMinutes(5),
+                LocalCacheExpiration = TimeSpan.FromMinutes(1)
+            },
+            cancellationToken: cancellationToken);
+
+        // Resolve presigned URLs for images
+        if (eventDto != null)
         {
-            _eventRepository = eventRepository;
-            _mapper = mapper;
-            _objectStorageService = objectStorageService;
-            _logger = logger;
+            eventDto.FeaturedImageUri = ResolveImageUrl(eventDto.FeaturedImageUri);
+            eventDto.ActorProfilePictureUri = ResolveImageUrl(eventDto.ActorProfilePictureUri);
         }
 
-        public async Task<EventDto> Handle(GetEventDetailsRequest request, CancellationToken cancellationToken)
+        return eventDto;
+    }
+
+    /// <summary>
+    /// Resolves an image object key to a presigned URL for viewing.
+    /// If the value is already a full URL (legacy data), returns it as-is.
+    /// </summary>
+    private string? ResolveImageUrl(string? objectKeyOrUri)
+    {
+        if (string.IsNullOrEmpty(objectKeyOrUri))
+            return null;
+
+        try
         {
-            var @event = await _eventRepository.GetEventWithDetails(request.Id);
-            var eventDto = _mapper.Map<EventDto>(@event);
-
-            // Resolve presigned URLs for images
-            if (eventDto != null)
+            // Check if it's already a full URL (legacy data from before this change)
+            if (objectKeyOrUri.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                objectKeyOrUri.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
             {
-                eventDto.FeaturedImageUri = ResolveImageUrl(eventDto.FeaturedImageUri);
-                eventDto.ActorProfilePictureUri = ResolveImageUrl(eventDto.ActorProfilePictureUri);
-            }
-
-            return eventDto;
-        }
-
-        /// <summary>
-        /// Resolves an image object key to a presigned URL for viewing.
-        /// If the value is already a full URL (legacy data), returns it as-is.
-        /// </summary>
-        private string? ResolveImageUrl(string? objectKeyOrUri)
-        {
-            if (string.IsNullOrEmpty(objectKeyOrUri))
-                return null;
-
-            try
-            {
-                // Check if it's already a full URL (legacy data from before this change)
-                if (objectKeyOrUri.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-                    objectKeyOrUri.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                // Extract object key from full URL and generate presigned URL
+                if (Uri.TryCreate(objectKeyOrUri, UriKind.Absolute, out var uri))
                 {
-                    // Extract object key from full URL and generate presigned URL
-                    if (Uri.TryCreate(objectKeyOrUri, UriKind.Absolute, out var uri))
-                    {
-                        var objectKey = uri.AbsolutePath.TrimStart('/');
-                        return _objectStorageService.GeneratePresignedDownloadUrl(objectKey, 60);
-                    }
-                    return objectKeyOrUri;
+                    var objectKey = uri.AbsolutePath.TrimStart('/');
+                    return _objectStorageService.GeneratePresignedDownloadUrl(objectKey, 60);
                 }
+                return objectKeyOrUri;
+            }
 
-                // It's an object key - generate presigned URL
-                return _objectStorageService.GeneratePresignedDownloadUrl(objectKeyOrUri, 60);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to generate presigned URL for object key: {ObjectKey}", objectKeyOrUri);
-                return null;
-            }
+            // It's an object key - generate presigned URL
+            return _objectStorageService.GeneratePresignedDownloadUrl(objectKeyOrUri, 60);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to generate presigned URL for object key: {ObjectKey}", objectKeyOrUri);
+            return null;
         }
     }
 }

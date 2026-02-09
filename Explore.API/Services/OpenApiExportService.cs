@@ -1,7 +1,7 @@
+using System.Text.Json;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.AspNetCore.Builder;
-using System.Text.Json;
 
 namespace Explore.API.Services;
 

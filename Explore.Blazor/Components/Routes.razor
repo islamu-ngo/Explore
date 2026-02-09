@@ -10,7 +10,9 @@
 @using Explore.Blazor.Client.Pages.Organization
 @using Explore.Blazor.Client.Pages.Admin
 @using Explore.Blazor.Client.Pages.Landing
+@using Explore.Blazor.Client.Pages.Onboarding
 @using Explore.Blazor.Client.Providers
+@using Explore.Blazor.Client.Routing.Guards
 @using Microsoft.AspNetCore.Components.Authorization
 
 <TenantContextProvider>
@@ -31,49 +33,66 @@
 
 @code {
     private List<RouteConfig> _routes = new();
+    private static List<Type> RequireAuthenticated() => [typeof(AuthenticatedRouteGuard)];
+    private static List<Type> RequireAdmin() => [typeof(AdminRouteGuard)];
 
     protected override void OnInitialized()
     {
         _routes = new List<RouteConfig>
         {
             // Public routes - accessible to everyone (no guards)
-            new RouteConfig { Path = "/", Component = typeof(EventList), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/", Component = typeof(StartupGate), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/events", Component = typeof(EventList), Transition = RouteTransition.Fade },
             new RouteConfig { Path = "/event/detail/:eventId", Component = typeof(EventDetail), Transition = RouteTransition.Fade },
             new RouteConfig { Path = "/welcome", Component = typeof(LandingPageForNonUsers), Transition = RouteTransition.Fade },
             new RouteConfig { Path = "/home", Component = typeof(Home), Transition = RouteTransition.Fade },
-            new RouteConfig { Path = "/loading", Component = typeof(Loading), Transition = RouteTransition.None },
-            new RouteConfig { Path = "/login", Component = typeof(LoginRedirect), Transition = RouteTransition.None },
-            new RouteConfig { Path = "/logout", Component = typeof(LogoutRedirect), Transition = RouteTransition.None },
+            new RouteConfig { Path = "/startup", Component = typeof(StartupGate), Transition = RouteTransition.None, EnableCache = false },
+            new RouteConfig { Path = "/loading", Component = typeof(Loading), Transition = RouteTransition.None, EnableCache = false },
+            new RouteConfig { Path = "/login", Component = typeof(LoginRedirect), Transition = RouteTransition.None, EnableCache = false },
+            new RouteConfig { Path = "/logout", Component = typeof(LogoutRedirect), Transition = RouteTransition.None, EnableCache = false },
+            new RouteConfig
+            {
+                Path = "/onboarding/instance",
+                Component = typeof(InstanceOnboarding),
+                Transition = RouteTransition.Fade,
+                Guards = RequireAuthenticated()
+            },
+            new RouteConfig
+            {
+                Path = "/onboarding/tenant",
+                Component = typeof(TenantOnboarding),
+                Transition = RouteTransition.Fade,
+                Guards = RequireAuthenticated()
+            },
 
             // User authenticated routes
-            new RouteConfig { Path = "/user/profile", Component = typeof(UserProfile), Transition = RouteTransition.Fade },
-            new RouteConfig { Path = "/user/reviews", Component = typeof(MyReviews), Transition = RouteTransition.Fade },
-            new RouteConfig { Path = "/settings", Component = typeof(Settings), Transition = RouteTransition.Fade },
-            new RouteConfig { Path = "/my-registrations", Component = typeof(MyRegistrations), Transition = RouteTransition.Fade },
-            new RouteConfig { Path = "/myevents", Component = typeof(MyEvents), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/user/profile", Component = typeof(UserProfile), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+            new RouteConfig { Path = "/user/reviews", Component = typeof(MyReviews), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+            new RouteConfig { Path = "/settings", Component = typeof(Settings), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+            new RouteConfig { Path = "/my-registrations", Component = typeof(MyRegistrations), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+            new RouteConfig { Path = "/myevents", Component = typeof(MyEvents), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
 
             // Organization management routes
-            new RouteConfig { Path = "/organization/my", Component = typeof(MyOrganizations), Transition = RouteTransition.Fade },
-            new RouteConfig { Path = "/users/:userId/organizations", Component = typeof(MyOrganizations), Transition = RouteTransition.Fade },
-            new RouteConfig { Path = "/organization/create", Component = typeof(CreateOrganization), Transition = RouteTransition.Fade },
-            new RouteConfig { Path = "/organization/success", Component = typeof(OrganizationSuccess), Transition = RouteTransition.Fade },
-            new RouteConfig { Path = "/organization/:id/members", Component = typeof(OrganizationMembers), Transition = RouteTransition.Fade },
-            new RouteConfig { Path = "/organization/profile/:id", Component = typeof(OrganizationProfile), Transition = RouteTransition.Fade },
-            new RouteConfig { Path = "/organization/reviews/:id", Component = typeof(OrganizationReviews), Transition = RouteTransition.Fade },
-            new RouteConfig { Path = "/organization/:id", Component = typeof(OrganizationDetails), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/organization/my", Component = typeof(MyOrganizations), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+            new RouteConfig { Path = "/users/:userId/organizations", Component = typeof(MyOrganizations), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+            new RouteConfig { Path = "/organization/create", Component = typeof(CreateOrganization), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+            new RouteConfig { Path = "/organization/success", Component = typeof(OrganizationSuccess), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+            new RouteConfig { Path = "/organization/:id/members", Component = typeof(OrganizationMembers), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+            new RouteConfig { Path = "/organization/profile/:id", Component = typeof(OrganizationProfile), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+            new RouteConfig { Path = "/organization/reviews/:id", Component = typeof(OrganizationReviews), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+            new RouteConfig { Path = "/organization/:id", Component = typeof(OrganizationDetails), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
 
             // Event management routes
-            new RouteConfig { Path = "/organization/:organizationId/create-event", Component = typeof(CreateEvent), Transition = RouteTransition.Fade },
-            new RouteConfig { Path = "/event/edit/:eventId", Component = typeof(EventEdit), Transition = RouteTransition.Fade },
-            new RouteConfig { Path = "/event-created/:eventId", Component = typeof(EventCreated), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/organization/:organizationId/create-event", Component = typeof(CreateEvent), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+            new RouteConfig { Path = "/event/edit/:eventId", Component = typeof(EventEdit), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+            new RouteConfig { Path = "/event-created/:eventId", Component = typeof(EventCreated), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
 
-            // Admin routes - protected by [Authorize(Roles="Admin")] on AdminList.razor
-            // Additional Blazouter route guards should be implemented when available
-            new RouteConfig { Path = "/admin/organization/:organizationId", Component = typeof(AdminListDetails), Transition = RouteTransition.Fade },
-            new RouteConfig { Path = "/admin", Component = typeof(AdminList), Transition = RouteTransition.Fade },
-            new RouteConfig { Path = "/admin/categories", Component = typeof(Categories), Transition = RouteTransition.Fade },
-            new RouteConfig { Path = "/admin/locations", Component = typeof(Locations), Transition = RouteTransition.Fade },
-            new RouteConfig { Path = "/admin/tags", Component = typeof(Tags), Transition = RouteTransition.Fade },
+            // Admin routes
+            new RouteConfig { Path = "/admin/organization/:organizationId", Component = typeof(AdminListDetails), Transition = RouteTransition.Fade, Guards = RequireAdmin() },
+            new RouteConfig { Path = "/admin", Component = typeof(AdminList), Transition = RouteTransition.Fade, Guards = RequireAdmin() },
+            new RouteConfig { Path = "/admin/categories", Component = typeof(Categories), Transition = RouteTransition.Fade, Guards = RequireAdmin() },
+            new RouteConfig { Path = "/admin/locations", Component = typeof(Locations), Transition = RouteTransition.Fade, Guards = RequireAdmin() },
+            new RouteConfig { Path = "/admin/tags", Component = typeof(Tags), Transition = RouteTransition.Fade, Guards = RequireAdmin() },
     };
     }
 }

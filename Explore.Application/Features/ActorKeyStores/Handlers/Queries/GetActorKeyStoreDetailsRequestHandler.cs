@@ -1,31 +1,30 @@
-using MediatR;
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.ActorKeyStore;
 using Explore.Application.Features.ActorKeyStores.Requests.Queries;
+using MediatR;
 
-namespace Explore.Application.Features.ActorKeyStores.Handlers.Queries
+namespace Explore.Application.Features.ActorKeyStores.Handlers.Queries;
+
+public class GetActorKeyStoreDetailsRequestHandler : IRequestHandler<GetActorKeyStoreDetailsRequest, ActorKeyStoreDto>
 {
-    public class GetActorKeyStoreDetailsRequestHandler : IRequestHandler<GetActorKeyStoreDetailsRequest, ActorKeyStoreDto>
+    private readonly IActorKeyStoreRepository _actorKeyStoreRepository;
+    private readonly IMapper _mapper;
+
+    public GetActorKeyStoreDetailsRequestHandler(IActorKeyStoreRepository actorKeyStoreRepository, IMapper mapper)
     {
-        private readonly IActorKeyStoreRepository _actorKeyStoreRepository;
-        private readonly IMapper _mapper;
+        _actorKeyStoreRepository = actorKeyStoreRepository;
+        _mapper = mapper;
+    }
 
-        public GetActorKeyStoreDetailsRequestHandler(IActorKeyStoreRepository actorKeyStoreRepository, IMapper mapper)
+    public async Task<ActorKeyStoreDto> Handle(GetActorKeyStoreDetailsRequest request, CancellationToken cancellationToken)
+    {
+        var keyStore = await _actorKeyStoreRepository.GetActorKeyStoreWithDetails(request.Id);
+        if (keyStore == null)
         {
-            _actorKeyStoreRepository = actorKeyStoreRepository;
-            _mapper = mapper;
+            return null;
         }
 
-        public async Task<ActorKeyStoreDto> Handle(GetActorKeyStoreDetailsRequest request, CancellationToken cancellationToken)
-        {
-            var keyStore = await _actorKeyStoreRepository.GetActorKeyStoreWithDetails(request.Id);
-            if (keyStore == null)
-            {
-                return null;
-            }
-
-            return _mapper.Map<ActorKeyStoreDto>(keyStore);
-        }
+        return _mapper.Map<ActorKeyStoreDto>(keyStore);
     }
 }

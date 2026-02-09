@@ -1,10 +1,9 @@
-using MediatR;
 using System;
+using MediatR;
 
-namespace Explore.Application.Features.EventCategories.Requests.Commands
+namespace Explore.Application.Features.EventCategories.Requests.Commands;
+
+public class DeleteEventCategoriesCommand : IRequest<bool>
 {
-    public class DeleteEventCategoriesCommand : IRequest<bool>
-    {
-        public Guid Id { get; set; }
-    }
+    public Guid Id { get; set; }
 }

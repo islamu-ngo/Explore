@@ -8,114 +8,116 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 
-namespace Explore.API.Controllers
+namespace Explore.API.Controllers;
+
+[Route("api/v1/[controller]")]
+[ApiController]
+public class UserExternalLoginController : ControllerBase
 {
-    [Route("api/v1/[controller]")]
-    [ApiController]
-    public class UserExternalLoginController : ControllerBase
+    private readonly IMediator _mediator;
+
+    public UserExternalLoginController(IMediator mediator)
     {
-        private readonly IMediator _mediator;
+        _mediator = mediator;
+    }
 
-        public UserExternalLoginController(IMediator mediator)
+    // GET: api/v1/userexternallogin
+    [HttpGet]
+    [EndpointSummary("Get all User External Logins")]
+    [EndpointDescription("Retrieve a list of all user external logins")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(List<UserExternalLoginListDto>), StatusCodes.Status200OK)]
+    [OutputCache(PolicyName = "ListData")]
+    public async Task<ActionResult<List<UserExternalLoginListDto>>> GetAll(CancellationToken cancellationToken = default)
+    {
+        var logins = await _mediator.Send(new GetUserExternalLoginListRequest(), cancellationToken);
+        return Ok(logins);
+    }
+
+    // GET: api/v1/userexternallogin/{id}
+    [HttpGet("{id}")]
+    [EndpointSummary("Get User External Login by ID")]
+    [EndpointDescription("Retrieve details of a specific user external login")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(UserExternalLoginDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [OutputCache(PolicyName = "DetailData")]
+    public async Task<ActionResult<UserExternalLoginDto>> GetById(Guid id, CancellationToken cancellationToken = default)
+    {
+        var login = await _mediator.Send(new GetUserExternalLoginDetailsRequest { Id = id }, cancellationToken);
+        if (login == null)
         {
-            _mediator = mediator;
+            return NotFound();
         }
 
-        // GET: api/v1/userexternallogin
-        [HttpGet]
-        [EndpointSummary("Get all User External Logins")]
-        [EndpointDescription("Retrieve a list of all user external logins")]
-        [Authorize(Roles = "Admin")]
-        [ProducesResponseType(typeof(List<UserExternalLoginListDto>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<List<UserExternalLoginListDto>>> GetAll()
+        return Ok(login);
+    }
+
+    // POST: api/v1/userexternallogin
+    [HttpPost]
+    [EndpointSummary("Create new User External Login")]
+    [EndpointDescription("Create a new user external login")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateUserExternalLoginDto dto, CancellationToken cancellationToken = default)
+    {
+        var command = new CreateUserExternalLoginCommand { UserExternalLoginDto = dto };
+        var response = await _mediator.Send(command, cancellationToken);
+
+        if (!response.Success)
         {
-            var logins = await _mediator.Send(new GetUserExternalLoginListRequest());
-            return Ok(logins);
+            return BadRequest(response);
         }
 
-        // GET: api/v1/userexternallogin/{id}
-        [HttpGet("{id}")]
-        [EndpointSummary("Get User External Login by ID")]
-        [EndpointDescription("Retrieve details of a specific user external login")]
-        [Authorize(Roles = "Admin")]
-        [ProducesResponseType(typeof(UserExternalLoginDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<UserExternalLoginDto>> GetById(Guid id)
-        {
-            var login = await _mediator.Send(new GetUserExternalLoginDetailsRequest { Id = id });
-            if (login == null)
-            {
-                return NotFound();
-            }
+        return Ok(response);
+    }
 
-            return Ok(login);
+    // PUT: api/v1/userexternallogin/{id}
+    [HttpPut("{id}")]
+    [EndpointSummary("Update User External Login")]
+    [EndpointDescription("Update an existing user external login")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateUserExternalLoginDto dto, CancellationToken cancellationToken = default)
+    {
+        if (id != dto.Id)
+        {
+            return BadRequest(new { error = "User External Login ID mismatch" });
         }
 
-        // POST: api/v1/userexternallogin
-        [HttpPost]
-        [EndpointSummary("Create new User External Login")]
-        [EndpointDescription("Create a new user external login")]
-        [Authorize(Roles = "Admin")]
-        [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateUserExternalLoginDto dto)
+        var command = new UpdateUserExternalLoginCommand { UserExternalLoginDto = dto };
+        var response = await _mediator.Send(command, cancellationToken);
+
+        if (!response.Success)
         {
-            var command = new CreateUserExternalLoginCommand { UserExternalLoginDto = dto };
-            var response = await _mediator.Send(command);
-
-            if (!response.Success)
-            {
-                return BadRequest(response);
-            }
-
-            return Ok(response);
+            return BadRequest(response);
         }
 
-        // PUT: api/v1/userexternallogin/{id}
-        [HttpPut("{id}")]
-        [EndpointSummary("Update User External Login")]
-        [EndpointDescription("Update an existing user external login")]
-        [Authorize(Roles = "Admin")]
-        [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateUserExternalLoginDto dto)
+        return Ok(response);
+    }
+
+    // DELETE: api/v1/userexternallogin/{id}
+    [HttpDelete("{id}")]
+    [EndpointSummary("Delete User External Login")]
+    [EndpointDescription("Delete a user external login")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
+    {
+        var command = new DeleteUserExternalLoginCommand { Id = id };
+        var result = await _mediator.Send(command, cancellationToken);
+
+        if (!result)
         {
-            if (id != dto.Id)
-            {
-                return BadRequest(new { error = "User External Login ID mismatch" });
-            }
-
-            var command = new UpdateUserExternalLoginCommand { UserExternalLoginDto = dto };
-            var response = await _mediator.Send(command);
-
-            if (!response.Success)
-            {
-                return BadRequest(response);
-            }
-
-            return Ok(response);
+            return NotFound(new { error = "User External Login not found" });
         }
 
-        // DELETE: api/v1/userexternallogin/{id}
-        [HttpDelete("{id}")]
-        [EndpointSummary("Delete User External Login")]
-        [EndpointDescription("Delete a user external login")]
-        [Authorize(Roles = "Admin")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult> Delete(Guid id)
-        {
-            var command = new DeleteUserExternalLoginCommand { Id = id };
-            var result = await _mediator.Send(command);
-
-            if (!result)
-            {
-                return NotFound(new { error = "User External Login not found" });
-            }
-
-            return NoContent();
-        }
+        return NoContent();
     }
 }

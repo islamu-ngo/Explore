@@ -3,10 +3,9 @@ using Explore.Application.DTOs.EventSessionSpeaker;
 using Explore.Application.Responses;
 using MediatR;
 
-namespace Explore.Application.Features.EventSessionSpeakers.Requests.Commands
+namespace Explore.Application.Features.EventSessionSpeakers.Requests.Commands;
+
+public class UpdateEventSessionSpeakerCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public class UpdateEventSessionSpeakerCommand : IRequest<BaseCommandResponse<Guid>>
-    {
-        public UpdateEventSessionSpeakerDto SpeakerDto { get; set; }
-    }
+    public required UpdateEventSessionSpeakerDto SpeakerDto { get; set; }
 }

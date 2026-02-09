@@ -137,7 +137,7 @@
                                 </div>
                             </MudStack>
                         </MudItem>
-                        
+
                         <MudItem xs="12" md="6">
                             <MudText Typo="Typo.h6" Class="mb-4" Style="font-weight: 700;">Address</MudText>
                             <div class="d-flex gap-3">
@@ -229,6 +229,38 @@
                                               AdornmentIcon="@Icons.Material.Filled.Public"
                                               Required="true"
                                               RequiredError="Country is required" />
+                            </MudItem>
+
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.subtitle1" Class="mt-4 mb-2" Color="Color.Primary" Style="font-weight: 700;">Organization Page Appearance</MudText>
+                                <MudDivider Class="mb-4" />
+                            </MudItem>
+
+                            <MudItem xs="12" sm="4">
+                                <MudTextField @bind-Value="_appearance.BackgroundColor"
+                                              Label="Background Color"
+                                              Variant="Variant.Outlined"
+                                              InputType="InputType.Color"
+                                              HelperText="Used when no media URL is provided." />
+                            </MudItem>
+
+                            <MudItem xs="12" sm="8">
+                                <MudTextField @bind-Value="_appearance.BackgroundMediaUrl"
+                                              Label="Background Media URL"
+                                              Variant="Variant.Outlined"
+                                              Placeholder="https://... (image or GIF)" />
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudSelect T="string"
+                                           Label="Background Effect"
+                                           Variant="Variant.Outlined"
+                                           @bind-Value="_appearance.BackgroundEffect">
+                                    <MudSelectItem Value="@("None")">None</MudSelectItem>
+                                    <MudSelectItem Value="@("SoftOverlay")">Soft Overlay</MudSelectItem>
+                                    <MudSelectItem Value="@("StrongOverlay")">Strong Overlay</MudSelectItem>
+                                    <MudSelectItem Value="@("Blur")">Blur</MudSelectItem>
+                                </MudSelect>
                             </MudItem>
 
                             <MudItem xs="12" Class="d-flex justify-end gap-3 mt-6">

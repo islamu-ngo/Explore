@@ -1,10 +1,10 @@
-using MediatR;
 using AutoMapper;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Actor;
 using Explore.Application.Features.Actors.Requests.Queries;
 using Explore.Application.Responses;
+using MediatR;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Application.Features.Actors.Handlers.Queries;

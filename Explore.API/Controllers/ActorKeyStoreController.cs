@@ -8,114 +8,116 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 
-namespace Explore.API.Controllers
+namespace Explore.API.Controllers;
+
+[Route("api/v1/[controller]")]
+[ApiController]
+public class ActorKeyStoreController : ControllerBase
 {
-    [Route("api/v1/[controller]")]
-    [ApiController]
-    public class ActorKeyStoreController : ControllerBase
+    private readonly IMediator _mediator;
+
+    public ActorKeyStoreController(IMediator mediator)
     {
-        private readonly IMediator _mediator;
+        _mediator = mediator;
+    }
 
-        public ActorKeyStoreController(IMediator mediator)
+    // GET: api/v1/actorkeystore
+    [HttpGet]
+    [EndpointSummary("Get all Actor Key Stores")]
+    [EndpointDescription("Retrieve a list of all actor key stores")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(List<ActorKeyStoreListDto>), StatusCodes.Status200OK)]
+    [OutputCache(PolicyName = "ListData")]
+    public async Task<ActionResult<List<ActorKeyStoreListDto>>> GetAll(CancellationToken cancellationToken = default)
+    {
+        var keyStores = await _mediator.Send(new GetActorKeyStoreListRequest(), cancellationToken);
+        return Ok(keyStores);
+    }
+
+    // GET: api/v1/actorkeystore/{id}
+    [HttpGet("{id}")]
+    [EndpointSummary("Get Actor Key Store by ID")]
+    [EndpointDescription("Retrieve details of a specific actor key store")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(ActorKeyStoreDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [OutputCache(PolicyName = "DetailData")]
+    public async Task<ActionResult<ActorKeyStoreDto>> GetById(Guid id, CancellationToken cancellationToken = default)
+    {
+        var keyStore = await _mediator.Send(new GetActorKeyStoreDetailsRequest { Id = id }, cancellationToken);
+        if (keyStore == null)
         {
-            _mediator = mediator;
+            return NotFound();
         }
 
-        // GET: api/v1/actorkeystore
-        [HttpGet]
-        [EndpointSummary("Get all Actor Key Stores")]
-        [EndpointDescription("Retrieve a list of all actor key stores")]
-        [Authorize(Roles = "Admin")]
-        [ProducesResponseType(typeof(List<ActorKeyStoreListDto>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<List<ActorKeyStoreListDto>>> GetAll()
+        return Ok(keyStore);
+    }
+
+    // POST: api/v1/actorkeystore
+    [HttpPost]
+    [EndpointSummary("Create new Actor Key Store")]
+    [EndpointDescription("Create a new actor key store")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateActorKeyStoreDto dto, CancellationToken cancellationToken = default)
+    {
+        var command = new CreateActorKeyStoreCommand { ActorKeyStoreDto = dto };
+        var response = await _mediator.Send(command, cancellationToken);
+
+        if (!response.Success)
         {
-            var keyStores = await _mediator.Send(new GetActorKeyStoreListRequest());
-            return Ok(keyStores);
+            return BadRequest(response);
         }
 
-        // GET: api/v1/actorkeystore/{id}
-        [HttpGet("{id}")]
-        [EndpointSummary("Get Actor Key Store by ID")]
-        [EndpointDescription("Retrieve details of a specific actor key store")]
-        [Authorize(Roles = "Admin")]
-        [ProducesResponseType(typeof(ActorKeyStoreDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ActorKeyStoreDto>> GetById(Guid id)
-        {
-            var keyStore = await _mediator.Send(new GetActorKeyStoreDetailsRequest { Id = id });
-            if (keyStore == null)
-            {
-                return NotFound();
-            }
+        return Ok(response);
+    }
 
-            return Ok(keyStore);
+    // PUT: api/v1/actorkeystore/{id}
+    [HttpPut("{id}")]
+    [EndpointSummary("Update Actor Key Store")]
+    [EndpointDescription("Update an existing actor key store")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateActorKeyStoreDto dto, CancellationToken cancellationToken = default)
+    {
+        if (id != dto.Id)
+        {
+            return BadRequest(new { error = "Actor Key Store ID mismatch" });
         }
 
-        // POST: api/v1/actorkeystore
-        [HttpPost]
-        [EndpointSummary("Create new Actor Key Store")]
-        [EndpointDescription("Create a new actor key store")]
-        [Authorize(Roles = "Admin")]
-        [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateActorKeyStoreDto dto)
+        var command = new UpdateActorKeyStoreCommand { ActorKeyStoreDto = dto };
+        var response = await _mediator.Send(command, cancellationToken);
+
+        if (!response.Success)
         {
-            var command = new CreateActorKeyStoreCommand { ActorKeyStoreDto = dto };
-            var response = await _mediator.Send(command);
-
-            if (!response.Success)
-            {
-                return BadRequest(response);
-            }
-
-            return Ok(response);
+            return BadRequest(response);
         }
 
-        // PUT: api/v1/actorkeystore/{id}
-        [HttpPut("{id}")]
-        [EndpointSummary("Update Actor Key Store")]
-        [EndpointDescription("Update an existing actor key store")]
-        [Authorize(Roles = "Admin")]
-        [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateActorKeyStoreDto dto)
+        return Ok(response);
+    }
+
+    // DELETE: api/v1/actorkeystore/{id}
+    [HttpDelete("{id}")]
+    [EndpointSummary("Delete Actor Key Store")]
+    [EndpointDescription("Delete an actor key store")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
+    {
+        var command = new DeleteActorKeyStoreCommand { Id = id };
+        var result = await _mediator.Send(command, cancellationToken);
+
+        if (!result)
         {
-            if (id != dto.Id)
-            {
-                return BadRequest(new { error = "Actor Key Store ID mismatch" });
-            }
-
-            var command = new UpdateActorKeyStoreCommand { ActorKeyStoreDto = dto };
-            var response = await _mediator.Send(command);
-
-            if (!response.Success)
-            {
-                return BadRequest(response);
-            }
-
-            return Ok(response);
+            return NotFound(new { error = "Actor Key Store not found" });
         }
 
-        // DELETE: api/v1/actorkeystore/{id}
-        [HttpDelete("{id}")]
-        [EndpointSummary("Delete Actor Key Store")]
-        [EndpointDescription("Delete an actor key store")]
-        [Authorize(Roles = "Admin")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult> Delete(Guid id)
-        {
-            var command = new DeleteActorKeyStoreCommand { Id = id };
-            var result = await _mediator.Send(command);
-
-            if (!result)
-            {
-                return NotFound(new { error = "Actor Key Store not found" });
-            }
-
-            return NoContent();
-        }
+        return NoContent();
     }
 }

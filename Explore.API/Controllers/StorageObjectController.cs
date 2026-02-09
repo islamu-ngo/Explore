@@ -8,6 +8,7 @@ using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 
 namespace Explore.API.Controllers;
 
@@ -28,13 +29,14 @@ public class StorageObjectController : ControllerBase
     [EndpointDescription("Retrieve a paginated list of all storage objects (files, images, documents, etc.). Default page size is 20, max is 100.")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(PaginatedResult<StorageObjectListDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<PaginatedResult<StorageObjectListDto>>> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
+    [OutputCache(PolicyName = "ListData")]
+    public async Task<ActionResult<PaginatedResult<StorageObjectListDto>>> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
     {
         var storageObjects = await _mediator.Send(new GetStorageObjectListRequest
         {
             PageNumber = pageNumber,
             PageSize = pageSize
-        });
+        }, cancellationToken);
         return Ok(storageObjects);
     }
 
@@ -45,9 +47,10 @@ public class StorageObjectController : ControllerBase
     [AllowAnonymous]
     [ProducesResponseType(typeof(StorageObjectDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<StorageObjectDto>> GetById(Guid id)
+    [OutputCache(PolicyName = "DetailData")]
+    public async Task<ActionResult<StorageObjectDto>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        var storageObject = await _mediator.Send(new GetStorageObjectDetailsRequest { Id = id });
+        var storageObject = await _mediator.Send(new GetStorageObjectDetailsRequest { Id = id }, cancellationToken);
 
         if (storageObject == null)
         {
@@ -63,7 +66,8 @@ public class StorageObjectController : ControllerBase
     [EndpointDescription("Retrieve the content of a file from storage by its key")]
     [AllowAnonymous]
     [ResponseCache(Duration = 86400, Location = ResponseCacheLocation.Any)] // Cache for 1 day
-    public async Task<IActionResult> GetFile(string fileKey)
+    [OutputCache(PolicyName = "DetailData")]
+    public async Task<IActionResult> GetFile(string fileKey, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(fileKey))
         {
@@ -72,7 +76,7 @@ public class StorageObjectController : ControllerBase
 
         try
         {
-            var result = await _mediator.Send(new GetStorageObjectFileRequest { FileKey = fileKey });
+            var result = await _mediator.Send(new GetStorageObjectFileRequest { FileKey = fileKey }, cancellationToken);
             return File(result.FileStream, result.ContentType, enableRangeProcessing: true);
         }
         catch (KeyNotFoundException)
@@ -92,13 +96,14 @@ public class StorageObjectController : ControllerBase
     [AllowAnonymous]
     [ProducesResponseType(typeof(PresignedDownloadUrlResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<PresignedDownloadUrlResponseDto>> GetPresignedDownloadUrl(Guid id, [FromQuery] int expirationMinutes = 60)
+    [OutputCache(PolicyName = "DetailData")]
+    public async Task<ActionResult<PresignedDownloadUrlResponseDto>> GetPresignedDownloadUrl(Guid id, [FromQuery] int expirationMinutes = 60, CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(new GetPresignedDownloadUrlRequest
         {
             Id = id,
             ExpirationMinutes = expirationMinutes
-        });
+        }, cancellationToken);
 
         if (result == null)
         {
@@ -115,7 +120,8 @@ public class StorageObjectController : ControllerBase
     [AllowAnonymous]
     [ProducesResponseType(typeof(PresignedDownloadUrlResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<PresignedDownloadUrlResponseDto>> GetPresignedDownloadUrlByKey(string objectKey, [FromQuery] int expirationMinutes = 60)
+    [OutputCache(PolicyName = "DetailData")]
+    public async Task<ActionResult<PresignedDownloadUrlResponseDto>> GetPresignedDownloadUrlByKey(string objectKey, [FromQuery] int expirationMinutes = 60, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(objectKey))
         {
@@ -126,7 +132,7 @@ public class StorageObjectController : ControllerBase
         {
             ObjectKey = objectKey,
             ExpirationMinutes = expirationMinutes
-        });
+        }, cancellationToken);
 
         if (result == null)
         {
@@ -144,14 +150,14 @@ public class StorageObjectController : ControllerBase
     [ProducesResponseType(typeof(UploadUrlResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<UploadUrlResponseDto>> GenerateUploadUrl([FromBody] UploadRequestDto request)
+    public async Task<ActionResult<UploadUrlResponseDto>> GenerateUploadUrl([FromBody] UploadRequestDto request, CancellationToken cancellationToken = default)
     {
         var command = new GenerateUploadUrlCommand
         {
             FileName = request.FileName,
             ContentType = request.ContentType
         };
-        var response = await _mediator.Send(command);
+        var response = await _mediator.Send(command, cancellationToken);
         return Ok(response);
     }
 
@@ -163,10 +169,10 @@ public class StorageObjectController : ControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateStorageObjectDto dto)
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateStorageObjectDto dto, CancellationToken cancellationToken = default)
     {
         var command = new CreateStorageObjectCommand { StorageObjectDto = dto };
-        var response = await _mediator.Send(command);
+        var response = await _mediator.Send(command, cancellationToken);
         return Ok(response);
     }
 
@@ -179,7 +185,7 @@ public class StorageObjectController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateStorageObjectDto dto)
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateStorageObjectDto dto, CancellationToken cancellationToken = default)
     {
         if (id != dto.Id)
         {
@@ -187,7 +193,7 @@ public class StorageObjectController : ControllerBase
         }
 
         var command = new UpdateStorageObjectCommand { StorageObjectDto = dto };
-        var response = await _mediator.Send(command);
+        var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)
         {
@@ -205,10 +211,10 @@ public class StorageObjectController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult> Delete(Guid id)
+    public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var command = new DeleteStorageObjectCommand { Id = id };
-        var result = await _mediator.Send(command);
+        var result = await _mediator.Send(command, cancellationToken);
 
         if (!result)
         {

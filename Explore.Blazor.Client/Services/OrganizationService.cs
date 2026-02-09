@@ -68,7 +68,7 @@ public class OrganizationService : IOrganizationService
         }
         catch (ApiException ex)
         {
-            _logger.LogError(ex, "API error creating organization: {StatusCode}", ex.StatusCode);
+            _logger.LogError(ex, "[OrganizationService.CreateOrganizationAsync] API error creating organization. StatusCode: {StatusCode}", ex.StatusCode);
             throw;
         }
     }
@@ -78,11 +78,16 @@ public class OrganizationService : IOrganizationService
     {
         try
         {
-            return await _apiClient.ApprovalStatusAllAsync() ?? new List<StatusTypeListDto>();
+            return await _apiClient.ApprovalstatusAllAsync() ?? new List<StatusTypeListDto>();
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[OrganizationService.GetStatusTypesAsync] API error fetching status types. StatusCode: {StatusCode}", ex.StatusCode);
+            return new List<StatusTypeListDto>();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error fetching status types");
+            _logger.LogError(ex, "[OrganizationService.GetStatusTypesAsync] Unexpected error fetching status types");
             return new List<StatusTypeListDto>();
         }
     }
@@ -97,7 +102,12 @@ public class OrganizationService : IOrganizationService
         }
         catch (ApiException ex)
         {
-            _logger.LogError(ex, "API error fetching my organizations: {StatusCode}", ex.StatusCode);
+            _logger.LogError(ex, "[OrganizationService.GetMyOrganizationsAsync] API error fetching my organizations. StatusCode: {StatusCode}", ex.StatusCode);
+            return new List<OrganizationListDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[OrganizationService.GetMyOrganizationsAsync] Unexpected error fetching my organizations");
             return new List<OrganizationListDto>();
         }
     }
@@ -112,9 +122,14 @@ public class OrganizationService : IOrganizationService
             var result = await _apiClient.GetMyOrganizationsAsync(pageNumber: ApiConstants.FirstPage, pageSize: ApiConstants.DefaultPageSize);
             return result?.GetItems() ?? new List<OrganizationListDto>();
         }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[OrganizationService.GetOrganizationsByUserAsync] API error fetching organizations for user {UserId}. StatusCode: {StatusCode}", userId, ex.StatusCode);
+            return new List<OrganizationListDto>();
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error fetching organizations for user {UserId}", userId);
+            _logger.LogError(ex, "[OrganizationService.GetOrganizationsByUserAsync] Unexpected error fetching organizations for user {UserId}", userId);
             return new List<OrganizationListDto>();
         }
     }
@@ -129,12 +144,17 @@ public class OrganizationService : IOrganizationService
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
         {
-            _logger.LogWarning("Organization not found: {OrganizationId}", id);
+            _logger.LogWarning("[OrganizationService.GetOrganizationByIdAsync] Organization not found. OrganizationId: {OrganizationId}", id);
             return null;
         }
         catch (ApiException ex)
         {
-            _logger.LogError(ex, "API error fetching organization {OrganizationId}: {StatusCode}", id, ex.StatusCode);
+            _logger.LogError(ex, "[OrganizationService.GetOrganizationByIdAsync] API error fetching organization. OrganizationId: {OrganizationId}, StatusCode: {StatusCode}", id, ex.StatusCode);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[OrganizationService.GetOrganizationByIdAsync] Unexpected error fetching organization. OrganizationId: {OrganizationId}", id);
             return null;
         }
     }
@@ -148,8 +168,9 @@ public class OrganizationService : IOrganizationService
         }
         catch (ApiException ex)
         {
-            _logger.LogError(ex, "API error updating organization {OrganizationId}: {StatusCode}", id, ex.StatusCode);
+            _logger.LogError(ex, "[OrganizationService.UpdateOrganizationAsync] API error updating organization. OrganizationId: {OrganizationId}, StatusCode: {StatusCode}", id, ex.StatusCode);
             throw;
         }
     }
 }
+

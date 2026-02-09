@@ -2,38 +2,37 @@ using System;
 using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Interfaces;
 
-namespace Explore.Domain
+namespace Explore.Domain;
+
+public class User : IAuditableEntity, ISoftDeletable
 {
-    public class User : IAuditableEntity, ISoftDeletable
-    {
-        public Guid Id { get; set; }
-        public string Email { get; set; }
-        public string FirstName { get; set; }
-        public string LastName { get; set; }
+    public Guid Id { get; set; }
+    public string Email { get; set; }
+    public string FirstName { get; set; }
+    public string LastName { get; set; }
 
-        /// <summary>
-        /// Every User SHOULD have an associated Actor for identity in the system.
-        /// To avoid circular creation issues the ActorId is nullable during creation and
-        /// is set immediately after the Actor is created.
-        /// </summary>
-        [ForeignKey("Actor")]
-        public Guid? ActorId { get; set; }
-        public Actor? Actor { get; set; }
+    /// <summary>
+    /// Every User SHOULD have an associated Actor for identity in the system.
+    /// To avoid circular creation issues the ActorId is nullable during creation and
+    /// is set immediately after the Actor is created.
+    /// </summary>
+    [ForeignKey("Actor")]
+    public Guid? ActorId { get; set; }
+    public Actor? Actor { get; set; }
 
-        public string? AuthProvider { get; set; }
-        public string? AuthProviderId { get; set; }
-        public Guid? DefaultActorId { get; set; }
-        public bool? EmailVerified { get; set; }
+    public string? AuthProvider { get; set; }
+    public string? AuthProviderId { get; set; }
+    public Guid? DefaultActorId { get; set; }
+    public bool? EmailVerified { get; set; }
 
-        // Audit fields
-        public DateTime CreatedAt { get; set; }
-        public Guid? CreatedBy { get; set; }
-        public DateTime? UpdatedAt { get; set; }
-        public Guid? UpdatedBy { get; set; }
+    // Audit fields
+    public DateTime CreatedAt { get; set; }
+    public Guid? CreatedBy { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public Guid? UpdatedBy { get; set; }
 
-        // Soft delete fields
-        public bool IsDeleted { get; set; }
-        public DateTime? DeletedAt { get; set; }
-        public Guid? DeletedBy { get; set; }
-    }
+    // Soft delete fields
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public Guid? DeletedBy { get; set; }
 }

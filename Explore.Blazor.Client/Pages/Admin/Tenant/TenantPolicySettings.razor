@@ -1,0 +1,149 @@
+@page "/admin/tenant/settings"
+@using MudBlazor
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject ITenantOnboardingService TenantOnboardingService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-8">
+    <MudPaper Class="pa-6">
+        <MudText Typo="Typo.h4" Class="mb-2">Tenant Policy Settings</MudText>
+        <MudText Typo="Typo.body2" Class="mb-4">
+            Configure tenant-level policies for event submissions and organization verification workflow.
+        </MudText>
+
+        @if (!string.IsNullOrWhiteSpace(_errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+        }
+
+        @if (_isLoading)
+        {
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (!_canEdit)
+        {
+            <MudAlert Severity="Severity.Warning">
+                You do not have tenant administrator permissions for this tenant.
+            </MudAlert>
+        }
+        else
+        {
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.h6">Content Governance</MudText>
+                <MudSwitch T="bool" @bind-Value="_model.AllowUserSubmittedEvents" Color="Color.Primary">
+                    Allow users to submit events
+                </MudSwitch>
+
+                <MudSwitch T="bool" @bind-Value="_model.RequireEventApproval" Color="Color.Primary">
+                    Require approval before publication
+                </MudSwitch>
+
+                <MudSwitch T="bool"
+                           @bind-Value="_model.RequireOrganizationVerification"
+                           Disabled="@(!_model.CanTenantOmitVerification)"
+                           Color="Color.Primary">
+                    Require organization verification
+                </MudSwitch>
+
+                @if (!_model.CanTenantOmitVerification)
+                {
+                    <MudText Typo="Typo.caption">
+                        Verification requirement is locked by instance policy for this tenant.
+                    </MudText>
+                }
+
+                <MudDivider />
+                <MudText Typo="Typo.h6">Tenant Experience</MudText>
+                <MudSelect T="string"
+                           Label="Preferred Home Page"
+                           @bind-Value="_model.PreferredHomePage"
+                           Disabled="@(!_model.CanOverrideHomePagePreference)"
+                           Variant="Variant.Outlined">
+                    <MudSelectItem Value="@("EventList")">Event List</MudSelectItem>
+                    <MudSelectItem Value="@("LandingPage")">Landing Page</MudSelectItem>
+                </MudSelect>
+
+                <MudTextField Label="Subdomain"
+                              Variant="Variant.Outlined"
+                              Placeholder="tenant-slug"
+                              @bind-Value="_model.Subdomain"
+                              Disabled="@(!_model.CanOverrideSubdomain)"
+                              HelperText="@($"Base domain: {(_model.InstanceBaseDomain == string.Empty ? "(not configured)" : _model.InstanceBaseDomain)}")" />
+
+                <MudTextField Label="Custom Domain"
+                              Variant="Variant.Outlined"
+                              Placeholder="events.example.org"
+                              @bind-Value="_model.CustomDomain"
+                              Disabled="@(!_model.CanOverrideCustomDomain)" />
+
+                <MudDivider />
+                <MudText Typo="Typo.h6">Tenant Branding</MudText>
+                <MudTextField Label="Brand Display Name"
+                              Variant="Variant.Outlined"
+                              @bind-Value="_model.BrandDisplayName"
+                              Disabled="@(!_model.CanOverrideBrandDisplayName)" />
+                <MudTextField Label="Brand Logo URL"
+                              Variant="Variant.Outlined"
+                              @bind-Value="_model.BrandLogoUrl"
+                              Disabled="@(!_model.CanOverrideBrandLogoUrl)" />
+                <MudTextField Label="Brand Favicon URL"
+                              Variant="Variant.Outlined"
+                              @bind-Value="_model.BrandFaviconUrl"
+                              Disabled="@(!_model.CanOverrideBrandFaviconUrl)" />
+                <MudTextField Label="Advanced: Custom CSS URL (Optional)"
+                              Variant="Variant.Outlined"
+                              @bind-Value="_model.BrandCustomCssUrl"
+                              Disabled="@(!_model.CanOverrideBrandCustomCssUrl)" />
+
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync" Disabled="_isSaving">
+                    Save Tenant Settings
+                </MudButton>
+            </MudStack>
+        }
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private TenantPolicySettingsModel _model = new();
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private bool _canEdit;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var status = await TenantOnboardingService.GetStatusAsync();
+        _canEdit = status?.IsCurrentUserTenantAdministrator == true || status?.IsCurrentUserInstanceAdministrator == true;
+
+        if (!_canEdit)
+        {
+            _isLoading = false;
+            return;
+        }
+
+        _model = await TenantOnboardingService.GetSettingsAsync();
+        _isLoading = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        _isSaving = true;
+        _errorMessage = null;
+
+        var response = await TenantOnboardingService.UpdateSettingsAsync(_model);
+        _isSaving = false;
+
+        if (response.Success)
+        {
+            Snackbar.Add("Tenant settings saved.", Severity.Success);
+            Navigation.NavigateTo("/", forceLoad: true);
+            return;
+        }
+
+        _errorMessage = string.IsNullOrWhiteSpace(response.Message)
+            ? "Failed to save tenant settings."
+            : response.Message;
+    }
+}

@@ -1,0 +1,268 @@
+// ABOUTME: Unit tests for UserService covering user sync, current-user retrieval, update, and delete operations.
+// Validates retry/sync edge cases, API error handling, and return contracts for user workflows.
+
+namespace Explore.Blazor.Client.Tests.Services;
+
+/// <summary>
+/// Unit tests for UserService.
+/// </summary>
+/// <remarks>
+/// These tests verify:
+/// - SyncUserAsync success and special ApiException(200) handling
+/// - GetCurrentUserAsync 404 auto-sync and retry behavior
+/// - GetCurrentUserAsync 401 handling
+/// - Update and delete fallback behavior on failures
+/// </remarks>
+public class UserServiceTests
+{
+    private readonly IEventApiClient _apiClient;
+    private readonly Microsoft.Extensions.Logging.ILogger<UserService> _logger;
+    private readonly UserService _service;
+
+    public UserServiceTests()
+    {
+        _apiClient = Substitute.For<IEventApiClient>();
+        _logger = Substitute.For<Microsoft.Extensions.Logging.ILogger<UserService>>();
+        _service = new UserService(_apiClient, _logger);
+    }
+
+    // ========== SyncUserAsync ==========
+
+    #region SyncUserAsync Tests
+
+    [Test]
+    public async Task SyncUserAsync_ReturnsResponse_WhenApiSucceeds()
+    {
+        // Arrange
+        var expectedResponse = ComponentDataBuilder.SuccessResponse();
+        _apiClient.SyncAsync(Arg.Any<CancellationToken>())
+            .Returns(expectedResponse);
+
+        // Act
+        var result = await _service.SyncUserAsync();
+
+        // Assert
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Success).IsTrue();
+    }
+
+    [Test]
+    public async Task SyncUserAsync_ReturnsSuccess_WhenApiThrowsStatus200()
+    {
+        // Arrange
+        _apiClient.SyncAsync(Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ApiException("Response parsing issue", 200, null, null, null));
+
+        // Act
+        var result = await _service.SyncUserAsync();
+
+        // Assert
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Success).IsTrue();
+        await Assert.That(result.Message).IsEqualTo("User synced successfully");
+    }
+
+    [Test]
+    public async Task SyncUserAsync_ReturnsFailure_WhenApiThrowsNon200()
+    {
+        // Arrange
+        _apiClient.SyncAsync(Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ApiException("Unauthorized", 401, "unauthorized", null, null));
+
+        // Act
+        var result = await _service.SyncUserAsync();
+
+        // Assert
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Success).IsFalse();
+        await Assert.That(result.Message).Contains("API error");
+    }
+
+    #endregion
+
+    // ========== GetCurrentUserAsync ==========
+
+    #region GetCurrentUserAsync Tests
+
+    [Test]
+    public async Task GetCurrentUserAsync_ReturnsUser_WhenApiSucceeds()
+    {
+        // Arrange
+        var expectedUser = ComponentDataBuilder.UserDto.Generate();
+        _apiClient.UserGETAsync(Arg.Any<CancellationToken>())
+            .Returns(expectedUser);
+
+        // Act
+        var result = await _service.GetCurrentUserAsync();
+
+        // Assert
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Id).IsEqualTo(expectedUser.Id);
+        await Assert.That(result.Email).IsEqualTo(expectedUser.Email);
+    }
+
+    [Test]
+    public async Task GetCurrentUserAsync_RetriesAfterSync_WhenInitialCallReturns404()
+    {
+        // Arrange
+        var expectedUser = ComponentDataBuilder.UserDto.Generate();
+        var callCount = 0;
+
+        _apiClient.UserGETAsync(Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                callCount++;
+                if (callCount == 1)
+                {
+                    throw new ApiException("Not Found", 404, null, null, null);
+                }
+
+                return expectedUser;
+            });
+
+        _apiClient.SyncAsync(Arg.Any<CancellationToken>())
+            .Returns(ComponentDataBuilder.SuccessResponse());
+
+        // Act
+        var result = await _service.GetCurrentUserAsync();
+
+        // Assert
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Id).IsEqualTo(expectedUser.Id);
+    }
+
+    [Test]
+    public async Task GetCurrentUserAsync_ReturnsNull_WhenInitialCallReturns404AndSyncFails()
+    {
+        // Arrange
+        _apiClient.UserGETAsync(Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ApiException("Not Found", 404, null, null, null));
+
+        _apiClient.SyncAsync(Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponseOfGuid
+            {
+                Success = false,
+                Message = "Sync failed",
+                Errors = new List<string> { "sync error" }
+            });
+
+        // Act
+        var result = await _service.GetCurrentUserAsync();
+
+        // Assert
+        await Assert.That(result).IsNull();
+    }
+
+    [Test]
+    public async Task GetCurrentUserAsync_ReturnsNull_WhenApiReturns401()
+    {
+        // Arrange
+        _apiClient.UserGETAsync(Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ApiException("Unauthorized", 401, null, null, null));
+
+        // Act
+        var result = await _service.GetCurrentUserAsync();
+
+        // Assert
+        await Assert.That(result).IsNull();
+        await _apiClient.DidNotReceive().SyncAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task GetCurrentUserAsync_ReturnsNull_WhenApiThrowsNon404Non401()
+    {
+        // Arrange
+        _apiClient.UserGETAsync(Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
+
+        // Act
+        var result = await _service.GetCurrentUserAsync();
+
+        // Assert
+        await Assert.That(result).IsNull();
+    }
+
+    #endregion
+
+    // ========== UpdateUserAsync ==========
+
+    #region UpdateUserAsync Tests
+
+    [Test]
+    public async Task UpdateUserAsync_ReturnsResponse_WhenApiSucceeds()
+    {
+        // Arrange
+        var updateDto = new UpdateUserDto
+        {
+            FirstName = "Updated",
+            LastName = "User"
+        };
+        var expectedResponse = ComponentDataBuilder.SuccessResponse();
+
+        _apiClient.UserPUTAsync(Arg.Any<UpdateUserDto>(), Arg.Any<CancellationToken>())
+            .Returns(expectedResponse);
+
+        // Act
+        var result = await _service.UpdateUserAsync(updateDto);
+
+        // Assert
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Success).IsTrue();
+    }
+
+    [Test]
+    public async Task UpdateUserAsync_ReturnsNull_WhenApiThrows()
+    {
+        // Arrange
+        var updateDto = new UpdateUserDto
+        {
+            FirstName = "Updated",
+            LastName = "User"
+        };
+
+        _apiClient.UserPUTAsync(Arg.Any<UpdateUserDto>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ApiException("Bad Request", 400, null, null, null));
+
+        // Act
+        var result = await _service.UpdateUserAsync(updateDto);
+
+        // Assert
+        await Assert.That(result).IsNull();
+    }
+
+    #endregion
+
+    // ========== DeleteUserAsync ==========
+
+    #region DeleteUserAsync Tests
+
+    [Test]
+    public async Task DeleteUserAsync_ReturnsTrue_WhenApiSucceeds()
+    {
+        // Arrange
+        _apiClient.UserDELETEAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.DeleteUserAsync();
+
+        // Assert
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task DeleteUserAsync_ReturnsFalse_WhenApiThrows()
+    {
+        // Arrange
+        _apiClient.UserDELETEAsync(Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ApiException("Forbidden", 403, null, null, null));
+
+        // Act
+        var result = await _service.DeleteUserAsync();
+
+        // Assert
+        await Assert.That(result).IsFalse();
+    }
+
+    #endregion
+}

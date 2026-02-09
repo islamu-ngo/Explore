@@ -36,6 +36,8 @@ public partial class EventDetail : ComponentBase
     private bool _isLoading = true;
     private bool _isUserRegistered;
     private bool _isCheckingRegistration = true;
+    private bool _isCancellingRegistration = false;
+    private List<Guid> _userRegistrationIds = new();
     private bool _canDelete = false;
     private bool _canEdit = false;
     private bool _isCheckingAuth = true;
@@ -44,6 +46,7 @@ public partial class EventDetail : ComponentBase
     // Event Aspects
     private EventIslamicAspectDto? _islamicAspect;
     private EventTechAspectDto? _techAspect;
+    private EventAppearanceSettings _appearance = new();
 
     /// <summary>
     /// Initializes the component and loads event data.
@@ -76,6 +79,7 @@ public partial class EventDetail : ComponentBase
             if (_eventDetails != null)
             {
                 Logger.LogInformation("Loaded event: {Title}", _eventDetails.Title);
+                _appearance = EventAppearanceMetadataHelper.Parse(_eventDetails.MetadataJson);
 
                 // Load event sessions
                 _eventSessions = await EventService.GetSessionsByEventAsync(EventId);
@@ -137,11 +141,14 @@ public partial class EventDetail : ComponentBase
                 if (user?.Id != null)
                 {
                     var registrations = await EventService.GetRegistrationsByUserAsync(user.Id.Value);
-                    // Check if any registration belongs to any session of this event
                     if (_eventSessions != null && registrations != null)
                     {
                         var sessionIds = _eventSessions.Select(s => s.Id).ToHashSet();
-                        _isUserRegistered = registrations.Any(r => sessionIds.Contains(r.EventSessionId));
+                        var matchingRegistrations = registrations
+                            .Where(r => sessionIds.Contains(r.EventSessionId) && r.Id.HasValue)
+                            .ToList();
+                        _isUserRegistered = matchingRegistrations.Any();
+                        _userRegistrationIds = matchingRegistrations.Select(r => r.Id!.Value).ToList();
                     }
                 }
             }
@@ -149,6 +156,58 @@ public partial class EventDetail : ComponentBase
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error checking registration status");
+        }
+    }
+
+    /// <summary>
+    /// Cancels the user's registration(s) for this event.
+    /// </summary>
+    private async Task CancelRegistrationAsync()
+    {
+        if (!_userRegistrationIds.Any()) return;
+
+        var confirm = await DialogService.ShowMessageBox(
+            "Cancel Registration",
+            $"Are you sure you want to cancel your registration for \"{_eventDetails?.Title}\"?",
+            yesText: "Cancel Registration",
+            cancelText: "Keep Registration");
+
+        if (confirm != true) return;
+
+        _isCancellingRegistration = true;
+        StateHasChanged();
+
+        try
+        {
+            var allCancelled = true;
+            foreach (var registrationId in _userRegistrationIds)
+            {
+                var success = await EventService.CancelEventRegistrationAsync(registrationId);
+                if (!success) allCancelled = false;
+            }
+
+            if (allCancelled)
+            {
+                _isUserRegistered = false;
+                _userRegistrationIds.Clear();
+                Logger.LogInformation("Registration cancelled for event {EventId}", EventId);
+            }
+            else
+            {
+                _errorMessage = "Some registrations could not be cancelled. Please try again.";
+                // Refresh to get accurate state
+                await CheckRegistrationStatusAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error cancelling registration for event {EventId}", EventId);
+            _errorMessage = "An error occurred while cancelling registration.";
+        }
+        finally
+        {
+            _isCancellingRegistration = false;
+            StateHasChanged();
         }
     }
 
@@ -270,6 +329,11 @@ public partial class EventDetail : ComponentBase
     private string GetEventColor()
     {
         return EventColorHelper.GetColorByTypeName(_eventDetails?.EventTypeFullName);
+    }
+
+    private string GetHeroStyle()
+    {
+        return EventAppearanceMetadataHelper.BuildHeroStyle(_appearance, $"#{GetEventColor()}");
     }
 
     /// <summary>
@@ -396,7 +460,7 @@ public partial class EventDetail : ComponentBase
         if (result != null && !result.Canceled)
         {
             Logger.LogInformation("Registration completed for session {SessionId}", session.Id);
-            
+
             // For single session flow, we update status here too
             if (_eventSessions != null && _eventSessions.Count == 1)
             {
@@ -414,6 +478,7 @@ public partial class EventDetail : ComponentBase
     private string GetButtonText()
     {
         if (_isCheckingRegistration) return "Checking...";
+        if (_isCancellingRegistration) return "Cancelling...";
         if (_isUserRegistered) return "Already Registered";
         if (_primarySession == null) return "Registration unavailable";
         return _eventDetails?.IsRegistrationRequired == true ? "Register now" : "Join us";
@@ -424,7 +489,7 @@ public partial class EventDetail : ComponentBase
     /// </summary>
     private bool IsButtonDisabled()
     {
-        return _isCheckingRegistration || _isUserRegistered || _primarySession == null;
+        return _isCheckingRegistration || _isCancellingRegistration || _isUserRegistered || _primarySession == null;
     }
 
     /// <summary>

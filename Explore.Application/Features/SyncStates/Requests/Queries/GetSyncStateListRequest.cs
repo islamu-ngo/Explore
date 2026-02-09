@@ -1,9 +1,8 @@
-using MediatR;
 using Explore.Application.DTOs.SyncState;
+using MediatR;
 
-namespace Explore.Application.Features.SyncStates.Requests.Queries
+namespace Explore.Application.Features.SyncStates.Requests.Queries;
+
+public class GetSyncStateListRequest : IRequest<List<SyncStateListDto>>
 {
-    public class GetSyncStateListRequest : IRequest<List<SyncStateListDto>>
-    {
-    }
 }

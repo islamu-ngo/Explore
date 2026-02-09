@@ -4,6 +4,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event;
 using Explore.Application.Features.Events.Handlers.Queries;
 using Explore.Application.Features.Events.Requests.Queries;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using TUnit.Assertions;
@@ -17,6 +18,7 @@ public class GetEventDetailsRequestHandlerTests
     private readonly IMapper _mapper;
     private readonly IObjectStorageService _objectStorageService;
     private readonly ILogger<GetEventDetailsRequestHandler> _logger;
+    private readonly HybridCache _cache;
     private readonly GetEventDetailsRequestHandler _handler;
 
     public GetEventDetailsRequestHandlerTests()
@@ -25,7 +27,31 @@ public class GetEventDetailsRequestHandlerTests
         _mapper = Substitute.For<IMapper>();
         _objectStorageService = Substitute.For<IObjectStorageService>();
         _logger = Substitute.For<ILogger<GetEventDetailsRequestHandler>>();
-        _handler = new GetEventDetailsRequestHandler(_eventRepository, _mapper, _objectStorageService, _logger);
+        _cache = new TestHybridCache();
+        _handler = new GetEventDetailsRequestHandler(_eventRepository, _mapper, _objectStorageService, _logger, _cache);
+    }
+
+    private sealed class TestHybridCache : HybridCache
+    {
+        public override ValueTask<T> GetOrCreateAsync<TState, T>(string key, TState state, Func<TState, CancellationToken, ValueTask<T>> factory, HybridCacheEntryOptions? options = null, IEnumerable<string>? tags = null, CancellationToken cancellationToken = default)
+        {
+            return factory(state, cancellationToken);
+        }
+
+        public override ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default)
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        public override ValueTask RemoveByTagAsync(string tag, CancellationToken cancellationToken = default)
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        public override ValueTask SetAsync<T>(string key, T value, HybridCacheEntryOptions? options = null, IEnumerable<string>? tags = null, CancellationToken cancellationToken = default)
+        {
+            return ValueTask.CompletedTask;
+        }
     }
 
     [Test]
@@ -35,8 +61,31 @@ public class GetEventDetailsRequestHandlerTests
         var eventId = Guid.NewGuid();
         var request = new GetEventDetailsRequest { Id = eventId };
 
-        var eventEntity = new Explore.Domain.Event { Id = eventId, Title = "Test Event", Subtitle = "Test Subtitle" };
-        var eventDto = new EventDto { Id = eventId, Title = "Test Event", Subtitle = "Test Subtitle" };
+        var eventEntity = new Explore.Domain.Event
+        {
+            Id = eventId,
+            Title = "Test Event",
+            Subtitle = "Test Subtitle",
+            Actor = null!,
+            Tenant = null!,
+            VisibilityType = null!,
+            EventStatus = null!,
+            EventFormat = null!
+        };
+        var eventDto = new EventDto
+        {
+            Id = eventId,
+            Title = "Test Event",
+            Subtitle = "Test Subtitle",
+            ActorDisplayName = string.Empty,
+            ActorTypeFullName = string.Empty,
+            EventStatusFullName = string.Empty,
+            EventStatusMasterCode = string.Empty,
+            VisibilityTypeFullName = string.Empty,
+            VisibilityTypeMasterCode = string.Empty,
+            EventFormatFullName = string.Empty,
+            EventFormatMasterCode = string.Empty
+        };
 
         _eventRepository.GetEventWithDetails(eventId).Returns(eventEntity);
         _mapper.Map<EventDto>(eventEntity).Returns(eventDto);

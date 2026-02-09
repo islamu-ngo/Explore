@@ -5,29 +5,28 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.EventSessions.Requests.Commands;
 using MediatR;
 
-namespace Explore.Application.Features.EventSessions.Handlers.Commands
+namespace Explore.Application.Features.EventSessions.Handlers.Commands;
+
+public class DeleteEventSessionCommandHandler : IRequestHandler<DeleteEventSessionCommand, bool>
 {
-    public class DeleteEventSessionCommandHandler : IRequestHandler<DeleteEventSessionCommand, bool>
+    private readonly IEventSessionRepository _eventSessionRepository;
+
+    public DeleteEventSessionCommandHandler(IEventSessionRepository eventSessionRepository)
     {
-        private readonly IEventSessionRepository _eventSessionRepository;
+        _eventSessionRepository = eventSessionRepository;
+    }
 
-        public DeleteEventSessionCommandHandler(IEventSessionRepository eventSessionRepository)
+    public async Task<bool> Handle(DeleteEventSessionCommand request, CancellationToken cancellationToken)
+    {
+        var eventSession = await _eventSessionRepository.GetById(request.Id);
+
+        if (eventSession == null)
         {
-            _eventSessionRepository = eventSessionRepository;
+            return false;
         }
 
-        public async Task<bool> Handle(DeleteEventSessionCommand request, CancellationToken cancellationToken)
-        {
-            var eventSession = await _eventSessionRepository.GetById(request.Id);
+        await _eventSessionRepository.Delete(eventSession);
 
-            if (eventSession == null)
-            {
-                return false;
-            }
-
-            await _eventSessionRepository.Delete(eventSession);
-
-            return true;
-        }
+        return true;
     }
 }

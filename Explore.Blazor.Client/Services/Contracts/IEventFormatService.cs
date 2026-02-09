@@ -1,6 +1,6 @@
-using Explore.Blazor.Client.Clients;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Explore.Blazor.Client.Clients;
 
 namespace Explore.Blazor.Client.Services.Contracts;
 

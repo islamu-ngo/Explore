@@ -1,11 +1,10 @@
-using MediatR;
 using Explore.Application.DTOs.TenantSettings;
 using Explore.Application.Responses;
+using MediatR;
 
-namespace Explore.Application.Features.TenantSettings.Requests.Commands
+namespace Explore.Application.Features.TenantSettings.Requests.Commands;
+
+public class UpdateTenantSettingsCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public class UpdateTenantSettingsCommand : IRequest<BaseCommandResponse<Guid>>
-    {
-        public UpdateTenantSettingsDto TenantSettingsDto { get; set; }
-    }
+    public required UpdateTenantSettingsDto TenantSettingsDto { get; set; }
 }

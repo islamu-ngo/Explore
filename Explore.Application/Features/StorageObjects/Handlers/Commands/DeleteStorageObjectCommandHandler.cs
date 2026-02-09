@@ -1,32 +1,31 @@
-using MediatR;
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.StorageObjects.Requests.Commands;
 using Explore.Application.Responses;
+using MediatR;
 
-namespace Explore.Application.Features.StorageObjects.Handlers.Commands
+namespace Explore.Application.Features.StorageObjects.Handlers.Commands;
+
+public class DeleteStorageObjectCommandHandler : IRequestHandler<DeleteStorageObjectCommand, bool>
 {
-    public class DeleteStorageObjectCommandHandler : IRequestHandler<DeleteStorageObjectCommand, bool>
+    private readonly IStorageObjectRepository _storageObjectRepository;
+
+    public DeleteStorageObjectCommandHandler(IStorageObjectRepository storageObjectRepository)
     {
-        private readonly IStorageObjectRepository _storageObjectRepository;
+        _storageObjectRepository = storageObjectRepository;
+    }
 
-        public DeleteStorageObjectCommandHandler(IStorageObjectRepository storageObjectRepository)
+    public async Task<bool> Handle(DeleteStorageObjectCommand request, CancellationToken cancellationToken)
+    {
+        var entity = await _storageObjectRepository.GetById(request.Id);
+
+        if (entity == null)
         {
-            _storageObjectRepository = storageObjectRepository;
+            return false;
         }
 
-        public async Task<bool> Handle(DeleteStorageObjectCommand request, CancellationToken cancellationToken)
-        {
-            var entity = await _storageObjectRepository.GetById(request.Id);
+        await _storageObjectRepository.Delete(entity);
 
-            if (entity == null)
-            {
-                return false;
-            }
-
-            await _storageObjectRepository.Delete(entity);
-
-            return true;
-        }
+        return true;
     }
 }

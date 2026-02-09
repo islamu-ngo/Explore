@@ -1,6 +1,22 @@
 @using Explore.Blazor.Client.Layout
 @using Microsoft.AspNetCore.Components.Web
+@using System.Security.Cryptography
 @inject IHttpContextAccessor HttpContextAccessor
+
+@{
+    var cspNonce = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+    var csp = string.Join(" ",
+        "default-src 'self';",
+        $"script-src 'self' 'wasm-unsafe-eval' 'unsafe-hashes' 'sha256-qnHnQs7NjQNHHNYv/I9cW+I62HzDJjbnyS/OFzqlix0=' 'nonce-{cspNonce}';",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;",
+        "connect-src 'self' ws: wss:;",
+        "img-src 'self' data: https: blob:;",
+        "font-src 'self' https://fonts.gstatic.com;",
+        "object-src 'none';",
+        "frame-ancestors 'self';",
+        "base-uri 'self';",
+        "form-action 'self';");
+}
 
 <!DOCTYPE html>
 <html lang="en">
@@ -8,23 +24,14 @@
 <head>
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-	<meta http-equiv="Content-Security-Policy"
-	      content="default-src 'self';
-               script-src 'self' 'wasm-unsafe-eval';
-               style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-               connect-src 'self' ws: wss:;
-               img-src 'self' data: https: blob:;
-               font-src 'self' https://fonts.gstatic.com;
-               frame-ancestors 'self';
-               base-uri 'self';
-               form-action 'self';">
+	<meta http-equiv="Content-Security-Policy" content="@csp">
 	<base href="/" />
 	<link href=@Assets["_content/MudBlazor/MudBlazor.min.css"] rel="stylesheet" />
-	<link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
+	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
 	<link href="css/StyleGlobal.css" rel="stylesheet" />
 	<link href="Explore.Blazor.styles.css" rel="stylesheet" />
 	<link rel="stylesheet" href="_content/Blazouter/blazouter.min.css" />
-	<ImportMap />
+	<ImportMap nonce="@cspNonce" />
 	<link rel="icon" type="image/ico" href="favicon.ico" />
 	<HeadOutlet @rendermode="InteractiveAuto" />
 </head>

@@ -1,11 +1,10 @@
 using System;
 
-namespace Explore.Application.DTOs.EventSessionLanguage
+namespace Explore.Application.DTOs.EventSessionLanguage;
+
+public class UpdateEventSessionLanguageDto
 {
-    public class UpdateEventSessionLanguageDto
-    {
-        public int Id { get; set; }
-        public Guid EventSessionId { get; set; }
-        public int LanguageId { get; set; }
-    }
+    public int Id { get; set; }
+    public Guid EventSessionId { get; set; }
+    public int LanguageId { get; set; }
 }

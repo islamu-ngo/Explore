@@ -58,7 +58,7 @@ public static class ConfigurationExtensions
     private static void ApplyCompatibilityMapping(IConfigurationBuilder configBuilder, IConfiguration config)
     {
         // Read database URL from Infisical or environment
-        var rawDbUrl = config["POSTGRESQL_PUBLIC_URL"] 
+        var rawDbUrl = config["POSTGRESQL_PUBLIC_URL"]
             ?? config["ConnectionStrings:DefaultConnection"]
             ?? config["ConnectionStrings:EventMigrationService"];
 

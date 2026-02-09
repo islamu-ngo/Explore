@@ -7,25 +7,24 @@ using Explore.Application.DTOs.EventSessionSpeaker;
 using Explore.Application.Features.EventSessionSpeakers.Requests.Queries;
 using MediatR;
 
-namespace Explore.Application.Features.EventSessionSpeakers.Handlers.Queries
+namespace Explore.Application.Features.EventSessionSpeakers.Handlers.Queries;
+
+public class GetSpeakersBySessionRequestHandler : IRequestHandler<GetSpeakersBySessionRequest, List<EventSessionSpeakerListDto>>
 {
-    public class GetSpeakersBySessionRequestHandler : IRequestHandler<GetSpeakersBySessionRequest, List<EventSessionSpeakerListDto>>
+    private readonly IEventSessionSpeakerRepository _speakerRepository;
+    private readonly IMapper _mapper;
+
+    public GetSpeakersBySessionRequestHandler(
+        IEventSessionSpeakerRepository speakerRepository,
+        IMapper mapper)
     {
-        private readonly IEventSessionSpeakerRepository _speakerRepository;
-        private readonly IMapper _mapper;
+        _speakerRepository = speakerRepository;
+        _mapper = mapper;
+    }
 
-        public GetSpeakersBySessionRequestHandler(
-            IEventSessionSpeakerRepository speakerRepository,
-            IMapper mapper)
-        {
-            _speakerRepository = speakerRepository;
-            _mapper = mapper;
-        }
-
-        public async Task<List<EventSessionSpeakerListDto>> Handle(GetSpeakersBySessionRequest request, CancellationToken cancellationToken)
-        {
-            var speakers = await _speakerRepository.GetBySession(request.EventSessionId);
-            return _mapper.Map<List<EventSessionSpeakerListDto>>(speakers);
-        }
+    public async Task<List<EventSessionSpeakerListDto>> Handle(GetSpeakersBySessionRequest request, CancellationToken cancellationToken)
+    {
+        var speakers = await _speakerRepository.GetBySession(request.EventSessionId);
+        return _mapper.Map<List<EventSessionSpeakerListDto>>(speakers);
     }
 }

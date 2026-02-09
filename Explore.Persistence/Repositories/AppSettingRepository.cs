@@ -84,7 +84,9 @@ public class AppSettingRepository : IAppSettingRepository
 
     public async Task<bool> ExistsAsync(string configKey)
     {
-        return await _dbContext.AppSettings.AnyAsync(s => s.ConfigKey == configKey);
+        return await _dbContext.AppSettings
+            .AsNoTracking()
+            .AnyAsync(s => s.ConfigKey == configKey);
     }
 
     public async Task BulkUpdateAsync(IEnumerable<AppSetting> settings)

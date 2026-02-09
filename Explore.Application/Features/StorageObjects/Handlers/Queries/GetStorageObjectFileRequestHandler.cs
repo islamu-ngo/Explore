@@ -1,9 +1,9 @@
-using Explore.Application.Contracts.Infrastructure;
-using Explore.Application.Features.StorageObjects.Requests.Queries;
-using MediatR;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Features.StorageObjects.Requests.Queries;
+using MediatR;
 
 namespace Explore.Application.Features.StorageObjects.Handlers.Queries;
 

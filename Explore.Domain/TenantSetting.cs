@@ -9,7 +9,7 @@ using Explore.Domain.Interfaces;
 /// Tenant-specific override for a system setting.
 /// Only created when a tenant explicitly overrides the system default.
 /// </summary>
-public class TenantSetting : ITenantEntity
+public class TenantSetting : ITenantEntity, IAuditableEntity
 {
     /// <summary>
     /// Unique identifier for this tenant setting override.
@@ -24,17 +24,17 @@ public class TenantSetting : ITenantEntity
     /// <summary>
     /// Navigation property to the tenant.
     /// </summary>
-    public Tenant? Tenant { get; set; }
+    public required Tenant Tenant { get; set; }
 
     /// <summary>
     /// The setting key being overridden (must match a SystemSetting.Key).
     /// </summary>
-    public string SettingKey { get; set; } = string.Empty;
+    public required string SettingKey { get; set; }
 
     /// <summary>
     /// JSON-serialized value of the tenant's override.
     /// </summary>
-    public string Value { get; set; } = string.Empty;
+    public required string Value { get; set; }
 
     /// <summary>
     /// When this override was created.

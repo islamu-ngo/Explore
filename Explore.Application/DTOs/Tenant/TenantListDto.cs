@@ -1,12 +1,11 @@
 using System;
 
-namespace Explore.Application.DTOs.Tenant
+namespace Explore.Application.DTOs.Tenant;
+
+public class TenantListDto
 {
-    public class TenantListDto
-    {
-        public Guid Id { get; set; }
-        public string FullName { get; set; }
-        public string Slug { get; set; }
-        public bool IsActive { get; set; }
-    }
+    public Guid Id { get; set; }
+    public required string FullName { get; set; }
+    public required string Slug { get; set; }
+    public bool IsActive { get; set; }
 }
