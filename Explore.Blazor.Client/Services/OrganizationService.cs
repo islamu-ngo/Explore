@@ -3,6 +3,7 @@
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Constants;
 using Explore.Blazor.Client.Helpers;
+using Explore.Blazor.Client.Models;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;
@@ -27,6 +28,16 @@ public interface IOrganizationService
     /// Gets organizations for the current authenticated user.
     /// </summary>
     Task<ICollection<OrganizationListDto>> GetMyOrganizationsAsync();
+
+    /// <summary>
+    /// Gets a paginated list of all organizations.
+    /// </summary>
+    Task<PaginatedResult<OrganizationListDto>> GetOrganizationsPagedAsync(int pageNumber, int pageSize);
+
+    /// <summary>
+    /// Gets a paginated list of organizations for the current authenticated user.
+    /// </summary>
+    Task<PaginatedResult<OrganizationListDto>> GetMyOrganizationsPagedAsync(int pageNumber, int pageSize);
 
     /// <summary>
     /// Gets organizations for a specific user.
@@ -109,6 +120,36 @@ public class OrganizationService : IOrganizationService
         {
             _logger.LogError(ex, "[OrganizationService.GetMyOrganizationsAsync] Unexpected error fetching my organizations");
             return new List<OrganizationListDto>();
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<PaginatedResult<OrganizationListDto>> GetOrganizationsPagedAsync(int pageNumber, int pageSize)
+    {
+        try
+        {
+            var result = await _apiClient.GetOrganizationsAsync(pageNumber, pageSize);
+            return result.ToPaginatedResult();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[OrganizationService.GetOrganizationsPagedAsync] Error fetching paged organizations (page {PageNumber}, size {PageSize})", pageNumber, pageSize);
+            return PaginatedResult<OrganizationListDto>.Empty(pageNumber, pageSize);
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<PaginatedResult<OrganizationListDto>> GetMyOrganizationsPagedAsync(int pageNumber, int pageSize)
+    {
+        try
+        {
+            var result = await _apiClient.GetMyOrganizationsAsync(pageNumber, pageSize);
+            return result.ToPaginatedResult();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[OrganizationService.GetMyOrganizationsPagedAsync] Error fetching my paged organizations (page {PageNumber}, size {PageSize})", pageNumber, pageSize);
+            return PaginatedResult<OrganizationListDto>.Empty(pageNumber, pageSize);
         }
     }
 

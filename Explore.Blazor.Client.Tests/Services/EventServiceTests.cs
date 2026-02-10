@@ -548,8 +548,8 @@ public class EventServiceTests
     /// </summary>
     private static HalResourceOfEventDto CreateHalResourceResponse(EventDto dto)
     {
-        var json = Newtonsoft.Json.JsonConvert.SerializeObject(dto);
-        return Newtonsoft.Json.JsonConvert.DeserializeObject<HalResourceOfEventDto>(json)
+        var json = System.Text.Json.JsonSerializer.Serialize(dto);
+        return System.Text.Json.JsonSerializer.Deserialize<HalResourceOfEventDto>(json)
                ?? new HalResourceOfEventDto();
     }
 

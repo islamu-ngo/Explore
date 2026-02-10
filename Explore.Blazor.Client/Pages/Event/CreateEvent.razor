@@ -3,8 +3,10 @@
 @using Explore.Blazor.Client.Components
 @using Explore.Blazor.Client.Components.Event
 @using Blazored.FluentValidation
+@using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Authorization
+@attribute [StreamRendering]
 @attribute [Authorize]
 
 <PageTitle>Create Event</PageTitle>
@@ -103,7 +105,7 @@
                                             <MudSelectItem T="Guid?" Value="@((Guid?)null)">-- Select an organization --</MudSelectItem>
                                             @foreach (var org in _myOrganizations)
                                             {
-                                                <MudSelectItem T="Guid?" Value="@((Guid?)org.Id)">
+                                                <MudSelectItem @key="org.Id" T="Guid?" Value="@((Guid?)org.Id)">
                                                     @org.FullName @(org.CurrentUserRole.HasValue ? $"({GetRoleName((int)org.CurrentUserRole.Value)})" : "")
                                                 </MudSelectItem>
                                             }
@@ -162,7 +164,7 @@
                                             {
                                                 @foreach (var type in eventTypes)
                                                 {
-                                                    <MudSelectItem T="int?" Value="@((int?)type.Id)">@type.FullName</MudSelectItem>
+                                                    <MudSelectItem @key="type.Id" T="int?" Value="@((int?)type.Id)">@type.FullName</MudSelectItem>
                                                 }
                                             }
                                         </MudSelect>
@@ -178,7 +180,7 @@
                                                     {
                                                         @foreach (var g in audienceGenders)
                                                         {
-                                                            <MudSelectItem T="int?" Value="@((int?)g.Id)">@g.FullName</MudSelectItem>
+                                                            <MudSelectItem @key="g.Id" T="int?" Value="@((int?)g.Id)">@g.FullName</MudSelectItem>
                                                         }
                                                     }
                                                 </MudSelect>
@@ -190,7 +192,7 @@
                                                     {
                                                         @foreach (var a in audienceAges)
                                                         {
-                                                            <MudSelectItem T="int?" Value="@((int?)a.Id)">@a.FullName</MudSelectItem>
+                                                            <MudSelectItem @key="a.Id" T="int?" Value="@((int?)a.Id)">@a.FullName</MudSelectItem>
                                                         }
                                                     }
                                                 </MudSelect>
@@ -285,7 +287,7 @@
                                                 {
                                                     @foreach (var f in eventFormats)
                                                     {
-                                                        <MudSelectItem Value="@f.Id">@f.FullName</MudSelectItem>
+                                                        <MudSelectItem @key="f.Id" Value="@f.Id">@f.FullName</MudSelectItem>
                                                     }
                                                 }
                                             </MudSelect>
@@ -294,7 +296,7 @@
                                                 {
                                                     @foreach (var v in visibilityTypes)
                                                     {
-                                                        <MudSelectItem Value="@v.Id">@v.FullName</MudSelectItem>
+                                                        <MudSelectItem @key="v.Id" Value="@v.Id">@v.FullName</MudSelectItem>
                                                     }
                                                 }
                                             </MudSelect>
@@ -309,7 +311,7 @@
                                                 {
                                                     @foreach (var c in allCategories)
                                                     {
-                                                        <MudSelectItem Value="@c.Id">@c.FullName</MudSelectItem>
+                                                        <MudSelectItem @key="c.Id" Value="@c.Id">@c.FullName</MudSelectItem>
                                                     }
                                                 }
                                             </MudSelect>
@@ -318,7 +320,7 @@
                                                 {
                                                     @foreach (var t in allTags)
                                                     {
-                                                        <MudSelectItem Value="@t.Id">@t.FullName</MudSelectItem>
+                                                        <MudSelectItem @key="t.Id" Value="@t.Id">@t.FullName</MudSelectItem>
                                                     }
                                                 }
                                             </MudSelect>

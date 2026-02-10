@@ -42,12 +42,18 @@ public class EventController : ControllerBase
     }
 
     /// <summary>
-    /// Get all events with pagination.
+    /// Get all events with pagination and optional filtering.
     /// </summary>
     [HttpGet(Name = RouteNames.GetEvents)]
     [EndpointSummary("Get all Events")]
-    [EndpointDescription("Get a paginated list of all Events (Conference, Webinar, Workshop...). " +
+    [EndpointDescription("Get a paginated, filterable list of all Events (Conference, Webinar, Workshop...). " +
         "Default page size is 20, max is 100. " +
+        "Supports filtering by category, tag, format, madhab, location, language, date range, and free-text search. " +
+        "Supports module-conditional aspect filters: Islamic (genderMode, quranRecitation, referencePrayer, islamicLanguage) " +
+        "and Tech (skillLevel, codingCompetition, hackathon, requiresLaptop, techStack). " +
+        "Aspect filters are silently ignored when the corresponding module is not enabled for the tenant. " +
+        "Supports JSONB metadata filtering via metadataJsonContains and metadataJsonKeyExists. " +
+        "Supports sorting by date, title, views, or createdAt. " +
         "Response includes HATEOAS navigation links (first, prev, next, last). " +
         "Send 'Prefer: return=minimal' header to strip links.")]
     [AllowAnonymous]
@@ -55,12 +61,81 @@ public class EventController : ControllerBase
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<EventListDto>>> GetAll(
         [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
+        [FromQuery] int pageSize = 20,
+        // Core event filters
+        [FromQuery] string? searchTerm = null,
+        [FromQuery] Guid? categoryId = null,
+        [FromQuery] Guid? tagId = null,
+        [FromQuery] int? formatId = null,
+        [FromQuery] int? madhabId = null,
+        [FromQuery] Guid? locationId = null,
+        [FromQuery] int? registrationModeId = null,
+        [FromQuery] int? languageId = null,
+        [FromQuery] DateOnly? dateFrom = null,
+        [FromQuery] DateOnly? dateTo = null,
+        [FromQuery] int? eventTypeId = null,
+        [FromQuery] int? audienceGenderId = null,
+        [FromQuery] int? audienceAgeId = null,
+        [FromQuery] int? eventStatusId = null,
+        // Islamic aspect filters (module-conditional — silently ignored when module is disabled)
+        [FromQuery] int? genderModeId = null,
+        [FromQuery] bool? includesQuranRecitation = null,
+        [FromQuery] int? referencePrayerId = null,
+        [FromQuery] int? islamicPrimaryLanguageId = null,
+        [FromQuery] bool? hasIslamicAspect = null,
+        // Tech aspect filters (module-conditional — silently ignored when module is disabled)
+        [FromQuery] int? skillLevelId = null,
+        [FromQuery] bool? isCodingCompetition = null,
+        [FromQuery] bool? isHackathon = null,
+        [FromQuery] bool? requiresLaptop = null,
+        [FromQuery] string? techStackTag = null,
+        [FromQuery] bool? hasTechAspect = null,
+        // JSONB metadata filters
+        [FromQuery] string? metadataJsonContains = null,
+        [FromQuery] string? metadataJsonKeyExists = null,
+        // Sorting
+        [FromQuery] string? sortBy = null,
+        [FromQuery] bool sortDescending = true,
+        CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(new GetEventListRequest
         {
             PageNumber = pageNumber,
-            PageSize = pageSize
+            PageSize = pageSize,
+            // Core event filters
+            SearchTerm = searchTerm,
+            CategoryId = categoryId,
+            TagId = tagId,
+            FormatId = formatId,
+            MadhabId = madhabId,
+            LocationId = locationId,
+            RegistrationModeId = registrationModeId,
+            LanguageId = languageId,
+            DateFrom = dateFrom,
+            DateTo = dateTo,
+            EventTypeId = eventTypeId,
+            AudienceGenderId = audienceGenderId,
+            AudienceAgeId = audienceAgeId,
+            EventStatusId = eventStatusId,
+            // Islamic aspect filters
+            GenderModeId = genderModeId,
+            IncludesQuranRecitation = includesQuranRecitation,
+            ReferencePrayerId = referencePrayerId,
+            IslamicPrimaryLanguageId = islamicPrimaryLanguageId,
+            HasIslamicAspect = hasIslamicAspect,
+            // Tech aspect filters
+            SkillLevelId = skillLevelId,
+            IsCodingCompetition = isCodingCompetition,
+            IsHackathon = isHackathon,
+            RequiresLaptop = requiresLaptop,
+            TechStackTag = techStackTag,
+            HasTechAspect = hasTechAspect,
+            // JSONB metadata filters
+            MetadataJsonContains = metadataJsonContains,
+            MetadataJsonKeyExists = metadataJsonKeyExists,
+            // Sorting
+            SortBy = sortBy,
+            SortDescending = sortDescending
         }, cancellationToken);
 
         var halResource = _resourceAssembler.ToCollectionResource(

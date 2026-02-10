@@ -2,7 +2,9 @@
 @using MudBlazor
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Clients
+@using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Authorization
+@attribute [StreamRendering]
 @attribute [Authorize]
 
 <PageTitle>User Profile</PageTitle>
@@ -128,7 +130,7 @@
                             <MudStack Spacing="3">
                                 @foreach (var review in MyReviews.Take(3))
                                 {
-                                    <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
+                                    <MudPaper @key="review.Id" Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
                                         <div class="d-flex justify-space-between align-start mb-2">
                                             <div>
                                                 <MudText Typo="Typo.subtitle2" Style="font-weight: 700;">@(review.OrganizationFullName ?? "Organization")</MudText>

@@ -606,8 +606,8 @@ public class AdminServiceTests
 
     private static HalResourceOfOrganizationDto CreateOrgResourceResponse(OrganizationDto dto)
     {
-        var json = Newtonsoft.Json.JsonConvert.SerializeObject(dto);
-        return Newtonsoft.Json.JsonConvert.DeserializeObject<HalResourceOfOrganizationDto>(json)
+        var json = System.Text.Json.JsonSerializer.Serialize(dto);
+        return System.Text.Json.JsonSerializer.Deserialize<HalResourceOfOrganizationDto>(json)
                ?? new HalResourceOfOrganizationDto();
     }
 

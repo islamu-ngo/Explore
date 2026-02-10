@@ -1,7 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Text;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Specifications.Events;
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
 
@@ -148,6 +146,104 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
             .ToListAsync();
 
         return (items, totalCount);
+    }
+
+    /// <inheritdoc />
+    public async Task<(List<Event> Items, int TotalCount)> GetEventsWithDetailsPaged(
+        int pageNumber, int pageSize, EventQuerySpecification specification)
+    {
+        var query = _dbContext.Events
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(e => e.EventType)
+            .Include(e => e.AudienceGender)
+            .Include(e => e.AudienceAge)
+            .Include(e => e.Actor)
+                .ThenInclude(a => a.ActorType)
+            .Include(e => e.Actor)
+                .ThenInclude(a => a!.ProfilePicture)
+            .Include(e => e.FeaturedImage)
+            .Include(e => e.EventStatus)
+            .Include(e => e.VisibilityType)
+            .Include(e => e.EventFormat)
+            .Include(e => e.Madhab)
+            .Include(e => e.IslamicAspect)
+                .ThenInclude(a => a!.Madhab)
+            .Include(e => e.IslamicAspect)
+                .ThenInclude(a => a!.PrimaryLanguage)
+            .Include(e => e.TechAspect)
+            .AsQueryable();
+
+        // Apply subquery filters (require DbContext access for junction tables)
+        query = ApplySubqueryFilters(query, specification);
+
+        // Apply direct filters and sorting via specification
+        query = (IQueryable<Event>)specification.Apply(query);
+
+        // If no sort was specified by the specification, default to date descending
+        if (!specification.HasSort)
+        {
+            query = query.OrderByDescending(e => e.FirstSessionDate);
+        }
+
+        var totalCount = await query.CountAsync();
+        var items = await query
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (items, totalCount);
+    }
+
+    /// <summary>
+    /// Applies subquery filters that require access to junction table DbSets,
+    /// and JSONB filters that use PostgreSQL-specific operators.
+    /// These filters use correlated subqueries (EXISTS pattern) for efficient SQL translation.
+    /// </summary>
+    private IQueryable<Event> ApplySubqueryFilters(
+        IQueryable<Event> query, EventQuerySpecification specification)
+    {
+        foreach (var subFilter in specification.SubqueryFilters)
+        {
+            query = subFilter.FilterType switch
+            {
+                EventSubqueryFilterType.Category => query.Where(e =>
+                    _dbContext.EventCategories.Any(ec =>
+                        ec.EventId == e.Id && ec.CategoryId == (Guid)subFilter.Value)),
+
+                EventSubqueryFilterType.Tag => query.Where(e =>
+                    _dbContext.EventTags.Any(et =>
+                        et.EventId == e.Id && et.TagId == (Guid)subFilter.Value)),
+
+                EventSubqueryFilterType.Location => query.Where(e =>
+                    _dbContext.EventSessions.Any(es =>
+                        es.EventId == e.Id && es.LocationId == (Guid)subFilter.Value)),
+
+                EventSubqueryFilterType.RegistrationMode => query.Where(e =>
+                    _dbContext.EventSessions.Any(es =>
+                        es.EventId == e.Id && es.RegistrationModeId == (int)subFilter.Value)),
+
+                EventSubqueryFilterType.Language => query.Where(e =>
+                    _dbContext.EventSessions.Any(es =>
+                        es.EventId == e.Id &&
+                        _dbContext.EventSessionLanguages.Any(esl =>
+                            esl.EventSessionId == es.Id && esl.LanguageId == (int)subFilter.Value))),
+
+                // JSONB containment: MetadataJson @> '{"key": "value"}'
+                EventSubqueryFilterType.JsonContains => query.Where(e =>
+                    e.MetadataJson != null &&
+                    EF.Functions.JsonContains(e.MetadataJson, (string)subFilter.Value)),
+
+                // JSONB key existence: MetadataJson ? 'key'
+                EventSubqueryFilterType.JsonKeyExists => query.Where(e =>
+                    e.MetadataJson != null &&
+                    EF.Functions.JsonExists(e.MetadataJson, (string)subFilter.Value)),
+
+                _ => query
+            };
+        }
+
+        return query;
     }
 
     public async Task<(List<Event> Items, int TotalCount)> GetMyEventsWithDetailsPaged(string userId, int pageNumber, int pageSize)

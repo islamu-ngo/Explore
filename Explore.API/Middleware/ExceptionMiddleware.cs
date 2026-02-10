@@ -55,6 +55,10 @@ public class ExceptionMiddleware
                 statusCode = HttpStatusCode.NotFound;
                 _logger.LogWarning("Ressource Not Found: {Message}", exception.Message);
                 break;
+            case AuthorizationException authorizationException:
+                statusCode = HttpStatusCode.Forbidden;
+                _logger.LogWarning("Authorization Denied: {Message}", exception.Message);
+                break;
             default:
                 statusCode = HttpStatusCode.InternalServerError;
                 _logger.LogError("Internal Server Error: {Message}", exception.Message);

@@ -29,7 +29,6 @@ public partial class AnnouncementBar
             if (dismissed == "true")
             {
                 _isVisible = false;
-                StateHasChanged();
             }
         }
         catch (JSException)

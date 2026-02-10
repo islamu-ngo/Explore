@@ -124,6 +124,7 @@ public partial class CreateEvent
 
         _isUploadingImage = true;
         Logger.LogInformation("[CreateEvent] Setting _isUploadingImage=true, calling StateHasChanged...");
+        // Required: non-UI thread callback
         await InvokeAsync(StateHasChanged);
 
         try
@@ -160,6 +161,7 @@ public partial class CreateEvent
         finally
         {
             _isUploadingImage = false;
+            // Required: non-UI thread callback
             await InvokeAsync(StateHasChanged);
         }
     }
@@ -210,13 +212,11 @@ public partial class CreateEvent
     {
         _isRetrying = true;
         _dataLoaded = false;
-        StateHasChanged();
 
         await Task.Delay(100);
         await LoadFormData();
 
         _isRetrying = false;
-        StateHasChanged();
     }
 
     private async Task LoadFormData()
@@ -346,7 +346,6 @@ public partial class CreateEvent
         if (isProcessing) return;
         isProcessing = true;
         errorMessage = string.Empty;
-        StateHasChanged();
 
         try
         {
@@ -445,7 +444,6 @@ public partial class CreateEvent
         finally
         {
             isProcessing = false;
-            StateHasChanged();
         }
     }
 
@@ -510,7 +508,6 @@ public partial class CreateEvent
                     {
                         await EventService.DeleteSessionAsync(session.Id.Value);
                         sessions.RemoveAt(index);
-                        StateHasChanged();
                     }
                     catch (Exception ex)
                     {
@@ -521,7 +518,6 @@ public partial class CreateEvent
             else
             {
                 sessions.RemoveAt(index);
-                StateHasChanged();
             }
         }
     }

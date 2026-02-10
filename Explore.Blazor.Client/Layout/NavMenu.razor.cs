@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
+using Explore.Blazor.Client.Services.Contracts;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Routing;
@@ -22,6 +23,9 @@ public partial class NavMenu
     [Inject]
     protected IPublicExperienceService PublicExperienceService { get; set; } = null!;
 
+    [Inject]
+    protected ITenantNavigationService TenantNavigationService { get; set; } = null!;
+
     [Parameter]
     public EventCallback OnToggleTheme { get; set; }
 
@@ -31,11 +35,13 @@ public partial class NavMenu
     private string _brandDisplayName = "ISLAMU Explore";
     private string _brandLogoUrl = string.Empty;
     public string SearchQuery { get; set; } = "";
+    private ICollection<TenantNavigationLinkDto> _navigationLinks = new List<TenantNavigationLinkDto>();
 
     protected override async Task OnInitializedAsync()
     {
         await LoadPublicExperienceAsync();
         await LoadCurrentUserAsync();
+        await LoadNavigationLinksAsync();
     }
 
     private void HandleSearchKeyPress(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
@@ -108,5 +114,18 @@ public partial class NavMenu
         return user.IsInRole("Admin") ||
                user.HasClaim(c => c.Type == "role" && c.Value == "Admin") ||
                user.HasClaim(c => c.Type == "roles" && c.Value.Contains("Admin"));
+    }
+
+    private async Task LoadNavigationLinksAsync()
+    {
+        try
+        {
+            _navigationLinks = await TenantNavigationService.GetNavigationLinksAsync();
+        }
+        catch
+        {
+            // Silently fail - navigation links are optional
+            _navigationLinks = new List<TenantNavigationLinkDto>();
+        }
     }
 }

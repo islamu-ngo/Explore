@@ -1,0 +1,27 @@
+# ABOUTME: Cerbos derived roles for the ISLAMU Event platform's 3-level admin hierarchy.
+# Maps static JWT roles to dynamic context-aware roles based on resource attributes.
+
+apiVersion: "api.cerbos.dev/v1"
+description: "Derived roles for Instance > Tenant > Organization hierarchy"
+derivedRoles:
+  name: explore_admin_roles
+  definitions:
+    - name: instance_admin
+      parentRoles: ["admin", "user"]
+      condition:
+        match:
+          expr: request.principal.attr.isInstanceAdmin == true
+
+    - name: tenant_admin
+      parentRoles: ["user"]
+      condition:
+        match:
+          expr: >
+            request.resource.attr.tenantId in request.principal.attr.tenants
+
+    - name: org_admin
+      parentRoles: ["user"]
+      condition:
+        match:
+          expr: >
+            request.resource.attr.organizationId in request.principal.attr.orgs

@@ -34,6 +34,11 @@
         "resolved": "4.0.3.6",
         "contentHash": "bx61NSP9bQ5BTPXGzyhS7f4d+YzIiSelsblj8JALHp5uoYKVRnoRTbWb3lyUTdzJ9UZj7Q7JiQ8sJJ5JHQ5Jrg=="
       },
+      "BouncyCastle.Cryptography": {
+        "type": "Transitive",
+        "resolved": "2.6.1",
+        "contentHash": "vZsG2YILhthgRqO+ZVgRff4ZFKKTl0v7kqaVBLCtRvpREhfBP33pcWrdA3PRYgWuFL1RxiUFvjMUHTdBZlJcoA=="
+      },
       "EnumerableAsyncProcessor": {
         "type": "Transitive",
         "resolved": "3.8.4",
@@ -441,6 +446,15 @@
         "resolved": "6.0.0",
         "contentHash": "hqTM5628jSsQiv+HGpiq3WKBl2c8v1KZfby2J6Pr7pEPlK9waPdgEO6b8A/+/xn/yZ9ulv8HuqK71ONy2tg67A=="
       },
+      "MimeKit": {
+        "type": "Transitive",
+        "resolved": "4.14.0",
+        "contentHash": "g0LtsMC8DCTkc030C3UgVqbltOJmV5cz4AX8ASowz2ZA+lxopXSYtC1XXYmenxy606aWFLwi5Xy4cC/zyYjbjQ==",
+        "dependencies": {
+          "BouncyCastle.Cryptography": "2.6.1",
+          "System.Security.Cryptography.Pkcs": "8.0.1"
+        }
+      },
       "Mono.Cecil": {
         "type": "Transitive",
         "resolved": "0.11.3",
@@ -631,6 +645,11 @@
           "Microsoft.Win32.SystemEvents": "6.0.0"
         }
       },
+      "System.Security.Cryptography.Pkcs": {
+        "type": "Transitive",
+        "resolved": "8.0.1",
+        "contentHash": "CoCRHFym33aUSf/NtWSVSZa99dkd0Hm7OCZUxORBjRB16LNhIEOf8THPqzIYlvKM0nNDAPTRBa1FxEECrgaxxA=="
+      },
       "System.Security.Cryptography.ProtectedData": {
         "type": "Transitive",
         "resolved": "6.0.0",
@@ -735,10 +754,12 @@
         "dependencies": {
           "AWSSDK.S3": "[4.0.16.1, )",
           "Explore.Application": "[1.0.0, )",
+          "MailKit": "[4.14.1, )",
           "Microsoft.AspNetCore.Http.Abstractions": "[2.3.0, )",
           "Microsoft.Extensions.Caching.Memory": "[10.0.2, )",
           "Microsoft.Extensions.Http": "[10.0.2, )",
-          "Microsoft.Extensions.Options.ConfigurationExtensions": "[10.0.2, )"
+          "Microsoft.Extensions.Options.ConfigurationExtensions": "[10.0.2, )",
+          "Polly": "[8.6.5, )"
         }
       },
       "explore.persistence": {
@@ -849,6 +870,15 @@
         "contentHash": "6D5l4cOcJdG36cw7KULyhC1YuxVAPuSizHdyjXJv2CSJz31vPxj8vplxPy2FElButJd4JFaadwSNqAb61jA4IA==",
         "dependencies": {
           "Polly.Extensions.Http": "3.0.0"
+        }
+      },
+      "MailKit": {
+        "type": "CentralTransitive",
+        "requested": "[4.14.1, )",
+        "resolved": "4.14.1",
+        "contentHash": "Rawu+h3lSSjKra0AxR+IUB99VQ7jWI+MvxThekqLhf+ic7VQ7a69lmPFW+LXuRYHla4ADcn3x16Gsvju3LTq9w==",
+        "dependencies": {
+          "MimeKit": "4.14.0"
         }
       },
       "MediatR.Extensions.Microsoft.DependencyInjection": {

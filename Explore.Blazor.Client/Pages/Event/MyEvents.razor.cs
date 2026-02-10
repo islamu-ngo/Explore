@@ -26,76 +26,22 @@ public partial class MyEvents : ComponentBase
     private string _selectedCategory = string.Empty;
     private Guid _selectedOrganizationId = Guid.Empty;
 
-    private bool _isOrganizationOpen;
-    private bool _isCategoryOpen;
+    private List<string> UniqueEventTypes => _events
+        .Select(e => e.EventTypeFullName)
+        .Where(t => !string.IsNullOrEmpty(t))
+        .Distinct()
+        .OrderBy(t => t)
+        .ToList()!;
 
-    private int _currentPage = 1;
-    private const int ItemsPerPage = 6;
-
-    // Filter cache to avoid re-evaluating AllFilteredEvents multiple times per render
-    private List<EventListDto> _cachedFilteredEvents = new();
-    private bool _filtersDirty = true;
-    private List<string>? _cachedUniqueEventTypes;
-    private bool _eventTypesDirty = true;
-
-    private List<string> UniqueEventTypes
-    {
-        get
-        {
-            if (_eventTypesDirty)
-            {
-                _cachedUniqueEventTypes = _events
-                    .Select(e => e.EventTypeFullName)
-                    .Where(t => !string.IsNullOrEmpty(t))
-                    .Distinct()
-                    .OrderBy(t => t)
-                    .ToList()!;
-                _eventTypesDirty = false;
-            }
-            return _cachedUniqueEventTypes!;
-        }
-    }
-
-    private List<EventListDto> AllFilteredEvents
-    {
-        get
-        {
-            if (_filtersDirty)
-            {
-                _cachedFilteredEvents = ComputeFilteredEvents();
-                _filtersDirty = false;
-            }
-            return _cachedFilteredEvents;
-        }
-    }
-
-    private void InvalidateFilterCache() => _filtersDirty = true;
-
-    private void InvalidateAllCaches()
-    {
-        _filtersDirty = true;
-        _eventTypesDirty = true;
-    }
-
-    private List<EventListDto> ComputeFilteredEvents()
-    {
-        return _events
-            .Where(e => string.IsNullOrEmpty(_searchString) ||
-                        e.Title.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ||
-                        (e.Description?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false))
-            .Where(e => string.IsNullOrEmpty(_selectedCategory) ||
-                        (e.EventTypeFullName?.Contains(_selectedCategory, StringComparison.OrdinalIgnoreCase) ?? false))
-            .Where(e => _selectedOrganizationId == Guid.Empty ||
-                        e.ActorId == _selectedOrganizationId)
-            .ToList();
-    }
-
-    private List<EventListDto> FilteredEvents => AllFilteredEvents
-        .Skip((_currentPage - 1) * ItemsPerPage)
-        .Take(ItemsPerPage)
+    private List<EventListDto> AllFilteredEvents => _events
+        .Where(e => string.IsNullOrEmpty(_searchString) ||
+                    e.Title.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ||
+                    (e.Description?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false))
+        .Where(e => string.IsNullOrEmpty(_selectedCategory) ||
+                    (e.EventTypeFullName?.Contains(_selectedCategory, StringComparison.OrdinalIgnoreCase) ?? false))
+        .Where(e => _selectedOrganizationId == Guid.Empty ||
+                    e.ActorId == _selectedOrganizationId)
         .ToList();
-
-    private int TotalPages => AllFilteredEvents.Any() ? (int)Math.Ceiling((double)AllFilteredEvents.Count / ItemsPerPage) : 1;
 
     protected override async Task OnInitializedAsync()
     {
@@ -114,7 +60,6 @@ public partial class MyEvents : ComponentBase
             await Task.WhenAll(eventsTask, organizationsTask);
             _events = await eventsTask ?? new List<EventListDto>();
             _myOrganizations = await organizationsTask ?? new List<OrganizationListDto>();
-            InvalidateAllCaches();
         }
         catch (Exception ex)
         {
@@ -202,9 +147,6 @@ public partial class MyEvents : ComponentBase
             {
                 Snackbar.Add($"Event '{evt.Title}' has been deleted.", Severity.Success);
                 (_events as List<EventListDto>)?.Remove(evt);
-                InvalidateAllCaches();
-                if (!FilteredEvents.Any() && _currentPage > 1) _currentPage = 1;
-                StateHasChanged();
             }
             else
             {
@@ -213,12 +155,9 @@ public partial class MyEvents : ComponentBase
         }
     }
 
-    private void OnSearch(string value) { _searchString = value; _currentPage = 1; InvalidateFilterCache(); }
-    private void OnCategoryChanged(string value) { _selectedCategory = value; _isCategoryOpen = false; _currentPage = 1; InvalidateFilterCache(); }
-    private void OnOrganizationChanged(Guid? organizationId) { _selectedOrganizationId = organizationId ?? Guid.Empty; _isOrganizationOpen = false; _currentPage = 1; InvalidateFilterCache(); }
-    private void OnPageChanged(int page) => _currentPage = page;
-    private void ToggleOrganizationFilter() => _isOrganizationOpen = !_isOrganizationOpen;
-    private void ToggleCategoryFilter() => _isCategoryOpen = !_isCategoryOpen;
+    private void OnSearch(string value) => _searchString = value;
+    private void OnCategoryChanged(string value) => _selectedCategory = value;
+    private void OnOrganizationChanged(Guid? organizationId) => _selectedOrganizationId = organizationId ?? Guid.Empty;
     private void NavigateToCreateEvent() => Navigation.NavigateTo("/organization/my");
     private void NavigateToCreateOrganization() => Navigation.NavigateTo("/organization/create");
 

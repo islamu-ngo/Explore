@@ -72,7 +72,6 @@ public partial class AdminList
     private void ToggleStatus(RequestStatus s)
     {
         if (_selectedStatuses.Contains(s)) _selectedStatuses.Remove(s); else _selectedStatuses.Add(s);
-        StateHasChanged();
     }
 
     private void ClearFilters()
@@ -80,7 +79,6 @@ public partial class AdminList
         _selectedStatuses.Clear();
         _search = string.Empty;
         _sort = SortOption.OldestFirst;
-        StateHasChanged();
     }
 
     private IEnumerable<OrganizationListDto> GetFilteredAndSorted(RequestStatus? status)

@@ -162,6 +162,28 @@ builder.Services.AddHttpClient<IEventApiClient, EventApiClient>(client =>
         return handler;
     });
 
+// Register TenantNavigationService for server-side rendering
+builder.Services.AddHttpClient<ITenantNavigationService, TenantNavigationService>(client =>
+    {
+        client.BaseAddress = new Uri(exploreApiBaseUrl);
+    })
+    .AddHttpMessageHandler<AccessTokenForwardingHandler>()
+    .ConfigurePrimaryHttpMessageHandler(() =>
+    {
+        var handler = new HttpClientHandler();
+
+        if (builder.Environment.IsDevelopment())
+        {
+            handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
+            {
+                var isLocalhost = message.RequestUri?.Host.Contains("localhost") ?? false;
+                return isLocalhost || errors == System.Net.Security.SslPolicyErrors.None;
+            };
+        }
+
+        return handler;
+    });
+
 builder.Services.AddOptions();
 
 // Log Keycloak configuration (without secrets)

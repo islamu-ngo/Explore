@@ -180,6 +180,24 @@ When the platform is first installed:
 
 ---
 
+## Tenant Branding & Customization
+
+### Navigation Customization
+
+Tenants can define custom external navigation links to seamlessly integrate the event platform with their main website.
+
+- **Entity**: `TenantNavigationLink`
+- **Management**: Tenant Admins via Admin Portal (`/admin/tenant/navigation`)
+- **Features**:
+  - Custom Label and URL
+  - Ordering support
+  - "Open in New Tab" option
+  - Icon selection (MudBlazor icons)
+
+These links are rendered dynamically in the main application sidebar, appearing below standard navigation items. This reduces friction for end-users by providing easy access back to the organization's main site.
+
+---
+
 ## Related Documentation
 
 - **[ADMIN_HIERARCHY.md](ADMIN_HIERARCHY.md)** - Detailed authority model

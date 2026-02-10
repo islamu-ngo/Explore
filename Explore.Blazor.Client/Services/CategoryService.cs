@@ -3,6 +3,7 @@
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Constants;
 using Explore.Blazor.Client.Helpers;
+using Explore.Blazor.Client.Models;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;
@@ -11,6 +12,7 @@ public interface ICategoryService
 {
     Task<ICollection<CategoryListDto>> GetCategoriesAsync();
     Task<ICollection<CategoryListDto>> GetAllCategoriesAsync(); // Alias for GetCategoriesAsync
+    Task<PaginatedResult<CategoryListDto>> GetCategoriesPagedAsync(int pageNumber, int pageSize);
     Task<CategoryDto?> GetCategoryByIdAsync(Guid categoryId);
     Task<BaseCommandResponseOfGuid?> CreateCategoryAsync(CreateCategoryDto dto);
     Task<BaseCommandResponseOfGuid?> UpdateCategoryAsync(Guid id, UpdateCategoryDto dto);
@@ -47,6 +49,20 @@ public class CategoryService : ICategoryService
     }
 
     public Task<ICollection<CategoryListDto>> GetAllCategoriesAsync() => GetCategoriesAsync();
+
+    public async Task<PaginatedResult<CategoryListDto>> GetCategoriesPagedAsync(int pageNumber, int pageSize)
+    {
+        try
+        {
+            var result = await _apiClient.GetCategoriesAsync(pageNumber, pageSize);
+            return result.ToPaginatedResult();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[CATEGORY SERVICE] Error fetching paged categories (page {PageNumber}, size {PageSize})", pageNumber, pageSize);
+            return PaginatedResult<CategoryListDto>.Empty(pageNumber, pageSize);
+        }
+    }
 
     public async Task<CategoryDto?> GetCategoryByIdAsync(Guid categoryId)
     {

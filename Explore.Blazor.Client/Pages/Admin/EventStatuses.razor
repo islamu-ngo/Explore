@@ -3,6 +3,7 @@
 @using Explore.Blazor.Client.Services.Contracts
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize(Roles = "Admin")]
+@attribute [StreamRendering]
 
 <MudText Typo="Typo.h4" GutterBottom="true">Event Statuses</MudText>
 
@@ -26,7 +27,5 @@
             <MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="@(() => DeleteEventStatus(context.Id ?? 0))" />
         </MudTd>
     </RowTemplate>
-    <PagerContent>
-        <MudTablePager />
-    </PagerContent>
+
 </MudTable>

@@ -80,7 +80,6 @@ public partial class MainLayout : LayoutComponentBase
                     if (_isDarkMode != isDarkStorage)
                     {
                         _isDarkMode = isDarkStorage;
-                        StateHasChanged();
                     }
                 }
             }

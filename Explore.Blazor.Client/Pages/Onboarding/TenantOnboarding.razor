@@ -2,6 +2,7 @@
 @using MudBlazor
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
+@attribute [StreamRendering]
 @inject ITenantOnboardingService TenantOnboardingService
 @inject IUserService UserService
 @inject NavigationManager Navigation

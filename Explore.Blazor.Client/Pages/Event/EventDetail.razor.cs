@@ -175,7 +175,6 @@ public partial class EventDetail : ComponentBase
         if (confirm != true) return;
 
         _isCancellingRegistration = true;
-        StateHasChanged();
 
         try
         {
@@ -207,7 +206,6 @@ public partial class EventDetail : ComponentBase
         finally
         {
             _isCancellingRegistration = false;
-            StateHasChanged();
         }
     }
 
@@ -424,7 +422,6 @@ public partial class EventDetail : ComponentBase
                 {
                     // Refresh status to update UI immediately
                     await CheckRegistrationStatusAsync();
-                    StateHasChanged();
                 }
             }
         }
@@ -465,7 +462,6 @@ public partial class EventDetail : ComponentBase
             if (_eventSessions != null && _eventSessions.Count == 1)
             {
                 await CheckRegistrationStatusAsync();
-                StateHasChanged();
             }
             return true;
         }
@@ -675,7 +671,6 @@ public partial class EventDetail : ComponentBase
                 if (success)
                 {
                     _islamicAspect = null;
-                    StateHasChanged();
                 }
                 else
                 {
@@ -709,7 +704,6 @@ public partial class EventDetail : ComponentBase
                 if (success)
                 {
                     _techAspect = null;
-                    StateHasChanged();
                 }
                 else
                 {
@@ -732,7 +726,6 @@ public partial class EventDetail : ComponentBase
         try
         {
             _islamicAspect = await EventAspectService.GetIslamicAspectAsync(EventId);
-            StateHasChanged();
         }
         catch (Exception ex)
         {
@@ -748,7 +741,6 @@ public partial class EventDetail : ComponentBase
         try
         {
             _techAspect = await EventAspectService.GetTechAspectAsync(EventId);
-            StateHasChanged();
         }
         catch (Exception ex)
         {

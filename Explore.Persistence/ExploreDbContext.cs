@@ -136,6 +136,8 @@ public class ExploreDbContext : DbContext
         modelBuilder.Entity<TenantOnboardingState>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
 
+        modelBuilder.Entity<TenantNavigationLink>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
         // ===== Module Governance Entities =====
         modelBuilder.Entity<TenantCapability>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
@@ -214,6 +216,7 @@ public class ExploreDbContext : DbContext
     public DbSet<TenantAdministratorRole> TenantAdministratorRoles { get; set; }
     public DbSet<TenantOnboardingState> TenantOnboardingStates { get; set; }
     public DbSet<InstanceAdministrator> InstanceAdministrators { get; set; }
+    public DbSet<TenantNavigationLink> TenantNavigationLinks { get; set; }
     public DbSet<InstanceBootstrapState> InstanceBootstrapStates { get; set; }
 
     // ===== Users & Authentication =====
@@ -279,6 +282,7 @@ public class ExploreDbContext : DbContext
     public DbSet<SystemSetting> SystemSettings { get; set; }
     public DbSet<TenantSetting> TenantSettingOverrides { get; set; }
     public DbSet<AppSetting> AppSettings { get; set; }
+    public DbSet<ConfigurationChangeLog> ConfigurationChangeLogs { get; set; }
 
     // ===== Module Governance =====
     public DbSet<ModuleDefinition> ModuleDefinitions { get; set; }

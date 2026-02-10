@@ -1,197 +1,207 @@
 # Context: Admin Hierarchy Pages (Instance, Tenant, Organization)
 
-Last Updated: 2026-02-08
+Last Updated: 2026-02-10
 
-## SESSION PROGRESS (2026-02-06)
+## SESSION PROGRESS (2026-02-10)
 
-### Completed
+### Phase 5: Blazor UI — COMPLETE ✅
+All 15 Blazor files created, routes registered, navigation updated. Build: 0 errors. All tests pass.
 
-- Completed deep documentation review for architecture, domain, security, operations, tenancy, and governance.
-- Completed broad code analysis across Blazor, API, Application, Infrastructure, Persistence, and Domain layers.
-- Produced full implementation strategy in `dev/active/admin-hierarchy-pages/admin-hierarchy-pages-plan.md`.
-- Identified current implementation gaps and mapped them to phased tasks.
-- Persisting task management artifacts:
-- `admin-hierarchy-pages-context.md` (this file)
-- `admin-hierarchy-pages-tasks.md`
+### Phase 6: Enterprise Cerbos Authorization — COMPLETE ✅
+Full enterprise authorization infrastructure implemented following `Admin-authorization-cerbos.md` and `GEMINI-FEEDBACK.md`.
 
-### In Progress
+**Files Created (20 new files):**
 
-- Implemented first-run onboarding flow scaffolding:
-  - `InstanceBootstrapState` and onboarding status/complete/update endpoints.
-  - `StartupGate` route orchestration (`instance -> tenant -> public home route`).
-- Implemented tenant and instance policy settings expansion for:
-  - Home page selection (event list vs landing page).
-  - Domain governance (instance base domain, subdomain/custom-domain policies).
-  - White-label branding fields (display name, logo, favicon, optional custom CSS URL).
-- Added public experience read model for anonymous-safe home/branding resolution:
-  - `api/v1/PublicExperience/settings`
-  - `PublicExperienceService` in Blazor client.
-- Added runtime lookup seeding baseline (`LookupTableSeeder`) and removed `HasData` dependencies from lookup configs.
+Domain Layer:
+- `Explore.Domain/Enums/ConfigurationScopeEnum.cs` — Scope enum (System, Instance, Tenant, Organization)
+- `Explore.Domain/ConfigurationChangeLog.cs` — Audit entity for settings changes
+
+Application Layer:
+- `Explore.Application/Contracts/Identity/IAdminContext.cs` — Hybrid JWT + DB admin identity resolution
+- `Explore.Application/Contracts/Infrastructure/ICerbosAuthorizationService.cs` — Authorization service contract
+- `Explore.Application/Contracts/Infrastructure/IConfigurationChangeLogService.cs` — Audit logging contract
+- `Explore.Application/Authorization/IAuthorizedRequest.cs` — MediatR authorization marker interface
+- `Explore.Application/Authorization/CerbosAuthorizeAttribute.cs` — Metadata attribute for commands
+- `Explore.Application/Exceptions/AuthorizationException.cs` — Maps to HTTP 403
+- `Explore.Application/Behaviors/AuthorizationBehavior.cs` — MediatR pipeline (checks IAuthorizedRequest or attribute)
+
+Persistence Layer:
+- `Explore.Persistence/Configurations/Entities/ConfigurationChangeLogConfiguration.cs` — EF config with indexes
+- `Explore.Application/Contracts/Persistence/IConfigurationChangeLogRepository.cs` — Repository interface
+- `Explore.Persistence/Repositories/ConfigurationChangeLogRepository.cs` — Repository implementation
+
+Infrastructure Layer:
+- `Explore.Infrastructure/Identity/AdminContext.cs` — Hybrid identity (JWT claims + DB, 5-min cache)
+- `Explore.Infrastructure/Services/CerbosAuthorizationService.cs` — Real Cerbos HTTP API client
+- `Explore.Infrastructure/Services/FallbackAuthorizationService.cs` — DB-only fallback when Cerbos unavailable
+- `Explore.Infrastructure/Services/ConfigurationChangeLogService.cs` — Audit log writer
+
+Cerbos Policies:
+- `cerbos/policies/derived_roles.yaml` — instance_admin, tenant_admin, org_admin derived roles
+- `cerbos/policies/instance_setting.yaml` — Instance settings resource policy
+- `cerbos/policies/tenant_setting.yaml` — Tenant settings with lock check
+- `cerbos/policies/organization.yaml` — Organization hierarchy policy
+
+**Files Modified:**
+- `ExploreDbContext.cs` — Added DbSet<ConfigurationChangeLog>
+- `PersistenceServicesRegistration.cs` — Registered ConfigurationChangeLogRepository
+- `ApplicationServicesRegistration.cs` — Registered AuthorizationBehavior pipeline
+- `InfrastructureServicesRegistration.cs` — Registered AdminContext, CerbosAuth (conditional), ConfigChangeLog
+- `docker-compose.yml` — Added Cerbos sidecar (profile: "authz")
+
+**Architecture Decisions:**
+- Cerbos via HTTP REST API (no gRPC SDK NuGet dependency) — avoids .NET 10 compatibility issues
+- `Cerbos:Enabled` config toggle — FallbackAuthorizationService used when Cerbos PDP unavailable
+- IMemoryCache (not Redis) for AdminContext caching — matches existing SettingsResolver pattern
+- AuthorizationBehavior runs after PerformanceBehavior (perf logging includes auth time)
+- Secure by default: unknown resource kinds are denied
+
+**Build Status:** 0 errors, 151 tests passing
 
 ### Blockers
+- None
 
-- No technical blockers for planning.
-- One product/ownership clarification needed before implementation start:
-  - Tenant onboarding policy ownership and delegation boundaries (instance-only vs partially delegated).
+### Remaining Work (Deferred)
+- Wire [CerbosAuthorize] onto controllers
+- Add exception middleware for AuthorizationException → 403
+- EF migration for ConfigurationChangeLog table
+- Unit tests for new services
+- Blazor UI lock source metadata indicators
 
-## Goal of This Workstream
+## Implementation Plan (Approved)
 
-Create maintainable, enterprise-grade admin experiences with scope-separated behavior:
+See detailed plan: `dev/active/admin-hierarchy-pages/polished-sparking-goose.md`
 
-1. Instance Administrator
-2. Tenant Administrator
-3. Organization Administrator
+## Architecture Decision: Follow SettingsLayout Pattern
 
-Scope-specific behavior must include:
+Reuse the **exact pattern** from `Explore.Blazor.Client/Components/Settings/SettingsLayout.razor`:
+- MudGrid: 3-col sidebar (MudList with icons) + 9-col content area
+- Section switching via component state (no sub-routing)
+- Each admin level gets its own layout component + section components
+- Each layout needs its own `.razor.css` (Blazor CSS isolation is scoped per component)
 
-- Runtime deployment mode control.
-- Module/aspect governance.
-- User-submitted events policy.
-- Organization verification policy and workflow controls.
-- Tenant onboarding policy controls.
+## Files to Create (15 new files)
 
-## What Was Analyzed
+### Instance Admin Settings
+```
+Explore.Blazor.Client/Components/Admin/Instance/
+├── InstanceAdminSettingsLayout.razor        ← Sidebar layout (4 sections)
+├── InstanceAdminSettingsLayout.razor.css    ← Scoped CSS (copy from SettingsLayout.razor.css)
+├── InstanceGovernanceSection.razor          ← DeploymentMode, SelfService, HomePage, LockHomePage
+├── InstanceDomainSection.razor              ← BaseDomain, CustomDomains, LockSubdomain, LockCustomDomain
+├── InstanceBrandingSection.razor            ← Brand fields + 4 lock switches
+└── InstanceModulesSection.razor             ← Islamic/Tech modules, verification policies
 
-## Core Project References
+Explore.Blazor.Client/Pages/Admin/Instance/
+└── InstanceAdminSettings.razor              ← @page "/admin/instance/settings" [Authorize(Roles="Admin")]
+```
 
-- `CLAUDE.md`
-- `docs/PROJECT.md`
-- `docs/ARCHITECTURE.md`
-- `docs/DOMAIN.md`
-- `docs/SECURITY.md`
-- `docs/CONFIGURATION.md`
-- `docs/GOVERNANCE.md`
-- `docs/OPERATIONS.md`
-- `docs/TROUBLESHOOTING.md`
-- `docs/FEDERATION.md`
-- `docs/API.md`
-- `docs/BLAZOR.md`
-- `docs/ADMIN_HIERARCHY.md`
-- `docs/MULTI_TENANCY.md`
-- `docs/DEPLOYMENT_MODES.md`
-- `docs/EXTENSIBILITY.md`
-- `docs/MODULAR_EVENTS.md`
-- `docs/RENDER_POLICIES.md`
+### Tenant Admin Settings
+```
+Explore.Blazor.Client/Components/Admin/Tenant/
+├── TenantAdminSettingsLayout.razor          ← Sidebar layout (3 sections)
+├── TenantAdminSettingsLayout.razor.css      ← Scoped CSS
+├── TenantPoliciesSection.razor              ← Events, Approval, Verification (with lock indicators)
+├── TenantDomainSection.razor                ← HomePage, Subdomain, CustomDomain (with CanOverride*)
+└── TenantBrandingSection.razor              ← Brand overrides (with CanOverride*)
 
-## Skills Reviewed
+Explore.Blazor.Client/Pages/Admin/Tenant/
+└── TenantAdminSettings.razor                ← @page "/admin/tenant/settings" [Authorize]
+```
 
-- `.claude/skills/clean-architecture-rules/SKILL.md`
-- `.claude/skills/cqrs-mediatr-guidelines/SKILL.md`
-- `.claude/skills/blazor-ui-conventions/SKILL.md`
-- `.claude/skills/auth-patterns/SKILL.md`
-- `.claude/skills/blazor-bff-patterns/SKILL.md`
-- `.claude/skills/dotnet-efcore-guidelines/SKILL.md`
+### Organization Admin Settings
+```
+Explore.Blazor.Client/Components/Admin/Organization/
+├── OrganizationAdminSettingsLayout.razor     ← Sidebar layout (3 sections)
+├── OrganizationAdminSettingsLayout.razor.css ← Scoped CSS
+├── OrganizationProfileSection.razor          ← Read-only org overview + link to full profile
+├── OrganizationMembersSection.razor          ← Top 5 members + "Manage Members" link
+└── OrganizationVerificationSection.razor     ← Approval status display
 
-## Key Code Areas Reviewed
+Explore.Blazor.Client/Pages/Admin/Organization/
+└── OrganizationAdminSettings.razor           ← @page "/admin/organization/{OrganizationId:guid}/settings" [Authorize]
+```
 
-### Blazor and Navigation
+## Files to Modify (4)
 
-- `Explore.Blazor/Components/Routes.razor`
-- `Explore.Blazor/Program.cs`
-- `Explore.Blazor/Services/CircuitAccessTokenService.cs`
-- `Explore.Blazor.Client/Layout/NavMenu.razor`
-- `Explore.Blazor.Client/Layout/NavMenu.razor.cs`
-- `Explore.Blazor.Client/Pages/Admin/*`
-- `Explore.Blazor.Client/Services/AdminService.cs`
-- `Explore.Blazor.Client/Services/AuthStateService.cs`
-- `Explore.Blazor.Client/Providers/TenantContextProvider.razor`
+1. **Routes.razor** — Add 11 routes (3 settings + 8 lookup tables) with guards
+   - Add `@using Explore.Blazor.Client.Pages.Admin.Instance`
+   - Add `@using Explore.Blazor.Client.Pages.Admin.Tenant`
+   - Add `@using Explore.Blazor.Client.Pages.Admin.Organization`
+   - Add settings routes + all lookup table routes
 
-### API and Authorization
+2. **NavMenu.razor** — Add Instance Settings + Tenant Settings links in admin dropdown
 
-- `Explore.API/Controllers/TenantController.cs`
-- `Explore.API/Controllers/TenantSettingsController.cs`
-- `Explore.API/Controllers/ModuleController.cs`
-- `Explore.API/Controllers/OrganizationController.cs`
-- `Explore.API/Controllers/OrganizationMemberController.cs`
-- `Explore.API/Services/TenantContext.cs`
-- `Explore.API/Filters/BlockInSingleTenantAttribute.cs`
+3. **AdminList.razor** — Add Settings cards section before Lookup Tables section
 
-### Domain and Persistence Foundations
+4. **InstanceSettings.razor** and **TenantPolicySettings.razor** — Remove @page directives (replaced by new files) or delete entirely
 
-- `Explore.Domain/SystemSetting.cs`
-- `Explore.Domain/TenantSetting.cs`
-- `Explore.Domain/TenantSettings.cs`
-- `Explore.Domain/Modules/ModuleDefinition.cs`
-- `Explore.Domain/Modules/TenantCapability.cs`
-- `Explore.Domain/Enums/RoleEnum.cs`
-- `Explore.Domain/Enums/OrganizationRoleEnum.cs`
-- `Explore.Domain/Enums/ApprovalStatusEnum.cs`
-- `Explore.Persistence/Configurations/Entities/SystemSettingConfiguration.cs`
-- `Explore.Persistence/Configurations/Entities/TenantSettingConfiguration.cs`
-- `Explore.Persistence/Configurations/Entities/ModuleDefinitionConfiguration.cs`
-- `Explore.Persistence/ExploreDbContext.cs`
-- `Explore.Infrastructure/Services/SettingsResolver.cs`
-- `Explore.Infrastructure/Services/ModuleService.cs`
-- `Explore.Infrastructure/DeploymentSettings.cs`
+## Key Patterns to Follow
 
-## Findings Summary (Critical)
+### Sidebar Pattern (from SettingsLayout.razor)
+```razor
+<MudGrid Spacing="4">
+    <MudItem xs="12" sm="12" md="3">
+        <MudPaper Elevation="0" Class="settings-sidebar pa-0 rounded-lg border-solid border-1 mud-border-lines-default">
+            <MudList T="string" Dense="false" DisablePadding="true">
+                <MudListItem Icon="@Icons.Material.Filled.Tune"
+                             Text="Section Name"
+                             Class="@GetNavItemClass("section-key")"
+                             OnClick="@(() => SelectSection("section-key"))" />
+            </MudList>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="12" md="9">
+        <MudPaper Elevation="0" Class="settings-content pa-6 rounded-lg border-solid border-1 mud-border-lines-default">
+            @if (CurrentSection == "section-key") { <SectionComponent Model="_model" /> }
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+```
 
-1. Current admin UX is largely single-dashboard (`/admin`) and not scope-separated.
-2. Role checks are mostly coarse (`Admin`) across APIs and UI.
-3. Runtime deployment mode switching is expected by docs but currently not fully settings-resolved in request path.
-4. Tenant header behavior in BFF is currently default-driven, which is risky for full multi-tenant behavior.
-5. Governance settings foundation exists but lacks complete role-specific APIs and pages.
-6. `TenantSettingsDto.Id` type mismatch (`int`) vs domain (`Guid`) should be corrected.
+### Section Component Pattern
+```razor
+@* ABOUTME: Description *@
+@* ABOUTME: Part of the X Admin Settings sidebar layout *@
+@using MudBlazor
+@using Explore.Blazor.Client.Services
 
-## Key Design Decisions Captured
+<div class="settings-section">
+    <div class="settings-section-header">
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">Title</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">Description</MudText>
+    </div>
+    <MudStack Spacing="3">
+        <!-- form fields -->
+    </MudStack>
+</div>
 
-1. Introduce three portal groups (`/admin/instance`, `/admin/tenant`, `/admin/organization/{id}`).
-2. Use lock-aware effective setting UX (value + source + editability reason).
-3. Enforce lock/policy rules in handlers (not only in UI).
-4. Move authorization to explicit scope policies rather than broad role checks.
-5. Keep Cerbos as policy artifacts/documentation only for now; no false assumption of runtime integration.
-6. Keep strict tenant isolation and remove static tenant assumptions in multi-tenant flows.
+@code {
+    [Parameter, EditorRequired]
+    public ModelType Model { get; set; } = null!;
+}
+```
 
-## Cross-Cutting Constraints
+## Services — No New Services Needed
+- Instance: `IInstanceOnboardingService` (GetStatusAsync, GetSettingsAsync, UpdateSettingsAsync)
+- Tenant: `ITenantOnboardingService` (GetStatusAsync, GetSettingsAsync, UpdateSettingsAsync)
+- Organization: `IOrganizationService` (GetOrganizationByIdAsync), `IOrganizationMemberService` (GetMembersAsync)
+- Shared: `RoleHelper` from `Explore.Blazor.Client.Helpers` for role colors/names
 
-- Must preserve Clean Architecture direction.
-- Must follow CQRS + MediatR patterns.
-- Must keep validator pattern aligned with project governance (manual instantiation in handlers where validators are used in that style).
-- Must preserve BFF security architecture and avoid browser token exposure.
-- Must preserve EF Core tenant isolation query filter behavior.
-- Must include migration and test coverage.
-
-## Open Questions Requiring Confirmation
-
-1. Tenant onboarding policy ownership:
-   - instance-admin only, or delegatable to tenant-admin under certain conditions?
-2. Verification decision authority:
-   - tenant-admin only, or instance-admin override path with audit?
-3. Single-tenant UX:
-   - merge instance+tenant pages in one UX shell, or keep visibly separate?
-4. Role claim mapping contract from IdP:
-   - exact claims and names for `InstanceAdmin`, `TenantAdmin`, `OrganizationAdmin`.
-5. Legacy compatibility:
-   - keep `/admin` as redirect shell for one release or hard switch.
-
-## Dependencies and Sequencing
-
-Recommended sequence:
-
-1. Contract freeze and setting key catalog (Phase 0).
-2. Domain/model consistency work (Phase 1).
-3. Application command/query slices + authorization guards (Phase 2).
-4. Persistence + runtime mode resolution + audit logging (Phase 3).
-5. API/BFF scope endpoints and tenant propagation hardening (Phase 4).
-6. Blazor role-specific pages and navigation (Phase 5).
-7. Full test matrix + docs/runbook updates (Phase 6).
-
-## Where to Continue From
-
-Primary reference files:
-
-- Plan:
-  - `dev/active/admin-hierarchy-pages/admin-hierarchy-pages-plan.md`
-- Tasks:
-  - `dev/active/admin-hierarchy-pages/admin-hierarchy-pages-tasks.md`
-
-Immediate next execution step:
-
-- Start with Phase 0, Task 0.1 (role ownership matrix freeze), then Task 0.2.
+## Key Models
+- `InstanceGovernanceSettingsModel` — in `InstanceOnboardingService.cs`
+- `TenantPolicySettingsModel` — in `TenantOnboardingService.cs`
+- `InstanceOnboardingStatusModel` — has `IsCurrentUserInstanceAdmin`
+- `TenantOnboardingStatusModel` — has `IsCurrentUserTenantAdministrator`, `IsCurrentUserInstanceAdministrator`
+- `OrganizationDto` — from generated `EventApiClient.g.cs` (ApprovalStatusId, FullName, Email, etc.)
+- `OrganizationMemberDto` — UserFullName, UserEmail, OrganizationRoleId, OrganizationPositionFullName
 
 ## Quick Resume Checklist
 
-- [ ] Re-read plan sections for Phase 0 and Phase 1.
-- [ ] Confirm open ownership questions with product/security stakeholders.
-- [ ] Begin implementation branch with scope-policy contract changes first.
-- [ ] Keep this context file updated after each major milestone.
+1. Read this context file
+2. Read the plan: `polished-sparking-goose.md`
+3. Build first: `dotnet build --configuration Release --verbosity quiet`
+4. Create files in order: Instance sections → Instance layout+CSS+page → Tenant sections → Tenant layout+CSS+page → Org sections → Org layout+CSS+page
+5. Update Routes.razor, NavMenu.razor, AdminList.razor
+6. Remove @page from old InstanceSettings.razor and TenantPolicySettings.razor (or delete them)
+7. Build and run all tests

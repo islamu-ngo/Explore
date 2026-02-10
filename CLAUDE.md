@@ -67,7 +67,7 @@ This project uses **project-agnostic documentation** with placeholder syntax `{P
 - Call out bad ideas, mistakes, or unreasonable expectations. I highly depends on this.
 - Never agree just to be nice. Honest disagreement is better than fake consensus.
 - If you disagree, cite technical reasons. If it’s intuition, say so.
-- You have unreliable memory. Use your **journal** (`dev/_journal/journal.md`) to record important facts, insights, and preferences before you forget. 
+- You have unreliable memory. Use your **journal** (`dev/_journal/journal.md`) to record important facts, insights, and preferences before you forget.
 - Search your journal before repeating research or reasoning.
 - Discuss all **Important decisions** (refactors...) before implementation **or** before finalizing requirements that assume a particular approach.
 - When something is identified as "a major decision" elevate its priority immediately.
@@ -199,10 +199,10 @@ When designing new features or systems:
 
 For every new feature or bugfix:
 
-1. Write a failing test validating the desired behavior.  
-2. Run it to confirm failure.  
-3. Write *only* enough code to make the test pass.  
-4. Run tests to confirm success.  
+1. Write a failing test validating the desired behavior.
+2. Run it to confirm failure.
+3. Write *only* enough code to make the test pass.
+4. Run tests to confirm success.
 5. Refactor if needed while keeping tests green.
 
 You may skip TDD only with given explicit permission.
@@ -491,16 +491,16 @@ Always find the **root cause** — never patch symptoms or add workarounds.
 - Understand dependencies.
 
 ### Phase 3: Hypothesis and Testing
-1. Form one hypothesis at a time.  
-2. Make the smallest possible change to test it.  
-3. Verify results before continuing.  
+1. Form one hypothesis at a time.
+2. Make the smallest possible change to test it.
+3. Verify results before continuing.
 4. If you don’t know, say “I don’t understand X.”
 
 ### Phase 4: Implementation
-- Always have a minimal failing test case.  
-- Never add multiple fixes at once.  
-- Never claim to follow a pattern without reading it fully.  
-- Test after every change.  
+- Always have a minimal failing test case.
+- Never add multiple fixes at once.
+- Never claim to follow a pattern without reading it fully.
+- Test after every change.
 - If the first fix fails, re-analyze instead of stacking patches.
 
 ---
@@ -628,10 +628,10 @@ If you notice any of these, suggest an architectural review:
 
 ---
 
-## Project
+## Project Context !
 docs/PROJECT.md
 &
-README.md
+docs/README.md
 
 ## Architecture & Technical Stack
 docs/ARCHITECTURE.md

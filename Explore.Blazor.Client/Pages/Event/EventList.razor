@@ -4,7 +4,9 @@
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Components.Event
 @using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web.Virtualization
 @using Microsoft.Extensions.Logging
+@attribute [StreamRendering]
 
 <PageTitle>Explore Events</PageTitle>
 
@@ -49,7 +51,7 @@
                     <MudSelectItem T="Guid?" Value="@((Guid?)null)">All Categories</MudSelectItem>
                     @foreach (var category in categories)
                     {
-                        <MudSelectItem T="Guid?" Value="@category.Id">@category.FullName</MudSelectItem>
+                        <MudSelectItem @key="category.Id" T="Guid?" Value="@category.Id">@category.FullName</MudSelectItem>
                     }
                 </MudSelect>
             </MudItem>
@@ -59,7 +61,7 @@
                     <MudSelectItem T="Guid?" Value="@((Guid?)null)">All Locations</MudSelectItem>
                     @foreach (var location in locations)
                     {
-                        <MudSelectItem T="Guid?" Value="@location.Id">@location.FullName</MudSelectItem>
+                        <MudSelectItem @key="location.Id" T="Guid?" Value="@location.Id">@location.FullName</MudSelectItem>
                     }
                 </MudSelect>
             </MudItem>
@@ -71,7 +73,7 @@
                     {
                         @foreach (var format in eventFormats)
                         {
-                            <MudSelectItem T="int?" Value="@format.Id">@format.FullName</MudSelectItem>
+                            <MudSelectItem @key="format.Id" T="int?" Value="@format.Id">@format.FullName</MudSelectItem>
                         }
                     }
                 </MudSelect>
@@ -85,7 +87,7 @@
                      {
                          @foreach (var madhab in madhabs)
                          {
-                             <MudSelectItem T="int?" Value="@madhab.Id">@madhab.FullName</MudSelectItem>
+                             <MudSelectItem @key="madhab.Id" T="int?" Value="@madhab.Id">@madhab.FullName</MudSelectItem>
                          }
                      }
                  </MudSelect>
@@ -99,7 +101,7 @@
                     {
                         @foreach (var mode in registrationModes)
                         {
-                            <MudSelectItem T="int?" Value="@mode.Id">@mode.FullName</MudSelectItem>
+                            <MudSelectItem @key="mode.Id" T="int?" Value="@mode.Id">@mode.FullName</MudSelectItem>
                         }
                     }
                 </MudSelect>
@@ -113,7 +115,7 @@
                      {
                          @foreach (var language in languages)
                          {
-                             <MudSelectItem T="int?" Value="@language.Id">@language.FullName</MudSelectItem>
+                             <MudSelectItem @key="language.Id" T="int?" Value="@language.Id">@language.FullName</MudSelectItem>
                          }
                      }
                  </MudSelect>
@@ -124,7 +126,7 @@
                     <MudSelectItem T="Guid?" Value="@((Guid?)null)">All Tags</MudSelectItem>
                     @foreach (var tag in tags)
                     {
-                        <MudSelectItem T="Guid?" Value="@tag.Id">@tag.FullName</MudSelectItem>
+                        <MudSelectItem @key="tag.Id" T="Guid?" Value="@tag.Id">@tag.FullName</MudSelectItem>
                     }
                 </MudSelect>
             </MudItem>
@@ -132,43 +134,12 @@
     </div>
 
     <MudGrid Spacing="4">
-        @if ((isLoading && !allEvents.Any()) || isLoadingCategory || isLoadingTag)
-        {
-            @for (int i = 0; i < 6; i++)
-            {
-                <MudItem xs="12" sm="6" md="4" lg="3">
-                    <MudCard Class="h-100 d-flex flex-column rounded-xl border-solid border-1 mud-border-lines-default" Elevation="0">
-                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
-                        <MudCardContent>
-                            <MudSkeleton Width="30%" Height="20px" Class="mb-2" />
-                            <MudSkeleton Width="80%" Height="30px" Class="mb-4" />
-                            <MudSkeleton Width="100%" Height="20px" />
-                            <MudSkeleton Width="100%" Height="20px" />
-                        </MudCardContent>
-                    </MudCard>
-                </MudItem>
-            }
-        }
-        else if (!FilteredEvents.Any())
-        {
-            <MudItem xs="12">
-                <div class="d-flex flex-column align-center justify-center py-16">
-                    <MudIcon Icon="@Icons.Material.Filled.EventBusy" Size="Size.Large" Color="Color.Secondary" Class="mb-4" />
-                    <MudText Typo="Typo.h5" Color="Color.Secondary" Align="Align.Center">No events found</MudText>
-                    <MudText Typo="Typo.body1" Color="Color.Secondary" Align="Align.Center" Class="mt-2">
-                        Try adjusting your filters or search query
-                    </MudText>
-                </div>
-            </MudItem>
-        }
-        else
-        {
-            @foreach (var evt in FilteredEvents)
-            {
-                <MudItem xs="12" sm="6" md="4" lg="3">
+        <Virtualize @ref="_virtualize" ItemsProvider="LoadEventsAsync" OverscanCount="4" Context="evt">
+            <ItemContent>
+                <MudItem @key="evt.Id" xs="12" sm="6" md="4" lg="3">
                     <MudCard Class="h-100 d-flex flex-column rounded-xl hover:mud-elevation-0 transition-all event-card" Outlined="true" Elevation="0" Style="overflow: hidden; background-color: var(--mud-palette-surface);">
                         <MudCardMedia Image="@(string.IsNullOrEmpty(evt.FeaturedImageUri) ? GetEventImage(evt) : evt.FeaturedImageUri)" Height="200" />
-                        
+
                         <MudCardContent Class="d-flex flex-column flex-grow-1 pt-4 pb-2 px-4">
                             <div class="d-flex justify-space-between align-center mb-2">
                                 <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text" Class="ml-n1 font-weight-bold">@GetEventTypeName(evt)</MudChip>
@@ -198,9 +169,9 @@
                             <MudText Typo="Typo.body2" Color="Color.Secondary" Style="overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; min-height: 4.5em;">
                                 @GetTruncatedDescription(evt.Description)
                             </MudText>
-                            
+
                             <MudDivider Class="mt-auto mb-2" />
-                            
+
                             <div class="d-flex justify-space-between align-center">
                                 <MudText Typo="Typo.caption" Color="Color.Secondary">
                                     @(evt.FirstSessionDate?.ToString("MMM dd") ?? "TBD")
@@ -215,7 +186,7 @@
                             <MudButton Variant="Variant.Text" Color="Color.Primary" FullWidth="true" EndIcon="@Icons.Material.Filled.ArrowForward" OnClick="@(() => Navigation.NavigateTo($"/event/detail/{evt.Id}"))">
                                 Details
                             </MudButton>
-                            
+
                             @if (IsUserRegistered(evt.Id ?? Guid.Empty))
                             {
                                 <MudIconButton Icon="@Icons.Material.Filled.EventAvailable" Color="Color.Success" Title="Registered" Disabled="true" />
@@ -227,25 +198,39 @@
                         </MudCardActions>
                     </MudCard>
                 </MudItem>
-            }
-        }
+            </ItemContent>
+            <Placeholder>
+                <MudItem xs="12" sm="6" md="4" lg="3">
+                    <MudCard Class="h-100 d-flex flex-column rounded-xl border-solid border-1 mud-border-lines-default" Elevation="0">
+                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
+                        <MudCardContent>
+                            <MudSkeleton Width="30%" Height="20px" Class="mb-2" />
+                            <MudSkeleton Width="80%" Height="30px" Class="mb-4" />
+                            <MudSkeleton Width="100%" Height="20px" />
+                            <MudSkeleton Width="100%" Height="20px" />
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+            </Placeholder>
+        </Virtualize>
     </MudGrid>
 
-    @if (HasMoreEvents)
+    @if (!isLoading && _totalCount == 0)
     {
-        <div class="d-flex justify-center mt-12 mb-8">
-            <MudButton Variant="Variant.Outlined" 
-                       Color="Color.Primary" 
-                       Size="Size.Large" 
-                       OnClick="LoadMore" 
-                       Class="rounded-pill px-12">
-                Load More Events
-            </MudButton>
+        <div class="d-flex flex-column align-center justify-center py-16">
+            <MudIcon Icon="@Icons.Material.Filled.EventBusy" Size="Size.Large" Color="Color.Secondary" Class="mb-4" />
+            <MudText Typo="Typo.h5" Color="Color.Secondary" Align="Align.Center">No events found</MudText>
+            <MudText Typo="Typo.body1" Color="Color.Secondary" Align="Align.Center" Class="mt-2">
+                Try adjusting your filters or search query
+            </MudText>
         </div>
     }
-    
-    <MudText Typo="Typo.caption" Align="Align.Center" Color="Color.Secondary" Class="d-block mb-8">
-        Showing @Math.Min(displayedCount, AllFilteredEvents.Count) of @AllFilteredEvents.Count events
-    </MudText>
+
+    @if (_totalCount > 0)
+    {
+        <MudText Typo="Typo.caption" Align="Align.Center" Color="Color.Secondary" Class="d-block mb-8">
+            @_totalCount events found
+        </MudText>
+    }
 
 </MudContainer>

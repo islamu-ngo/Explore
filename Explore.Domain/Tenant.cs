@@ -10,4 +10,9 @@ public class Tenant
     public string FullName { get; set; }
     public string Slug { get; set; }
     public bool IsActive { get; set; }
+
+    /// <summary>
+    /// Collection of customizable navigation links for this tenant.
+    /// </summary>
+    public ICollection<TenantNavigationLink> NavigationLinks { get; set; } = new List<TenantNavigationLink>();
 }

@@ -129,7 +129,10 @@ Explore.Application/
 │   ├── HalResource.cs            — Base HAL envelope
 │   └── HalLink.cs                — Link representation
 ├── Models/                       — Infrastructure models
-│   └── EmailSettings.cs          — Email configuration model
+│   ├── EmailMessage.cs           — Rich email message DTO (To, CC, BCC, HTML, attachments)
+│   ├── EmailAttachment.cs        — Email attachment with inline image support
+│   ├── EmailResult.cs            — Email send result with success/failure and duration
+│   └── SmtpConfiguration.cs      — SMTP config POCO resolved from cascading settings
 └── Requests/                     — Shared request types
     └── PaginationParams.cs       — Page number/size parameters
 ```
@@ -305,7 +308,9 @@ Explore.Infrastructure/
 ├── Identity/
 │   └── UserContext.cs             — User identity from HttpContext claims
 ├── Mail/
-│   └── EmailSender.cs            — Email sending implementation
+│   ├── SmtpEmailService.cs       — MailKit SMTP email sender with Polly retry
+│   ├── SmtpConfigResolver.cs     — Resolves SMTP config from cascading settings per tenant
+│   └── EmailResiliencePipelines.cs — Polly v8 retry pipeline for transient SMTP failures
 ├── Services/
 │   ├── CurrentUserService.cs     — Current user ID extraction with claim fallback
 │   ├── ObjectStorageService.cs   — S3-compatible object storage (Hetzner)

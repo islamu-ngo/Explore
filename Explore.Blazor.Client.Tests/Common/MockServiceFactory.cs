@@ -181,6 +181,16 @@ public static class MockServiceFactory
         return mock;
     }
 
+    /// <summary>
+    /// Creates a mock ITenantNavigationService with default empty responses.
+    /// </summary>
+    public static ITenantNavigationService CreateTenantNavigationService()
+    {
+        var mock = Substitute.For<ITenantNavigationService>();
+        mock.GetNavigationLinksAsync().Returns(new List<TenantNavigationLinkDto>());
+        return mock;
+    }
+
     #endregion
 
     #region Lookup Service Mocks
@@ -292,6 +302,7 @@ public static class MockServiceFactory
         services.AddSingleton(CreateTagService());
         services.AddSingleton(CreateLocationService());
         services.AddSingleton(CreateImageStorageService());
+        services.AddSingleton(CreateTenantNavigationService());
         RegisterLookupServiceMocks(services);
     }
 

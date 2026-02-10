@@ -1,5 +1,7 @@
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Constants;
+using Explore.Blazor.Client.Helpers;
+using Explore.Blazor.Client.Models;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;
@@ -7,6 +9,7 @@ namespace Explore.Blazor.Client.Services;
 public interface IEventRegistrationService
 {
     Task<ICollection<EventRegistrationListDto>> GetAllRegistrationsAsync();
+    Task<PaginatedResult<EventRegistrationListDto>> GetRegistrationsPagedAsync(int pageNumber, int pageSize);
     Task<EventRegistrationDto?> GetRegistrationByIdAsync(Guid registrationId);
     Task<BaseCommandResponseOfGuid?> RegisterForSessionAsync(CreateEventRegistrationDto dto);
     Task<BaseCommandResponseOfGuid?> UpdateRegistrationAsync(Guid id, UpdateEventRegistrationDto dto);
@@ -45,6 +48,20 @@ public class EventRegistrationService : IEventRegistrationService
         {
             _logger.LogError(ex, "[REGISTRATION SERVICE] Error fetching registrations");
             return new List<EventRegistrationListDto>();
+        }
+    }
+
+    public async Task<PaginatedResult<EventRegistrationListDto>> GetRegistrationsPagedAsync(int pageNumber, int pageSize)
+    {
+        try
+        {
+            var response = await _apiClient.EventregistrationGETAsync(pageNumber, pageSize);
+            return response.ToPaginatedResult();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[REGISTRATION SERVICE] Error fetching paged registrations (page {PageNumber}, size {PageSize})", pageNumber, pageSize);
+            return PaginatedResult<EventRegistrationListDto>.Empty(pageNumber, pageSize);
         }
     }
 

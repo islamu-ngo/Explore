@@ -98,6 +98,26 @@ public static class SeedIds
     /// <summary>Tenant custom domain override placeholder setting</summary>
     public static readonly Guid SystemSettingDomainsTenantCustomDomainId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000517");
 
+    // ===== System Settings — Email / SMTP =====
+    /// <summary>SMTP server hostname (e.g., smtp.gmail.com)</summary>
+    public static readonly Guid SystemSettingEmailSmtpHostId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000520");
+    /// <summary>SMTP server port (default 587)</summary>
+    public static readonly Guid SystemSettingEmailSmtpPortId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000521");
+    /// <summary>SMTP authentication username</summary>
+    public static readonly Guid SystemSettingEmailSmtpUsernameId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000522");
+    /// <summary>SMTP authentication password</summary>
+    public static readonly Guid SystemSettingEmailSmtpPasswordId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000523");
+    /// <summary>SMTP security mode (None, StartTls, SslOnConnect, Auto)</summary>
+    public static readonly Guid SystemSettingEmailSmtpSecurityId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000524");
+    /// <summary>Default from email address</summary>
+    public static readonly Guid SystemSettingEmailFromAddressId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000525");
+    /// <summary>Default from display name</summary>
+    public static readonly Guid SystemSettingEmailFromNameId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000526");
+    /// <summary>SMTP connection timeout in seconds</summary>
+    public static readonly Guid SystemSettingEmailSmtpTimeoutId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000527");
+    /// <summary>Skip TLS certificate validation (development only)</summary>
+    public static readonly Guid SystemSettingEmailSmtpSkipCertValidationId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000528");
+
     // ===== Module Definitions =====
     /// <summary>Core module - basic event functionality (always enabled)</summary>
     public static readonly Guid ModuleCoreId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000600");

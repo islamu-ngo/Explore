@@ -3,6 +3,7 @@ using Explore.Blazor.Client.Components.Event;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web.Virtualization;
 using Microsoft.Extensions.Logging;
 using MudBlazor;
 
@@ -32,20 +33,12 @@ public partial class EventList
     private int? selectedRegistrationModeId;
     private int? selectedLanguageId;
     private bool isLoading = true;
-    private bool isLoadingCategory = false;
-    private bool isLoadingTag = false;
     private bool _dataLoaded = false;
 
-    // Load More variables
-    private int displayedCount = 12;
-    private const int loadBatchSize = 12;
-
-    // Filter cache to avoid re-evaluating AllFilteredEvents multiple times per render
-    private List<EventListDto> _cachedFilteredEvents = new();
-    private bool _filtersDirty = true;
+    private Virtualize<EventListDto>? _virtualize;
+    private int _totalCount;
 
     // API Data
-    private ICollection<EventListDto> allEvents = new List<EventListDto>();
     private ICollection<EventTypeListDto> eventTypes = new List<EventTypeListDto>();
     private ICollection<EventFormatListDto> eventFormats = new List<EventFormatListDto>();
     private ICollection<CategoryListDto> categories = new List<CategoryListDto>();
@@ -54,13 +47,8 @@ public partial class EventList
     private ICollection<LocationListDto> locations = new List<LocationListDto>();
     private ICollection<RegistrationModeListDto> registrationModes = new List<RegistrationModeListDto>();
     private ICollection<LanguageListDto> languages = new List<LanguageListDto>();
-    private ICollection<EventSessionListDto> allSessions = new List<EventSessionListDto>();
-    private ICollection<EventSessionLanguageListDto> sessionLanguages = new List<EventSessionLanguageListDto>();
     private Dictionary<int, string> eventTypeMap = new();
     private Dictionary<int, string> eventFormatMap = new();
-
-    private ICollection<EventListDto>? eventsByCategory;
-    private ICollection<EventListDto>? eventsByTag;
 
     [Inject] private IUserService UserService { get; set; } = null!;
     [Inject] private Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider { get; set; } = null!;
@@ -79,7 +67,6 @@ public partial class EventList
         if (!string.IsNullOrEmpty(SearchQuery))
         {
             searchText = SearchQuery;
-            InvalidateFilterCache();
         }
 
         await LoadDataAsync();
@@ -138,7 +125,6 @@ public partial class EventList
         isLoading = true;
         try
         {
-            var eventsTask = EventService.GetAllEventsAsync();
             var eventTypesTask = EventService.GetEventTypesAsync();
             var eventFormatsTask = EventService.GetEventFormatsAsync();
             var categoriesTask = CategoryService.GetAllCategoriesAsync();
@@ -147,12 +133,9 @@ public partial class EventList
             var locationsTask = LocationService.GetAllLocationsAsync();
             var registrationModesTask = AdminService.GetRegistrationModesAsync();
             var languagesTask = AdminService.GetLanguagesAsync();
-            var sessionsTask = EventService.GetAllSessionsAsync();
-            var sessionLanguagesTask = EventService.GetAllSessionLanguagesAsync();
 
-            await Task.WhenAll(eventsTask, eventTypesTask, eventFormatsTask, categoriesTask, tagsTask, madhabsTask, locationsTask, registrationModesTask, languagesTask, sessionsTask, sessionLanguagesTask);
+            await Task.WhenAll(eventTypesTask, eventFormatsTask, categoriesTask, tagsTask, madhabsTask, locationsTask, registrationModesTask, languagesTask);
 
-            allEvents = await eventsTask ?? new List<EventListDto>();
             eventTypes = await eventTypesTask ?? new List<EventTypeListDto>();
             eventFormats = await eventFormatsTask ?? new List<EventFormatListDto>();
             categories = await categoriesTask ?? new List<CategoryListDto>();
@@ -161,11 +144,8 @@ public partial class EventList
             locations = await locationsTask ?? new List<LocationListDto>();
             registrationModes = await registrationModesTask ?? new List<RegistrationModeListDto>();
             languages = await languagesTask ?? new List<LanguageListDto>();
-            allSessions = await sessionsTask ?? new List<EventSessionListDto>();
-            sessionLanguages = (await sessionLanguagesTask)?.Cast<EventSessionLanguageListDto>().ToList() ?? new List<EventSessionLanguageListDto>();
 
             BuildLookupMaps();
-            InvalidateFilterCache();
             _dataLoaded = true;
         }
         catch (Exception ex)
@@ -178,213 +158,94 @@ public partial class EventList
         }
     }
 
-    private List<EventListDto> AllFilteredEvents
+    private async ValueTask<ItemsProviderResult<EventListDto>> LoadEventsAsync(ItemsProviderRequest request)
     {
-        get
-        {
-            if (_filtersDirty)
-            {
-                _cachedFilteredEvents = ComputeFilteredEvents();
-                _filtersDirty = false;
-            }
-            return _cachedFilteredEvents;
-        }
-    }
+        var pageSize = Math.Max(request.Count, 20);
+        var pageNumber = (request.StartIndex / pageSize) + 1;
 
-    private void InvalidateFilterCache()
-    {
-        _filtersDirty = true;
-        displayedCount = loadBatchSize; // Reset displayed count when filters change
-    }
-
-    private List<EventListDto> ComputeFilteredEvents()
-    {
-        var filteredEvents = allEvents ?? Enumerable.Empty<EventListDto>();
-
-        if (!string.IsNullOrEmpty(searchText))
-        {
-            filteredEvents = filteredEvents.Where(e =>
-                e.Title.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
-                (e.Description?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false));
-        }
-
-        if (selectedCategoryId.HasValue)
-        {
-            if (eventsByCategory != null && eventsByCategory.Any())
-            {
-                var categoryEventIds = eventsByCategory.Select(e => e.Id).ToHashSet();
-                filteredEvents = filteredEvents.Where(e => categoryEventIds.Contains(e.Id));
-            }
-            else if (!isLoadingCategory)
-            {
-                filteredEvents = Enumerable.Empty<EventListDto>();
-            }
-        }
-
-        if (selectedTagId.HasValue)
-        {
-            if (eventsByTag != null && eventsByTag.Any())
-            {
-                var tagEventIds = eventsByTag.Select(e => e.Id).ToHashSet();
-                filteredEvents = filteredEvents.Where(e => tagEventIds.Contains(e.Id));
-            }
-            else if (!isLoadingTag)
-            {
-                filteredEvents = Enumerable.Empty<EventListDto>();
-            }
-        }
-
-        if (selectedFormatId.HasValue)
-        {
-            filteredEvents = filteredEvents.Where(e => e.EventFormatId == selectedFormatId.Value);
-        }
-
-        if (selectedMadhabId.HasValue)
-        {
-            filteredEvents = filteredEvents.Where(e => e.MadhabId == selectedMadhabId.Value);
-        }
-
-        if (selectedLocationId.HasValue && allSessions.Any())
-        {
-            var locationEventIds = allSessions
-                .Where(s => s.LocationId == selectedLocationId.Value)
-                .Select(s => s.EventId)
-                .ToHashSet();
-            filteredEvents = filteredEvents.Where(e => locationEventIds.Contains(e.Id));
-        }
-
-        if (selectedRegistrationModeId.HasValue && allSessions.Any())
-        {
-            var registrationEventIds = allSessions
-                .Where(s => s.RegistrationModeId == selectedRegistrationModeId.Value)
-                .Select(s => s.EventId)
-                .ToHashSet();
-            filteredEvents = filteredEvents.Where(e => registrationEventIds.Contains(e.Id));
-        }
-
-        if (selectedLanguageId.HasValue && allSessions.Any() && sessionLanguages.Any())
-        {
-            var languageSessionIds = sessionLanguages
-                .Where(l => l.LanguageId == selectedLanguageId.Value)
-                .Select(l => l.EventSessionId)
-                .ToHashSet();
-            var languageEventIds = allSessions
-                .Where(s => languageSessionIds.Contains(s.Id))
-                .Select(s => s.EventId)
-                .ToHashSet();
-            filteredEvents = filteredEvents.Where(e => languageEventIds.Contains(e.Id));
-        }
-
+        DateTimeOffset? dateFrom = null;
+        DateTimeOffset? dateTo = null;
         if (!string.IsNullOrEmpty(selectedDate))
         {
             var today = DateTimeOffset.Now.Date;
-            filteredEvents = selectedDate switch
+            (dateFrom, dateTo) = selectedDate switch
             {
-                "today" => filteredEvents.Where(e => e.FirstSessionDate.HasValue && e.FirstSessionDate.Value.Date == today),
-                "tomorrow" => filteredEvents.Where(e => e.FirstSessionDate.HasValue && e.FirstSessionDate.Value.Date == today.AddDays(1)),
-                "thisweek" => filteredEvents.Where(e => e.FirstSessionDate.HasValue && e.FirstSessionDate.Value.Date >= today && e.FirstSessionDate.Value.Date <= today.AddDays(7)),
-                "thismonth" => filteredEvents.Where(e => e.FirstSessionDate.HasValue && e.FirstSessionDate.Value.Date >= today && e.FirstSessionDate.Value.Date <= today.AddDays(30)),
-                _ => filteredEvents
+                "today" => ((DateTimeOffset?)today, (DateTimeOffset?)today.AddDays(1).AddTicks(-1)),
+                "tomorrow" => ((DateTimeOffset?)today.AddDays(1), (DateTimeOffset?)today.AddDays(2).AddTicks(-1)),
+                "thisweek" => ((DateTimeOffset?)today, (DateTimeOffset?)today.AddDays(7)),
+                "thismonth" => ((DateTimeOffset?)today, (DateTimeOffset?)today.AddDays(30)),
+                _ => (null, null)
             };
         }
 
-        return filteredEvents.ToList();
+        var result = await EventService.GetEventsPagedAsync(
+            pageNumber,
+            pageSize,
+            searchTerm: string.IsNullOrEmpty(searchText) ? null : searchText,
+            categoryId: selectedCategoryId,
+            tagId: selectedTagId,
+            formatId: selectedFormatId,
+            madhabId: selectedMadhabId,
+            locationId: selectedLocationId,
+            registrationModeId: selectedRegistrationModeId,
+            languageId: selectedLanguageId,
+            dateFrom: dateFrom,
+            dateTo: dateTo,
+            sortBy: "date",
+            sortDescending: true,
+            cancellationToken: request.CancellationToken);
+
+        _totalCount = result.TotalCount;
+        isLoading = false;
+        return new ItemsProviderResult<EventListDto>(result.Items, result.TotalCount);
     }
 
-    private List<EventListDto> FilteredEvents => AllFilteredEvents.Take(displayedCount).ToList();
-
-    private bool HasMoreEvents => displayedCount < AllFilteredEvents.Count;
-
-    private void LoadMore()
-    {
-        displayedCount += loadBatchSize;
-        StateHasChanged();
-    }
-
-    private void OnDateChanged(string value)
+    private async Task OnDateChanged(string value)
     {
         selectedDate = value;
-        InvalidateFilterCache();
+        await _virtualize?.RefreshDataAsync()!;
     }
 
     private async Task OnCategoryChanged(Guid? categoryId)
     {
         selectedCategoryId = categoryId;
-
-        if (categoryId.HasValue)
-        {
-            isLoadingCategory = true;
-            try
-            {
-                var rawEvents = await CategoryService.GetEventsByCategoryAsync(categoryId.Value);
-                eventsByCategory = new List<EventListDto>(); // Neutralized
-            }
-            finally
-            {
-                isLoadingCategory = false;
-            }
-        }
-        else
-        {
-            eventsByCategory = null;
-        }
-        InvalidateFilterCache();
-        StateHasChanged();
+        await _virtualize?.RefreshDataAsync()!;
     }
 
     private async Task OnTagChanged(Guid? tagId)
     {
         selectedTagId = tagId;
-
-        if (tagId.HasValue)
-        {
-            isLoadingTag = true;
-            try
-            {
-                var rawEvents = await TagService.GetEventsByTagAsync(tagId.Value);
-                eventsByTag = new List<EventListDto>(); // Neutralized
-            }
-            finally
-            {
-                isLoadingTag = false;
-            }
-        }
-        else
-        {
-            eventsByTag = null;
-        }
-        InvalidateFilterCache();
-        StateHasChanged();
+        await _virtualize?.RefreshDataAsync()!;
     }
 
-    private void OnFormatChanged(int? formatId)
+    private async Task OnFormatChanged(int? formatId)
     {
         selectedFormatId = formatId;
-        InvalidateFilterCache();
+        await _virtualize?.RefreshDataAsync()!;
     }
 
-    private void OnMadhabChanged(int? madhabId)
+    private async Task OnMadhabChanged(int? madhabId)
     {
         selectedMadhabId = madhabId;
-        InvalidateFilterCache();
+        await _virtualize?.RefreshDataAsync()!;
     }
 
-    private void OnLocationChanged(Guid? locationId)
+    private async Task OnLocationChanged(Guid? locationId)
     {
         selectedLocationId = locationId;
-        InvalidateFilterCache();
+        await _virtualize?.RefreshDataAsync()!;
     }
 
-    private void OnRegistrationModeChanged(int? modeId)
+    private async Task OnRegistrationModeChanged(int? modeId)
     {
         selectedRegistrationModeId = modeId;
-        InvalidateFilterCache();
+        await _virtualize?.RefreshDataAsync()!;
     }
 
-    private void OnLanguageChanged(int? languageId)
+    private async Task OnLanguageChanged(int? languageId)
     {
         selectedLanguageId = languageId;
-        InvalidateFilterCache();
+        await _virtualize?.RefreshDataAsync()!;
     }
 
     // ... (helper methods like GetSelectedCategoryName can remain or be used for display)
@@ -397,8 +258,7 @@ public partial class EventList
         var result = await dialog.Result;
         if (result != null && !result.Canceled)
         {
-            await LoadDataAsync();
-            StateHasChanged();
+            await _virtualize?.RefreshDataAsync()!;
         }
     }
 
@@ -420,7 +280,6 @@ public partial class EventList
         {
             _successMessage = "Successfully registered for event!";
             await LoadUserRegistrationsAsync();
-            StateHasChanged();
         }
     }
 
@@ -444,7 +303,6 @@ public partial class EventList
         if (confirm != true) return;
 
         _isCancellingRegistration = true;
-        StateHasChanged();
 
         try
         {
@@ -468,7 +326,6 @@ public partial class EventList
         finally
         {
             _isCancellingRegistration = false;
-            StateHasChanged();
         }
     }
 

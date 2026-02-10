@@ -3,6 +3,7 @@
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Constants;
 using Explore.Blazor.Client.Helpers;
+using Explore.Blazor.Client.Models;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;
@@ -11,6 +12,7 @@ public interface ITagService
 {
     Task<ICollection<TagListDto>> GetTagsAsync();
     Task<ICollection<TagListDto>> GetAllTagsAsync(); // Alias for GetTagsAsync
+    Task<PaginatedResult<TagListDto>> GetTagsPagedAsync(int pageNumber, int pageSize);
     Task<TagDto?> GetTagByIdAsync(Guid tagId);
     Task<BaseCommandResponseOfGuid?> CreateTagAsync(CreateTagDto dto);
     Task<BaseCommandResponseOfGuid?> UpdateTagAsync(Guid id, UpdateTagDto dto);
@@ -47,6 +49,20 @@ public class TagService : ITagService
     }
 
     public Task<ICollection<TagListDto>> GetAllTagsAsync() => GetTagsAsync();
+
+    public async Task<PaginatedResult<TagListDto>> GetTagsPagedAsync(int pageNumber, int pageSize)
+    {
+        try
+        {
+            var result = await _apiClient.GetTagsAsync(pageNumber, pageSize);
+            return result.ToPaginatedResult();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[TAG SERVICE] Error fetching paged tags (page {PageNumber}, size {PageSize})", pageNumber, pageSize);
+            return PaginatedResult<TagListDto>.Empty(pageNumber, pageSize);
+        }
+    }
 
     public async Task<TagDto?> GetTagByIdAsync(Guid tagId)
     {

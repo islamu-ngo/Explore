@@ -2,7 +2,9 @@
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Services.Contracts
 @using Explore.Blazor.Client.Components.Admin
+@using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Authorization
+@attribute [StreamRendering]
 @attribute [Authorize(Roles = "Admin")]
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-8">
@@ -169,9 +171,7 @@
                         </MudButton>
                     </div>
                 </NoRecordsContent>
-                <PagerContent>
-                    <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
-                </PagerContent>
+
             </MudTable>
         </MudPaper>
     }

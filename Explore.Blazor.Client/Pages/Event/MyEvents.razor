@@ -4,6 +4,9 @@
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Components.Event
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+@attribute [StreamRendering]
 @attribute [Authorize]
 
 <PageTitle>My Events</PageTitle>
@@ -59,7 +62,7 @@
                     <MudSelectItem T="Guid?" Value="@Guid.Empty">All Organizations</MudSelectItem>
                     @foreach (var org in _myOrganizations)
                     {
-                        <MudSelectItem T="Guid?" Value="@org.Id">@org.FullName</MudSelectItem>
+                        <MudSelectItem @key="org.Id" T="Guid?" Value="@org.Id">@org.FullName</MudSelectItem>
                     }
                 </MudSelect>
             </MudItem>
@@ -86,7 +89,7 @@
             </MudItem>
         </MudGrid>
 
-        @if (!FilteredEvents.Any())
+        @if (!AllFilteredEvents.Any())
         {
             <div class="d-flex flex-column align-center justify-center py-16">
                 <MudIcon Icon="@Icons.Material.Outlined.Event" Size="Size.Large" Color="Color.Default" Style="width: 80px; height: 80px; opacity: 0.2;" />
@@ -105,85 +108,89 @@
         }
         else
         {
-            <!-- Event Cards -->
+            <!-- Event Cards — Virtualized infinite scroll -->
             <MudGrid>
-                @foreach (var evt in FilteredEvents)
-                {
-                    <MudItem xs="12" sm="6" md="4">
-                        <MudCard Class="h-100 d-flex flex-column position-relative">
-                            <div style="position: absolute; top: 12px; right: 12px; z-index: 10;">
-                                <MudMenu Icon="@Icons.Material.Filled.MoreVert" AriaLabel="Event options" Dense="true" Color="Color.Default" Variant="Variant.Filled" Size="Size.Small" Style="background: rgba(255,255,255,0.8); backdrop-filter: blur(4px); border-radius: 8px;">
-                                    @if (CanEditEvent(evt))
-                                    {
-                                        <MudMenuItem OnClick="@(() => EditEvent(evt))">
-                                            <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-2" Size="Size.Small" /> Edit
+                <Virtualize Items="@AllFilteredEvents" Context="evt" OverscanCount="4">
+                    <ItemContent>
+                        <MudItem xs="12" sm="6" md="4">
+                            <MudCard Class="h-100 d-flex flex-column position-relative">
+                                <div style="position: absolute; top: 12px; right: 12px; z-index: 10;">
+                                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" AriaLabel="Event options" Dense="true" Color="Color.Default" Variant="Variant.Filled" Size="Size.Small" Style="background: rgba(255,255,255,0.8); backdrop-filter: blur(4px); border-radius: 8px;">
+                                        @if (CanEditEvent(evt))
+                                        {
+                                            <MudMenuItem OnClick="@(() => EditEvent(evt))">
+                                                <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-2" Size="Size.Small" /> Edit
+                                            </MudMenuItem>
+                                        }
+                                        <MudMenuItem OnClick="@(() => ViewEventDetails(evt))">
+                                            <MudIcon Icon="@Icons.Material.Filled.Visibility" Class="mr-2" Size="Size.Small" /> View Details
                                         </MudMenuItem>
-                                    }
-                                    <MudMenuItem OnClick="@(() => ViewEventDetails(evt))">
-                                        <MudIcon Icon="@Icons.Material.Filled.Visibility" Class="mr-2" Size="Size.Small" /> View Details
-                                    </MudMenuItem>
-                                    @if (CanEditEvent(evt))
-                                    {
-                                        <MudMenuItem OnClick="@(() => ViewRegistrations(evt))">
-                                            <MudIcon Icon="@Icons.Material.Filled.People" Class="mr-2" Size="Size.Small" /> Registrations
-                                        </MudMenuItem>
-                                        <MudMenuItem OnClick="@(() => DeleteEvent(evt))" Class="text-error">
-                                            <MudIcon Icon="@Icons.Material.Filled.Delete" Class="mr-2" Size="Size.Small" /> Delete
-                                        </MudMenuItem>
-                                    }
-                                </MudMenu>
-                            </div>
-
-                            <MudCardMedia Image="@GetEventImageUrl(evt)" Height="200" />
-                            
-                            <MudCardContent Class="flex-grow-1">
-                                <MudText Typo="Typo.button" Class="mud-text-disabled mb-1">@(evt.EventTypeFullName ?? "Event")</MudText>
-                                <MudText Typo="Typo.h6" Class="mb-4">@evt.Title</MudText>
-                                <MudText Typo="Typo.body2" Style="overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;">
-                                    @evt.Description
-                                </MudText>
-                                
-                                <div class="d-flex align-center gap-2 mt-4">
-                                    <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Business">
-                                        @(evt.ActorDisplayName ?? "Unknown")
-                                    </MudChip>
-                                    <div class="d-flex align-center gap-1 ml-auto">
-                                        <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Color="Color.Secondary" />
-                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@(evt.EventFormatFullName ?? "Online")</MudText>
-                                    </div>
+                                        @if (CanEditEvent(evt))
+                                        {
+                                            <MudMenuItem OnClick="@(() => ViewRegistrations(evt))">
+                                                <MudIcon Icon="@Icons.Material.Filled.People" Class="mr-2" Size="Size.Small" /> Registrations
+                                            </MudMenuItem>
+                                            <MudMenuItem OnClick="@(() => DeleteEvent(evt))" Class="text-error">
+                                                <MudIcon Icon="@Icons.Material.Filled.Delete" Class="mr-2" Size="Size.Small" /> Delete
+                                            </MudMenuItem>
+                                        }
+                                    </MudMenu>
                                 </div>
-                            </MudCardContent>
 
-                            <MudCardActions>
-                                <MudButton Variant="Variant.Text"
-                                           Color="Color.Primary"
-                                           Href="@($"/event/detail/{evt.Id}")"
-                                           EndIcon="@Icons.Material.Filled.ArrowForward">
-                                    Details
-                                </MudButton>
-                                <MudSpacer />
-                                @if (CanEditEvent(evt))
-                                {
-                                    <MudButton Variant="Variant.Text" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Edit" OnClick="@(() => EditEvent(evt))">Edit</MudButton>
-                                }
-                            </MudCardActions>
-                        </MudCard>
-                    </MudItem>
-                }
+                                <MudCardMedia Image="@GetEventImageUrl(evt)" Height="200" />
+                                
+                                <MudCardContent Class="flex-grow-1">
+                                    <MudText Typo="Typo.button" Class="mud-text-disabled mb-1">@(evt.EventTypeFullName ?? "Event")</MudText>
+                                    <MudText Typo="Typo.h6" Class="mb-4">@evt.Title</MudText>
+                                    <MudText Typo="Typo.body2" Style="overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;">
+                                        @evt.Description
+                                    </MudText>
+                                    
+                                    <div class="d-flex align-center gap-2 mt-4">
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Business">
+                                            @(evt.ActorDisplayName ?? "Unknown")
+                                        </MudChip>
+                                        <div class="d-flex align-center gap-1 ml-auto">
+                                            <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Color="Color.Secondary" />
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">@(evt.EventFormatFullName ?? "Online")</MudText>
+                                        </div>
+                                    </div>
+                                </MudCardContent>
+
+                                <MudCardActions>
+                                    <MudButton Variant="Variant.Text"
+                                               Color="Color.Primary"
+                                               Href="@($"/event/detail/{evt.Id}")"
+                                               EndIcon="@Icons.Material.Filled.ArrowForward">
+                                        Details
+                                    </MudButton>
+                                    <MudSpacer />
+                                    @if (CanEditEvent(evt))
+                                    {
+                                        <MudButton Variant="Variant.Text" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Edit" OnClick="@(() => EditEvent(evt))">Edit</MudButton>
+                                    }
+                                </MudCardActions>
+                            </MudCard>
+                        </MudItem>
+                    </ItemContent>
+                    <Placeholder>
+                        <MudItem xs="12" sm="6" md="4">
+                            <MudCard Class="h-100 d-flex flex-column">
+                                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
+                                <MudCardContent>
+                                    <MudSkeleton Width="40%" Class="mb-1" />
+                                    <MudSkeleton Width="80%" Class="mb-4" />
+                                    <MudSkeleton Width="100%" />
+                                    <MudSkeleton Width="60%" />
+                                </MudCardContent>
+                            </MudCard>
+                        </MudItem>
+                    </Placeholder>
+                </Virtualize>
             </MudGrid>
 
-            <!-- Pagination -->
-            <div class="d-flex justify-center mt-8 mb-4">
-                <MudPagination Count="@TotalPages"
-                               Selected="@_currentPage"
-                               SelectedChanged="OnPageChanged"
-                               Color="Color.Primary"
-                               ShowFirstButton="true"
-                               ShowLastButton="true" />
-            </div>
-            <MudText Typo="Typo.body2" Align="Align.Center" Color="Color.Secondary" Class="mb-8">
-                Showing @((_currentPage - 1) * ItemsPerPage + 1) - @Math.Min(_currentPage * ItemsPerPage, AllFilteredEvents.Count)
-                of @AllFilteredEvents.Count events
+            <MudText Typo="Typo.body2" Align="Align.Center" Color="Color.Secondary" Class="mt-8 mb-8">
+                @AllFilteredEvents.Count event(s)
             </MudText>
         }
     }

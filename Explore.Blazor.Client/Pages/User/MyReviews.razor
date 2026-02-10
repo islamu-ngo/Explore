@@ -4,6 +4,7 @@
 @using Explore.Blazor.Client.Clients
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Authorization
+@attribute [StreamRendering]
 @attribute [Authorize]
 
 <PageTitle>My Reviews</PageTitle>
@@ -55,7 +56,7 @@
             <MudGrid Spacing="3">
                 @foreach (var review in FilteredReviews)
                 {
-                    <MudItem xs="12">
+                    <MudItem @key="review.Id" xs="12">
                         <MudCard Elevation="0" Class="border-solid border-1 mud-border-lines-default rounded-lg">
                             <MudCardHeader>
                                 <CardHeaderContent>

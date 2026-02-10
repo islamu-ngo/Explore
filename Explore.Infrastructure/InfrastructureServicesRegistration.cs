@@ -20,8 +20,11 @@ public static class InfrastructureServicesRegistration
 {
     public static IServiceCollection ConfigureInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
     {
-        services.Configure<EmailSettings>(configuration.GetSection("EmailSettings"));
-        services.AddTransient<IEmailSender, EmailSender>();
+        // Email service: provider-agnostic SMTP via MailKit
+        // Config resolved per-tenant from cascading settings engine (SystemSetting → TenantSetting)
+        // Instance admin can lock settings to enforce SaaS-wide SMTP or let tenants override
+        services.AddScoped<ISmtpConfigResolver, SmtpConfigResolver>();
+        services.AddScoped<IEmailService, SmtpEmailService>();
 
         services.Configure<S3Settings>(configuration.GetSection("S3Settings"));
 
@@ -84,6 +87,31 @@ public static class InfrastructureServicesRegistration
         // Settings and Module Governance services
         services.AddScoped<ISettingsResolver, SettingsResolver>();
         services.AddScoped<IModuleService, ModuleService>();
+
+        // Admin context (hybrid JWT + database identity resolution)
+        services.AddScoped<IAdminContext, AdminContext>();
+
+        // Configuration audit logging
+        services.AddScoped<IConfigurationChangeLogService, ConfigurationChangeLogService>();
+
+        // Cerbos authorization (conditional: real Cerbos PDP or fallback)
+        services.Configure<CerbosSettings>(configuration.GetSection(CerbosSettings.SectionName));
+
+        var cerbosEnabled = configuration.GetValue<bool>("Cerbos:Enabled");
+        if (cerbosEnabled)
+        {
+            services.AddHttpClient("CerbosClient", client =>
+            {
+                var endpoint = configuration["Cerbos:Endpoint"] ?? "http://localhost:3592";
+                client.BaseAddress = new Uri(endpoint);
+                client.Timeout = TimeSpan.FromSeconds(5);
+            });
+            services.AddScoped<ICerbosAuthorizationService, CerbosAuthorizationService>();
+        }
+        else
+        {
+            services.AddScoped<ICerbosAuthorizationService, FallbackAuthorizationService>();
+        }
 
         // Event Strategies
         services.AddScoped<IEventStrategy, IslamicEventStrategy>();

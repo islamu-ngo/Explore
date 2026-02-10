@@ -1,11 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
     <StaticWebAssetProjectMode>Default</StaticWebAssetProjectMode>
+    <!-- Strip .NET IL after AOT compilation for smaller WASM bundles (20-50% reduction) -->
+    <WasmStripILAfterAOT>true</WasmStripILAfterAOT>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,7 +23,7 @@
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Http" />
     <PackageReference Include="MudBlazor" />
-    <PackageReference Include="Newtonsoft.Json" />
+    <!-- Newtonsoft.Json removed: NSwag client + HalResourceExtensions migrated to System.Text.Json -->
     <PackageReference Include="NSwag.ApiDescription.Client">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -96,5 +98,49 @@
     </Compile>
   </ItemGroup>
 
+  <!-- Blazor WASM Lazy Loading Configuration
+       
+       IMPLEMENTATION NOTES:
+       =====================
+       
+       To enable lazy loading in Blazor WASM, pages must be in separate class libraries.
+       Currently, all pages are compiled into Explore.Blazor.Client.dll.
+       
+       To implement lazy loading:
+       1. Create separate class libraries:
+          - Explore.Blazor.Client.Pages.Admin
+          - Explore.Blazor.Client.Pages.Onboarding
+          - Explore.Blazor.Client.Pages.Organization
+       
+       2. Move pages to respective libraries:
+          - Pages/Admin/* → Explore.Blazor.Client.Pages.Admin/Pages/*
+          - Pages/Onboarding/* → Explore.Blazor.Client.Pages.Onboarding/Pages/*
+          - Pages/Organization/* → Explore.Blazor.Client.Pages.Organization/Pages/*
+       
+       3. Add project references to Explore.Blazor.Client:
+          <ProjectReference Include="Explore.Blazor.Client.Pages.Admin.csproj" />
+          <ProjectReference Include="Explore.Blazor.Client.Pages.Onboarding.csproj" />
+          <ProjectReference Include="Explore.Blazor.Client.Pages.Organization.csproj" />
+       
+       4. Add BlazorWebAssemblyLazyLoad items:
+          <BlazorWebAssemblyLazyLoad Include="Explore.Blazor.Client.Pages.Admin.dll" />
+          <BlazorWebAssemblyLazyLoad Include="Explore.Blazor.Client.Pages.Onboarding.dll" />
+          <BlazorWebAssemblyLazyLoad Include="Explore.Blazor.Client.Pages.Organization.dll" />
+       
+       5. Update Routes.razor to load assemblies on-demand via ILazyAssemblyLoader
+       
+       CURRENT STATUS:
+       ===============
+       - ILazyAssemblyLoader service created and registered
+       - Routes.razor updated to call PreloadLazyAssemblies()
+       - Ready for library separation when refactoring is planned
+       
+       BENEFITS:
+       =========
+       - Reduces initial WASM bundle size by 10-20%
+       - Improves Time to Interactive (TTI)
+       - Admin/Onboarding/Organization pages load on-demand
+       - Core pages (EventList, Home, EventDetail) load immediately
+  -->
 
 </Project>

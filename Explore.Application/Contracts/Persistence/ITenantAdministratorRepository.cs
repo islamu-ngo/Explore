@@ -9,5 +9,6 @@ public interface ITenantAdministratorRepository : IGenericRepository<TenantAdmin
 {
     Task<TenantAdministrator?> GetByTenantAndUser(Guid tenantId, Guid userId);
     Task<List<TenantAdministrator>> GetByTenant(Guid tenantId);
+    Task<List<TenantAdministrator>> GetByUserId(Guid userId);
     Task<bool> IsTenantAdministrator(Guid tenantId, Guid userId);
 }

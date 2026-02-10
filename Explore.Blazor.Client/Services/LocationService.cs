@@ -3,6 +3,7 @@
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Constants;
 using Explore.Blazor.Client.Helpers;
+using Explore.Blazor.Client.Models;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;
@@ -11,6 +12,7 @@ public interface ILocationService
 {
     Task<ICollection<LocationListDto>> GetAllLocationsAsync();
     Task<ICollection<LocationListDto>> GetLocations(); // Alias for admin pages
+    Task<PaginatedResult<LocationListDto>> GetLocationsPagedAsync(int pageNumber, int pageSize);
     Task<LocationDto?> GetLocationByIdAsync(Guid locationId);
     Task<BaseCommandResponseOfGuid?> CreateLocationAsync(CreateLocationDto dto);
     Task<BaseCommandResponseOfGuid?> UpdateLocationAsync(Guid id, UpdateLocationDto dto);
@@ -45,6 +47,20 @@ public class LocationService : ILocationService
     }
 
     public Task<ICollection<LocationListDto>> GetLocations() => GetAllLocationsAsync();
+
+    public async Task<PaginatedResult<LocationListDto>> GetLocationsPagedAsync(int pageNumber, int pageSize)
+    {
+        try
+        {
+            var result = await _apiClient.GetLocationsAsync(pageNumber, pageSize);
+            return result.ToPaginatedResult();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[LOCATION SERVICE] Error fetching paged locations (page {PageNumber}, size {PageSize})", pageNumber, pageSize);
+            return PaginatedResult<LocationListDto>.Empty(pageNumber, pageSize);
+        }
+    }
 
     public async Task<LocationDto?> GetLocationByIdAsync(Guid locationId)
     {

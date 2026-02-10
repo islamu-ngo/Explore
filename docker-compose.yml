@@ -171,6 +171,20 @@ services:
       mc anonymous set public local/${S3_BUCKET_NAME:-explore};
       "
 
+  cerbos:
+    image: ghcr.io/cerbos/cerbos:latest
+    profiles: ["authz"] # Opt-in only (use: docker compose --profile authz up)
+    restart: unless-stopped
+    volumes:
+      - ./cerbos/policies:/policies
+    ports:
+      - "3592:3592" # HTTP API
+      - "3593:3593" # gRPC
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3592/_cerbos/health"]
+      interval: 5s
+      retries: 5
+
 volumes:
   postgres_data:
   keycloak_data:

@@ -521,6 +521,10 @@ public class AuthenticationFlowTests
             }));
         publicExperienceService.ResolveHomeRoute(Arg.Any<PublicExperienceSettingsModel?>()).Returns("/events");
         ctx.Services.AddSingleton(publicExperienceService);
+
+        var tenantNavigationService = Substitute.For<ITenantNavigationService>();
+        tenantNavigationService.GetNavigationLinksAsync().Returns(new List<TenantNavigationLinkDto>());
+        ctx.Services.AddSingleton(tenantNavigationService);
     }
 
     private static void RegisterOrganizationServices(BlazorTestContext ctx)

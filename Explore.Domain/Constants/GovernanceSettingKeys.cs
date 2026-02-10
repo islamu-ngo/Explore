@@ -22,4 +22,15 @@ public static class GovernanceSettingKeys
     public const string DomainsAllowTenantCustomDomain = "domains.allow_tenant_custom_domain";
     public const string DomainsTenantSubdomain = "domains.tenant_subdomain";
     public const string DomainsTenantCustomDomain = "domains.tenant_custom_domain";
+
+    // Email / SMTP
+    public const string EmailSmtpHost = "email.smtp_host";
+    public const string EmailSmtpPort = "email.smtp_port";
+    public const string EmailSmtpUsername = "email.smtp_username";
+    public const string EmailSmtpPassword = "email.smtp_password";
+    public const string EmailSmtpSecurity = "email.smtp_security";
+    public const string EmailFromAddress = "email.from_address";
+    public const string EmailFromName = "email.from_name";
+    public const string EmailSmtpTimeoutSeconds = "email.smtp_timeout_seconds";
+    public const string EmailSmtpSkipCertValidation = "email.smtp_skip_cert_validation";
 }

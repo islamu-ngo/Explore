@@ -104,6 +104,7 @@ public static class PersistenceServicesRegistration
         services.AddScoped<ITenantAdministratorRoleRepository, TenantAdministratorRoleRepository>();
         services.AddScoped<ITenantAdministratorRepository, TenantAdministratorRepository>();
         services.AddScoped<ITenantOnboardingStateRepository, TenantOnboardingStateRepository>();
+        services.AddScoped<ITenantNavigationLinkRepository, TenantNavigationLinkRepository>();
 
         // User & Authentication Repositories
         services.AddScoped<IUserRepository, UserRepository>();
@@ -161,6 +162,9 @@ public static class PersistenceServicesRegistration
 
         // PDS Synchronization Repositories
         services.AddScoped<IPdsSyncOutboxRepository, PdsSyncOutboxRepository>();
+
+        // Configuration Audit Repositories
+        services.AddScoped<IConfigurationChangeLogRepository, ConfigurationChangeLogRepository>();
 
         return services;
     }

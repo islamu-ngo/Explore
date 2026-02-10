@@ -496,6 +496,89 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("categories", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.ConfigurationChangeLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<string>("ActionType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("action_type");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("NewValue")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("new_value");
+
+                    b.Property<string>("OldValue")
+                        .HasColumnType("text")
+                        .HasColumnName("old_value");
+
+                    b.Property<int>("Scope")
+                        .HasColumnType("integer")
+                        .HasColumnName("scope");
+
+                    b.Property<Guid?>("ScopeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("scope_id");
+
+                    b.Property<string>("SettingKey")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("setting_key");
+
+                    b.Property<DateTime>("Timestamp")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("timestamp")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_configuration_change_logs");
+
+                    b.HasIndex("SettingKey")
+                        .HasDatabaseName("ix_configuration_change_logs_setting_key");
+
+                    b.HasIndex("Timestamp")
+                        .HasDatabaseName("ix_configuration_change_logs_timestamp");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_configuration_change_logs_user_id");
+
+                    b.HasIndex("Scope", "ScopeId")
+                        .HasDatabaseName("ix_configuration_change_logs_scope_scope_id");
+
+                    b.ToTable("configuration_change_logs", (string)null);
+                });
+
             modelBuilder.Entity("Explore.Domain.DidCustodyType", b =>
                 {
                     b.Property<int>("Id")
@@ -2572,6 +2655,64 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("TenantAdministratorRoles", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.TenantNavigationLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Icon")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("icon");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("label");
+
+                    b.Property<bool>("OpenInNewTab")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("open_in_new_tab");
+
+                    b.Property<int>("Order")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("order");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("url");
+
+                    b.HasKey("Id")
+                        .HasName("pk_tenant_navigation_links");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_tenant_navigation_links_tenant_id");
+
+                    b.HasIndex("TenantId", "Order")
+                        .HasDatabaseName("ix_tenant_navigation_links_tenant_id_order");
+
+                    b.ToTable("tenant_navigation_links", (string)null);
+                });
+
             modelBuilder.Entity("Explore.Domain.TenantOnboardingState", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3726,6 +3867,18 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Explore.Domain.TenantNavigationLink", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany("NavigationLinks")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_tenant_navigation_links_tenants_tenant_id");
+
+                    b.Navigation("Tenant");
+                });
+
             modelBuilder.Entity("Explore.Domain.TenantOnboardingState", b =>
                 {
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
@@ -3867,6 +4020,11 @@ namespace Explore.Persistence.Migrations
             modelBuilder.Entity("Explore.Domain.Organization", b =>
                 {
                     b.Navigation("Members");
+                });
+
+            modelBuilder.Entity("Explore.Domain.Tenant", b =>
+                {
+                    b.Navigation("NavigationLinks");
                 });
 #pragma warning restore 612, 618
         }

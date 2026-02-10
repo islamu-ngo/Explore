@@ -2,6 +2,7 @@
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Helpers;
+using Explore.Blazor.Client.Models;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;
@@ -10,6 +11,25 @@ public interface IEventService
 {
     Task<ICollection<EventListDto>> GetAllEventsAsync();
     Task<ICollection<EventListDto>> GetMyEventsAsync();
+    Task<PaginatedResult<EventListDto>> GetEventsPagedAsync(int pageNumber, int pageSize);
+    Task<PaginatedResult<EventListDto>> GetEventsPagedAsync(
+        int pageNumber,
+        int pageSize,
+        string? searchTerm = null,
+        Guid? categoryId = null,
+        Guid? tagId = null,
+        int? formatId = null,
+        int? madhabId = null,
+        Guid? locationId = null,
+        int? registrationModeId = null,
+        int? languageId = null,
+        DateTimeOffset? dateFrom = null,
+        DateTimeOffset? dateTo = null,
+        string? sortBy = null,
+        bool? sortDescending = null,
+        CancellationToken cancellationToken = default);
+    Task<PaginatedResult<EventListDto>> GetMyEventsPagedAsync(int pageNumber, int pageSize);
+    Task<PaginatedResult<EventSessionListDto>> GetSessionsPagedAsync(int pageNumber, int pageSize);
     Task<EventDto?> GetEventByIdAsync(Guid eventId);
     Task<bool> DeleteEventAsync(Guid eventId);
     Task<bool> CanDeleteEventAsync(Guid eventId);
@@ -74,6 +94,92 @@ public partial class EventService : IEventService
         {
             _logger.LogError(ex, "Error fetching all events");
             return new List<EventListDto>();
+        }
+    }
+
+    public async Task<PaginatedResult<EventListDto>> GetEventsPagedAsync(int pageNumber, int pageSize)
+    {
+        try
+        {
+            var result = await _apiClient.GetEventsAsync(pageNumber, pageSize);
+            return result.ToPaginatedResult();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching paged events (page {PageNumber}, size {PageSize})", pageNumber, pageSize);
+            return PaginatedResult<EventListDto>.Empty(pageNumber, pageSize);
+        }
+    }
+
+    public async Task<PaginatedResult<EventListDto>> GetEventsPagedAsync(
+        int pageNumber,
+        int pageSize,
+        string? searchTerm = null,
+        Guid? categoryId = null,
+        Guid? tagId = null,
+        int? formatId = null,
+        int? madhabId = null,
+        Guid? locationId = null,
+        int? registrationModeId = null,
+        int? languageId = null,
+        DateTimeOffset? dateFrom = null,
+        DateTimeOffset? dateTo = null,
+        string? sortBy = null,
+        bool? sortDescending = null,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var result = await _apiClient.GetEventsAsync(
+                pageNumber: pageNumber,
+                pageSize: pageSize,
+                searchTerm: searchTerm,
+                categoryId: categoryId,
+                tagId: tagId,
+                formatId: formatId,
+                madhabId: madhabId,
+                locationId: locationId,
+                registrationModeId: registrationModeId,
+                languageId: languageId,
+                dateFrom: dateFrom,
+                dateTo: dateTo,
+                sortBy: sortBy,
+                sortDescending: sortDescending,
+                cancellationToken: cancellationToken);
+            return result.ToPaginatedResult();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching filtered paged events (page {PageNumber}, size {PageSize})", pageNumber, pageSize);
+            return PaginatedResult<EventListDto>.Empty(pageNumber, pageSize);
+        }
+    }
+
+    public async Task<PaginatedResult<EventListDto>> GetMyEventsPagedAsync(int pageNumber, int pageSize)
+    {
+        try
+        {
+            var result = await _apiClient.GetMyEventsAsync(pageNumber, pageSize);
+            return result.ToPaginatedResult();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching my paged events (page {PageNumber}, size {PageSize})", pageNumber, pageSize);
+            return PaginatedResult<EventListDto>.Empty(pageNumber, pageSize);
+        }
+    }
+
+    public async Task<PaginatedResult<EventSessionListDto>> GetSessionsPagedAsync(int pageNumber, int pageSize)
+    {
+        try
+        {
+            var result = await _apiClient.GetEventSessionsListAsync(pageNumber, pageSize);
+            return result.ToPaginatedResult();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching paged sessions (page {PageNumber}, size {PageSize})", pageNumber, pageSize);
+            return PaginatedResult<EventSessionListDto>.Empty(pageNumber, pageSize);
         }
     }
 
@@ -217,4 +323,3 @@ public partial class EventService : IEventService
         }
     }
 }
-

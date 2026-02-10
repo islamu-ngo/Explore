@@ -38,6 +38,13 @@ temp/
 # Mono auto generated files
 mono_crash.*
 
+# publish output
+publish-output
+
+# csharp-ls
+csharp-ls.exe
+
+
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/

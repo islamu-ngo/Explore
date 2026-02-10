@@ -2,6 +2,7 @@
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Clients
 @using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web.Virtualization
 @using Blazouter.Services
 @using Microsoft.Extensions.Logging
 @inject IOrganizationService OrganizationService
@@ -29,55 +30,72 @@
             @_reviews.Count reviews • @(_reviews.Any() && _reviews.Any(r => r.Rating.HasValue) ? _reviews.Where(r => r.Rating.HasValue).Average(r => r.Rating!.Value).ToString("0.0") : "0.0")★ average rating
         </MudText>
 
-        <MudGrid>
-            @if (_reviews.Any())
-            {
-                @foreach (var review in _reviews)
-                {
-                    <MudItem xs="12" md="6">
-                        <MudPaper Class="pa-4 organization-reviews__card" Elevation="0">
-                            <MudStack Spacing="2">
-                                <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
-                                    <MudAvatar Size="Size.Medium" Color="Color.Primary">
-                                        <MudText>@(string.IsNullOrEmpty(review.UserFullName) ? "?" : review.UserFullName.Substring(0, 1).ToUpper())</MudText>
-                                    </MudAvatar>
-                                    <MudStack Spacing="0">
-                                        <MudText Typo="Typo.subtitle2">@review.UserFullName</MudText>
-                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@(review.CreatedAt?.DateTime.ToShortDateString() ?? "Unknown")</MudText>
+        @if (!_reviews.Any())
+        {
+            <MudText Typo="Typo.body1" Align="Align.Center" Color="Color.Secondary">No reviews yet.</MudText>
+        }
+        else
+        {
+            <MudGrid>
+                <Virtualize Items="@_reviews" Context="review" OverscanCount="4">
+                    <ItemContent>
+                        <MudItem xs="12" md="6">
+                            <MudPaper Class="pa-4 organization-reviews__card" Elevation="0">
+                                <MudStack Spacing="2">
+                                    <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                                        <MudAvatar Size="Size.Medium" Color="Color.Primary">
+                                            <MudText>@(string.IsNullOrEmpty(review.UserFullName) ? "?" : review.UserFullName.Substring(0, 1).ToUpper())</MudText>
+                                        </MudAvatar>
+                                        <MudStack Spacing="0">
+                                            <MudText Typo="Typo.subtitle2">@review.UserFullName</MudText>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">@(review.CreatedAt?.DateTime.ToShortDateString() ?? "Unknown")</MudText>
+                                        </MudStack>
                                     </MudStack>
-                                </MudStack>
 
-                                <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
-                                    <div class="organization-reviews__rating">
-                                        @for (int i = 1; i <= 5; i++)
-                                        {
-                                            if (i <= review.Rating)
+                                    <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                                        <div class="organization-reviews__rating">
+                                            @for (int i = 1; i <= 5; i++)
                                             {
-                                                <MudIcon Icon="@Icons.Material.Filled.Star" />
+                                                if (i <= review.Rating)
+                                                {
+                                                    <MudIcon Icon="@Icons.Material.Filled.Star" />
+                                                }
+                                                else
+                                                {
+                                                    <MudIcon Icon="@Icons.Material.Outlined.StarBorder" />
+                                                }
                                             }
-                                            else
-                                            {
-                                                <MudIcon Icon="@Icons.Material.Outlined.StarBorder" />
-                                            }
-                                        }
-                                    </div>
-                                </MudStack>
+                                        </div>
+                                    </MudStack>
 
-                                <MudText Typo="Typo.body2">
-                                    @review.Comment
-                                </MudText>
-                            </MudStack>
-                        </MudPaper>
-                    </MudItem>
-                }
-            }
-            else
-            {
-                <MudItem xs="12">
-                    <MudText Typo="Typo.body1" Align="Align.Center" Color="Color.Secondary">No reviews yet.</MudText>
-                </MudItem>
-            }
-        </MudGrid>
+                                    <MudText Typo="Typo.body2">
+                                        @review.Comment
+                                    </MudText>
+                                </MudStack>
+                            </MudPaper>
+                        </MudItem>
+                    </ItemContent>
+                    <Placeholder>
+                        <MudItem xs="12" md="6">
+                            <MudPaper Class="pa-4" Elevation="0">
+                                <MudStack Spacing="2">
+                                    <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                                        <MudSkeleton SkeletonType="SkeletonType.Circle" Width="40px" Height="40px" />
+                                        <MudStack Spacing="0">
+                                            <MudSkeleton Width="120px" />
+                                            <MudSkeleton Width="80px" />
+                                        </MudStack>
+                                    </MudStack>
+                                    <MudSkeleton Width="100px" />
+                                    <MudSkeleton Width="100%" />
+                                    <MudSkeleton Width="70%" />
+                                </MudStack>
+                            </MudPaper>
+                        </MudItem>
+                    </Placeholder>
+                </Virtualize>
+            </MudGrid>
+        }
     }
 </MudContainer>
 

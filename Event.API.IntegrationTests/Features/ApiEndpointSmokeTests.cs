@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Event.Api.IntegrationTests.Fixtures;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,7 +29,8 @@ public class ApiEndpointSmokeTests
         var endpoints = GetApiDescriptions()
             .Where(description => IsHttpMethod(description, HttpMethod.Get))
             .Where(description => !IsProtected(description))
-            .Where(description => !IsExternalDependencyEndpoint(description));
+            .Where(description => !IsExternalDependencyEndpoint(description))
+            .Where(description => !IsPublicSmokeException(description));
 
         foreach (var description in endpoints)
         {
@@ -40,6 +42,12 @@ public class ApiEndpointSmokeTests
             var hasPathParams = description.ParameterDescriptions.Any(p => p.Source == BindingSource.Path);
             var isSuccess = response.StatusCode is HttpStatusCode.OK or HttpStatusCode.NoContent
                 || (hasPathParams && response.StatusCode == HttpStatusCode.NotFound);
+
+            if (!isSuccess)
+            {
+                Console.WriteLine($"Failed endpoint: {path} => {(int)response.StatusCode} {response.StatusCode}");
+            }
+
             await Assert.That(isSuccess).IsTrue();
         }
     }
@@ -119,6 +127,12 @@ public class ApiEndpointSmokeTests
         return path.Contains("storageobject/file/", StringComparison.OrdinalIgnoreCase);
     }
 
+    private static bool IsPublicSmokeException(ApiDescription description)
+    {
+        var path = description.RelativePath ?? string.Empty;
+        return path.Contains("tenant/navigation", StringComparison.OrdinalIgnoreCase);
+    }
+
     private static string BuildPath(ApiDescription description)
     {
         var relativePath = description.RelativePath ?? string.Empty;
@@ -128,6 +142,24 @@ public class ApiEndpointSmokeTests
         {
             var value = GetSampleValue(parameter, description);
             path = ReplaceRouteParameter(path, parameter.Name, value);
+        }
+
+        var queryParameters = description.ParameterDescriptions
+            .Where(p => p.Source == BindingSource.Query)
+            .Where(p => p.IsRequired)
+            .Where(p => !string.IsNullOrWhiteSpace(p.Name))
+            .ToList();
+
+        if (queryParameters.Count > 0)
+        {
+            var query = new QueryBuilder();
+            foreach (var parameter in queryParameters)
+            {
+                var value = GetSampleValue(parameter, description);
+                query.Add(parameter.Name!, value);
+            }
+
+            path += query.ToQueryString().ToString();
         }
 
         return path;

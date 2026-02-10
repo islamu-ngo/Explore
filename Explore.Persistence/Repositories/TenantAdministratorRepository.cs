@@ -34,6 +34,16 @@ public class TenantAdministratorRepository : GenericRepository<TenantAdministrat
             .ToListAsync();
     }
 
+    public async Task<List<TenantAdministrator>> GetByUserId(Guid userId)
+    {
+        return await _dbContext.TenantAdministrators
+            .AsNoTracking()
+            .Include(x => x.Tenant)
+            .Include(x => x.TenantAdministratorRole)
+            .Where(x => x.UserId == userId)
+            .ToListAsync();
+    }
+
     public async Task<bool> IsTenantAdministrator(Guid tenantId, Guid userId)
     {
         return await _dbContext.TenantAdministrators

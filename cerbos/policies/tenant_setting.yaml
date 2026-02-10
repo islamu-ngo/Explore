@@ -1,0 +1,31 @@
+# ABOUTME: Cerbos resource policy for tenant-level settings.
+# Tenant admins can update settings ONLY IF not locked by instance admin.
+# Instance admins bypass all lock checks.
+
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: "tenant_setting"
+  version: "default"
+  importDerivedRoles:
+    - explore_admin_roles
+  rules:
+    # Instance admins can do everything regardless of locks
+    - actions: ["view", "update", "delete"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - instance_admin
+
+    # Tenant admins can view their tenant settings
+    - actions: ["view"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - tenant_admin
+
+    # Tenant admins can update ONLY if not locked by instance
+    - actions: ["update"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - tenant_admin
+      condition:
+        match:
+          expr: request.resource.attr.isLockedByInstance != true

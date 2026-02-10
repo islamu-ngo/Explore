@@ -70,7 +70,6 @@ public partial class CreateOrganization
         finally
         {
             isSubmitting = false;
-            StateHasChanged();
         }
     }
 
@@ -87,6 +86,7 @@ public partial class CreateOrganization
         }
 
         _isUploadingLogo = true;
+        // Required: non-UI thread callback
         await InvokeAsync(StateHasChanged);
 
         try
@@ -114,6 +114,7 @@ public partial class CreateOrganization
         finally
         {
             _isUploadingLogo = false;
+            // Required: non-UI thread callback
             await InvokeAsync(StateHasChanged);
         }
     }

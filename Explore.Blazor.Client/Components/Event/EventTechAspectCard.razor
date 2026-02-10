@@ -139,6 +139,19 @@
     [Parameter]
     public EventCallback OnDelete { get; set; }
 
+    private EventTechAspectDto? _previousAspect;
+    private bool _previousShowActions;
+
+    protected override bool ShouldRender()
+    {
+        if (ReferenceEquals(Aspect, _previousAspect) && ShowActions == _previousShowActions)
+            return false;
+
+        _previousAspect = Aspect;
+        _previousShowActions = ShowActions;
+        return true;
+    }
+
     private string GetSkillLevelDisplay()
     {
         return Aspect?.SkillLevel switch
