@@ -153,22 +153,43 @@ graph TD
 
 ### 4. Component Structure & Lifecycle
 
-**Rule**: Use the code-behind pattern for complex components. Use `OnInitializedAsync` for data fetching, `OnParametersSetAsync` for reacting to parameter changes, and `EventCallback` for child-to-parent communication.
+**Rule**: Use `ParameterState` for MudBlazor components to prevent infinite re-render loops. Use `OnInitializedAsync` for initial data fetching and `EventCallback` for child-to-parent communication.
+
+#### MudBlazor ParameterState Framework (Preferred)
+
+**Critical Pattern**: MudBlazor components must use `ParameterState<T>` to avoid infinite loops when parameters change.
 
 ```razor
-@* Child Component: {Entity}Card.razor *@
+@* Child Component: {Entity}Card.razor (MudBlazor) *@
+@using MudBlazor.State
+
 <MudCard>
+    <MudCardContent>
+        <MudText>@{Entity}.Title</MudText>
+    </MudCardContent>
     <MudCardActions>
         <MudButton OnClick="DeleteClicked">Delete</MudButton>
     </MudCardActions>
 </MudCard>
 
 @code {
+    // ✅ CORRECT: Use ParameterState for MudBlazor components
+    private readonly ParameterState<{Entity}Dto> _entityState;
+
     [Parameter]
-    public {Entity}Dto {Entity} { get; set; } = null!;
+    public {Entity}Dto {Entity}
+    {
+        get => _entityState.Value;
+        set => _entityState.SetValue(value);
+    }
 
     [Parameter]
     public EventCallback<{IdType}> OnDelete { get; set; }
+
+    public {Entity}Card()
+    {
+        _entityState = new(this);
+    }
 
     private async Task DeleteClicked()
     {
@@ -176,6 +197,9 @@ graph TD
     }
 }
 ```
+
+**Why ParameterState?** Prevents infinite re-render loops in MudBlazor components by managing parameter change tracking separately from Blazor's built-in mechanism.
+
 *For more details, see [component-design.md](resources/component-design.md).*
 
 ### 5. State Management

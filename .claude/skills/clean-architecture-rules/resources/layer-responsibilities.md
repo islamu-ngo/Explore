@@ -181,7 +181,7 @@ using MediatR;
 
 public record Create{Entity}Command : IRequest<BaseCommandResponse<{IdType}>>
 {
-    public Create{Entity}Dto {Entity}Dto { get; init; } = null!;
+    public Create{Entity}Dto {Entity}Dto { get; set; } = null!;
 }
 
 // Handler

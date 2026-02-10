@@ -1,0 +1,44 @@
+@* ABOUTME: Renders governance settings fields for the Instance Admin Settings sidebar. *@
+@* ABOUTME: Includes deployment mode, tenant registration, default home page, and lock controls. *@
+
+@using MudBlazor
+@using Explore.Blazor.Client.Services
+
+<div class="settings-section">
+    <div class="settings-section-header">
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">Platform Governance</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+            Control deployment mode, tenant registration, and default home page behavior.
+        </MudText>
+    </div>
+    <MudStack Spacing="3">
+        <MudSelect T="string"
+                   Label="Deployment Mode"
+                   @bind-Value="Model.DeploymentMode"
+                   Variant="Variant.Outlined">
+            <MudSelectItem Value="@("SingleTenant")">Single Tenant</MudSelectItem>
+            <MudSelectItem Value="@("MultiTenant")">Multi Tenant</MudSelectItem>
+        </MudSelect>
+
+        <MudSwitch T="bool" @bind-Value="Model.AllowTenantSelfServiceRegistration" Color="Color.Primary">
+            Allow tenant self-service registration
+        </MudSwitch>
+
+        <MudSelect T="string"
+                   Label="Default Public Home Page"
+                   @bind-Value="Model.DefaultPublicHomePage"
+                   Variant="Variant.Outlined">
+            <MudSelectItem Value="@("EventList")">Event List</MudSelectItem>
+            <MudSelectItem Value="@("LandingPage")">Landing Page</MudSelectItem>
+        </MudSelect>
+
+        <MudSwitch T="bool" @bind-Value="Model.LockTenantHomePagePreference" Color="Color.Primary">
+            Lock tenant home page preference
+        </MudSwitch>
+    </MudStack>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public InstanceGovernanceSettingsModel Model { get; set; } = null!;
+}

@@ -1,0 +1,147 @@
+@* ABOUTME: Sidebar layout component for Tenant Admin Settings. *@
+@* ABOUTME: Provides Google-style sidebar navigation for tenant-level policy, domain, and branding settings. *@
+
+@using MudBlazor
+@using Microsoft.AspNetCore.Components
+@using Explore.Blazor.Client.Services
+
+@inject ITenantOnboardingService TenantOnboardingService
+@inject ISnackbar Snackbar
+
+<div class="settings-layout">
+    <MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
+        <!-- Header -->
+        <div class="settings-header mb-8">
+            <MudText Typo="Typo.h4" Style="font-weight: 800;">Tenant Settings</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">Manage tenant-level policy, domain, and branding settings</MudText>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(_errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+        }
+
+        @if (_isLoading)
+        {
+            <MudStack AlignItems="AlignItems.Center" Class="py-12">
+                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-4">Loading tenant settings...</MudText>
+            </MudStack>
+        }
+        else if (!_canEdit)
+        {
+            <MudAlert Severity="Severity.Warning" Class="mb-4">
+                You do not have tenant administrator permissions to view or modify these settings.
+            </MudAlert>
+        }
+        else
+        {
+            <!-- Main Layout: Sidebar + Content -->
+            <MudGrid Spacing="4">
+                <!-- Sidebar Navigation -->
+                <MudItem xs="12" sm="12" md="3">
+                    <MudPaper Elevation="0" Class="settings-sidebar pa-0 rounded-lg border-solid border-1 mud-border-lines-default">
+                        <MudList T="string" Dense="false" DisablePadding="true">
+                            <MudListItem Icon="@Icons.Material.Filled.Policy"
+                                         Text="Policies"
+                                         Class="@GetNavItemClass("policies")"
+                                         OnClick="@(() => SelectSection("policies"))" />
+                            <MudListItem Icon="@Icons.Material.Filled.Language"
+                                         Text="Domain"
+                                         Class="@GetNavItemClass("domain")"
+                                         OnClick="@(() => SelectSection("domain"))" />
+                            <MudListItem Icon="@Icons.Material.Filled.Palette"
+                                         Text="Branding"
+                                         Class="@GetNavItemClass("branding")"
+                                         OnClick="@(() => SelectSection("branding"))" />
+                        </MudList>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Content Area -->
+                <MudItem xs="12" sm="12" md="9">
+                    <MudPaper Elevation="0" Class="settings-content pa-6 rounded-lg border-solid border-1 mud-border-lines-default">
+                        @if (_currentSection == "policies")
+                        {
+                            <TenantPoliciesSection Model="_model" />
+                        }
+                        else if (_currentSection == "domain")
+                        {
+                            <TenantDomainSection Model="_model" />
+                        }
+                        else if (_currentSection == "branding")
+                        {
+                            <TenantBrandingSection Model="_model" />
+                        }
+
+                        <MudDivider Class="my-4" />
+
+                        <MudStack Row="true" Justify="Justify.FlexEnd">
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       OnClick="SaveAsync"
+                                       Disabled="_isSaving"
+                                       StartIcon="@(_isSaving ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Save)">
+                                @(_isSaving ? "Saving..." : "Save Tenant Settings")
+                            </MudButton>
+                        </MudStack>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        }
+    </MudContainer>
+</div>
+
+@code {
+    private TenantPolicySettingsModel _model = new();
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private bool _canEdit;
+    private string? _errorMessage;
+    private string _currentSection = "policies";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var status = await TenantOnboardingService.GetStatusAsync();
+        _canEdit = status?.IsCurrentUserTenantAdministrator == true
+                || status?.IsCurrentUserInstanceAdministrator == true;
+
+        if (!_canEdit)
+        {
+            _isLoading = false;
+            return;
+        }
+
+        _model = await TenantOnboardingService.GetSettingsAsync();
+        _isLoading = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        _isSaving = true;
+        _errorMessage = null;
+
+        var response = await TenantOnboardingService.UpdateSettingsAsync(_model);
+        _isSaving = false;
+
+        if (response.Success)
+        {
+            Snackbar.Add("Tenant settings saved.", Severity.Success);
+            return;
+        }
+
+        _errorMessage = string.IsNullOrWhiteSpace(response.Message)
+            ? "Failed to save tenant settings."
+            : response.Message;
+    }
+
+    private void SelectSection(string section)
+    {
+        _currentSection = section;
+    }
+
+    private string GetNavItemClass(string section)
+    {
+        return _currentSection == section ? "settings-nav-active" : "";
+    }
+}

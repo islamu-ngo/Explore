@@ -145,6 +145,97 @@ For details on how these domain models are implemented using Entity Framework Co
 #### RegistrationMode
 *   **Purpose**: Defines the method of registration for an `EventSession` (e.g., Open, Approval Required, Invitation Only).
 
+### Module-Specific Entity Extensions
+
+The system supports **modular event types** through aspect entities that extend the base `Event` entity with domain-specific fields. This pattern allows different event types to have specialized properties while maintaining a consistent core event model.
+
+#### EventIslamicAspect
+*   **Purpose**: Extends `Event` with Islamic-specific fields for religious events (e.g., prayer times, gender segregation, madhab compatibility).
+*   **Key Fields**:
+    -   `PrayerTimesAvailable` (bool) - Indicates if prayer facilities are provided
+    -   `GenderSegregated` (bool) - Indicates gender-separated seating/areas
+    -   `MadhabFocus` - Primary Islamic jurisprudence school
+    -   `IslamicCalendarDate` - Date in Hijri calendar
+*   **Relationship**: One-to-one with `Event` (optional)
+*   **Module Governance**: Enabled per-tenant via `TenantCapability` table
+
+#### EventTechAspect
+*   **Purpose**: Extends `Event` with technology-specific fields for tech conferences, workshops, and hackathons.
+*   **Key Fields**:
+    -   `TechStack` (string) - Primary technologies covered (e.g., ".NET, React, Azure")
+    -   `SkillLevel` (enum) - Target audience skill level (Beginner, Intermediate, Advanced, Expert)
+    -   `Platform` (string) - Development platform focus (Web, Mobile, Desktop, Cloud)
+    -   `HandsOnLab` (bool) - Indicates if hands-on coding exercises included
+*   **Relationship**: One-to-one with `Event` (optional)
+*   **Module Governance**: Enabled per-tenant via `TenantCapability` table
+
+#### Module Resolution Strategy Pattern
+
+The system uses a **strategy pattern** to resolve module-specific aspects:
+
+```csharp
+// Simplified conceptual example
+public interface IModuleService<TEntity, TAspect>
+{
+    Task<TAspect?> GetAspectAsync(Guid entityId);
+    Task SaveAspectAsync(TAspect aspect);
+}
+
+// Usage in handlers
+var islamicAspect = await _islamicModuleService.GetAspectAsync(eventId);
+if (islamicAspect != null)
+{
+    // Event has Islamic-specific data
+    dto.PrayerTimes = islamicAspect.PrayerTimesAvailable;
+}
+```
+
+**Key Design Principles**:
+-   **Opt-in Architecture**: Events don't require aspect entities. Only create aspect when needed.
+-   **Tenant Control**: Modules are enabled/disabled per tenant via `TenantCapability` table
+-   **Type Safety**: Each aspect has its own strongly-typed entity and DTO
+-   **Separation of Concerns**: Core event logic remains clean; domain-specific logic in aspects
+
+**See Also**: [CODEBASE_INSIGHTS.md](CODEBASE_INSIGHTS.md) Section 7 for module governance implementation details.
+
+### Event Session Hierarchy
+
+The event session system supports complex, multi-session events with detailed scheduling:
+
+```
+Event (e.g., "Annual Tech Conference 2026")
+├── EventSession 1 (e.g., "Day 1 - Morning Keynote")
+│   ├── EventSessionAgendaItem 1 (e.g., "09:00 - Opening Remarks")
+│   ├── EventSessionAgendaItem 2 (e.g., "09:30 - Keynote Speaker")
+│   ├── EventSessionSpeaker 1 → Actor (Speaker)
+│   ├── EventSessionSpeaker 2 → Actor (Speaker)
+│   ├── EventSessionLanguage 1 → Language (English)
+│   └── EventRegistration records (Users registered for this session)
+├── EventSession 2 (e.g., "Day 1 - Afternoon Workshop Track A")
+│   ├── EventSessionAgendaItem 1 (e.g., "14:00 - Workshop: Clean Architecture")
+│   ├── EventSessionSpeaker 1 → Actor (Instructor)
+│   ├── EventSessionLanguage 1 → Language (English)
+│   └── EventRegistration records
+└── EventSession 3 (e.g., "Day 2 - Closing Session")
+    └── ...
+```
+
+**Relationships**:
+-   **Event → EventSession**: One-to-many (an event can have multiple sessions)
+-   **EventSession → EventSessionAgendaItem**: One-to-many (a session has a timeline of agenda items)
+-   **EventSession → EventSessionSpeaker**: Many-to-many (a session can have multiple speakers; a speaker can appear in multiple sessions)
+-   **EventSession → EventSessionLanguage**: Many-to-many (a session can support multiple languages)
+-   **EventSession → EventRegistration**: One-to-many (users register for specific sessions)
+-   **EventSession → Location**: Many-to-one (each session has a location; location can host multiple sessions)
+-   **EventSession → RegistrationMode**: Many-to-one (defines registration requirements)
+
+**Design Notes**:
+-   Sessions provide flexibility for multi-day, multi-track events
+-   Each session can have its own location (useful for hybrid events)
+-   Registration is at the session level (users can attend specific sessions)
+-   Agenda items provide detailed scheduling within a session
+-   Speaker and language associations are session-specific (different speakers/languages per session)
+
 ### Event Metadata
 
 #### EventType

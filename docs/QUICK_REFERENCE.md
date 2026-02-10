@@ -239,7 +239,7 @@ public class Create{Entity}CommandHandler { }
 
 ---
 
-### 11. Entities Include Auditing Fields
+### 11. Entities Include Auditing Fields (ENHANCED with Soft Delete Audit)
 
 ```csharp
 // ✅ CORRECT - Include auditing fields
@@ -248,14 +248,16 @@ public class {Entity}
     public {IdType} Id { get; set; }
     public string Title { get; set; } = string.Empty;
 
-    // Auditing fields
+    // Standard auditing fields
     public DateTime CreatedAt { get; set; }
     public Guid? CreatedBy { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public Guid? UpdatedBy { get; set; }
 
-    // Soft delete
+    // Enhanced soft delete with audit trail
     public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public Guid? DeletedBy { get; set; }
 
     // Tenant isolation
     public Guid TenantId { get; set; }
@@ -266,9 +268,12 @@ var entity = _mapper.Map<{Entity}>(request.{Entity}Dto);
 entity.CreatedAt = DateTime.UtcNow;
 entity.CreatedBy = currentUserId;  // From HttpContext
 entity.IsDeleted = false;
+
+// Soft delete is automatically handled by SaveChangesAsync override in DbContext
+// which sets IsDeleted, DeletedAt, and DeletedBy when an entity is deleted
 ```
 
-**Why (Audit Trail)**: Track who created/modified entities and when; enables soft delete; maintains data history.
+**Why (Audit Trail)**: Track who created/modified entities and when; enables soft delete with complete audit trail (who deleted and when); maintains full data history.
 
 ---
 
@@ -496,8 +501,9 @@ public async Task<ActionResult<{Entity}Dto>> GetById({IdType} id)
 | Nested namespaces | Use file-scoped namespaces |
 | Missing userId fallback | Use sub → nameidentifier → sid |
 | Missing [AllowAnonymous] on GET | Add for public read access |
-| Missing auditing fields | Add CreatedAt, CreatedBy, UpdatedAt, UpdatedBy |
-| Missing soft delete | Add IsDeleted, use named query filter |
+| Missing auditing fields | Add CreatedAt, CreatedBy, UpdatedAt, UpdatedBy, DeletedAt, DeletedBy |
+| Missing soft delete | Add IsDeleted, DeletedAt, DeletedBy; use named query filter |
+| **Delete command returns `bool`** | **Use `IRequest<BaseCommandResponse<{IdType}>>` for ALL commands (including deletes)** |
 | Admin endpoint without Roles | Add `[Authorize(Roles = "Admin")]` |
 | Combined query filters | Use named filters: `HasQueryFilter(name: "SoftDelete", ...)` |
 

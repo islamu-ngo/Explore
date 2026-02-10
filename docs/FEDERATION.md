@@ -2,21 +2,46 @@
 
 ## Status
 
-Federation (ATProto / ActivityPub) is a **roadmap feature**.
+Federation (ATProto / ActivityPub) is a **roadmap feature** - currently in **Phase 1: Data Model Only**.
 
-- The domain contains federation-related entities (e.g., `Actor`, `AtprotoRecord`, `SyncState`).
-- `Explore.API` does **not** currently expose federation HTTP endpoints (e.g., WebFinger, Inbox/Outbox).
+### ✅ Implemented (Phase 1: Foundation)
+- **Domain Entities**: Federation data models exist in `Explore.Domain`:
+  - `Actor` - Federated identity representation
+  - `AtprotoRecord` - ATProto record storage
+  - `PdsSyncOutbox` - Sync queue for outbound records
+  - `IndexedDid` - DID resolution cache
+  - `ActorKeyStore` - Cryptographic key storage
+  - Supporting entities: `ActorType`, `DidCustodyType` enums
 
-## Protocol Overview
+### ⏳ Not Yet Implemented (Roadmap)
+- **HTTP Endpoints**: No federation endpoints exposed in `Explore.API`:
+  - ❌ WebFinger (`/.well-known/webfinger`)
+  - ❌ Actor endpoints (`/actors/{handle}`)
+  - ❌ Inbox/Outbox (ActivityPub)
+  - ❌ ATProto PDS server
+  - ❌ ATProto AppView indexing
+- **Protocol Implementation**: No active federation protocol logic
+- **Bridge/Gateway**: ActivityPub ↔ ATProto translation not implemented
+- **DID Resolution**: No PLC/DNS-based DID resolution
+- **HTTP Signatures**: Cryptographic message verification not implemented
+- **Collections**: Followers/Following/Liked collections not exposed
 
-This section describes the intended federation model for ISLAMU Event.
+**Timeline**: Federation implementation planned for future release. Foundation (entities) is complete.
+
+## Protocol Overview (Planned)
+
+> **Note**: This section describes the **intended** federation model for ISLAMU Event.
+> **Current Status**: Protocol implementation not yet started. Only domain entities exist.
 
 - **Server-to-Server (S2S)** (planned): Instances exchange activities via inbox/outbox
 - **HTTP Signatures** (planned): Cryptographic verification of federated messages
 - **WebFinger** (planned): Actor discovery via `/.well-known/webfinger`
 - **Collections** (planned): Followers, Following, Liked as ordered collections
 
-## Architecture Philosophy
+## Planned Architecture Philosophy
+
+> **⚠️ Planned Feature**: The architecture diagrams below represent the **intended design**.
+> **Current Implementation**: Only domain entities (Actor, AtprotoRecord, etc.) exist. No HTTP endpoints or federation logic implemented.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -56,7 +81,7 @@ This section describes the intended federation model for ISLAMU Event.
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Event Data Flow
+## Event Data Flow (Planned Implementation)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -123,8 +148,12 @@ This section describes the intended federation model for ISLAMU Event.
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Identity system Hybrid Approach
-Support BOTH Keycloak (traditional) AND ATProto OAuth, with custodial DIDs for Keycloak users:
+## Identity System Hybrid Approach (Planned)
+
+> **⚠️ Planned Feature**: The hybrid authentication system is not yet implemented.
+> **Current State**: Only Keycloak/OIDC authentication is active. ATProto OAuth integration is planned.
+
+**Planned Approach**: Support BOTH Keycloak (traditional) AND ATProto OAuth, with custodial DIDs for Keycloak users:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐

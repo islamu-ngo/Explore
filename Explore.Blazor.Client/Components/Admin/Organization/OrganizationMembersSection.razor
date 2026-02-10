@@ -1,0 +1,116 @@
+@* ABOUTME: Displays a summary list of organization members with name, role, and position. *@
+@* ABOUTME: Part of the Organization Admin Settings sidebar layout, with a link to the full members management page. *@
+
+@using MudBlazor
+@using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Helpers
+@inject IOrganizationMemberService MemberService
+@inject NavigationManager Navigation
+
+<div class="settings-section">
+    <div class="settings-section-header">
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">Members</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+            People who belong to this organization.
+        </MudText>
+    </div>
+
+    @if (_loading)
+    {
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Small" />
+    }
+    else if (!_members.Any())
+    {
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true">
+            No members found for this organization.
+        </MudAlert>
+    }
+    else
+    {
+        <MudStack Spacing="2">
+            <MudPaper Elevation="0" Class="pa-0 border-solid border-1 mud-border-lines-default rounded-lg overflow-hidden">
+                <MudList T="OrganizationMemberDto" Dense="true" DisablePadding="true">
+                    @foreach (var member in _members.Take(MaxPreviewCount))
+                    {
+                        <MudListItem>
+                            <div class="d-flex align-center justify-space-between w-100">
+                                <div class="d-flex align-center gap-3">
+                                    <MudAvatar Color="Color.Primary" Size="Size.Small" Variant="Variant.Outlined">
+                                        @GetInitial(member)
+                                    </MudAvatar>
+                                    <div>
+                                        <MudText Typo="Typo.body2" Style="font-weight: 600;">
+                                            @(member.UserFullName ?? member.UserEmail ?? "Unknown")
+                                        </MudText>
+                                        @if (!string.IsNullOrWhiteSpace(member.OrganizationPositionFullName))
+                                        {
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                @member.OrganizationPositionFullName
+                                            </MudText>
+                                        }
+                                    </div>
+                                </div>
+                                <MudChip T="string"
+                                         Color="@RoleHelper.GetRoleColor(member.OrganizationRoleId)"
+                                         Size="Size.Small"
+                                         Variant="Variant.Filled">
+                                    @RoleHelper.GetRoleName(member.OrganizationRoleId)
+                                </MudChip>
+                            </div>
+                        </MudListItem>
+                    }
+                </MudList>
+            </MudPaper>
+
+            @if (_members.Count > MaxPreviewCount)
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Align="Align.Center">
+                    Showing @MaxPreviewCount of @_members.Count members
+                </MudText>
+            }
+
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.People"
+                       OnClick="NavigateToMembers"
+                       FullWidth="true">
+                Manage Members
+            </MudButton>
+        </MudStack>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public Guid OrganizationId { get; set; }
+
+    private const int MaxPreviewCount = 5;
+
+    private List<OrganizationMemberDto> _members = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        try
+        {
+            var result = await MemberService.GetMembersAsync(OrganizationId);
+            _members = result?.ToList() ?? new List<OrganizationMemberDto>();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private static string GetInitial(OrganizationMemberDto member)
+    {
+        var name = member.UserFullName ?? member.UserEmail;
+        return string.IsNullOrEmpty(name) ? "?" : name[..1].ToUpperInvariant();
+    }
+
+    private void NavigateToMembers()
+    {
+        Navigation.NavigateTo($"/organization/{OrganizationId}/members");
+    }
+}

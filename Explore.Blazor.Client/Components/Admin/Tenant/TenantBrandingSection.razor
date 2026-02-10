@@ -1,0 +1,54 @@
+@* ABOUTME: Renders tenant branding fields for the Tenant Admin Settings sidebar. *@
+@* ABOUTME: Includes brand name, logo, favicon, and custom CSS URL fields with instance-level lock support. *@
+
+@using MudBlazor
+@using Explore.Blazor.Client.Services
+
+<div class="settings-section">
+    <div class="settings-section-header">
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">Branding</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+            Customize your tenant's brand identity including display name, logo, and styling.
+        </MudText>
+    </div>
+    <MudStack Spacing="3">
+        @if (HasLockedFields)
+        {
+            <MudAlert Severity="Severity.Info" Dense="true">
+                Some fields are locked by instance-level policies.
+            </MudAlert>
+        }
+
+        <MudTextField Label="Brand Display Name"
+                      Variant="Variant.Outlined"
+                      @bind-Value="Model.BrandDisplayName"
+                      Disabled="@(!Model.CanOverrideBrandDisplayName)" />
+
+        <MudTextField Label="Brand Logo URL"
+                      Variant="Variant.Outlined"
+                      @bind-Value="Model.BrandLogoUrl"
+                      Disabled="@(!Model.CanOverrideBrandLogoUrl)" />
+
+        <MudTextField Label="Brand Favicon URL"
+                      Variant="Variant.Outlined"
+                      @bind-Value="Model.BrandFaviconUrl"
+                      Disabled="@(!Model.CanOverrideBrandFaviconUrl)" />
+
+        <MudTextField Label="Custom CSS URL"
+                      Variant="Variant.Outlined"
+                      @bind-Value="Model.BrandCustomCssUrl"
+                      Disabled="@(!Model.CanOverrideBrandCustomCssUrl)"
+                      HelperText="Optional advanced override for tenant-level custom stylesheet." />
+    </MudStack>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public TenantPolicySettingsModel Model { get; set; } = null!;
+
+    private bool HasLockedFields =>
+        !Model.CanOverrideBrandDisplayName ||
+        !Model.CanOverrideBrandLogoUrl ||
+        !Model.CanOverrideBrandFaviconUrl ||
+        !Model.CanOverrideBrandCustomCssUrl;
+}

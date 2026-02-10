@@ -1,0 +1,129 @@
+@* ABOUTME: Displays a read-only overview of organization profile information (name, contact, address, website). *@
+@* ABOUTME: Part of the Organization Admin Settings sidebar layout, with a link to the full profile page. *@
+
+@using MudBlazor
+@using Explore.Blazor.Client.Services
+@inject IOrganizationService OrganizationService
+@inject NavigationManager Navigation
+
+<div class="settings-section">
+    <div class="settings-section-header">
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">Organization Profile</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+            Overview of your organization's public profile information.
+        </MudText>
+    </div>
+
+    @if (_loading)
+    {
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Small" />
+    }
+    else if (_organization is null)
+    {
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true">
+            Organization profile could not be loaded.
+        </MudAlert>
+    }
+    else
+    {
+        <MudStack Spacing="3">
+            <MudPaper Elevation="0" Class="pa-4 border-solid border-1 mud-border-lines-default rounded-lg">
+                <MudStack Spacing="2">
+                    <div class="d-flex align-center gap-2">
+                        <MudText Typo="Typo.h6" Style="font-weight: 600;">@_organization.FullName</MudText>
+                        @if (_organization.ApprovalStatusId == ApprovalStatusApproved)
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.Verified"
+                                     Color="Color.Primary"
+                                     Title="Verified"
+                                     Size="Size.Small" />
+                        }
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(_organization.Email))
+                    {
+                        <div class="d-flex align-center gap-2">
+                            <MudIcon Icon="@Icons.Material.Filled.Email" Size="Size.Small" Color="Color.Secondary" />
+                            <MudText Typo="Typo.body2">@_organization.Email</MudText>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(_organization.WebsiteUrl))
+                    {
+                        <div class="d-flex align-center gap-2">
+                            <MudIcon Icon="@Icons.Material.Filled.Language" Size="Size.Small" Color="Color.Secondary" />
+                            <MudLink Href="@_organization.WebsiteUrl" Target="_blank" Typo="Typo.body2" Color="Color.Primary">
+                                @_organization.WebsiteUrl
+                            </MudLink>
+                        </div>
+                    }
+
+                    @if (HasAddress)
+                    {
+                        <div class="d-flex align-center gap-2">
+                            <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Color="Color.Secondary" />
+                            <MudText Typo="Typo.body2">@FormatAddress()</MudText>
+                        </div>
+                    }
+                </MudStack>
+            </MudPaper>
+
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.OpenInNew"
+                       OnClick="NavigateToProfile"
+                       FullWidth="true">
+                View Full Profile
+            </MudButton>
+        </MudStack>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public Guid OrganizationId { get; set; }
+
+    private const int ApprovalStatusApproved = 2;
+
+    private OrganizationDto? _organization;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        try
+        {
+            _organization = await OrganizationService.GetOrganizationByIdAsync(OrganizationId);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private bool HasAddress =>
+        !string.IsNullOrWhiteSpace(_organization?.Address) ||
+        !string.IsNullOrWhiteSpace(_organization?.City) ||
+        !string.IsNullOrWhiteSpace(_organization?.Country);
+
+    private string FormatAddress()
+    {
+        var parts = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(_organization?.Address))
+            parts.Add(_organization.Address);
+        if (!string.IsNullOrWhiteSpace(_organization?.City))
+            parts.Add(_organization.City);
+        if (!string.IsNullOrWhiteSpace(_organization?.Postcode))
+            parts.Add(_organization.Postcode);
+        if (!string.IsNullOrWhiteSpace(_organization?.Country))
+            parts.Add(_organization.Country);
+
+        return string.Join(", ", parts);
+    }
+
+    private void NavigateToProfile()
+    {
+        Navigation.NavigateTo($"/organization/{OrganizationId}");
+    }
+}

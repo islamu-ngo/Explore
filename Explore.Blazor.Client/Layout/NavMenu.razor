@@ -43,6 +43,27 @@
             <NavLink href="/events" class="navbar__link" Match="NavLinkMatch.Prefix" ActiveClass="navbar__link--active">
                 Events
             </NavLink>
+
+            @* Dynamic tenant navigation links *@
+            @foreach (var link in _navigationLinks.OrderBy(l => l.Order))
+            {
+                var icon = string.IsNullOrWhiteSpace(link.Icon) ? Icons.Material.Filled.Link : link.Icon;
+
+                @if (link.OpenInNewTab == true)
+                {
+                    <a @key="link.Id" href="@link.Url" target="_blank" rel="noopener noreferrer" class="navbar__link" title="@link.Label">
+                        <MudIcon Icon="@icon" Size="Size.Small" Class="mr-2" />
+                        @link.Label
+                    </a>
+                }
+                else
+                {
+                    <NavLink @key="link.Id" href="@link.Url" class="navbar__link" Match="NavLinkMatch.Prefix" ActiveClass="navbar__link--active" title="@link.Label">
+                        <MudIcon Icon="@icon" Size="Size.Small" Class="mr-2" />
+                        @link.Label
+                    </NavLink>
+                }
+            }
         </div>
 
         <!-- Right Actions -->
@@ -108,6 +129,14 @@
                                     <a href="/admin" class="navbar__dropdown-item" @onclick="CloseDropdown">
                                         <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Size="Size.Small" />
                                         Admin Dashboard
+                                    </a>
+                                    <a href="/admin/instance/settings" class="navbar__dropdown-item" @onclick="CloseDropdown">
+                                        <MudIcon Icon="@Icons.Material.Filled.Dns" Size="Size.Small" />
+                                        Instance Settings
+                                    </a>
+                                    <a href="/admin/tenant/settings" class="navbar__dropdown-item" @onclick="CloseDropdown">
+                                        <MudIcon Icon="@Icons.Material.Filled.Domain" Size="Size.Small" />
+                                        Tenant Settings
                                     </a>
                                 }
 

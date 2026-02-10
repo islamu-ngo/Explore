@@ -48,8 +48,9 @@ This checklist helps ensure code adheres to established architectural patterns a
 ### CQRS Pattern Compliance (`cqrs-mediatr-guidelines`)
 
 - [ ] Commands and Queries are separate types, with distinct responsibilities (write vs. read). See `cqrs-mediatr-guidelines`.
-- [ ] Commands return `BaseCommandResponse<Guid>` (or `bool` for delete).
+- [ ] **ALL commands return `BaseCommandResponse<T>`** (including delete commands - no exceptions). See `cqrs-mediatr-guidelines` and `docs/QUICK_REFERENCE.md` Rule #6.
 - [ ] Queries return DTOs directly (not wrapped in a response object).
+- [ ] **Handlers use primary constructors (C# 12+)** for cleaner dependency injection. See `clean-architecture-rules`.
 - [ ] Handlers use repositories (not `DbContext` directly).
 - [ ] No business logic in controllers (controllers are thin, mediating requests to MediatR).
 
@@ -59,6 +60,10 @@ This checklist helps ensure code adheres to established architectural patterns a
 - [ ] `GenericRepository` is used for common CRUD operations.
 - [ ] Repository interfaces are defined in the Application layer.
 - [ ] Repository implementations are in the Persistence layer.
+- [ ] **DbContext uses pooling** (`AddDbContextPool<T>()`) with property injection for scoped dependencies. See `dotnet-efcore-guidelines` (EF Core 10+).
+- [ ] **Named query filters** used for soft delete and tenant isolation (EF Core 10+):
+    - `HasQueryFilter(name: "SoftDelete", predicate: e => !e.IsDeleted)`
+    - `HasQueryFilter(e => TenantContext == null || e.TenantId == TenantContext.TenantId)`
 - [ ] Link table navigation properties are **readonly** for queries only. Writes go through the link table's repository directly. See `dotnet-efcore-guidelines`.
 - [ ] Lookup tables use `int` for IDs. Main entities use `Guid` for IDs. `long` is avoided unless specifically required (e.g., for file sizes/pagination cursors). See `dotnet-efcore-guidelines`.
 - [ ] No default values are set in domain entity properties (e.g., `public int TotalViews { get; set; } = 0;`). Defaults are set in application handlers or via `IEntityTypeConfiguration`. See `dotnet-efcore-guidelines`.
@@ -74,10 +79,13 @@ This checklist helps ensure code adheres to established architectural patterns a
 
 - ❌ Repository method returns DTOs (e.g., `Get{Entity}ListDto()`).
 - ❌ Repository method returns entities but handler doesn't map to DTO before returning to presentation layer.
+- ❌ **Delete command returns `bool` instead of `BaseCommandResponse<Guid>`** (CRITICAL - all commands must use BaseCommandResponse).
 - ❌ Validator injected via DI in handler constructor.
 - ❌ Handler contains business logic that belongs in the domain entity.
 - ❌ Controller bypasses MediatR and queries `DbContext` directly.
 - ❌ Entity property has a default value in its class declaration.
+- ❌ Using combined query filters instead of named filters (EF Core 10+).
+- ❌ Not using DbContext pooling for high-throughput scenarios.
 - ❌ `long` used for non-size/cursor fields where `int` or `Guid` is appropriate.
 
 ## Automated Refactoring Actions

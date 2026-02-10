@@ -1,0 +1,12 @@
+@* ABOUTME: Page wrapper for the Tenant Admin Settings sidebar layout. *@
+@* ABOUTME: Routes to /admin/tenant/settings with Authorize attribute for authenticated users. *@
+
+@page "/admin/tenant/settings"
+@using MudBlazor
+@using Microsoft.AspNetCore.Authorization
+@using Explore.Blazor.Client.Components.Admin.Tenant
+@attribute [Authorize]
+
+<PageTitle>Tenant Settings</PageTitle>
+
+<TenantAdminSettingsLayout />

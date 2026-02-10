@@ -1,0 +1,40 @@
+@* ABOUTME: Renders module and policy default fields for the Instance Admin Settings sidebar. *@
+@* ABOUTME: Includes module toggles, user submission policy, and organization verification controls. *@
+
+@using MudBlazor
+@using Explore.Blazor.Client.Services
+
+<div class="settings-section">
+    <div class="settings-section-header">
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">Modules &amp; Policy Defaults</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+            Enable or disable platform modules and configure default policies for event submissions and verification.
+        </MudText>
+    </div>
+    <MudStack Spacing="3">
+        <MudSwitch T="bool" @bind-Value="Model.EnableIslamicModule" Color="Color.Primary">
+            Enable Islamic module
+        </MudSwitch>
+
+        <MudSwitch T="bool" @bind-Value="Model.EnableTechModule" Color="Color.Primary">
+            Enable Tech module
+        </MudSwitch>
+
+        <MudSwitch T="bool" @bind-Value="Model.AllowUserSubmittedEvents" Color="Color.Primary">
+            Allow user-submitted events
+        </MudSwitch>
+
+        <MudSwitch T="bool" @bind-Value="Model.RequireOrganizationVerification" Color="Color.Primary">
+            Require organization verification
+        </MudSwitch>
+
+        <MudSwitch T="bool" @bind-Value="Model.AllowTenantToOmitVerification" Color="Color.Primary">
+            Allow tenant admins to omit organization verification
+        </MudSwitch>
+    </MudStack>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public InstanceGovernanceSettingsModel Model { get; set; } = null!;
+}

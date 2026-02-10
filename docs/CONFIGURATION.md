@@ -168,11 +168,316 @@ Secrets are automatically loaded from Infisical paths:
 - **Audit Logging**: All secret access is logged with redaction
 - **Graceful Fallback**: Falls back to environment variables if Infisical unavailable
 
-## Cerbos (Planned)
+## Cerbos (Planned - Not Currently Integrated)
 
 Some older docs/templates mention a `Cerbos` configuration section.
 
-Cerbos is **not currently wired** into `{Project}.API`, so there is no active Cerbos configuration required for the running system.
+Cerbos is **not currently integrated** into `{Project}.API`. All authorization logic is currently implemented within the application code. There is no active Cerbos configuration required for the running system.
 
 ### Implementation Example: ISLAMU Event
-Cerbos is not currently wired into `Explore.API`, so there is no active Cerbos configuration required.
+Cerbos is not currently integrated into `Explore.API`. Authorization is handled by MediatR handlers and endpoint-level `[Authorize]` attributes.
+
+---
+
+## Instance-Level Settings
+
+The system supports **instance-level configuration** that controls deployment modes, feature toggles, and system-wide settings through the `SystemSetting` table.
+
+### SystemSetting Table
+
+Instance administrators can configure system behavior through database-stored settings:
+
+**Generic Pattern:**
+```csharp
+public class SystemSetting
+{
+    public Guid Id { get; set; }
+    public string Key { get; set; } = string.Empty;
+    public string Value { get; set; } = string.Empty;
+    public string? Description { get; set; }
+
+    // Auditing
+    public DateTime CreatedAt { get; set; }
+    public Guid? CreatedBy { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public Guid? UpdatedBy { get; set; }
+}
+```
+
+### Governance Setting Keys
+
+System settings are defined as constants in `GovernanceSettingKeys`:
+
+```csharp
+public static class GovernanceSettingKeys
+{
+    // Deployment Mode
+    public const string DeploymentMode = "System.DeploymentMode";  // "SingleTenant" or "MultiTenant"
+
+    // Feature Flags
+    public const string FederationEnabled = "System.Federation.Enabled";
+    public const string RegistrationOpen = "System.Registration.Open";
+    public const string MaintenanceMode = "System.MaintenanceMode";
+
+    // Module Governance (see Module-Specific Configuration section)
+    public const string IslamicModuleEnabled = "System.Modules.Islamic.Enabled";
+    public const string TechModuleEnabled = "System.Modules.Tech.Enabled";
+
+    // Instance Metadata
+    public const string InstanceName = "System.Instance.Name";
+    public const string InstanceDomain = "System.Instance.Domain";
+}
+```
+
+### Deployment Mode Switching
+
+The `DeploymentMode` setting controls multi-tenant vs single-tenant behavior:
+
+**Generic Pattern:**
+```csharp
+// Retrieve deployment mode
+var deploymentMode = await _systemSettingService.GetAsync(
+    GovernanceSettingKeys.DeploymentMode);
+
+if (deploymentMode == "SingleTenant")
+{
+    // Single tenant: All users belong to default tenant
+    // No tenant selection UI shown
+}
+else if (deploymentMode == "MultiTenant")
+{
+    // Multi-tenant: Users can belong to multiple tenants
+    // Tenant selection UI shown
+    // Tenant context required for all operations
+}
+```
+
+### Implementation Example: ISLAMU Event
+
+```csharp
+// Explore.Domain/Constants/GovernanceSettingKeys.cs
+public static class GovernanceSettingKeys
+{
+    public const string DeploymentMode = "System.DeploymentMode";
+    public const string FederationEnabled = "System.Federation.Enabled";
+    public const string IslamicModuleEnabled = "System.Modules.Islamic.Enabled";
+    // ... more keys
+}
+
+// Usage in services
+var federationEnabled = await _systemSettingService.GetBoolAsync(
+    GovernanceSettingKeys.FederationEnabled);
+
+if (federationEnabled)
+{
+    // Enable federation endpoints
+}
+```
+
+**See Also**: [OPERATIONS.md](OPERATIONS.md) for deployment mode details.
+
+---
+
+## Module-Specific Configuration
+
+The system supports **modular event types** through per-tenant capability configuration. Different tenants can enable different event modules (e.g., Islamic events, Tech events).
+
+### TenantCapability Table
+
+Modules are enabled per-tenant through the `TenantCapability` table:
+
+**Generic Pattern:**
+```csharp
+public class TenantCapability
+{
+    public Guid Id { get; set; }
+    public Guid TenantId { get; set; }
+    public string ModuleName { get; set; } = string.Empty;  // "Islamic", "Tech", etc.
+    public bool Enabled { get; set; }
+    public Dictionary<string, string>? Configuration { get; set; }  // Module-specific settings
+
+    // Relationships
+    public Tenant? Tenant { get; set; }
+}
+```
+
+### Module Governance Settings
+
+Modules can be enabled/disabled at two levels:
+
+1. **System Level** (via `SystemSetting` table):
+   - Controls if a module is available at all
+   - Instance admin configures
+
+2. **Tenant Level** (via `TenantCapability` table):
+   - Controls if a specific tenant can use a module
+   - Tenant admin configures
+
+**Hierarchy**:
+```
+System.Modules.Islamic.Enabled = true   (System-wide toggle)
+  └── TenantCapability: TenantId=abc, ModuleName="Islamic", Enabled=true   (Tenant-specific)
+```
+
+If system-level setting is `false`, the module is unavailable to ALL tenants, regardless of `TenantCapability` settings.
+
+### Module Resolution Example
+
+**Generic Pattern:**
+```csharp
+// Check if module is available for tenant
+public async Task<bool> IsModuleAvailableAsync(Guid tenantId, string moduleName)
+{
+    // 1. Check system-level setting
+    var systemKey = $"System.Modules.{moduleName}.Enabled";
+    var systemEnabled = await _systemSettingService.GetBoolAsync(systemKey);
+    if (!systemEnabled) return false;
+
+    // 2. Check tenant-level capability
+    var capability = await _tenantCapabilityRepository.GetByTenantAndModule(
+        tenantId, moduleName);
+
+    return capability?.Enabled ?? false;
+}
+
+// Usage in handlers
+if (await _moduleService.IsModuleAvailableAsync(tenantId, "Islamic"))
+{
+    // Load EventIslamicAspect
+    var aspect = await _islamicAspectRepository.GetByEventId(eventId);
+}
+```
+
+### Implementation Example: ISLAMU Event
+
+```csharp
+// Module availability check in Create Event handler
+public async Task<BaseCommandResponse<Guid>> Handle(...)
+{
+    // ... create base event ...
+
+    // If Islamic module enabled for this tenant, create Islamic aspect
+    if (await _moduleService.IsModuleAvailableAsync(tenantId, "Islamic"))
+    {
+        if (request.EventDto.IslamicAspect != null)
+        {
+            var islamicAspect = new EventIslamicAspect
+            {
+                EventId = newEvent.Id,
+                PrayerTimesAvailable = request.EventDto.IslamicAspect.PrayerTimesAvailable,
+                // ... map other fields
+            };
+            await _islamicAspectRepository.Create(islamicAspect);
+        }
+    }
+
+    return response;
+}
+```
+
+**See Also**: [CODEBASE_INSIGHTS.md](CODEBASE_INSIGHTS.md) Section 7 for module governance implementation.
+
+---
+
+## Monitoring & Observability
+
+The system uses **Prometheus** for metrics and **Loki** for centralized logging.
+
+### Prometheus (Metrics)
+
+Application metrics are exposed at `/metrics` endpoint using Prometheus format:
+
+**Generic Configuration:**
+```json
+{
+  "Prometheus": {
+    "Enabled": true,
+    "MetricsPath": "/metrics",
+    "Port": 9090
+  }
+}
+```
+
+**Metrics Exposed**:
+- HTTP request duration histograms
+- Database query performance
+- Command/Query execution times (MediatR pipeline)
+- Repository operation counters
+- Exception counts by type
+
+**Implementation Example: ISLAMU Event**
+```csharp
+// Explore.API/Program.cs
+builder.Services.AddOpenTelemetry()
+    .WithMetrics(metrics =>
+    {
+        metrics.AddPrometheusExporter();
+        metrics.AddMeter("Explore.API");
+        metrics.AddAspNetCoreInstrumentation();
+        metrics.AddHttpClientInstrumentation();
+    });
+
+app.MapPrometheusScrapingEndpoint();  // Exposes /metrics
+```
+
+### Loki (Centralized Logging)
+
+Logs are shipped to Loki via Serilog:
+
+**Generic Configuration:**
+```json
+{
+  "Serilog": {
+    "WriteTo": [
+      {
+        "Name": "GrafanaLoki",
+        "Args": {
+          "uri": "http://loki:3100",
+          "labels": [
+            { "key": "app", "value": "{project}-api" },
+            { "key": "environment", "value": "production" }
+          ]
+        }
+      }
+    ]
+  }
+}
+```
+
+**Implementation Example: ISLAMU Event**
+```csharp
+// Explore.API/Program.cs
+builder.Host.UseSerilog((context, configuration) =>
+{
+    configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .Enrich.FromLogContext()
+        .Enrich.WithProperty("Application", "Explore.API")
+        .WriteTo.Console()
+        .WriteTo.GrafanaLoki(
+            context.Configuration["Loki:Uri"]!,
+            labels: new List<LokiLabel>
+            {
+                new() { Key = "app", Value = "explore-api" },
+                new() { Key = "env", Value = context.HostingEnvironment.EnvironmentName }
+            });
+});
+```
+
+### Observability Stack
+
+**Recommended Stack**:
+- **Prometheus**: Metrics collection and storage
+- **Loki**: Log aggregation and querying
+- **Grafana**: Unified dashboards for metrics + logs
+- **Aspire Dashboard** (Development): Local observability during development
+
+**Key Benefits**:
+- Unified observability (metrics + logs in Grafana)
+- Label-based log filtering (tenant, user, request ID)
+- Performance monitoring (P50, P95, P99 latencies)
+- Error tracking with stack traces
+- Correlation between logs and metrics
+
+**See Also**: [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for debugging with Prometheus/Loki.
+

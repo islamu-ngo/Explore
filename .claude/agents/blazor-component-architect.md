@@ -37,7 +37,7 @@ This checklist helps ensure components adhere to established patterns and best p
 - [ ] Uses `@rendermode` appropriately (InteractiveAuto/Server/WebAssembly). See `blazor-ui-conventions` (render modes).
 - [ ] Proper `@using` statements are present.
 - [ ] `@code` block is organized (fields → properties → lifecycle → methods).
-- [ ] Parameters use `[Parameter]` attribute with `{ get; set; }`. See `blazor-ui-conventions` (component design).
+- [ ] **MudBlazor components use `ParameterState<T>` for parameters** (prevents infinite re-render loops). See `blazor-ui-conventions` (component design).
 - [ ] EventCallbacks are used for child → parent communication. See `blazor-ui-conventions` (component design).
 - [ ] Implements `IDisposable` for event cleanup. See `blazor-ui-conventions` (component design, state management).
 - [ ] Data loading in `OnInitializedAsync` (not `OnAfterRender`). See `blazor-ui-conventions` (component design).
@@ -45,11 +45,17 @@ This checklist helps ensure components adhere to established patterns and best p
 - [ ] No `StateHasChanged()` in `OnAfterRender` (to prevent infinite loops). See `blazor-ui-conventions` (component design).
 - [ ] Null checks before accessing data.
 
-### MudBlazor Usage
+### MudBlazor Usage & Styling
 
 - [ ] Uses MudBlazor components over raw HTML. See `blazor-ui-conventions` (MudBlazor usage).
 - [ ] Grid system used correctly (`MudGrid` + `MudItem` with breakpoints). See `blazor-ui-conventions` (MudBlazor usage).
 - [ ] Proper component properties (e.g., `Variant`, `Color`, `Size`) are applied. See `blazor-ui-conventions` (MudBlazor usage).
+- [ ] **BEM class names applied via `Class` parameter** (e.g., `Class="event-card event-card--featured"`). See `blazor-css-isolation`.
+- [ ] **CSS isolation via `Component.razor.css` file** (placed next to `.razor` file). See `blazor-css-isolation`.
+- [ ] **BEM naming in CSS** (`.block`, `.block__element`, `.block--modifier`). See `blazor-css-isolation`.
+- [ ] **Child components styled via own `.razor.css` or wrapper pattern** (not ::deep unless necessary). See `blazor-css-isolation`.
+- [ ] **::deep selector used only for third-party internals** (sparingly, documented why). See `blazor-css-isolation`.
+- [ ] **MudBlazor theme variables used** (not hardcoded colors). See `blazor-ui-conventions` (theming).
 - [ ] Dialogs use `[CascadingParameter] MudDialogInstance` for programmatic control. See `blazor-ui-conventions` (MudBlazor usage, common patterns).
 - [ ] Forms use MudBlazor input components. See `blazor-ui-conventions` (MudBlazor usage, common patterns).
 - [ ] Notifications use `ISnackbar`. See `blazor-ui-conventions` (MudBlazor usage).
@@ -102,6 +108,7 @@ To conduct a thorough review, follow these steps, utilizing the referenced skill
 ## Related Skills
 
 - [`blazor-ui-conventions`](../skills/blazor-ui-conventions/SKILL.md) - Comprehensive Blazor UI patterns, MudBlazor usage, theming, component design, state management, render modes.
+- [`blazor-css-isolation`](../skills/blazor-css-isolation/SKILL.md) - **CSS isolation with BEM methodology, ::deep selector, component styling patterns**.
 - [`blazor-bff-patterns`](../skills/blazor-bff-patterns/SKILL.md) - BFF architecture, YARP, token forwarding, cookie management, service layer patterns.
 - [`clean-architecture-rules`](../skills/clean-architecture-rules/SKILL.md) - Layer separation and dependencies relevant to Blazor.
 - [`cqrs-mediatr-guidelines`](../skills/cqrs-mediatr-guidelines/SKILL.md) - MediatR usage from Blazor (if applicable for commands/queries).

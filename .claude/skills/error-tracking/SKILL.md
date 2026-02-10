@@ -1,6 +1,6 @@
 ---
 name: error-tracking
-description: Add Sentry error tracking and performance monitoring to .NET services. Use this skill when adding error handling, creating new controllers, or tracking performance. ALL ERRORS MUST BE CAPTURED - no exceptions.
+description: Implement error tracking and observability using Prometheus (metrics) and Loki (logs). Covers centralized exception handling, structured logging, and performance monitoring for .NET services.
 type: guardrail
 enforcement: suggest
 priority: high
@@ -8,124 +8,101 @@ priority: high
 
 # Error Tracking & Observability Guidelines
 
-> **Project-Agnostic Error Tracking Patterns**
+> **Project-Agnostic Observability Patterns for .NET**
 >
 > Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../docs/TEMPLATE_GLOSSARY.md).
 
 ## Purpose
 
-This skill provides guidelines for implementing robust error tracking and performance monitoring across .NET services (API, Blazor). It outlines patterns for centralized exception handling, logging, tracing, and Sentry integration.
+Guidelines for implementing **robust error tracking** and **performance monitoring** across .NET services using:
+- **Prometheus** - Metrics collection and monitoring
+- **Loki** - Centralized log aggregation
+- **Structured Logging** - Consistent log formatting via Serilog
+- **OpenTelemetry** - Distributed tracing and telemetry
 
 ## When This Skill Activates
 
 **Triggered by**:
-- Keywords: "error handling", "exception", "sentry", "logging", "performance", "tracing", "problem details", "observability"
-- Intent patterns: "add error logging", "implement try-catch", "monitor API performance", "handle UI errors"
+- Keywords: "error handling", "logging", "prometheus", "loki", "observability", "metrics", "tracing"
+- Intent patterns: "add error logging", "monitor performance", "track exceptions", "implement telemetry"
 - File patterns: `**/Program.cs`, `**/*Controller.cs`, `**/*Handler.cs`, `**/*Repository.cs`, `**/*.razor`
 
 ## CRITICAL RULE: Do Not Swallow Exceptions!
 
-All errors **MUST** be handled gracefully. Use structured logging (`ILogger`) and centralized exception handling. When Sentry is integrated, capture all exceptions.
+All errors **MUST** be handled gracefully with structured logging and centralized exception handling.
 
 ## Resources
 
-*For detailed implementation examples, refer to the `resources/` folder within this skill.*
+*Detailed patterns are available in `resources/` (to be created) and [docs/CONFIGURATION.md](../../../docs/CONFIGURATION.md).*
 
 | Resource | Description |
 |----------|-------------|
-| [api-exception-handling.md](resources/api-exception-handling.md) | Centralized API exception handling using `UseExceptionHandler` and `ProblemDetails` (RFC 7807). |
-| [mediatr-logging-behavior.md](resources/mediatr-logging-behavior.md) | MediatR pipeline behavior for centralized logging and error capturing in handlers. |
-| [db-performance-monitoring.md](resources/db-performance-monitoring.md) | Database performance tracing using `ActivitySource` for OpenTelemetry compatibility. |
-| [blazor-error-boundary.md](resources/blazor-error-boundary.md) | Implementing graceful UI error handling in Blazor with the `ErrorBoundary` component. |
-| [sentry-middleware-config.md](resources/sentry-middleware-config.md) | Conceptual guidance for Sentry SDK and middleware integration in ASP.NET Core. |
-| [sentry-testing-endpoints.md](resources/sentry-testing-endpoints.md) | Example API endpoints for testing Sentry integration (error capture, performance). |
+| [api-exception-handling.md](resources/api-exception-handling.md) | Centralized API exception handling with RFC 7807 ProblemDetails |
+| [mediatr-logging-behavior.md](resources/mediatr-logging-behavior.md) | MediatR pipeline behavior for request/response logging |
+| [prometheus-metrics.md](resources/prometheus-metrics.md) | Exposing custom metrics via `/metrics` endpoint |
+| [loki-logging.md](resources/loki-logging.md) | Structured logging to Loki via Serilog |
+| [blazor-error-boundary.md](resources/blazor-error-boundary.md) | Graceful UI error handling with ErrorBoundary component |
+| [opentelemetry-tracing.md](resources/opentelemetry-tracing.md) | Distributed tracing with ActivitySource |
 
 ## Quick Reference
 
 ### 1. Centralized API Exception Handling
+- Use `app.UseExceptionHandler()` to catch unhandled API exceptions
+- Transform exceptions into RFC 7807 `ProblemDetails` format
+- Log exceptions with structured logging before returning response
+- Return appropriate HTTP status codes (400, 404, 500)
 
-API unhandled exceptions are caught and transformed into RFC 7807 `ProblemDetails` responses.
+*Details: [api-exception-handling.md](resources/api-exception-handling.md)*
 
-```csharp
-// {Project}.API/Program.cs (Simplified)
-app.UseExceptionHandler(exceptionHandlerApp => { /* ... */ });
-```
-*For complete code, see [api-exception-handling.md](resources/api-exception-handling.md).*
+### 2. MediatR Pipeline Logging
+- Implement `IPipelineBehavior<TRequest, TResponse>` for centralized logging
+- Log request start/completion with structured data (request name, duration)
+- Capture and log exceptions from handlers
+- Attach correlation IDs and tenant context to logs
 
-### 2. MediatR Handler Logging & Error Capturing
+*Details: [mediatr-logging-behavior.md](resources/mediatr-logging-behavior.md)*
 
-A `LoggingBehavior` in the MediatR pipeline ensures all requests are logged and exceptions are captured.
+### 3. Prometheus Metrics
+- Expose `/metrics` endpoint using `app.MapPrometheusScrapingEndpoint()`
+- Configure OpenTelemetry with `AddPrometheusExporter()`
+- Track: HTTP request durations, database query times, command/query execution
+- Use histograms for latency metrics (P50, P95, P99)
 
-```csharp
-// {Project}.Application/Behaviors/LoggingBehavior.cs (Simplified)
-public sealed class LoggingBehavior<TRequest, TResponse>(ILogger<LoggingBehavior<TRequest, TResponse>> logger)
-    : IPipelineBehavior<TRequest, TResponse>
-{ /* ... */ }
-```
-*For complete code, see [mediatr-logging-behavior.md](resources/mediatr-logging-behavior.md).*
+*Configuration: [docs/CONFIGURATION.md](../../../docs/CONFIGURATION.md) Prometheus section*
 
-### 3. Database Performance Monitoring
+### 4. Loki Centralized Logging
+- Configure Serilog with `GrafanaLoki` sink
+- Add structured labels: `app`, `environment`, `tenant`
+- Include correlation IDs for request tracing
+- Ship logs asynchronously to avoid performance impact
 
-Use `ActivitySource` for custom spans to trace database operations, integrating with OpenTelemetry.
+*Configuration: [docs/CONFIGURATION.md](../../../docs/CONFIGURATION.md) Loki section*
 
-```csharp
-// {Project}.Persistence/Repositories/{Entity}Repository.cs (Simplified)
-using System.Diagnostics;
-public class {Entity}Repository : I{Entity}Repository
-{
-    public async Task<List<{Entity}>> Get{Entities}WithDetails()
-    {
-        using var activity = ActivitySourceProvider.PersistenceActivitySource.StartActivity("...");
-        // ... EF Core query ...
-    }
-}
-```
-*For complete code, see [db-performance-monitoring.md](resources/db-performance-monitoring.md).*
+### 5. Blazor Error Boundary
+- Wrap components in `<ErrorBoundary>` to catch UI exceptions
+- Provide `<ErrorContent>` fallback UI for graceful degradation
+- Log caught exceptions with component context
+- Display user-friendly error messages
 
-### 4. Blazor UI Error Boundary
+*Implementation: [blazor-error-boundary.md](resources/blazor-error-boundary.md)*
 
-Gracefully handle unhandled UI errors in Blazor components, displaying a fallback UI and logging the error.
+### 6. OpenTelemetry Tracing
+- Use `ActivitySource` for distributed tracing
+- Create spans for database operations, external API calls, long-running processes
+- Attach custom tags (entity ID, operation type)
+- Integrate with Prometheus for performance monitoring
 
-```razor
-<!-- {Project}.Blazor/Components/Pages/{Entities}.razor (Simplified) -->
-<ErrorBoundary>
-    <ChildContent> <!-- Potentially error-prone content --> </ChildContent>
-    <ErrorContent Context="ex"> <!-- Fallback UI --> </ErrorContent>
-</ErrorBoundary>
-```
-*For complete code, see [blazor-error-boundary.md](resources/blazor-error-boundary.md).*
-
-### 5. Sentry Integration (Conceptual)
-
-When Sentry is integrated, `UseSentry` and `app.UseSentryTracing()` provide automatic error and performance tracking.
-
-```csharp
-// {Project}.API/Program.cs (Simplified)
-builder.WebHost.UseSentry(options => { /* ... */ });
-app.UseSentryTracing();
-```
-*For complete conceptual configuration and usage, see [sentry-middleware-config.md](resources/sentry-middleware-config.md).*
-
-### 6. Testing Sentry Integration (Conceptual)
-
-Dedicated endpoints can be used to verify Sentry's error and performance capturing capabilities.
-
-```csharp
-// {Project}.API/Controllers/{Entity}Controller.cs (Simplified)
-[HttpGet("sentry/test-error")]
-public IActionResult TestSentryError() { /* ... */ }
-[HttpGet("sentry/test-performance")]
-public async Task<IActionResult> TestPerformance() { /* ... */ }
-```
-*For complete test endpoint examples, see [sentry-testing-endpoints.md](resources/sentry-testing-endpoints.md).*
+*Details: [opentelemetry-tracing.md](resources/opentelemetry-tracing.md)*
 
 ## Key Principles
 
-*   **No Uncaught Exceptions**: All exceptions, whether from API, MediatR handlers, or Blazor UI, should be caught and logged.
-*   **Structured Logging**: Use `ILogger` for all logging, leveraging structured logging capabilities.
-*   **Contextual Information**: When reporting errors, always include relevant context (user ID, tenant ID, request data, tags) to aid in debugging.
-*   **Performance First**: Monitor critical paths (database, external API calls) for performance bottlenecks.
-*   **RFC 7807 Compliance**: Ensure API error responses are standardized using `ProblemDetails`.
+*   **No Uncaught Exceptions**: All exceptions must be caught and logged with structured context
+*   **Structured Logging**: Use Serilog with `ILogger<T>` for consistent log formatting
+*   **Contextual Information**: Include user ID, tenant ID, correlation IDs, and request data in logs
+*   **Metrics Over Logs**: Use Prometheus metrics for performance tracking; logs for debugging
+*   **RFC 7807 Compliance**: API error responses must use `ProblemDetails` format
+*   **Label-Based Filtering**: Add labels to Loki logs for efficient querying (app, env, tenant)
+*   **Performance Monitoring**: Track P50/P95/P99 latencies for critical operations
 
 ---
 

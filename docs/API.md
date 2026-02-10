@@ -338,6 +338,211 @@ public async Task<ActionResult<{Entity}Dto>> GetById({IdType} id)
 public async Task<ActionResult<PaginatedResult<{Entity}ListDto>>> GetAll(...)
 ```
 
+### HATEOAS / HAL+JSON Response Format
+
+All API responses are wrapped in **HAL (Hypertext Application Language)** format, providing hypermedia links for discoverability and navigation.
+
+#### Response Wrapper Types
+
+**For Single Resources:**
+```csharp
+public class HalResource<T>
+{
+    public T Data { get; set; }  // The actual DTO payload
+    public Dictionary<string, HalLink> _links { get; set; }  // Hypermedia links
+}
+
+public class HalLink
+{
+    public string Href { get; set; }       // URL
+    public string? Method { get; set; }    // HTTP method (GET, POST, etc.)
+    public string? Rel { get; set; }       // Link relation type
+}
+```
+
+**For Collections:**
+```csharp
+public class HalCollectionResource<T>
+{
+    public Dictionary<string, object> _embedded { get; set; }  // Contains "items" array
+    public Dictionary<string, HalLink> _links { get; set; }   // Collection navigation links
+    public int TotalCount { get; set; }
+    public int PageNumber { get; set; }
+    public int PageSize { get; set; }
+    public int TotalPages { get; set; }
+}
+```
+
+#### Example Single Resource Response
+
+**Request:**
+```http
+GET /api/v1/events/123e4567-e89b-12d3-a456-426614174000
+Accept: application/hal+json
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "id": "123e4567-e89b-12d3-a456-426614174000",
+    "title": "Community Iftar 2026",
+    "startDate": "2026-03-15T18:00:00Z",
+    "location": "Amsterdam Mosque",
+    "status": "Published"
+  },
+  "_links": {
+    "self": {
+      "href": "/api/v1/events/123e4567-e89b-12d3-a456-426614174000",
+      "method": "GET"
+    },
+    "update": {
+      "href": "/api/v1/events/123e4567-e89b-12d3-a456-426614174000",
+      "method": "PUT"
+    },
+    "delete": {
+      "href": "/api/v1/events/123e4567-e89b-12d3-a456-426614174000",
+      "method": "DELETE"
+    },
+    "sessions": {
+      "href": "/api/v1/events/123e4567-e89b-12d3-a456-426614174000/sessions",
+      "method": "GET"
+    }
+  }
+}
+```
+
+#### Example Collection Response
+
+**Request:**
+```http
+GET /api/v1/events?pageNumber=1&pageSize=10
+Accept: application/hal+json
+```
+
+**Response:**
+```json
+{
+  "_embedded": {
+    "items": [
+      {
+        "id": "123e4567-e89b-12d3-a456-426614174000",
+        "title": "Community Iftar 2026",
+        "startDate": "2026-03-15T18:00:00Z"
+      },
+      {
+        "id": "987e6543-e21c-45d6-b789-123456789abc",
+        "title": "Tech Workshop: Clean Architecture",
+        "startDate": "2026-04-01T14:00:00Z"
+      }
+    ]
+  },
+  "_links": {
+    "self": {
+      "href": "/api/v1/events?pageNumber=1&pageSize=10",
+      "method": "GET"
+    },
+    "first": {
+      "href": "/api/v1/events?pageNumber=1&pageSize=10",
+      "method": "GET"
+    },
+    "next": {
+      "href": "/api/v1/events?pageNumber=2&pageSize=10",
+      "method": "GET"
+    },
+    "last": {
+      "href": "/api/v1/events?pageNumber=5&pageSize=10",
+      "method": "GET"
+    }
+  },
+  "totalCount": 47,
+  "pageNumber": 1,
+  "pageSize": 10,
+  "totalPages": 5
+}
+```
+
+#### Prefer Header Support
+
+Clients can request minimal responses without hypermedia links using the `Prefer` header:
+
+**Request:**
+```http
+GET /api/v1/events/123e4567-e89b-12d3-a456-426614174000
+Prefer: return=minimal
+```
+
+**Response (without _links):**
+```json
+{
+  "data": {
+    "id": "123e4567-e89b-12d3-a456-426614174000",
+    "title": "Community Iftar 2026",
+    "startDate": "2026-03-15T18:00:00Z",
+    "location": "Amsterdam Mosque",
+    "status": "Published"
+  }
+}
+```
+
+#### Resource Assembler Pattern
+
+Controllers use `IResourceAssembler<TDto, TListDto>` to build HAL responses:
+
+**Generic Pattern:**
+```csharp
+public class {Entity}Controller : ControllerBase
+{
+    private readonly IMediator _mediator;
+    private readonly IResourceAssembler<{Entity}Dto, {Entity}ListDto> _resourceAssembler;
+
+    [HttpGet("{id}")]
+    public async Task<ActionResult<HalResource<{Entity}Dto>>> GetById({IdType} id)
+    {
+        var dto = await _mediator.Send(new Get{Entity}DetailsRequest { Id = id });
+        if (dto == null) return NotFound();
+
+        var resource = _resourceAssembler.ToResource(dto, RouteNames.Get{Entity});
+        return Ok(resource);
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<HalCollectionResource<{Entity}ListDto>>> GetAll(...)
+    {
+        var dtos = await _mediator.Send(new Get{Entity}ListRequest { ... });
+        var resource = _resourceAssembler.ToCollectionResource(
+            dtos,
+            RouteNames.Get{Entities},
+            totalCount,
+            pageNumber,
+            pageSize);
+        return Ok(resource);
+    }
+}
+```
+
+**RouteNames Constants:**
+Route names are defined in `RouteNames.cs` for consistency:
+```csharp
+public static class RouteNames
+{
+    public const string GetEvent = "GetEvent";
+    public const string GetEvents = "GetEvents";
+    public const string UpdateEvent = "UpdateEvent";
+    public const string DeleteEvent = "DeleteEvent";
+    // ...
+}
+```
+
+#### Benefits
+
+- **Discoverability**: Clients can navigate the API without hardcoding URLs
+- **Evolvability**: Server can change URLs without breaking clients
+- **Self-Documenting**: Links show available actions based on current state
+- **Bandwidth Control**: Use `Prefer: return=minimal` to reduce payload size
+
+**See Also**: [CODEBASE_INSIGHTS.md](CODEBASE_INSIGHTS.md) Section 14 for HATEOAS implementation details
+
 ---
 
 ## 6. Pagination
@@ -568,7 +773,184 @@ public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] Cre
 
 ---
 
-## 9. Endpoint Reference
+## 9. Output Caching
+
+The API implements **output caching** to improve performance and reduce database load for frequently-accessed, rarely-changing data.
+
+### Cache Policies
+
+Two cache policies are defined in `Program.cs`:
+
+**Generic Pattern:**
+```csharp
+builder.Services.AddOutputCache(options =>
+{
+    // Policy for list endpoints (collections)
+    options.AddPolicy("ListData", builder => builder
+        .Expire(TimeSpan.FromMinutes(5))
+        .SetVaryByQuery("pageNumber", "pageSize", "searchTerm", "sortBy"));
+
+    // Policy for detail endpoints (single resources)
+    options.AddPolicy("DetailData", builder => builder
+        .Expire(TimeSpan.FromMinutes(10))
+        .SetVaryByRouteValue("id"));
+});
+```
+
+### Controller Usage
+
+Apply `[OutputCache]` attribute to GET endpoints:
+
+**Generic Pattern:**
+```csharp
+[HttpGet]
+[AllowAnonymous]
+[OutputCache(PolicyName = "ListData")]
+[EndpointSummary("Get all {Entities}")]
+public async Task<ActionResult<HalCollectionResource<{Entity}ListDto>>> GetAll(
+    [FromQuery] int pageNumber = 1,
+    [FromQuery] int pageSize = 10,
+    [FromQuery] string? searchTerm = null)
+{
+    // Query parameters automatically vary cache key
+    // Each combination of pageNumber/pageSize/searchTerm has separate cache entry
+}
+
+[HttpGet("{id}")]
+[AllowAnonymous]
+[OutputCache(PolicyName = "DetailData")]
+[EndpointSummary("Get {Entity} by ID")]
+public async Task<ActionResult<HalResource<{Entity}Dto>>> GetById({IdType} id)
+{
+    // Route value 'id' automatically varies cache key
+    // Each unique ID has separate cache entry
+}
+```
+
+### Implementation Example: ISLAMU Event
+
+```csharp
+// Explore.API/Controllers/EventController.cs
+[HttpGet(Name = RouteNames.GetEvents)]
+[AllowAnonymous]
+[OutputCache(PolicyName = "ListData")]
+[EndpointSummary("Get all Events")]
+public async Task<ActionResult<HalCollectionResource<EventListDto>>> GetAll(
+    [FromQuery] int pageNumber = ApiConstants.DefaultPageNumber,
+    [FromQuery] int pageSize = ApiConstants.DefaultPageSize,
+    [FromQuery] string? searchTerm = null)
+{
+    // Cached for 5 minutes
+    // Separate cache entry per pageNumber/pageSize/searchTerm combination
+}
+
+[HttpGet("{id:guid}", Name = RouteNames.GetEvent)]
+[AllowAnonymous]
+[OutputCache(PolicyName = "DetailData")]
+[EndpointSummary("Get Event by ID")]
+public async Task<ActionResult<HalResource<EventDto>>> GetById(Guid id)
+{
+    // Cached for 10 minutes
+    // Separate cache entry per event ID
+}
+```
+
+### Cache Invalidation
+
+Cache entries are automatically invalidated based on expiration time. For immediate invalidation after updates:
+
+**Generic Pattern:**
+```csharp
+[HttpPut("{id}")]
+[Authorize]
+public async Task<ActionResult<BaseCommandResponse<{IdType}>>> Update(
+    {IdType} id,
+    [FromBody] Update{Entity}Dto dto)
+{
+    var response = await _mediator.Send(new Update{Entity}Command { {Entity}Dto = dto });
+
+    if (response.Success)
+    {
+        // Invalidate cache for this specific resource
+        // (Automatic - next GET request will refresh cache)
+    }
+
+    return response.Success ? Ok(response) : BadRequest(response);
+}
+```
+
+**Note**: Output cache middleware automatically handles cache key generation and invalidation. No manual cache management needed in controllers.
+
+### Cache Key Variation
+
+Cache keys vary by:
+
+**ListData Policy**:
+- Query parameters: `pageNumber`, `pageSize`, `searchTerm`, `sortBy`
+- Example keys:
+  - `/api/v1/events?pageNumber=1&pageSize=10`
+  - `/api/v1/events?pageNumber=1&pageSize=10&searchTerm=conference`
+
+**DetailData Policy**:
+- Route values: `id`
+- Example keys:
+  - `/api/v1/events/123e4567-e89b-12d3-a456-426614174000`
+  - `/api/v1/events/987e6543-e21c-45d6-b789-123456789abc`
+
+### Configuration
+
+Cache policy configuration in `Program.cs`:
+
+**Generic Pattern:**
+```csharp
+// Register output cache services
+builder.Services.AddOutputCache(options =>
+{
+    options.AddPolicy("ListData", builder => builder
+        .Expire(TimeSpan.FromMinutes(5))
+        .SetVaryByQuery("pageNumber", "pageSize", "searchTerm", "sortBy")
+        .Tag("list-endpoints"));
+
+    options.AddPolicy("DetailData", builder => builder
+        .Expire(TimeSpan.FromMinutes(10))
+        .SetVaryByRouteValue("id")
+        .Tag("detail-endpoints"));
+});
+
+// Enable output cache middleware
+app.UseOutputCache();
+```
+
+### Performance Benefits
+
+- **Reduced Database Load**: Frequently-accessed data served from cache
+- **Improved Response Times**: Cached responses return in <5ms vs 50-200ms for database queries
+- **Scalability**: Cache reduces load on database and application tier
+- **Cost Optimization**: Fewer database queries = lower hosting costs
+
+### Best Practices
+
+**When to Use Output Caching**:
+- ✅ GET endpoints returning infrequently-changing data
+- ✅ Public, read-only endpoints ([AllowAnonymous])
+- ✅ Lookup tables and reference data
+- ✅ List endpoints with pagination
+
+**When NOT to Use Output Caching**:
+- ❌ POST/PUT/DELETE endpoints (write operations)
+- ❌ Endpoints returning user-specific data requiring authorization
+- ❌ Real-time data requiring instant updates
+- ❌ Endpoints with complex authorization logic per user
+
+**Cache Duration Guidelines**:
+- **Lookup Tables**: 30-60 minutes (rarely change)
+- **List Data**: 5 minutes (balance freshness vs performance)
+- **Detail Data**: 10 minutes (more stable than lists)
+- **Hot Paths**: 2-3 minutes (critical endpoints needing fresher data)
+
+---
+
+## 10. Endpoint Reference
 
 ### Core Resources
 
@@ -611,7 +993,7 @@ public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] Cre
 
 ---
 
-## 10. Multi-Tenancy
+## 11. Multi-Tenancy
 
 ### Tenant Header
 

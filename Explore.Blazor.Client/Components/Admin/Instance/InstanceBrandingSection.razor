@@ -1,0 +1,53 @@
+@* ABOUTME: Renders default branding fields for the Instance Admin Settings sidebar. *@
+@* ABOUTME: Includes brand name, logo, favicon, custom CSS URLs, and their tenant lock controls. *@
+
+@using MudBlazor
+@using Explore.Blazor.Client.Services
+
+<div class="settings-section">
+    <div class="settings-section-header">
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">Default Branding</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+            Set the default brand identity applied to new tenants. Lock individual fields to prevent tenant overrides.
+        </MudText>
+    </div>
+    <MudStack Spacing="3">
+        <MudTextField Label="Brand Display Name"
+                      Variant="Variant.Outlined"
+                      @bind-Value="Model.DefaultBrandDisplayName" />
+
+        <MudTextField Label="Brand Logo URL"
+                      Variant="Variant.Outlined"
+                      @bind-Value="Model.DefaultBrandLogoUrl" />
+
+        <MudTextField Label="Brand Favicon URL"
+                      Variant="Variant.Outlined"
+                      @bind-Value="Model.DefaultBrandFaviconUrl" />
+
+        <MudTextField Label="Advanced: Custom CSS URL (Optional)"
+                      Variant="Variant.Outlined"
+                      @bind-Value="Model.DefaultBrandCustomCssUrl"
+                      HelperText="Optional advanced override for platform-level custom stylesheet." />
+
+        <MudSwitch T="bool" @bind-Value="Model.LockTenantBrandDisplayName" Color="Color.Primary">
+            Lock tenant brand display name
+        </MudSwitch>
+
+        <MudSwitch T="bool" @bind-Value="Model.LockTenantBrandLogoUrl" Color="Color.Primary">
+            Lock tenant brand logo
+        </MudSwitch>
+
+        <MudSwitch T="bool" @bind-Value="Model.LockTenantBrandFaviconUrl" Color="Color.Primary">
+            Lock tenant brand favicon
+        </MudSwitch>
+
+        <MudSwitch T="bool" @bind-Value="Model.LockTenantBrandCustomCssUrl" Color="Color.Primary">
+            Lock tenant custom CSS URL
+        </MudSwitch>
+    </MudStack>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public InstanceGovernanceSettingsModel Model { get; set; } = null!;
+}

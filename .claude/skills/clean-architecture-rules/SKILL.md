@@ -244,8 +244,10 @@ public class Create{Entity}CommandHandler : IRequestHandler<Create{Entity}Comman
 
 **✅ Correct Pattern**: Validator instantiated with dependencies passed to constructor
 
+**C# 12+ Primary Constructor (Preferred)**:
+
 ```csharp
-// ✅ CORRECT: Manual instantiation with dependencies
+// ✅ CORRECT: Manual instantiation with primary constructor (C# 12+)
 namespace {Project}.Application.Features.{Entities}.Handlers.Commands;
 
 using System.Linq;
@@ -259,6 +261,49 @@ using {Project}.Application.Responses;
 using {Project}.Domain;
 using MediatR;
 
+public class Create{Entity}CommandHandler(
+    I{Entity}Repository {entity}Repository,
+    I{RelatedEntity1}Repository {relatedEntity1}Repository,
+    I{RelatedEntity2}Repository {relatedEntity2}Repository,
+    IMapper mapper) : IRequestHandler<Create{Entity}Command, BaseCommandResponse<{IdType}>>
+{
+    public async Task<BaseCommandResponse<{IdType}>> Handle(Create{Entity}Command request, CancellationToken cancellationToken)
+    {
+        var response = new BaseCommandResponse<{IdType}>();
+
+        // ✅ CORRECT: Validator instantiated manually with all dependencies
+        var validator = new Create{Entity}DtoValidator(
+            {relatedEntity1}Repository,
+            {relatedEntity2}Repository);
+
+        var validationResult = await validator.ValidateAsync(request.{Entity}Dto, cancellationToken);
+
+        if (!validationResult.IsValid)
+        {
+            response.Success = false;
+            response.Message = "{Entity} creation failed.";
+            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+            return response;
+        }
+
+        // Map DTO to Entity
+        var {entity} = mapper.Map<{Entity}>(request.{Entity}Dto);
+
+        // Save through repository
+        {entity} = await {entity}Repository.Create({entity});
+
+        response.Success = true;
+        response.Id = {entity}.Id;
+        response.Message = "{Entity} created successfully.";
+
+        return response;
+    }
+}
+```
+
+**Traditional Constructor (Still Valid)**:
+
+```csharp
 public class Create{Entity}CommandHandler : IRequestHandler<Create{Entity}Command, BaseCommandResponse<{IdType}>>
 {
     private readonly I{Entity}Repository _{entity}Repository;
@@ -277,38 +322,7 @@ public class Create{Entity}CommandHandler : IRequestHandler<Create{Entity}Comman
         _{relatedEntity2}Repository = {relatedEntity2}Repository;
         _mapper = mapper;
     }
-
-    public async Task<BaseCommandResponse<{IdType}>> Handle(Create{Entity}Command request, CancellationToken cancellationToken)
-    {
-        var response = new BaseCommandResponse<{IdType}>();
-
-        // ✅ CORRECT: Validator instantiated manually with all dependencies
-        var validator = new Create{Entity}DtoValidator(
-            _{relatedEntity1}Repository,
-            _{relatedEntity2}Repository);
-
-        var validationResult = await validator.ValidateAsync(request.{Entity}Dto, cancellationToken);
-
-        if (!validationResult.IsValid)
-        {
-            response.Success = false;
-            response.Message = "{Entity} creation failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
-        }
-
-        // Map DTO to Entity
-        var {entity} = _mapper.Map<{Entity}>(request.{Entity}Dto);
-
-        // Save through repository
-        {entity} = await _{entity}Repository.Create({entity});
-
-        response.Success = true;
-        response.Id = {entity}.Id;
-        response.Message = "{Entity} created successfully.";
-
-        return response;
-    }
+    // ... Handle method same as above
 }
 ```
 

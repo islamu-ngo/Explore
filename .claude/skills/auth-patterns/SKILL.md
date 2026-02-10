@@ -1,3 +1,4 @@
+---
 name: auth-patterns
 description: Guidelines for authentication and authorization patterns covering OIDC, JWT, and BFF security in .NET Clean Architecture projects.
 type: domain

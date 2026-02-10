@@ -1,0 +1,42 @@
+@* ABOUTME: Renders event and organization policy settings for the Tenant Admin Settings sidebar. *@
+@* ABOUTME: Includes user submission, approval, and verification switches with instance-level lock support. *@
+
+@using MudBlazor
+@using Explore.Blazor.Client.Services
+
+<div class="settings-section">
+    <div class="settings-section-header">
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">Event & Organization Policies</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+            Control how events are submitted, approved, and how organizations are verified.
+        </MudText>
+    </div>
+    <MudStack Spacing="3">
+        <MudSwitch T="bool" @bind-Value="Model.AllowUserSubmittedEvents" Color="Color.Primary">
+            Allow users to submit events
+        </MudSwitch>
+
+        <MudSwitch T="bool" @bind-Value="Model.RequireEventApproval" Color="Color.Primary">
+            Require approval before publication
+        </MudSwitch>
+
+        <MudSwitch T="bool"
+                   @bind-Value="Model.RequireOrganizationVerification"
+                   Color="Color.Primary"
+                   Disabled="@(!Model.CanTenantOmitVerification)">
+            Require organization verification
+        </MudSwitch>
+
+        @if (!Model.CanTenantOmitVerification)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Warning">
+                Verification requirement is locked by instance policy.
+            </MudText>
+        }
+    </MudStack>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public TenantPolicySettingsModel Model { get; set; } = null!;
+}

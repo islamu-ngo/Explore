@@ -9,6 +9,9 @@
 @using Explore.Blazor.Client.Pages.User
 @using Explore.Blazor.Client.Pages.Organization
 @using Explore.Blazor.Client.Pages.Admin
+@using Explore.Blazor.Client.Pages.Admin.Instance
+@using Explore.Blazor.Client.Pages.Admin.Tenant
+@using Explore.Blazor.Client.Pages.Admin.Organization
 @using Explore.Blazor.Client.Pages.Landing
 @using Explore.Blazor.Client.Pages.Onboarding
 @using Explore.Blazor.Client.Providers
@@ -93,6 +96,21 @@
             new RouteConfig { Path = "/admin/categories", Component = typeof(Categories), Transition = RouteTransition.Fade, Guards = RequireAdmin() },
             new RouteConfig { Path = "/admin/locations", Component = typeof(Locations), Transition = RouteTransition.Fade, Guards = RequireAdmin() },
             new RouteConfig { Path = "/admin/tags", Component = typeof(Tags), Transition = RouteTransition.Fade, Guards = RequireAdmin() },
+
+            // Admin settings routes
+            new RouteConfig { Path = "/admin/instance/settings", Component = typeof(InstanceAdminSettings), Transition = RouteTransition.Fade, Guards = RequireAdmin() },
+            new RouteConfig { Path = "/admin/tenant/settings", Component = typeof(TenantAdminSettings), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+            new RouteConfig { Path = "/admin/organization/:OrganizationId/settings", Component = typeof(OrganizationAdminSettings), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+
+            // Admin lookup table routes
+            new RouteConfig { Path = "/admin/lookup-tables", Component = typeof(LookupTables), Transition = RouteTransition.Fade, Guards = RequireAdmin() },
+            new RouteConfig { Path = "/admin/event-types", Component = typeof(EventTypes), Transition = RouteTransition.Fade, Guards = RequireAdmin() },
+            new RouteConfig { Path = "/admin/event-formats", Component = typeof(EventFormats), Transition = RouteTransition.Fade, Guards = RequireAdmin() },
+            new RouteConfig { Path = "/admin/event-statuses", Component = typeof(EventStatuses), Transition = RouteTransition.Fade, Guards = RequireAdmin() },
+            new RouteConfig { Path = "/admin/audience-ages", Component = typeof(AudienceAges), Transition = RouteTransition.Fade, Guards = RequireAdmin() },
+            new RouteConfig { Path = "/admin/audience-genders", Component = typeof(AudienceGenders), Transition = RouteTransition.Fade, Guards = RequireAdmin() },
+            new RouteConfig { Path = "/admin/languages", Component = typeof(Languages), Transition = RouteTransition.Fade, Guards = RequireAdmin() },
+            new RouteConfig { Path = "/admin/madhabs", Component = typeof(Madhabs), Transition = RouteTransition.Fade, Guards = RequireAdmin() },
     };
     }
 }

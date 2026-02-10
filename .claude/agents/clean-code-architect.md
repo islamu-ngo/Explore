@@ -73,6 +73,83 @@ Before considering any implementation complete, verify:
 
 Always consider existing project patterns, coding standards, and architectural decisions from project configuration files. Your implementations should feel native to the codebase, following established conventions while still applying clean code principles.
 
+### Enterprise .NET Patterns (C# 12+)
+
+Apply modern C# features for cleaner, more maintainable code:
+
+**Primary Constructors** (C# 12+):
+```csharp
+// ✅ PREFERRED: Primary constructor
+public class EventService(
+    IEventRepository eventRepository,
+    IMapper mapper,
+    ILogger<EventService> logger) : IEventService
+{
+    public async Task<List<EventDto>> GetAllAsync()
+    {
+        var events = await eventRepository.GetAllAsync();
+        return mapper.Map<List<EventDto>>(events);
+    }
+}
+
+// Still valid but more verbose
+public class EventService : IEventService
+{
+    private readonly IEventRepository _eventRepository;
+    private readonly IMapper _mapper;
+
+    public EventService(IEventRepository eventRepository, IMapper mapper)
+    {
+        _eventRepository = eventRepository;
+        _mapper = mapper;
+    }
+}
+```
+
+**Required Members** (C# 11+):
+```csharp
+// ✅ Use required for mandatory initialization
+public class CreateEventDto
+{
+    public required string Title { get; set; }
+    public required string Description { get; set; }
+    public DateTime? StartDate { get; set; }
+}
+```
+
+**Collection Expressions** (C# 12):
+```csharp
+// ✅ Modern collection initialization
+var errors = ["Title required", "Date invalid"];
+var events = [event1, event2, event3];
+```
+
+**File-Scoped Namespaces** (C# 10+):
+```csharp
+// ✅ PREFERRED: File-scoped (one less indentation level)
+namespace Project.Application.Features.Events;
+
+public class EventService { }
+```
+
+### Clean Architecture Compliance
+
+**CRITICAL**: Follow dependency rules from `clean-architecture-rules` skill:
+- Domain → (no dependencies)
+- Application → Domain only
+- Infrastructure → Application + Domain
+- API/Blazor → All layers
+
+**Command/Query Pattern** (from `cqrs-mediatr-guidelines`):
+- Commands return `BaseCommandResponse<T>` (not just `T`)
+- Queries return DTOs (not entities)
+- Validators instantiated manually (not DI injected)
+
+**Repository Pattern** (from `dotnet-efcore-guidelines`):
+- Repositories return entities (not DTOs)
+- Handlers map entities to DTOs
+- Use DbContext pooling for performance
+
 ## Communication Style
 
 - Explain your design decisions and the reasoning behind them

@@ -1244,36 +1244,79 @@ private async Task DarkModeToggle()
 
 ## 12. CSS & Styling Conventions
 
-### BEM Methodology
+### CSS Isolation Architecture
 
-Use BEM (Block Element Modifier) for CSS class naming:
+Blazor provides **CSS isolation** via `.razor.css` files that scope styles to individual components, preventing global collisions.
 
+#### How CSS Isolation Works
+
+**Build-Time Process**:
+1. Blazor generates unique scope attribute: `b-<10-char-string>` (e.g., `b-3xxtam6d07`)
+2. Appends scope attribute to all selectors in `.razor.css`
+3. Applies scope attribute to rendered DOM elements
+4. Bundles scoped CSS into `{Project}.styles.css`
+
+**Example Transformation**:
+```css
+/* Author in Counter.razor.css */
+h1 { color: brown; }
+
+/* Compiled in Explore.styles.css */
+h1[b-3xxtam6d07] { color: brown; }
+```
+
+**Rendered HTML**:
+```html
+<h1 b-3xxtam6d07>Counter</h1>
+```
+
+**Result**: Styles apply ONLY to component's elements, never globally.
+
+---
+
+### BEM Methodology with CSS Isolation
+
+Use BEM (Block Element Modifier) naming **even with isolation** for explicit, maintainable styling hooks.
+
+#### BEM Pattern Structure
+
+```
+.block
+.block__element
+.block--modifier
+.block__element--modifier
+```
+
+#### Component Example (EventCard)
+
+**File Structure**:
+```
+Components/
+├── EventCard.razor
+└── EventCard.razor.css
+```
+
+**EventCard.razor**:
+```razor
+<MudCard Class="event-card event-card--featured">
+    <MudCardHeader Class="event-card__header">
+        <MudText Typo="Typo.h6" Class="event-card__title">@Title</MudText>
+        <span class="event-card__badge event-card__badge--new">New</span>
+    </MudCardHeader>
+    <MudCardContent Class="event-card__body">
+        <MudText Class="event-card__description">@Description</MudText>
+    </MudCardContent>
+    <MudCardActions Class="event-card__footer">
+        <MudButton Class="event-card__action">Register</MudButton>
+    </MudCardActions>
+</MudCard>
+```
+
+**EventCard.razor.css** (scoped automatically):
 ```css
 /* Block */
-.event-card { }
-
-/* Element */
-.event-card__title { }
-.event-card__actions { }
-.event-card__badge { }
-
-/* Modifier */
-.event-card--featured { }
-.event-card--compact { }
-```
-
-### Component-Scoped CSS
-
-Place CSS in `.razor.css` files:
-
-```
-EventCard.razor
-EventCard.razor.css
-```
-
-```css
-/* EventCard.razor.css */
 .event-card {
+    border-radius: 12px;
     transition: box-shadow 0.2s ease;
 }
 
@@ -1281,11 +1324,192 @@ EventCard.razor.css
     box-shadow: var(--mud-elevation-4);
 }
 
+/* Block modifier */
+.event-card--featured {
+    border-left: 4px solid var(--mud-palette-success);
+}
+
+/* Elements */
+.event-card__header {
+    background: var(--mud-palette-surface-variant);
+}
+
 .event-card__title {
     font-weight: 600;
-    margin-bottom: 0.5rem;
+    color: var(--mud-palette-primary);
+}
+
+.event-card__badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+
+/* Element modifier */
+.event-card__badge--new {
+    background: var(--mud-palette-success);
+    color: var(--mud-palette-success-text);
+}
+
+.event-card__body {
+    padding: 16px;
+}
+
+.event-card__description {
+    line-height: 1.6;
+}
+
+.event-card__footer {
+    justify-content: flex-end;
 }
 ```
+
+**Compiled Output** (automatic):
+```css
+/* All selectors receive scope attribute */
+.event-card[b-xyz123] { ... }
+.event-card--featured[b-xyz123] { ... }
+.event-card__header[b-xyz123] { ... }
+/* Prevents collision with other components' .event-card */
+```
+
+---
+
+### Styling Child Components
+
+#### Pattern A: Child's Own CSS (Preferred)
+
+Each component styles itself in its own `.razor.css`.
+
+```css
+/* Parent.razor.css */
+.parent {
+    display: grid;
+    gap: 16px;
+}
+
+/* EventCard.razor.css (child owns its styles) */
+.event-card {
+    padding: 12px;
+    background: var(--mud-palette-surface);
+}
+```
+
+**Why**: Separation of concerns; child owns its presentation.
+
+---
+
+#### Pattern B: Wrapper Container (Safe Descendant Styling)
+
+Wrap child in HTML element to enable parent's descendant selectors.
+
+```razor
+<div class="parent">
+    <div class="parent__child-wrapper">
+        <ChildComponent />
+    </div>
+</div>
+```
+
+```css
+/* Parent.razor.css */
+.parent__child-wrapper {
+    padding: 8px;
+    border: 1px solid var(--mud-palette-divider);
+}
+```
+
+**Why**: Wrapper gets scope attribute; you can style without penetrating child.
+
+---
+
+#### Pattern C: The ::deep Selector (Last Resort)
+
+**Purpose**: Penetrate child component encapsulation.
+
+**Transformation**:
+```css
+/* Author */
+.parent ::deep .child-element { color: red; }
+
+/* Compiled */
+.parent[b-xyz123] .child-element { color: red; }
+```
+
+**Example** - Styling MudBlazor Component:
+```css
+/* Host.razor.css */
+.host ::deep .mud-table-cell {
+    padding: 12px 16px;
+}
+```
+
+**When to Use ::deep**:
+- ✅ Styling third-party components with no exposed API
+- ✅ Overriding MudBlazor internals when necessary
+
+**When NOT to Use ::deep**:
+- ❌ Styling your own child components (use child's `.razor.css`)
+- ❌ First resort (prefer wrapper or component parameters)
+
+**Tradeoffs**:
+- ⚠️ **Fragile**: Coupled to child's internal markup
+- ⚠️ **Upgrade Risk**: Library updates may break selectors
+
+---
+
+### CSS Isolation File Structure
+
+**Required Pattern**:
+- Place `ComponentName.razor.css` next to `ComponentName.razor`
+- File names must match (case-insensitive)
+- Reference `{Project}.styles.css` bundle in `App.razor` or `index.html`
+
+**Example Structure**:
+```
+Components/
+├── EventList.razor
+├── EventList.razor.css       ✅ Scoped to EventList
+├── EventCard.razor
+└── EventCard.razor.css       ✅ Scoped to EventCard
+```
+
+**Bundle Reference** (`App.razor`):
+```html
+<link href="Explore.styles.css" rel="stylesheet" />
+```
+
+---
+
+### Debugging Scoped CSS
+
+**Step 1: Inspect Element Scope Attribute**
+```html
+<h1 b-3xxtam6d07>Counter</h1>
+```
+
+**Step 2: Find Matching Selector in DevTools**
+```css
+h1[b-3xxtam6d07] { color: brown; }
+```
+
+**Step 3: Verify Bundle Reference**
+
+Check `App.razor` includes:
+```html
+<link href="Explore.styles.css" rel="stylesheet" />
+```
+
+#### Common Issues & Solutions
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| Styles not applying | Missing bundle reference | Add `<link>` to `{Project}.styles.css` |
+| Child not styled | Using parent CSS | Add `.razor.css` to child OR use ::deep |
+| ::deep not working | Child renders to body | Use component's `Target` parameter |
+
+---
 
 ### Global Styles
 

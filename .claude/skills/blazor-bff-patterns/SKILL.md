@@ -1,3 +1,4 @@
+---
 name: blazor-bff-patterns
 description: Backend for Frontend (BFF) patterns for Blazor applications. Covers YARP proxy, token forwarding, cookie-based auth, and service layer integration.
 type: domain

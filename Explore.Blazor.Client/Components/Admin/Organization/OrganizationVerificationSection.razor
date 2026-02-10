@@ -1,0 +1,121 @@
+@* ABOUTME: Displays the organization's current verification/approval status with a colored badge. *@
+@* ABOUTME: Part of the Organization Admin Settings sidebar layout. Read-only for non-admin users. *@
+
+@using MudBlazor
+@using Explore.Blazor.Client.Services
+@inject IOrganizationService OrganizationService
+
+<div class="settings-section">
+    <div class="settings-section-header">
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">Verification Status</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+            Your organization's approval and verification standing.
+        </MudText>
+    </div>
+
+    @if (_loading)
+    {
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Small" />
+    }
+    else if (_organization is null)
+    {
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true">
+            Verification status could not be loaded.
+        </MudAlert>
+    }
+    else
+    {
+        <MudStack Spacing="3">
+            <MudPaper Elevation="0" Class="pa-4 border-solid border-1 mud-border-lines-default rounded-lg">
+                <MudStack Spacing="3">
+                    <div class="d-flex align-center gap-3">
+                        <MudIcon Icon="@GetStatusIcon()" Color="@GetStatusColor()" Size="Size.Medium" />
+                        <div>
+                            <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">
+                                @GetStatusLabel()
+                            </MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @(_organization.ApprovalStatusFullName ?? "Unknown status")
+                            </MudText>
+                        </div>
+                        <MudSpacer />
+                        <MudChip T="string"
+                                 Color="@GetStatusColor()"
+                                 Size="Size.Small"
+                                 Variant="Variant.Filled">
+                            @GetStatusLabel()
+                        </MudChip>
+                    </div>
+
+                    <MudDivider />
+
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        @GetStatusDescription()
+                    </MudText>
+                </MudStack>
+            </MudPaper>
+
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Icon="@Icons.Material.Filled.Info">
+                Verification is managed by platform administrators. Verified organizations receive a badge
+                on their public profile and gain access to additional features.
+            </MudAlert>
+        </MudStack>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public Guid OrganizationId { get; set; }
+
+    private const int StatusPending = 1;
+    private const int StatusApproved = 2;
+    private const int StatusRejected = 3;
+
+    private OrganizationDto? _organization;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        try
+        {
+            _organization = await OrganizationService.GetOrganizationByIdAsync(OrganizationId);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private string GetStatusLabel() => _organization?.ApprovalStatusId switch
+    {
+        StatusPending => "Pending",
+        StatusApproved => "Approved",
+        StatusRejected => "Rejected",
+        _ => "Unknown"
+    };
+
+    private Color GetStatusColor() => _organization?.ApprovalStatusId switch
+    {
+        StatusPending => Color.Warning,
+        StatusApproved => Color.Success,
+        StatusRejected => Color.Error,
+        _ => Color.Default
+    };
+
+    private string GetStatusIcon() => _organization?.ApprovalStatusId switch
+    {
+        StatusPending => Icons.Material.Filled.HourglassTop,
+        StatusApproved => Icons.Material.Filled.Verified,
+        StatusRejected => Icons.Material.Filled.Cancel,
+        _ => Icons.Material.Filled.HelpOutline
+    };
+
+    private string GetStatusDescription() => _organization?.ApprovalStatusId switch
+    {
+        StatusPending => "Your organization is currently under review. This process typically takes a few business days.",
+        StatusApproved => "Your organization has been verified and approved. A verification badge is displayed on your public profile.",
+        StatusRejected => "Your organization's verification request was not approved. Please contact support for more information.",
+        _ => "The current verification status could not be determined."
+    };
+}

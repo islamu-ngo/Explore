@@ -386,9 +386,9 @@ public class {Entity}Repository : GenericRepository<{Entity}, {IdType}>, I{Entit
 // Shared DTO in {Project}.Application
 public record {Entity}ListDto
 {
-    public {IdType} Id { get; init; }
-    public string Title { get; init; } = string.Empty;
-    public string {LookupEntity}Name { get; init; } = string.Empty;
+    public {IdType} Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string {LookupEntity}Name { get; set; } = string.Empty;
 }
 
 // API endpoint in {Project}.API

@@ -1,0 +1,97 @@
+@* ABOUTME: Sidebar layout component for Organization Admin Settings. *@
+@* ABOUTME: Provides Google-style sidebar navigation for organization profile, members, and verification. *@
+
+@using MudBlazor
+@using Explore.Blazor.Client.Services
+
+@inject IOrganizationService OrganizationService
+
+<div class="settings-layout">
+    <MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
+        @if (_isLoading)
+        {
+            <MudStack AlignItems="AlignItems.Center" Class="py-12">
+                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-4">Loading organization settings...</MudText>
+            </MudStack>
+        }
+        else if (_organization is null)
+        {
+            <MudAlert Severity="Severity.Warning" Class="mb-4">Organization not found.</MudAlert>
+        }
+        else
+        {
+            <!-- Header -->
+            <div class="settings-header mb-8">
+                <MudText Typo="Typo.h4" Style="font-weight: 800;">@_organization.FullName</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">Organization settings and management</MudText>
+            </div>
+
+            <!-- Main Layout: Sidebar + Content -->
+            <MudGrid Spacing="4">
+                <!-- Sidebar Navigation -->
+                <MudItem xs="12" sm="12" md="3">
+                    <MudPaper Elevation="0" Class="settings-sidebar pa-0 rounded-lg border-solid border-1 mud-border-lines-default">
+                        <MudList T="string" Dense="false" DisablePadding="true">
+                            <MudListItem Icon="@Icons.Material.Filled.Business"
+                                         Text="Profile"
+                                         Class="@GetNavItemClass("profile")"
+                                         OnClick="@(() => SelectSection("profile"))" />
+                            <MudListItem Icon="@Icons.Material.Filled.People"
+                                         Text="Members"
+                                         Class="@GetNavItemClass("members")"
+                                         OnClick="@(() => SelectSection("members"))" />
+                            <MudListItem Icon="@Icons.Material.Filled.VerifiedUser"
+                                         Text="Verification"
+                                         Class="@GetNavItemClass("verification")"
+                                         OnClick="@(() => SelectSection("verification"))" />
+                        </MudList>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Content Area -->
+                <MudItem xs="12" sm="12" md="9">
+                    <MudPaper Elevation="0" Class="settings-content pa-6 rounded-lg border-solid border-1 mud-border-lines-default">
+                        @if (_currentSection == "profile")
+                        {
+                            <OrganizationProfileSection OrganizationId="OrganizationId" />
+                        }
+                        else if (_currentSection == "members")
+                        {
+                            <OrganizationMembersSection OrganizationId="OrganizationId" />
+                        }
+                        else if (_currentSection == "verification")
+                        {
+                            <OrganizationVerificationSection OrganizationId="OrganizationId" />
+                        }
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        }
+    </MudContainer>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public Guid OrganizationId { get; set; }
+
+    private OrganizationDto? _organization;
+    private bool _isLoading = true;
+    private string _currentSection = "profile";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _organization = await OrganizationService.GetOrganizationByIdAsync(OrganizationId);
+        _isLoading = false;
+    }
+
+    private void SelectSection(string section)
+    {
+        _currentSection = section;
+    }
+
+    private string GetNavItemClass(string section)
+    {
+        return _currentSection == section ? "settings-nav-active" : "";
+    }
+}

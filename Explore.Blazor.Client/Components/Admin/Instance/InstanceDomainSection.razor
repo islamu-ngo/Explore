@@ -1,0 +1,38 @@
+@* ABOUTME: Renders domain governance fields for the Instance Admin Settings sidebar. *@
+@* ABOUTME: Includes base domain, custom domain toggles, and subdomain/domain lock controls. *@
+
+@using MudBlazor
+@using Explore.Blazor.Client.Services
+
+<div class="settings-section">
+    <div class="settings-section-header">
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">Domain Governance</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+            Configure the instance base domain, tenant subdomain rules, and custom domain policies.
+        </MudText>
+    </div>
+    <MudStack Spacing="3">
+        <MudTextField Label="Instance Base Domain"
+                      Variant="Variant.Outlined"
+                      @bind-Value="Model.InstanceBaseDomain"
+                      Placeholder="example.com"
+                      HelperText="Used for tenant subdomains (e.g., tenant.example.com)." />
+
+        <MudSwitch T="bool" @bind-Value="Model.AllowTenantCustomDomains" Color="Color.Primary">
+            Allow tenant custom domains
+        </MudSwitch>
+
+        <MudSwitch T="bool" @bind-Value="Model.LockTenantSubdomain" Color="Color.Primary">
+            Lock tenant subdomain changes
+        </MudSwitch>
+
+        <MudSwitch T="bool" @bind-Value="Model.LockTenantCustomDomain" Color="Color.Primary">
+            Lock tenant custom domain changes
+        </MudSwitch>
+    </MudStack>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public InstanceGovernanceSettingsModel Model { get; set; } = null!;
+}

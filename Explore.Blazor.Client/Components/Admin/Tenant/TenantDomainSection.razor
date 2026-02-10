@@ -1,0 +1,41 @@
+@* ABOUTME: Renders domain and home page settings for the Tenant Admin Settings sidebar. *@
+@* ABOUTME: Includes preferred home page, subdomain, and custom domain fields with instance-level lock support. *@
+
+@using MudBlazor
+@using Explore.Blazor.Client.Services
+
+<div class="settings-section">
+    <div class="settings-section-header">
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">Domain & Navigation</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+            Configure your tenant's home page preference, subdomain, and custom domain.
+        </MudText>
+    </div>
+    <MudStack Spacing="3">
+        <MudSelect T="string"
+                   Label="Preferred Home Page"
+                   @bind-Value="Model.PreferredHomePage"
+                   Variant="Variant.Outlined"
+                   Disabled="@(!Model.CanOverrideHomePagePreference)">
+            <MudSelectItem Value="@("EventList")">Event List</MudSelectItem>
+            <MudSelectItem Value="@("LandingPage")">Landing Page</MudSelectItem>
+        </MudSelect>
+
+        <MudTextField Label="Subdomain"
+                      Variant="Variant.Outlined"
+                      @bind-Value="Model.Subdomain"
+                      Disabled="@(!Model.CanOverrideSubdomain)"
+                      HelperText="@($"{Model.Subdomain}.{Model.InstanceBaseDomain}")" />
+
+        <MudTextField Label="Custom Domain"
+                      Variant="Variant.Outlined"
+                      @bind-Value="Model.CustomDomain"
+                      Disabled="@(!Model.CanOverrideCustomDomain)"
+                      Placeholder="custom.yourdomain.com" />
+    </MudStack>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public TenantPolicySettingsModel Model { get; set; } = null!;
+}

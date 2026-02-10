@@ -1,0 +1,17 @@
+@* ABOUTME: Page wrapper for the Organization Admin Settings sidebar layout. *@
+@* ABOUTME: Routes to /admin/organization/:id/settings with authenticated user authorization. *@
+
+@page "/admin/organization/{OrganizationId:guid}/settings"
+@using MudBlazor
+@using Microsoft.AspNetCore.Authorization
+@using Explore.Blazor.Client.Components.Admin.Organization
+@attribute [Authorize]
+
+<PageTitle>Organization Settings</PageTitle>
+
+<OrganizationAdminSettingsLayout OrganizationId="OrganizationId" />
+
+@code {
+    [Parameter]
+    public Guid OrganizationId { get; set; }
+}

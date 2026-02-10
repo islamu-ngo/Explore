@@ -58,39 +58,57 @@ graph TD
 
 ## Quick Reference
 
-### 1. DbContext Pattern
+### 1. DbContext Pattern (with Pooling)
 
-The `{DbContext}` manages database interactions.
+**EF Core 10+ Pattern**: Use DbContext pooling with property injection for scoped dependencies (e.g., TenantContext).
+
+#### DbContext Configuration
 
 ```csharp
 // File: {Project}.Persistence/{DbContext}.cs
 public class {DbContext} : DbContext
 {
+    // Property injection for pooled DbContext (set by DI after pool retrieval)
+    public ITenantContext? TenantContext { get; set; }
+
     public {DbContext}(DbContextOptions<{DbContext}> options) : base(options) { }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-        // Automatically applies all IEntityTypeConfiguration<T> from the assembly
+
+        // Apply all IEntityTypeConfiguration<T> from assembly
         modelBuilder.ApplyConfigurationsFromAssembly(typeof({DbContext}).Assembly);
     }
 
-    // Override SaveChangesAsync for cross-cutting concerns like auditing or soft deletes
+    // Override SaveChangesAsync for auditing/soft delete logic
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        // Example: Audit logging or automatic timestamp updates
         foreach (var entry in ChangeTracker.Entries())
         {
-            // Handle CreatedAt, UpdatedAt logic
+            // Set CreatedAt, UpdatedAt, CreatedBy, UpdatedBy
+            // Use TenantContext?.UserId for audit fields
         }
         return base.SaveChangesAsync(cancellationToken);
     }
 
     public DbSet<{Entity}> {Entities} { get; set; } = null!;
-    public DbSet<{ParentEntity}> {ParentEntities} { get; set; } = null!;
-    // ... other DbSets
 }
 ```
+
+#### Registration with Pooling
+
+```csharp
+// File: {Project}.Persistence/DependencyInjection.cs
+builder.Services.AddDbContextPool<{DbContext}>((provider, options) =>
+{
+    options.UseNpgsql(connectionString)
+        .UseSnakeCaseNamingConvention()
+        .EnableSensitiveDataLogging(isDevelopment);
+});
+```
+
+**Key Benefits**: Pooling reuses DbContext instances for up to 10x performance improvement on high-throughput workloads.
 
 *For more details, see [dbcontext-patterns.md](resources/dbcontext-patterns.md).*
 
