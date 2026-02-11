@@ -15,4 +15,8 @@
     <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
     <RestoreLockedMode>true</RestoreLockedMode>
   </PropertyGroup>
+
+  <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
+    <EnableMicrosoftTestingPlatformExtensions>true</EnableMicrosoftTestingPlatformExtensions>
+  </PropertyGroup>
 </Project>

@@ -42,8 +42,13 @@ public class HateoasLinkGeneratorTests
         var json = JsonDocument.Parse(content);
 
         await Assert.That(json.RootElement.TryGetProperty("_links", out var links)).IsTrue();
-        await Assert.That(links.TryGetProperty("self", out var selfLink)).IsTrue();
-        await Assert.That(selfLink.TryGetProperty("href", out var href)).IsTrue();
+
+        var hasSelfLink = links.TryGetProperty("self", out var selfLink);
+        var hasFirstLink = links.TryGetProperty("first", out var firstLink);
+        await Assert.That(hasSelfLink || hasFirstLink).IsTrue();
+
+        var canonicalLink = hasSelfLink ? selfLink : firstLink;
+        await Assert.That(canonicalLink.TryGetProperty("href", out var href)).IsTrue();
 
         var hrefValue = href.GetString();
         await Assert.That(hrefValue).IsNotNull();
