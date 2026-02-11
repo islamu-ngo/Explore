@@ -258,8 +258,7 @@ builder.Services.AddAuthentication(options =>
 
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            NameClaimType = "preferred_username",
-            RoleClaimType = "roles"
+            NameClaimType = "preferred_username"
         };
 
         // Request offline_access to get refresh token
@@ -342,6 +341,10 @@ var proxyClusters = new[]
         Destinations = new Dictionary<string, DestinationConfig>
         {
             ["primary"] = new() { Address = exploreApiBaseUrl }
+        },
+        HttpClient = new HttpClientConfig
+        {
+            DangerousAcceptAnyServerCertificate = builder.Environment.IsDevelopment()
         }
     }
 };
@@ -725,6 +728,25 @@ if (app.Environment.IsDevelopment())
     }).RequireAuthorization();
 }
 
+// Theme preference endpoint - sets cookie for SSR theme rendering
+app.MapPost("/bff/theme", (HttpContext ctx) =>
+{
+    var theme = ctx.Request.Query["theme"].ToString();
+    if (theme is "dark" or "light")
+    {
+        ctx.Response.Cookies.Append("theme", theme, new CookieOptions
+        {
+            MaxAge = TimeSpan.FromDays(365),
+            Path = "/",
+            SameSite = SameSiteMode.Lax,
+            HttpOnly = false,
+            Secure = !app.Environment.IsDevelopment()
+        });
+        return Results.Ok();
+    }
+    return Results.BadRequest();
+}).ExcludeFromDescription();
+
 app.MapGet("/bff/me", (HttpContext ctx) =>
 {
     if (ctx.User.Identity?.IsAuthenticated != true)
@@ -733,7 +755,7 @@ app.MapGet("/bff/me", (HttpContext ctx) =>
     }
 
     // Return only safe, non-sensitive claims needed by the frontend
-    var safeClaims = new[] { "preferred_username", "email", "name", "given_name", "family_name", "roles", "sub" };
+    var safeClaims = new[] { "preferred_username", "email", "name", "given_name", "family_name", "sub" };
     return Results.Ok(new
     {
         Name = ctx.User.Identity?.Name,

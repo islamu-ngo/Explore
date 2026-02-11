@@ -1,10 +1,10 @@
 // ABOUTME: Handles onboarding status queries for startup gating and role-aware onboarding UX.
 // ABOUTME: Combines bootstrap completion state with current user instance admin membership.
 
+using System.Text.Json;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Onboarding;
-using Explore.Application.Features.InstanceOnboarding.Common;
 using Explore.Application.Features.InstanceOnboarding.Requests.Queries;
 using Explore.Domain.Constants;
 using MediatR;
@@ -36,7 +36,7 @@ public class GetInstanceOnboardingStatusQueryHandler : IRequestHandler<GetInstan
         var deploymentModeSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.DeploymentMode);
         var selectedDeploymentMode = !string.IsNullOrWhiteSpace(bootstrap?.SelectedDeploymentMode)
             ? bootstrap!.SelectedDeploymentMode
-            : InstanceGovernanceSettingHelpers.DeserializeString(deploymentModeSetting?.Value, "SingleTenant");
+            : DeserializeString(deploymentModeSetting?.Value, "SingleTenant");
 
         var response = new InstanceOnboardingStatusDto
         {
@@ -53,5 +53,23 @@ public class GetInstanceOnboardingStatusQueryHandler : IRequestHandler<GetInstan
 
         response.IsCurrentUserInstanceAdmin = await _instanceAdministratorRepository.IsUserInstanceAdmin(_currentUserService.UserId.Value);
         return response;
+    }
+
+    private static string DeserializeString(string? rawValue, string defaultValue)
+    {
+        if (string.IsNullOrWhiteSpace(rawValue))
+        {
+            return defaultValue;
+        }
+
+        try
+        {
+            var deserialized = JsonSerializer.Deserialize<string>(rawValue);
+            return string.IsNullOrWhiteSpace(deserialized) ? defaultValue : deserialized;
+        }
+        catch
+        {
+            return rawValue.Trim('"');
+        }
     }
 }

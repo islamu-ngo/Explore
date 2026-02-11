@@ -109,11 +109,9 @@ public partial class NavMenu
         return DisplayHelper.GetInitials(name);
     }
 
-    private bool IsAdmin(ClaimsPrincipal user)
+    private static bool IsAdmin(ClaimsPrincipal user)
     {
-        return user.IsInRole("Admin") ||
-               user.HasClaim(c => c.Type == "role" && c.Value == "Admin") ||
-               user.HasClaim(c => c.Type == "roles" && c.Value.Contains("Admin"));
+        return user.Identity?.IsAuthenticated == true;
     }
 
     private async Task LoadNavigationLinksAsync()

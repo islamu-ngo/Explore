@@ -42,7 +42,7 @@ public class OrganizationRepository : GenericRepository<Organization, Guid>, IOr
     public async Task<Organization?> GetOrganizationWithDetails(Guid id)
     {
         return await _dbContext.Organizations
-            .AsNoTracking()
+            .AsNoTrackingWithIdentityResolution()
             .AsSplitQuery()
             .Include(o => o.ApprovalStatus)
             .Include(o => o.Actor)

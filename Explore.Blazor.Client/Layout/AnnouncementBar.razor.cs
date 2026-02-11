@@ -1,3 +1,6 @@
+// ABOUTME: Dismissable announcement bar component for development/informational messages.
+// ABOUTME: Uses localStorage (standard browser API) for persistence, no custom JS required.
+
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 
@@ -6,7 +9,6 @@ namespace Explore.Blazor.Client.Layout;
 public partial class AnnouncementBar
 {
     private bool _isVisible = true;
-    private ElementReference _barRef;
 
     [Inject]
     protected IJSRuntime JSRuntime { get; set; } = null!;
@@ -17,18 +19,17 @@ public partial class AnnouncementBar
         {
             await LoadDismissalState();
         }
-
-        await UpdateAnnouncementHeight();
     }
 
     private async Task LoadDismissalState()
     {
         try
         {
-            var dismissed = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "announcementDismissed");
+            var dismissed = await JSRuntime.InvokeAsync<string?>("localStorage.getItem", "announcementDismissed");
             if (dismissed == "true")
             {
                 _isVisible = false;
+                StateHasChanged();
             }
         }
         catch (JSException)
@@ -40,7 +41,6 @@ public partial class AnnouncementBar
     private async Task CloseBar()
     {
         _isVisible = false;
-        await UpdateAnnouncementHeight();
         try
         {
             await JSRuntime.InvokeVoidAsync("localStorage.setItem", "announcementDismissed", "true");
@@ -48,25 +48,6 @@ public partial class AnnouncementBar
         catch (JSException)
         {
             // Fail gracefully.
-        }
-    }
-
-    private async Task UpdateAnnouncementHeight()
-    {
-        try
-        {
-            if (_isVisible)
-            {
-                await JSRuntime.InvokeVoidAsync("ExploreLayout.setAnnouncementBarHeight", _barRef);
-            }
-            else
-            {
-                await JSRuntime.InvokeVoidAsync("ExploreLayout.clearAnnouncementBarHeight");
-            }
-        }
-        catch (JSException)
-        {
-            // Fail gracefully if JS interop isn't available.
         }
     }
 }

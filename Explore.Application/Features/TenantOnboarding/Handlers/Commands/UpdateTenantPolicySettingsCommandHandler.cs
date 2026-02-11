@@ -3,7 +3,7 @@
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
-using Explore.Application.Features.TenantOnboarding.Common;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Features.TenantOnboarding.Requests.Commands;
 using Explore.Application.Responses;
 using MediatR;
@@ -16,26 +16,20 @@ public class UpdateTenantPolicySettingsCommandHandler : IRequestHandler<UpdateTe
     private readonly ITenantOnboardingStateRepository _tenantOnboardingStateRepository;
     private readonly ITenantAdministratorRepository _tenantAdministratorRepository;
     private readonly IInstanceAdministratorRepository _instanceAdministratorRepository;
-    private readonly ITenantSettingRepository _tenantSettingRepository;
-    private readonly ISystemSettingRepository _systemSettingRepository;
-    private readonly ITenantRepository _tenantRepository;
+    private readonly ITenantPolicySettingService _policySettingService;
 
     public UpdateTenantPolicySettingsCommandHandler(
         ITenantContext tenantContext,
         ITenantOnboardingStateRepository tenantOnboardingStateRepository,
         ITenantAdministratorRepository tenantAdministratorRepository,
         IInstanceAdministratorRepository instanceAdministratorRepository,
-        ITenantSettingRepository tenantSettingRepository,
-        ISystemSettingRepository systemSettingRepository,
-        ITenantRepository tenantRepository)
+        ITenantPolicySettingService policySettingService)
     {
         _tenantContext = tenantContext;
         _tenantOnboardingStateRepository = tenantOnboardingStateRepository;
         _tenantAdministratorRepository = tenantAdministratorRepository;
         _instanceAdministratorRepository = instanceAdministratorRepository;
-        _tenantSettingRepository = tenantSettingRepository;
-        _systemSettingRepository = systemSettingRepository;
-        _tenantRepository = tenantRepository;
+        _policySettingService = policySettingService;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateTenantPolicySettingsCommand request, CancellationToken cancellationToken)
@@ -50,13 +44,7 @@ public class UpdateTenantPolicySettingsCommandHandler : IRequestHandler<UpdateTe
             return response;
         }
 
-        await TenantPolicySettingHelpers.ApplyTenantSettingsAsync(
-            _tenantSettingRepository,
-            _systemSettingRepository,
-            _tenantRepository,
-            tenantId,
-            request.UserId,
-            request.Settings);
+        await _policySettingService.ApplyTenantSettingsAsync(tenantId, request.UserId, request.Settings);
 
         var onboardingState = await _tenantOnboardingStateRepository.GetByTenantId(tenantId);
         response.Id = onboardingState?.Id ?? Guid.Empty;

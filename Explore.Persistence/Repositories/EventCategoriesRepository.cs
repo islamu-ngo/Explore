@@ -25,7 +25,7 @@ public class EventCategoriesRepository : GenericRepository<EventCategories, Guid
             .ToListAsync();
 
         return await _dbContext.Events
-            .AsNoTracking()
+            .AsNoTrackingWithIdentityResolution()
             .AsSplitQuery()
             .Include(e => e.EventType)
             .Include(e => e.AudienceGender)

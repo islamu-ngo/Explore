@@ -8,6 +8,27 @@ window.ExploreLayout = {
     }
 };
 
+window.ExploreTheme = {
+    getStoredTheme: function () {
+        try {
+            return localStorage.getItem("explore-theme") || "";
+        } catch (e) {
+            return "";
+        }
+    },
+    setStoredTheme: function (theme) {
+        try {
+            localStorage.setItem("explore-theme", theme);
+        } catch (e) {
+            // localStorage not available (e.g. private browsing)
+        }
+    },
+    setThemeCookie: function (theme) {
+        var maxAge = 365 * 24 * 60 * 60;
+        document.cookie = "theme=" + theme + ";path=/;max-age=" + maxAge + ";SameSite=Lax";
+    }
+};
+
 (function () {
     var path = (window.location.pathname || "").toLowerCase();
 

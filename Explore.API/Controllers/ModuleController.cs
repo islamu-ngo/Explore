@@ -119,7 +119,7 @@ public class ModuleController : ControllerBase
     [EndpointSummary("Enable Module")]
     [EndpointDescription("Enables a module for the current tenant. " +
         "Requires admin privileges.")]
-    [Authorize(Roles = "Admin,TenantAdmin")]
+    [Authorize]
     [ProducesResponseType(typeof(ModuleActionResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -160,7 +160,7 @@ public class ModuleController : ControllerBase
     [EndpointDescription("Disables a module for the current tenant. " +
         "Existing data using this module's features will be preserved but hidden. " +
         "Requires admin privileges.")]
-    [Authorize(Roles = "Admin,TenantAdmin")]
+    [Authorize]
     [ProducesResponseType(typeof(ModuleActionResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

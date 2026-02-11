@@ -63,14 +63,18 @@ public class CerbosAuthorizationService : ICerbosAuthorizationService
         var adminTenantIds = await _adminContext.GetAdminTenantIdsAsync(cancellationToken);
         var adminOrgIds = await _adminContext.GetAdminOrganizationIdsAsync(cancellationToken);
 
-        var roles = new List<string> { "user" };
-        if (isInstanceAdmin) roles.Add("admin");
+        var roles = new List<string> { "authenticated_user" };
+
+        var tenantMemberships = adminTenantIds
+            .ToDictionary(id => id.ToString(), _ => (object)"admin");
+        var orgMemberships = adminOrgIds
+            .ToDictionary(id => id.ToString(), _ => (object)"admin");
 
         var principalAttrs = new Dictionary<string, object>
         {
             ["isInstanceAdmin"] = isInstanceAdmin,
-            ["tenants"] = adminTenantIds,
-            ["orgs"] = adminOrgIds
+            ["tenantMemberships"] = tenantMemberships,
+            ["orgMemberships"] = orgMemberships
         };
 
         var request = new CerbosCheckRequest
@@ -140,12 +144,12 @@ public class CerbosAuthorizationService : ICerbosAuthorizationService
         if (organizationId.HasValue)
         {
             resourceKind = "organization";
-            attributes["organizationId"] = organizationId.Value;
+            attributes["organizationId"] = organizationId.Value.ToString();
         }
         else if (tenantId.HasValue)
         {
             resourceKind = "tenant_setting";
-            attributes["tenantId"] = tenantId.Value;
+            attributes["tenantId"] = tenantId.Value.ToString();
             var canOverride = await _settingsResolver.CanOverrideAsync(settingKey, cancellationToken);
             attributes["isLockedByInstance"] = !canOverride;
         }

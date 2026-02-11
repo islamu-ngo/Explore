@@ -3,7 +3,7 @@
 @using Explore.Blazor.Client.Services.Contracts
 @using Explore.Blazor.Client.Components.Admin
 @using Microsoft.AspNetCore.Authorization
-@attribute [Authorize(Roles = "Admin")]
+@attribute [Authorize]
 @attribute [StreamRendering]
 @inject ILocationService LocationService
 @inject IDialogService DialogService

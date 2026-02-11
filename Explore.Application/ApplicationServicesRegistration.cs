@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
 using Explore.Application.Behaviors;
+using Explore.Application.Contracts.Services;
+using Explore.Application.Services;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,6 +20,11 @@ public static class ApplicationServicesRegistration
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(PerformanceBehavior<,>));
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>));
         services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+
+        // Onboarding Services
+        services.AddScoped<ITenantPolicySettingService, TenantPolicySettingService>();
+        services.AddScoped<IInstanceGovernanceSettingService, InstanceGovernanceSettingService>();
+        services.AddScoped<IInstanceStorageSettingService, InstanceStorageSettingService>();
 
         return services;
     }

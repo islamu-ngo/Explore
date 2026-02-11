@@ -2,7 +2,7 @@
 // ABOUTME: Persists deployment and policy setting changes and keeps default tenant capabilities aligned.
 
 using Explore.Application.Contracts.Persistence;
-using Explore.Application.Features.InstanceOnboarding.Common;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
@@ -18,26 +18,20 @@ public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<Up
     private readonly IInstanceBootstrapStateRepository _instanceBootstrapStateRepository;
     private readonly ITenantRepository _tenantRepository;
     private readonly ITenantSettingsRepository _tenantSettingsRepository;
-    private readonly ISystemSettingRepository _systemSettingRepository;
-    private readonly ITenantCapabilityRepository _tenantCapabilityRepository;
-    private readonly IModuleDefinitionRepository _moduleDefinitionRepository;
+    private readonly IInstanceGovernanceSettingService _governanceSettingService;
 
     public UpdateInstanceGovernanceSettingsCommandHandler(
         IInstanceAdministratorRepository instanceAdministratorRepository,
         IInstanceBootstrapStateRepository instanceBootstrapStateRepository,
         ITenantRepository tenantRepository,
         ITenantSettingsRepository tenantSettingsRepository,
-        ISystemSettingRepository systemSettingRepository,
-        ITenantCapabilityRepository tenantCapabilityRepository,
-        IModuleDefinitionRepository moduleDefinitionRepository)
+        IInstanceGovernanceSettingService governanceSettingService)
     {
         _instanceAdministratorRepository = instanceAdministratorRepository;
         _instanceBootstrapStateRepository = instanceBootstrapStateRepository;
         _tenantRepository = tenantRepository;
         _tenantSettingsRepository = tenantSettingsRepository;
-        _systemSettingRepository = systemSettingRepository;
-        _tenantCapabilityRepository = tenantCapabilityRepository;
-        _moduleDefinitionRepository = moduleDefinitionRepository;
+        _governanceSettingService = governanceSettingService;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateInstanceGovernanceSettingsCommand request, CancellationToken cancellationToken)
@@ -66,13 +60,7 @@ public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<Up
         var defaultTenant = await EnsureDefaultTenantAsync();
         await EnsureDefaultTenantSettingsAsync(defaultTenant.Id);
 
-        await InstanceGovernanceSettingHelpers.ApplySettingsAsync(
-            _systemSettingRepository,
-            _tenantCapabilityRepository,
-            _moduleDefinitionRepository,
-            defaultTenant.Id,
-            request.Settings,
-            request.UserId);
+        await _governanceSettingService.ApplySettingsAsync(defaultTenant.Id, request.Settings, request.UserId);
 
         var bootstrap = await _instanceBootstrapStateRepository.GetCurrent();
         if (bootstrap != null)

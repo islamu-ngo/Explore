@@ -62,7 +62,7 @@ public class IndexedDidController : ControllerBase
 
     // POST: api/v1/indexeddid
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+    [Authorize]
     public async Task<ActionResult<BaseCommandResponse<string>>> Create([FromBody] CreateIndexedDidDto dto, CancellationToken cancellationToken = default)
     {
         var command = new CreateIndexedDidCommand { IndexedDidDto = dto };
@@ -72,7 +72,7 @@ public class IndexedDidController : ControllerBase
 
     // PUT: api/v1/indexeddid/{did}
     [HttpPut("{did}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize]
     public async Task<ActionResult<BaseCommandResponse<string>>> Update(string did, [FromBody] UpdateIndexedDidDto dto, CancellationToken cancellationToken = default)
     {
         if (did != dto.Did)
@@ -93,7 +93,7 @@ public class IndexedDidController : ControllerBase
 
     // DELETE: api/v1/indexeddid/{did}
     [HttpDelete("{did}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize]
     public async Task<ActionResult> Delete(string did, CancellationToken cancellationToken = default)
     {
         var command = new DeleteIndexedDidCommand { Did = did };

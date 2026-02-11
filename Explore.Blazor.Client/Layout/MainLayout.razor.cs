@@ -1,8 +1,11 @@
+// ABOUTME: Main layout code-behind handling theme initialization and user sync.
+// ABOUTME: Uses MudBlazor built-in theme switching with cookie persistence for SSR.
+
+using System.Net.Http;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Logging;
-using Microsoft.JSInterop;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Layout;
@@ -12,6 +15,7 @@ public partial class MainLayout : LayoutComponentBase
     private bool _isDarkMode = false;
     private bool _isInitialized = false;
     private MudTheme? _theme;
+    private MudThemeProvider _mudThemeProvider = null!;
 
     [Inject]
     protected IUserService UserService { get; set; } = null!;
@@ -20,10 +24,10 @@ public partial class MainLayout : LayoutComponentBase
     protected AuthenticationStateProvider AuthenticationStateProvider { get; set; } = null!;
 
     [Inject]
-    protected IJSRuntime JSRuntime { get; set; } = null!;
+    protected ILogger<MainLayout> Logger { get; set; } = null!;
 
     [Inject]
-    protected ILogger<MainLayout> Logger { get; set; } = null!;
+    protected HttpClient HttpClient { get; set; } = null!;
 
     [CascadingParameter(Name = "InitialTheme")]
     public bool? InitialTheme { get; set; }
@@ -38,7 +42,7 @@ public partial class MainLayout : LayoutComponentBase
     {
         base.OnInitialized();
 
-        // Use the cascaded initial theme from cookie if available
+        // Use the cascaded initial theme from cookie if available (for SSR)
         if (InitialTheme.HasValue)
         {
             _isDarkMode = InitialTheme.Value;
@@ -70,22 +74,18 @@ public partial class MainLayout : LayoutComponentBase
                 Logger.LogWarning(ex, "Error syncing user");
             }
 
-            // Read theme from localStorage (client-side source of truth)
-            try
+            // If no cookie-based theme was provided, detect system preference via MudBlazor
+            if (!InitialTheme.HasValue)
             {
-                var storedTheme = await JSRuntime.InvokeAsync<string>("ExploreTheme.getStoredTheme");
-                if (!string.IsNullOrEmpty(storedTheme))
+                try
                 {
-                    var isDarkStorage = storedTheme == "dark";
-                    if (_isDarkMode != isDarkStorage)
-                    {
-                        _isDarkMode = isDarkStorage;
-                    }
+                    _isDarkMode = await _mudThemeProvider.GetSystemDarkModeAsync();
+                    await InvokeAsync(StateHasChanged);
                 }
-            }
-            catch (Exception ex)
-            {
-                Logger.LogWarning(ex, "Error reading theme from localStorage");
+                catch (Exception ex)
+                {
+                    Logger.LogWarning(ex, "Error detecting system theme preference");
+                }
             }
 
             _isInitialized = true;
@@ -99,12 +99,12 @@ public partial class MainLayout : LayoutComponentBase
 
         try
         {
-            await JSRuntime.InvokeVoidAsync("ExploreTheme.setStoredTheme", themeValue);
-            await JSRuntime.InvokeVoidAsync("ExploreTheme.setThemeCookie", themeValue);
+            // Persist to cookie via BFF endpoint so SSR reads the preference on next page load
+            await HttpClient.PostAsync($"/bff/theme?theme={Uri.EscapeDataString(themeValue)}", null);
         }
         catch (Exception ex)
         {
-            Logger.LogWarning(ex, "Error saving theme");
+            Logger.LogWarning(ex, "Error saving theme preference");
         }
     }
 

@@ -26,7 +26,7 @@ public class AtprotoRecordController : ControllerBase
 
     // GET: api/v1/atprotoRecord
     [HttpGet]
-    [Authorize(Roles = "Admin")]
+    [Authorize]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<List<AtprotoRecordListDto>>> GetAll(CancellationToken cancellationToken = default)
     {
@@ -36,7 +36,7 @@ public class AtprotoRecordController : ControllerBase
 
     // GET: api/v1/atprotoRecord/{id}
     [HttpGet("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<AtprotoRecordDto>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
@@ -51,7 +51,7 @@ public class AtprotoRecordController : ControllerBase
 
     // POST: api/v1/atprotoRecord
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+    [Authorize]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateAtprotoRecordDto dto, CancellationToken cancellationToken = default)
     {
         var command = new CreateAtprotoRecordCommand { AtprotoRecordDto = dto };
@@ -61,7 +61,7 @@ public class AtprotoRecordController : ControllerBase
 
     // PUT: api/v1/atprotoRecord/{id}
     [HttpPut("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateAtprotoRecordDto dto, CancellationToken cancellationToken = default)
     {
         if (id != dto.Id)
@@ -82,7 +82,7 @@ public class AtprotoRecordController : ControllerBase
 
     // DELETE: api/v1/atprotoRecord/{id}
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var command = new DeleteAtprotoRecordCommand { Id = id };

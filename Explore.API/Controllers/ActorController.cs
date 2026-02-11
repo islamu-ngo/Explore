@@ -200,7 +200,7 @@ public class ActorController : ControllerBase
     [HttpDelete("{id:guid}", Name = RouteNames.DeleteActor)]
     [EndpointSummary("Delete Actor")]
     [EndpointDescription("Delete an actor. Admin only.")]
-    [Authorize(Roles = "Admin")]
+    [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

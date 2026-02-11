@@ -26,7 +26,7 @@ public class SyncStateController : ControllerBase
 
     // GET: api/v1/syncstate
     [HttpGet]
-    [Authorize(Roles = "Admin")]
+    [Authorize]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<List<SyncStateListDto>>> GetAll(CancellationToken cancellationToken = default)
     {
@@ -36,7 +36,7 @@ public class SyncStateController : ControllerBase
 
     // GET: api/v1/syncstate/{id}
     [HttpGet("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<SyncStateDto>> GetById(int id, CancellationToken cancellationToken = default)
     {
@@ -51,7 +51,7 @@ public class SyncStateController : ControllerBase
 
     // POST: api/v1/syncstate
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+    [Authorize]
     public async Task<ActionResult<BaseCommandResponse<int>>> Create([FromBody] CreateSyncStateDto dto, CancellationToken cancellationToken = default)
     {
         var command = new CreateSyncStateCommand { SyncStateDto = dto };
@@ -61,7 +61,7 @@ public class SyncStateController : ControllerBase
 
     // PUT: api/v1/syncstate/{id}
     [HttpPut("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize]
     public async Task<ActionResult<BaseCommandResponse<int>>> Update(int id, [FromBody] UpdateSyncStateDto dto, CancellationToken cancellationToken = default)
     {
         if (id != dto.Id)
@@ -82,7 +82,7 @@ public class SyncStateController : ControllerBase
 
     // DELETE: api/v1/syncstate/{id}
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize]
     public async Task<ActionResult> Delete(int id, CancellationToken cancellationToken = default)
     {
         var command = new DeleteSyncStateCommand { Id = id };

@@ -3,7 +3,7 @@
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
-using Explore.Application.Features.InstanceOnboarding.Common;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Responses;
 using MediatR;
@@ -13,16 +13,16 @@ namespace Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
 public class UpdateInstanceStorageSettingsCommandHandler : IRequestHandler<UpdateInstanceStorageSettingsCommand, BaseCommandResponse<Guid>>
 {
     private readonly IInstanceAdministratorRepository _instanceAdministratorRepository;
-    private readonly ISystemSettingRepository _systemSettingRepository;
+    private readonly IInstanceStorageSettingService _storageSettingService;
     private readonly IS3ConfigResolver _s3ConfigResolver;
 
     public UpdateInstanceStorageSettingsCommandHandler(
         IInstanceAdministratorRepository instanceAdministratorRepository,
-        ISystemSettingRepository systemSettingRepository,
+        IInstanceStorageSettingService storageSettingService,
         IS3ConfigResolver s3ConfigResolver)
     {
         _instanceAdministratorRepository = instanceAdministratorRepository;
-        _systemSettingRepository = systemSettingRepository;
+        _storageSettingService = storageSettingService;
         _s3ConfigResolver = s3ConfigResolver;
     }
 
@@ -38,9 +38,7 @@ public class UpdateInstanceStorageSettingsCommandHandler : IRequestHandler<Updat
             return response;
         }
 
-        await InstanceStorageSettingHelpers.ApplySettingsAsync(
-            _systemSettingRepository,
-            request.Settings);
+        await _storageSettingService.ApplySettingsAsync(request.Settings);
 
         // Invalidate S3 config cache so changes take effect immediately
         _s3ConfigResolver.InvalidateCache();

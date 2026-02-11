@@ -2,7 +2,7 @@
 // ABOUTME: Establishes the first instance admin and default tenant admin mapping for a clean database.
 
 using Explore.Application.Contracts.Persistence;
-using Explore.Application.Features.InstanceOnboarding.Common;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
@@ -22,9 +22,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
     private readonly IUserRepository _userRepository;
     private readonly ITenantRepository _tenantRepository;
     private readonly ITenantSettingsRepository _tenantSettingsRepository;
-    private readonly ISystemSettingRepository _systemSettingRepository;
-    private readonly ITenantCapabilityRepository _tenantCapabilityRepository;
-    private readonly IModuleDefinitionRepository _moduleDefinitionRepository;
+    private readonly IInstanceGovernanceSettingService _governanceSettingService;
 
     public CompleteInstanceOnboardingCommandHandler(
         IInstanceBootstrapStateRepository instanceBootstrapStateRepository,
@@ -34,9 +32,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         IUserRepository userRepository,
         ITenantRepository tenantRepository,
         ITenantSettingsRepository tenantSettingsRepository,
-        ISystemSettingRepository systemSettingRepository,
-        ITenantCapabilityRepository tenantCapabilityRepository,
-        IModuleDefinitionRepository moduleDefinitionRepository)
+        IInstanceGovernanceSettingService governanceSettingService)
     {
         _instanceBootstrapStateRepository = instanceBootstrapStateRepository;
         _instanceAdministratorRepository = instanceAdministratorRepository;
@@ -45,9 +41,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         _userRepository = userRepository;
         _tenantRepository = tenantRepository;
         _tenantSettingsRepository = tenantSettingsRepository;
-        _systemSettingRepository = systemSettingRepository;
-        _tenantCapabilityRepository = tenantCapabilityRepository;
-        _moduleDefinitionRepository = moduleDefinitionRepository;
+        _governanceSettingService = governanceSettingService;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(CompleteInstanceOnboardingCommand request, CancellationToken cancellationToken)
@@ -85,13 +79,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         var defaultTenant = await EnsureDefaultTenantAsync();
         await EnsureDefaultTenantSettingsAsync(defaultTenant.Id);
 
-        await InstanceGovernanceSettingHelpers.ApplySettingsAsync(
-            _systemSettingRepository,
-            _tenantCapabilityRepository,
-            _moduleDefinitionRepository,
-            defaultTenant.Id,
-            request.Settings,
-            request.UserId);
+        await _governanceSettingService.ApplySettingsAsync(defaultTenant.Id, request.Settings, request.UserId);
 
         await EnsureInstanceAdministratorAsync(request.UserId);
         await EnsureDefaultTenantAdministratorAsync(defaultTenant.Id, request.UserId);

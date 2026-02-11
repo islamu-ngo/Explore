@@ -1,12 +1,12 @@
 // ABOUTME: Resolves effective public experience settings through system->tenant cascade for current tenant context.
 // ABOUTME: Supports anonymous-safe home page routing and white-label branding consumption.
 
+using System.Text.Json;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
-using Explore.Application.Features.InstanceOnboarding.Common;
 using Explore.Application.Features.PublicExperience.Requests.Queries;
-using Explore.Application.Features.TenantOnboarding.Common;
 using Explore.Domain.Constants;
 using MediatR;
 
@@ -16,32 +16,25 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
 {
     private readonly ITenantContext _tenantContext;
     private readonly ISystemSettingRepository _systemSettingRepository;
-    private readonly ITenantSettingRepository _tenantSettingRepository;
-    private readonly ITenantRepository _tenantRepository;
+    private readonly ITenantPolicySettingService _policySettingService;
 
     public GetPublicExperienceSettingsQueryHandler(
         ITenantContext tenantContext,
         ISystemSettingRepository systemSettingRepository,
-        ITenantSettingRepository tenantSettingRepository,
-        ITenantRepository tenantRepository)
+        ITenantPolicySettingService policySettingService)
     {
         _tenantContext = tenantContext;
         _systemSettingRepository = systemSettingRepository;
-        _tenantSettingRepository = tenantSettingRepository;
-        _tenantRepository = tenantRepository;
+        _policySettingService = policySettingService;
     }
 
     public async Task<PublicExperienceSettingsDto> Handle(GetPublicExperienceSettingsQuery request, CancellationToken cancellationToken)
     {
         var tenantId = _tenantContext.TenantId;
-        var effectiveTenantSettings = await TenantPolicySettingHelpers.ReadEffectiveTenantSettingsAsync(
-            _systemSettingRepository,
-            _tenantSettingRepository,
-            _tenantRepository,
-            tenantId);
+        var effectiveTenantSettings = await _policySettingService.ReadEffectiveTenantSettingsAsync(tenantId);
 
         var deploymentModeSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.DeploymentMode);
-        var deploymentMode = InstanceGovernanceSettingHelpers.DeserializeString(deploymentModeSetting?.Value, "SingleTenant");
+        var deploymentMode = DeserializeString(deploymentModeSetting?.Value, "SingleTenant");
 
         return new PublicExperienceSettingsDto
         {
@@ -56,5 +49,23 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
             Subdomain = effectiveTenantSettings.Subdomain,
             CustomDomain = effectiveTenantSettings.CustomDomain
         };
+    }
+
+    private static string DeserializeString(string? rawValue, string defaultValue)
+    {
+        if (string.IsNullOrWhiteSpace(rawValue))
+        {
+            return defaultValue;
+        }
+
+        try
+        {
+            var deserialized = JsonSerializer.Deserialize<string>(rawValue);
+            return string.IsNullOrWhiteSpace(deserialized) ? defaultValue : deserialized;
+        }
+        catch
+        {
+            return rawValue.Trim('"');
+        }
     }
 }

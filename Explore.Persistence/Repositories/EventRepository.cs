@@ -28,7 +28,7 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
     public async Task<List<Event>> GetEventsWithDetails()
     {
         return await _dbContext.Events
-            .AsNoTracking()
+            .AsNoTrackingWithIdentityResolution()
             .AsSplitQuery()
             .Include(e => e.EventType)
             .Include(e => e.AudienceGender)
@@ -53,7 +53,7 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
     public async Task<Event?> GetEventWithDetails(Guid id)
     {
         return await _dbContext.Events
-            .AsNoTracking()
+            .AsNoTrackingWithIdentityResolution()
             .AsSplitQuery()
             .Include(e => e.EventType)
             .Include(e => e.AudienceGender)
@@ -82,7 +82,7 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
         bool isGuid = Guid.TryParse(userId, out userGuid);
 
         var query = _dbContext.Events
-            .AsNoTracking()
+            .AsNoTrackingWithIdentityResolution()
             .AsSplitQuery()
             .Include(e => e.EventType)
             .Include(e => e.AudienceGender)
@@ -118,7 +118,7 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
     public async Task<(List<Event> Items, int TotalCount)> GetEventsWithDetailsPaged(int pageNumber, int pageSize)
     {
         var query = _dbContext.Events
-            .AsNoTracking()
+            .AsNoTrackingWithIdentityResolution()
             .AsSplitQuery()
             .Include(e => e.EventType)
             .Include(e => e.AudienceGender)
@@ -153,7 +153,7 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
         int pageNumber, int pageSize, EventQuerySpecification specification)
     {
         var query = _dbContext.Events
-            .AsNoTracking()
+            .AsNoTrackingWithIdentityResolution()
             .AsSplitQuery()
             .Include(e => e.EventType)
             .Include(e => e.AudienceGender)
@@ -252,7 +252,7 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
         bool isGuid = Guid.TryParse(userId, out userGuid);
 
         var query = _dbContext.Events
-            .AsNoTracking()
+            .AsNoTrackingWithIdentityResolution()
             .AsSplitQuery()
             .Include(e => e.EventType)
             .Include(e => e.AudienceGender)

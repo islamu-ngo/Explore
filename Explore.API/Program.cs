@@ -254,8 +254,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuerSigningKey = true,
 
             // Claim type mappings for Keycloak
-            NameClaimType = "preferred_username",
-            RoleClaimType = "roles"
+            NameClaimType = "preferred_username"
         };
 
         // Development: Accept self-signed certificates for Keycloak

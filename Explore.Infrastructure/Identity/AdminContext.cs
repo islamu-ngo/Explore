@@ -1,4 +1,4 @@
-// ABOUTME: Hybrid identity service resolving admin authority from JWT claims + database tables.
+// ABOUTME: Database-first identity service resolving admin authority from database tables only.
 // Caches per-user authority profiles in IMemoryCache with 5-minute sliding expiration.
 
 using System.Security.Claims;
@@ -11,10 +11,9 @@ using Microsoft.Extensions.Logging;
 namespace Explore.Infrastructure.Identity;
 
 /// <summary>
-/// Resolves the current user's administrative authority using a hybrid model:
-/// 1. JWT claims (Keycloak "Admin" role) for InstanceAdmin
-/// 2. Database tables (InstanceAdministrators, TenantAdministrators, OrganizationMembers) as fallback/override
-/// This enables ATProto/PDS-only deployments where Keycloak is absent.
+/// Resolves the current user's administrative authority using database tables only.
+/// Identity is read from authenticated claims (sub/nameidentifier/sid) and authority
+/// is resolved from InstanceAdministrators, TenantAdministrators, and OrganizationMembers.
 /// </summary>
 public class AdminContext : IAdminContext
 {
@@ -62,20 +61,7 @@ public class AdminContext : IAdminContext
 
     public async Task<bool> IsInstanceAdminAsync(CancellationToken cancellationToken = default)
     {
-        // Path 1: Check JWT "Admin" role claim (Keycloak)
-        var user = _httpContextAccessor.HttpContext?.User;
-        if (user?.Identity?.IsAuthenticated == true)
-        {
-            var hasAdminRole = user.IsInRole("Admin")
-                || user.Claims.Any(c =>
-                    c.Type.Equals("roles", StringComparison.OrdinalIgnoreCase)
-                    && c.Value.Equals("Admin", StringComparison.OrdinalIgnoreCase));
-
-            if (hasAdminRole)
-                return true;
-        }
-
-        // Path 2: Fallback to database (ATProto/PDS-only deployments)
+        // DB-first authority: resolve from database only.
         var uid = UserId;
         if (uid == null)
             return false;

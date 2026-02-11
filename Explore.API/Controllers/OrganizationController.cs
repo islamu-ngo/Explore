@@ -205,7 +205,7 @@ public class OrganizationController : ControllerBase
     [HttpPut("updatestatustype/{id:guid}")]
     [EndpointSummary("Update Organization Approval Status")]
     [EndpointDescription("Update the approval status of an organization. Requires Admin role.")]
-    [Authorize(Roles = "Admin")]
+    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

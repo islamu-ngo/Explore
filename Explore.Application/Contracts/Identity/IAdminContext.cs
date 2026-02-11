@@ -1,11 +1,12 @@
 // ABOUTME: Contract for resolving the current user's administrative authority across the hierarchy.
-// Hybrid identity model: checks JWT claims first, then falls back to database admin tables.
+// DB-first authority model: identity from claims, authority from database admin tables.
 
 namespace Explore.Application.Contracts.Identity;
 
 /// <summary>
 /// Resolves the current user's administrative authority across the Instance > Tenant > Organization hierarchy.
-/// Uses a hybrid identity model: JWT claims (Keycloak) with database fallback (ATProto/PDS-only deployments).
+/// Uses a DB-first authority model where identity comes from authenticated claims and
+/// authorization comes from database relationships.
 /// Implementations should cache the "Authority Profile" for performance (5-minute sliding window).
 /// </summary>
 public interface IAdminContext
@@ -17,7 +18,7 @@ public interface IAdminContext
 
     /// <summary>
     /// Gets whether the current user is an Instance Administrator.
-    /// Checks JWT "Admin" role first, then falls back to the InstanceAdministrators database table.
+    /// Resolved from the InstanceAdministrators database table.
     /// </summary>
     Task<bool> IsInstanceAdminAsync(CancellationToken cancellationToken = default);
 
