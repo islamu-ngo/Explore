@@ -47,7 +47,7 @@ public class CategoryControllerTests
     }
 
     [Test]
-    public async Task GetById_WithRandomId_ShouldNotReturnServerError()
+    public async Task GetById_WithRandomId_ShouldReturnNotFound()
     {
         // Arrange
         var id = Guid.NewGuid();
@@ -56,7 +56,7 @@ public class CategoryControllerTests
         var response = await _fixture.Client.GetAsync($"{BaseUrl}/{id}");
 
         // Assert
-        await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
     }
 
     [Test]

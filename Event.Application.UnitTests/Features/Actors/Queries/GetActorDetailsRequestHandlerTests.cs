@@ -110,7 +110,7 @@ public class GetActorDetailsRequestHandlerTests
         _mapper.Map<ActorDto>(actor).Returns(expectedDto);
         // Mock presigned URL generation (extracts object key and generates URL)
         _objectStorageService.GeneratePresignedDownloadUrl(Arg.Any<string>(), Arg.Any<int>())
-            .Returns("https://storage.example.com/signed/image.jpg");
+            .Returns(Task.FromResult("https://storage.example.com/signed/image.jpg"));
 
         // Act
         var result = await _handler.Handle(request, CancellationToken.None);

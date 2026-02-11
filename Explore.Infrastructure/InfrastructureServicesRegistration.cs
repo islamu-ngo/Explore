@@ -8,6 +8,7 @@ using Explore.Infrastructure.Identity;
 using Explore.Infrastructure.Mail;
 using Explore.Infrastructure.Services;
 using Explore.Infrastructure.Services.Federation;
+using Explore.Infrastructure.Storage;
 using Explore.Infrastructure.Strategies;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,56 +27,11 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<ISmtpConfigResolver, SmtpConfigResolver>();
         services.AddScoped<IEmailService, SmtpEmailService>();
 
-        services.Configure<S3Settings>(configuration.GetSection("S3Settings"));
-
-        services.AddSingleton<IAmazonS3>(sp =>
-        {
-            var s3Options = sp.GetRequiredService<IOptions<S3Settings>>().Value;
-
-            if (string.IsNullOrWhiteSpace(s3Options.AccessKeyId))
-            {
-                throw new InvalidOperationException("S3 AccessKeyId is not configured (S3Settings:AccessKeyId).");
-            }
-            if (string.IsNullOrWhiteSpace(s3Options.SecretAccessKey))
-            {
-                throw new InvalidOperationException("S3 SecretAccessKey is not configured (S3Settings:SecretAccessKey).");
-            }
-
-            var config = new AmazonS3Config
-            {
-                ForcePathStyle = true
-            };
-
-            if (!string.IsNullOrWhiteSpace(s3Options.Endpoint))
-            {
-                var endpoint = s3Options.Endpoint.Trim();
-                if (!endpoint.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
-                    !endpoint.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-                {
-                    endpoint = $"https://{endpoint}";
-                }
-
-                config.ServiceURL = endpoint;
-                config.UseHttp = endpoint.StartsWith("http://", StringComparison.OrdinalIgnoreCase);
-                config.AuthenticationRegion = string.IsNullOrWhiteSpace(s3Options.Region) ? "fsn1" : s3Options.Region;
-            }
-            else
-            {
-                if (!string.IsNullOrWhiteSpace(s3Options.Region))
-                {
-                    config.RegionEndpoint = RegionEndpoint.GetBySystemName(s3Options.Region);
-                }
-                else
-                {
-                    config.RegionEndpoint = RegionEndpoint.EUWest1;
-                    Console.WriteLine("[S3] Warning: No Region or Endpoint configured in S3Settings. Using default region eu-west-1.");
-                }
-            }
-
-            return new AmazonS3Client(s3Options.AccessKeyId, s3Options.SecretAccessKey, config);
-        });
-
-        services.AddTransient<IObjectStorageService, ObjectStorageService>();
+        // Object storage: provider-agnostic S3-compatible via AWS SDK
+        // Config resolved per-tenant from cascading settings engine (SystemSetting → TenantSetting)
+        // Instance admin can lock settings to enforce SaaS-wide storage or let tenants override
+        services.AddScoped<IS3ConfigResolver, S3ConfigResolver>();
+        services.AddScoped<IObjectStorageService, ObjectStorageService>();
 
         // Identity services
         services.AddScoped<IUserContext, UserContext>();

@@ -1,46 +1,46 @@
 # S3 Object Storage Abstraction - Task Checklist
 
-## Phase 1: Application Layer — Config POCO & Interface ⏳ NOT STARTED
+## Phase 1: Application Layer — Config POCO & Interface ✅ COMPLETE
 
-- [ ] **1.1** Create `S3Configuration` POCO
+- [x] **1.1** Create `S3Configuration` POCO
   - File: `Explore.Application/Models/S3Configuration.cs`
   - Properties: Region, BucketName, AccessKeyId, SecretAccessKey, Endpoint, PublicEndpoint, ForcePathStyle, UploadUrlExpirationMinutes, DownloadUrlExpirationMinutes
   - ABOUTME comment, file-scoped namespace
   - Acceptance: Compiles; no external dependencies
 
-- [ ] **1.2** Create `IS3ConfigResolver` interface
+- [x] **1.2** Create `IS3ConfigResolver` interface
   - File: `Explore.Application/Contracts/Infrastructure/IS3ConfigResolver.cs`
   - Methods: `ResolveAsync(CancellationToken)`, `InvalidateCache(Guid?)`
   - Mirror ISmtpConfigResolver XML docs
   - Acceptance: Compiles; references S3Configuration
 
-## Phase 2: Domain Layer — Governance Setting Keys ⏳ NOT STARTED
+## Phase 2: Domain Layer — Governance Setting Keys ✅ COMPLETE
 
-- [ ] **2.1** Add S3 setting keys to `GovernanceSettingKeys.cs`
+- [x] **2.1** Add S3 setting keys to `GovernanceSettingKeys.cs`
   - File: `Explore.Domain/Constants/GovernanceSettingKeys.cs`
   - 8 keys: S3Region, S3BucketName, S3AccessKeyId, S3SecretAccessKey, S3Endpoint, S3PublicEndpoint, S3ForcePathStyle, S3UploadUrlExpirationMinutes
   - Convention: `"s3.*"` prefix
   - Acceptance: Compiles; follows email naming pattern
 
-## Phase 3: Persistence Layer — Seed Data ⏳ NOT STARTED
+## Phase 3: Persistence Layer — Seed Data ✅ COMPLETE
 
-- [ ] **3.1** Add S3 seed IDs to `SeedIds.cs`
+- [x] **3.1** Add S3 seed IDs to `SeedIds.cs`
   - File: `Explore.Persistence/Seed/SeedIds.cs`
   - 8 IDs in range 0530-0537
   - UUIDv7 format matching existing pattern
   - Acceptance: No GUID collisions; builds
 
-- [ ] **3.2** Add S3 SystemSetting seed entries to `LookupTableSeeder.cs`
+- [x] **3.2** Add S3 SystemSetting seed entries to `LookupTableSeeder.cs`
   - File: `Explore.Persistence/Seed/LookupTableSeeder.cs`
   - 8 entries with Category="ObjectStorage", IsLocked=false
   - Default values: ForcePathStyle=true, UploadExpiration=60, others empty
   - Acceptance: Build passes; entries match SeedIds
 
-- [ ] **Build check**: `dotnet build --configuration Release --verbosity quiet`
+- [x] **Build check**: `dotnet build --configuration Release --verbosity quiet`
 
-## Phase 4: Infrastructure Layer — S3ConfigResolver ⏳ NOT STARTED
+## Phase 4: Infrastructure Layer — S3ConfigResolver ✅ COMPLETE
 
-- [ ] **4.1** Create `S3ConfigResolver`
+- [x] **4.1** Create `S3ConfigResolver`
   - File: `Explore.Infrastructure/Storage/S3ConfigResolver.cs`
   - Dependencies: ISettingsResolver, ITenantContext, IMemoryCache, ILogger
   - Cache key: `S3Config:{tenantId}`, 5-min expiry
@@ -49,42 +49,42 @@
   - ABOUTME comment, file-scoped namespace
   - Acceptance: Compiles; mirrors SmtpConfigResolver exactly
 
-- [ ] **Build check**: `dotnet build --configuration Release --verbosity quiet`
+- [x] **Build check**: `dotnet build --configuration Release --verbosity quiet`
 
-## Phase 5: Refactor ObjectStorageService ⏳ NOT STARTED
+## Phase 5: Refactor ObjectStorageService ✅ COMPLETE
 
-- [ ] **5.1** Refactor `ObjectStorageService` to use `IS3ConfigResolver`
+- [x] **5.1** Refactor `ObjectStorageService` to use `IS3ConfigResolver`
   - File: `Explore.Infrastructure/Services/ObjectStorageService.cs`
-  - Remove: `IOptions<S3Settings>` dependency, singleton `IAmazonS3` parameter
-  - Add: `IS3ConfigResolver` dependency
-  - Each method: resolve config → create/cache client → execute S3 operation
-  - Use `S3Configuration.UploadUrlExpirationMinutes` instead of hardcoded 40
-  - Keep PublicEndpoint presign client logic
-  - Acceptance: Interface unchanged; all consumers work without changes
+  - Removed: `IOptions<S3Settings>` dependency, singleton `IAmazonS3` parameter
+  - Added: `IS3ConfigResolver` dependency
+  - Each method: resolve config → create client → execute S3 operation
+  - Uses `S3Configuration.UploadUrlExpirationMinutes` instead of hardcoded 40
+  - Kept PublicEndpoint presign client logic
+  - Changed `GeneratePresignedDownloadUrl` return type: `string` → `Task<string>`
+  - Updated all ~15 handler callers to use async/await
 
-- [ ] **5.2** Update DI registration in `InfrastructureServicesRegistration.cs`
-  - Remove: `services.Configure<S3Settings>()`, `services.AddSingleton<IAmazonS3>()`
-  - Add: `services.AddScoped<IS3ConfigResolver, S3ConfigResolver>()`
-  - Change: `AddTransient` → `AddScoped` for ObjectStorageService
-  - Acceptance: Build passes; DI graph resolves
+- [x] **5.2** Update DI registration in `InfrastructureServicesRegistration.cs`
+  - Removed: `services.Configure<S3Settings>()`, `services.AddSingleton<IAmazonS3>()`
+  - Added: `services.AddScoped<IS3ConfigResolver, S3ConfigResolver>()`
+  - Changed: `AddTransient` → `AddScoped` for ObjectStorageService
 
-- [ ] **5.3** Add `TestConnectionAsync` to `IObjectStorageService`
+- [x] **5.3** Add `TestConnectionAsync` to `IObjectStorageService`
   - File: `Explore.Application/Contracts/Infrastructure/IObjectStorageService.cs`
   - New method: `Task<bool> TestConnectionAsync(CancellationToken ct = default)`
   - Implementation: Try ListBucketsAsync → return true/false
-  - Acceptance: Method exists on interface and implementation
 
-- [ ] **Build check**: `dotnet build --configuration Release --verbosity quiet`
+- [x] **Build check**: `dotnet build --configuration Release --verbosity quiet`
 
-## Phase 6: Unit Tests ⏳ NOT STARTED
+## Phase 6: Unit Tests ✅ COMPLETE
 
-- [ ] **6.1** Create `S3ConfigResolverTests`
+- [x] **6.1** Create `S3ConfigResolverTests`
   - File: `Event.Application.UnitTests/Infrastructure/S3ConfigResolverTests.cs`
-  - Tests (10+):
+  - 13 tests:
     - ResolveAsync_EmptyEndpoint_ReturnsNull
     - ResolveAsync_NullEndpoint_ReturnsNull
     - ResolveAsync_EndpointSetButEmptyBucketName_ReturnsNull
     - ResolveAsync_EndpointSetButEmptyAccessKey_ReturnsNull
+    - ResolveAsync_EndpointSetButEmptySecretKey_ReturnsNull
     - ResolveAsync_ValidConfig_ReturnsS3Configuration
     - ResolveAsync_DefaultForcePathStyle_True
     - ResolveAsync_DefaultUploadExpiration_60
@@ -92,32 +92,28 @@
     - ResolveAsync_CachesResult_SecondCallSkipsSettings
     - InvalidateCache_SpecificTenant_AllowsRefresh
     - ResolveAsync_EmptyPublicEndpoint_ReturnsNullPublicEndpoint
-  - Pattern: TUnit + NSubstitute (same as SmtpConfigResolverTests)
-  - Acceptance: All tests pass
+    - ResolveAsync_NullRegion_DefaultsToUsEast1
+  - Pattern: TUnit + NSubstitute
 
-- [ ] **Run all tests**:
-  ```
-  dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet
-  dotnet test --project Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet
-  dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
-  ```
+- [x] **Run all tests**: 203 app + 61 domain + 24 architecture = 288 total — all pass
 
-## Phase 7: Cleanup & Documentation ⏳ NOT STARTED
+## Phase 7: Cleanup & Documentation ✅ COMPLETE
 
-- [ ] **7.1** Update `docs/CODEBASE_STRUCTURE.md`
-  - Add new files to file listing
-  - Document S3 configuration hierarchy
+- [x] **7.1** Update `docs/CODEBASE_STRUCTURE.md`
+  - Added new files to file listing
+  - Updated ObjectStorageService description
 
-- [ ] **7.2** Add ABOUTME comments to all new files
+- [x] **7.2** Add ABOUTME comments to all new files
+  - S3Configuration.cs, IS3ConfigResolver.cs, S3ConfigResolver.cs, S3ConfigResolverTests.cs
 
-- [ ] **7.3** Document env var backward compatibility
-  - ConfigurationExtensions.cs env var mapping stays for bootstrap
-  - Once DB-stored config is active, env vars are fallback only
+- [x] **7.3** Document env var backward compatibility
+  - S3Settings.cs kept during transition for env var bootstrap
+  - Once admin UI supports DB-stored S3 config, env vars become fallback only
 
-- [ ] **7.4** Report obsolete files for user review
-  - `S3Settings.cs` — keep during transition, flag for future removal
+- [x] **7.4** Report obsolete files for user review
+  - `Explore.Infrastructure/S3Settings.cs` — keep during transition, flag for future removal
 
-- [ ] **Final build + test run**
+- [x] **Final build + test run**: 0 errors, 288 tests pass
 
 ---
 
@@ -125,10 +121,10 @@
 
 | Phase | Tasks | Status |
 |-------|-------|--------|
-| Phase 1: Application Layer | 2 tasks | ⏳ Not Started |
-| Phase 2: Domain Layer | 1 task | ⏳ Not Started |
-| Phase 3: Persistence Layer | 2 tasks + build check | ⏳ Not Started |
-| Phase 4: Infrastructure Resolver | 1 task + build check | ⏳ Not Started |
-| Phase 5: Refactor Service | 3 tasks + build check | ⏳ Not Started |
-| Phase 6: Unit Tests | 1 task + test runs | ⏳ Not Started |
-| Phase 7: Cleanup & Docs | 4 tasks + final verification | ⏳ Not Started |
+| Phase 1: Application Layer | 2 tasks | ✅ Complete |
+| Phase 2: Domain Layer | 1 task | ✅ Complete |
+| Phase 3: Persistence Layer | 2 tasks + build check | ✅ Complete |
+| Phase 4: Infrastructure Resolver | 1 task + build check | ✅ Complete |
+| Phase 5: Refactor Service | 3 tasks + build check | ✅ Complete |
+| Phase 6: Unit Tests | 1 task + test runs | ✅ Complete |
+| Phase 7: Cleanup & Docs | 4 tasks + final verification | ✅ Complete |

@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "https://localhost:57790/"
+      "url": "https://localhost:57473/"
     }
   ],
   "paths": {
@@ -5152,6 +5152,186 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/instanceonboarding/storage-settings": {
+      "get": {
+        "tags": [
+          "InstanceOnboarding"
+        ],
+        "summary": "Get Instance Storage Settings",
+        "description": "Returns instance S3 storage settings. Only instance admins can access this endpoint.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceStorageSettingsDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceStorageSettingsDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceStorageSettingsDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "InstanceOnboarding"
+        ],
+        "summary": "Update Instance Storage Settings",
+        "description": "Updates instance S3 storage settings. Requires instance administrator membership.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstanceStorageSettingsDto"
+              }
+            },
+            "application/*\u002Bjson": {
+              "schema": {
+                "$ref": "#/components/schemas/InstanceStorageSettingsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/instanceonboarding/test-storage": {
+      "post": {
+        "tags": [
+          "InstanceOnboarding"
+        ],
+        "summary": "Test Storage Connection",
+        "description": "Tests the S3 storage connection using current settings. Returns success or failure with message.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {}
+              },
+              "application/json": {
+                "schema": {}
+              },
+              "text/json": {
+                "schema": {}
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -16776,6 +16956,40 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "InstanceStorageSettingsDto": {
+        "type": "object",
+        "properties": {
+          "s3Endpoint": {
+            "type": "string"
+          },
+          "s3PublicEndpoint": {
+            "type": "string"
+          },
+          "s3BucketName": {
+            "type": "string"
+          },
+          "s3AccessKeyId": {
+            "type": "string"
+          },
+          "s3SecretAccessKey": {
+            "type": "string"
+          },
+          "s3Region": {
+            "type": "string"
+          },
+          "s3ForcePathStyle": {
+            "type": "boolean"
+          },
+          "s3UploadUrlExpirationMinutes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },

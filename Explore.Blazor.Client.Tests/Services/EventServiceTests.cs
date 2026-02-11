@@ -44,8 +44,7 @@ public class EventServiceTests
         var expectedEvents = ComponentDataBuilder.EventListDto.Generate(3);
         var halResponse = CreateHalCollectionResponse(expectedEvents);
 
-        _apiClient.GetEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .Returns(halResponse);
+        _apiClient.GetEventsAsync().ReturnsForAnyArgs(halResponse);
 
         // Act
         var result = await _service.GetAllEventsAsync();
@@ -60,8 +59,7 @@ public class EventServiceTests
     public async Task GetAllEventsAsync_ReturnsEmptyList_WhenApiReturnsNull()
     {
         // Arrange
-        _apiClient.GetEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .Returns((HalCollectionResourceOfEventListDto?)null);
+        _apiClient.GetEventsAsync().ReturnsForAnyArgs((HalCollectionResourceOfEventListDto?)null);
 
         // Act
         var result = await _service.GetAllEventsAsync();
@@ -74,8 +72,7 @@ public class EventServiceTests
     public async Task GetAllEventsAsync_ReturnsEmptyList_WhenApiThrowsException()
     {
         // Arrange
-        _apiClient.GetEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new ApiException("API Error", 500, null, null, null));
+        _apiClient.GetEventsAsync().ThrowsAsyncForAnyArgs(new ApiException("API Error", 500, null, null, null));
 
         // Act
         var result = await _service.GetAllEventsAsync();
@@ -92,8 +89,7 @@ public class EventServiceTests
         {
             _embedded = null
         };
-        _apiClient.GetEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .Returns(halResponse);
+        _apiClient.GetEventsAsync().ReturnsForAnyArgs(halResponse);
 
         // Act
         var result = await _service.GetAllEventsAsync();
@@ -107,8 +103,7 @@ public class EventServiceTests
     {
         // Arrange
         var halResponse = CreateHalCollectionResponse(new List<EventListDto>());
-        _apiClient.GetEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .Returns(halResponse);
+        _apiClient.GetEventsAsync().ReturnsForAnyArgs(halResponse);
 
         // Act
         await _service.GetAllEventsAsync();

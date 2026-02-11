@@ -265,6 +265,23 @@ internal static class InstanceGovernanceSettingHelpers
             actorUserId);
     }
 
+    internal static int DeserializeInt(string? rawValue, int defaultValue)
+    {
+        if (string.IsNullOrWhiteSpace(rawValue))
+        {
+            return defaultValue;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<int>(rawValue);
+        }
+        catch
+        {
+            return int.TryParse(rawValue, out var parsed) ? parsed : defaultValue;
+        }
+    }
+
     internal static bool DeserializeBoolean(string? rawValue, bool defaultValue)
     {
         if (string.IsNullOrWhiteSpace(rawValue))

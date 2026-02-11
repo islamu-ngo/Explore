@@ -25,17 +25,17 @@ public class GetPresignedDownloadUrlByKeyRequestHandler : IRequestHandler<GetPre
         _logger = logger;
     }
 
-    public Task<PresignedDownloadUrlResponseDto?> Handle(GetPresignedDownloadUrlByKeyRequest request, CancellationToken cancellationToken)
+    public async Task<PresignedDownloadUrlResponseDto?> Handle(GetPresignedDownloadUrlByKeyRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(request.ObjectKey))
         {
             _logger.LogWarning("Object key cannot be empty");
-            return Task.FromResult<PresignedDownloadUrlResponseDto?>(null);
+            return null;
         }
 
         try
         {
-            var presignedUrl = _objectStorageService.GeneratePresignedDownloadUrl(request.ObjectKey, request.ExpirationMinutes);
+            var presignedUrl = await _objectStorageService.GeneratePresignedDownloadUrl(request.ObjectKey, request.ExpirationMinutes);
 
             var response = new PresignedDownloadUrlResponseDto
             {
@@ -44,12 +44,12 @@ public class GetPresignedDownloadUrlByKeyRequestHandler : IRequestHandler<GetPre
                 ExpiresInMinutes = request.ExpirationMinutes
             };
 
-            return Task.FromResult<PresignedDownloadUrlResponseDto?>(response);
+            return response;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to generate presigned URL for object key: {ObjectKey}", request.ObjectKey);
-            return Task.FromResult<PresignedDownloadUrlResponseDto?>(null);
+            return null;
         }
     }
 }

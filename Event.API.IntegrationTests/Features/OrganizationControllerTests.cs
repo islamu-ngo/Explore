@@ -49,7 +49,7 @@ public class OrganizationControllerTests
     }
 
     [Test]
-    public async Task GetById_WithValidId_ShouldReturnOk_OrNotFound()
+    public async Task GetById_WithValidId_ShouldReturnNotFound()
     {
         // Arrange
         var id = Guid.NewGuid();
@@ -57,8 +57,8 @@ public class OrganizationControllerTests
         // Act
         var response = await _fixture.Client.GetAsync($"{BaseUrl}/{id}");
 
-        // Assert - Either OK (if exists) or OK with null (empty database)
-        await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
+        // Assert
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
     }
 
     [Test]
@@ -133,9 +133,9 @@ public class OrganizationControllerTests
     }
 
     [Test]
-    public async Task UpdateStatusType_ShouldReturnNoContent_OrBadRequest()
+    public async Task UpdateStatusType_WithoutAuth_ShouldReturnUnauthorized()
     {
-        // Arrange - This endpoint is temporarily AllowAnonymous
+        // Arrange
         var id = Guid.NewGuid();
         var updateDto = new UpdateOrganizationApprovalStatusDto
         {
@@ -145,8 +145,8 @@ public class OrganizationControllerTests
         // Act
         var response = await _fixture.Client.PutAsJsonAsync($"{BaseUrl}/updatestatustype/{id}", updateDto);
 
-        // Assert - Should not return 500
-        await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
+        // Assert
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     #endregion

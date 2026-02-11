@@ -49,7 +49,7 @@ public class GetPresignedDownloadUrlRequestHandler : IRequestHandler<GetPresigne
 
         try
         {
-            var presignedUrl = _objectStorageService.GeneratePresignedDownloadUrl(objectKey, request.ExpirationMinutes);
+            var presignedUrl = await _objectStorageService.GeneratePresignedDownloadUrl(objectKey, request.ExpirationMinutes);
 
             return new PresignedDownloadUrlResponseDto
             {

@@ -16,7 +16,6 @@
 @using Explore.Blazor.Client.Pages.Onboarding
 @using Explore.Blazor.Client.Providers
 @using Explore.Blazor.Client.Routing.Guards
-@using Explore.Blazor.Client.Services
 @using Microsoft.AspNetCore.Components.Authorization
 
 <TenantContextProvider>
@@ -36,19 +35,12 @@
 </TenantContextProvider>
 
 @code {
-    [Inject]
-    private ILazyAssemblyLoader LazyAssemblyLoader { get; set; } = null!;
-
     private List<RouteConfig> _routes = new();
     private static List<Type> RequireAuthenticated() => [typeof(AuthenticatedRouteGuard)];
     private static List<Type> RequireAdmin() => [typeof(AdminRouteGuard)];
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
-        // Pre-load lazy assemblies on component initialization
-        // This ensures they're available when routes are accessed
-        await PreloadLazyAssemblies();
-
         _routes = new List<RouteConfig>
         {
             // Public routes - accessible to everyone (no guards)
@@ -120,38 +112,5 @@
             new RouteConfig { Path = "/admin/languages", Component = typeof(Languages), Transition = RouteTransition.Fade, Guards = RequireAdmin() },
             new RouteConfig { Path = "/admin/madhabs", Component = typeof(Madhabs), Transition = RouteTransition.Fade, Guards = RequireAdmin() },
     };
-    }
-
-    /// <summary>
-    /// Pre-loads lazy assemblies on component initialization.
-    /// This ensures that Admin, Onboarding, and Organization pages are available
-    /// when users navigate to them, reducing perceived latency.
-    /// 
-    /// Note: In Blazor WASM, lazy-loaded assemblies marked with BlazorWebAssemblyLazyLoad
-    /// in the .csproj are automatically loaded by the runtime when referenced.
-    /// This method serves as a hook for future optimization (e.g., progressive loading).
-    /// </summary>
-    private async Task PreloadLazyAssemblies()
-    {
-        try
-        {
-            // List of lazy-loaded assemblies defined in Explore.Blazor.Client.csproj
-            var lazyAssemblies = new[]
-            {
-                "Explore.Blazor.Client.Pages.Admin.dll",
-                "Explore.Blazor.Client.Pages.Onboarding.dll",
-                "Explore.Blazor.Client.Pages.Organization.dll"
-            };
-
-            // Load assemblies on-demand
-            // In production, you might want to defer this to after initial render
-            // to avoid blocking the initial page load
-            await LazyAssemblyLoader.LoadAssembliesAsync(lazyAssemblies);
-        }
-        catch (Exception ex)
-        {
-            // Log error but don't fail - routes will still work, just with lazy loading
-            Console.Error.WriteLine($"Error pre-loading lazy assemblies: {ex.Message}");
-        }
     }
 }

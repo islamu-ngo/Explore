@@ -13,7 +13,7 @@
         <!-- Header -->
         <div class="settings-header mb-8">
             <MudText Typo="Typo.h4" Style="font-weight: 800;">Instance Settings</MudText>
-            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">Manage platform governance, domain, branding, and module settings</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">Manage platform governance, domain, branding, modules, and storage settings</MudText>
         </div>
 
         @if (!string.IsNullOrWhiteSpace(_errorMessage))
@@ -58,6 +58,10 @@
                                          Text="Modules"
                                          Class="@GetNavItemClass("modules")"
                                          OnClick="@(() => SelectSection("modules"))" />
+                            <MudListItem Icon="@Icons.Material.Filled.Cloud"
+                                         Text="Object Storage"
+                                         Class="@GetNavItemClass("storage")"
+                                         OnClick="@(() => SelectSection("storage"))" />
                         </MudList>
                     </MudPaper>
                 </MudItem>
@@ -81,6 +85,10 @@
                         {
                             <InstanceModulesSection Model="_model" />
                         }
+                        else if (_currentSection == "storage")
+                        {
+                            <InstanceStorageSection Model="_storageModel" OnboardingService="InstanceOnboardingService" />
+                        }
 
                         <MudDivider Class="my-4" />
 
@@ -102,6 +110,7 @@
 
 @code {
     private InstanceGovernanceSettingsModel _model = new();
+    private InstanceStorageSettingsModel _storageModel = new();
     private bool _isLoading = true;
     private bool _isSaving;
     private bool _canEdit;
@@ -120,6 +129,7 @@
         }
 
         _model = await InstanceOnboardingService.GetSettingsAsync();
+        _storageModel = await InstanceOnboardingService.GetStorageSettingsAsync();
         _isLoading = false;
     }
 
@@ -129,14 +139,25 @@
         _errorMessage = null;
 
         var response = await InstanceOnboardingService.UpdateSettingsAsync(_model);
-        _isSaving = false;
 
         if (response.Success)
         {
-            Snackbar.Add("Instance settings saved.", Severity.Success);
+            var storageResponse = await InstanceOnboardingService.UpdateStorageSettingsAsync(_storageModel);
+            _isSaving = false;
+
+            if (storageResponse.Success)
+            {
+                Snackbar.Add("Instance settings saved.", Severity.Success);
+                return;
+            }
+
+            _errorMessage = string.IsNullOrWhiteSpace(storageResponse.Message)
+                ? "Governance settings saved, but storage settings failed."
+                : storageResponse.Message;
             return;
         }
 
+        _isSaving = false;
         _errorMessage = string.IsNullOrWhiteSpace(response.Message)
             ? "Failed to save instance settings."
             : response.Message;

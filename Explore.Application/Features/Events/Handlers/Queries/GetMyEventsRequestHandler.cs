@@ -40,8 +40,8 @@ public class GetMyEventsRequestHandler : IRequestHandler<GetMyEventsRequest, Pag
         // Resolve presigned URLs for images
         foreach (var dto in eventDtos)
         {
-            dto.FeaturedImageUri = ResolveImageUrl(dto.FeaturedImageUri);
-            dto.ActorProfilePictureUri = ResolveImageUrl(dto.ActorProfilePictureUri);
+            dto.FeaturedImageUri = await ResolveImageUrl(dto.FeaturedImageUri);
+            dto.ActorProfilePictureUri = await ResolveImageUrl(dto.ActorProfilePictureUri);
         }
 
         return PaginatedResult<EventListDto>.Create(eventDtos, totalCount, request.PageNumber, request.PageSize);
@@ -51,7 +51,7 @@ public class GetMyEventsRequestHandler : IRequestHandler<GetMyEventsRequest, Pag
     /// Resolves an image object key to a presigned URL for viewing.
     /// If the value is already a full URL (legacy data), extracts the key and generates presigned URL.
     /// </summary>
-    private string? ResolveImageUrl(string? objectKeyOrUri)
+    private async Task<string?> ResolveImageUrl(string? objectKeyOrUri)
     {
         if (string.IsNullOrEmpty(objectKeyOrUri))
             return null;
@@ -66,13 +66,13 @@ public class GetMyEventsRequestHandler : IRequestHandler<GetMyEventsRequest, Pag
                 if (Uri.TryCreate(objectKeyOrUri, UriKind.Absolute, out var uri))
                 {
                     var objectKey = uri.AbsolutePath.TrimStart('/');
-                    return _objectStorageService.GeneratePresignedDownloadUrl(objectKey, 60);
+                    return await _objectStorageService.GeneratePresignedDownloadUrl(objectKey, 60);
                 }
                 return objectKeyOrUri;
             }
 
             // It's an object key - generate presigned URL
-            return _objectStorageService.GeneratePresignedDownloadUrl(objectKeyOrUri, 60);
+            return await _objectStorageService.GeneratePresignedDownloadUrl(objectKeyOrUri, 60);
         }
         catch (Exception ex)
         {

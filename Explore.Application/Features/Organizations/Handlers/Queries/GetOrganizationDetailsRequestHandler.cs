@@ -54,7 +54,7 @@ public class GetOrganizationDetailsRequestHandler : IRequestHandler<GetOrganizat
         // Resolve presigned URL for profile picture
         if (dto != null)
         {
-            dto.ActorProfilePictureUri = ResolveImageUrl(dto.ActorProfilePictureUri);
+            dto.ActorProfilePictureUri = await ResolveImageUrl(dto.ActorProfilePictureUri);
         }
 
         return dto;
@@ -63,7 +63,7 @@ public class GetOrganizationDetailsRequestHandler : IRequestHandler<GetOrganizat
     /// <summary>
     /// Resolves an image object key to a presigned URL for viewing.
     /// </summary>
-    private string? ResolveImageUrl(string? objectKeyOrUri)
+    private async Task<string?> ResolveImageUrl(string? objectKeyOrUri)
     {
         if (string.IsNullOrEmpty(objectKeyOrUri))
             return null;
@@ -77,13 +77,13 @@ public class GetOrganizationDetailsRequestHandler : IRequestHandler<GetOrganizat
                 if (Uri.TryCreate(objectKeyOrUri, UriKind.Absolute, out var uri))
                 {
                     var objectKey = uri.AbsolutePath.TrimStart('/');
-                    return _objectStorageService.GeneratePresignedDownloadUrl(objectKey, 60);
+                    return await _objectStorageService.GeneratePresignedDownloadUrl(objectKey, 60);
                 }
                 return objectKeyOrUri;
             }
 
             // It's an object key - generate presigned URL
-            return _objectStorageService.GeneratePresignedDownloadUrl(objectKeyOrUri, 60);
+            return await _objectStorageService.GeneratePresignedDownloadUrl(objectKeyOrUri, 60);
         }
         catch (Exception ex)
         {

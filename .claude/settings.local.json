@@ -35,7 +35,8 @@
       "Bash(dotnet test:*)",
       "Bash(dotnet build:*)",
       "Bash(dotnet format:*)",
-      "Bash(dotnet:*)"
+      "Bash(dotnet:*)",
+      "Bash(Out-File -FilePath C:/ISLAMU/GitHub/Explore/test-output.txt -Encoding utf8)"
     ]
   }
 }

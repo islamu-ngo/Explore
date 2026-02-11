@@ -118,6 +118,24 @@ public static class SeedIds
     /// <summary>Skip TLS certificate validation (development only)</summary>
     public static readonly Guid SystemSettingEmailSmtpSkipCertValidationId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000528");
 
+    // ===== System Settings — Object Storage / S3 =====
+    /// <summary>S3 endpoint URL (e.g., https://fsn1.your-objectstorage.com)</summary>
+    public static readonly Guid SystemSettingS3EndpointId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000530");
+    /// <summary>S3 public endpoint for presigned URLs (if different from internal)</summary>
+    public static readonly Guid SystemSettingS3PublicEndpointId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000531");
+    /// <summary>S3 bucket name</summary>
+    public static readonly Guid SystemSettingS3BucketNameId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000532");
+    /// <summary>S3 access key ID</summary>
+    public static readonly Guid SystemSettingS3AccessKeyIdId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000533");
+    /// <summary>S3 secret access key</summary>
+    public static readonly Guid SystemSettingS3SecretAccessKeyId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000534");
+    /// <summary>S3 region (e.g., fsn1, us-east-1)</summary>
+    public static readonly Guid SystemSettingS3RegionId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000535");
+    /// <summary>S3 force path-style URLs (true for most non-AWS providers)</summary>
+    public static readonly Guid SystemSettingS3ForcePathStyleId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000536");
+    /// <summary>S3 presigned upload URL expiration in minutes</summary>
+    public static readonly Guid SystemSettingS3UploadUrlExpirationMinutesId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000537");
+
     // ===== Module Definitions =====
     /// <summary>Core module - basic event functionality (always enabled)</summary>
     public static readonly Guid ModuleCoreId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000600");

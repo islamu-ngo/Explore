@@ -1,10 +1,8 @@
 using System.Net.Http;
-using System.Text.Json;
 using Blazouter.Extensions;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Configuration;
 using Explore.Blazor.Client.Routing.Guards;
-using Explore.Blazor.Client.Serialization;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Contracts;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -42,18 +40,6 @@ builder.Services.AddScoped(sp =>
     return factory.CreateClient("BffClient");
 });
 
-// Configure JsonSerializerOptions with source-generated context for AOT compilation
-// This enables compile-time JSON serialization code generation, eliminating reflection overhead
-// Improves WASM bundle size and runtime performance
-var jsonOptions = new JsonSerializerOptions
-{
-    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
-    WriteIndented = false,
-    AllowTrailingCommas = true,
-    TypeInfoResolver = AppJsonSerializerContext.Default
-};
-
 // Register NSwag-generated API client for WASM
 // In WASM mode, the client calls through BFF endpoints (same origin)
 // The BFF handles authentication token attachment
@@ -65,9 +51,6 @@ builder.Services.AddHttpClient<IEventApiClient, EventApiClient>(client =>
 })
 .AddHttpMessageHandler<BrowserCredentialsMessageHandler>()
 .AddHttpMessageHandler<BffUnauthorizedHandler>();
-
-// Register the JsonSerializerOptions globally for dependency injection
-builder.Services.AddSingleton(jsonOptions);
 
 // Register TenantConfiguration for single-tenant mode (default)
 // In WASM, configuration section may not be available, so defaults from TenantConfiguration class are used

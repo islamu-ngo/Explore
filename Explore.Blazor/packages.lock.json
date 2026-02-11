@@ -70,8 +70,8 @@
       },
       "Microsoft.DotNet.HotReload.WebAssembly.Browser": {
         "type": "Transitive",
-        "resolved": "10.0.102",
-        "contentHash": "Y8Xq5gLe6l3bW82uGJODzom5Z7pn+Y71BHObnmWF0LqbKFqfOOVDg76a2vyJnRLHn0X1LmsXSec/QdCWFOPl4A=="
+        "resolved": "10.0.200-preview.0.26103.119",
+        "contentHash": "kuTJn2H5ek5+YnEYjG+NsR5pKMPlnvT2yW5eEbmWrkadGj4PAAb6KTR1vzH6Js0lytQFL3AtlElVqYpw7Y6lGA=="
       },
       "Microsoft.EntityFrameworkCore.Abstractions": {
         "type": "Transitive",
@@ -231,7 +231,7 @@
           "FluentValidation": "[11.9.1, )",
           "Microsoft.AspNetCore.Components.WebAssembly": "[10.0.1, )",
           "Microsoft.AspNetCore.Components.WebAssembly.Authentication": "[10.0.1, )",
-          "Microsoft.DotNet.HotReload.WebAssembly.Browser": "[10.0.102, )",
+          "Microsoft.DotNet.HotReload.WebAssembly.Browser": "[10.0.200-preview.0.26103.119, )",
           "MudBlazor": "[8.13.0, )"
         }
       },

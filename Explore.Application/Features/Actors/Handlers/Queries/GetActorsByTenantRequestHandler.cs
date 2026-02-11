@@ -35,7 +35,7 @@ public class GetActorsByTenantRequestHandler : IRequestHandler<GetActorsByTenant
         // Resolve presigned URLs for profile pictures
         foreach (var dto in dtos)
         {
-            dto.ProfilePictureUri = ResolveImageUrl(dto.ProfilePictureUri);
+            dto.ProfilePictureUri = await ResolveImageUrl(dto.ProfilePictureUri);
         }
 
         return dtos;
@@ -44,7 +44,7 @@ public class GetActorsByTenantRequestHandler : IRequestHandler<GetActorsByTenant
     /// <summary>
     /// Resolves an image object key to a presigned URL for viewing.
     /// </summary>
-    private string? ResolveImageUrl(string? objectKeyOrUri)
+    private async Task<string?> ResolveImageUrl(string? objectKeyOrUri)
     {
         if (string.IsNullOrEmpty(objectKeyOrUri))
             return null;
@@ -58,13 +58,13 @@ public class GetActorsByTenantRequestHandler : IRequestHandler<GetActorsByTenant
                 if (Uri.TryCreate(objectKeyOrUri, UriKind.Absolute, out var uri))
                 {
                     var objectKey = uri.AbsolutePath.TrimStart('/');
-                    return _objectStorageService.GeneratePresignedDownloadUrl(objectKey, 60);
+                    return await _objectStorageService.GeneratePresignedDownloadUrl(objectKey, 60);
                 }
                 return objectKeyOrUri;
             }
 
             // It's an object key - generate presigned URL
-            return _objectStorageService.GeneratePresignedDownloadUrl(objectKeyOrUri, 60);
+            return await _objectStorageService.GeneratePresignedDownloadUrl(objectKeyOrUri, 60);
         }
         catch (Exception ex)
         {

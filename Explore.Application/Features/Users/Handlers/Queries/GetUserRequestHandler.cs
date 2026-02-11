@@ -71,13 +71,13 @@ public class GetUserRequestHandler : IRequestHandler<GetUserRequest, UserDto>
 
         if (userDto != null && !string.IsNullOrEmpty(userDto.ProfileImageKey))
         {
-            userDto.ProfileImageUri = ResolveImageUrl(userDto.ProfileImageKey);
+            userDto.ProfileImageUri = await ResolveImageUrl(userDto.ProfileImageKey);
         }
 
         return userDto;
     }
 
-    private string? ResolveImageUrl(string? objectKeyOrUri)
+    private async Task<string?> ResolveImageUrl(string? objectKeyOrUri)
     {
         if (string.IsNullOrEmpty(objectKeyOrUri))
         {
@@ -93,14 +93,14 @@ public class GetUserRequestHandler : IRequestHandler<GetUserRequest, UserDto>
                 {
                     // Extract the object key from the URL path
                     var objectKey = uri.AbsolutePath.TrimStart('/');
-                    return _objectStorageService.GeneratePresignedDownloadUrl(objectKey, 60);
+                    return await _objectStorageService.GeneratePresignedDownloadUrl(objectKey, 60);
                 }
                 _logger.LogWarning("Failed to parse legacy URL: {Uri}", objectKeyOrUri);
                 return objectKeyOrUri; // Return as-is if parsing fails
             }
 
             // New format: just the object key
-            return _objectStorageService.GeneratePresignedDownloadUrl(objectKeyOrUri, 60);
+            return await _objectStorageService.GeneratePresignedDownloadUrl(objectKeyOrUri, 60);
         }
         catch (Exception ex)
         {

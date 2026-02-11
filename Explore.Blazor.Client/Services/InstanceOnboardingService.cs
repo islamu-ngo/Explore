@@ -11,6 +11,9 @@ public interface IInstanceOnboardingService
     Task<InstanceGovernanceSettingsModel> GetSettingsAsync();
     Task<InstanceCommandResponseModel> CompleteAsync(InstanceGovernanceSettingsModel settings);
     Task<InstanceCommandResponseModel> UpdateSettingsAsync(InstanceGovernanceSettingsModel settings);
+    Task<InstanceStorageSettingsModel> GetStorageSettingsAsync();
+    Task<InstanceCommandResponseModel> UpdateStorageSettingsAsync(InstanceStorageSettingsModel settings);
+    Task<StorageConnectionTestResult> TestStorageConnectionAsync();
 }
 
 public class InstanceOnboardingService : IInstanceOnboardingService
@@ -63,6 +66,75 @@ public class InstanceOnboardingService : IInstanceOnboardingService
     public async Task<InstanceCommandResponseModel> UpdateSettingsAsync(InstanceGovernanceSettingsModel settings)
     {
         return await SendAsync(HttpMethod.Put, "api/v1/InstanceOnboarding/settings", settings);
+    }
+
+    public async Task<InstanceStorageSettingsModel> GetStorageSettingsAsync()
+    {
+        try
+        {
+            var client = _httpClientFactory.CreateClient("BffClient");
+            var result = await client.GetFromJsonAsync<InstanceStorageSettingsModel>("api/v1/InstanceOnboarding/storage-settings");
+            return result ?? new InstanceStorageSettingsModel();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to fetch instance storage settings.");
+            return new InstanceStorageSettingsModel();
+        }
+    }
+
+    public async Task<InstanceCommandResponseModel> UpdateStorageSettingsAsync(InstanceStorageSettingsModel settings)
+    {
+        try
+        {
+            var client = _httpClientFactory.CreateClient("BffClient");
+            using var request = new HttpRequestMessage(HttpMethod.Put, "api/v1/InstanceOnboarding/storage-settings")
+            {
+                Content = JsonContent.Create(settings)
+            };
+
+            var response = await client.SendAsync(request);
+            var payload = await response.Content.ReadFromJsonAsync<InstanceCommandResponseModel>();
+
+            if (payload != null)
+            {
+                return payload;
+            }
+
+            return new InstanceCommandResponseModel
+            {
+                Success = response.IsSuccessStatusCode,
+                Message = response.IsSuccessStatusCode
+                    ? "Storage settings updated successfully."
+                    : $"Operation failed with status {(int)response.StatusCode}."
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update instance storage settings.");
+            return new InstanceCommandResponseModel
+            {
+                Success = false,
+                Message = "Request failed.",
+                Errors = new List<string> { ex.Message }
+            };
+        }
+    }
+
+    public async Task<StorageConnectionTestResult> TestStorageConnectionAsync()
+    {
+        try
+        {
+            var client = _httpClientFactory.CreateClient("BffClient");
+            var response = await client.PostAsync("api/v1/InstanceOnboarding/test-storage", null);
+            var result = await response.Content.ReadFromJsonAsync<StorageConnectionTestResult>();
+            return result ?? new StorageConnectionTestResult { Success = false, Message = "Empty response." };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to test storage connection.");
+            return new StorageConnectionTestResult { Success = false, Message = ex.Message };
+        }
     }
 
     private async Task<InstanceCommandResponseModel> SendAsync(HttpMethod method, string url, InstanceGovernanceSettingsModel settings)
@@ -143,4 +215,22 @@ public class InstanceCommandResponseModel
     public Guid Id { get; set; }
     public string Message { get; set; } = string.Empty;
     public List<string> Errors { get; set; } = new();
+}
+
+public class InstanceStorageSettingsModel
+{
+    public string S3Endpoint { get; set; } = string.Empty;
+    public string S3PublicEndpoint { get; set; } = string.Empty;
+    public string S3BucketName { get; set; } = string.Empty;
+    public string S3AccessKeyId { get; set; } = string.Empty;
+    public string S3SecretAccessKey { get; set; } = string.Empty;
+    public string S3Region { get; set; } = string.Empty;
+    public bool S3ForcePathStyle { get; set; } = true;
+    public int S3UploadUrlExpirationMinutes { get; set; } = 60;
+}
+
+public class StorageConnectionTestResult
+{
+    public bool Success { get; set; }
+    public string Message { get; set; } = string.Empty;
 }

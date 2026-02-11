@@ -28,14 +28,15 @@ public static class MockServiceFactory
         var mock = Substitute.For<IEventApiClient>();
 
         // Configure default successful empty responses for events (HAL collection)
-        mock.GetEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .Returns(new HalCollectionResourceOfEventListDto
+        // GetEventsAsync has many optional filter parameters (searchTerm, categoryId, etc.)
+        // Use ReturnsForAnyArgs to match regardless of which parameters are passed
+        mock.GetEventsAsync().ReturnsForAnyArgs(new HalCollectionResourceOfEventListDto
+        {
+            _embedded = new HalCollectionEmbeddedOfEventListDto
             {
-                _embedded = new HalCollectionEmbeddedOfEventListDto
-                {
-                    Items = new List<object>()
-                }
-            });
+                Items = new List<object>()
+            }
+        });
 
         // Configure default successful empty responses for my events (HAL collection)
         mock.GetMyEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())

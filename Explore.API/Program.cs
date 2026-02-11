@@ -4,7 +4,6 @@ using System.Security.Claims;
 using System.Text.RegularExpressions;
 using Explore.API.BackgroundServices;
 using Explore.API.Extensions;
-using Explore.API.Middleware;
 using Explore.API.Services;
 using Explore.Application;
 using Explore.Application.Contracts.Infrastructure;
@@ -131,6 +130,8 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
         options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
     });
+
+builder.Services.AddApiExceptionHandling();
 
 builder.Services.AddEndpointsApiExplorer();
 //builder.Services.AddSwaggerGen(); // moved to AddSwaggerGenWithAuth extension method
@@ -447,7 +448,6 @@ if (!builder.Environment.IsEnvironment("Testing"))
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.UseDeveloperExceptionPage();
     Microsoft.IdentityModel.Logging.IdentityModelEventSource.ShowPII = true;
 
     //Microsoft.IdentityModel.Tokens.JsonWebTokenHandler.DefaultMapInboundClaims = false;
@@ -478,9 +478,10 @@ if (app.Environment.IsDevelopment())
 else
 {
     app.UseCors("InternalAppPolicy");
-    app.UseExceptionHandler("/Error");
     app.UseHsts();
 }
+
+app.UseApiExceptionHandling();
 
 //app.UseForwardedHeaders(new ForwardedHeadersOptions
 //{
@@ -500,7 +501,6 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseOutputCache();
-app.UseMiddleware<ExceptionMiddleware>();
 app.MapControllers();
 
 // Map health check endpoints for Coolify/container orchestration

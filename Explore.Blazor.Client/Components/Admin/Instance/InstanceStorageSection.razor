@@ -1,0 +1,106 @@
+@* ABOUTME: Renders S3-compatible object storage configuration fields for Instance Admin Settings. *@
+@* ABOUTME: Includes endpoint, bucket, credentials, region, path style, and connection test button. *@
+
+@using MudBlazor
+@using Explore.Blazor.Client.Services
+
+<div class="settings-section">
+    <div class="settings-section-header">
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">Object Storage (S3-Compatible)</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+            Configure S3-compatible object storage for file uploads, images, and media.
+            If settings are provided via a secret manager (e.g., Infisical), those values are used automatically and do not need to be entered here.
+        </MudText>
+    </div>
+    <MudStack Spacing="3">
+        <MudTextField Label="S3 Endpoint"
+                      Variant="Variant.Outlined"
+                      @bind-Value="Model.S3Endpoint"
+                      Placeholder="https://fsn1.your-objectstorage.com"
+                      HelperText="S3-compatible endpoint URL (e.g., Hetzner, MinIO, AWS)" />
+
+        <MudTextField Label="Public Endpoint (Optional)"
+                      Variant="Variant.Outlined"
+                      @bind-Value="Model.S3PublicEndpoint"
+                      Placeholder="https://public.your-objectstorage.com"
+                      HelperText="Public endpoint for presigned URLs, if different from internal endpoint" />
+
+        <MudTextField Label="Bucket Name"
+                      Variant="Variant.Outlined"
+                      @bind-Value="Model.S3BucketName" />
+
+        <MudTextField Label="Access Key ID"
+                      Variant="Variant.Outlined"
+                      @bind-Value="Model.S3AccessKeyId" />
+
+        <MudTextField Label="Secret Access Key"
+                      Variant="Variant.Outlined"
+                      @bind-Value="Model.S3SecretAccessKey"
+                      InputType="InputType.Password" />
+
+        <MudTextField Label="Region"
+                      Variant="Variant.Outlined"
+                      @bind-Value="Model.S3Region"
+                      Placeholder="fsn1"
+                      HelperText="S3 region identifier (e.g., fsn1 for Hetzner, us-east-1 for AWS)" />
+
+        <MudSwitch T="bool" @bind-Value="Model.S3ForcePathStyle" Color="Color.Primary">
+            Force path-style URLs (required by most non-AWS S3 providers)
+        </MudSwitch>
+
+        <MudNumericField T="int" Label="Upload URL Expiration (minutes)"
+                         Variant="Variant.Outlined"
+                         @bind-Value="Model.S3UploadUrlExpirationMinutes"
+                         Min="1"
+                         Max="1440"
+                         HelperText="Presigned upload URL expiration time (1–1440 minutes)" />
+
+        <MudDivider Class="my-2" />
+
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Info"
+                       OnClick="TestConnectionAsync"
+                       Disabled="_isTesting"
+                       StartIcon="@(_isTesting ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.NetworkCheck)">
+                @(_isTesting ? "Testing..." : "Test Connection")
+            </MudButton>
+
+            @if (_testResult != null)
+            {
+                <MudAlert Severity="@(_testResult.Success ? Severity.Success : Severity.Error)"
+                          Dense="true"
+                          NoIcon="false"
+                          Class="flex-grow-1">
+                    @_testResult.Message
+                </MudAlert>
+            }
+        </MudStack>
+    </MudStack>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public InstanceStorageSettingsModel Model { get; set; } = null!;
+
+    [Parameter]
+    public IInstanceOnboardingService? OnboardingService { get; set; }
+
+    private bool _isTesting;
+    private StorageConnectionTestResult? _testResult;
+
+    private async Task TestConnectionAsync()
+    {
+        if (OnboardingService == null)
+        {
+            return;
+        }
+
+        _isTesting = true;
+        _testResult = null;
+        StateHasChanged();
+
+        _testResult = await OnboardingService.TestStorageConnectionAsync();
+        _isTesting = false;
+    }
+}

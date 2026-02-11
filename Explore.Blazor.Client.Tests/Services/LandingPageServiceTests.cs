@@ -40,8 +40,7 @@ public class LandingPageServiceTests
         };
         var halResponse = CreateEventHalResponse(events, totalCount: 3);
 
-        _apiClient.GetEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .Returns(halResponse);
+        _apiClient.GetEventsAsync().ReturnsForAnyArgs(halResponse);
 
         // Act
         var result = await _service.GetFeaturedEventsAsync(3);
@@ -66,8 +65,7 @@ public class LandingPageServiceTests
         };
         var halResponse = CreateEventHalResponse(events, totalCount: 3);
 
-        _apiClient.GetEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .Returns(halResponse);
+        _apiClient.GetEventsAsync().ReturnsForAnyArgs(halResponse);
 
         // Act
         var result = await _service.GetFeaturedEventsAsync(10);
@@ -90,8 +88,7 @@ public class LandingPageServiceTests
         }).ToList();
         var halResponse = CreateEventHalResponse(events, totalCount: 20);
 
-        _apiClient.GetEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .Returns(halResponse);
+        _apiClient.GetEventsAsync().ReturnsForAnyArgs(halResponse);
 
         // Act
         var result = await _service.GetFeaturedEventsAsync(6);
@@ -104,8 +101,7 @@ public class LandingPageServiceTests
     public async Task GetFeaturedEventsAsync_ReturnsEmptyCollection_WhenApiThrows()
     {
         // Arrange
-        _apiClient.GetEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new ApiException("API Error", 500, null, null, null));
+        _apiClient.GetEventsAsync().ThrowsAsyncForAnyArgs(new ApiException("API Error", 500, null, null, null));
 
         // Act
         var result = await _service.GetFeaturedEventsAsync();
@@ -142,8 +138,7 @@ public class LandingPageServiceTests
         // Arrange
         var halResponse = CreateEventHalResponse(new List<EventListDto>(), totalCount: 42);
 
-        _apiClient.GetEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .Returns(halResponse);
+        _apiClient.GetEventsAsync().ReturnsForAnyArgs(halResponse);
 
         // Act
         var result = await _service.GetUpcomingEventsCountAsync();
@@ -156,8 +151,7 @@ public class LandingPageServiceTests
     public async Task GetUpcomingEventsCountAsync_ReturnsZero_WhenApiThrows()
     {
         // Arrange
-        _apiClient.GetEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new ApiException("API Error", 500, null, null, null));
+        _apiClient.GetEventsAsync().ThrowsAsyncForAnyArgs(new ApiException("API Error", 500, null, null, null));
 
         // Act
         var result = await _service.GetUpcomingEventsCountAsync();

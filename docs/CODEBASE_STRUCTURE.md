@@ -108,7 +108,9 @@ Explore.Application/
 │   ├── Infrastructure/           — Infrastructure service interfaces
 │   │   ├── ITenantContext.cs     — Multi-tenant context resolution
 │   │   ├── ICurrentUserService.cs— Current authenticated user info
-│   │   ├── IObjectStorageService.cs — S3-compatible storage
+│   │   ├── IObjectStorageService.cs — S3-compatible storage operations
+│   │   ├── IS3ConfigResolver.cs  — S3 config from cascading settings (per-tenant)
+│   │   ├── ISmtpConfigResolver.cs— SMTP config from cascading settings (per-tenant)
 │   │   └── ISettingsResolver.cs  — Governance settings resolution
 │   ├── Identity/                 — User identity interfaces
 │   │   └── IUserContext.cs       — User context abstraction
@@ -311,9 +313,11 @@ Explore.Infrastructure/
 │   ├── SmtpEmailService.cs       — MailKit SMTP email sender with Polly retry
 │   ├── SmtpConfigResolver.cs     — Resolves SMTP config from cascading settings per tenant
 │   └── EmailResiliencePipelines.cs — Polly v8 retry pipeline for transient SMTP failures
+├── Storage/
+│   └── S3ConfigResolver.cs       — Resolves S3 config from cascading settings per tenant
 ├── Services/
 │   ├── CurrentUserService.cs     — Current user ID extraction with claim fallback
-│   ├── ObjectStorageService.cs   — S3-compatible object storage (Hetzner)
+│   ├── ObjectStorageService.cs   — S3-compatible object storage (per-tenant via IS3ConfigResolver)
 │   ├── ModuleService.cs          — Module governance checks
 │   └── SettingsResolver.cs       — SystemSetting/TenantSetting resolution
 └── Strategies/

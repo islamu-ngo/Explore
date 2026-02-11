@@ -33,4 +33,14 @@ public static class GovernanceSettingKeys
     public const string EmailFromName = "email.from_name";
     public const string EmailSmtpTimeoutSeconds = "email.smtp_timeout_seconds";
     public const string EmailSmtpSkipCertValidation = "email.smtp_skip_cert_validation";
+
+    // Object Storage / S3
+    public const string S3Endpoint = "s3.endpoint";
+    public const string S3PublicEndpoint = "s3.public_endpoint";
+    public const string S3BucketName = "s3.bucket_name";
+    public const string S3AccessKeyId = "s3.access_key_id";
+    public const string S3SecretAccessKey = "s3.secret_access_key";
+    public const string S3Region = "s3.region";
+    public const string S3ForcePathStyle = "s3.force_path_style";
+    public const string S3UploadUrlExpirationMinutes = "s3.upload_url_expiration_minutes";
 }
