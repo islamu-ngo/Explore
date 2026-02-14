@@ -68,10 +68,10 @@ Explore.Domain/
 
 **Entity categories:**
 - **Main entities** (Guid PK): Event, Organization, Actor, User, Tenant, Location, StorageObject, Category, Tag
-- **Lookup tables** (int PK): EventType, EventStatus, EventFormat, AudienceAge, AudienceGender, Madhab, Language, VisibilityType, RegistrationMode, OrganizationRole, OrganizationPosition
-- **Link/junction tables** (composite PK): EventCategories, EventTags, EventSessionLanguage, EventSessionSpeaker, TagTypeTags, OrganizationMember, UserRole
+- **Lookup tables** (int PK): EventType, EventStatus, EventFormat, AudienceAge, AudienceGender, Madhab, Language, VisibilityType, RegistrationMode, Role, OrganizationPosition
+- **Link/junction tables** (composite PK): EventCategories, EventTags, EventSessionLanguage, EventSessionSpeaker, TagTypeTags, OrganizationMember, TenantUser, RolePermission
 - **Aspect tables** (1:1 optional): EventIslamicAspect, EventTechAspect
-- **Admin/onboarding**: InstanceAdministrator, InstanceBootstrapState, TenantAdministrator, TenantOnboardingState
+- **Admin/onboarding**: InstanceAdministrator, InstanceBootstrapState, TenantMember, TenantOnboardingState
 
 ---
 

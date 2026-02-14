@@ -55,6 +55,7 @@ graph TD
 | [repository-pattern.md](resources/repository-pattern.md) | `GenericRepository`, custom repositories |
 | [querying-patterns.md](resources/querying-patterns.md) | `Include`, `Select`, projections, performance |
 | [migrations.md](resources/migrations.md) | Creating and applying migrations |
+| [named-query-filters.md](resources/named-query-filters.md) | EF Core 10 named global query filters for soft delete and tenancy |
 
 ## Quick Reference
 
@@ -139,6 +140,10 @@ public class {Entity}Configuration : IEntityTypeConfiguration<{Entity}>
             .WithMany()
             .HasForeignKey(e => e.{ParentEntity}Id)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // EF Core 10+: named query filters (can be toggled selectively)
+        builder.HasQueryFilter(name: "SoftDelete", predicate: e => !e.IsDeleted);
+        builder.HasQueryFilter(name: "TenantFilter", predicate: e => e.TenantId == tenantId);
     }
 }
 ```
@@ -227,6 +232,7 @@ dotnet ef migrations script --idempotent --output migrations/release.sql --proje
 *   **Default Values**: **DO NOT** add default values in domain entity property initializers (e.g., `public int ViewCount { get; set; } = 0;`). Set defaults in application handlers or use database-level defaults via `IEntityTypeConfiguration`.
 *   **Link Tables**: Navigation properties on link/mapping tables are **readonly for queries only**. Writes must go through the link table's repository directly.
 *   **PostgreSQL Features**: Leverage PostgreSQL-specific features like `UUIDv7` for primary keys and PostGIS for spatial data handling.
+*   **Named Query Filters (EF Core 10+)**: Prefer named filters over combined predicates so specific filters can be disabled when needed.
 
 ---
 

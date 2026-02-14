@@ -168,6 +168,13 @@ public static class RouteNames
 
     #endregion
 
+    #region Role Routes
+
+    public const string GetRoles = "GetRoles";
+    public const string GetRoleById = "GetRoleById";
+
+    #endregion
+
     #region Organization Member Routes
 
     public const string GetOrganizationMemberById = "GetOrganizationMemberById";

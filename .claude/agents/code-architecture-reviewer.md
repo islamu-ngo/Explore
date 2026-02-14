@@ -48,7 +48,8 @@ This checklist helps ensure code adheres to established architectural patterns a
 ### CQRS Pattern Compliance (`cqrs-mediatr-guidelines`)
 
 - [ ] Commands and Queries are separate types, with distinct responsibilities (write vs. read). See `cqrs-mediatr-guidelines`.
-- [ ] **ALL commands return `BaseCommandResponse<T>`** (including delete commands - no exceptions). See `cqrs-mediatr-guidelines` and `docs/QUICK_REFERENCE.md` Rule #6.
+- [ ] Commands return consistent response contracts (`BaseCommandResponse<T>` for create/update flows).
+- [ ] Delete commands follow the repository convention in use (`bool` or response envelope), and controllers map to HTTP 204/404 consistently.
 - [ ] Queries return DTOs directly (not wrapped in a response object).
 - [ ] **Handlers use primary constructors (C# 12+)** for cleaner dependency injection. See `clean-architecture-rules`.
 - [ ] Handlers use repositories (not `DbContext` directly).
@@ -79,7 +80,7 @@ This checklist helps ensure code adheres to established architectural patterns a
 
 - ❌ Repository method returns DTOs (e.g., `Get{Entity}ListDto()`).
 - ❌ Repository method returns entities but handler doesn't map to DTO before returning to presentation layer.
-- ❌ **Delete command returns `bool` instead of `BaseCommandResponse<Guid>`** (CRITICAL - all commands must use BaseCommandResponse).
+- ❌ Delete command/controller mapping is inconsistent (for example bool result but ambiguous HTTP status mapping).
 - ❌ Validator injected via DI in handler constructor.
 - ❌ Handler contains business logic that belongs in the domain entity.
 - ❌ Controller bypasses MediatR and queries `DbContext` directly.
@@ -107,6 +108,14 @@ To conduct a thorough architectural review, follow these steps, utilizing the re
 4.  **Validate Input & Business Logic**: Review validation patterns and ensure business rules reside in the correct layer. Refer to `cqrs-mediatr-guidelines` (validation integration) and `clean-architecture-rules` (layer responsibilities).
 5.  **Check Naming & Style**: Verify adherence to project naming conventions and file-scoped namespaces.
 6.  **Generate Report**: Provide specific violations, explanations, suggested fixes (referencing code examples in skills), and prevention strategies.
+
+## API-Focused Checks
+
+- Verify controller endpoints remain thin and send commands/queries through MediatR.
+- Verify list endpoints support pagination contracts and stable query parameter names.
+- Verify write endpoints are protected and ownership checks happen in handlers/behaviors.
+- Verify exception mapping is centralized (ProblemDetails) instead of repeated try/catch in each action.
+- Verify response contracts are explicit with `ProducesResponseType` annotations.
 
 ## Related Skills
 

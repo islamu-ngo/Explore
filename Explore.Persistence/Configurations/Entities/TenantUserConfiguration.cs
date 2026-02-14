@@ -18,9 +18,9 @@ public class TenantUserConfiguration : IEntityTypeConfiguration<TenantUser>
             .HasForeignKey(e => e.TenantId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasOne(e => e.UserRole)
+        builder.HasOne(e => e.Role)
             .WithMany()
-            .HasForeignKey(e => e.UserRoleId)
+            .HasForeignKey(e => e.RoleId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

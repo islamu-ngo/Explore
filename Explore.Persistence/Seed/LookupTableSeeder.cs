@@ -42,12 +42,12 @@ public static class LookupTableSeeder
         await SeedMadhabsAsync(context, cancellationToken);
         await SeedModuleDefinitionsAsync(context, cancellationToken);
         await SeedOrganizationPositionsAsync(context, cancellationToken);
-        await SeedOrganizationRolesAsync(context, cancellationToken);
         await SeedRegistrationModesAsync(context, cancellationToken);
+        await SeedRolesAsync(context, cancellationToken);
         await SeedSystemSettingsAsync(context, cancellationToken);
         await SeedTagTypesAsync(context, cancellationToken);
-        await SeedTenantAdministratorRolesAsync(context, cancellationToken);
         await SeedVisibilityTypesAsync(context, cancellationToken);
+        await SeedPermissionsAsync(context, cancellationToken);
     }
 
     private static async Task SeedActorTypesAsync(ExploreDbContext context, CancellationToken ct)
@@ -225,20 +225,6 @@ public static class LookupTableSeeder
         await context.SaveChangesAsync(ct);
     }
 
-    private static async Task SeedOrganizationRolesAsync(ExploreDbContext context, CancellationToken ct)
-    {
-        if (await context.Set<OrganizationRole>().AnyAsync(ct)) return;
-
-        context.Set<OrganizationRole>().AddRange(
-            new OrganizationRole { Id = (int)OrganizationRoleEnum.Creator, MasterCode = "CREATOR", FullName = "Creator", Description = "Organization creator with full ownership" },
-            new OrganizationRole { Id = (int)OrganizationRoleEnum.CoOwner, MasterCode = "CO_OWNER", FullName = "Co-Owner", Description = "Co-owner with near-full access" },
-            new OrganizationRole { Id = (int)OrganizationRoleEnum.Admin, MasterCode = "ADMIN", FullName = "Administrator", Description = "Organization Administrator with management access" },
-            new OrganizationRole { Id = (int)OrganizationRoleEnum.Moderator, MasterCode = "MODERATOR", FullName = "Moderator", Description = "Organization Moderator with limited access" },
-            new OrganizationRole { Id = (int)OrganizationRoleEnum.Member, MasterCode = "MEMBER", FullName = "Member", Description = "Regular organization member" },
-            new OrganizationRole { Id = (int)OrganizationRoleEnum.Viewer, MasterCode = "VIEWER", FullName = "Viewer", Description = "Read-only access to organization" });
-        await context.SaveChangesAsync(ct);
-    }
-
     private static async Task SeedRegistrationModesAsync(ExploreDbContext context, CancellationToken ct)
     {
         if (await context.Set<RegistrationMode>().AnyAsync(ct)) return;
@@ -328,34 +314,6 @@ public static class LookupTableSeeder
         await context.SaveChangesAsync(ct);
     }
 
-    private static async Task SeedTenantAdministratorRolesAsync(ExploreDbContext context, CancellationToken ct)
-    {
-        var expectedRoles = new[]
-        {
-            new TenantAdministratorRole { Id = (int)TenantAdministratorRoleEnum.TenantOwner, FullName = "Tenant Owner", MasterCode = "TENANT_OWNER", Description = "Owns tenant-level governance and lifecycle actions." },
-            new TenantAdministratorRole { Id = (int)TenantAdministratorRoleEnum.TenantAdmin, FullName = "Tenant Administrator", MasterCode = "TENANT_ADMIN", Description = "Manages tenant policies, moderation, and delegated controls." },
-            new TenantAdministratorRole { Id = (int)TenantAdministratorRoleEnum.TenantModerator, FullName = "Tenant Moderator", MasterCode = "TENANT_MODERATOR", Description = "Moderates tenant content based on delegated permissions." }
-        };
-
-        var existingIds = await context.Set<TenantAdministratorRole>()
-            .AsNoTracking()
-            .Select(x => x.Id)
-            .ToListAsync(ct);
-
-        var existingIdSet = existingIds.ToHashSet();
-        var missingRoles = expectedRoles
-            .Where(x => !existingIdSet.Contains(x.Id))
-            .ToList();
-
-        if (missingRoles.Count == 0)
-        {
-            return;
-        }
-
-        context.Set<TenantAdministratorRole>().AddRange(missingRoles);
-        await context.SaveChangesAsync(ct);
-    }
-
     private static async Task SeedVisibilityTypesAsync(ExploreDbContext context, CancellationToken ct)
     {
         if (await context.Set<VisibilityType>().AnyAsync(ct)) return;
@@ -366,5 +324,136 @@ public static class LookupTableSeeder
             new VisibilityType { Id = (int)VisibilityTypeEnum.Unlisted, MasterCode = "UNLISTED", FullName = "Unlisted", Description = "Not listed publicly but accessible via direct link" },
             new VisibilityType { Id = (int)VisibilityTypeEnum.MembersOnly, MasterCode = "MEMBERS_ONLY", FullName = "Members Only", Description = "Only visible to organization members" });
         await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedRolesAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        var expectedRoles = new[]
+        {
+            // Platform scope (1-9)
+            new Role { Id = (int)RoleEnum.SuperAdmin, MasterCode = "platform.super_admin", FullName = "Super Admin", Description = "Full platform control", Scope = RoleScopeEnum.Platform, IsSystem = true },
+            new Role { Id = (int)RoleEnum.Admin, MasterCode = "platform.admin", FullName = "Admin", Description = "Platform administration", Scope = RoleScopeEnum.Platform, IsSystem = true },
+            new Role { Id = (int)RoleEnum.Moderator, MasterCode = "platform.moderator", FullName = "Moderator", Description = "Platform moderation", Scope = RoleScopeEnum.Platform, IsSystem = true },
+            new Role { Id = (int)RoleEnum.Editor, MasterCode = "platform.editor", FullName = "Editor", Description = "Platform content editing", Scope = RoleScopeEnum.Platform, IsSystem = true },
+            new Role { Id = (int)RoleEnum.Member, MasterCode = "platform.member", FullName = "Member", Description = "Platform member", Scope = RoleScopeEnum.Platform, IsSystem = true },
+
+            // Tenant scope (10-19)
+            new Role { Id = (int)RoleEnum.TenantOwner, MasterCode = "tenant.owner", FullName = "Tenant Owner", Description = "Tenant-level governance and lifecycle", Scope = RoleScopeEnum.Tenant, IsSystem = true },
+            new Role { Id = (int)RoleEnum.TenantAdmin, MasterCode = "tenant.admin", FullName = "Tenant Admin", Description = "Tenant policies and delegated controls", Scope = RoleScopeEnum.Tenant, IsSystem = true },
+            new Role { Id = (int)RoleEnum.TenantModerator, MasterCode = "tenant.moderator", FullName = "Tenant Moderator", Description = "Tenant content moderation", Scope = RoleScopeEnum.Tenant, IsSystem = true },
+            new Role { Id = (int)RoleEnum.TenantMember, MasterCode = "tenant.member", FullName = "Tenant Member", Description = "Tenant member", Scope = RoleScopeEnum.Tenant, IsSystem = true },
+
+            // Organization scope (20-29)
+            new Role { Id = (int)RoleEnum.OrgCreator, MasterCode = "org.creator", FullName = "Creator", Description = "Organization creator with full ownership", Scope = RoleScopeEnum.Organization, IsSystem = true },
+            new Role { Id = (int)RoleEnum.OrgCoOwner, MasterCode = "org.co_owner", FullName = "Co-Owner", Description = "Co-owner with near-full access", Scope = RoleScopeEnum.Organization, IsSystem = true },
+            new Role { Id = (int)RoleEnum.OrgAdmin, MasterCode = "org.admin", FullName = "Admin", Description = "Organization administrator", Scope = RoleScopeEnum.Organization, IsSystem = true },
+            new Role { Id = (int)RoleEnum.OrgModerator, MasterCode = "org.moderator", FullName = "Moderator", Description = "Organization moderator", Scope = RoleScopeEnum.Organization, IsSystem = true },
+            new Role { Id = (int)RoleEnum.OrgMember, MasterCode = "org.member", FullName = "Member", Description = "Regular organization member", Scope = RoleScopeEnum.Organization, IsSystem = true },
+            new Role { Id = (int)RoleEnum.OrgViewer, MasterCode = "org.viewer", FullName = "Viewer", Description = "Read-only access to organization", Scope = RoleScopeEnum.Organization, IsSystem = true }
+        };
+
+        var existingIds = await context.Roles
+            .AsNoTracking()
+            .Select(x => x.Id)
+            .ToListAsync(ct);
+
+        var existingIdSet = existingIds.ToHashSet();
+        var missingRoles = expectedRoles
+            .Where(x => !existingIdSet.Contains(x.Id))
+            .ToList();
+
+        if (missingRoles.Count == 0) return;
+
+        context.Roles.AddRange(missingRoles);
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedPermissionsAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        // Permission vocabulary: resource_kind × action pairs for all 18 resource kinds.
+        // MasterCode format: "{resource_kind}:{action}" (matches Cerbos resource/action model).
+        var expectedPermissions = new List<Permission>();
+        var id = 1;
+
+        // Helper to add a permission set for a resource kind
+        void AddPermissions(string resourceKind, string groupName, RoleScopeEnum scope, string[] actions, bool isFiltered = false)
+        {
+            foreach (var action in actions)
+            {
+                expectedPermissions.Add(new Permission
+                {
+                    Id = id++,
+                    ResourceKind = resourceKind,
+                    Action = action,
+                    MasterCode = $"{resourceKind}:{action}",
+                    FullName = $"{FormatName(action)} {FormatName(resourceKind)}",
+                    GroupName = groupName,
+                    Scope = scope,
+                    IsSystem = true,
+                    IsFiltered = isFiltered,
+                    IsActive = true
+                });
+            }
+        }
+
+        string[] crud = ["read", "create", "update", "delete"];
+        string[] readOnly = ["read"];
+        string[] noDelete = ["read", "create", "update"];
+
+        // Events group
+        AddPermissions("event", "Events", RoleScopeEnum.Organization, crud);
+        AddPermissions("event_session", "Events", RoleScopeEnum.Organization, crud);
+        AddPermissions("event_session_agenda_item", "Events", RoleScopeEnum.Organization, crud);
+        AddPermissions("event_registration", "Events", RoleScopeEnum.Organization, crud);
+
+        // Organizations group
+        AddPermissions("organization", "Organizations", RoleScopeEnum.Organization, crud);
+        AddPermissions("organization_member", "Organizations", RoleScopeEnum.Organization, crud);
+        AddPermissions("organization_review", "Organizations", RoleScopeEnum.Organization, crud);
+
+        // Content group
+        AddPermissions("category", "Content", RoleScopeEnum.Tenant, crud);
+        AddPermissions("tag", "Content", RoleScopeEnum.Tenant, crud);
+        AddPermissions("location", "Content", RoleScopeEnum.Tenant, crud);
+        AddPermissions("storage_object", "Content", RoleScopeEnum.Organization, noDelete);
+
+        // Users group
+        AddPermissions("user", "Users", RoleScopeEnum.Platform, readOnly);
+        AddPermissions("tenant_user", "Users", RoleScopeEnum.Tenant, crud);
+
+        // Tenant management group
+        AddPermissions("tenant", "Tenants", RoleScopeEnum.Platform, crud, isFiltered: true);
+        AddPermissions("tenant_setting", "Settings", RoleScopeEnum.Tenant, ["read", "update"]);
+
+        // Instance settings (platform-only, filtered from non-super-admins)
+        AddPermissions("instance_setting", "Settings", RoleScopeEnum.Platform, ["read", "update"], isFiltered: true);
+
+        // Federation group
+        AddPermissions("indexed_did", "Federation", RoleScopeEnum.Platform, noDelete);
+        AddPermissions("atproto_record", "Federation", RoleScopeEnum.Platform, noDelete);
+
+        var existingCodes = await context.Permissions
+            .AsNoTracking()
+            .Select(x => x.MasterCode)
+            .ToListAsync(ct);
+
+        var existingCodeSet = existingCodes.ToHashSet();
+        var missingPermissions = expectedPermissions
+            .Where(x => !existingCodeSet.Contains(x.MasterCode))
+            .ToList();
+
+        if (missingPermissions.Count == 0) return;
+
+        context.Permissions.AddRange(missingPermissions);
+        await context.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Formats a snake_case identifier to Title Case for display.
+    /// </summary>
+    private static string FormatName(string identifier)
+    {
+        return string.Join(' ', identifier.Split('_')
+            .Select(word => char.ToUpperInvariant(word[0]) + word[1..]));
     }
 }

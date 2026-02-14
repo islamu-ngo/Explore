@@ -21,7 +21,7 @@ public interface IResourceAssembler<TDto, TListDto>
     /// <param name="dto">The detail DTO.</param>
     /// <param name="httpContext">The current HTTP context.</param>
     /// <returns>A HAL resource with appropriate links.</returns>
-    HalResource<TDto> ToResource(TDto dto, HttpContext httpContext);
+    Task<HalResource<TDto>> ToResource(TDto dto, HttpContext httpContext);
 
     /// <summary>
     /// Converts a list DTO to a HAL resource with links (for collection items).
@@ -29,7 +29,7 @@ public interface IResourceAssembler<TDto, TListDto>
     /// <param name="dto">The list DTO.</param>
     /// <param name="httpContext">The current HTTP context.</param>
     /// <returns>A HAL resource with appropriate links.</returns>
-    HalResource<TListDto> ToListResource(TListDto dto, HttpContext httpContext);
+    Task<HalResource<TListDto>> ToListResource(TListDto dto, HttpContext httpContext);
 
     /// <summary>
     /// Converts a paginated result to a HAL collection resource.
@@ -39,7 +39,7 @@ public interface IResourceAssembler<TDto, TListDto>
     /// <param name="additionalRouteValues">Additional route values to preserve in pagination links.</param>
     /// <param name="httpContext">The current HTTP context.</param>
     /// <returns>A HAL collection resource with pagination links and embedded items.</returns>
-    HalCollectionResource<TListDto> ToCollectionResource(
+    Task<HalCollectionResource<TListDto>> ToCollectionResource(
         PaginatedResult<TListDto> paginatedResult,
         string routeName,
         object? additionalRouteValues,
@@ -52,7 +52,7 @@ public interface IResourceAssembler<TDto, TListDto>
     /// <param name="routeName">The route name for the collection.</param>
     /// <param name="httpContext">The current HTTP context.</param>
     /// <returns>A HAL collection resource with embedded items.</returns>
-    HalCollectionResource<TListDto> ToCollectionResource(
+    Task<HalCollectionResource<TListDto>> ToCollectionResource(
         IEnumerable<TListDto> items,
         string routeName,
         HttpContext httpContext);

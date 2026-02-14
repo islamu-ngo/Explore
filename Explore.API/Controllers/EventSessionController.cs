@@ -57,7 +57,7 @@ public class EventSessionController : ControllerBase
             PageSize = pageSize
         }, cancellationToken);
 
-        var halResource = _resourceAssembler.ToCollectionResource(
+        var halResource = await _resourceAssembler.ToCollectionResource(
             result,
             RouteNames.GetEventSessions_List,
             additionalRouteValues: null,
@@ -86,7 +86,7 @@ public class EventSessionController : ControllerBase
             return NotFound(new { error = "Event session not found" });
         }
 
-        var halResource = _resourceAssembler.ToResource(session, HttpContext);
+        var halResource = await _resourceAssembler.ToResource(session, HttpContext);
         return Ok(halResource);
     }
 
@@ -103,7 +103,7 @@ public class EventSessionController : ControllerBase
     {
         var sessions = await _mediator.Send(new GetSessionsByEventRequest { EventId = eventId }, cancellationToken);
 
-        var halResource = _resourceAssembler.ToCollectionResource(
+        var halResource = await _resourceAssembler.ToCollectionResource(
             sessions,
             RouteNames.GetEventSessions,
             HttpContext);

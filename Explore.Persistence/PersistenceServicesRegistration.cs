@@ -88,12 +88,10 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IRegistrationModeRepository, RegistrationModeRepository>();
         services.AddScoped<IMadhabRepository, MadhabRepository>();
         services.AddScoped<ILanguageRepository, LanguageRepository>();
-        services.AddScoped<IOrganizationRoleRepository, OrganizationRoleRepository>();
         services.AddScoped<IOrganizationPositionRepository, OrganizationPositionRepository>();
         services.AddScoped<IActorTypeRepository, ActorTypeRepository>();
         services.AddScoped<IDidCustodyTypeRepository, DidCustodyTypeRepository>();
         services.AddScoped<IFileTypeRepository, FileTypeRepository>();
-        services.AddScoped<IUserRoleRepository, UserRoleRepository>();
 
         // Multi-tenancy Repositories
         services.AddScoped<ITenantRepository, TenantRepository>();
@@ -101,8 +99,7 @@ public static class PersistenceServicesRegistration
         services.AddScoped<ITenantSettingsRepository, TenantSettingsRepository>();
         services.AddScoped<IInstanceBootstrapStateRepository, InstanceBootstrapStateRepository>();
         services.AddScoped<IInstanceAdministratorRepository, InstanceAdministratorRepository>();
-        services.AddScoped<ITenantAdministratorRoleRepository, TenantAdministratorRoleRepository>();
-        services.AddScoped<ITenantAdministratorRepository, TenantAdministratorRepository>();
+        services.AddScoped<ITenantMemberRepository, TenantMemberRepository>();
         services.AddScoped<ITenantOnboardingStateRepository, TenantOnboardingStateRepository>();
         services.AddScoped<ITenantNavigationLinkRepository, TenantNavigationLinkRepository>();
 
@@ -162,6 +159,10 @@ public static class PersistenceServicesRegistration
 
         // PDS Synchronization Repositories
         services.AddScoped<IPdsSyncOutboxRepository, PdsSyncOutboxRepository>();
+
+        // Authorization (RBAC) Repositories
+        services.AddScoped<IRoleRepository, RoleRepository>();
+        services.AddScoped<IPermissionRepository, PermissionRepository>();
 
         // Configuration Audit Repositories
         services.AddScoped<IConfigurationChangeLogRepository, ConfigurationChangeLogRepository>();

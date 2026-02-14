@@ -17,6 +17,7 @@ builder.Services.AddMudServices();
 builder.Services.AddBlazouter();
 builder.Services.AddScoped<AuthenticatedRouteGuard>();
 builder.Services.AddScoped<AdminRouteGuard>();
+builder.Services.AddScoped<OrgAdminRouteGuard>();
 
 // Register the message handler that adds credentials to requests
 builder.Services.AddTransient<BrowserCredentialsMessageHandler>();

@@ -19,20 +19,19 @@ public partial class EventList
     [Inject] protected ILocationService LocationService { get; set; } = null!;
     [Inject] protected IEventRegistrationService RegistrationService { get; set; } = null!;
     [Inject] protected IDialogService DialogService { get; set; } = null!;
+    [Inject] protected IPublicExperienceService PublicExperienceService { get; set; } = null!;
     [Inject] protected ILogger<EventList> Logger { get; set; } = null!;
 
+    private EventFilterBar? _filterBar;
     private string? _errorMessage;
     private string? _successMessage;
-    private string searchText = "";
-    private string selectedDate = "";
-    private Guid? selectedCategoryId;
-    private Guid? selectedTagId;
-    private int? selectedFormatId;
-    private int? selectedMadhabId;
-    private Guid? selectedLocationId;
-    private int? selectedRegistrationModeId;
-    private int? selectedLanguageId;
+
+    // Module Flags
+    private bool _isIslamicModuleEnabled;
+    private bool _isTechModuleEnabled;
+
     private bool isLoading = true;
+    private bool _eventsLoaded = false;
     private bool _dataLoaded = false;
 
     private Virtualize<EventListDto>? _virtualize;
@@ -40,6 +39,9 @@ public partial class EventList
 
     // API Data
     private ICollection<EventTypeListDto> eventTypes = new List<EventTypeListDto>();
+    private ICollection<AudienceGenderListDto> audienceGenders = new List<AudienceGenderListDto>();
+    private ICollection<AudienceAgeListDto> audienceAges = new List<AudienceAgeListDto>();
+    private ICollection<EventStatusListDto> eventStatuses = new List<EventStatusListDto>();
     private ICollection<EventFormatListDto> eventFormats = new List<EventFormatListDto>();
     private ICollection<CategoryListDto> categories = new List<CategoryListDto>();
     private ICollection<TagListDto> tags = new List<TagListDto>();
@@ -47,6 +49,7 @@ public partial class EventList
     private ICollection<LocationListDto> locations = new List<LocationListDto>();
     private ICollection<RegistrationModeListDto> registrationModes = new List<RegistrationModeListDto>();
     private ICollection<LanguageListDto> languages = new List<LanguageListDto>();
+
     private Dictionary<int, string> eventTypeMap = new();
     private Dictionary<int, string> eventFormatMap = new();
 
@@ -66,7 +69,14 @@ public partial class EventList
 
         if (!string.IsNullOrEmpty(SearchQuery))
         {
-            searchText = SearchQuery;
+            // Defer search query set until filter bar is ready or handle in LoadEvents
+        }
+
+        var settings = await PublicExperienceService.GetSettingsAsync();
+        if (settings != null)
+        {
+            _isIslamicModuleEnabled = settings.IsIslamicModuleEnabled;
+            _isTechModuleEnabled = settings.IsTechModuleEnabled;
         }
 
         await LoadDataAsync();
@@ -125,7 +135,10 @@ public partial class EventList
         isLoading = true;
         try
         {
-            var eventTypesTask = EventService.GetEventTypesAsync();
+            var eventTypesTask = AdminService.GetEventTypesAsync();
+            var audienceGendersTask = AdminService.GetAudienceGendersAsync();
+            var audienceAgesTask = AdminService.GetAudienceAgesAsync();
+            var eventStatusesTask = AdminService.GetEventStatusesAsync();
             var eventFormatsTask = EventService.GetEventFormatsAsync();
             var categoriesTask = CategoryService.GetAllCategoriesAsync();
             var tagsTask = TagService.GetAllTagsAsync();
@@ -134,9 +147,12 @@ public partial class EventList
             var registrationModesTask = AdminService.GetRegistrationModesAsync();
             var languagesTask = AdminService.GetLanguagesAsync();
 
-            await Task.WhenAll(eventTypesTask, eventFormatsTask, categoriesTask, tagsTask, madhabsTask, locationsTask, registrationModesTask, languagesTask);
+            await Task.WhenAll(eventTypesTask, audienceGendersTask, audienceAgesTask, eventStatusesTask, eventFormatsTask, categoriesTask, tagsTask, madhabsTask, locationsTask, registrationModesTask, languagesTask);
 
             eventTypes = await eventTypesTask ?? new List<EventTypeListDto>();
+            audienceGenders = await audienceGendersTask ?? new List<AudienceGenderListDto>();
+            audienceAges = await audienceAgesTask ?? new List<AudienceAgeListDto>();
+            eventStatuses = await eventStatusesTask ?? new List<EventStatusListDto>();
             eventFormats = await eventFormatsTask ?? new List<EventFormatListDto>();
             categories = await categoriesTask ?? new List<CategoryListDto>();
             tags = await tagsTask ?? new List<TagListDto>();
@@ -147,14 +163,13 @@ public partial class EventList
 
             BuildLookupMaps();
             _dataLoaded = true;
+            // Don't set isLoading = false here. Wait for the first batch of events.
+            // isLoading = false; 
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "LoadDataAsync error");
-        }
-        finally
-        {
-            isLoading = false;
+            isLoading = false; // Stop loading on error
         }
     }
 
@@ -163,12 +178,45 @@ public partial class EventList
         var pageSize = Math.Max(request.Count, 20);
         var pageNumber = (request.StartIndex / pageSize) + 1;
 
+        // Get filter values from _filterBar or defaults
+        var dateFilter = _filterBar?.SelectedDate ?? "";
+        var searchTerm = _filterBar?.SearchTerm ?? SearchQuery;
+        var categoryId = _filterBar?.SelectedCategoryId;
+        var tagId = _filterBar?.SelectedTagId;
+        var formatId = _filterBar?.SelectedFormatId;
+        var madhabId = _filterBar?.SelectedMadhabId;
+        var locationId = _filterBar?.SelectedLocationId;
+        var registrationModeId = _filterBar?.SelectedRegistrationModeId;
+        var languageId = _filterBar?.SelectedLanguageId;
+
+        var eventTypeId = _filterBar?.SelectedEventTypeId;
+        var audienceGenderId = _filterBar?.SelectedAudienceGenderId;
+        var audienceAgeId = _filterBar?.SelectedAudienceAgeId;
+        var eventStatusId = _filterBar?.SelectedEventStatusId;
+        var sortBy = _filterBar?.SelectedSortBy ?? "date";
+        var sortDescending = _filterBar?.SortDescending ?? true;
+
+        // Islamic
+        var genderModeId = _filterBar?.SelectedGenderMode != null ? (int?)_filterBar.SelectedGenderMode : null;
+        var includesQuran = _filterBar?.IncludesQuranRecitation;
+        var prayerId = _filterBar?.SelectedReferencePrayer != null ? (int?)_filterBar.SelectedReferencePrayer : null;
+        var islamicLangId = _filterBar?.SelectedIslamicPrimaryLanguageId;
+        var hasIslamic = _filterBar?.HasIslamicAspect;
+
+        // Tech
+        var skillLevelId = _filterBar?.SelectedSkillLevel != null ? (int?)_filterBar.SelectedSkillLevel : null;
+        var codingComp = _filterBar?.IsCodingCompetition;
+        var hackathon = _filterBar?.IsHackathon;
+        var laptop = _filterBar?.RequiresLaptop;
+        var techStack = _filterBar?.TechStackTag;
+        var hasTech = _filterBar?.HasTechAspect;
+
         DateTimeOffset? dateFrom = null;
         DateTimeOffset? dateTo = null;
-        if (!string.IsNullOrEmpty(selectedDate))
+        if (!string.IsNullOrEmpty(dateFilter))
         {
             var today = DateTimeOffset.Now.Date;
-            (dateFrom, dateTo) = selectedDate switch
+            (dateFrom, dateTo) = dateFilter switch
             {
                 "today" => ((DateTimeOffset?)today, (DateTimeOffset?)today.AddDays(1).AddTicks(-1)),
                 "tomorrow" => ((DateTimeOffset?)today.AddDays(1), (DateTimeOffset?)today.AddDays(2).AddTicks(-1)),
@@ -181,71 +229,53 @@ public partial class EventList
         var result = await EventService.GetEventsPagedAsync(
             pageNumber,
             pageSize,
-            searchTerm: string.IsNullOrEmpty(searchText) ? null : searchText,
-            categoryId: selectedCategoryId,
-            tagId: selectedTagId,
-            formatId: selectedFormatId,
-            madhabId: selectedMadhabId,
-            locationId: selectedLocationId,
-            registrationModeId: selectedRegistrationModeId,
-            languageId: selectedLanguageId,
+            searchTerm: searchTerm,
+            categoryId: categoryId,
+            tagId: tagId,
+            formatId: formatId,
+            madhabId: madhabId,
+            locationId: locationId,
+            registrationModeId: registrationModeId,
+            languageId: languageId,
             dateFrom: dateFrom,
             dateTo: dateTo,
-            sortBy: "date",
-            sortDescending: true,
+            sortBy: sortBy,
+            sortDescending: sortDescending,
+            eventTypeId: eventTypeId,
+            audienceGenderId: audienceGenderId,
+            audienceAgeId: audienceAgeId,
+            eventStatusId: eventStatusId,
+            genderModeId: genderModeId,
+            includesQuranRecitation: includesQuran,
+            referencePrayerId: prayerId,
+            islamicPrimaryLanguageId: islamicLangId,
+            hasIslamicAspect: hasIslamic,
+            skillLevelId: skillLevelId,
+            isCodingCompetition: codingComp,
+            isHackathon: hackathon,
+            requiresLaptop: laptop,
+            techStackTag: techStack,
+            hasTechAspect: hasTech,
             cancellationToken: request.CancellationToken);
 
         _totalCount = result.TotalCount;
-        isLoading = false;
+        _eventsLoaded = true;
+        // Do not set isLoading = false here, it's controlled by LoadDataAsync for the initial skeletons
+        // But if we want to hide skeletons AFTER first load of events, we need a separate flag?
+        // Actually, isLoading is used for Skeletons.
+        // Let's set isLoading = false here to ensure skeletons disappear if they were still showing.
+        if (isLoading) isLoading = false;
+        StateHasChanged();
+
         return new ItemsProviderResult<EventListDto>(result.Items, result.TotalCount);
     }
 
-    private async Task OnDateChanged(string value)
+    private async Task RefreshList()
     {
-        selectedDate = value;
-        await _virtualize?.RefreshDataAsync()!;
-    }
-
-    private async Task OnCategoryChanged(Guid? categoryId)
-    {
-        selectedCategoryId = categoryId;
-        await _virtualize?.RefreshDataAsync()!;
-    }
-
-    private async Task OnTagChanged(Guid? tagId)
-    {
-        selectedTagId = tagId;
-        await _virtualize?.RefreshDataAsync()!;
-    }
-
-    private async Task OnFormatChanged(int? formatId)
-    {
-        selectedFormatId = formatId;
-        await _virtualize?.RefreshDataAsync()!;
-    }
-
-    private async Task OnMadhabChanged(int? madhabId)
-    {
-        selectedMadhabId = madhabId;
-        await _virtualize?.RefreshDataAsync()!;
-    }
-
-    private async Task OnLocationChanged(Guid? locationId)
-    {
-        selectedLocationId = locationId;
-        await _virtualize?.RefreshDataAsync()!;
-    }
-
-    private async Task OnRegistrationModeChanged(int? modeId)
-    {
-        selectedRegistrationModeId = modeId;
-        await _virtualize?.RefreshDataAsync()!;
-    }
-
-    private async Task OnLanguageChanged(int? languageId)
-    {
-        selectedLanguageId = languageId;
-        await _virtualize?.RefreshDataAsync()!;
+        if (_virtualize != null)
+        {
+            await _virtualize.RefreshDataAsync();
+        }
     }
 
     // ... (helper methods like GetSelectedCategoryName can remain or be used for display)

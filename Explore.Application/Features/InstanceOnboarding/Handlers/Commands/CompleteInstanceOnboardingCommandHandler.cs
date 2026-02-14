@@ -17,31 +17,34 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
 {
     private readonly IInstanceBootstrapStateRepository _instanceBootstrapStateRepository;
     private readonly IInstanceAdministratorRepository _instanceAdministratorRepository;
-    private readonly ITenantAdministratorRepository _tenantAdministratorRepository;
-    private readonly ITenantAdministratorRoleRepository _tenantAdministratorRoleRepository;
+    private readonly ITenantMemberRepository _tenantMemberRepository;
+    private readonly IRoleRepository _roleRepository;
     private readonly IUserRepository _userRepository;
     private readonly ITenantRepository _tenantRepository;
     private readonly ITenantSettingsRepository _tenantSettingsRepository;
     private readonly IInstanceGovernanceSettingService _governanceSettingService;
+    private readonly ISetupSecretProvider _setupSecretProvider;
 
     public CompleteInstanceOnboardingCommandHandler(
         IInstanceBootstrapStateRepository instanceBootstrapStateRepository,
         IInstanceAdministratorRepository instanceAdministratorRepository,
-        ITenantAdministratorRepository tenantAdministratorRepository,
-        ITenantAdministratorRoleRepository tenantAdministratorRoleRepository,
+        ITenantMemberRepository tenantMemberRepository,
+        IRoleRepository roleRepository,
         IUserRepository userRepository,
         ITenantRepository tenantRepository,
         ITenantSettingsRepository tenantSettingsRepository,
-        IInstanceGovernanceSettingService governanceSettingService)
+        IInstanceGovernanceSettingService governanceSettingService,
+        ISetupSecretProvider setupSecretProvider)
     {
         _instanceBootstrapStateRepository = instanceBootstrapStateRepository;
         _instanceAdministratorRepository = instanceAdministratorRepository;
-        _tenantAdministratorRepository = tenantAdministratorRepository;
-        _tenantAdministratorRoleRepository = tenantAdministratorRoleRepository;
+        _tenantMemberRepository = tenantMemberRepository;
+        _roleRepository = roleRepository;
         _userRepository = userRepository;
         _tenantRepository = tenantRepository;
         _tenantSettingsRepository = tenantSettingsRepository;
         _governanceSettingService = governanceSettingService;
+        _setupSecretProvider = setupSecretProvider;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(CompleteInstanceOnboardingCommand request, CancellationToken cancellationToken)
@@ -104,6 +107,10 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
             await _instanceBootstrapStateRepository.Update(bootstrap);
         }
 
+        // Lock the setup secret provider to prevent further setup mode access.
+        // Once locked, all setup-gated endpoints return 410 Gone.
+        _setupSecretProvider.Lock();
+
         response.Success = true;
         response.Message = "Instance onboarding completed successfully.";
         response.Id = bootstrap.Id;
@@ -161,25 +168,25 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
 
     private async Task EnsureDefaultTenantAdministratorAsync(Guid tenantId, Guid userId)
     {
-        var tenantAdmin = await _tenantAdministratorRepository.GetByTenantAndUser(tenantId, userId);
-        var tenantAdminRole = await _tenantAdministratorRoleRepository.GetByMasterCode("TENANT_ADMIN")
-            ?? await _tenantAdministratorRoleRepository.GetById((int)TenantAdministratorRoleEnum.TenantAdmin);
+        var tenantMember = await _tenantMemberRepository.GetByTenantAndUser(tenantId, userId);
+        var tenantAdminRole = await _roleRepository.GetByMasterCodeAsync("tenant.admin")
+            ?? await _roleRepository.GetByIdAsync((int)RoleEnum.TenantAdmin);
 
         if (tenantAdminRole == null)
         {
             return;
         }
 
-        if (tenantAdmin == null)
+        if (tenantMember == null)
         {
-            await _tenantAdministratorRepository.Create(new TenantAdministrator
+            await _tenantMemberRepository.Create(new TenantMember
             {
                 TenantId = tenantId,
                 Tenant = null!,
                 UserId = userId,
                 User = null!,
-                TenantAdministratorRoleId = tenantAdminRole.Id,
-                TenantAdministratorRole = null!,
+                RoleId = tenantAdminRole.Id,
+                Role = null!,
                 GrantedAt = DateTime.UtcNow,
                 GrantedBy = userId
             });
@@ -187,13 +194,13 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
             return;
         }
 
-        if (tenantAdmin.TenantAdministratorRoleId == tenantAdminRole.Id)
+        if (tenantMember.RoleId == tenantAdminRole.Id)
         {
             return;
         }
 
-        tenantAdmin.TenantAdministratorRoleId = tenantAdminRole.Id;
-        await _tenantAdministratorRepository.Update(tenantAdmin);
+        tenantMember.RoleId = tenantAdminRole.Id;
+        await _tenantMemberRepository.Update(tenantMember);
     }
 
     private static string? NormalizeDeploymentMode(string? deploymentMode)

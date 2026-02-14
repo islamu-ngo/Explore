@@ -1,8 +1,11 @@
 namespace Explore.API.Hateoas.Policies;
 
+using System.Collections.Generic;
 using System.Security.Claims;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.Event;
+using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.Hateoas;
 
 /// <summary>
@@ -73,7 +76,16 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                 new { id = dto.Id },
                 "PUT",
                 "Add Islamic aspect",
-                RequiresAuth: true);
+                RequiresAuth: true)
+                .RequirePermission(
+                    PermissionAction.Update,
+                    dto,
+                    dto.Id.ToString(),
+                    new Dictionary<string, object>
+                    {
+                        ["tenantId"] = dto.TenantId.ToString(),
+                        ["actorId"] = dto.ActorId.ToString()
+                    });
         }
 
         if (dto.AvailableAspects?.Contains("Tech") == true || dto.TechAspect != null)
@@ -94,7 +106,16 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                 new { id = dto.Id },
                 "PUT",
                 "Add Tech aspect",
-                RequiresAuth: true);
+                RequiresAuth: true)
+                .RequirePermission(
+                    PermissionAction.Update,
+                    dto,
+                    dto.Id.ToString(),
+                    new Dictionary<string, object>
+                    {
+                        ["tenantId"] = dto.TenantId.ToString(),
+                        ["actorId"] = dto.ActorId.ToString()
+                    });
         }
 
         // Actor link (owner)
@@ -112,7 +133,16 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
             new { id = dto.Id },
             "PUT",
             "Update event",
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(
+                PermissionAction.Update,
+                dto,
+                dto.Id.ToString(),
+                new Dictionary<string, object>
+                {
+                    ["tenantId"] = dto.TenantId.ToString(),
+                    ["actorId"] = dto.ActorId.ToString()
+                });
 
         // Delete link - requires authentication
         yield return new LinkDefinition(
@@ -121,7 +151,16 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
             new { id = dto.Id },
             "DELETE",
             "Delete event",
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(
+                PermissionAction.Delete,
+                dto,
+                dto.Id.ToString(),
+                new Dictionary<string, object>
+                {
+                    ["tenantId"] = dto.TenantId.ToString(),
+                    ["actorId"] = dto.ActorId.ToString()
+                });
 
         // Registration link - if registration is required
         if (dto.IsRegistrationRequired)
@@ -138,7 +177,8 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                     new { eventId = dto.Id },
                     "POST",
                     "Register for event",
-                    RequiresAuth: true);
+                    RequiresAuth: true)
+                    .RequirePermission(PermissionAction.Create, typeof(EventRegistrationDto), "event_registration");
             }
         }
     }
@@ -190,7 +230,8 @@ public sealed class EventCollectionLinkPolicy : ICollectionLinkPolicy<EventListD
             null,
             "POST",
             "Create new event",
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(PermissionAction.Create, typeof(EventDto), "event");
 
         // My events link - requires authentication
         yield return new LinkDefinition(

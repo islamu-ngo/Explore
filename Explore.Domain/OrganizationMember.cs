@@ -16,9 +16,9 @@ public class OrganizationMember : ITenantEntity, IAuditableEntity, ISoftDeletabl
     public Guid UserId { get; set; }
     public required User User { get; set; }
 
-    [ForeignKey("OrganizationRole")]
-    public int OrganizationRoleId { get; set; }
-    public required OrganizationRole OrganizationRole { get; set; }
+    [ForeignKey("Role")]
+    public int RoleId { get; set; }
+    public required Role Role { get; set; }
 
     [ForeignKey("OrganizationPosition")]
     public int? OrganizationPositionId { get; set; }

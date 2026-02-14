@@ -33,11 +33,12 @@ All errors **MUST** be handled gracefully with structured logging and centralize
 
 ## Resources
 
-*Detailed patterns are available in `resources/` (to be created) and [docs/CONFIGURATION.md](../../../docs/CONFIGURATION.md).*
+*Detailed patterns are available in `resources/` and [docs/CONFIGURATION.md](../../../docs/CONFIGURATION.md).*
 
 | Resource | Description |
 |----------|-------------|
 | [api-exception-handling.md](resources/api-exception-handling.md) | Centralized API exception handling with RFC 7807 ProblemDetails |
+| [api-error-responses.md](resources/api-error-responses.md) | Consistent API error contract and status mapping guidance |
 | [mediatr-logging-behavior.md](resources/mediatr-logging-behavior.md) | MediatR pipeline behavior for request/response logging |
 | [prometheus-metrics.md](resources/prometheus-metrics.md) | Exposing custom metrics via `/metrics` endpoint |
 | [loki-logging.md](resources/loki-logging.md) | Structured logging to Loki via Serilog |
@@ -53,6 +54,13 @@ All errors **MUST** be handled gracefully with structured logging and centralize
 - Return appropriate HTTP status codes (400, 404, 500)
 
 *Details: [api-exception-handling.md](resources/api-exception-handling.md)*
+
+### 1.1 API Error Response Contract
+- Keep one predictable JSON contract for validation and runtime failures
+- Include correlation/trace identifiers in error extensions
+- Use typed status mapping for authz/authn and domain failures
+
+*Details: [api-error-responses.md](resources/api-error-responses.md)*
 
 ### 2. MediatR Pipeline Logging
 - Implement `IPipelineBehavior<TRequest, TResponse>` for centralized logging

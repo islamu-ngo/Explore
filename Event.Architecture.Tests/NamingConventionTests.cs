@@ -123,6 +123,85 @@ public class NamingConventionTests
 
     #endregion
 
+    #region Authorization Refactor Regression Tests
+
+    private static readonly Assembly DomainAssembly = typeof(Explore.Domain.Enums.RoleEnum).Assembly;
+    private static readonly Assembly InfrastructureAssembly = typeof(Explore.Infrastructure.InfrastructureServicesRegistration).Assembly;
+
+    /// <summary>
+    /// Ensures no types reference removed entity names from the pre-refactor authorization model.
+    /// OrganizationRole, TenantAdministratorRole, UserRole were replaced by the unified Role entity.
+    /// TenantAdministrator was replaced by TenantMember.
+    /// </summary>
+    [Test]
+    [DisplayName("No types should be named after removed authorization entities")]
+    public async Task NoTypesNamed_AfterRemovedAuthorizationEntities()
+    {
+        var allAssemblies = new[] { DomainAssembly, ApplicationAssembly, PersistenceAssembly, InfrastructureAssembly };
+
+        // These exact type names were removed during the authorization provider refactor.
+        // Any new type with these names would indicate an incomplete migration.
+        string[] forbiddenTypeNames =
+        [
+            "OrganizationRole",
+            "TenantAdministratorRole",
+            "UserRole",
+            "TenantAdministrator",
+        ];
+
+        foreach (var assembly in allAssemblies)
+        {
+            foreach (var forbiddenName in forbiddenTypeNames)
+            {
+                var matchingTypes = Types.InAssembly(assembly)
+                    .That()
+                    .HaveNameMatching($"^{forbiddenName}$")
+                    .GetTypes();
+
+                await Assert.That(matchingTypes).IsEmpty()
+                    .Because($"Type '{forbiddenName}' should not exist in {assembly.GetName().Name} — it was removed during the authorization refactor");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Ensures no interfaces reference the old ICerbosAuthorizationService name.
+    /// It was renamed to IAuthorizationProvider during the refactor.
+    /// </summary>
+    [Test]
+    [DisplayName("No interfaces should use the old ICerbosAuthorizationService name")]
+    public async Task NoInterfacesNamed_ICerbosAuthorizationService()
+    {
+        var matchingTypes = Types.InAssembly(ApplicationAssembly)
+            .That()
+            .AreInterfaces()
+            .And()
+            .HaveNameMatching("^ICerbosAuthorizationService$")
+            .GetTypes();
+
+        await Assert.That(matchingTypes).IsEmpty()
+            .Because("ICerbosAuthorizationService was renamed to IAuthorizationProvider during the refactor");
+    }
+
+    /// <summary>
+    /// Ensures no attributes reference the old CerbosAuthorizeAttribute name.
+    /// It was renamed to AuthorizeResourceAttribute during the refactor.
+    /// </summary>
+    [Test]
+    [DisplayName("No attributes should use the old CerbosAuthorizeAttribute name")]
+    public async Task NoAttributesNamed_CerbosAuthorizeAttribute()
+    {
+        var matchingTypes = Types.InAssembly(ApplicationAssembly)
+            .That()
+            .HaveNameMatching("^CerbosAuthorizeAttribute$")
+            .GetTypes();
+
+        await Assert.That(matchingTypes).IsEmpty()
+            .Because("CerbosAuthorizeAttribute was renamed to AuthorizeResourceAttribute during the refactor");
+    }
+
+    #endregion
+
     #region Interface Naming Conventions
 
     [Test]

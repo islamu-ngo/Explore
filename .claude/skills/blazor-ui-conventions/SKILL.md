@@ -157,7 +157,7 @@ graph TD
 
 #### MudBlazor ParameterState Framework (Preferred)
 
-**Critical Pattern**: MudBlazor components must use `ParameterState<T>` to avoid infinite loops when parameters change.
+**Critical Pattern**: MudBlazor components (v7+) must use `ParameterState<T>` to avoid infinite loops when parameters change.
 
 ```razor
 @* Child Component: {Entity}Card.razor (MudBlazor) *@
@@ -165,7 +165,7 @@ graph TD
 
 <MudCard>
     <MudCardContent>
-        <MudText>@{Entity}.Title</MudText>
+        <MudText>@_entityState.Value.Title</MudText>
     </MudCardContent>
     <MudCardActions>
         <MudButton OnClick="DeleteClicked">Delete</MudButton>
@@ -188,7 +188,11 @@ graph TD
 
     public {Entity}Card()
     {
-        _entityState = new(this);
+        // Initialize state, optionally with a change handler
+        _entityState = RegisterParameter(nameof({Entity}), () => {Entity}, () =>
+        {
+            // Optional: Logic when parameter changes
+        });
     }
 
     private async Task DeleteClicked()
@@ -198,7 +202,7 @@ graph TD
 }
 ```
 
-**Why ParameterState?** Prevents infinite re-render loops in MudBlazor components by managing parameter change tracking separately from Blazor's built-in mechanism.
+**Why ParameterState?** Prevents infinite re-render loops in MudBlazor components by managing parameter change tracking separately from Blazor's built-in mechanism. It is the standard for MudBlazor v7 component development.
 
 *For more details, see [component-design.md](resources/component-design.md).*
 

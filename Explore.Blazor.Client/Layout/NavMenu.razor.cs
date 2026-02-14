@@ -111,7 +111,16 @@ public partial class NavMenu
 
     private static bool IsAdmin(ClaimsPrincipal user)
     {
-        return user.Identity?.IsAuthenticated == true;
+        if (user.Identity?.IsAuthenticated != true)
+        {
+            return false;
+        }
+
+        // DB-first authority: admin claims are added by AdminClaimsTransformation
+        // and serialized to WASM via AddAuthenticationStateSerialization.
+        // Claim types match Explore.Application.Authorization.AdminClaimTypes constants.
+        return user.HasClaim(c => c.Type == "explore:admin:instance")
+               || user.HasClaim(c => c.Type == "explore:admin:tenant");
     }
 
     private async Task LoadNavigationLinksAsync()

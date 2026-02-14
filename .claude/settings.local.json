@@ -36,7 +36,8 @@
       "Bash(dotnet build:*)",
       "Bash(dotnet format:*)",
       "Bash(dotnet:*)",
-      "Bash(Out-File -FilePath C:/ISLAMU/GitHub/Explore/test-output.txt -Encoding utf8)"
+      "Bash(Out-File -FilePath C:/ISLAMU/GitHub/Explore/test-output.txt -Encoding utf8)",
+      "Bash(Select-String -Pattern \"error CS\")"
     ]
   }
 }

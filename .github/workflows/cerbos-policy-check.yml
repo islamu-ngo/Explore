@@ -1,0 +1,34 @@
+name: Cerbos Policy Validation
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+    paths:
+      - "cerbos/**"
+      - ".github/workflows/cerbos-policy-check.yml"
+  pull_request:
+    branches: [ "main", "develop" ]
+    paths:
+      - "cerbos/**"
+
+jobs:
+  cerbos-policy-check:
+    name: Cerbos Policy Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Cerbos
+        uses: cerbos/cerbos-setup-action@v1
+        with:
+          version: "latest"
+
+      - name: Compile Cerbos Policies
+        run: |
+          cerbos compile cerbos/policies
+
+      - name: Run Cerbos Policy Tests
+        if: hashFiles('cerbos/tests/**') != ''
+        run: |
+          cerbos compile --tests=cerbos/tests cerbos/policies

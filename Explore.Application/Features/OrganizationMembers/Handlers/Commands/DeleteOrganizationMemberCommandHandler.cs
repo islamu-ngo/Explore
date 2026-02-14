@@ -48,8 +48,8 @@ public class DeleteOrganizationMemberCommandHandler : IRequestHandler<DeleteOrga
         if (Guid.TryParse(request.RequesterUserId, out Guid requesterGuid))
         {
             var requesterMember = members.FirstOrDefault(m => m.UserId == requesterGuid);
-            // Only Admin role (OrganizationRoleId = 1) can remove members
-            if (requesterMember == null || requesterMember.OrganizationRoleId != (int)OrganizationRoleEnum.Admin)
+            // Only OrgAdmin role can remove members
+            if (requesterMember == null || requesterMember.RoleId != (int)RoleEnum.OrgAdmin)
             {
                 response.Success = false;
                 response.Message = "You do not have permission to remove members.";
@@ -64,8 +64,8 @@ public class DeleteOrganizationMemberCommandHandler : IRequestHandler<DeleteOrga
         }
 
         // Prevent self-deletion if they are the only Admin
-        var adminCount = members.Count(m => m.OrganizationRoleId == (int)OrganizationRoleEnum.Admin);
-        if (memberToDelete.OrganizationRoleId == (int)OrganizationRoleEnum.Admin && adminCount <= 1)
+        var adminCount = members.Count(m => m.RoleId == (int)RoleEnum.OrgAdmin);
+        if (memberToDelete.RoleId == (int)RoleEnum.OrgAdmin && adminCount <= 1)
         {
             response.Success = false;
             response.Message = "Cannot remove the last admin of the organization.";

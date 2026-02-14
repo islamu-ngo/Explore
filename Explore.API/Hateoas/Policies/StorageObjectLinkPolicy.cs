@@ -1,6 +1,8 @@
 namespace Explore.API.Hateoas.Policies;
 
+using System.Collections.Generic;
 using System.Security.Claims;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.StorageObject;
 using Explore.Application.Hateoas;
@@ -37,7 +39,15 @@ public sealed class StorageObjectDetailLinkPolicy : ILinkPolicy<StorageObjectDto
             new { id = dto.Id },
             "DELETE",
             "Delete storage object",
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(
+                PermissionAction.Delete,
+                dto,
+                dto.Id.ToString(),
+                new Dictionary<string, object>
+                {
+                    ["tenantId"] = dto.TenantId.ToString()
+                });
     }
 }
 
@@ -68,6 +78,7 @@ public sealed class StorageObjectCollectionLinkPolicy : ICollectionLinkPolicy<St
             null,
             "POST",
             "Upload storage object",
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(PermissionAction.Create, typeof(StorageObjectDto), "storage_object");
     }
 }

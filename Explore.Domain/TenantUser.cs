@@ -15,7 +15,7 @@ public class TenantUser : ITenantEntity
     [ForeignKey("Tenant")]
     public Guid TenantId { get; set; }
     public required Tenant Tenant { get; set; }
-    [ForeignKey("UserRole")]
-    public int UserRoleId { get; set; }
-    public required UserRole UserRole { get; set; }
+    [ForeignKey("Role")]
+    public int RoleId { get; set; }
+    public required Role Role { get; set; }
 }

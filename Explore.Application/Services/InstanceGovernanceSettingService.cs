@@ -51,6 +51,7 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
         var brandingLogoUrl = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.BrandingLogoUrl);
         var brandingFaviconUrl = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.BrandingFaviconUrl);
         var brandingCustomCssUrl = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.BrandingCustomCssUrl);
+        var authorizationProvider = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AuthorizationProvider);
 
         return new InstanceGovernanceSettingsDto
         {
@@ -74,7 +75,8 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             LockTenantBrandDisplayName = brandingDisplayName?.IsLocked == true,
             LockTenantBrandLogoUrl = brandingLogoUrl?.IsLocked == true,
             LockTenantBrandFaviconUrl = brandingFaviconUrl?.IsLocked == true,
-            LockTenantBrandCustomCssUrl = brandingCustomCssUrl?.IsLocked == true
+            LockTenantBrandCustomCssUrl = brandingCustomCssUrl?.IsLocked == true,
+            AuthorizationProvider = NormalizeAuthorizationProvider(DeserializeString(authorizationProvider?.Value, "local"))
         };
     }
 
@@ -233,6 +235,16 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             4,
             "Default custom stylesheet URL applied when tenants do not override branding");
 
+        await UpsertSystemSettingAsync(
+            GovernanceSettingKeys.AuthorizationProvider,
+            JsonSerializer.Serialize(NormalizeAuthorizationProvider(settings.AuthorizationProvider)),
+            SettingValueType.String,
+            true,
+            "Security",
+            1,
+            "Authorization provider: 'local' for database-only RBAC, 'cerbos' for full PDP",
+            "[\"local\", \"cerbos\"]");
+
         await UpsertTenantCapabilityAsync(
             defaultTenantId,
             CoreModuleKey,
@@ -323,6 +335,18 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
         }
 
         return "EventList";
+    }
+
+    private static string NormalizeAuthorizationProvider(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+            return "local";
+
+        return raw.Trim().ToLowerInvariant() switch
+        {
+            "cerbos" => "cerbos",
+            _ => "local"
+        };
     }
 
     private static string DeserializeString(string? rawValue, string defaultValue)

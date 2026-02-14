@@ -73,7 +73,7 @@ public class TenantControllerTests
         {
             UserId = Guid.NewGuid(),
             TenantId = Guid.NewGuid(),
-            UserRoleId = 1
+            RoleId = 1
         });
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }

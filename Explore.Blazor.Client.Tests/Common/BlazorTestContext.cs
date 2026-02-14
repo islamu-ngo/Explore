@@ -174,6 +174,29 @@ public class BlazorTestContext : Bunit.TestContext
     }
 
     /// <summary>
+    /// Configure authenticated user with additional custom claims (e.g., admin claims).
+    /// </summary>
+    /// <param name="userId">User ID as Guid</param>
+    /// <param name="name">Display name for the user</param>
+    /// <param name="additionalClaims">Additional claims to add beyond standard identity claims</param>
+    public void SetAuthenticatedUserWithClaims(Guid userId, string name, params Claim[] additionalClaims)
+    {
+        var userIdString = userId.ToString();
+
+        var claims = new List<Claim>
+        {
+            new("sub", userIdString),
+            new(ClaimTypes.NameIdentifier, userIdString),
+            new(ClaimTypes.Name, name)
+        };
+
+        claims.AddRange(additionalClaims);
+
+        _authContext.SetAuthorized(name);
+        _authContext.SetClaims(claims.ToArray());
+    }
+
+    /// <summary>
     /// Configure anonymous (unauthenticated) user for testing public components.
     /// </summary>
     public void SetAnonymousUser()

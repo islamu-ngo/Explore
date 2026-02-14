@@ -58,4 +58,7 @@ public class PublicExperienceSettingsModel
     public string InstanceBaseDomain { get; set; } = string.Empty;
     public string Subdomain { get; set; } = string.Empty;
     public string CustomDomain { get; set; } = string.Empty;
+    public bool IsIslamicModuleEnabled { get; set; }
+    public bool IsTechModuleEnabled { get; set; }
+    public List<string> EnabledModules { get; set; } = new();
 }

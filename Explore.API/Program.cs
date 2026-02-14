@@ -182,8 +182,11 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod());
 });
 
-builder.Host.UseSerilog((ctx, lc) =>
-    lc.WriteTo.Console().ReadFrom.Configuration(ctx.Configuration));
+builder.Host.UseSerilog((ctx, services, lc) =>
+    lc.ReadFrom.Configuration(ctx.Configuration)
+      .ReadFrom.Services(services)
+      .Enrich.FromLogContext(),
+    writeToProviders: true);
 
 // JWT Bearer Authentication for Keycloak
 // Using standard AddJwtBearer instead of AddKeycloakJwtBearer for better control
@@ -433,7 +436,7 @@ if (!builder.Environment.IsEnvironment("Testing"))
         db.Database.Migrate();
         logger.LogInformation("Database migrations completed successfully.");
 
-        // Run seeding (most data uses HasData(), this is for runtime scenarios)
+        // Run seeding (lookup tables in all environments, dev data in Development)
         DatabaseSeeder.SeedAsync(db, app.Environment).GetAwaiter().GetResult();
         logger.LogInformation("Database seeding completed.");
     }
@@ -442,6 +445,37 @@ if (!builder.Environment.IsEnvironment("Testing"))
         logger.LogCritical(ex, "Database migration failed. Application cannot start.");
         throw; // Prevent app from starting with failed migration
     }
+}
+
+// Setup secret bootstrap logging — resolve provider and log the secret for first-run setup.
+// Console.WriteLine guarantees visibility in all environments (bypasses Serilog log-level filters).
+// Matches established Infisical bootstrap pattern (InfisicalConfigurationProvider.cs).
+var setupSecretProvider = app.Services.GetRequiredService<Explore.Application.Contracts.Services.ISetupSecretProvider>();
+if (setupSecretProvider.IsSetupModeActive)
+{
+    if (setupSecretProvider.IsFromEnvironmentVariable)
+    {
+        app.Logger.LogInformation("[SetupSecret] SETUP_SECRET loaded from environment variable.");
+    }
+    else
+    {
+        app.Logger.LogWarning("[SetupSecret] No SETUP_SECRET env var found. Auto-generated secret for bootstrap.");
+        var secretForLog = ((Explore.Infrastructure.Services.SetupSecretProvider)setupSecretProvider).GetSecretForLogging();
+        Console.WriteLine();
+        Console.WriteLine("+=============================================================+");
+        Console.WriteLine("| SETUP SECRET (auto-generated, not persisted across restarts |");
+        Console.WriteLine("| unless you set the SETUP_SECRET environment variable):      |");
+        Console.WriteLine("|                                                             |");
+        Console.WriteLine($"|  {secretForLog,-55} |");
+        Console.WriteLine("|                                                             |");
+        Console.WriteLine("| Use this at /setup to claim this instance.                  |");
+        Console.WriteLine("+=============================================================+");
+        Console.WriteLine();
+    }
+}
+else
+{
+    app.Logger.LogInformation("[SetupSecret] Instance onboarding already completed. Setup mode inactive.");
 }
 
 // Configure the HTTP request pipeline.

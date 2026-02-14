@@ -1,6 +1,8 @@
 namespace Explore.API.Hateoas.Policies;
 
+using System.Collections.Generic;
 using System.Security.Claims;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.User;
 using Explore.Application.Hateoas;
@@ -66,7 +68,15 @@ public sealed class UserDetailLinkPolicy : ILinkPolicy<UserDto>
             new { id = dto.Id },
             "PUT",
             "Update user",
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(
+                PermissionAction.Update,
+                dto,
+                dto.Id.ToString(),
+                new Dictionary<string, object>
+                {
+                    ["actorId"] = dto.ActorId.ToString()
+                });
     }
 }
 

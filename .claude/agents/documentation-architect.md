@@ -34,7 +34,7 @@ The agent configures API documentation using Scalar (primary) and Swagger/OpenAP
 
 ```csharp
 // Example: {Project}.API/Program.cs - Scalar/OpenAPI setup
-builder.Services.AddOpenApi(); // .NET 9+ built-in OpenAPI support
+builder.Services.AddOpenApi("api"); // .NET 10 built-in OpenAPI support
 var app = builder.Build();
 app.MapScalarApiReference(options => { /* ... */ });
 app.MapOpenApi();

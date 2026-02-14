@@ -219,3 +219,31 @@ If you see duplicate key errors:
 | Blazor | `https://localhost:7002` |
 | Scalar API Docs | `https://localhost:7001/scalar/v1` |
 | Swagger UI | `https://localhost:7001/swagger` |
+
+---
+
+## 6. HATEOAS & Links
+
+### Links missing from API response
+If the `_links` section is missing or incomplete:
+1.  Check if `Prefer: return=minimal` header was sent.
+2.  **Cerbos Permissions**: Links are filtered by `HateoasAuthorizationEvaluator`. If the user lacks permission for an action (e.g., `update`), the link is hidden. Check Cerbos logs or policies.
+
+## 7. Caching Issues
+
+### Data not updating (Stale Cache)
+1.  **Output Cache**: Wait 5 minutes or restart the API. Public GET endpoints are output cached.
+2.  **Hybrid Cache**: If entity updates aren't reflected in authenticated views, check if the Command Handler calls `_hybridCache.RemoveAsync()`.
+
+## 8. Blazor UI Issues
+
+### Infinite Loading / White Screen
+If the app hangs on startup:
+1.  **SignalR Connection**: Check browser console for WebSocket errors. `InteractiveServer` mode requires a stable SignalR connection.
+2.  **WASM Download**: Check network tab. If WASM download fails (e.g., firewall), the app should fallback to Server, but hybrid transition can stall if configured incorrectly.
+
+### OIDC "Invalid parameter: redirect_uri"
+Common in Docker/Coolify deployments behind Nginx.
+*   **Cause**: The app thinks it's running on `http://` but Keycloak expects `https://`.
+*   **Fix**: Ensure `ForwardedHeaders` middleware is active (it is in `Program.cs`) and your proxy sends `X-Forwarded-Proto: https`.
+

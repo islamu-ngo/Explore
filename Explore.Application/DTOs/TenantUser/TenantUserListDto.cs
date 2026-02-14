@@ -10,6 +10,6 @@ public class TenantUserListDto
     public required string UserFullName { get; set; }
     public Guid TenantId { get; set; }
     public required string TenantFullName { get; set; }
-    public int UserRoleId { get; set; }
-    public required string UserRoleName { get; set; }
+    public int RoleId { get; set; }
+    public required string RoleName { get; set; }
 }

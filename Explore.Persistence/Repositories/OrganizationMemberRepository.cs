@@ -24,7 +24,7 @@ public class OrganizationMemberRepository : GenericRepository<OrganizationMember
             .AsSplitQuery()
             .Include(m => m.User)
             .Include(m => m.Organization)
-            .Include(m => m.OrganizationRole)
+            .Include(m => m.Role)
             .Include(m => m.OrganizationPosition)
             .ToListAsync();
     }
@@ -36,7 +36,7 @@ public class OrganizationMemberRepository : GenericRepository<OrganizationMember
             .AsSplitQuery()
             .Include(m => m.User)
             .Include(m => m.Organization)
-            .Include(m => m.OrganizationRole)
+            .Include(m => m.Role)
             .Include(m => m.OrganizationPosition)
             .FirstOrDefaultAsync(m => m.Id == id);
     }
@@ -47,7 +47,7 @@ public class OrganizationMemberRepository : GenericRepository<OrganizationMember
             .AsNoTracking()
             .AsSplitQuery()
             .Include(m => m.User)
-            .Include(m => m.OrganizationRole)
+            .Include(m => m.Role)
             .Include(m => m.OrganizationPosition)
             .Where(m => m.OrganizationId == organizationId)
             .ToListAsync();
@@ -79,7 +79,7 @@ public class OrganizationMemberRepository : GenericRepository<OrganizationMember
             .AsNoTracking()
             .Include(m => m.Organization)
                 .ThenInclude(o => o.ApprovalStatus)
-            .Include(m => m.OrganizationRole)
+            .Include(m => m.Role)
             .Where(m => m.UserId == userId)
             .ToListAsync();
     }
@@ -105,25 +105,84 @@ public class OrganizationMemberRepository : GenericRepository<OrganizationMember
     {
         return await _dbContext.OrganizationMembers
             .AsNoTracking()
-            .Include(m => m.OrganizationRole)
+            .Include(m => m.Role)
             .Include(m => m.Organization)
             .FirstOrDefaultAsync(m => m.OrganizationId == organizationId && m.UserId == userId);
     }
 
-    public async Task<bool> IsUserAdminOfOrganization(Guid organizationId, Guid userId)
+    public async Task<bool> HasPermissionInOrganization(Guid organizationId, Guid userId, string permissionMasterCode)
     {
-        // Admin-level roles: Creator, CoOwner, Admin
-        var adminRoles = new[]
-        {
-            (int)OrganizationRoleEnum.Creator,
-            (int)OrganizationRoleEnum.CoOwner,
-            (int)OrganizationRoleEnum.Admin
-        };
-
-        return await _dbContext.OrganizationMembers
+        // Get the user's membership in this organization
+        var roleId = await _dbContext.OrganizationMembers
             .AsNoTracking()
-            .AnyAsync(m => m.OrganizationId == organizationId
-                && m.UserId == userId
-                && adminRoles.Contains(m.OrganizationRoleId));
+            .Where(m => m.OrganizationId == organizationId && m.UserId == userId)
+            .Select(m => (int?)m.RoleId)
+            .FirstOrDefaultAsync();
+
+        if (roleId == null)
+            return false;
+
+        // Permission-based check via RolePermission → Permission join
+        var hasPermission = await _dbContext.Set<RolePermission>()
+            .AsNoTracking()
+            .AnyAsync(rp => rp.RoleId == roleId.Value
+                && rp.Permission.MasterCode == permissionMasterCode
+                && rp.Permission.IsActive);
+
+        if (hasPermission)
+            return true;
+
+        // Transitional fallback: when RolePermission table has no data yet,
+        // fall back to legacy admin role check. Remove once permissions are seeded.
+        var anyPermissionsSeeded = await _dbContext.Set<RolePermission>().AnyAsync();
+        if (!anyPermissionsSeeded)
+        {
+            var adminRoles = new[]
+            {
+                (int)RoleEnum.OrgCreator,
+                (int)RoleEnum.OrgCoOwner,
+                (int)RoleEnum.OrgAdmin
+            };
+            return adminRoles.Contains(roleId.Value);
+        }
+
+        return false;
+    }
+
+    public async Task<List<Guid>> GetOrganizationIdsWhereUserHasPermission(Guid userId, string permissionMasterCode)
+    {
+        // Permission-based: find orgs where the user's role has the specified permission
+        var orgIds = await _dbContext.OrganizationMembers
+            .AsNoTracking()
+            .Where(m => m.UserId == userId)
+            .Where(m => _dbContext.Set<RolePermission>()
+                .Any(rp => rp.RoleId == m.RoleId
+                    && rp.Permission.MasterCode == permissionMasterCode
+                    && rp.Permission.IsActive))
+            .Select(m => m.OrganizationId)
+            .ToListAsync();
+
+        if (orgIds.Count > 0)
+            return orgIds;
+
+        // Transitional fallback: when RolePermission table has no data yet
+        var anyPermissionsSeeded = await _dbContext.Set<RolePermission>().AnyAsync();
+        if (!anyPermissionsSeeded)
+        {
+            var adminRoles = new[]
+            {
+                (int)RoleEnum.OrgCreator,
+                (int)RoleEnum.OrgCoOwner,
+                (int)RoleEnum.OrgAdmin
+            };
+
+            return await _dbContext.OrganizationMembers
+                .AsNoTracking()
+                .Where(m => m.UserId == userId && adminRoles.Contains(m.RoleId))
+                .Select(m => m.OrganizationId)
+                .ToListAsync();
+        }
+
+        return orgIds;
     }
 }

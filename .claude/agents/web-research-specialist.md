@@ -40,6 +40,8 @@ When researching solutions, ensure they comply with these established project pa
 
 ### 1. Official Documentation (First Priority)
 
+Always query Context7 first for official framework/library documentation before general web search.
+
 **Hierarchy of Trust**:
 
 ```markdown

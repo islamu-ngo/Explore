@@ -79,12 +79,20 @@ public partial class MainLayout : LayoutComponentBase
             {
                 try
                 {
-                    _isDarkMode = await _mudThemeProvider.GetSystemDarkModeAsync();
-                    await InvokeAsync(StateHasChanged);
+                    // Default to Light mode to match server assumption
+                    _isDarkMode = false;
+
+                    // Then verify system preference
+                    var systemDark = await _mudThemeProvider.GetSystemDarkModeAsync();
+                    if (systemDark)
+                    {
+                        _isDarkMode = true;
+                        await InvokeAsync(StateHasChanged);
+                    }
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogWarning(ex, "Error detecting system theme preference");
+                    Logger.LogWarning(ex, "Error initializing theme");
                 }
             }
 

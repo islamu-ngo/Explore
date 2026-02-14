@@ -26,6 +26,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using MudBlazor.Services;
+using Serilog;
 using Yarp.ReverseProxy.Configuration;
 using Yarp.ReverseProxy.Transforms;
 
@@ -37,6 +38,12 @@ var shutdownCts = new CancellationTokenSource();
 const int GracefulShutdownSeconds = 25;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((ctx, services, lc) =>
+    lc.ReadFrom.Configuration(ctx.Configuration)
+      .ReadFrom.Services(services)
+      .Enrich.FromLogContext(),
+    writeToProviders: true);
 
 // Configure shutdown timeout for graceful termination
 builder.WebHost.ConfigureKestrel(options =>
@@ -192,21 +199,15 @@ var keycloakClientId = builder.Configuration["Keycloak:ClientId"];
 var keycloakClientSecret = builder.Configuration["Keycloak:ClientSecret"];
 var keycloakMetadataAddress = builder.Configuration["Keycloak:MetadataAddress"];
 
-builder.Services.AddLogging(logging =>
-{
-    logging.AddConsole();
-    logging.AddDebug();
-});
-
-var logger = LoggerFactory.Create(config => config.AddConsole()).CreateLogger("Startup");
-logger.LogInformation("Keycloak Configuration:");
-logger.LogInformation("  Authority: {Authority}", keycloakAuthority ?? "(not set)");
-logger.LogInformation("  ClientId: {ClientId}", keycloakClientId ?? "(not set)");
-logger.LogInformation("  ClientSecret: {HasSecret}", string.IsNullOrEmpty(keycloakClientSecret) ? "NO" : "YES");
+var startupLogger = Serilog.Log.ForContext("SourceContext", "Startup");
+startupLogger.Information("Keycloak Configuration:");
+startupLogger.Information("  Authority: {Authority}", keycloakAuthority ?? "(not set)");
+startupLogger.Information("  ClientId: {ClientId}", keycloakClientId ?? "(not set)");
+startupLogger.Information("  ClientSecret: {HasSecret}", string.IsNullOrEmpty(keycloakClientSecret) ? "NO" : "YES");
 
 if (string.IsNullOrEmpty(keycloakAuthority) || string.IsNullOrEmpty(keycloakClientId) || string.IsNullOrEmpty(keycloakClientSecret))
 {
-    logger.LogError("CRITICAL: Keycloak configuration is incomplete! Authentication will not work.");
+    startupLogger.Error("CRITICAL: Keycloak configuration is incomplete! Authentication will not work.");
 }
 
 builder.Services.AddAuthentication(options =>
@@ -273,42 +274,42 @@ builder.Services.AddAuthentication(options =>
         {
             OnRedirectToIdentityProvider = context =>
             {
-                logger.LogDebug("[OIDC] Redirecting to IdP. RedirectUri: {RedirectUri}",
+                startupLogger.Debug("[OIDC] Redirecting to IdP. RedirectUri: {RedirectUri}",
                     context.ProtocolMessage.RedirectUri);
                 return Task.CompletedTask;
             },
             OnAuthenticationFailed = context =>
             {
-                logger.LogError(context.Exception, "[OIDC] Authentication failed: {Error}",
+                startupLogger.Error(context.Exception, "[OIDC] Authentication failed: {Error}",
                     context.Exception?.Message);
                 return Task.CompletedTask;
             },
             OnRemoteFailure = context =>
             {
-                logger.LogError("[OIDC] Remote failure: {Error}, Description: {Description}",
+                startupLogger.Error("[OIDC] Remote failure: {Error}, Description: {Description}",
                     context.Failure?.Message,
                     context.Properties?.Items);
 
                 // Log the full error from Keycloak
                 if (context.HttpContext.Request.Query.TryGetValue("error", out var error))
                 {
-                    logger.LogError("[OIDC] Keycloak error: {Error}", error);
+                    startupLogger.Error("[OIDC] Keycloak error: {Error}", error);
                 }
                 if (context.HttpContext.Request.Query.TryGetValue("error_description", out var errorDesc))
                 {
-                    logger.LogError("[OIDC] Keycloak error_description: {ErrorDesc}", errorDesc);
+                    startupLogger.Error("[OIDC] Keycloak error_description: {ErrorDesc}", errorDesc);
                 }
 
                 return Task.CompletedTask;
             },
             OnMessageReceived = context =>
             {
-                logger.LogDebug("[OIDC] Message received from IdP");
+                startupLogger.Debug("[OIDC] Message received from IdP");
                 return Task.CompletedTask;
             },
             OnTokenValidated = context =>
             {
-                logger.LogDebug("[OIDC] Token validated for user: {User}",
+                startupLogger.Debug("[OIDC] Token validated for user: {User}",
                     context.Principal?.Identity?.Name);
                 return Task.CompletedTask;
             }
@@ -392,6 +393,36 @@ builder.Services.AddHealthChecks()
     }, tags: ["live", "ready"]);
 
 var app = builder.Build();
+
+// Setup secret bootstrap logging — defense in depth, both API and BFF log the secret.
+// Console.WriteLine guarantees visibility in all environments (bypasses Serilog log-level filters).
+var setupSecretProvider = app.Services.GetRequiredService<Explore.Application.Contracts.Services.ISetupSecretProvider>();
+if (setupSecretProvider.IsSetupModeActive)
+{
+    if (setupSecretProvider.IsFromEnvironmentVariable)
+    {
+        app.Logger.LogInformation("[SetupSecret] SETUP_SECRET loaded from environment variable.");
+    }
+    else
+    {
+        app.Logger.LogWarning("[SetupSecret] No SETUP_SECRET env var found. Auto-generated secret for bootstrap.");
+        var secretForLog = ((Explore.Infrastructure.Services.SetupSecretProvider)setupSecretProvider).GetSecretForLogging();
+        Console.WriteLine();
+        Console.WriteLine("+=============================================================+");
+        Console.WriteLine("| SETUP SECRET (auto-generated, not persisted across restarts |");
+        Console.WriteLine("| unless you set the SETUP_SECRET environment variable):      |");
+        Console.WriteLine("|                                                             |");
+        Console.WriteLine($"|  {secretForLog,-55} |");
+        Console.WriteLine("|                                                             |");
+        Console.WriteLine("| Use this at /setup to claim this instance.                  |");
+        Console.WriteLine("+=============================================================+");
+        Console.WriteLine();
+    }
+}
+else
+{
+    app.Logger.LogInformation("[SetupSecret] Instance onboarding already completed. Setup mode inactive.");
+}
 
 // ============================================================================
 // CRITICAL: Forwarded Headers for Reverse Proxy / SSL Termination (Coolify)
@@ -580,7 +611,7 @@ if (app.Environment.IsDevelopment())
         .WithName("TestEndpoint");
 }
 
-static string GetSafeReturnUrl(HttpContext ctx, ILogger logger)
+static string GetSafeReturnUrl(HttpContext ctx, Microsoft.Extensions.Logging.ILogger logger)
 {
     var returnUrl = ctx.Request.Query["returnUrl"].ToString();
 

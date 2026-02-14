@@ -200,19 +200,26 @@ public class LookupTableControllerTests
 
     #endregion
 
-    #region OrganizationRole Controller
+    #region Role Controller (Unified)
 
     [Test]
-    public async Task OrganizationRole_GetAll_ShouldReturnOk()
+    public async Task Role_GetAll_ShouldReturnOk()
     {
-        var response = await _fixture.Client.GetAsync("/api/v1/organizationrole");
+        var response = await _fixture.Client.GetAsync("/api/v1/role");
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
     }
 
     [Test]
-    public async Task OrganizationRole_GetById_WithValidId_ShouldNotReturnServerError()
+    public async Task Role_GetByOrganizationScope_ShouldReturnOk()
     {
-        var response = await _fixture.Client.GetAsync("/api/v1/organizationrole/1");
+        var response = await _fixture.Client.GetAsync("/api/v1/role?scope=Organization");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+    }
+
+    [Test]
+    public async Task Role_GetById_WithValidId_ShouldNotReturnServerError()
+    {
+        var response = await _fixture.Client.GetAsync("/api/v1/role/1");
         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
     }
 
@@ -303,24 +310,6 @@ public class LookupTableControllerTests
     public async Task TagType_GetById_WithValidId_ShouldNotReturnServerError()
     {
         var response = await _fixture.Client.GetAsync("/api/v1/tagtype/1");
-        await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
-    }
-
-    #endregion
-
-    #region UserRole Controller
-
-    [Test]
-    public async Task UserRole_GetAll_ShouldReturnOk()
-    {
-        var response = await _fixture.Client.GetAsync("/api/v1/userrole");
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-    }
-
-    [Test]
-    public async Task UserRole_GetById_WithValidId_ShouldNotReturnServerError()
-    {
-        var response = await _fixture.Client.GetAsync("/api/v1/userrole/1");
         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
     }
 

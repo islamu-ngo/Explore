@@ -1,6 +1,7 @@
 // ABOUTME: Database-driven authorization service used when Cerbos PDP is unavailable.
 // Evaluates access control using IAdminContext and ISettingsResolver for lock semantics.
 
+using System.Diagnostics;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Microsoft.Extensions.Logging;
@@ -10,9 +11,9 @@ namespace Explore.Infrastructure.Services;
 /// <summary>
 /// Fallback authorization service that evaluates access decisions using database-driven admin checks
 /// and settings lock semantics. Used when Cerbos PDP is not configured (e.g., development, ATProto/PDS-only).
-/// Implements the same ICerbosAuthorizationService contract for seamless DI swapping.
+/// Implements the same IAuthorizationProvider contract for seamless DI swapping.
 /// </summary>
-public class FallbackAuthorizationService : ICerbosAuthorizationService
+public class FallbackAuthorizationService : IAuthorizationProvider
 {
     private readonly IAdminContext _adminContext;
     private readonly ISettingsResolver _settingsResolver;
@@ -41,17 +42,42 @@ public class FallbackAuthorizationService : ICerbosAuthorizationService
         // Instance admins can do everything
         if (await _adminContext.IsInstanceAdminAsync(cancellationToken))
         {
-            _logger.LogDebug("Fallback auth: ALLOW (instance admin) {Resource}/{Action}", resourceKind, action);
+            LogDecision("allow", "instance_admin", resourceKind, resourceId, action);
             return true;
         }
 
-        return resourceKind switch
+        var decision = resourceKind switch
         {
             "instance_setting" => false, // Only instance admins can modify instance settings
             "tenant_setting" => await EvaluateTenantSettingAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
             "organization" => await EvaluateOrganizationAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
             _ => await EvaluateDefaultAccessAsync(resourceKind, action, resourceAttributes, cancellationToken)
         };
+
+        LogDecision(decision ? "allow" : "deny", "fallback_policy", resourceKind, resourceId, action);
+        return decision;
+    }
+
+    public async Task<IReadOnlyList<bool>> IsAllowedBatchAsync(
+        IReadOnlyList<AuthorizationCheck> checks,
+        CancellationToken cancellationToken = default)
+    {
+        if (checks.Count == 0)
+            return [];
+
+        var results = new bool[checks.Count];
+        for (var i = 0; i < checks.Count; i++)
+        {
+            var check = checks[i];
+            results[i] = await IsAllowedAsync(
+                check.ResourceKind,
+                check.ResourceId,
+                check.Action,
+                check.ResourceAttributes is null ? null : new Dictionary<string, object>(check.ResourceAttributes),
+                cancellationToken);
+        }
+
+        return results;
     }
 
     public async Task<bool> CheckSettingAccessAsync(
@@ -72,12 +98,12 @@ public class FallbackAuthorizationService : ICerbosAuthorizationService
         if (organizationId.HasValue)
         {
             resourceKind = "organization";
-            attributes["organizationId"] = organizationId.Value;
+            attributes["organizationId"] = organizationId.Value.ToString();
         }
         else if (tenantId.HasValue)
         {
             resourceKind = "tenant_setting";
-            attributes["tenantId"] = tenantId.Value;
+            attributes["tenantId"] = tenantId.Value.ToString();
 
             // Check if the setting is locked by instance
             var canOverride = await _settingsResolver.CanOverrideAsync(settingKey, cancellationToken);
@@ -101,16 +127,26 @@ public class FallbackAuthorizationService : ICerbosAuthorizationService
         if (resourceAttributes?.TryGetValue("isLockedByInstance", out var lockedObj) == true
             && lockedObj is true)
         {
-            _logger.LogDebug("Fallback auth: DENY (locked by instance) {Resource}/{Action}", resourceId, action);
+            LogDecision("deny", "locked_by_instance", "tenant_setting", resourceId, action);
             return false;
         }
 
         // Get tenantId from attributes or current context
         Guid tenantId;
-        if (resourceAttributes?.TryGetValue("tenantId", out var tenantIdObj) == true
-            && tenantIdObj is Guid tid)
+        if (resourceAttributes?.TryGetValue("tenantId", out var tenantIdObj) == true)
         {
-            tenantId = tid;
+            if (tenantIdObj is Guid tid)
+            {
+                tenantId = tid;
+            }
+            else if (tenantIdObj is string tenantIdString && Guid.TryParse(tenantIdString, out var parsedTenantId))
+            {
+                tenantId = parsedTenantId;
+            }
+            else
+            {
+                tenantId = _tenantContext.TenantId;
+            }
         }
         else
         {
@@ -119,8 +155,12 @@ public class FallbackAuthorizationService : ICerbosAuthorizationService
 
         // Check if user is a tenant admin for this specific tenant
         var isTenantAdmin = await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken);
-        _logger.LogDebug("Fallback auth: {Result} (tenant admin={IsTenantAdmin}) {Resource}/{Action}",
-            isTenantAdmin ? "ALLOW" : "DENY", isTenantAdmin, resourceId, action);
+        LogDecision(
+            isTenantAdmin ? "allow" : "deny",
+            $"tenant_admin={isTenantAdmin}",
+            "tenant_setting",
+            resourceId,
+            action);
         return isTenantAdmin;
     }
 
@@ -130,14 +170,33 @@ public class FallbackAuthorizationService : ICerbosAuthorizationService
         IDictionary<string, object>? resourceAttributes,
         CancellationToken cancellationToken)
     {
+        Guid orgId;
+
         // Get organizationId from attributes
-        if (resourceAttributes?.TryGetValue("organizationId", out var orgIdObj) != true
-            || orgIdObj is not Guid orgId)
+        if (resourceAttributes?.TryGetValue("organizationId", out var orgIdObj) != true)
         {
             // Try parsing resourceId as orgId
-            if (!Guid.TryParse(resourceId, out orgId))
+            if (!Guid.TryParse(resourceId, out var orgIdFromResource))
             {
-                _logger.LogWarning("Fallback auth: DENY (no organizationId) {Resource}/{Action}", resourceId, action);
+                LogDecision("deny", "missing_organization_id", "organization", resourceId, action);
+                return false;
+            }
+
+            orgId = orgIdFromResource;
+        }
+        else
+        {
+            if (orgIdObj is Guid parsedOrgId)
+            {
+                orgId = parsedOrgId;
+            }
+            else if (orgIdObj is string orgIdString && Guid.TryParse(orgIdString, out var parsedOrgIdFromString))
+            {
+                orgId = parsedOrgIdFromString;
+            }
+            else if (!Guid.TryParse(resourceId, out orgId))
+            {
+                LogDecision("deny", "invalid_organization_id", "organization", resourceId, action);
                 return false;
             }
         }
@@ -145,12 +204,19 @@ public class FallbackAuthorizationService : ICerbosAuthorizationService
         // Check tenant admin (tenant admins can manage orgs within their tenant)
         var tenantId = _tenantContext.TenantId;
         if (await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken))
+        {
+            LogDecision("allow", "tenant_admin=true", "organization", resourceId, action);
             return true;
+        }
 
         // Check organization admin
         var isOrgAdmin = await _adminContext.IsOrganizationAdminAsync(orgId, cancellationToken);
-        _logger.LogDebug("Fallback auth: {Result} (org admin={IsOrgAdmin}) {Resource}/{Action}",
-            isOrgAdmin ? "ALLOW" : "DENY", isOrgAdmin, resourceId, action);
+        LogDecision(
+            isOrgAdmin ? "allow" : "deny",
+            $"organization_admin={isOrgAdmin}",
+            "organization",
+            resourceId,
+            action);
         return isOrgAdmin;
     }
 
@@ -161,7 +227,25 @@ public class FallbackAuthorizationService : ICerbosAuthorizationService
         CancellationToken cancellationToken)
     {
         // For unknown resource kinds, deny by default (secure by default)
-        _logger.LogWarning("Fallback auth: DENY (unknown resource kind) {Resource}/{Action}", resourceKind, action);
+        LogDecision("deny", "unknown_resource_kind", resourceKind, resourceKind, action);
         return Task.FromResult(false);
+    }
+
+    private void LogDecision(
+        string decision,
+        string reason,
+        string resourceKind,
+        string resourceId,
+        string action)
+    {
+        var correlationId = Activity.Current?.Id ?? string.Empty;
+        _logger.LogInformation(
+            "Fallback authorization decision: {Decision} reason={Reason} resource={ResourceKind}/{ResourceId} action={Action} correlationId={CorrelationId}",
+            decision,
+            reason,
+            resourceKind,
+            resourceId,
+            action,
+            correlationId);
     }
 }

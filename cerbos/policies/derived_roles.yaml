@@ -1,27 +1,45 @@
 # ABOUTME: Cerbos derived roles for the ISLAMU Event platform's 3-level admin hierarchy.
-# Maps static JWT roles to dynamic context-aware roles based on resource attributes.
+# Maps principal attributes from CerbosPrincipalBuilder to context-aware derived roles.
+# Principal structure (from CerbosPrincipalBuilder.BuildAsync):
+#   roles: ["authenticated_user"]
+#   attr.isInstanceAdmin: bool
+#   attr.tenantMemberships: { "<tenantId>": "admin" }
+#   attr.orgMemberships: { "<orgId>": "admin" }
+# Resource structure (set by AuthorizationBehavior / command handlers):
+#   attr.tenantId: string (for tenant-scoped resources)
+#   attr.organizationId: string (for org-scoped resources)
 
 apiVersion: "api.cerbos.dev/v1"
 description: "Derived roles for Instance > Tenant > Organization hierarchy"
 derivedRoles:
   name: explore_admin_roles
   definitions:
+    # ========================================
+    # HIERARCHY DERIVED ROLES
+    # ========================================
+    # These match the CerbosPrincipalBuilder output structure.
+    # instance_admin: isInstanceAdmin == true
+    # tenant_admin: resource's tenantId is in principal's tenantMemberships map
+    # org_admin: resource's organizationId is in principal's orgMemberships map
+
     - name: instance_admin
-      parentRoles: ["admin", "user"]
+      parentRoles: ["authenticated_user"]
       condition:
         match:
           expr: request.principal.attr.isInstanceAdmin == true
 
     - name: tenant_admin
-      parentRoles: ["user"]
+      parentRoles: ["authenticated_user"]
       condition:
         match:
           expr: >
-            request.resource.attr.tenantId in request.principal.attr.tenants
+            has(request.resource.attr.tenantId) &&
+            request.resource.attr.tenantId in request.principal.attr.tenantMemberships
 
     - name: org_admin
-      parentRoles: ["user"]
+      parentRoles: ["authenticated_user"]
       condition:
         match:
           expr: >
-            request.resource.attr.organizationId in request.principal.attr.orgs
+            has(request.resource.attr.organizationId) &&
+            request.resource.attr.organizationId in request.principal.attr.orgMemberships

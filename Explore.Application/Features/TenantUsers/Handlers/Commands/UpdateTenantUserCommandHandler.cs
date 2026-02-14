@@ -15,20 +15,20 @@ public class UpdateTenantUserCommandHandler : IRequestHandler<UpdateTenantUserCo
     private readonly ITenantUserRepository _tenantUserRepository;
     private readonly IUserRepository _userRepository;
     private readonly ITenantRepository _tenantRepository;
-    private readonly IUserRoleRepository _userRoleRepository;
+    private readonly IRoleRepository _roleRepository;
     private readonly IMapper _mapper;
 
     public UpdateTenantUserCommandHandler(
         ITenantUserRepository tenantUserRepository,
         IUserRepository userRepository,
         ITenantRepository tenantRepository,
-        IUserRoleRepository userRoleRepository,
+        IRoleRepository roleRepository,
         IMapper mapper)
     {
         _tenantUserRepository = tenantUserRepository;
         _userRepository = userRepository;
         _tenantRepository = tenantRepository;
-        _userRoleRepository = userRoleRepository;
+        _roleRepository = roleRepository;
         _mapper = mapper;
     }
 
@@ -36,7 +36,7 @@ public class UpdateTenantUserCommandHandler : IRequestHandler<UpdateTenantUserCo
     {
         var response = new BaseCommandResponse<Guid>();
 
-        var validator = new UpdateTenantUserDtoValidator(_userRepository, _tenantRepository, _userRoleRepository);
+        var validator = new UpdateTenantUserDtoValidator(_userRepository, _tenantRepository, _roleRepository);
         var validationResult = await validator.ValidateAsync(request.TenantUserDto, cancellationToken);
 
         if (!validationResult.IsValid)

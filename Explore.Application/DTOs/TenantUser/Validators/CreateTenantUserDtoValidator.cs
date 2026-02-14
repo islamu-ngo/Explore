@@ -9,13 +9,13 @@ public class CreateTenantUserDtoValidator : AbstractValidator<CreateTenantUserDt
 {
     private readonly IUserRepository _userRepository;
     private readonly ITenantRepository _tenantRepository;
-    private readonly IUserRoleRepository _userRoleRepository;
+    private readonly IRoleRepository _roleRepository;
 
-    public CreateTenantUserDtoValidator(IUserRepository userRepository, ITenantRepository tenantRepository, IUserRoleRepository userRoleRepository)
+    public CreateTenantUserDtoValidator(IUserRepository userRepository, ITenantRepository tenantRepository, IRoleRepository roleRepository)
     {
         _userRepository = userRepository;
         _tenantRepository = tenantRepository;
-        _userRoleRepository = userRoleRepository;
+        _roleRepository = roleRepository;
 
         RuleFor(x => x.UserId)
             .NotEmpty().WithMessage("User ID is required")
@@ -25,10 +25,10 @@ public class CreateTenantUserDtoValidator : AbstractValidator<CreateTenantUserDt
         // TenantId is set by the handler from context, not by the client
         // No validation needed here
 
-        RuleFor(x => x.UserRoleId)
-            .NotEmpty().WithMessage("User Role ID is required")
-            .MustAsync(UserRoleExists)
-            .WithMessage("User Role does not exist");
+        RuleFor(x => x.RoleId)
+            .NotEmpty().WithMessage("Role ID is required")
+            .MustAsync(RoleExists)
+            .WithMessage("Role does not exist");
     }
 
     private async Task<bool> UserExists(Guid userId, CancellationToken cancellationToken)
@@ -36,9 +36,9 @@ public class CreateTenantUserDtoValidator : AbstractValidator<CreateTenantUserDt
         return await _userRepository.Exists(userId);
     }
 
-    private async Task<bool> UserRoleExists(int userRoleId, CancellationToken cancellationToken)
+    private async Task<bool> RoleExists(int roleId, CancellationToken cancellationToken)
     {
-        var role = await _userRoleRepository.GetById(userRoleId);
+        var role = await _roleRepository.GetByIdAsync(roleId);
         return role != null;
     }
 }

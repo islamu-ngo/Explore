@@ -1,1 +1,13 @@
-/* Custom styles removed to favor MudBlazor components and utilities */
+/* ABOUTME: Event list page scoped layout adjustments for header-flush filter presentation.
+ * ABOUTME: Keeps the filter bar directly under navbar/announcement stack without extra top gap. */
+
+.event-list-container {
+    padding-top: 0;
+    margin-top: 0;
+}
+
+@media (max-width: 768px) {
+    .event-list-container {
+        margin-top: 0;
+    }
+}

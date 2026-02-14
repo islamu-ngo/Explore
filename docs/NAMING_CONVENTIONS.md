@@ -91,7 +91,7 @@ Singular noun. These are reference data that rarely changes.
 
 - `EventType`, `EventStatus`, `EventFormat`, `AudienceAge`, `AudienceGender`
 - `Madhab`, `Language`, `VisibilityType`, `RegistrationMode`
-- `OrganizationRole`, `OrganizationPosition`, `ActorType`, `FileType`, `DidCustodyType`
+- `Role`, `OrganizationPosition`, `ActorType`, `FileType`, `DidCustodyType`
 
 ### Link/Junction Tables (Composite PK)
 
@@ -102,8 +102,9 @@ Named as `{Parent}{Child}` (plural for many-to-many collections):
 - `EventSessionLanguage` — EventSession ↔ Language
 - `EventSessionSpeaker` — EventSession ↔ Speaker (User)
 - `TagTypeTags` — TagType ↔ Tag
-- `OrganizationMember` — Organization ↔ User (with Role)
-- `UserRole` — User ↔ Role (per tenant)
+- `OrganizationMember` — Organization ↔ User (with Role via `RoleId`)
+- `TenantUser` — Tenant ↔ User (with Role via `RoleId`)
+- `RolePermission` — Role ↔ Permission
 
 **Note:** Some junction table names are plural (`EventCategories`, `EventTags`) while others are singular (`OrganizationMember`, `EventSessionLanguage`). Follow the existing pattern when extending.
 

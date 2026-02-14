@@ -1,0 +1,33 @@
+# ABOUTME: Cerbos resource policy for organization_member resources.
+# Organization members: org admins manage their members, tenant admins manage all.
+
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: "organization_member"
+  version: "default"
+  importDerivedRoles:
+    - explore_admin_roles
+  rules:
+    # Instance admins can do everything
+    - actions: ["*"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - instance_admin
+
+    # Tenant admins can manage all organization members within their tenant
+    - actions: ["view", "create", "update", "delete"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - tenant_admin
+
+    # Org admins can manage members for their organization
+    - actions: ["view", "create", "update", "delete", "manage_members"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - org_admin
+
+    # All authenticated users can view organization members
+    - actions: ["view"]
+      effect: EFFECT_ALLOW
+      roles:
+        - authenticated_user

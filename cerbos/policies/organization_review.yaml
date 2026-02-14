@@ -1,0 +1,33 @@
+# ABOUTME: Cerbos resource policy for organization_review resources.
+# Organization reviews: users can create/view, org admins can manage reviews of their org.
+
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: "organization_review"
+  version: "default"
+  importDerivedRoles:
+    - explore_admin_roles
+  rules:
+    # Instance admins can do everything
+    - actions: ["*"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - instance_admin
+
+    # Tenant admins can manage all reviews within their tenant
+    - actions: ["view", "update", "delete"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - tenant_admin
+
+    # Org admins can manage reviews for their organization
+    - actions: ["view", "update", "delete"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - org_admin
+
+    # All authenticated users can create and view reviews
+    - actions: ["create", "view"]
+      effect: EFFECT_ALLOW
+      roles:
+        - authenticated_user

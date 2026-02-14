@@ -1,6 +1,8 @@
 namespace Explore.API.Hateoas.Policies;
 
+using System.Collections.Generic;
 using System.Security.Claims;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.OrganizationMember;
 using Explore.Application.Hateoas;
@@ -20,7 +22,7 @@ public sealed class OrganizationMemberDetailLinkPolicy : ILinkPolicy<Organizatio
             RouteNames.GetOrganizationMemberById,
             new { id = dto.Id },
             "GET",
-            $"{dto.UserFullName} - {dto.OrganizationRoleFullName}");
+            $"{dto.UserFullName} - {dto.RoleName}");
 
         // Organization link
         yield return new LinkDefinition(
@@ -45,7 +47,16 @@ public sealed class OrganizationMemberDetailLinkPolicy : ILinkPolicy<Organizatio
             new { id = dto.Id },
             "PUT",
             "Update membership",
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(
+                PermissionAction.Update,
+                dto,
+                dto.Id.ToString(),
+                new Dictionary<string, object>
+                {
+                    ["organizationId"] = dto.OrganizationId.ToString(),
+                    ["userId"] = dto.UserId.ToString()
+                });
 
         // Delete link - requires authentication (organization admin)
         yield return new LinkDefinition(
@@ -54,7 +65,16 @@ public sealed class OrganizationMemberDetailLinkPolicy : ILinkPolicy<Organizatio
             new { id = dto.Id },
             "DELETE",
             "Remove member",
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(
+                PermissionAction.Delete,
+                dto,
+                dto.Id.ToString(),
+                new Dictionary<string, object>
+                {
+                    ["organizationId"] = dto.OrganizationId.ToString(),
+                    ["userId"] = dto.UserId.ToString()
+                });
     }
 }
 
@@ -72,7 +92,7 @@ public sealed class OrganizationMemberCollectionLinkPolicy : ICollectionLinkPoli
             RouteNames.GetOrganizationMemberById,
             new { id = dto.Id },
             "GET",
-            $"{dto.UserFullName} - {dto.OrganizationRoleFullName}");
+            $"{dto.UserFullName} - {dto.RoleName}");
 
         // User link
         yield return new LinkDefinition(
@@ -93,6 +113,7 @@ public sealed class OrganizationMemberCollectionLinkPolicy : ICollectionLinkPoli
             null,
             "POST",
             "Add organization member",
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(PermissionAction.Create, typeof(OrganizationMemberDto), "organization_member");
     }
 }

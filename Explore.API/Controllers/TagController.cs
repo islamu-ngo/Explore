@@ -57,7 +57,7 @@ public class TagController : ControllerBase
             PageSize = pageSize
         }, cancellationToken);
 
-        var halResource = _resourceAssembler.ToCollectionResource(
+        var halResource = await _resourceAssembler.ToCollectionResource(
             result,
             RouteNames.GetTags,
             additionalRouteValues: null,
@@ -86,7 +86,7 @@ public class TagController : ControllerBase
             return NotFound(new { error = "Tag not found" });
         }
 
-        var halResource = _resourceAssembler.ToResource(tag, HttpContext);
+        var halResource = await _resourceAssembler.ToResource(tag, HttpContext);
         return Ok(halResource);
     }
 

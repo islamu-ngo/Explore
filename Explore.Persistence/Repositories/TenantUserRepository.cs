@@ -17,7 +17,7 @@ public class TenantUserRepository : GenericRepository<TenantUser, Guid>, ITenant
     {
         return await _dbContext.TenantUsers
             .AsNoTracking()
-            .Include(tu => tu.UserRole)
+            .Include(tu => tu.Role)
             .FirstOrDefaultAsync(tu => tu.UserId == userId && tu.TenantId == tenantId);
     }
 
@@ -26,7 +26,7 @@ public class TenantUserRepository : GenericRepository<TenantUser, Guid>, ITenant
         return await _dbContext.TenantUsers
             .AsNoTracking()
             .Include(tu => tu.Tenant)
-            .Include(tu => tu.UserRole)
+            .Include(tu => tu.Role)
             .Where(tu => tu.UserId == userId)
             .ToListAsync();
     }
@@ -36,7 +36,7 @@ public class TenantUserRepository : GenericRepository<TenantUser, Guid>, ITenant
         return await _dbContext.TenantUsers
             .AsNoTracking()
             .Include(tu => tu.User)
-            .Include(tu => tu.UserRole)
+            .Include(tu => tu.Role)
             .Where(tu => tu.TenantId == tenantId)
             .ToListAsync();
     }
@@ -48,7 +48,7 @@ public class TenantUserRepository : GenericRepository<TenantUser, Guid>, ITenant
             .AsSplitQuery()
             .Include(tu => tu.User)
             .Include(tu => tu.Tenant)
-            .Include(tu => tu.UserRole)
+            .Include(tu => tu.Role)
             .FirstOrDefaultAsync(tu => tu.Id == id);
     }
 
@@ -59,7 +59,7 @@ public class TenantUserRepository : GenericRepository<TenantUser, Guid>, ITenant
             .AsSplitQuery()
             .Include(tu => tu.User)
             .Include(tu => tu.Tenant)
-            .Include(tu => tu.UserRole)
+            .Include(tu => tu.Role)
             .ToListAsync();
     }
 }

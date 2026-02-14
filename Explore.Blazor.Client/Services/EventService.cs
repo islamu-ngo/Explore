@@ -27,6 +27,24 @@ public interface IEventService
         DateTimeOffset? dateTo = null,
         string? sortBy = null,
         bool? sortDescending = null,
+        // New filters
+        int? eventTypeId = null,
+        int? audienceGenderId = null,
+        int? audienceAgeId = null,
+        int? eventStatusId = null,
+        // Islamic filters
+        int? genderModeId = null,
+        bool? includesQuranRecitation = null,
+        int? referencePrayerId = null,
+        int? islamicPrimaryLanguageId = null,
+        bool? hasIslamicAspect = null,
+        // Tech filters
+        int? skillLevelId = null,
+        bool? isCodingCompetition = null,
+        bool? isHackathon = null,
+        bool? requiresLaptop = null,
+        string? techStackTag = null,
+        bool? hasTechAspect = null,
         CancellationToken cancellationToken = default);
     Task<PaginatedResult<EventListDto>> GetMyEventsPagedAsync(int pageNumber, int pageSize);
     Task<PaginatedResult<EventSessionListDto>> GetSessionsPagedAsync(int pageNumber, int pageSize);
@@ -126,6 +144,24 @@ public partial class EventService : IEventService
         DateTimeOffset? dateTo = null,
         string? sortBy = null,
         bool? sortDescending = null,
+        // New filters
+        int? eventTypeId = null,
+        int? audienceGenderId = null,
+        int? audienceAgeId = null,
+        int? eventStatusId = null,
+        // Islamic filters
+        int? genderModeId = null,
+        bool? includesQuranRecitation = null,
+        int? referencePrayerId = null,
+        int? islamicPrimaryLanguageId = null,
+        bool? hasIslamicAspect = null,
+        // Tech filters
+        int? skillLevelId = null,
+        bool? isCodingCompetition = null,
+        bool? isHackathon = null,
+        bool? requiresLaptop = null,
+        string? techStackTag = null,
+        bool? hasTechAspect = null,
         CancellationToken cancellationToken = default)
     {
         try
@@ -145,6 +181,21 @@ public partial class EventService : IEventService
                 dateTo: dateTo,
                 sortBy: sortBy,
                 sortDescending: sortDescending,
+                eventTypeId: eventTypeId,
+                audienceGenderId: audienceGenderId,
+                audienceAgeId: audienceAgeId,
+                eventStatusId: eventStatusId,
+                genderModeId: genderModeId,
+                includesQuranRecitation: includesQuranRecitation,
+                referencePrayerId: referencePrayerId,
+                islamicPrimaryLanguageId: islamicPrimaryLanguageId,
+                hasIslamicAspect: hasIslamicAspect,
+                skillLevelId: skillLevelId,
+                isCodingCompetition: isCodingCompetition,
+                isHackathon: isHackathon,
+                requiresLaptop: requiresLaptop,
+                techStackTag: techStackTag,
+                hasTechAspect: hasTechAspect,
                 cancellationToken: cancellationToken);
             return result.ToPaginatedResult();
         }

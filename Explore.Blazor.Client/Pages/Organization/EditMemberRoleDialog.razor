@@ -1,5 +1,5 @@
 @using Explore.Blazor.Client.Clients
-@using Explore.Blazor.Client.Models.Enums
+@using Explore.Blazor.Client.Helpers
 @using Explore.Blazor.Client.Services
 @using MudBlazor
 @inject IOrganizationMemberService MemberService
@@ -8,13 +8,10 @@
 <MudDialog>
     <DialogContent>
         <MudText>Change role for @Member.UserEmail</MudText>
-        <MudSelect T="OrganizationRole" Label="Role" @bind-Value="newRole" AnchorOrigin="Origin.BottomCenter">
-            @foreach (OrganizationRole role in Enum.GetValues(typeof(OrganizationRole)))
+        <MudSelect T="int" Label="Role" @bind-Value="newRoleId" AnchorOrigin="Origin.BottomCenter">
+            @foreach (var role in RoleHelper.GetAssignableOrgRoles())
             {
-                if (role != OrganizationRole.Creator)
-                {
-                    <MudSelectItem Value="@role">@role</MudSelectItem>
-                }
+                <MudSelectItem Value="@role.Id">@role.Name</MudSelectItem>
             }
         </MudSelect>
     </DialogContent>
@@ -29,11 +26,11 @@
     [Parameter] public OrganizationMemberDto Member { get; set; }
     [Parameter] public Guid OrganizationId { get; set; }
 
-    private OrganizationRole newRole;
+    private int newRoleId;
 
     protected override void OnInitialized()
     {
-        newRole = (OrganizationRole)Member.OrganizationRoleId;
+        newRoleId = Member.OrganizationRoleId ?? RoleHelper.OrgMember;
     }
 
     private void Cancel() => MudDialog.Cancel();
@@ -45,7 +42,7 @@
             var updateDto = new UpdateOrganizationMemberRoleDto
             {
                 Id = Member.Id,
-                Role = (int)newRole
+                Role = newRoleId
             };
 
             await MemberService.UpdateMemberRoleAsync(updateDto);

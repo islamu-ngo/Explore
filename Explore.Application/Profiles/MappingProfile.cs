@@ -28,7 +28,6 @@ using Explore.Application.DTOs.Organization;
 using Explore.Application.DTOs.OrganizationMember;
 using Explore.Application.DTOs.OrganizationPosition;
 using Explore.Application.DTOs.OrganizationReview;
-using Explore.Application.DTOs.OrganizationRole;
 using Explore.Application.DTOs.RegistrationMode;
 using Explore.Application.DTOs.StatusType;
 using Explore.Application.DTOs.StorageObject;
@@ -42,7 +41,6 @@ using Explore.Application.DTOs.TenantUser;
 using Explore.Application.DTOs.User;
 using Explore.Application.DTOs.UserAuthenticationToken;
 using Explore.Application.DTOs.UserExternalLogin;
-using Explore.Application.DTOs.UserRole;
 using Explore.Application.DTOs.VisibilityType;
 using Explore.Domain;
 
@@ -67,12 +65,12 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null))
             .ForMember(dest => dest.UserFullName, opt => opt.MapFrom(src => src.User != null ? $"{src.User.FirstName} {src.User.LastName}" : null))
             .ForMember(dest => dest.TenantFullName, opt => opt.MapFrom(src => src.Tenant != null ? src.Tenant.FullName : null))
-            .ForMember(dest => dest.UserRoleName, opt => opt.MapFrom(src => src.UserRole != null ? src.UserRole.FullName : null));
+            .ForMember(dest => dest.RoleName, opt => opt.MapFrom(src => src.Role != null ? src.Role.FullName : null));
         CreateMap<TenantUser, TenantUserListDto>()
             .ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null))
             .ForMember(dest => dest.UserFullName, opt => opt.MapFrom(src => src.User != null ? $"{src.User.FirstName} {src.User.LastName}" : null))
             .ForMember(dest => dest.TenantFullName, opt => opt.MapFrom(src => src.Tenant != null ? src.Tenant.FullName : null))
-            .ForMember(dest => dest.UserRoleName, opt => opt.MapFrom(src => src.UserRole != null ? src.UserRole.FullName : null));
+            .ForMember(dest => dest.RoleName, opt => opt.MapFrom(src => src.Role != null ? src.Role.FullName : null));
         CreateMap<CreateTenantUserDto, TenantUser>();
         CreateMap<UpdateTenantUserDto, TenantUser>();
 
@@ -213,7 +211,7 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.OrganizationFullName, opt => opt.MapFrom(src => src.Organization != null ? src.Organization.FullName : null))
             .ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null))
             .ForMember(dest => dest.UserFullName, opt => opt.MapFrom(src => src.User != null ? $"{src.User.FirstName} {src.User.LastName}" : null))
-            .ForMember(dest => dest.OrganizationRoleFullName, opt => opt.MapFrom(src => src.OrganizationRole != null ? src.OrganizationRole.FullName : null))
+            .ForMember(dest => dest.RoleName, opt => opt.MapFrom(src => src.Role != null ? src.Role.FullName : null))
             .ForMember(dest => dest.OrganizationPositionFullName, opt => opt.MapFrom(src => src.OrganizationPosition != null ? src.OrganizationPosition.FullName : null));
         CreateMap<AddOrganizationMemberDto, OrganizationMember>();
         CreateMap<UpdateOrganizationMemberRoleDto, OrganizationMember>();
@@ -222,7 +220,7 @@ public class MappingProfile : Profile
         CreateMap<OrganizationMember, OrganizationInvitationDto>()
             .ForMember(dest => dest.OrganizationId, opt => opt.MapFrom(src => src.OrganizationId))
             .ForMember(dest => dest.OrganizationName, opt => opt.MapFrom(src => src.Organization != null ? src.Organization.FullName : null))
-            .ForMember(dest => dest.Role, opt => opt.MapFrom(src => (Explore.Domain.Enums.OrganizationRoleEnum)src.OrganizationRoleId))
+            .ForMember(dest => dest.Role, opt => opt.MapFrom(src => (Explore.Domain.Enums.RoleEnum)src.RoleId))
             .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null));
 
         // ============================================
@@ -447,22 +445,22 @@ public class MappingProfile : Profile
         CreateMap<UpdateActorDto, Domain.Actor>();
 
         // ============================================
-        // ORGANIZATION ROLE MAPPINGS (Readonly Lookup)
-        // ============================================
-        CreateMap<Domain.OrganizationRole, OrganizationRoleDto>().ReverseMap();
-        CreateMap<Domain.OrganizationRole, OrganizationRoleListDto>().ReverseMap();
-
-        // ============================================
         // ORGANIZATION POSITION MAPPINGS (Readonly Lookup)
         // ============================================
         CreateMap<Domain.OrganizationPosition, OrganizationPositionDto>().ReverseMap();
         CreateMap<Domain.OrganizationPosition, OrganizationPositionListDto>().ReverseMap();
 
         // ============================================
-        // USER ROLE MAPPINGS (Readonly Lookup)
+        // UNIFIED ROLE MAPPINGS
         // ============================================
-        CreateMap<Domain.UserRole, UserRoleDto>().ReverseMap();
-        CreateMap<Domain.UserRole, UserRoleListDto>().ReverseMap();
+        CreateMap<Domain.Role, DTOs.Role.RoleDto>();
+        CreateMap<Domain.Role, DTOs.Role.RoleListDto>();
+
+        // ============================================
+        // PERMISSION MAPPINGS
+        // ============================================
+        CreateMap<Domain.Permission, DTOs.Permission.PermissionDto>();
+        CreateMap<Domain.Permission, DTOs.Permission.PermissionListDto>();
 
         // ============================================
         // USER AUTHENTICATION TOKEN MAPPINGS

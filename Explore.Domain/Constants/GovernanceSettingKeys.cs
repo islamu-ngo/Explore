@@ -43,4 +43,7 @@ public static class GovernanceSettingKeys
     public const string S3Region = "s3.region";
     public const string S3ForcePathStyle = "s3.force_path_style";
     public const string S3UploadUrlExpirationMinutes = "s3.upload_url_expiration_minutes";
+
+    // Authorization Provider
+    public const string AuthorizationProvider = "authorization.provider";
 }

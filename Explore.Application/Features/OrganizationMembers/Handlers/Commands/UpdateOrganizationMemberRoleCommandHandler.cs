@@ -53,8 +53,8 @@ public class UpdateOrganizationMemberRoleCommandHandler : IRequestHandler<Update
         if (Guid.TryParse(request.RequesterUserId, out Guid requesterGuid))
         {
             var requesterMember = members.FirstOrDefault(m => m.UserId == requesterGuid);
-            // Only Admin role (OrganizationRoleId = 1) can update roles
-            if (requesterMember == null || requesterMember.OrganizationRoleId != (int)OrganizationRoleEnum.Admin)
+            // Only OrgAdmin role can update roles
+            if (requesterMember == null || requesterMember.RoleId != (int)RoleEnum.OrgAdmin)
             {
                 response.Success = false;
                 response.Message = "You do not have permission to update roles.";
@@ -62,9 +62,9 @@ public class UpdateOrganizationMemberRoleCommandHandler : IRequestHandler<Update
             }
 
             // Prevent demoting the last admin
-            var adminCount = members.Count(m => m.OrganizationRoleId == (int)OrganizationRoleEnum.Admin);
-            if (memberToUpdate.OrganizationRoleId == (int)OrganizationRoleEnum.Admin &&
-                (int)dto.Role != (int)OrganizationRoleEnum.Admin &&
+            var adminCount = members.Count(m => m.RoleId == (int)RoleEnum.OrgAdmin);
+            if (memberToUpdate.RoleId == (int)RoleEnum.OrgAdmin &&
+                (int)dto.Role != (int)RoleEnum.OrgAdmin &&
                 adminCount <= 1)
             {
                 response.Success = false;
@@ -79,7 +79,7 @@ public class UpdateOrganizationMemberRoleCommandHandler : IRequestHandler<Update
             return response;
         }
 
-        memberToUpdate.OrganizationRoleId = (int)dto.Role;
+        memberToUpdate.RoleId = (int)dto.Role;
         await _organizationMemberRepository.Update(memberToUpdate);
 
         response.Success = true;

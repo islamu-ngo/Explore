@@ -9,4 +9,8 @@ public class InstanceOnboardingStatusDto
     public bool IsAuthenticated { get; set; }
     public bool IsCurrentUserInstanceAdmin { get; set; }
     public string? SelectedDeploymentMode { get; set; }
+    public bool IsSetupModeActive { get; set; }
+    public bool SetupSecretFromEnvironment { get; set; }
+    public bool SetupTimedOut { get; set; }
+    public DateTime? InstanceStartedAt { get; set; }
 }

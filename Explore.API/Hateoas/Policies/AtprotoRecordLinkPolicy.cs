@@ -1,6 +1,7 @@
 namespace Explore.API.Hateoas.Policies;
 
 using System.Security.Claims;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.AtprotoRecord;
 using Explore.Application.Hateoas;
@@ -56,7 +57,11 @@ public sealed class AtprotoRecordDetailLinkPolicy : ILinkPolicy<AtprotoRecordDto
             new { id = dto.Id },
             "DELETE",
             "Delete record",
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(
+                PermissionAction.Delete,
+                dto,
+                dto.Id.ToString());
     }
 }
 
@@ -95,6 +100,7 @@ public sealed class AtprotoRecordCollectionLinkPolicy : ICollectionLinkPolicy<At
             null,
             "POST",
             "Create ATProto record",
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(PermissionAction.Create, typeof(AtprotoRecordDto), "atproto_record");
     }
 }

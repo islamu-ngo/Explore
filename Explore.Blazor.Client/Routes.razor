@@ -38,6 +38,7 @@
     private List<RouteConfig> _routes = new();
     private static List<Type> RequireAuthenticated() => [typeof(AuthenticatedRouteGuard)];
     private static List<Type> RequireAdmin() => [typeof(AdminRouteGuard)];
+    private static List<Type> RequireOrgAdmin() => [typeof(OrgAdminRouteGuard)];
 
     protected override void OnInitialized()
     {
@@ -100,7 +101,7 @@
             // Admin settings routes
             new RouteConfig { Path = "/admin/instance/settings", Component = typeof(InstanceAdminSettings), Transition = RouteTransition.Fade, Guards = RequireAdmin() },
             new RouteConfig { Path = "/admin/tenant/settings", Component = typeof(TenantAdminSettings), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
-            new RouteConfig { Path = "/admin/organization/:OrganizationId/settings", Component = typeof(OrganizationAdminSettings), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+            new RouteConfig { Path = "/admin/organization/:OrganizationId/settings", Component = typeof(OrganizationAdminSettings), Transition = RouteTransition.Fade, Guards = RequireOrgAdmin() },
 
             // Admin lookup table routes
             new RouteConfig { Path = "/admin/lookup-tables", Component = typeof(LookupTables), Transition = RouteTransition.Fade, Guards = RequireAdmin() },

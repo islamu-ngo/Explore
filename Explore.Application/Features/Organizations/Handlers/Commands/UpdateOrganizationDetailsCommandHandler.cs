@@ -51,7 +51,7 @@ public class UpdateOrganizationDetailsCommandHandler : IRequestHandler<UpdateOrg
         if (Guid.TryParse(request.UserId, out Guid userGuid))
         {
             var requesterMember = members.FirstOrDefault(m => m.UserId == userGuid);
-            if (requesterMember == null || requesterMember.OrganizationRoleId != (int)OrganizationRoleEnum.Admin)
+            if (requesterMember == null || requesterMember.RoleId != (int)RoleEnum.OrgAdmin)
             {
                 response.Success = false;
                 response.Message = "You are not authorized to update this organization.";

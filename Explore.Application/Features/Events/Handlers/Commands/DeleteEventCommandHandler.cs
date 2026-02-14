@@ -31,7 +31,7 @@ public class DeleteEventCommandHandler : IRequestHandler<DeleteEventCommand, boo
     private readonly IActorRepository _actorRepository;
     private readonly IOrganizationMemberRepository _organizationMemberRepository;
     private readonly ITenantUserRepository _tenantUserRepository;
-    private readonly IUserRoleRepository _userRoleRepository;
+    private readonly IRoleRepository _roleRepository;
     private readonly ICurrentUserService _currentUserService;
     private readonly ILogger<DeleteEventCommandHandler> _logger;
     private readonly HybridCache _cache;
@@ -42,7 +42,7 @@ public class DeleteEventCommandHandler : IRequestHandler<DeleteEventCommand, boo
         IActorRepository actorRepository,
         IOrganizationMemberRepository organizationMemberRepository,
         ITenantUserRepository tenantUserRepository,
-        IUserRoleRepository userRoleRepository,
+        IRoleRepository roleRepository,
         ICurrentUserService currentUserService,
         ILogger<DeleteEventCommandHandler> logger,
         HybridCache cache)
@@ -52,7 +52,7 @@ public class DeleteEventCommandHandler : IRequestHandler<DeleteEventCommand, boo
         _actorRepository = actorRepository;
         _organizationMemberRepository = organizationMemberRepository;
         _tenantUserRepository = tenantUserRepository;
-        _userRoleRepository = userRoleRepository;
+        _roleRepository = roleRepository;
         _currentUserService = currentUserService;
         _logger = logger;
         _cache = cache;
@@ -188,8 +188,8 @@ public class DeleteEventCommandHandler : IRequestHandler<DeleteEventCommand, boo
             // Use targeted query: Check if user has admin tenant assignment
             // This avoids loading ALL UserRoles and ALL TenantUsers into memory (O(1) vs O(n))
             var tenantUsers = await _tenantUserRepository.GetByUser(userId);
-            return tenantUsers.Any(tu => tu.UserRole?.MasterCode != null &&
-                tu.UserRole.MasterCode.Equals("Admin", StringComparison.OrdinalIgnoreCase));
+            return tenantUsers.Any(tu => tu.Role?.MasterCode != null &&
+                tu.Role.MasterCode.Equals("Admin", StringComparison.OrdinalIgnoreCase));
         }
         catch (Exception ex)
         {
@@ -220,9 +220,9 @@ public class DeleteEventCommandHandler : IRequestHandler<DeleteEventCommand, boo
             }
 
             // Check if role is Creator (1), CoOwner (2), or Admin (3)
-            return member.OrganizationRoleId == (int)OrganizationRoleEnum.Creator ||
-                   member.OrganizationRoleId == (int)OrganizationRoleEnum.CoOwner ||
-                   member.OrganizationRoleId == (int)OrganizationRoleEnum.Admin;
+            return member.RoleId == (int)RoleEnum.OrgCreator ||
+                   member.RoleId == (int)RoleEnum.OrgCoOwner ||
+                   member.RoleId == (int)RoleEnum.OrgAdmin;
         }
         catch (Exception ex)
         {

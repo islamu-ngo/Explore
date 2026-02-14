@@ -1,6 +1,8 @@
 namespace Explore.API.Hateoas.Policies;
 
+using System.Collections.Generic;
 using System.Security.Claims;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.OrganizationReview;
 using Explore.Application.Hateoas;
@@ -53,7 +55,16 @@ public sealed class OrganizationReviewDetailLinkPolicy : ILinkPolicy<Organizatio
             new { id = dto.Id },
             "PUT",
             "Update review",
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(
+                PermissionAction.Update,
+                dto,
+                dto.Id.ToString(),
+                new Dictionary<string, object>
+                {
+                    ["organizationId"] = dto.OrganizationId.ToString(),
+                    ["userId"] = dto.UserId.ToString()
+                });
 
         // Delete link - requires authentication (review owner or admin)
         yield return new LinkDefinition(
@@ -62,7 +73,16 @@ public sealed class OrganizationReviewDetailLinkPolicy : ILinkPolicy<Organizatio
             new { id = dto.Id },
             "DELETE",
             "Delete review",
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(
+                PermissionAction.Delete,
+                dto,
+                dto.Id.ToString(),
+                new Dictionary<string, object>
+                {
+                    ["organizationId"] = dto.OrganizationId.ToString(),
+                    ["userId"] = dto.UserId.ToString()
+                });
     }
 }
 
@@ -101,6 +121,7 @@ public sealed class OrganizationReviewCollectionLinkPolicy : ICollectionLinkPoli
             null,
             "POST",
             "Create review",
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(PermissionAction.Create, typeof(OrganizationReviewDto), "organization_review");
     }
 }

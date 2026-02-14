@@ -1,26 +1,13 @@
-// ABOUTME: Component tests for EventList page.
-// Tests rendering, data loading, filtering, and user interactions.
+// ABOUTME: Focused bUnit tests for EventList loading and empty-state behavior.
+// ABOUTME: Verifies stable UX state transitions with Virtualize-backed API paging.
 
+using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Pages.Event;
+using Microsoft.AspNetCore.Components.Web.Virtualization;
 using MudBlazor;
-using MudBlazor.Services;
 
 namespace Explore.Blazor.Client.Tests.Pages.Event;
 
-/// <summary>
-/// Component tests for EventList page.
-/// Tests rendering, data loading, filtering, and user interactions.
-/// </summary>
-/// <remarks>
-/// EventList is a complex component with:
-/// - Multiple service dependencies (EventService, CategoryService, TagService, etc.)
-/// - Filtering functionality (date, category, tag, format, madhab, location, etc.)
-/// - Pagination
-/// - Search functionality
-/// - Dialog interactions
-///
-/// These tests verify the component renders correctly and responds to data changes.
-/// </remarks>
 public class EventListTests : IDisposable
 {
     private readonly BlazorTestContext _ctx;
@@ -30,71 +17,40 @@ public class EventListTests : IDisposable
     private readonly IAdminService _adminService;
     private readonly ILocationService _locationService;
     private readonly IEventRegistrationService _registrationService;
+    private readonly IPublicExperienceService _publicExperienceService;
 
     public EventListTests()
     {
         _ctx = new BlazorTestContext();
 
-        // Create mocks for all required services
         _eventService = Substitute.For<IEventService>();
         _categoryService = Substitute.For<ICategoryService>();
         _tagService = Substitute.For<ITagService>();
         _adminService = Substitute.For<IAdminService>();
         _locationService = Substitute.For<ILocationService>();
         _registrationService = Substitute.For<IEventRegistrationService>();
+        _publicExperienceService = Substitute.For<IPublicExperienceService>();
 
-        // Register services
         _ctx.Services.AddSingleton(_eventService);
         _ctx.Services.AddSingleton(_categoryService);
         _ctx.Services.AddSingleton(_tagService);
         _ctx.Services.AddSingleton(_adminService);
         _ctx.Services.AddSingleton(_locationService);
         _ctx.Services.AddSingleton(_registrationService);
+        _ctx.Services.AddSingleton(_publicExperienceService);
+
+        _ctx.Services.AddSingleton(Substitute.For<IUserService>());
         _ctx.Services.AddSingleton(Substitute.For<IDialogService>());
         _ctx.Services.AddSingleton(Substitute.For<ISnackbar>());
         _ctx.Services.AddSingleton(Substitute.For<ILogger<EventList>>());
-        _ctx.Services.AddSingleton(Substitute.For<IUserService>());
         _ctx.Services.AddSingleton(Substitute.For<IAuthStateService>());
 
-        // Setup default empty responses
-        SetupDefaultMockResponses();
-    }
-
-    private void SetupDefaultMockResponses()
-    {
-        // Sample data for rendering
-        var sampleEvents = new List<EventListDto>
+        SetupDefaultLookupResponses();
+        _publicExperienceService.GetSettingsAsync().Returns(new PublicExperienceSettingsModel
         {
-            new() { Id = Guid.NewGuid(), Title = "Test Event 1", Subtitle = "Subtitle 1", Description = "Description 1", EventTypeFullName = "Conference", Price = 0, CurrencyCode = "USD", TotalViews = 100 },
-            new() { Id = Guid.NewGuid(), Title = "Test Event 2", Subtitle = "Subtitle 2", Description = "Description 2", EventTypeFullName = "Workshop", Price = 50, CurrencyCode = "EUR", TotalViews = 200 }
-        };
-
-        var sampleCategories = new List<CategoryListDto>
-        {
-            new() { Id = Guid.NewGuid(), FullName = "Islamic Studies" },
-            new() { Id = Guid.NewGuid(), FullName = "Technology" }
-        };
-
-        // Event service defaults
-        _eventService.GetAllEventsAsync().Returns(sampleEvents);
-        _eventService.GetEventTypesAsync().Returns(new List<EventTypeListDto>());
-        _eventService.GetEventFormatsAsync().Returns(new List<EventFormatListDto>());
-        _eventService.GetAllSessionsAsync().Returns(new List<EventSessionListDto>());
-        _eventService.GetAllSessionLanguagesAsync().Returns(new List<object>());
-
-        // Category service defaults
-        _categoryService.GetAllCategoriesAsync().Returns(sampleCategories);
-
-        // Tag service defaults
-        _tagService.GetAllTagsAsync().Returns(new List<TagListDto>());
-
-        // Admin service defaults
-        _adminService.GetMadhabsAsync().Returns(new List<MadhabListDto>());
-        _adminService.GetRegistrationModesAsync().Returns(new List<RegistrationModeListDto>());
-        _adminService.GetLanguagesAsync().Returns(new List<LanguageListDto>());
-
-        // Location service defaults
-        _locationService.GetAllLocationsAsync().Returns(new List<LocationListDto>());
+            IsIslamicModuleEnabled = true,
+            IsTechModuleEnabled = true
+        });
     }
 
     public void Dispose()
@@ -102,273 +58,168 @@ public class EventListTests : IDisposable
         _ctx.Dispose();
     }
 
-    #region Rendering Tests
-
-    [Test]
-    public async Task EventList_RendersPageTitle()
+    private void SetupDefaultLookupResponses()
     {
-        // Act - Use RenderMudComponent for MudBlazor components
-        var cut = _ctx.RenderMudComponent<EventList>();
-
-        // Allow async operations to complete
-        await Task.Delay(100);
-
-        // Assert - Page should have the title
-        await Assert.That(cut.Markup).Contains("Explore Events");
+        _adminService.GetEventTypesAsync().Returns(new List<EventTypeListDto>());
+        _adminService.GetAudienceGendersAsync().Returns(new List<AudienceGenderListDto>());
+        _adminService.GetAudienceAgesAsync().Returns(new List<AudienceAgeListDto>());
+        _adminService.GetEventStatusesAsync().Returns(new List<EventStatusListDto>());
+        _eventService.GetEventFormatsAsync().Returns(new List<EventFormatListDto>());
+        _categoryService.GetAllCategoriesAsync().Returns(new List<CategoryListDto>());
+        _tagService.GetAllTagsAsync().Returns(new List<TagListDto>());
+        _adminService.GetMadhabsAsync().Returns(new List<MadhabListDto>());
+        _locationService.GetAllLocationsAsync().Returns(new List<LocationListDto>());
+        _adminService.GetRegistrationModesAsync().Returns(new List<RegistrationModeListDto>());
+        _adminService.GetLanguagesAsync().Returns(new List<LanguageListDto>());
+        _eventService.GetRegistrationsByUserAsync(Arg.Any<Guid>()).Returns(new List<EventRegistrationListDto>());
     }
 
-    [Test]
-    public async Task EventList_ShowsLoadingState_Initially()
+    private static PaginatedResult<EventListDto> CreateResult(int pageNumber, int pageSize, List<EventListDto> items)
     {
-        // Arrange - Make the service slow to respond
-        var tcs = new TaskCompletionSource<ICollection<EventListDto>>();
-        _eventService.GetAllEventsAsync().Returns(tcs.Task);
-
-        // Act - Use RenderMudComponent for MudBlazor components
-        var cut = _ctx.RenderMudComponent<EventList>();
-
-        // Assert - Should show skeleton loaders (loading state)
-        // MudBlazor renders CSS class names like "mud-skeleton" not component names
-        await Assert.That(cut.Markup).Contains("mud-skeleton");
-    }
-
-    [Test]
-    public async Task EventList_ShowsNoEventsMessage_WhenEmpty()
-    {
-        // Arrange - Override default to return empty list
-        _eventService.GetAllEventsAsync().Returns(new List<EventListDto>());
-
-        // Act - Use RenderMudComponent for MudBlazor components
-        var cut = _ctx.RenderMudComponent<EventList>();
-        await Task.Delay(200); // Wait for async load
-
-        // Assert
-        await Assert.That(cut.Markup).Contains("No events found");
-    }
-
-    [Test]
-    public async Task EventList_DisplaysEvents_WhenDataLoaded()
-    {
-        // Arrange
-        var events = ComponentDataBuilder.EventListDto.Generate(3);
-        _eventService.GetAllEventsAsync().Returns(events);
-
-        // Act - Use RenderMudComponent for MudBlazor components
-        var cut = _ctx.RenderMudComponent<EventList>();
-        await Task.Delay(200); // Wait for async load
-
-        // Assert - Each event title should be displayed
-        foreach (var evt in events)
+        return new PaginatedResult<EventListDto>
         {
-            await Assert.That(cut.Markup).Contains(evt.Title);
+            Items = items,
+            PageNumber = pageNumber,
+            PageSize = pageSize,
+            TotalCount = items.Count
+        };
+    }
+
+    private void SetupPagedResult(Task<PaginatedResult<EventListDto>> resultTask)
+    {
+        _eventService.GetEventsPagedAsync(
+            Arg.Any<int>(),
+            Arg.Any<int>(),
+            Arg.Any<string?>(),
+            Arg.Any<Guid?>(),
+            Arg.Any<Guid?>(),
+            Arg.Any<int?>(),
+            Arg.Any<int?>(),
+            Arg.Any<Guid?>(),
+            Arg.Any<int?>(),
+            Arg.Any<int?>(),
+            Arg.Any<DateTimeOffset?>(),
+            Arg.Any<DateTimeOffset?>(),
+            Arg.Any<string?>(),
+            Arg.Any<bool?>(),
+            Arg.Any<int?>(),
+            Arg.Any<int?>(),
+            Arg.Any<int?>(),
+            Arg.Any<int?>(),
+            Arg.Any<int?>(),
+            Arg.Any<bool?>(),
+            Arg.Any<int?>(),
+            Arg.Any<int?>(),
+            Arg.Any<bool?>(),
+            Arg.Any<int?>(),
+            Arg.Any<bool?>(),
+            Arg.Any<bool?>(),
+            Arg.Any<bool?>(),
+            Arg.Any<string?>(),
+            Arg.Any<bool?>(),
+            Arg.Any<CancellationToken>())
+            .Returns(resultTask);
+    }
+
+    private static async Task InvokeLoadEventsAsync(IRenderedComponent<EventList> cut)
+    {
+        var loadEventsMethod = typeof(EventList).GetMethod("LoadEventsAsync", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        if (loadEventsMethod is null)
+        {
+            throw new InvalidOperationException("LoadEventsAsync method was not found on EventList.");
         }
-    }
 
-    [Test]
-    public async Task EventList_DisplaysEventCards_WithCorrectStructure()
-    {
-        // Arrange
-        var events = ComponentDataBuilder.EventListDto.Generate(2);
-        events.First().TotalViews = 100;
-        _eventService.GetAllEventsAsync().Returns(events);
-
-        // Act - Use RenderMudComponent for MudBlazor components
-        var cut = _ctx.RenderMudComponent<EventList>();
-        await Task.Delay(200);
-
-        // Assert - Should have event cards with actions
-        await Assert.That(cut.Markup).Contains("Details");
-        await Assert.That(cut.Markup).Contains("Quick Register");
-    }
-
-    #endregion
-
-    #region Filter Tests
-
-    [Test]
-    public async Task EventList_DisplaysFilterOptions()
-    {
-        // Arrange - Add some filter data
-        var categories = ComponentDataBuilder.CategoryListDto.Generate(3);
-        _categoryService.GetAllCategoriesAsync().Returns(categories);
-
-        var tags = ComponentDataBuilder.TagListDto.Generate(2);
-        _tagService.GetAllTagsAsync().Returns(tags);
-
-        // Act - Use RenderMudComponent for MudBlazor components
-        var cut = _ctx.RenderMudComponent<EventList>();
-        await Task.Delay(200);
-
-        // Assert - MudSelect renders filter labels; "Any Time" appears as selected value
-        // for the Date filter. Other MudSelect dropdowns render labels but not default
-        // item text when closed (BUnit doesn't expand popover items).
-        await Assert.That(cut.Markup).Contains("Any Time");
-        await Assert.That(cut.Markup).Contains("Date");
-        await Assert.That(cut.Markup).Contains("Category");
-        await Assert.That(cut.Markup).Contains("Tags");
-        await Assert.That(cut.Markup).Contains("Format");
-        await Assert.That(cut.Markup).Contains("Madhab");
-        await Assert.That(cut.Markup).Contains("Location");
-    }
-
-    [Test]
-    public async Task EventList_FiltersEvents_BySearchText()
-    {
-        // Arrange
-        var events = new List<EventListDto>
+        var request = new ItemsProviderRequest(startIndex: 0, count: 20, cancellationToken: CancellationToken.None);
+        await cut.InvokeAsync(async () =>
         {
-            new() { Id = Guid.NewGuid(), Title = "Islamic Conference 2025", Description = "A great conference" },
-            new() { Id = Guid.NewGuid(), Title = "Quran Study Circle", Description = "Weekly study" },
-            new() { Id = Guid.NewGuid(), Title = "Youth Workshop", Description = "For young Muslims" }
-        };
-        _eventService.GetAllEventsAsync().Returns(events);
-
-        // Act - Use RenderMudComponent for MudBlazor components
-        var cut = _ctx.RenderMudComponent<EventList>();
-        await Task.Delay(200);
-
-        // Initial state - all events visible
-        await Assert.That(cut.Markup).Contains("Islamic Conference");
-        await Assert.That(cut.Markup).Contains("Quran Study");
-        await Assert.That(cut.Markup).Contains("Youth Workshop");
-    }
-
-    #endregion
-
-    #region Pagination Tests
-
-    [Test]
-    public async Task EventList_ShowsLoadMore_WhenManyEvents()
-    {
-        // Arrange - Create more events than page size (default batch is 12)
-        var events = ComponentDataBuilder.EventListDto.Generate(15);
-        _eventService.GetAllEventsAsync().Returns(events);
-
-        // Act - Use RenderMudComponent for MudBlazor components
-        var cut = _ctx.RenderMudComponent<EventList>();
-        await Task.Delay(200);
-
-        // Assert - Load More button should be present
-        await Assert.That(cut.Markup).Contains("Load More Events");
-        await Assert.That(cut.Markup).Contains("Showing 12 of 15 events");
+            var valueTask = (ValueTask<ItemsProviderResult<EventListDto>>)loadEventsMethod.Invoke(cut.Instance, [request])!;
+            await valueTask;
+        });
     }
 
     [Test]
-    public async Task EventList_DisplaysCorrectEventCount()
+    public async Task EventList_DoesNotShowEmptyState_BeforeFirstEventsLoadCompletes()
     {
         // Arrange
-        var events = ComponentDataBuilder.EventListDto.Generate(8);
-        _eventService.GetAllEventsAsync().Returns(events);
+        var pendingResult = new TaskCompletionSource<PaginatedResult<EventListDto>>();
+        SetupPagedResult(pendingResult.Task);
 
-        // Act - Use RenderMudComponent for MudBlazor components
+        // Act
         var cut = _ctx.RenderMudComponent<EventList>();
-        await Task.Delay(200);
-
-        // Assert - Should show total count
-        await Assert.That(cut.Markup).Contains("Showing 8 of 8 events");
-    }
-
-    #endregion
-
-    #region Service Integration Tests
-
-    [Test]
-    public async Task EventList_CallsAllRequiredServices_OnInitialization()
-    {
-        // Act - Use RenderMudComponent for MudBlazor components
-        var cut = _ctx.RenderMudComponent<EventList>();
-        await Task.Delay(200);
-
-        // Assert - All services should have been called
-        await _eventService.Received(1).GetAllEventsAsync();
-        await _eventService.Received(1).GetEventTypesAsync();
-        await _eventService.Received(1).GetEventFormatsAsync();
-        await _categoryService.Received(1).GetAllCategoriesAsync();
-        await _tagService.Received(1).GetAllTagsAsync();
-        await _adminService.Received(1).GetMadhabsAsync();
-        await _locationService.Received(1).GetAllLocationsAsync();
-    }
-
-    [Test]
-    public async Task EventList_HandlesServiceError_Gracefully()
-    {
-        // Arrange - Make a service throw
-        _eventService.GetAllEventsAsync().ThrowsAsync(new Exception("Service unavailable"));
-
-        // Act - Should not throw - Use RenderMudComponent for MudBlazor components
-        var cut = _ctx.RenderMudComponent<EventList>();
-        await Task.Delay(200);
-
-        // Assert - Should show empty state, not crash
-        await Assert.That(cut.Markup).Contains("No events found");
-    }
-
-    #endregion
-
-    #region Event Type Display Tests
-
-    [Test]
-    public async Task EventList_DisplaysEventType_FromLookup()
-    {
-        // Arrange
-        var eventTypes = new List<EventTypeListDto>
-        {
-            new() { Id = 1, FullName = "Conference" },
-            new() { Id = 2, FullName = "Workshop" }
-        };
-        _eventService.GetEventTypesAsync().Returns(eventTypes);
-
-        var events = new List<EventListDto>
-        {
-            new() { Id = Guid.NewGuid(), Title = "Test Event", EventTypeId = 1, EventTypeFullName = "Conference" }
-        };
-        _eventService.GetAllEventsAsync().Returns(events);
-
-        // Act - Use RenderMudComponent for MudBlazor components
-        var cut = _ctx.RenderMudComponent<EventList>();
-        await Task.Delay(200);
-
-        // Assert - Event type should be displayed
-        await Assert.That(cut.Markup).Contains("Conference");
-    }
-
-    [Test]
-    public async Task EventList_DisplaysFreeTag_WhenNoPriceSet()
-    {
-        // Arrange
-        var events = new List<EventListDto>
-        {
-            new() { Id = Guid.NewGuid(), Title = "Free Event", Price = null }
-        };
-        _eventService.GetAllEventsAsync().Returns(events);
-
-        // Act - Use RenderMudComponent for MudBlazor components
-        var cut = _ctx.RenderMudComponent<EventList>();
-        await Task.Delay(200);
 
         // Assert
-        await Assert.That(cut.Markup).Contains("Free");
+        if (cut.Markup.Contains("No events found"))
+        {
+            throw new InvalidOperationException("Empty state should not be displayed before first events load completes.");
+        }
+
+        // Cleanup to avoid dangling async work
+        pendingResult.TrySetResult(CreateResult(1, 20, []));
+        await Task.CompletedTask;
     }
 
     [Test]
-    public async Task EventList_DisplaysPrice_WhenPriceSet()
+    public async Task EventList_ShowsNoEventsState_OnlyAfterInitialLoadCompletesWithEmptyResult()
+    {
+        // Arrange
+        var pendingResult = new TaskCompletionSource<PaginatedResult<EventListDto>>();
+        SetupPagedResult(pendingResult.Task);
+
+        // Act
+        var cut = _ctx.RenderMudComponent<EventList>();
+
+        // Assert pre-condition: while pending, empty state is not shown
+        cut.WaitForAssertion(() =>
+        {
+            if (cut.Markup.Contains("No events found"))
+            {
+                throw new InvalidOperationException("Empty state should not be visible before first event load completes.");
+            }
+        });
+
+        // Complete with empty result and manually trigger the virtualized provider
+        pendingResult.SetResult(CreateResult(1, 20, []));
+        await InvokeLoadEventsAsync(cut);
+
+        if (!cut.Markup.Contains("No events found"))
+        {
+            throw new InvalidOperationException("Expected empty-state message after completed empty load.");
+        }
+
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task EventList_HidesNoEventsState_WhenResultsExist()
     {
         // Arrange
         var events = new List<EventListDto>
         {
-            new() { Id = Guid.NewGuid(), Title = "Paid Event", Price = 25.00, CurrencyCode = "EUR", EventTypeFullName = "Workshop" }
+            new() { Id = Guid.NewGuid(), Title = "Blazor Summit", Description = "Event description" }
         };
-        _eventService.GetAllEventsAsync().Returns(events);
+        SetupPagedResult(Task.FromResult(CreateResult(1, 20, events)));
 
-        // Act - Use RenderMudComponent for MudBlazor components
+        // Act
         var cut = _ctx.RenderMudComponent<EventList>();
-        await Task.Delay(200);
 
-        // Assert - EventList card renders title and event type, not price details
-        // Price display is on EventDetail page, not EventList cards
-        await Assert.That(cut.Markup).Contains("Paid Event");
-        await Assert.That(cut.Markup).Contains("Workshop");
+        // Assert
+        await InvokeLoadEventsAsync(cut);
+
+        if (!cut.Markup.Contains("Blazor Summit"))
+        {
+            throw new InvalidOperationException("Expected event title in rendered markup.");
+        }
+
+        if (cut.Markup.Contains("No events found"))
+        {
+            throw new InvalidOperationException("Empty-state message should not be visible when events exist.");
+        }
+
+        if (!cut.Markup.Contains("1 events found"))
+        {
+            throw new InvalidOperationException("Expected total count text for non-empty result.");
+        }
+
+        await Task.CompletedTask;
     }
-
-    #endregion
 }

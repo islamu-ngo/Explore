@@ -94,7 +94,7 @@ public static class DataBuilder
 
     public static Faker<OrganizationMember> OrganizationMember => new Faker<OrganizationMember>()
         .RuleFor(o => o.Id, f => Guid.NewGuid())
-        .RuleFor(o => o.OrganizationRoleId, f => f.Random.Int(1, 3))
+        .RuleFor(o => o.RoleId, f => f.Random.Int(1, 3))
         .RuleFor(o => o.OrganizationPositionId, f => f.Random.Int(1, 5));
 
     public static Faker<OrganizationReview> OrganizationReview => new Faker<OrganizationReview>()
@@ -151,7 +151,7 @@ public static class DataBuilder
 
     public static Faker<TenantUser> TenantUser => new Faker<TenantUser>()
         .RuleFor(t => t.Id, f => Guid.NewGuid())
-        .RuleFor(t => t.UserRoleId, f => f.Random.Int(1, 3));
+        .RuleFor(t => t.RoleId, f => f.Random.Int(1, 3));
 
     #endregion
 

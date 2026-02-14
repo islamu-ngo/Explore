@@ -1,6 +1,8 @@
 namespace Explore.API.Hateoas.Policies;
 
+using System.Collections.Generic;
 using System.Security.Claims;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.TenantUser;
 using Explore.Application.Hateoas;
@@ -20,7 +22,7 @@ public sealed class TenantUserDetailLinkPolicy : ILinkPolicy<TenantUserDto>
             RouteNames.GetTenantUserById,
             new { id = dto.Id },
             "GET",
-            $"{dto.UserFullName} - {dto.UserRoleName}");
+            $"{dto.UserFullName} - {dto.RoleName}");
 
         // User link
         yield return new LinkDefinition(
@@ -45,7 +47,16 @@ public sealed class TenantUserDetailLinkPolicy : ILinkPolicy<TenantUserDto>
             new { id = dto.Id },
             "PUT",
             "Update role assignment",
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(
+                PermissionAction.Update,
+                dto,
+                dto.Id.ToString(),
+                new Dictionary<string, object>
+                {
+                    ["tenantId"] = dto.TenantId.ToString(),
+                    ["userId"] = dto.UserId.ToString()
+                });
 
         // Delete link - requires authentication
         yield return new LinkDefinition(
@@ -54,7 +65,16 @@ public sealed class TenantUserDetailLinkPolicy : ILinkPolicy<TenantUserDto>
             new { id = dto.Id },
             "DELETE",
             "Remove user from tenant",
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(
+                PermissionAction.Delete,
+                dto,
+                dto.Id.ToString(),
+                new Dictionary<string, object>
+                {
+                    ["tenantId"] = dto.TenantId.ToString(),
+                    ["userId"] = dto.UserId.ToString()
+                });
     }
 }
 
@@ -72,7 +92,7 @@ public sealed class TenantUserCollectionLinkPolicy : ICollectionLinkPolicy<Tenan
             RouteNames.GetTenantUserById,
             new { id = dto.Id },
             "GET",
-            $"{dto.UserFullName} - {dto.UserRoleName}");
+            $"{dto.UserFullName} - {dto.RoleName}");
 
         // User link
         yield return new LinkDefinition(
@@ -93,6 +113,7 @@ public sealed class TenantUserCollectionLinkPolicy : ICollectionLinkPolicy<Tenan
             null,
             "POST",
             "Add user to tenant",
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(PermissionAction.Create, typeof(TenantUserDto), "tenant_user");
     }
 }

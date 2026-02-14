@@ -16,8 +16,8 @@ public class OrganizationMemberDto
     public string? UserFullName { get; set; }
 
     // Role
-    public int OrganizationRoleId { get; set; }
-    public string? OrganizationRoleFullName { get; set; }
+    public int RoleId { get; set; }
+    public string? RoleName { get; set; }
 
     // Position
     public int? OrganizationPositionId { get; set; }

@@ -258,7 +258,7 @@ public class LinkTableControllerTests
         {
             OrganizationId = Guid.NewGuid(),
             UserId = Guid.NewGuid(),
-            OrganizationRoleId = 1
+            RoleId = 1
         });
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }

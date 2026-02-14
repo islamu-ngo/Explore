@@ -1,6 +1,7 @@
 namespace Explore.API.Hateoas.Policies;
 
 using System.Security.Claims;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.IndexedDid;
 using Explore.Application.Hateoas;
@@ -45,7 +46,11 @@ public sealed class IndexedDidDetailLinkPolicy : ILinkPolicy<IndexedDidDto>
             new { did = dto.Did },
             "PUT",
             "Update indexed DID",
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(
+                PermissionAction.Update,
+                dto,
+                dto.Did);
     }
 }
 
@@ -92,6 +97,7 @@ public sealed class IndexedDidCollectionLinkPolicy : ICollectionLinkPolicy<Index
             null,
             "POST",
             "Index new DID",
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(PermissionAction.Create, typeof(IndexedDidDto), "indexed_did");
     }
 }

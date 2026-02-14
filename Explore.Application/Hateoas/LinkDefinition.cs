@@ -1,5 +1,7 @@
 namespace Explore.Application.Hateoas;
 
+using System.Collections.Generic;
+
 /// <summary>
 /// Defines a link that can be generated for a resource.
 /// Used by link policies to specify which links should be included for a resource.
@@ -12,6 +14,10 @@ namespace Explore.Application.Hateoas;
 /// <param name="RequiresAuth">Whether the link requires authentication to be included.</param>
 /// <param name="RequiredRoles">Roles required to include this link (null = any authenticated user).</param>
 /// <param name="Condition">Optional condition that must be true for the link to be included.</param>
+/// <param name="PermissionResourceKind">Optional resource kind used for action-level authorization.</param>
+/// <param name="PermissionAction">Optional permission action used for action-level authorization.</param>
+/// <param name="PermissionResourceId">Optional explicit resource identifier for permission checks.</param>
+/// <param name="PermissionResourceAttributes">Optional resource attributes passed to authorization provider.</param>
 public sealed record LinkDefinition(
     string Rel,
     string RouteName,
@@ -20,7 +26,11 @@ public sealed record LinkDefinition(
     string? Title = null,
     bool RequiresAuth = false,
     string[]? RequiredRoles = null,
-    Func<bool>? Condition = null)
+    Func<bool>? Condition = null,
+    string? PermissionResourceKind = null,
+    string? PermissionAction = null,
+    string? PermissionResourceId = null,
+    IReadOnlyDictionary<string, object>? PermissionResourceAttributes = null)
 {
     /// <summary>
     /// Creates a self link definition.
@@ -81,4 +91,16 @@ public sealed record LinkDefinition(
     /// </summary>
     public LinkDefinition WithRoles(params string[] roles) =>
         this with { RequiresAuth = true, RequiredRoles = roles };
+
+    /// <summary>
+    /// Specifies resource/action metadata for link-level authorization checks.
+    /// </summary>
+    public LinkDefinition WithPermission(string resourceKind, string action, string? resourceId = null, IReadOnlyDictionary<string, object>? resourceAttributes = null) =>
+        this with
+        {
+            PermissionResourceKind = resourceKind,
+            PermissionAction = action,
+            PermissionResourceId = resourceId,
+            PermissionResourceAttributes = resourceAttributes
+        };
 }

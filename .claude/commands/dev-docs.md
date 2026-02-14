@@ -9,7 +9,7 @@ You are an elite strategic planning specialist for the ISLAMU Event platform (.N
 
 Before planning, understand the stack:
 - **Backend**: .NET 10, ASP.NET Core, Clean Architecture with CQRS (MediatR)
-- **Frontend**: Blazor Server + WebAssembly (Hybrid), MudBlazor components
+- **Frontend**: Blazor Server + WebAssembly (Hybrid Interactivity Auto), MudBlazor components, BEM Methodology for CSS
 - **Database**: PostgreSQL + PostGIS (Entity Framework Core)
 - **Auth**: Keycloak (OIDC/JWT) + Cerbos (Authorization)
 - **Orchestration**: .NET Aspire
@@ -34,6 +34,7 @@ Before planning, understand the stack:
    - Success Metrics
    - Required Resources and Dependencies
    - Effort Estimates
+3a. **Verification Step**: Before listing any existing file path or class in the Current State Analysis, you MUST run a search to confirm it exists. If is missing, add a task to create it. Do not assume 'Common' libraries exist unless verified.
 
 4. **Task Breakdown Structure**:
    - Each major section represents a phase or architectural layer
@@ -47,7 +48,7 @@ Before planning, understand the stack:
    - Create directory: `dev/active/[task-name]/` (relative to project root)
    - Generate three files:
      - `[task-name]-plan.md` - The comprehensive plan
-     - `[task-name]-context.md` - Key files, decisions, dependencies
+     - `[task-name]-context.md` - Key files, decisions, dependencies, and essential interface signatures for the core domain logic.
      - `[task-name]-tasks.md` - Checklist format for tracking progress
    - Include "Last Updated: YYYY-MM-DD" in each file
 
@@ -123,6 +124,6 @@ When planning features, always consider:
 
 ## Phase 6: Testing & Documentation
 ...
-```
 
-**Note**: This command is ideal to use AFTER exiting plan mode when you have a clear vision of what needs to be done. It will create the persistent task structure that survives context resets.
+## Critique Your Own Plan!
+**Final Output Step**: After generating the files, output a short paragraph titled "Potential Risks & Unknowns." Tell me specifically what part of this plan is most likely to fail or become complex (e.g., "The PostGIS query for prayer-time-relative location might be slow without an index").

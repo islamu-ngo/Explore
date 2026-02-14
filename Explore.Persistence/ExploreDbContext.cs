@@ -121,8 +121,6 @@ public class ExploreDbContext : DbContext
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
         modelBuilder.Entity<UserExternalLogin>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
-        modelBuilder.Entity<UserRole>()
-            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
 
         // ===== Tenant Entities =====
         modelBuilder.Entity<TenantUser>()
@@ -131,7 +129,7 @@ public class ExploreDbContext : DbContext
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
         modelBuilder.Entity<TenantSetting>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
-        modelBuilder.Entity<TenantAdministrator>()
+        modelBuilder.Entity<TenantMember>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
         modelBuilder.Entity<TenantOnboardingState>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
@@ -212,8 +210,7 @@ public class ExploreDbContext : DbContext
     public DbSet<Tenant> Tenants { get; set; }
     public DbSet<TenantUser> TenantUsers { get; set; }
     public DbSet<TenantSettings> TenantSettings { get; set; }
-    public DbSet<TenantAdministrator> TenantAdministrators { get; set; }
-    public DbSet<TenantAdministratorRole> TenantAdministratorRoles { get; set; }
+    public DbSet<TenantMember> TenantMembers { get; set; }
     public DbSet<TenantOnboardingState> TenantOnboardingStates { get; set; }
     public DbSet<InstanceAdministrator> InstanceAdministrators { get; set; }
     public DbSet<TenantNavigationLink> TenantNavigationLinks { get; set; }
@@ -221,9 +218,13 @@ public class ExploreDbContext : DbContext
 
     // ===== Users & Authentication =====
     public DbSet<User> Users { get; set; }
-    public DbSet<UserRole> UserRoles { get; set; }
     public DbSet<UserAuthenticationToken> UserAuthenticationTokens { get; set; }
     public DbSet<UserExternalLogin> UserExternalLogins { get; set; }
+
+    // ===== Authorization (RBAC) =====
+    public DbSet<Role> Roles { get; set; }
+    public DbSet<Permission> Permissions { get; set; }
+    public DbSet<RolePermission> RolePermissions { get; set; }
 
     // ===== Actors (Federation/ATProto) =====
     public DbSet<Actor> Actors { get; set; }
@@ -234,7 +235,6 @@ public class ExploreDbContext : DbContext
     // ===== Organizations =====
     public DbSet<Organization> Organizations { get; set; }
     public DbSet<OrganizationMember> OrganizationMembers { get; set; }
-    public DbSet<OrganizationRole> OrganizationRoles { get; set; }
     public DbSet<OrganizationPosition> OrganizationPositions { get; set; }
     public DbSet<OrganizationReview> OrganizationReviews { get; set; }
 

@@ -1,6 +1,8 @@
 namespace Explore.API.Hateoas.Policies;
 
+using System.Collections.Generic;
 using System.Security.Claims;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.Location;
 using Explore.Application.Hateoas;
@@ -36,7 +38,15 @@ public sealed class LocationDetailLinkPolicy : ILinkPolicy<LocationDto>
             new { id = dto.Id },
             "PUT",
             "Update location",
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(
+                PermissionAction.Update,
+                dto,
+                dto.Id.ToString(),
+                new Dictionary<string, object>
+                {
+                    ["tenantId"] = dto.TenantId.ToString()
+                });
 
         // Delete link - requires authentication
         yield return new LinkDefinition(
@@ -45,7 +55,15 @@ public sealed class LocationDetailLinkPolicy : ILinkPolicy<LocationDto>
             new { id = dto.Id },
             "DELETE",
             "Delete location",
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(
+                PermissionAction.Delete,
+                dto,
+                dto.Id.ToString(),
+                new Dictionary<string, object>
+                {
+                    ["tenantId"] = dto.TenantId.ToString()
+                });
     }
 }
 
@@ -76,6 +94,7 @@ public sealed class LocationCollectionLinkPolicy : ICollectionLinkPolicy<Locatio
             null,
             "POST",
             "Create new location",
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(PermissionAction.Create, typeof(LocationDto), "location");
     }
 }

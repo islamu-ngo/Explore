@@ -60,7 +60,7 @@ public class ActorController : ControllerBase
             PageSize = pageSize
         }, cancellationToken);
 
-        var halResource = _resourceAssembler.ToCollectionResource(
+        var halResource = await _resourceAssembler.ToCollectionResource(
             result,
             RouteNames.GetActors,
             additionalRouteValues: null,
@@ -89,7 +89,7 @@ public class ActorController : ControllerBase
             return NotFound(new { error = "Actor not found" });
         }
 
-        var halResource = _resourceAssembler.ToResource(actor, HttpContext);
+        var halResource = await _resourceAssembler.ToResource(actor, HttpContext);
         return Ok(halResource);
     }
 
@@ -112,7 +112,7 @@ public class ActorController : ControllerBase
             return NotFound(new { error = "Actor not found" });
         }
 
-        var halResource = _resourceAssembler.ToResource(actor, HttpContext);
+        var halResource = await _resourceAssembler.ToResource(actor, HttpContext);
         return Ok(halResource);
     }
 
@@ -129,7 +129,7 @@ public class ActorController : ControllerBase
     {
         var actors = await _mediator.Send(new GetActorsByTenantRequest { TenantId = tenantId }, cancellationToken);
 
-        var halResource = _resourceAssembler.ToCollectionResource(
+        var halResource = await _resourceAssembler.ToCollectionResource(
             actors,
             RouteNames.GetActorsByTenant,
             HttpContext);

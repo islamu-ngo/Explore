@@ -1,14 +1,14 @@
-// ABOUTME: Repository contract for tenant administrator assignments and role-scoped membership checks.
+// ABOUTME: Repository contract for tenant member assignments and role-scoped membership checks.
 // ABOUTME: Provides tenant/user lookup helpers for tenant-level authorization workflows.
 
 using Explore.Domain;
 
 namespace Explore.Application.Contracts.Persistence;
 
-public interface ITenantAdministratorRepository : IGenericRepository<TenantAdministrator, Guid>
+public interface ITenantMemberRepository : IGenericRepository<TenantMember, Guid>
 {
-    Task<TenantAdministrator?> GetByTenantAndUser(Guid tenantId, Guid userId);
-    Task<List<TenantAdministrator>> GetByTenant(Guid tenantId);
-    Task<List<TenantAdministrator>> GetByUserId(Guid userId);
-    Task<bool> IsTenantAdministrator(Guid tenantId, Guid userId);
+    Task<TenantMember?> GetByTenantAndUser(Guid tenantId, Guid userId);
+    Task<List<TenantMember>> GetByTenant(Guid tenantId);
+    Task<List<TenantMember>> GetByUserId(Guid userId);
+    Task<bool> IsTenantMember(Guid tenantId, Guid userId);
 }

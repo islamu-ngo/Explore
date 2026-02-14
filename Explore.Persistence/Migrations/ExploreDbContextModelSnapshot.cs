@@ -2031,9 +2031,9 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("organization_position_id");
 
-                    b.Property<int>("OrganizationRoleId")
+                    b.Property<int>("RoleId")
                         .HasColumnType("integer")
-                        .HasColumnName("organization_role_id");
+                        .HasColumnName("role_id");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
@@ -2057,8 +2057,8 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("OrganizationPositionId")
                         .HasDatabaseName("ix_organization_members_organization_position_id");
 
-                    b.HasIndex("OrganizationRoleId")
-                        .HasDatabaseName("ix_organization_members_organization_role_id");
+                    b.HasIndex("RoleId")
+                        .HasDatabaseName("ix_organization_members_role_id");
 
                     b.HasIndex("TenantId")
                         .HasDatabaseName("ix_organization_members_tenant_id");
@@ -2175,35 +2175,6 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("organization_reviews", (string)null);
                 });
 
-            modelBuilder.Entity("Explore.Domain.OrganizationRole", b =>
-                {
-                    b.Property<int>("Id")
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("description");
-
-                    b.Property<string>("FullName")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("full_name");
-
-                    b.Property<string>("MasterCode")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("master_code");
-
-                    b.HasKey("Id")
-                        .HasName("pk_organization_roles");
-
-                    b.ToTable("organization_roles", (string)null);
-                });
-
             modelBuilder.Entity("Explore.Domain.OwnerType", b =>
                 {
                     b.Property<int>("Id")
@@ -2233,6 +2204,111 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("owner_types", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.Permission", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("action");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FieldScope")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("field_scope");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("GroupName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("group_name");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsFiltered")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_filtered");
+
+                    b.Property<bool>("IsSystem")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_system");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("master_code");
+
+                    b.Property<string>("ResourceKind")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("resource_kind");
+
+                    b.Property<int>("Scope")
+                        .HasColumnType("integer")
+                        .HasColumnName("scope");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_permissions");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_permissions_mastercode");
+
+                    b.HasIndex("Scope")
+                        .HasDatabaseName("ix_permissions_scope");
+
+                    b.HasIndex("ResourceKind", "Action")
+                        .HasDatabaseName("ix_permissions_resource_action");
+
+                    b.ToTable("permissions", (string)null);
+                });
+
             modelBuilder.Entity("Explore.Domain.RegistrationMode", b =>
                 {
                     b.Property<int>("Id")
@@ -2260,6 +2336,84 @@ namespace Explore.Persistence.Migrations
                         .HasName("pk_registration_modes");
 
                     b.ToTable("registration_modes", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.Role", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<bool>("IsSystem")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_system");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("master_code");
+
+                    b.Property<int>("Scope")
+                        .HasColumnType("integer")
+                        .HasColumnName("scope");
+
+                    b.HasKey("Id")
+                        .HasName("pk_roles");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_roles_mastercode");
+
+                    b.HasIndex("Scope")
+                        .HasDatabaseName("ix_roles_scope");
+
+                    b.ToTable("roles", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.RolePermission", b =>
+                {
+                    b.Property<int>("RoleId")
+                        .HasColumnType("integer")
+                        .HasColumnName("role_id");
+
+                    b.Property<int>("PermissionId")
+                        .HasColumnType("integer")
+                        .HasColumnName("permission_id");
+
+                    b.Property<DateTime>("GrantedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("granted_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid?>("GrantedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("granted_by");
+
+                    b.HasKey("RoleId", "PermissionId")
+                        .HasName("pk_role_permissions");
+
+                    b.HasIndex("PermissionId")
+                        .HasDatabaseName("ix_rolepermissions_permission");
+
+                    b.HasIndex("RoleId")
+                        .HasDatabaseName("ix_rolepermissions_role");
+
+                    b.ToTable("role_permissions", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.StorageObject", b =>
@@ -2577,82 +2731,62 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("tenants", (string)null);
                 });
 
-            modelBuilder.Entity("Explore.Domain.TenantAdministrator", b =>
+            modelBuilder.Entity("Explore.Domain.TenantMember", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<DateTime>("GrantedAt")
-                        .ValueGeneratedOnAdd()
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("granted_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("GrantedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("granted_at");
 
                     b.Property<Guid?>("GrantedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("granted_by");
 
-                    b.Property<int>("TenantAdministratorRoleId")
+                    b.Property<int>("RoleId")
                         .HasColumnType("integer")
-                        .HasColumnName("tenant_administrator_role_id");
+                        .HasColumnName("role_id");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_tenant_administrators");
+                        .HasName("pk_tenant_members");
 
-                    b.HasIndex("TenantAdministratorRoleId")
-                        .HasDatabaseName("ix_tenant_administrators_tenant_administrator_role_id");
+                    b.HasIndex("RoleId")
+                        .HasDatabaseName("ix_tenant_members_role_id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_tenant_members_tenant_id");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_tenant_administrators_user_id");
+                        .HasDatabaseName("ix_tenant_members_user_id");
 
-                    b.HasIndex("TenantId", "UserId")
-                        .IsUnique()
-                        .HasDatabaseName("ix_tenant_administrators_tenant_id_user_id");
-
-                    b.ToTable("TenantAdministrators", (string)null);
-                });
-
-            modelBuilder.Entity("Explore.Domain.TenantAdministratorRole", b =>
-                {
-                    b.Property<int>("Id")
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("description");
-
-                    b.Property<string>("FullName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("full_name");
-
-                    b.Property<string>("MasterCode")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("master_code");
-
-                    b.HasKey("Id")
-                        .HasName("pk_tenant_administrator_roles");
-
-                    b.HasIndex("MasterCode")
-                        .IsUnique()
-                        .HasDatabaseName("ix_tenant_administrator_roles_master_code");
-
-                    b.ToTable("TenantAdministratorRoles", (string)null);
+                    b.ToTable("tenant_members", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantNavigationLink", b =>
@@ -2831,6 +2965,10 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<int>("RoleId")
+                        .HasColumnType("integer")
+                        .HasColumnName("role_id");
+
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id");
@@ -2839,21 +2977,17 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
-                    b.Property<int>("UserRoleId")
-                        .HasColumnType("integer")
-                        .HasColumnName("user_role_id");
-
                     b.HasKey("Id")
                         .HasName("pk_tenant_users");
+
+                    b.HasIndex("RoleId")
+                        .HasDatabaseName("ix_tenant_users_role_id");
 
                     b.HasIndex("TenantId")
                         .HasDatabaseName("ix_tenant_users_tenant_id");
 
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_tenant_users_user_id");
-
-                    b.HasIndex("UserRoleId")
-                        .HasDatabaseName("ix_tenant_users_user_role_id");
 
                     b.ToTable("tenant_users", (string)null);
                 });
@@ -3080,42 +3214,6 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_user_external_logins_user_id");
 
                     b.ToTable("user_external_logins", (string)null);
-                });
-
-            modelBuilder.Entity("Explore.Domain.UserRole", b =>
-                {
-                    b.Property<int>("Id")
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("description");
-
-                    b.Property<string>("FullName")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("full_name");
-
-                    b.Property<string>("MasterCode")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("master_code");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tenant_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_user_roles");
-
-                    b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_user_roles_tenant_id");
-
-                    b.ToTable("user_roles", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.VisibilityType", b =>
@@ -3695,12 +3793,12 @@ namespace Explore.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_organization_members_organization_positions_organization_po");
 
-                    b.HasOne("Explore.Domain.OrganizationRole", "OrganizationRole")
+                    b.HasOne("Explore.Domain.Role", "Role")
                         .WithMany()
-                        .HasForeignKey("OrganizationRoleId")
+                        .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_organization_members_organization_roles_organization_role_id");
+                        .HasConstraintName("fk_organization_members_roles_role_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
@@ -3720,7 +3818,7 @@ namespace Explore.Persistence.Migrations
 
                     b.Navigation("OrganizationPosition");
 
-                    b.Navigation("OrganizationRole");
+                    b.Navigation("Role");
 
                     b.Navigation("Tenant");
 
@@ -3764,6 +3862,27 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Tenant");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RolePermission", b =>
+                {
+                    b.HasOne("Explore.Domain.Permission", "Permission")
+                        .WithMany()
+                        .HasForeignKey("PermissionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_role_permissions_permissions_permission_id");
+
+                    b.HasOne("Explore.Domain.Role", "Role")
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_role_permissions_roles_role_id");
+
+                    b.Navigation("Permission");
+
+                    b.Navigation("Role");
                 });
 
             modelBuilder.Entity("Explore.Domain.StorageObject", b =>
@@ -3837,32 +3956,32 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Tenant");
                 });
 
-            modelBuilder.Entity("Explore.Domain.TenantAdministrator", b =>
+            modelBuilder.Entity("Explore.Domain.TenantMember", b =>
                 {
-                    b.HasOne("Explore.Domain.TenantAdministratorRole", "TenantAdministratorRole")
+                    b.HasOne("Explore.Domain.Role", "Role")
                         .WithMany()
-                        .HasForeignKey("TenantAdministratorRoleId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_tenant_administrators_tenant_administrator_roles_tenant_admi");
+                        .HasConstraintName("fk_tenant_members_roles_role_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_tenant_administrators_tenants_tenant_id");
+                        .HasConstraintName("fk_tenant_members_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_tenant_administrators_users_user_id");
+                        .HasConstraintName("fk_tenant_members_users_user_id");
+
+                    b.Navigation("Role");
 
                     b.Navigation("Tenant");
-
-                    b.Navigation("TenantAdministratorRole");
 
                     b.Navigation("User");
                 });
@@ -3917,6 +4036,13 @@ namespace Explore.Persistence.Migrations
 
             modelBuilder.Entity("Explore.Domain.TenantUser", b =>
                 {
+                    b.HasOne("Explore.Domain.Role", "Role")
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_tenant_users_roles_role_id");
+
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
@@ -3931,18 +4057,11 @@ namespace Explore.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_tenant_users_users_user_id");
 
-                    b.HasOne("Explore.Domain.UserRole", "UserRole")
-                        .WithMany()
-                        .HasForeignKey("UserRoleId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_tenant_users_user_roles_user_role_id");
+                    b.Navigation("Role");
 
                     b.Navigation("Tenant");
 
                     b.Navigation("User");
-
-                    b.Navigation("UserRole");
                 });
 
             modelBuilder.Entity("Explore.Domain.User", b =>
@@ -3996,18 +4115,6 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Tenant");
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Explore.Domain.UserRole", b =>
-                {
-                    b.HasOne("Explore.Domain.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_user_roles_tenants_tenant_id");
-
-                    b.Navigation("Tenant");
                 });
 
             modelBuilder.Entity("Explore.Domain.Event", b =>

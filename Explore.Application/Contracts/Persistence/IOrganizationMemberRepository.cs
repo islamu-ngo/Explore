@@ -21,9 +21,17 @@ public interface IOrganizationMemberRepository : IGenericRepository<Organization
     Task<OrganizationMember?> GetByOrganizationAndUser(Guid organizationId, Guid userId);
 
     /// <summary>
-    /// Checks if the user has admin-level permissions (Creator, CoOwner, or Admin role) in the organization.
+    /// Checks if the user's role in the organization has the specified permission
+    /// via the RolePermission join table. Falls back to legacy role-based check
+    /// when no permissions are seeded yet (transitional safety).
     /// </summary>
-    Task<bool> IsUserAdminOfOrganization(Guid organizationId, Guid userId);
+    Task<bool> HasPermissionInOrganization(Guid organizationId, Guid userId, string permissionMasterCode);
+
+    /// <summary>
+    /// Returns the IDs of all organizations where the user's role has the specified permission.
+    /// Falls back to legacy admin role check when no permissions are seeded yet.
+    /// </summary>
+    Task<List<Guid>> GetOrganizationIdsWhereUserHasPermission(Guid userId, string permissionMasterCode);
 
     /// <summary>
     /// Gets all organization memberships for a user, including organization details and role.

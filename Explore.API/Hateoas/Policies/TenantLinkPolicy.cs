@@ -1,6 +1,8 @@
 namespace Explore.API.Hateoas.Policies;
 
+using System.Collections.Generic;
 using System.Security.Claims;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.Tenant;
 using Explore.Application.Hateoas;
@@ -55,7 +57,15 @@ public sealed class TenantDetailLinkPolicy : ILinkPolicy<TenantDto>
             new { id = dto.Id },
             "PUT",
             "Update tenant",
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(
+                PermissionAction.Update,
+                dto,
+                dto.Id.ToString(),
+                new Dictionary<string, object>
+                {
+                    ["tenantId"] = dto.Id.ToString()
+                });
 
         // Delete link - requires authentication
         yield return new LinkDefinition(
@@ -64,7 +74,15 @@ public sealed class TenantDetailLinkPolicy : ILinkPolicy<TenantDto>
             new { id = dto.Id },
             "DELETE",
             "Delete tenant",
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(
+                PermissionAction.Delete,
+                dto,
+                dto.Id.ToString(),
+                new Dictionary<string, object>
+                {
+                    ["tenantId"] = dto.Id.ToString()
+                });
     }
 }
 
@@ -103,6 +121,7 @@ public sealed class TenantCollectionLinkPolicy : ICollectionLinkPolicy<TenantLis
             null,
             "POST",
             "Create new tenant",
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(PermissionAction.Create, typeof(TenantDto), "tenant");
     }
 }

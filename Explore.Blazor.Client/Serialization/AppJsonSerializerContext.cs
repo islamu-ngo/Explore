@@ -5,7 +5,6 @@
 using System.Text.Json.Serialization;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Models;
-using Explore.Blazor.Client.Models.Enums;
 using Explore.Blazor.Client.Models.Responses;
 
 namespace Explore.Blazor.Client.Serialization;
@@ -132,8 +131,6 @@ namespace Explore.Blazor.Client.Serialization;
 [JsonSerializable(typeof(OrganizationPositionDto))]
 [JsonSerializable(typeof(OrganizationPositionListDto))]
 [JsonSerializable(typeof(OrganizationReviewDto))]
-[JsonSerializable(typeof(OrganizationRoleDto))]
-[JsonSerializable(typeof(OrganizationRoleListDto))]
 [JsonSerializable(typeof(PaginatedResultOfEventRegistrationListDto))]
 [JsonSerializable(typeof(PaginatedResultOfEventSessionAgendaItemListDto))]
 [JsonSerializable(typeof(PaginatedResultOfStorageObjectListDto))]
@@ -191,15 +188,12 @@ namespace Explore.Blazor.Client.Serialization;
 [JsonSerializable(typeof(UserDto))]
 [JsonSerializable(typeof(UserExternalLoginDto))]
 [JsonSerializable(typeof(UserExternalLoginListDto))]
-[JsonSerializable(typeof(UserRoleDto))]
-[JsonSerializable(typeof(UserRoleListDto))]
 [JsonSerializable(typeof(VisibilityTypeDto))]
 [JsonSerializable(typeof(VisibilityTypeListDto))]
 // Blazor Client Models
 [JsonSerializable(typeof(ServiceResult))]
 [JsonSerializable(typeof(TenantContext))]
 [JsonSerializable(typeof(UserInfo))]
-[JsonSerializable(typeof(OrganizationRole))]
 public partial class AppJsonSerializerContext : JsonSerializerContext
 {
 }

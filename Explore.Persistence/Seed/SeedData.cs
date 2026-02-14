@@ -1,5 +1,5 @@
-// ABOUTME: Centralized seed data objects for the application.
-// Contains all seed entity instances that reference SeedIds for consistency.
+// ABOUTME: Centralized seed data objects for Development environment business entities.
+// ABOUTME: References SeedIds for deterministic IDs. Used by DatabaseSeeder (Development only).
 
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -8,15 +8,19 @@ using Explore.Domain.Modules;
 namespace Explore.Persistence.Seed;
 
 /// <summary>
-/// Centralized seed data objects for business entities.
+/// Centralized seed data objects for Development environment.
 /// All seed data references SeedIds for consistent, deterministic IDs.
 ///
-/// NOTE: Lookup/enum tables are seeded via LookupTableSeeder at runtime.
-/// This class contains business entity seed data that may be conditionally applied.
+/// NOTE: Lookup/enum tables are seeded via LookupTableSeeder at runtime in ALL environments.
+/// This class contains business entity seed data applied only in Development.
+///
+/// Seeding order matters due to FK constraints and circular dependencies (User/Org ↔ Actor):
+/// 1. Tenant → 2. Users (no ActorId) → 3. Organizations (no ActorId) → 4. Actors →
+/// 5. Update Users/Orgs with ActorId → 6. TenantUsers, OrgMembers, Storage →
+/// 7. Settings, Capabilities → 8. Categories, Tags, Location → 9. Sample Event
 /// </summary>
 public static class SeedData
 {
-    // ===== Timestamps =====
     private static readonly DateTime SeedTimestamp = new(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
     // ===== Tenant =====
@@ -28,23 +32,47 @@ public static class SeedData
         IsActive = true
     };
 
-    // ===== User =====
-    public static User SystemUser => new()
+    // ===== Users =====
+    public static User AdminUser => new()
     {
-        Id = SeedIds.SystemUserId,
-        Email = "system@islamu.org",
-        FirstName = "System",
-        LastName = "Account",
-        ActorId = SeedIds.SystemUserActorId,
-        AuthProvider = "system",
-        AuthProviderId = "system",
-        EmailVerified = true
+        Id = SeedIds.AdminUserId,
+        Email = "admin@islamu.dev",
+        FirstName = "Admin",
+        LastName = "User",
+        AuthProvider = "dev",
+        AuthProviderId = "admin-001",
+        EmailVerified = true,
+        CreatedAt = SeedTimestamp
     };
 
-    // ===== Organization =====
-    public static Organization IslamuOrganization => new()
+    public static User RegularUser => new()
     {
-        Id = SeedIds.IslamuOrganizationId,
+        Id = SeedIds.RegularUserId,
+        Email = "user@islamu.dev",
+        FirstName = "Regular",
+        LastName = "User",
+        AuthProvider = "dev",
+        AuthProviderId = "user-001",
+        EmailVerified = true,
+        CreatedAt = SeedTimestamp
+    };
+
+    public static User ModeratorUser => new()
+    {
+        Id = SeedIds.ModeratorUserId,
+        Email = "moderator@islamu.dev",
+        FirstName = "Moderator",
+        LastName = "User",
+        AuthProvider = "dev",
+        AuthProviderId = "moderator-001",
+        EmailVerified = true,
+        CreatedAt = SeedTimestamp
+    };
+
+    // ===== Organizations =====
+    public static Organization IslamuOrg => new()
+    {
+        Id = SeedIds.IslamuOrgId,
         FullName = "ISLAMU",
         WebsiteUrl = "https://islamu.ngo",
         Email = "contact@openislamu.org",
@@ -56,28 +84,73 @@ public static class SeedData
         ApprovalStatus = null!,
         TenantId = SeedIds.DefaultTenantId,
         Tenant = null!,
-        ActorId = SeedIds.IslamuOrganizationActorId,
         CreatedAt = SeedTimestamp
     };
 
-    // ===== Actors =====
-    public static Actor SystemUserActor => new()
+    public static Organization TechOrg => new()
     {
-        Id = SeedIds.SystemUserActorId,
+        Id = SeedIds.TechOrgId,
+        FullName = "Tech Community",
+        WebsiteUrl = "https://techcommunity.dev",
+        Email = "hello@techcommunity.dev",
+        Country = "Belgium",
+        City = "Antwerp",
+        Postcode = "2000",
+        Address = "Tech Hub 1",
+        ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
+        ApprovalStatus = null!,
+        TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!,
+        CreatedAt = SeedTimestamp
+    };
+
+    // ===== User Actors =====
+    public static Actor AdminUserActor => new()
+    {
+        Id = SeedIds.AdminUserActorId,
         ActorTypeId = (int)ActorTypeEnum.User,
         ActorType = null!,
         TenantId = SeedIds.DefaultTenantId,
         Tenant = null!,
-        DisplayName = "System Account",
-        Handle = "system",
-        Description = "System user account",
-        UserId = SeedIds.SystemUserId,
+        DisplayName = "Admin User",
+        Handle = "admin",
+        Description = "Platform administrator",
+        UserId = SeedIds.AdminUserId,
         OrganizationId = null
     };
 
-    public static Actor IslamuOrganizationActor => new()
+    public static Actor RegularUserActor => new()
     {
-        Id = SeedIds.IslamuOrganizationActorId,
+        Id = SeedIds.RegularUserActorId,
+        ActorTypeId = (int)ActorTypeEnum.User,
+        ActorType = null!,
+        TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!,
+        DisplayName = "Regular User",
+        Handle = "user",
+        Description = "Regular platform user",
+        UserId = SeedIds.RegularUserId,
+        OrganizationId = null
+    };
+
+    public static Actor ModeratorUserActor => new()
+    {
+        Id = SeedIds.ModeratorUserActorId,
+        ActorTypeId = (int)ActorTypeEnum.User,
+        ActorType = null!,
+        TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!,
+        DisplayName = "Moderator User",
+        Handle = "moderator",
+        Description = "Platform moderator",
+        UserId = SeedIds.ModeratorUserId,
+        OrganizationId = null
+    };
+
+    // ===== Organization Actors =====
+    public static Actor IslamuOrgActor => new()
+    {
+        Id = SeedIds.IslamuOrgActorId,
         ActorTypeId = (int)ActorTypeEnum.Organization,
         ActorType = null!,
         TenantId = SeedIds.DefaultTenantId,
@@ -86,21 +159,134 @@ public static class SeedData
         Handle = "islamu",
         Description = "ISLAMU NGO - Islamic Learning and Media Union",
         UserId = null,
-        OrganizationId = SeedIds.IslamuOrganizationId
+        OrganizationId = SeedIds.IslamuOrgId
     };
 
-    // ===== Organization Members =====
-    public static OrganizationMember SystemUserIslamuMember => new()
+    public static Actor TechOrgActor => new()
     {
-        Id = SeedIds.SystemUserIslamuMemberId,
-        OrganizationId = SeedIds.IslamuOrganizationId,
-        Organization = null!,
-        UserId = SeedIds.SystemUserId,
+        Id = SeedIds.TechOrgActorId,
+        ActorTypeId = (int)ActorTypeEnum.Organization,
+        ActorType = null!,
+        TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!,
+        DisplayName = "Tech Community",
+        Handle = "techcommunity",
+        Description = "Tech Community Belgium",
+        UserId = null,
+        OrganizationId = SeedIds.TechOrgId
+    };
+
+    // ===== Tenant Users =====
+    public static TenantUser AdminTenantUser => new()
+    {
+        Id = SeedIds.AdminTenantUserId,
+        UserId = SeedIds.AdminUserId,
         User = null!,
         TenantId = SeedIds.DefaultTenantId,
         Tenant = null!,
-        OrganizationRoleId = (int)OrganizationRoleEnum.Creator,
-        OrganizationRole = null!,
+        RoleId = (int)RoleEnum.TenantOwner,
+        Role = null!
+    };
+
+    public static TenantUser RegularTenantUser => new()
+    {
+        Id = SeedIds.RegularTenantUserId,
+        UserId = SeedIds.RegularUserId,
+        User = null!,
+        TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!,
+        RoleId = (int)RoleEnum.TenantMember,
+        Role = null!
+    };
+
+    public static TenantUser ModeratorTenantUser => new()
+    {
+        Id = SeedIds.ModeratorTenantUserId,
+        UserId = SeedIds.ModeratorUserId,
+        User = null!,
+        TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!,
+        RoleId = (int)RoleEnum.TenantModerator,
+        Role = null!
+    };
+
+    // ===== Organization Members =====
+    // Admin is Creator of ISLAMU (Founder position)
+    public static OrganizationMember AdminIslamuCreator => new()
+    {
+        Id = SeedIds.AdminIslamuCreatorId,
+        OrganizationId = SeedIds.IslamuOrgId,
+        Organization = null!,
+        UserId = SeedIds.AdminUserId,
+        User = null!,
+        TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!,
+        RoleId = (int)RoleEnum.OrgCreator,
+        Role = null!,
+        OrganizationPositionId = (int)OrganizationPositionEnum.Founder,
+        CreatedAt = SeedTimestamp
+    };
+
+    // Regular user is Member of ISLAMU
+    public static OrganizationMember RegularIslamuMember => new()
+    {
+        Id = SeedIds.RegularIslamuMemberId,
+        OrganizationId = SeedIds.IslamuOrgId,
+        Organization = null!,
+        UserId = SeedIds.RegularUserId,
+        User = null!,
+        TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!,
+        RoleId = (int)RoleEnum.OrgMember,
+        Role = null!,
+        OrganizationPositionId = (int)OrganizationPositionEnum.Volunteer,
+        CreatedAt = SeedTimestamp
+    };
+
+    // Moderator is Moderator of ISLAMU
+    public static OrganizationMember ModeratorIslamuMod => new()
+    {
+        Id = SeedIds.ModeratorIslamuModId,
+        OrganizationId = SeedIds.IslamuOrgId,
+        Organization = null!,
+        UserId = SeedIds.ModeratorUserId,
+        User = null!,
+        TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!,
+        RoleId = (int)RoleEnum.OrgModerator,
+        Role = null!,
+        OrganizationPositionId = (int)OrganizationPositionEnum.Coordinator,
+        CreatedAt = SeedTimestamp
+    };
+
+    // Admin is CoOwner of Tech org
+    public static OrganizationMember AdminTechCoOwner => new()
+    {
+        Id = SeedIds.AdminTechCoOwnerId,
+        OrganizationId = SeedIds.TechOrgId,
+        Organization = null!,
+        UserId = SeedIds.AdminUserId,
+        User = null!,
+        TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!,
+        RoleId = (int)RoleEnum.OrgCoOwner,
+        Role = null!,
+        OrganizationPositionId = (int)OrganizationPositionEnum.Director,
+        CreatedAt = SeedTimestamp
+    };
+
+    // Regular user is Creator of Tech org (Founder position)
+    public static OrganizationMember RegularTechCreator => new()
+    {
+        Id = SeedIds.RegularTechCreatorId,
+        OrganizationId = SeedIds.TechOrgId,
+        Organization = null!,
+        UserId = SeedIds.RegularUserId,
+        User = null!,
+        TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!,
+        RoleId = (int)RoleEnum.OrgCreator,
+        Role = null!,
         OrganizationPositionId = (int)OrganizationPositionEnum.Founder,
         CreatedAt = SeedTimestamp
     };
@@ -117,7 +303,7 @@ public static class SeedData
         FileType = null!,
         TenantId = SeedIds.DefaultTenantId,
         Tenant = null!,
-        ActorId = SeedIds.SystemUserActorId
+        ActorId = SeedIds.AdminUserActorId
     };
 
     public static StorageObject DefaultProfileImage => new()
@@ -131,7 +317,7 @@ public static class SeedData
         FileType = null!,
         TenantId = SeedIds.DefaultTenantId,
         Tenant = null!,
-        ActorId = SeedIds.SystemUserActorId
+        ActorId = SeedIds.AdminUserActorId
     };
 
     public static StorageObject DefaultOrganizationLogo => new()
@@ -145,7 +331,7 @@ public static class SeedData
         FileType = null!,
         TenantId = SeedIds.DefaultTenantId,
         Tenant = null!,
-        ActorId = SeedIds.SystemUserActorId
+        ActorId = SeedIds.AdminUserActorId
     };
 
     // ===== Tenant Settings =====
@@ -338,7 +524,7 @@ public static class SeedData
         Tenant = null!
     };
 
-    // ===== Sample Event (Development Only) =====
+    // ===== Sample Event =====
     public static Event SampleEvent => new()
     {
         Id = SeedIds.SampleEventId,
@@ -348,7 +534,7 @@ public static class SeedData
         EventTypeId = (int)EventTypeEnum.Webinar,
         AudienceGenderId = (int)AudienceGenderEnum.Both,
         AudienceAgeId = (int)AudienceAgeEnum.AllAges,
-        ActorId = SeedIds.IslamuOrganizationActorId,
+        ActorId = SeedIds.IslamuOrgActorId,
         Actor = null!,
         Price = 0,
         CurrencyCode = "EUR",
@@ -365,46 +551,5 @@ public static class SeedData
         EventFormatId = (int)EventFormatEnum.Digital,
         EventFormat = null!,
         Timezone = "Europe/Brussels"
-    };
-
-    // ===== UserRoles (Development Only - required for testing) =====
-    public static UserRole SuperAdminRole => new()
-    {
-        Id = 1,
-        FullName = "Super Administrator",
-        MasterCode = "SUPER_ADMIN",
-        Description = "Full system access",
-        TenantId = SeedIds.DefaultTenantId,
-        Tenant = null!
-    };
-
-    public static UserRole AdminRole => new()
-    {
-        Id = 2,
-        FullName = "Administrator",
-        MasterCode = "ADMIN",
-        Description = "Organization administrator",
-        TenantId = SeedIds.DefaultTenantId,
-        Tenant = null!
-    };
-
-    public static UserRole ModeratorRole => new()
-    {
-        Id = 3,
-        FullName = "Moderator",
-        MasterCode = "MODERATOR",
-        Description = "Content moderator",
-        TenantId = SeedIds.DefaultTenantId,
-        Tenant = null!
-    };
-
-    public static UserRole UserRoleData => new()
-    {
-        Id = 4,
-        FullName = "User",
-        MasterCode = "USER",
-        Description = "Standard user",
-        TenantId = SeedIds.DefaultTenantId,
-        Tenant = null!
     };
 }

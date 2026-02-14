@@ -57,7 +57,7 @@ public class CategoryController : ControllerBase
             PageSize = pageSize
         }, cancellationToken);
 
-        var halResource = _resourceAssembler.ToCollectionResource(
+        var halResource = await _resourceAssembler.ToCollectionResource(
             result,
             RouteNames.GetCategories,
             additionalRouteValues: null,
@@ -86,7 +86,7 @@ public class CategoryController : ControllerBase
             return NotFound(new { error = "Category not found" });
         }
 
-        var halResource = _resourceAssembler.ToResource(category, HttpContext);
+        var halResource = await _resourceAssembler.ToResource(category, HttpContext);
         return Ok(halResource);
     }
 

@@ -1,6 +1,7 @@
 // ABOUTME: Cerbos PDP authorization service using HTTP API for policy decisions.
 // Calls the Cerbos server's /api/check/resources endpoint without requiring the gRPC SDK NuGet.
 
+using System.Diagnostics;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -16,12 +17,12 @@ namespace Explore.Infrastructure.Services;
 /// Uses the Cerbos REST API (/api/check/resources) for compatibility without gRPC SDK dependency.
 /// Falls back to the <see cref="FallbackAuthorizationService"/> pattern if Cerbos is unreachable.
 /// </summary>
-public class CerbosAuthorizationService : ICerbosAuthorizationService
+public class CerbosAuthorizationService : IAuthorizationProvider
 {
     private readonly HttpClient _httpClient;
+    private readonly CerbosPrincipalBuilder _principalBuilder;
     private readonly IAdminContext _adminContext;
     private readonly ISettingsResolver _settingsResolver;
-    private readonly ITenantContext _tenantContext;
     private readonly ILogger<CerbosAuthorizationService> _logger;
     private readonly CerbosSettings _settings;
 
@@ -33,6 +34,7 @@ public class CerbosAuthorizationService : ICerbosAuthorizationService
 
     public CerbosAuthorizationService(
         IHttpClientFactory httpClientFactory,
+        CerbosPrincipalBuilder principalBuilder,
         IAdminContext adminContext,
         ISettingsResolver settingsResolver,
         ITenantContext tenantContext,
@@ -40,9 +42,10 @@ public class CerbosAuthorizationService : ICerbosAuthorizationService
         ILogger<CerbosAuthorizationService> logger)
     {
         _httpClient = httpClientFactory.CreateClient("CerbosClient");
+        _principalBuilder = principalBuilder;
         _adminContext = adminContext;
         _settingsResolver = settingsResolver;
-        _tenantContext = tenantContext;
+        _ = tenantContext;
         _logger = logger;
         _settings = settings.Value;
     }
@@ -54,81 +57,134 @@ public class CerbosAuthorizationService : ICerbosAuthorizationService
         IDictionary<string, object>? resourceAttributes = null,
         CancellationToken cancellationToken = default)
     {
+        var checks = new[]
+        {
+            new AuthorizationCheck(
+                resourceKind,
+                resourceId,
+                action,
+                resourceAttributes is null ? null : new Dictionary<string, object>(resourceAttributes))
+        };
+
+        var results = await IsAllowedBatchAsync(checks, cancellationToken);
+        return results.Count > 0 && results[0];
+    }
+
+    public async Task<IReadOnlyList<bool>> IsAllowedBatchAsync(
+        IReadOnlyList<AuthorizationCheck> checks,
+        CancellationToken cancellationToken = default)
+    {
+        if (checks.Count == 0)
+            return [];
+
         var userId = _adminContext.UserId;
         if (userId == null)
-            return false;
-
-        // Build principal with admin context attributes
-        var isInstanceAdmin = await _adminContext.IsInstanceAdminAsync(cancellationToken);
-        var adminTenantIds = await _adminContext.GetAdminTenantIdsAsync(cancellationToken);
-        var adminOrgIds = await _adminContext.GetAdminOrganizationIdsAsync(cancellationToken);
-
-        var roles = new List<string> { "authenticated_user" };
-
-        var tenantMemberships = adminTenantIds
-            .ToDictionary(id => id.ToString(), _ => (object)"admin");
-        var orgMemberships = adminOrgIds
-            .ToDictionary(id => id.ToString(), _ => (object)"admin");
-
-        var principalAttrs = new Dictionary<string, object>
         {
-            ["isInstanceAdmin"] = isInstanceAdmin,
-            ["tenantMemberships"] = tenantMemberships,
-            ["orgMemberships"] = orgMemberships
-        };
+            _logger.LogWarning("Cerbos auth denied: no user id in admin context.");
+            return DenyAll(checks.Count);
+        }
 
-        var request = new CerbosCheckRequest
-        {
-            Principal = new CerbosPrincipal
-            {
-                Id = userId.Value.ToString(),
-                Roles = roles,
-                Attr = principalAttrs
-            },
-            Resource = new CerbosResourceAction
-            {
-                Resource = new CerbosResource
-                {
-                    Kind = resourceKind,
-                    Id = resourceId,
-                    Attr = resourceAttributes ?? new Dictionary<string, object>()
-                },
-                Actions = [action]
-            }
-        };
+        var requestId = Guid.NewGuid().ToString();
+        var correlationId = Activity.Current?.Id ?? string.Empty;
+        var principal = await _principalBuilder.BuildAsync(userId.Value, cancellationToken);
+        var resources = BuildResources(checks);
 
         try
         {
             var response = await _httpClient.PostAsJsonAsync(
                 "/api/check/resources",
-                new { requestId = Guid.NewGuid().ToString(), principal = request.Principal, resources = new[] { request.Resource } },
+                new { requestId, principal, resources },
                 JsonOptions,
                 cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogWarning("Cerbos returned {StatusCode}, falling back to deny", response.StatusCode);
-                return false;
+                _logger.LogWarning(
+                    "Cerbos auth denied batch: status={StatusCode} requestId={RequestId} correlationId={CorrelationId}",
+                    response.StatusCode,
+                    requestId,
+                    correlationId);
+                return DenyAll(checks.Count);
             }
 
             var result = await response.Content.ReadFromJsonAsync<CerbosCheckResponse>(JsonOptions, cancellationToken);
-            var actionResult = result?.Results?.FirstOrDefault()?.Actions;
 
-            if (actionResult != null && actionResult.TryGetValue(action, out var effect))
-            {
-                var isAllowed = effect == "EFFECT_ALLOW";
-                _logger.LogDebug("Cerbos: {Effect} for {Resource}/{Action}", effect, resourceKind, action);
-                return isAllowed;
-            }
-
-            _logger.LogWarning("Cerbos: no result for action {Action} on {Resource}", action, resourceKind);
-            return false;
+            return BuildDecisionResults(checks, result, requestId, correlationId);
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
-            _logger.LogError(ex, "Cerbos PDP unreachable at {Endpoint}, denying access", _settings.Endpoint);
-            return false;
+            _logger.LogError(
+                ex,
+                "Cerbos PDP unreachable at {Endpoint}. Denying access for requestId={RequestId} correlationId={CorrelationId}",
+                _settings.Endpoint,
+                requestId,
+                correlationId);
+            return DenyAll(checks.Count);
         }
+    }
+
+    private static CerbosResourceAction[] BuildResources(IReadOnlyList<AuthorizationCheck> checks)
+    {
+        return checks
+            .Select(check => new CerbosResourceAction
+            {
+                Resource = new CerbosResource
+                {
+                    Kind = check.ResourceKind,
+                    Id = check.ResourceId,
+                    Attr = check.ResourceAttributes is null
+                        ? new Dictionary<string, object>()
+                        : new Dictionary<string, object>(check.ResourceAttributes)
+                },
+                Actions = [check.Action]
+            })
+            .ToArray();
+    }
+
+    private IReadOnlyList<bool> BuildDecisionResults(
+        IReadOnlyList<AuthorizationCheck> checks,
+        CerbosCheckResponse? result,
+        string requestId,
+        string correlationId)
+    {
+        var decisions = new bool[checks.Count];
+
+        for (var i = 0; i < checks.Count; i++)
+        {
+            var check = checks[i];
+            var actionResult = result?.Results?.ElementAtOrDefault(i)?.Actions;
+
+            if (actionResult != null && actionResult.TryGetValue(check.Action, out var effect))
+            {
+                var isAllowed = effect == "EFFECT_ALLOW";
+                decisions[i] = isAllowed;
+                _logger.LogDebug(
+                    "Cerbos decision: effect={Effect} resource={Resource}/{ResourceId} action={Action} requestId={RequestId} correlationId={CorrelationId}",
+                    effect,
+                    check.ResourceKind,
+                    check.ResourceId,
+                    check.Action,
+                    requestId,
+                    correlationId);
+                continue;
+            }
+
+            _logger.LogWarning(
+                "Cerbos decision missing. Default deny for resource={Resource}/{ResourceId} action={Action} requestId={RequestId} correlationId={CorrelationId}",
+                check.ResourceKind,
+                check.ResourceId,
+                check.Action,
+                requestId,
+                correlationId);
+            decisions[i] = false;
+        }
+
+        return decisions;
+    }
+
+    private static bool[] DenyAll(int count)
+    {
+        return Enumerable.Repeat(false, count).ToArray();
     }
 
     public async Task<bool> CheckSettingAccessAsync(
@@ -188,7 +244,10 @@ internal class CerbosCheckRequest
     public CerbosResourceAction Resource { get; set; } = null!;
 }
 
-internal class CerbosPrincipal
+/// <summary>
+/// Principal DTO for the Cerbos HTTP API. Public so <see cref="CerbosPrincipalBuilder"/> can construct it.
+/// </summary>
+public class CerbosPrincipal
 {
     public string Id { get; set; } = string.Empty;
     public List<string> Roles { get; set; } = [];

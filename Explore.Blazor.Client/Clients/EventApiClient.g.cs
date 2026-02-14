@@ -24834,6 +24834,15 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("customDomain")]
         public string? CustomDomain { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("isIslamicModuleEnabled")]
+        public bool? IsIslamicModuleEnabled { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isTechModuleEnabled")]
+        public bool? IsTechModuleEnabled { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("enabledModules")]
+        public System.Collections.Generic.ICollection<string>? EnabledModules { get; set; } = default!;
+
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
         [System.Text.Json.Serialization.JsonExtensionData]

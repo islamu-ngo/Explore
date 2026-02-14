@@ -52,8 +52,8 @@ public class AddOrganizationMemberCommandHandler : IRequestHandler<AddOrganizati
         if (Guid.TryParse(request.RequesterUserId, out Guid requesterGuid))
         {
             var requesterMember = members.FirstOrDefault(m => m.UserId == requesterGuid);
-            // Only Admin role (OrganizationRoleId = 1) can invite members
-            if (requesterMember == null || requesterMember.OrganizationRoleId != (int)OrganizationRoleEnum.Admin)
+            // Only OrgAdmin role can invite members
+            if (requesterMember == null || requesterMember.RoleId != (int)RoleEnum.OrgAdmin)
             {
                 response.Success = false;
                 response.Message = "You do not have permission to invite members.";
@@ -91,8 +91,8 @@ public class AddOrganizationMemberCommandHandler : IRequestHandler<AddOrganizati
             Organization = null!,
             UserId = userToAdd.Id,
             User = null!,
-            OrganizationRoleId = (int)dto.Role,
-            OrganizationRole = null!,
+            RoleId = (int)dto.Role,
+            Role = null!,
             Tenant = null!
         };
 

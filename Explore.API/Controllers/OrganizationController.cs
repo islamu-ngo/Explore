@@ -56,7 +56,7 @@ public class OrganizationController : ControllerBase
             PageSize = pageSize
         }, cancellationToken);
 
-        var halResource = _resourceAssembler.ToCollectionResource(
+        var halResource = await _resourceAssembler.ToCollectionResource(
             result,
             RouteNames.GetOrganizations,
             additionalRouteValues: null,
@@ -92,7 +92,7 @@ public class OrganizationController : ControllerBase
             PageSize = pageSize
         }, cancellationToken);
 
-        var halResource = _resourceAssembler.ToCollectionResource(
+        var halResource = await _resourceAssembler.ToCollectionResource(
             result,
             RouteNames.GetMyOrganizations,
             additionalRouteValues: null,
@@ -121,7 +121,7 @@ public class OrganizationController : ControllerBase
             return NotFound();
         }
 
-        var halResource = _resourceAssembler.ToResource(organization, HttpContext);
+        var halResource = await _resourceAssembler.ToResource(organization, HttpContext);
         return Ok(halResource);
     }
 

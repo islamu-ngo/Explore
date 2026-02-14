@@ -1,6 +1,8 @@
 namespace Explore.API.Hateoas.Policies;
 
+using System.Collections.Generic;
 using System.Security.Claims;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.Hateoas;
@@ -63,7 +65,16 @@ public sealed class EventSessionDetailLinkPolicy : ILinkPolicy<EventSessionDto>
             new { id = dto.Id },
             "PUT",
             "Update session",
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(
+                PermissionAction.Update,
+                dto,
+                dto.Id.ToString(),
+                new Dictionary<string, object>
+                {
+                    ["eventId"] = dto.EventId.ToString(),
+                    ["tenantId"] = dto.TenantId.ToString()
+                });
 
         // Delete link - requires authentication
         yield return new LinkDefinition(
@@ -72,7 +83,16 @@ public sealed class EventSessionDetailLinkPolicy : ILinkPolicy<EventSessionDto>
             new { id = dto.Id },
             "DELETE",
             "Delete session",
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(
+                PermissionAction.Delete,
+                dto,
+                dto.Id.ToString(),
+                new Dictionary<string, object>
+                {
+                    ["eventId"] = dto.EventId.ToString(),
+                    ["tenantId"] = dto.TenantId.ToString()
+                });
     }
 }
 
@@ -122,6 +142,7 @@ public sealed class EventSessionCollectionLinkPolicy : ICollectionLinkPolicy<Eve
             null,
             "POST",
             "Create new session",
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(PermissionAction.Create, typeof(EventSessionDto), "event_session");
     }
 }

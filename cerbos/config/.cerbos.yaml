@@ -1,0 +1,68 @@
+# ============================================================================
+# Cerbos Policy Decision Point (PDP) Configuration
+# ============================================================================
+# 
+# This configuration sets up Cerbos as the authorization engine for the
+# ISLAMU Event platform. It uses an overlay storage driver that reads policies
+# from PostgreSQL (for dynamically pushed policies via Admin API) with disk
+# as a fallback for base policies.
+#
+# Key Features:
+# - Admin API enabled for PolicySyncService to push role-based policies
+# - Overlay storage: PostgreSQL primary + disk fallback
+# - Audit logging for compliance and debugging
+# - Policy compilation caching for performance
+#
+# Environment Variables:
+# - CERBOS_ADMIN_USER: Admin API username (default: cerbos)
+# - CERBOS_ADMIN_PASSWORD_HASH: Bcrypt hash of admin password
+# - CERBOS_PG_URL: PostgreSQL connection string
+#
+# ============================================================================
+
+server:
+  httpListenAddr: ":3592"
+  grpcListenAddr: ":3593"
+  
+  adminAPI:
+    enabled: true
+    adminCredentials:
+      username: "${CERBOS_ADMIN_USER:cerbos}"
+      passwordHash: "${CERBOS_ADMIN_PASSWORD_HASH}"
+
+storage:
+  driver: "overlay"
+  
+  overlay:
+    # Primary driver: PostgreSQL (for Admin API pushed policies)
+    primaryDriver: "postgres"
+    # Fallback driver: Disk (for base policies)
+    fallbackDriver: "disk"
+    # Number of errors before falling back to disk
+    fallbackErrorThreshold: 5
+  
+  disk:
+    # Base policies directory (mounted from ./cerbos/policies)
+    directory: /policies
+    # Watch for changes to reload policies without restart
+    watchForChanges: true
+  
+  postgres:
+    # PostgreSQL connection string with environment variable support
+    url: "${CERBOS_PG_URL:postgres://cerbos_user:cerbos_password@postgres:5432/cerbos?search_path=cerbos&sslmode=disable}"
+
+audit:
+  enabled: true
+  accessLogsEnabled: true
+  decisionLogsEnabled: true
+  backend: "local"
+  
+  local:
+    # Local audit log storage path
+    storagePath: /tmp/cerbos-audit
+    # Retention period for audit logs (7 days)
+    retentionPeriod: 168h
+
+compile:
+  # Cache compiled policies for 60 seconds (production performance)
+  cacheDuration: 60s

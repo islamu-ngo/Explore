@@ -10,7 +10,7 @@ priority: critical
 
 > **Project-Agnostic Authentication & Authorization Guide**
 >
-> Placeholders use `{Placeholder}` syntax - see [../../../../docs/TEMPLATE_GLOSSARY.md](../../../../docs/TEMPLATE_GLOSSARY.md).
+> Placeholders use `{Placeholder}` syntax - see [../../../docs/TEMPLATE_GLOSSARY.md](../../../docs/TEMPLATE_GLOSSARY.md).
 
 ## Placeholder Substitutions
 
@@ -38,6 +38,7 @@ This skill provides the standard patterns for implementing security in .NET Clea
 | Resource | Description |
 |----------|-------------|
 | [user-id-extraction.md](resources/user-id-extraction.md) | The critical fallback pattern for extracting user ID from JWT claims. |
+| [api-jwt-validation.md](resources/api-jwt-validation.md) | API-side JWT bearer validation, middleware order, and claim validation patterns. |
 
 ## 1. Authentication Architecture: BFF with OIDC & JWT
 
@@ -81,6 +82,7 @@ A simple and strict convention is followed for API endpoints:
 *   **`GET` requests are public**: Decorated with `[AllowAnonymous]`.
 *   **`POST`, `PUT`, `DELETE` requests are protected**: Decorated with `[Authorize]`.
 *   **Admin-only operations**: Decorated with `[Authorize(Roles = "Admin")]`.
+*   **Resource ownership is enforced in handlers**: Controller attributes gate access, handlers enforce business-level ownership and permissions.
 
 **Generic Template:**
 ```csharp
@@ -163,6 +165,16 @@ public async Task<bool> Handle(DeleteEventCommand request, CancellationToken can
 ## 3. User ID Extraction from JWT Claims
 
 For the **CRITICAL PATTERN** for safely and consistently extracting the user ID from JWT claims, including the fallback mechanism for `sub`, `nameidentifier`, and `sid`, refer to [user-id-extraction.md](resources/user-id-extraction.md).
+
+## 4. API JWT Validation and Middleware Order
+
+For API-side JWT setup and common production safeguards, refer to [api-jwt-validation.md](resources/api-jwt-validation.md).
+
+Key points:
+- Configure JWT bearer auth with explicit issuer and audience validation.
+- Use middleware in the correct order: exception handling, routing/cors, authentication, authorization, endpoint mapping.
+- Normalize claim extraction through one shared helper/service instead of duplicating controller logic.
+- Log auth failures with structured context, but never log raw tokens.
 
 ---
 **Related Skills**:

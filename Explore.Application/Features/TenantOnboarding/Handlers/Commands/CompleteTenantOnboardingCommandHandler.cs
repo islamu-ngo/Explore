@@ -15,20 +15,20 @@ public class CompleteTenantOnboardingCommandHandler : IRequestHandler<CompleteTe
 {
     private readonly ITenantContext _tenantContext;
     private readonly ITenantOnboardingStateRepository _tenantOnboardingStateRepository;
-    private readonly ITenantAdministratorRepository _tenantAdministratorRepository;
+    private readonly ITenantMemberRepository _tenantMemberRepository;
     private readonly IInstanceAdministratorRepository _instanceAdministratorRepository;
     private readonly ITenantPolicySettingService _policySettingService;
 
     public CompleteTenantOnboardingCommandHandler(
         ITenantContext tenantContext,
         ITenantOnboardingStateRepository tenantOnboardingStateRepository,
-        ITenantAdministratorRepository tenantAdministratorRepository,
+        ITenantMemberRepository tenantMemberRepository,
         IInstanceAdministratorRepository instanceAdministratorRepository,
         ITenantPolicySettingService policySettingService)
     {
         _tenantContext = tenantContext;
         _tenantOnboardingStateRepository = tenantOnboardingStateRepository;
-        _tenantAdministratorRepository = tenantAdministratorRepository;
+        _tenantMemberRepository = tenantMemberRepository;
         _instanceAdministratorRepository = instanceAdministratorRepository;
         _policySettingService = policySettingService;
     }
@@ -76,7 +76,7 @@ public class CompleteTenantOnboardingCommandHandler : IRequestHandler<CompleteTe
 
     private async Task<bool> IsUserAuthorizedAsync(Guid tenantId, Guid userId)
     {
-        if (await _tenantAdministratorRepository.IsTenantAdministrator(tenantId, userId))
+        if (await _tenantMemberRepository.IsTenantMember(tenantId, userId))
         {
             return true;
         }

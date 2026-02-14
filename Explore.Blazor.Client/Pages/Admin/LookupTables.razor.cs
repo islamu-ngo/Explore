@@ -21,7 +21,6 @@ public partial class LookupTables
     private ICollection<AudienceAgeListDto>? audienceAges;
     private ICollection<MadhabListDto>? madhabs;
     private ICollection<LanguageListDto>? languages;
-    private ICollection<OrganizationRoleListDto>? organizationRoles;
     private ICollection<OrganizationPositionListDto>? organizationPositions;
     private ICollection<StatusTypeListDto>? approvalStatuses;
     private ICollection<ActorTypeListDto>? actorTypes;
@@ -45,7 +44,6 @@ public partial class LookupTables
                 LoadAudienceAgesAsync(),
                 LoadMadhabsAsync(),
                 LoadLanguagesAsync(),
-                LoadOrganizationRolesAsync(),
                 LoadOrganizationPositionsAsync(),
                 LoadApprovalStatusesAsync(),
                 LoadActorTypesAsync(),
@@ -74,7 +72,6 @@ public partial class LookupTables
     private async Task LoadAudienceAgesAsync() => audienceAges = await AdminService.GetAudienceAgesAsync();
     private async Task LoadMadhabsAsync() => madhabs = await AdminService.GetMadhabsAsync();
     private async Task LoadLanguagesAsync() => languages = await AdminService.GetLanguagesAsync();
-    private async Task LoadOrganizationRolesAsync() => organizationRoles = await AdminService.GetOrganizationRolesAsync();
     private async Task LoadOrganizationPositionsAsync() => organizationPositions = await AdminService.GetOrganizationPositionsAsync();
     private async Task LoadApprovalStatusesAsync() => approvalStatuses = await AdminService.GetApprovalStatusesAsync();
     private async Task LoadActorTypesAsync() => actorTypes = await AdminService.GetActorTypesAsync();

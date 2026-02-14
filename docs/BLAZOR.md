@@ -277,43 +277,43 @@ Explore.Blazor.Client/
 
 ## 3. Render Modes
 
-### InteractiveAuto (Default)
+### Policy: InteractiveAuto First
 
-The application uses `InteractiveAuto` render mode:
+The application strictly adheres to the **`InteractiveAuto`** render mode policy for all standard UI pages.
 
-```razor
-@* In App.razor or page *@
-@rendermode InteractiveAuto
+**Configuration**:
+```csharp
+// Program.cs
+app.MapRazorComponents<App>()
+    .AddInteractiveServerRenderMode()
+    .AddInteractiveWebAssemblyRenderMode()
+    .AddAdditionalAssemblies(typeof(Explore.Blazor.Client._Imports).Assembly);
 ```
 
-**Behavior**:
-1. **First Visit**: Renders on server via SignalR (fast initial load)
-2. **Background**: WASM runtime downloads in background
-3. **Subsequent**: Client-side rendering (better performance)
+**Why InteractiveAuto?**
+1.  **Instant Load**: First visit renders HTML immediately on the server (SSR).
+2.  **Seamless Transition**: The browser connects via SignalR (InteractiveServer) while the WASM bundle downloads in the background.
+3.  **Offline Capability**: Subsequent visits (or once loaded) switch to WebAssembly for client-side interactivity, reducing server load.
 
-### When to Use Different Modes
+### Decision Matrix
 
-| Mode | Use Case |
-|------|----------|
-| `InteractiveServer` | Real-time data, admin dashboards |
-| `InteractiveWebAssembly` | Offline-capable, compute-heavy UI |
-| `InteractiveAuto` | Default for most pages |
-| Static SSR | Simple content pages |
+| Scenario | Render Mode | Reason |
+| :--- | :--- | :--- |
+| **Standard Pages** (Events, Profile) | `InteractiveAuto` | Best balance of speed and interactivity. |
+| **Admin Dashboards** | `InteractiveAuto` | Consistent UX; admin users benefit from WASM performance too. |
+| **Static Content** (About, Terms) | `SSR` (Static) | No interactivity needed; fastest render. |
+| **Real-time / Heavy Compute** | `InteractiveServer` | Only if WASM performance is insufficient (Exception case). |
 
-### Declaring Render Mode
+### Implementation
 
-**Page-level**:
+**Page-Level (Preferred)**:
 ```razor
 @page "/events"
 @rendermode InteractiveAuto
-
-<PageTitle>Events</PageTitle>
 ```
 
-**Component-level**:
-```razor
-<EventSessionManager @rendermode="InteractiveServer" EventId="@eventId" />
-```
+**Component-Level (Avoid if possible)**:
+Inherits the page's render mode automatically. Only specify if a specific component needs a *different* mode than its parent (rare).
 
 ---
 
@@ -705,48 +705,59 @@ In `MainLayout.razor`:
 
 ## 7. State Management
 
-### Local Component State
+### 7.1. URL-Based State (The Source of Truth)
 
-For simple state, use private fields.
+For list views, filters, and pagination, the **URL is the single source of truth**. This ensures deep-linking works and state survives refreshes.
 
-**Generic Template:**
+**Pattern**: Use `[SupplyParameterFromQuery]`.
 
 ```csharp
+@page "/events"
+
 @code {
-    private bool _isLoading = true;
-    private List<{Entity}ListDto> _{entities} = new();
-    private string _searchText = "";
+    [SupplyParameterFromQuery(Name = "q")]
+    public string? SearchTerm { get; set; }
+
+    [SupplyParameterFromQuery]
+    public int Page { get; set; } = 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load data based on URL parameters
+        await LoadDataAsync();
+    }
+
+    private void OnSearch(string term)
+    {
+        // Update URL, triggering navigation and re-initialization
+        Navigation.NavigateTo(
+            Navigation.GetUriWithQueryParameters(new Dictionary<string, object?>
+            {
+                ["q"] = term,
+                ["Page"] = 1 // Reset page on filter change
+            }));
+    }
 }
 ```
 
-**Implementation Example: ISLAMU Event**
+### 7.2. Cascading Values (Global Context)
 
-```csharp
-@code {
-    private bool _isLoading = true;
-    private List<EventListDto> _events = new();
-    private string _searchText = "";
-}
-```
-
-### Cascading Values
-
-For state shared across component tree:
+Use `CascadingValue` for read-only global context like Tenant, Theme, or User Identity.
 
 ```razor
-@* In parent *@
-<CascadingValue Value="@_currentTenant" Name="CurrentTenant">
+@* MainLayout.razor *@
+<CascadingValue Value="@_tenantContext" Name="TenantContext" IsFixed="true">
     @Body
 </CascadingValue>
-
-@* In child *@
-@code {
-    [CascadingParameter(Name = "CurrentTenant")]
-    public TenantDto? CurrentTenant { get; set; }
-}
 ```
 
-### AuthStateService
+### 7.3. Service State (Caching)
+
+Use Scoped Services to cache data that doesn't change often but is needed across components (e.g., User Profile, Lookup Data).
+
+**Do NOT** use static fields for state (creates bugs in Server mode).
+
+### 7.4. AuthStateService
 
 Centralized authentication state:
 
@@ -756,20 +767,6 @@ public interface IAuthStateService
     Task<string> GetCurrentUserIdAsync();
     Task<Guid> GetCurrentTenantIdAsync();
     Task<bool> IsAuthenticatedAsync();
-}
-
-// Usage in component
-@inject IAuthStateService AuthState
-
-@code {
-    private async Task LoadUserDataAsync()
-    {
-        if (await AuthState.IsAuthenticatedAsync())
-        {
-            var userId = await AuthState.GetCurrentUserIdAsync();
-            // Load user-specific data
-        }
-    }
 }
 ```
 
@@ -1243,6 +1240,66 @@ private async Task DarkModeToggle()
 ---
 
 ## 12. CSS & Styling Conventions
+
+### Strategy: BEM within Isolation
+
+We use a hybrid approach combining **Blazor CSS Isolation** (for scoping) with **BEM Naming** (for structure).
+
+**Goal**: 100% of components should have a corresponding `.razor.css` file.
+
+### 12.1. File Structure (Co-location)
+
+Always place the CSS file next to the component.
+
+```
+Components/
+├── EventCard.razor
+└── EventCard.razor.css       ✅ Correct
+```
+
+### 12.2. BEM Naming Convention
+
+Even inside isolated CSS, we use BEM. This reduces specificity wars and makes the code self-documenting.
+
+**Pattern**:
+- **Block**: `.component-name` (e.g., `.event-card`)
+- **Element**: `.component-name__element` (e.g., `.event-card__title`)
+- **Modifier**: `.component-name--modifier` (e.g., `.event-card--featured`)
+
+**Why BEM in Isolation?**
+- Isolation adds a random attribute `[b-xyz]`.
+- If you just use `h1` or `.title`, it's hard to debug which component owns it.
+- `.event-card__title[b-xyz]` is unambiguous in DevTools.
+
+### 12.3. Styling Child Components
+
+**Rule**: A parent component should NOT style its children's internals.
+
+**✅ Good (Props)**:
+Pass a Class parameter.
+```razor
+<ChildComponent Class="my-context-class" />
+```
+
+**⚠️ Caution (::deep)**:
+Use `::deep` only when styling 3rd party components (MudBlazor) where you can't change the source.
+```css
+/* Styling MudBlazor internals */
+.my-component ::deep .mud-input {
+    border: 1px solid red;
+}
+```
+
+### 12.4. Global Styles
+
+Global styles (`wwwroot/css/app.css`) are restricted to:
+1.  CSS Variables (Theming colors, spacing).
+2.  Utility classes (`.isl-flex-center`).
+3.  Reset/Normalize rules.
+
+Everything else belongs in `.razor.css`.
+
+---
 
 ### CSS Isolation Architecture
 

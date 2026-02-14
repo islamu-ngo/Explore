@@ -18,6 +18,7 @@ public static class HateoasServiceExtensions
     {
         // Register core HATEOAS infrastructure
         services.AddScoped<IHateoasLinkGenerator, HateoasLinkGenerator>();
+        services.AddScoped<IHateoasAuthorizationEvaluator, HateoasAuthorizationEvaluator>();
 
         // Resource assemblers are registered by AddHateoasAssemblers
         // or can be registered individually

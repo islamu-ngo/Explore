@@ -6,13 +6,24 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <!-- Allow API and Blazor projects to access internal startup-only methods (e.g., GetSecretForLogging) -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Explore.API" />
+    <InternalsVisibleTo Include="Explore.Blazor" />
+    <InternalsVisibleTo Include="Explore.Infrastructure.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="AWSSDK.S3" />
     <PackageReference Include="MailKit" />
     <PackageReference Include="Polly" />
-    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" />
     <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
   </ItemGroup>
 

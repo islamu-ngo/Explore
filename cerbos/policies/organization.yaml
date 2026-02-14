@@ -30,4 +30,4 @@ resourcePolicy:
     - actions: ["view"]
       effect: EFFECT_ALLOW
       roles:
-        - user
+        - authenticated_user

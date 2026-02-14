@@ -10,6 +10,7 @@ using Explore.Application.DTOs.Event.Validators;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
+using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -95,15 +96,15 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             // User wants to create event for an organization
             var organizationId = request.EventDto.OrganizationId.Value;
 
-            // SECURITY: Verify user has admin permissions for this organization
-            var isAdmin = await _organizationMemberRepository.IsUserAdminOfOrganization(organizationId, currentUserId);
-            if (!isAdmin)
+            // SECURITY: Verify user has event:create permission for this organization
+            var hasPermission = await _organizationMemberRepository.HasPermissionInOrganization(organizationId, currentUserId, PermissionCodes.EventCreate);
+            if (!hasPermission)
             {
                 response.Success = false;
                 response.Message = "You do not have permission to create events for this organization.";
                 response.Errors = new List<string>
                 {
-                    "User must be a Creator, Co-Owner, or Admin of the organization to create events."
+                    "Your role in the organization does not include event creation permission."
                 };
                 return response;
             }

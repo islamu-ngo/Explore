@@ -57,7 +57,7 @@ public class LocationController : ControllerBase
             PageSize = pageSize
         }, cancellationToken);
 
-        var halResource = _resourceAssembler.ToCollectionResource(
+        var halResource = await _resourceAssembler.ToCollectionResource(
             result,
             RouteNames.GetLocations,
             additionalRouteValues: null,
@@ -85,7 +85,7 @@ public class LocationController : ControllerBase
             return NotFound(new { error = "Location not found" });
         }
 
-        var halResource = _resourceAssembler.ToResource(location, HttpContext);
+        var halResource = await _resourceAssembler.ToResource(location, HttpContext);
         return Ok(halResource);
     }
 
@@ -102,7 +102,7 @@ public class LocationController : ControllerBase
     {
         var locations = await _mediator.Send(new GetLocationsByCityRequest { City = city }, cancellationToken);
 
-        var halResource = _resourceAssembler.ToCollectionResource(
+        var halResource = await _resourceAssembler.ToCollectionResource(
             locations,
             RouteNames.GetLocationsByCity,
             HttpContext);
@@ -123,7 +123,7 @@ public class LocationController : ControllerBase
     {
         var locations = await _mediator.Send(new GetLocationsByCountryRequest { Country = country }, cancellationToken);
 
-        var halResource = _resourceAssembler.ToCollectionResource(
+        var halResource = await _resourceAssembler.ToCollectionResource(
             locations,
             RouteNames.GetLocationsByCountry,
             HttpContext);

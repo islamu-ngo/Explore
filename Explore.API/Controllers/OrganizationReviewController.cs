@@ -33,7 +33,7 @@ public class OrganizationReviewController : ControllerBase
     public async Task<ActionResult<HalCollectionResource<OrganizationReviewDto>>> GetAll(CancellationToken cancellationToken = default)
     {
         var reviews = await _mediator.Send(new GetOrganizationReviewsQuery(), cancellationToken);
-        var halResource = _resourceAssembler.ToCollectionResource(
+        var halResource = await _resourceAssembler.ToCollectionResource(
             reviews,
             RouteNames.GetOrganizationReviews,
             HttpContext);

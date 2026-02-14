@@ -51,7 +51,7 @@ public class OrganizationRepository : GenericRepository<Organization, Guid>, IOr
             .Include(o => o.Members)
                 .ThenInclude(m => m.User)
             .Include(o => o.Members)
-                .ThenInclude(m => m.OrganizationRole)
+                .ThenInclude(m => m.Role)
             .Include(o => o.Members)
                 .ThenInclude(m => m.OrganizationPosition)
             .FirstOrDefaultAsync(o => o.Id == id);
@@ -66,7 +66,7 @@ public class OrganizationRepository : GenericRepository<Organization, Guid>, IOr
             .Include(o => o.Actor)
                 .ThenInclude(a => a!.ProfilePicture)
             .Include(o => o.Members)
-                .ThenInclude(m => m.OrganizationRole)
+                .ThenInclude(m => m.Role)
             .Where(o => o.Members.Any(m => m.UserId == userId))
             .ToListAsync();
     }
@@ -100,7 +100,7 @@ public class OrganizationRepository : GenericRepository<Organization, Guid>, IOr
             .Include(o => o.Actor)
                 .ThenInclude(a => a!.ProfilePicture)
             .Include(o => o.Members)
-                .ThenInclude(m => m.OrganizationRole)
+                .ThenInclude(m => m.Role)
             .Where(o => o.Members.Any(m => m.UserId == userId))
             .OrderBy(o => o.FullName);
 

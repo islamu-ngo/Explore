@@ -37,7 +37,7 @@ public class IndexedDidController : ControllerBase
     public async Task<ActionResult<HalCollectionResource<IndexedDidListDto>>> GetAll(CancellationToken cancellationToken = default)
     {
         var indexedDids = await _mediator.Send(new GetIndexedDidListRequest(), cancellationToken);
-        var halResource = _resourceAssembler.ToCollectionResource(
+        var halResource = await _resourceAssembler.ToCollectionResource(
             indexedDids,
             RouteNames.GetIndexedDids,
             HttpContext);
@@ -56,7 +56,7 @@ public class IndexedDidController : ControllerBase
             return NotFound(new { error = "IndexedDid not found" });
         }
 
-        var halResource = _resourceAssembler.ToResource(indexedDid, HttpContext);
+        var halResource = await _resourceAssembler.ToResource(indexedDid, HttpContext);
         return Ok(halResource);
     }
 

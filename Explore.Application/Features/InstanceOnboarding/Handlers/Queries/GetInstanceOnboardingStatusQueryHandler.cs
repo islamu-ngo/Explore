@@ -4,6 +4,7 @@
 using System.Text.Json;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Features.InstanceOnboarding.Requests.Queries;
 using Explore.Domain.Constants;
@@ -17,17 +18,20 @@ public class GetInstanceOnboardingStatusQueryHandler : IRequestHandler<GetInstan
     private readonly IInstanceAdministratorRepository _instanceAdministratorRepository;
     private readonly ISystemSettingRepository _systemSettingRepository;
     private readonly ICurrentUserService _currentUserService;
+    private readonly ISetupSecretProvider _setupSecretProvider;
 
     public GetInstanceOnboardingStatusQueryHandler(
         IInstanceBootstrapStateRepository instanceBootstrapStateRepository,
         IInstanceAdministratorRepository instanceAdministratorRepository,
         ISystemSettingRepository systemSettingRepository,
-        ICurrentUserService currentUserService)
+        ICurrentUserService currentUserService,
+        ISetupSecretProvider setupSecretProvider)
     {
         _instanceBootstrapStateRepository = instanceBootstrapStateRepository;
         _instanceAdministratorRepository = instanceAdministratorRepository;
         _systemSettingRepository = systemSettingRepository;
         _currentUserService = currentUserService;
+        _setupSecretProvider = setupSecretProvider;
     }
 
     public async Task<InstanceOnboardingStatusDto> Handle(GetInstanceOnboardingStatusQuery request, CancellationToken cancellationToken)
@@ -43,7 +47,11 @@ public class GetInstanceOnboardingStatusQueryHandler : IRequestHandler<GetInstan
             IsCompleted = bootstrap?.IsCompleted == true,
             IsAuthenticated = _currentUserService.IsAuthenticated,
             IsCurrentUserInstanceAdmin = false,
-            SelectedDeploymentMode = selectedDeploymentMode
+            SelectedDeploymentMode = selectedDeploymentMode,
+            IsSetupModeActive = _setupSecretProvider.IsSetupModeActive,
+            SetupSecretFromEnvironment = _setupSecretProvider.IsFromEnvironmentVariable,
+            SetupTimedOut = _setupSecretProvider.IsTimedOut,
+            InstanceStartedAt = _setupSecretProvider.InstanceStartedAt
         };
 
         if (!_currentUserService.IsAuthenticated || !_currentUserService.UserId.HasValue)

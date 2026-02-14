@@ -1,0 +1,109 @@
+# ABOUTME: Cerbos policy test suite for organization_member resources.
+# Tests manage_members action and cross-org isolation.
+
+name: OrganizationMemberPolicyTests
+description: "Validates organization_member resource policies across admin hierarchy levels"
+
+principals:
+  instance_admin:
+    id: "user-instance-admin"
+    roles: ["authenticated_user"]
+    attr:
+      isInstanceAdmin: true
+      tenantMemberships: {}
+      orgMemberships: {}
+
+  tenant_admin:
+    id: "user-tenant-admin"
+    roles: ["authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships:
+        "tenant-1": "admin"
+      orgMemberships: {}
+
+  org_admin:
+    id: "user-org-admin"
+    roles: ["authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships:
+        "org-1": "admin"
+
+  regular_user:
+    id: "user-regular"
+    roles: ["authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+
+resources:
+  member_in_org1:
+    kind: "organization_member"
+    id: "member-1"
+    attr:
+      tenantId: "tenant-1"
+      organizationId: "org-1"
+
+tests:
+  - name: "Instance admin has full access to org members"
+    input:
+      principals: ["instance_admin"]
+      resources: ["member_in_org1"]
+      actions: ["view", "create", "update", "delete", "manage_members"]
+    expected:
+      - principal: "instance_admin"
+        resource: "member_in_org1"
+        actions:
+          view: EFFECT_ALLOW
+          create: EFFECT_ALLOW
+          update: EFFECT_ALLOW
+          delete: EFFECT_ALLOW
+          manage_members: EFFECT_ALLOW
+
+  - name: "Tenant admin can manage org members within their tenant"
+    input:
+      principals: ["tenant_admin"]
+      resources: ["member_in_org1"]
+      actions: ["view", "create", "update", "delete", "manage_members"]
+    expected:
+      - principal: "tenant_admin"
+        resource: "member_in_org1"
+        actions:
+          view: EFFECT_ALLOW
+          create: EFFECT_ALLOW
+          update: EFFECT_ALLOW
+          delete: EFFECT_ALLOW
+          manage_members: EFFECT_DENY
+
+  - name: "Org admin can manage members and use manage_members action"
+    input:
+      principals: ["org_admin"]
+      resources: ["member_in_org1"]
+      actions: ["view", "create", "update", "delete", "manage_members"]
+    expected:
+      - principal: "org_admin"
+        resource: "member_in_org1"
+        actions:
+          view: EFFECT_ALLOW
+          create: EFFECT_ALLOW
+          update: EFFECT_ALLOW
+          delete: EFFECT_ALLOW
+          manage_members: EFFECT_ALLOW
+
+  - name: "Regular user can only view org members"
+    input:
+      principals: ["regular_user"]
+      resources: ["member_in_org1"]
+      actions: ["view", "create", "update", "delete", "manage_members"]
+    expected:
+      - principal: "regular_user"
+        resource: "member_in_org1"
+        actions:
+          view: EFFECT_ALLOW
+          create: EFFECT_DENY
+          update: EFFECT_DENY
+          delete: EFFECT_DENY
+          manage_members: EFFECT_DENY

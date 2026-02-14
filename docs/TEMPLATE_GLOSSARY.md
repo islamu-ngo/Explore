@@ -86,7 +86,7 @@ All placeholders use **curly braces** `{PlaceholderName}` for consistency with c
 | `{ParentEntity}` | Parent in hierarchy | `Category` (self-referencing) |
 | `{ChildEntity}` | Child in one-to-many | `OrderItem`, `EventSession` |
 | `{ChildEntities}` | Plural form | `OrderItems`, `EventSessions` |
-| `{LinkEntity}` | Many-to-many link table | `EventCategories`, `UserRoles` |
+| `{LinkEntity}` | Many-to-many link table | `EventCategories`, `RolePermission` |
 
 ### Lookup Tables
 

@@ -393,24 +393,81 @@ Guards are registered in `Program.cs` and applied via Blazouter's routing config
 
 ---
 
-## 24. Key Things That Surprise Newcomers
+## 25. Specification Pattern Implementation
 
-1. **Main projects use "Explore.\*" prefix** — This is historical naming. Test projects already use the "Event.\*" prefix. Eventually all projects will be renamed to "Event.\*".
+The application uses a custom **Specification Pattern** to handle complex filtering logic, particularly for the `Event` entity which has modular aspects.
 
-2. **`CongfigurePersistenceServices`** — The method name has a typo. It's intentional (changing it would be a breaking refactor).
+### Core Components
+- **`IQuerySpecification<T>`**: Interface defining the contract for query specifications.
+- **`EventQuerySpecification`**: The main specification for event retrieval. It orchestrates sub-filters.
+- **`IFilterSpecification<T>`**: Interface for individual filter components.
 
-3. **`TenantSetting` vs `TenantSettings`** — Two different entities with similar names, different purposes.
+### Modular Filtering Strategy
+Instead of a massive `Where()` clause in the repository, filters are broken down into small, reusable classes:
 
-4. **Navigation properties are read-only for writes** — Never do `parent.Children.Add()`. Always use the repository's `Create()` method for the child entity. This ensures tenant isolation.
+1.  **`EventFilter`**: Handles core fields (Date, Location, Category).
+2.  **`AspectPresenceFilter`**: Handles "HasIslamicAspect" / "HasTechAspect" flags.
+3.  **`IslamicAspectFilter`**: Handles Islamic-specific fields (Madhab, GenderMode).
+4.  **`TechAspectFilter`**: Handles Tech-specific fields (SkillLevel, Stack).
 
-5. **Validators are manually instantiated** — Never inject validators via DI. Always `new` them in the handler with repository dependencies as constructor parameters.
+The `EventQuerySpecification` applies these filters sequentially to the `IQueryable<Event>`. This allows module-specific filters to be applied only when relevant.
 
-6. **Database columns are snake_case** — Even though C# properties are PascalCase. `UseSnakeCaseNamingConvention()` handles this automatically.
+---
 
-7. **Not all entities have soft delete** — Only entities implementing `ISoftDeletable`. Lookup tables and junction tables typically don't.
+## 26. Hybrid Caching Strategy (L1 + L2)
 
-8. **SystemSetting values are JSON-serialized** — Even simple strings are stored as `"\"value\""` (JSON string). Use `JsonSerializer.Deserialize<T>()` to read them.
+We use **.NET 9+ HybridCache** for application-level caching, which provides L1 (In-Memory) + L2 (Redis) caching with built-in stampede protection.
 
-9. **The Blazor Server host is also the BFF** — It doesn't just serve the WASM app. It proxies all API requests and handles authentication.
+### Usage Pattern
+HybridCache is injected into **MediatR Handlers**, not Controllers.
 
-10. **MediatR handlers are auto-discovered** — You don't register them manually. They're found by assembly scanning via `AddMediatR()`. Just create the handler class in the right namespace.
+**Read-Through (Query Handlers):**
+```csharp
+return await _cache.GetOrCreateAsync(
+    key: $"event:{request.Id}",
+    factory: async cancel => await _repo.GetById(request.Id),
+    options: new HybridCacheEntryOptions { Expiration = TimeSpan.FromMinutes(10) }
+);
+```
+
+**Invalidation (Command Handlers):**
+```csharp
+// In Create/Update/Delete handlers
+await _cache.RemoveAsync($"event:{request.Id}");
+```
+
+**Key Distinction:**
+- **OutputCache**: Caches the *HTTP response* (Controllers). Good for anonymous public lists.
+- **HybridCache**: Caches the *Domain Entity/DTO* (Handlers). Good for shared data, authenticated views, and internal logic.
+
+---
+
+## 27. Validation Architecture
+
+### The "Manual Instantiation" Rule
+Validators are **never** injected via DI. They are manually instantiated in the Handler.
+
+**Why?**
+Our validators often require database access (e.g., "Does this CategoryId exist?", "Is this User an Admin?"). Injecting Repositories into Validators via DI can cause lifetime issues and circular dependencies if not careful.
+
+**The Pattern:**
+```csharp
+public class CreateEventCommandHandler : IRequestHandler<...>
+{
+    public CreateEventCommandHandler(
+        IEventRepository eventRepo,
+        IOrganizationRepository orgRepo) // Inject repos into Handler
+    { ... }
+
+    public async Task<Response> Handle(...)
+    {
+        // Pass repos to Validator constructor manually
+        var validator = new CreateEventDtoValidator(_eventRepo, _orgRepo);
+        var result = await validator.ValidateAsync(request.Dto);
+        // ...
+    }
+}
+```
+
+This ensures the validator uses the same repository instances (and DbContext) as the handler transaction.
+

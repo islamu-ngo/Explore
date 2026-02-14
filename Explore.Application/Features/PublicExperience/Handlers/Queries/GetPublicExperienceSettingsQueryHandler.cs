@@ -17,21 +17,26 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
     private readonly ITenantContext _tenantContext;
     private readonly ISystemSettingRepository _systemSettingRepository;
     private readonly ITenantPolicySettingService _policySettingService;
+    private readonly IModuleService _moduleService;
 
     public GetPublicExperienceSettingsQueryHandler(
         ITenantContext tenantContext,
         ISystemSettingRepository systemSettingRepository,
-        ITenantPolicySettingService policySettingService)
+        ITenantPolicySettingService policySettingService,
+        IModuleService moduleService)
     {
         _tenantContext = tenantContext;
         _systemSettingRepository = systemSettingRepository;
         _policySettingService = policySettingService;
+        _moduleService = moduleService;
     }
 
     public async Task<PublicExperienceSettingsDto> Handle(GetPublicExperienceSettingsQuery request, CancellationToken cancellationToken)
     {
         var tenantId = _tenantContext.TenantId;
         var effectiveTenantSettings = await _policySettingService.ReadEffectiveTenantSettingsAsync(tenantId);
+        var enabledModulesInfo = await _moduleService.GetEnabledModulesAsync(tenantId, cancellationToken);
+        var enabledModuleKeys = enabledModulesInfo.Select(m => m.ModuleKey).ToList();
 
         var deploymentModeSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.DeploymentMode);
         var deploymentMode = DeserializeString(deploymentModeSetting?.Value, "SingleTenant");
@@ -47,7 +52,10 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
             BrandCustomCssUrl = effectiveTenantSettings.BrandCustomCssUrl,
             InstanceBaseDomain = effectiveTenantSettings.InstanceBaseDomain,
             Subdomain = effectiveTenantSettings.Subdomain,
-            CustomDomain = effectiveTenantSettings.CustomDomain
+            CustomDomain = effectiveTenantSettings.CustomDomain,
+            IsIslamicModuleEnabled = enabledModuleKeys.Contains("Mod_Islamic"),
+            IsTechModuleEnabled = enabledModuleKeys.Contains("Mod_Tech"),
+            EnabledModules = enabledModuleKeys
         };
     }
 

@@ -30,6 +30,53 @@ The `Explore.Domain/` layer contains entities specific to Islamic event discover
 
 For details on how these domain models are implemented using Entity Framework Core, including conventions for IDs, numeric types, default values, and link tables, refer to the **`dotnet-efcore-guidelines` skill**.
 
+## Domain Model Visualized
+
+```mermaid
+erDiagram
+    %% Core Identity & Multi-Tenancy
+    Tenant ||--o{ TenantUser : has
+    User ||--o{ TenantUser : belongs_to
+    User ||--o{ Actor : owns
+    Organization ||--|| Actor : is_an
+    Tenant ||--o{ Event : scopes
+
+    %% Event Aggregate
+    Event ||--o{ EventSession : contains
+    Event }|--|| Actor : created_by
+    Event ||--o| EventIslamicAspect : extends
+    Event ||--o| EventTechAspect : extends
+    
+    %% Lookups & Metadata
+    Event }o--o{ Category : classified_by
+    Event }o--o{ Tag : tagged_with
+    Event }|--|| EventType : has_type
+    Event }|--|| EventStatus : has_status
+
+    %% Session Details
+    EventSession }|--|| Location : occurs_at
+    EventSession }o--o{ Actor : speaks_at
+    EventSession ||--o{ EventRegistration : accepts
+
+    %% Definitions
+    Event {
+        Guid Id
+        string Title
+        Guid TenantId
+        Guid ActorId
+    }
+    EventSession {
+        Guid Id
+        DateTime StartTime
+        DateTime EndTime
+    }
+    Actor {
+        Guid Id
+        string DID
+        string ActorType
+    }
+```
+
 ## Core Entities
 
 ### Tenant Management
@@ -47,9 +94,9 @@ For details on how these domain models are implemented using Entity Framework Co
 *   **Purpose**: Stores tenant-specific configuration and policies.
 *   **Key Relationships**: One-to-one relationship with `Tenant`.
 
-#### UserRole
-*   **Purpose**: Defines roles users can have within a tenant (e.g., Admin, Moderator, Member).
-*   **Key Relationships**: Used to classify `TenantUser` permissions.
+#### Role (Unified)
+*   **Purpose**: Defines roles across all scopes — Platform (SuperAdmin, Admin, Moderator, Editor, Member), Tenant (TenantOwner, TenantAdmin, TenantModerator, TenantMember), and Organization (OrgCreator, OrgCoOwner, OrgAdmin, OrgModerator, OrgMember, OrgViewer).
+*   **Key Relationships**: Referenced by `TenantUser.RoleId`, `OrganizationMember.RoleId`. Scoped via `RoleScopeEnum`. Linked to `Permission` via `RolePermission` join table.
 
 ### User Management
 
@@ -101,9 +148,6 @@ For details on how these domain models are implemented using Entity Framework Co
 #### OrganizationMember
 *   **Purpose**: Represents a `User`'s membership within an `Organization`, defining their role and position.
 *   **Key Relationships**: Links `Organization` with `User`.
-
-#### OrganizationRole
-*   **Purpose**: Defines predefined roles for `OrganizationMember`s (e.g., Owner, Admin, Member).
 
 #### OrganizationPosition
 *   **Purpose**: Defines specific positions within an `Organization` (e.g., President, Secretary).

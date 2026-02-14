@@ -59,14 +59,13 @@ public class LookupDataCache : ILookupDataCache
         await LoadLookupAsync<VisibilityType>(dbContext, cancellationToken);
         await LoadLookupAsync<ApprovalStatus>(dbContext, cancellationToken);
         await LoadLookupAsync<RegistrationMode>(dbContext, cancellationToken);
-        await LoadLookupAsync<OrganizationRole>(dbContext, cancellationToken);
+        await LoadLookupAsync<Role>(dbContext, cancellationToken);
         await LoadLookupAsync<OrganizationPosition>(dbContext, cancellationToken);
         await LoadLookupAsync<ActorType>(dbContext, cancellationToken);
         await LoadLookupAsync<DidCustodyType>(dbContext, cancellationToken);
         await LoadLookupAsync<FileType>(dbContext, cancellationToken);
         await LoadLookupAsync<TagType>(dbContext, cancellationToken);
         await LoadLookupAsync<OwnerType>(dbContext, cancellationToken);
-        await LoadLookupAsync<TenantAdministratorRole>(dbContext, cancellationToken);
 
         _logger.LogInformation("Lookup data cache initialized with {Count} types", _cache.Count);
     }

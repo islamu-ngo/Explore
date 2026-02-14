@@ -56,7 +56,7 @@ Keep ALL `using` statements even if they appear unused, except for old reference
 
 ### 7. Commands Return `BaseCommandResponse<Guid>`
 
-All commands (write operations) **MUST** return `BaseCommandResponse<Guid>` (or `bool` for delete operations) to ensure consistent error handling and response structure.
+Commands should use consistent response envelopes for create/update flows. Delete flows may return `bool` when that is the established convention.
 - **Reference**: `cqrs-mediatr-guidelines` (command patterns).
 
 ### 8. GET = AllowAnonymous, Write = Authorize
@@ -72,6 +72,11 @@ When extracting the user ID from JWT claims, **ALWAYS** use the provided fallbac
 ### 10. File-Scoped Namespaces
 
 All new C# files **SHOULD** use file-scoped namespaces for conciseness.
+
+### 11. API Error Handling Uses ProblemDetails
+
+Unhandled exceptions should be mapped centrally with RFC 7807 ProblemDetails.
+- **Reference**: `error-tracking` (api-exception-handling, api-error-responses).
 
 ## Clean Architecture Enforcement
 
@@ -112,6 +117,7 @@ This checklist helps identify architectural violations and ensure compliance wit
 - [ ] `POST`/`PUT`/`DELETE` endpoints: `[Authorize]`.
 - [ ] User ID extracted with fallback pattern.
 - [ ] Thin controllers (delegate to MediatR, no business logic).
+- [ ] Avoid broad try/catch in controller actions when centralized exception mapping exists.
 - **Reference**: `auth-patterns` (controller endpoint authorization).
 
 ## Refactoring Workflow

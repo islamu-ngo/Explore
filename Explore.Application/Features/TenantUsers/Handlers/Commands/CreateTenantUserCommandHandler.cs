@@ -16,7 +16,7 @@ public class CreateTenantUserCommandHandler : IRequestHandler<CreateTenantUserCo
     private readonly ITenantUserRepository _tenantUserRepository;
     private readonly IUserRepository _userRepository;
     private readonly ITenantRepository _tenantRepository;
-    private readonly IUserRoleRepository _userRoleRepository;
+    private readonly IRoleRepository _roleRepository;
     private readonly ITenantContext _tenantContext;
     private readonly IMapper _mapper;
 
@@ -24,14 +24,14 @@ public class CreateTenantUserCommandHandler : IRequestHandler<CreateTenantUserCo
         ITenantUserRepository tenantUserRepository,
         IUserRepository userRepository,
         ITenantRepository tenantRepository,
-        IUserRoleRepository userRoleRepository,
+        IRoleRepository roleRepository,
         ITenantContext tenantContext,
         IMapper mapper)
     {
         _tenantUserRepository = tenantUserRepository;
         _userRepository = userRepository;
         _tenantRepository = tenantRepository;
-        _userRoleRepository = userRoleRepository;
+        _roleRepository = roleRepository;
         _tenantContext = tenantContext;
         _mapper = mapper;
     }
@@ -40,7 +40,7 @@ public class CreateTenantUserCommandHandler : IRequestHandler<CreateTenantUserCo
     {
         var response = new BaseCommandResponse<Guid>();
 
-        var validator = new CreateTenantUserDtoValidator(_userRepository, _tenantRepository, _userRoleRepository);
+        var validator = new CreateTenantUserDtoValidator(_userRepository, _tenantRepository, _roleRepository);
         var validationResult = await validator.ValidateAsync(request.TenantUserDto, cancellationToken);
 
         if (!validationResult.IsValid)

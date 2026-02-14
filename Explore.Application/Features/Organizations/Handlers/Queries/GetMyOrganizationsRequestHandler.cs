@@ -44,7 +44,7 @@ public class GetMyOrganizationsRequestHandler : IRequestHandler<GetMyOrganizatio
 
         // Get memberships to add user role info
         var memberships = await _organizationMemberRepository.GetMembershipsByUser(userGuid);
-        var membershipDict = memberships.ToDictionary(m => m.OrganizationId, m => m.OrganizationRoleId);
+        var membershipDict = memberships.ToDictionary(m => m.OrganizationId, m => m.RoleId);
 
         // Map OrganizationMember entities to OrganizationListDto
         var dtos = new List<OrganizationListDto>();
@@ -53,7 +53,7 @@ public class GetMyOrganizationsRequestHandler : IRequestHandler<GetMyOrganizatio
             var dto = _mapper.Map<OrganizationListDto>(org);
             if (membershipDict.TryGetValue(org.Id, out var roleId))
             {
-                dto.CurrentUserRole = (OrganizationRoleEnum)roleId;
+                dto.CurrentUserRole = (RoleEnum)roleId;
             }
             // Resolve presigned URL for profile picture
             dto.ActorProfilePictureUri = await ResolveImageUrl(dto.ActorProfilePictureUri);

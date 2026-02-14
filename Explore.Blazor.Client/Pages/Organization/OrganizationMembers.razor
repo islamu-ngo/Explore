@@ -19,7 +19,7 @@
             </div>
         </MudStack>
 
-        @if (currentUserRole.HasValue && currentUserRole.Value != 4) @* 4 = Member *@
+        @if (RoleHelper.CanManage(currentUserRole))
         {
             <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenInviteDialog" StartIcon="@Icons.Material.Filled.PersonAdd" Class="rounded-pill">
                 Invite Member
@@ -47,10 +47,10 @@
                           Style="max-width: 400px;"/>
 
             <MudSelect T="int?" Label="Role" @bind-Value="_roleFilter" Variant="Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter" Style="min-width: 150px;" Clearable="true" Class="rounded-pill">
-                <MudSelectItem Value="(int?)1">Creator</MudSelectItem>
-                <MudSelectItem Value="(int?)2">Co-Owner</MudSelectItem>
-                <MudSelectItem Value="(int?)3">Admin</MudSelectItem>
-                <MudSelectItem Value="(int?)4">Member</MudSelectItem>
+                @foreach (var role in RoleHelper.GetAllOrgRoles())
+                {
+                    <MudSelectItem Value="(int?)role.Id">@role.Name</MudSelectItem>
+                }
             </MudSelect>
         </div>
 
@@ -59,7 +59,7 @@
                 <MudTh>User</MudTh>
                 <MudTh>Email</MudTh>
                 <MudTh>Role</MudTh>
-                @if (currentUserRole.HasValue && currentUserRole.Value != 4) @* 4 = Member *@
+                @if (RoleHelper.CanManage(currentUserRole))
                 {
                     <MudTh Style="text-align:right">Actions</MudTh>
                 }
@@ -84,10 +84,10 @@
                 <MudTd DataLabel="Role">
                     <MudChip T="string" Color="@GetRoleColor(context.OrganizationRoleId ?? 0)" Size="Size.Small" Variant="Variant.Filled">@GetRoleName(context.OrganizationRoleId ?? 0)</MudChip>
                 </MudTd>
-                @if (currentUserRole.HasValue && currentUserRole.Value != 4) @* 4 = Member *@
+                @if (RoleHelper.CanManage(currentUserRole))
                 {
                     <MudTd DataLabel="Actions" Style="text-align:right">
-                        @if (context.OrganizationRoleId != 1) @* 1 = Creator *@
+                        @if (context.OrganizationRoleId != RoleHelper.OrgCreator)
                         {
                             <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
                                 <MudMenuItem OnClick="@(() => OpenEditRoleDialog(context))" Icon="@Icons.Material.Filled.Edit">Change Role</MudMenuItem>

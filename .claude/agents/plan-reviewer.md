@@ -32,7 +32,7 @@ These rules are strictly enforced. Any plan that violates these rules must be re
     -   **Reference**: `dotnet-efcore-guidelines` (key principles & conventions).
 5.  **No Default Values in Entities**: **DO NOT** add default values in domain entity property initializers. Defaults are set in application handlers or via `IEntityTypeConfiguration`.
     -   **Reference**: `dotnet-efcore-guidelines` (key principles & conventions).
-6.  **Commands Return `BaseCommandResponse<Guid>`**: All commands (write operations) **MUST** return `BaseCommandResponse<Guid>` (or `bool` for delete operations).
+6.  **Command Response Consistency**: Create/update flows should return a consistent command response envelope. Delete flows may use `bool` when that is the established project convention.
     -   **Reference**: `cqrs-mediatr-guidelines` (command patterns).
 7.  **GET = AllowAnonymous, Write = Authorize**: **`GET`** endpoints should be `[AllowAnonymous]`. **`POST`, `PUT`, `DELETE`** endpoints **MUST** be `[Authorize]`.
     -   **Reference**: `auth-patterns` (controller endpoint authorization).

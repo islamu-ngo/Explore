@@ -238,7 +238,7 @@ Business Methodology for AI Development with specialized agents:
 
 ### Lookup Tables
 
-`EventType` • `EventStatus` • `EventFormat` • `AudienceAge` • `AudienceGender` • `Madhab` • `Language` • `ActorType` • `ApprovalStatus` • `VisibilityType` • `RegistrationMode` • `OrganizationRole` • `OrganizationPosition` • `FileType` • `TagType` • `DidCustodyType`
+`EventType` • `EventStatus` • `EventFormat` • `AudienceAge` • `AudienceGender` • `Madhab` • `Language` • `ActorType` • `ApprovalStatus` • `VisibilityType` • `RegistrationMode` • `Role` • `OrganizationPosition` • `FileType` • `TagType` • `DidCustodyType`
 
 ### Multi-Tenancy
 

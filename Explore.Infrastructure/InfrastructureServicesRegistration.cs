@@ -2,6 +2,7 @@ using Amazon;
 using Amazon.S3;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.Strategies;
 using Explore.Application.Models;
 using Explore.Infrastructure.Identity;
@@ -10,10 +11,13 @@ using Explore.Infrastructure.Services;
 using Explore.Infrastructure.Services.Federation;
 using Explore.Infrastructure.Storage;
 using Explore.Infrastructure.Strategies;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Options;
+using Polly;
 
 namespace Explore.Infrastructure;
 
@@ -45,29 +49,50 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<IModuleService, ModuleService>();
 
         // Admin context (hybrid JWT + database identity resolution)
-        services.AddScoped<IAdminContext, AdminContext>();
+        services.AddScoped<AdminContext>();
+        services.AddScoped<IAdminContext>(sp => sp.GetRequiredService<AdminContext>());
+        services.AddScoped<IAdminCacheInvalidator>(sp => sp.GetRequiredService<AdminContext>());
+
+        // Claims transformation: enriches ClaimsPrincipal with DB-resolved admin authority.
+        // Claims are serialized to Blazor WASM via AddAuthenticationStateSerialization.
+        services.AddTransient<IClaimsTransformation, AdminClaimsTransformation>();
 
         // Configuration audit logging
         services.AddScoped<IConfigurationChangeLogService, ConfigurationChangeLogService>();
 
-        // Cerbos authorization (conditional: real Cerbos PDP or fallback)
+        // Authorization providers (runtime-switchable via SystemSetting "authorization.provider")
+        // Both concrete providers are always registered; RuntimeAuthorizationProvider delegates at runtime.
         services.Configure<CerbosSettings>(configuration.GetSection(CerbosSettings.SectionName));
+        services.Configure<CerbosAdminApiSettings>(configuration.GetSection(CerbosAdminApiSettings.SectionName));
 
-        var cerbosEnabled = configuration.GetValue<bool>("Cerbos:Enabled");
-        if (cerbosEnabled)
+        services.AddTransient<CorrelationIdDelegatingHandler>();
+        services.AddHttpClient("CerbosClient", client =>
         {
-            services.AddHttpClient("CerbosClient", client =>
+            var endpoint = configuration["Cerbos:Endpoint"] ?? "http://localhost:3592";
+            client.BaseAddress = new Uri(endpoint);
+        })
+        .AddHttpMessageHandler<CorrelationIdDelegatingHandler>()
+        .AddResilienceHandler("cerbos-resilience", pipeline =>
+        {
+            // Timeout: 2s hard limit for authorization checks
+            pipeline.AddTimeout(TimeSpan.FromSeconds(2));
+
+            // Circuit breaker: trip after 50% failure rate, break for 15s
+            // No retry — fail-fast to LocalAuthorizationProvider is safer than retrying auth checks
+            pipeline.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
             {
-                var endpoint = configuration["Cerbos:Endpoint"] ?? "http://localhost:3592";
-                client.BaseAddress = new Uri(endpoint);
-                client.Timeout = TimeSpan.FromSeconds(5);
+                FailureRatio = 0.5,
+                SamplingDuration = TimeSpan.FromSeconds(30),
+                MinimumThroughput = 10,
+                BreakDuration = TimeSpan.FromSeconds(15)
             });
-            services.AddScoped<ICerbosAuthorizationService, CerbosAuthorizationService>();
-        }
-        else
-        {
-            services.AddScoped<ICerbosAuthorizationService, FallbackAuthorizationService>();
-        }
+        });
+        services.AddHttpClient("CerbosAdminClient");
+        services.AddScoped<CerbosPrincipalBuilder>();
+        services.AddScoped<CerbosAuthorizationService>();
+        services.AddScoped<FallbackAuthorizationService>();
+        services.AddScoped<IAuthorizationProvider, RuntimeAuthorizationProvider>();
+        services.AddScoped<IPolicySyncService, PolicySyncService>();
 
         // Event Strategies
         services.AddScoped<IEventStrategy, IslamicEventStrategy>();
@@ -81,6 +106,10 @@ public static class InfrastructureServicesRegistration
 
         // Deployment mode configuration (single-tenant vs multi-tenant)
         services.Configure<DeploymentSettings>(configuration.GetSection(DeploymentSettings.SectionName));
+
+        // Setup secret provider: singleton that manages the bootstrap setup secret lifecycle.
+        // Must be singleton because the secret is resolved once at startup and locked after onboarding completion.
+        services.AddSingleton<ISetupSecretProvider, SetupSecretProvider>();
 
         return services;
     }

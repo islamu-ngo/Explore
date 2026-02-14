@@ -75,6 +75,7 @@ graph TD
 | [handler-patterns.md](resources/handler-patterns.md) | Handler implementation, DI, error handling |
 | [validation-integration.md](resources/validation-integration.md) | FluentValidation patterns and manual integration |
 | [complete-examples.md](resources/complete-examples.md) | End-to-end feature examples for CQRS |
+| [api-endpoint-design.md](resources/api-endpoint-design.md) | API controller endpoint design conventions for CQRS request/response flows |
 
 ## Quick Reference
 
@@ -214,6 +215,8 @@ public class Create{Entity}DtoValidator : AbstractValidator<Create{Entity}Dto>
 -   ✅ **DO** perform DTO mapping in handlers using AutoMapper.
 -   ✅ **DO** instantiate validators manually within handlers.
 -   ✅ **DO** keep controllers thin, delegating to MediatR.
+-   ✅ **DO** return `201 Created` for successful creates and `204 NoContent` for successful deletes in controllers.
+-   ✅ **DO** use explicit route constraints for IDs (for example `{id:guid}`) to reduce ambiguous route binding.
 -   ✅ **DO** use `BaseCommandResponse<{IdType}>` for command responses (except `bool` for Delete).
 
 ## Don'ts
@@ -225,6 +228,8 @@ public class Create{Entity}DtoValidator : AbstractValidator<Create{Entity}Dto>
 -   ❌ **DON'T** mutate state in query handlers.
 -   ❌ **DON'T** throw exceptions for business validation failures; return them in the `BaseCommandResponse`.
 -   ❌ **DON'T** inject validators via Dependency Injection.
+-   ❌ **DON'T** mix transport concerns (HTTP status mapping) into handlers.
+-   ❌ **DON'T** expose domain entities from controller actions.
 
 ---
 

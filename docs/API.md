@@ -262,7 +262,126 @@ if (string.IsNullOrEmpty(userId))
 
 ## 5. Request/Response Patterns
 
+### HATEOAS / HAL+JSON Implementation
+
+The API implements **HATEOAS (Hypermedia as the Engine of Application State)** using the HAL+JSON format. This allows clients to discover available actions dynamically based on their permissions and the resource state.
+
+#### Core Components
+
+1.  **`IResourceAssembler<TDto, TListDto>`**:
+    The central service that converts DTOs into `HalResource<T>` or `HalCollectionResource<T>`.
+    - Automatically handles `Prefer: return=minimal` header to strip links.
+    - Evaluates authorization policies before adding links.
+    - Uses `ResourceAssemblerBase` for shared logic.
+
+2.  **`ILinkPolicy<T>`**:
+    Defines *which* links apply to a specific resource.
+    - `GetLinks(dto, user)`: Returns links for a single resource.
+    - `GetCollectionLinks(user)`: Returns links for the collection root (e.g., "create").
+
+3.  **`IHateoasAuthorizationEvaluator`**:
+    Integrates with **Cerbos** to filter links. If a user lacks permission for an action (e.g., `update`), the corresponding link is automatically omitted from the response.
+
+#### Defining Links
+
+Links are defined using a fluent API in Policy classes:
+
+```csharp
+public class EventLinkPolicy : ILinkPolicy<EventDto>
+{
+    public IEnumerable<LinkDefinition> GetLinks(EventDto dto, ClaimsPrincipal user)
+    {
+        // Self link (always visible)
+        yield return new LinkDefinition(
+            rel: LinkRelations.Self,
+            routeName: RouteNames.GetEvent,
+            routeValues: new { id = dto.Id });
+
+        // Update link (only if user has permission)
+        yield return new LinkDefinition(
+            rel: LinkRelations.Update,
+            routeName: RouteNames.UpdateEvent,
+            routeValues: new { id = dto.Id })
+            .RequirePermission(CerbosPermissionAction.Update, dto); // Checks Cerbos policy
+    }
+}
+```
+
+#### Response Wrapper Types
+
+**For Single Resources:**
+```csharp
+public class HalResource<T>
+{
+    public T Data { get; set; }  // The actual DTO payload
+    public Dictionary<string, HalLink> _links { get; set; }  // Hypermedia links
+}
+```
+
+**For Collections:**
+```csharp
+public class HalCollectionResource<T>
+{
+    public Dictionary<string, object> _embedded { get; set; }  // Contains "items" array
+    public Dictionary<string, HalLink> _links { get; set; }   // Collection navigation links
+    public int TotalCount { get; set; }
+    public int PageNumber { get; set; }
+    public int PageSize { get; set; }
+    public int TotalPages { get; set; }
+}
+```
+
+#### Example Response
+
+**Request:**
+```http
+GET /api/v1/events/123e4567-e89b-12d3-a456-426614174000
+Accept: application/hal+json
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "id": "123e4567-e89b-12d3-a456-426614174000",
+    "title": "Community Iftar 2026",
+    "status": "Published"
+  },
+  "_links": {
+    "self": {
+      "href": "/api/v1/events/123e4567-e89b-12d3-a456-426614174000",
+      "method": "GET"
+    },
+    "update": {
+      "href": "/api/v1/events/123e4567-e89b-12d3-a456-426614174000",
+      "method": "PUT"
+    }
+  }
+}
+```
+
+#### Optimization: Minimal Response
+
+Clients can request payloads without hypermedia overhead using the standard `Prefer` header. This is useful for mobile apps or internal services that don't need discovery.
+
+**Request:**
+```http
+GET /api/v1/events/123...
+Prefer: return=minimal
+```
+
+**Response (Pure JSON):**
+```json
+{
+  "data": {
+    "id": "123...",
+    "title": "Community Iftar 2026"
+  }
+}
+```
+
 ### Command Response
+
 
 All write operations return `BaseCommandResponse<T>`:
 
@@ -600,75 +719,60 @@ GET /api/v1/event?pageNumber=1&pageSize=20
 
 ## 7. Error Handling
 
-### HTTP Status Codes
+### Standardization
+
+The API follows **RFC 7807 (Problem Details for HTTP APIs)** for all unhandled exceptions, while using structured `BaseCommandResponse` for domain logic failures.
+
+### 7.1. Global Exception Handler
+
+Any unhandled exception (System.Exception) is caught by the global `ExceptionHandler` middleware and converted into a standardized JSON response.
+
+**Response Format (ProblemDetails):**
+```json
+{
+  "type": "https://tools.ietf.org/html/rfc9110#section-15.6.1",
+  "title": "An error occurred while processing your request.",
+  "status": 500,
+  "detail": "Database connection timeout",
+  "instance": "/api/v1/events"
+}
+```
+
+### 7.2. Domain Logic Errors (Command Response)
+
+For expected business rule violations (e.g., validation failures, logic conflicts), endpoints return a `200 OK` or `400 Bad Request` with a structured `BaseCommandResponse`.
+
+**Response Format:**
+```json
+{
+    "success": false,
+    "message": "Validation failed",
+    "id": null,
+    "errors": [
+        "Event date cannot be in the past.",
+        "Title is required."
+    ]
+}
+```
+
+### 7.3. HTTP Status Codes
 
 | Code | Meaning | When Used |
 |------|---------|-----------|
 | `200 OK` | Success | GET, PUT, POST success |
 | `201 Created` | Resource created | POST (alternative) |
 | `204 No Content` | Success, no body | DELETE success |
-| `400 Bad Request` | Validation failed | Invalid input |
+| `400 Bad Request` | Validation failed | Business rule violation |
 | `401 Unauthorized` | Not authenticated | Missing/invalid token |
-| `403 Forbidden` | Not authorized | Insufficient permissions |
+| `403 Forbidden` | Not authorized | Insufficient permissions (Cerbos denial) |
 | `404 Not Found` | Resource not found | Invalid ID |
-| `500 Internal Error` | Server error | Unexpected exception |
+| `500 Internal Error` | Server error | Unexpected exception (Unhandled) |
 
-### Error Response Format
+### 7.4. Exception Handling Pattern in Controllers
 
-```json
-{
-    "error": "User ID not found in token"
-}
-```
+Controllers should use `try-catch` blocks only when specific recovery or logging context is needed. Otherwise, let the global handler manage 500s.
 
-Or with validation errors:
-
-```json
-{
-    "success": false,
-    "message": "Validation failed",
-    "errors": [
-        "Title is required",
-        "StartDate must be in the future"
-    ]
-}
-```
-
-### Exception Handling
-
-**Generic Template:**
-
-```csharp
-[HttpDelete("{id}")]
-[Authorize]
-public async Task<ActionResult> Delete({IdType} id)
-{
-    try
-    {
-        var userId = ExtractUserId();
-        if (string.IsNullOrEmpty(userId))
-        {
-            return Unauthorized(new { error = "User ID not found in token" });
-        }
-
-        var result = await _mediator.Send(new Delete{Entity}Command { Id = id, UserId = userId });
-
-        if (!result)
-        {
-            return NotFound(new { error = "{Entity} not found or permission denied" });
-        }
-
-        return NoContent();
-    }
-    catch (Exception ex)
-    {
-        _logger.LogError(ex, "Error deleting {entity} {{EntityId}}", id);
-        return StatusCode(500, new { error = ex.Message });
-    }
-}
-```
-
-### Implementation Example: ISLAMU Event
+**Recommended Pattern:**
 
 ```csharp
 [HttpDelete("{id}")]
@@ -677,25 +781,14 @@ public async Task<ActionResult> Delete(Guid id)
 {
     try
     {
-        var userId = ExtractUserId();
-        if (string.IsNullOrEmpty(userId))
-        {
-            return Unauthorized(new { error = "User ID not found in token" });
-        }
-
-        var result = await _mediator.Send(new DeleteEventCommand { Id = id, UserId = userId });
-
-        if (!result)
-        {
-            return NotFound(new { error = "Event not found or permission denied" });
-        }
-
-        return NoContent();
+        // ... logic ...
     }
     catch (Exception ex)
     {
+        // Only catch if you need to add context before re-throwing
+        // or if you want to return a specific status code manually
         _logger.LogError(ex, "Error deleting event {EventId}", id);
-        return StatusCode(500, new { error = ex.Message });
+        return StatusCode(500, new { error = "An unexpected error occurred." });
     }
 }
 ```
@@ -773,180 +866,79 @@ public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] Cre
 
 ---
 
-## 9. Output Caching
+## 9. Caching Strategy
 
-The API implements **output caching** to improve performance and reduce database load for frequently-accessed, rarely-changing data.
+The API implements a **Dual-Layer Caching Strategy** to maximize performance while ensuring data consistency.
 
-### Cache Policies
+### 9.1. Layer 1: Output Caching (HTTP Level)
 
-Two cache policies are defined in `Program.cs`:
+**Purpose**: Caches the entire HTTP response body.
+**Use Case**: Public, read-only endpoints (lists, details) that don't vary per user.
+**Mechanism**: ASP.NET Core Output Caching Middleware.
 
-**Generic Pattern:**
+**Configuration**:
+Policies are defined in `Program.cs`:
+- `ListData`: Expire 5m, Vary by Query keys (page, size, search).
+- `DetailData`: Expire 10m, Vary by Route Value (id).
+
+**Usage in Controllers**:
 ```csharp
-builder.Services.AddOutputCache(options =>
-{
-    // Policy for list endpoints (collections)
-    options.AddPolicy("ListData", builder => builder
-        .Expire(TimeSpan.FromMinutes(5))
-        .SetVaryByQuery("pageNumber", "pageSize", "searchTerm", "sortBy"));
-
-    // Policy for detail endpoints (single resources)
-    options.AddPolicy("DetailData", builder => builder
-        .Expire(TimeSpan.FromMinutes(10))
-        .SetVaryByRouteValue("id"));
-});
-```
-
-### Controller Usage
-
-Apply `[OutputCache]` attribute to GET endpoints:
-
-**Generic Pattern:**
-```csharp
-[HttpGet]
-[AllowAnonymous]
-[OutputCache(PolicyName = "ListData")]
-[EndpointSummary("Get all {Entities}")]
-public async Task<ActionResult<HalCollectionResource<{Entity}ListDto>>> GetAll(
-    [FromQuery] int pageNumber = 1,
-    [FromQuery] int pageSize = 10,
-    [FromQuery] string? searchTerm = null)
-{
-    // Query parameters automatically vary cache key
-    // Each combination of pageNumber/pageSize/searchTerm has separate cache entry
-}
-
 [HttpGet("{id}")]
 [AllowAnonymous]
 [OutputCache(PolicyName = "DetailData")]
-[EndpointSummary("Get {Entity} by ID")]
-public async Task<ActionResult<HalResource<{Entity}Dto>>> GetById({IdType} id)
-{
-    // Route value 'id' automatically varies cache key
-    // Each unique ID has separate cache entry
-}
+public async Task<ActionResult> GetById(Guid id) { ... }
 ```
 
-### Implementation Example: ISLAMU Event
+### 9.2. Layer 2: Hybrid Caching (Application Level)
+
+**Purpose**: Caches domain entities or calculation results within the application logic.
+**Use Case**:
+- Data needed by multiple handlers.
+- Data that is expensive to compute/fetch but used in authenticated endpoints (where OutputCache isn't suitable).
+- Scenarios requiring **stampede protection**.
+**Mechanism**: .NET 9+ `HybridCache` (L1 In-Memory + L2 Redis).
+
+**Usage in Handlers (Query Side)**:
+Use `GetOrCreateAsync` to fetch-or-cache:
 
 ```csharp
-// Explore.API/Controllers/EventController.cs
-[HttpGet(Name = RouteNames.GetEvents)]
-[AllowAnonymous]
-[OutputCache(PolicyName = "ListData")]
-[EndpointSummary("Get all Events")]
-public async Task<ActionResult<HalCollectionResource<EventListDto>>> GetAll(
-    [FromQuery] int pageNumber = ApiConstants.DefaultPageNumber,
-    [FromQuery] int pageSize = ApiConstants.DefaultPageSize,
-    [FromQuery] string? searchTerm = null)
+public async Task<EventDto> Handle(GetEventDetailsRequest request, CancellationToken ct)
 {
-    // Cached for 5 minutes
-    // Separate cache entry per pageNumber/pageSize/searchTerm combination
-}
-
-[HttpGet("{id:guid}", Name = RouteNames.GetEvent)]
-[AllowAnonymous]
-[OutputCache(PolicyName = "DetailData")]
-[EndpointSummary("Get Event by ID")]
-public async Task<ActionResult<HalResource<EventDto>>> GetById(Guid id)
-{
-    // Cached for 10 minutes
-    // Separate cache entry per event ID
+    var cacheKey = $"event:{request.Id}";
+    
+    return await _hybridCache.GetOrCreateAsync(
+        cacheKey,
+        async cancel => await _repository.GetByIdAsync(request.Id, cancel),
+        options: new HybridCacheEntryOptions { Expiration = TimeSpan.FromMinutes(10) },
+        cancellationToken: ct
+    );
 }
 ```
 
-### Cache Invalidation
+**Usage in Handlers (Command Side)**:
+Explicitly invalidate cache after updates:
 
-Cache entries are automatically invalidated based on expiration time. For immediate invalidation after updates:
-
-**Generic Pattern:**
 ```csharp
-[HttpPut("{id}")]
-[Authorize]
-public async Task<ActionResult<BaseCommandResponse<{IdType}>>> Update(
-    {IdType} id,
-    [FromBody] Update{Entity}Dto dto)
+public async Task<BaseCommandResponse> Handle(UpdateEventCommand request, CancellationToken ct)
 {
-    var response = await _mediator.Send(new Update{Entity}Command { {Entity}Dto = dto });
-
-    if (response.Success)
-    {
-        // Invalidate cache for this specific resource
-        // (Automatic - next GET request will refresh cache)
-    }
-
-    return response.Success ? Ok(response) : BadRequest(response);
+    // ... update logic ...
+    
+    // Invalidate the specific entity cache
+    await _hybridCache.RemoveAsync($"event:{request.Id}", ct);
+    
+    return response;
 }
 ```
 
-**Note**: Output cache middleware automatically handles cache key generation and invalidation. No manual cache management needed in controllers.
+### 9.3. Caching Guidelines
 
-### Cache Key Variation
-
-Cache keys vary by:
-
-**ListData Policy**:
-- Query parameters: `pageNumber`, `pageSize`, `searchTerm`, `sortBy`
-- Example keys:
-  - `/api/v1/events?pageNumber=1&pageSize=10`
-  - `/api/v1/events?pageNumber=1&pageSize=10&searchTerm=conference`
-
-**DetailData Policy**:
-- Route values: `id`
-- Example keys:
-  - `/api/v1/events/123e4567-e89b-12d3-a456-426614174000`
-  - `/api/v1/events/987e6543-e21c-45d6-b789-123456789abc`
-
-### Configuration
-
-Cache policy configuration in `Program.cs`:
-
-**Generic Pattern:**
-```csharp
-// Register output cache services
-builder.Services.AddOutputCache(options =>
-{
-    options.AddPolicy("ListData", builder => builder
-        .Expire(TimeSpan.FromMinutes(5))
-        .SetVaryByQuery("pageNumber", "pageSize", "searchTerm", "sortBy")
-        .Tag("list-endpoints"));
-
-    options.AddPolicy("DetailData", builder => builder
-        .Expire(TimeSpan.FromMinutes(10))
-        .SetVaryByRouteValue("id")
-        .Tag("detail-endpoints"));
-});
-
-// Enable output cache middleware
-app.UseOutputCache();
-```
-
-### Performance Benefits
-
-- **Reduced Database Load**: Frequently-accessed data served from cache
-- **Improved Response Times**: Cached responses return in <5ms vs 50-200ms for database queries
-- **Scalability**: Cache reduces load on database and application tier
-- **Cost Optimization**: Fewer database queries = lower hosting costs
-
-### Best Practices
-
-**When to Use Output Caching**:
-- ✅ GET endpoints returning infrequently-changing data
-- ✅ Public, read-only endpoints ([AllowAnonymous])
-- ✅ Lookup tables and reference data
-- ✅ List endpoints with pagination
-
-**When NOT to Use Output Caching**:
-- ❌ POST/PUT/DELETE endpoints (write operations)
-- ❌ Endpoints returning user-specific data requiring authorization
-- ❌ Real-time data requiring instant updates
-- ❌ Endpoints with complex authorization logic per user
-
-**Cache Duration Guidelines**:
-- **Lookup Tables**: 30-60 minutes (rarely change)
-- **List Data**: 5 minutes (balance freshness vs performance)
-- **Detail Data**: 10 minutes (more stable than lists)
-- **Hot Paths**: 2-3 minutes (critical endpoints needing fresher data)
+| Feature | Use **Output Cache** | Use **Hybrid Cache** |
+| :--- | :---: | :---: |
+| **Public Public Data** (e.g., Event List) | ✅ Yes | ❌ No |
+| **Authenticated Data** (e.g., "My Events") | ❌ No | ✅ Yes |
+| **Lookup Tables** (e.g., Categories) | ✅ Yes | ✅ Yes (if reused internally) |
+| **User-Specific Content** | ❌ No | ✅ Yes (Keyed by UserID) |
+| **Write Operations** | ❌ Never | ❌ Use to Invalidate |
 
 ---
 

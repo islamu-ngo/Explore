@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Hateoas;  // For ILinkPolicy, ICollectionLin
 using Explore.Application.Hateoas;
 using Explore.Application.Responses;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 
 /// <summary>
 /// Base class for resource assemblers that provides common link generation logic.
@@ -30,7 +31,7 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
     }
 
     /// <inheritdoc />
-    public virtual HalResource<TDto> ToResource(TDto dto, HttpContext httpContext)
+    public virtual async Task<HalResource<TDto>> ToResource(TDto dto, HttpContext httpContext)
     {
         if (IsMinimalResponse(httpContext))
         {
@@ -38,7 +39,7 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
         }
 
         var user = httpContext.User;
-        var links = GenerateLinks(_detailLinkPolicy.GetLinks(dto, user), user, httpContext);
+        var links = await GenerateLinks(_detailLinkPolicy.GetLinks(dto, user), user, httpContext);
 
         return new HalResource<TDto>
         {
@@ -49,7 +50,7 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
     }
 
     /// <inheritdoc />
-    public virtual HalResource<TListDto> ToListResource(TListDto dto, HttpContext httpContext)
+    public virtual async Task<HalResource<TListDto>> ToListResource(TListDto dto, HttpContext httpContext)
     {
         if (IsMinimalResponse(httpContext))
         {
@@ -57,7 +58,7 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
         }
 
         var user = httpContext.User;
-        var links = GenerateLinks(_collectionLinkPolicy.GetItemLinks(dto, user), user, httpContext);
+        var links = await GenerateLinks(_collectionLinkPolicy.GetItemLinks(dto, user), user, httpContext);
 
         return new HalResource<TListDto>
         {
@@ -67,7 +68,7 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
     }
 
     /// <inheritdoc />
-    public virtual HalCollectionResource<TListDto> ToCollectionResource(
+    public virtual async Task<HalCollectionResource<TListDto>> ToCollectionResource(
         PaginatedResult<TListDto> paginatedResult,
         string routeName,
         object? additionalRouteValues,
@@ -76,10 +77,7 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
         var user = httpContext.User;
         var isMinimal = IsMinimalResponse(httpContext);
 
-        // Generate item resources
-        var items = paginatedResult.Items
-            .Select(item => ToListResource(item, httpContext))
-            .ToList();
+        var items = await BuildListResourcesWithBatch(paginatedResult.Items, user, httpContext);
 
         if (isMinimal)
         {
@@ -103,17 +101,10 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
             httpContext);
 
         // Add collection-level links (create, search, etc.)
-        var collectionLinks = _collectionLinkPolicy.GetCollectionLinks(user);
-        foreach (var linkDef in collectionLinks)
+        var collectionActionLinks = await GenerateLinks(_collectionLinkPolicy.GetCollectionLinks(user), user, httpContext);
+        foreach (var pair in collectionActionLinks)
         {
-            if (ShouldIncludeLink(linkDef, user))
-            {
-                var link = _linkGenerator.GenerateLink(linkDef, httpContext);
-                if (link is not null)
-                {
-                    links[linkDef.Rel] = link;
-                }
-            }
+            links[pair.Key] = pair.Value;
         }
 
         return HalCollectionResource<TListDto>.FromPagination(
@@ -126,7 +117,7 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
     }
 
     /// <inheritdoc />
-    public virtual HalCollectionResource<TListDto> ToCollectionResource(
+    public virtual async Task<HalCollectionResource<TListDto>> ToCollectionResource(
         IEnumerable<TListDto> items,
         string routeName,
         HttpContext httpContext)
@@ -135,9 +126,7 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
         var user = httpContext.User;
         var isMinimal = IsMinimalResponse(httpContext);
 
-        var halItems = itemsList
-            .Select(item => ToListResource(item, httpContext))
-            .ToList();
+        var halItems = await BuildListResourcesWithBatch(itemsList, user, httpContext);
 
         var links = new Dictionary<string, HalLink>();
 
@@ -151,17 +140,10 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
             }
 
             // Collection-level links
-            var collectionLinks = _collectionLinkPolicy.GetCollectionLinks(user);
-            foreach (var linkDef in collectionLinks)
+            var collectionActionLinks = await GenerateLinks(_collectionLinkPolicy.GetCollectionLinks(user), user, httpContext);
+            foreach (var pair in collectionActionLinks)
             {
-                if (ShouldIncludeLink(linkDef, user))
-                {
-                    var link = _linkGenerator.GenerateLink(linkDef, httpContext);
-                    if (link is not null)
-                    {
-                        links[linkDef.Rel] = link;
-                    }
-                }
+                links[pair.Key] = pair.Value;
             }
         }
 
@@ -187,17 +169,26 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
     /// <summary>
     /// Generates HAL links from link definitions, filtering by authorization.
     /// </summary>
-    protected Dictionary<string, HalLink> GenerateLinks(
+    protected async Task<Dictionary<string, HalLink>> GenerateLinks(
         IEnumerable<LinkDefinition> definitions,
         ClaimsPrincipal? user,
         HttpContext httpContext)
     {
+        var definitionList = definitions.ToList();
+        if (definitionList.Count == 0)
+            return new Dictionary<string, HalLink>();
+
+        var evaluator = httpContext.RequestServices.GetRequiredService<IHateoasAuthorizationEvaluator>();
+        var decisions = await evaluator.AreLinksAllowedAsync(definitionList, user, httpContext);
+
         var links = new Dictionary<string, HalLink>();
 
-        foreach (var definition in definitions)
+        for (var index = 0; index < definitionList.Count; index++)
         {
-            if (!ShouldIncludeLink(definition, user))
+            if (index >= decisions.Count || !decisions[index])
                 continue;
+
+            var definition = definitionList[index];
 
             var link = _linkGenerator.GenerateLink(definition, httpContext);
             if (link is not null)
@@ -209,33 +200,54 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
         return links;
     }
 
-    /// <summary>
-    /// Determines if a link should be included based on authorization and conditions.
-    /// </summary>
-    protected virtual bool ShouldIncludeLink(LinkDefinition definition, ClaimsPrincipal? user)
+    private async Task<List<HalResource<TListDto>>> BuildListResourcesWithBatch(
+        IEnumerable<TListDto> items,
+        ClaimsPrincipal? user,
+        HttpContext httpContext)
     {
-        // Check custom condition first
-        if (definition.Condition is not null && !definition.Condition())
-            return false;
+        var itemList = items.ToList();
+        if (itemList.Count == 0)
+            return [];
 
-        // Check authentication requirement
-        if (definition.RequiresAuth)
+        var definitionsByItem = itemList
+            .Select(item => _collectionLinkPolicy.GetItemLinks(item, user).ToList())
+            .ToList();
+
+        var flattenedDefinitions = definitionsByItem.SelectMany(x => x).ToList();
+        var evaluator = httpContext.RequestServices.GetRequiredService<IHateoasAuthorizationEvaluator>();
+        var decisions = await evaluator.AreLinksAllowedAsync(flattenedDefinitions, user, httpContext);
+
+        var resources = new List<HalResource<TListDto>>(itemList.Count);
+        var cursor = 0;
+
+        for (var itemIndex = 0; itemIndex < itemList.Count; itemIndex++)
         {
-            if (user?.Identity?.IsAuthenticated != true)
-                return false;
+            var itemDefinitions = definitionsByItem[itemIndex];
+            var links = new Dictionary<string, HalLink>();
 
-            // Check role requirements
-            if (definition.RequiredRoles is { Length: > 0 })
+            for (var definitionIndex = 0; definitionIndex < itemDefinitions.Count; definitionIndex++)
             {
-                var hasRequiredRole = definition.RequiredRoles.Any(role =>
-                    user.IsInRole(role));
+                var globalIndex = cursor + definitionIndex;
+                if (globalIndex >= decisions.Count || !decisions[globalIndex])
+                    continue;
 
-                if (!hasRequiredRole)
-                    return false;
+                var definition = itemDefinitions[definitionIndex];
+                var link = _linkGenerator.GenerateLink(definition, httpContext);
+                if (link is not null)
+                {
+                    links[definition.Rel] = link;
+                }
             }
+
+            cursor += itemDefinitions.Count;
+            resources.Add(new HalResource<TListDto>
+            {
+                Data = itemList[itemIndex],
+                Links = links
+            });
         }
 
-        return true;
+        return resources;
     }
 
     /// <summary>

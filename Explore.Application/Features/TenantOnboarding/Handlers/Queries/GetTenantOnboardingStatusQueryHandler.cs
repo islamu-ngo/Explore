@@ -12,20 +12,20 @@ namespace Explore.Application.Features.TenantOnboarding.Handlers.Queries;
 public class GetTenantOnboardingStatusQueryHandler : IRequestHandler<GetTenantOnboardingStatusQuery, TenantOnboardingStatusDto>
 {
     private readonly ITenantOnboardingStateRepository _tenantOnboardingStateRepository;
-    private readonly ITenantAdministratorRepository _tenantAdministratorRepository;
+    private readonly ITenantMemberRepository _tenantMemberRepository;
     private readonly IInstanceAdministratorRepository _instanceAdministratorRepository;
     private readonly ITenantContext _tenantContext;
     private readonly ICurrentUserService _currentUserService;
 
     public GetTenantOnboardingStatusQueryHandler(
         ITenantOnboardingStateRepository tenantOnboardingStateRepository,
-        ITenantAdministratorRepository tenantAdministratorRepository,
+        ITenantMemberRepository tenantMemberRepository,
         IInstanceAdministratorRepository instanceAdministratorRepository,
         ITenantContext tenantContext,
         ICurrentUserService currentUserService)
     {
         _tenantOnboardingStateRepository = tenantOnboardingStateRepository;
-        _tenantAdministratorRepository = tenantAdministratorRepository;
+        _tenantMemberRepository = tenantMemberRepository;
         _instanceAdministratorRepository = instanceAdministratorRepository;
         _tenantContext = tenantContext;
         _currentUserService = currentUserService;
@@ -51,7 +51,7 @@ public class GetTenantOnboardingStatusQueryHandler : IRequestHandler<GetTenantOn
         }
 
         var userId = _currentUserService.UserId.Value;
-        response.IsCurrentUserTenantAdministrator = await _tenantAdministratorRepository.IsTenantAdministrator(tenantId, userId);
+        response.IsCurrentUserTenantAdministrator = await _tenantMemberRepository.IsTenantMember(tenantId, userId);
         response.IsCurrentUserInstanceAdministrator = await _instanceAdministratorRepository.IsUserInstanceAdmin(userId);
 
         return response;

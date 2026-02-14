@@ -12,6 +12,7 @@ using Explore.Application.DTOs.Event.Validators;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
+using Explore.Domain.Constants;
 using MediatR;
 
 namespace Explore.Application.Features.Events.Handlers.Commands;
@@ -111,15 +112,15 @@ public class CreateEventWithSessionsCommandHandler : IRequestHandler<CreateEvent
             // ORGANIZATION CONTEXT
             var organizationId = dto.OrganizationId.Value;
 
-            // SECURITY: Verify user has admin permissions for this organization
-            var isAdmin = await _organizationMemberRepository.IsUserAdminOfOrganization(organizationId, currentUserId);
-            if (!isAdmin)
+            // SECURITY: Verify user has event:create permission for this organization
+            var hasPermission = await _organizationMemberRepository.HasPermissionInOrganization(organizationId, currentUserId, PermissionCodes.EventCreate);
+            if (!hasPermission)
             {
                 response.Success = false;
                 response.Message = "You do not have permission to create events for this organization.";
                 response.Errors = new List<string>
                 {
-                    "User must be a Creator, Co-Owner, or Admin of the organization to create events."
+                    "Your role in the organization does not include event creation permission."
                 };
                 return response;
             }

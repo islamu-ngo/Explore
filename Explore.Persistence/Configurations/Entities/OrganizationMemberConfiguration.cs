@@ -25,9 +25,9 @@ public class OrganizationMemberConfiguration : IEntityTypeConfiguration<Organiza
             .HasForeignKey(m => m.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasOne(m => m.OrganizationRole)
+        builder.HasOne(m => m.Role)
             .WithMany()
-            .HasForeignKey(m => m.OrganizationRoleId)
+            .HasForeignKey(m => m.RoleId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(m => m.OrganizationPosition)

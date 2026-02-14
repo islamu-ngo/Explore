@@ -91,7 +91,7 @@ public class CreateOrganizationCommandHandlerTests
 
         // Mock OrganizationMember creation
         _organizationMemberRepository.Create(Arg.Any<OrganizationMember>()).Returns(
-            new OrganizationMember { Id = Guid.NewGuid(), Organization = null!, User = null!, OrganizationRole = null!, Tenant = null! });
+            new OrganizationMember { Id = Guid.NewGuid(), Organization = null!, User = null!, Role = null!, Tenant = null! });
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -142,7 +142,7 @@ public class CreateOrganizationCommandHandlerTests
         var actor = new Actor { Id = actorId, DisplayName = "Test Organization", ActorType = null!, Tenant = null! };
         _actorRepository.Create(Arg.Any<Actor>()).Returns(actor);
         _organizationMemberRepository.Create(Arg.Any<OrganizationMember>()).Returns(
-            new OrganizationMember { Id = Guid.NewGuid(), Organization = null!, User = null!, OrganizationRole = null!, Tenant = null! });
+            new OrganizationMember { Id = Guid.NewGuid(), Organization = null!, User = null!, Role = null!, Tenant = null! });
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -191,7 +191,7 @@ public class CreateOrganizationCommandHandlerTests
         var actor = new Actor { Id = actorId, DisplayName = "Test Organization", ActorType = null!, Tenant = null! };
         _actorRepository.Create(Arg.Any<Actor>()).Returns(actor);
         _organizationMemberRepository.Create(Arg.Any<OrganizationMember>()).Returns(
-            new OrganizationMember { Id = Guid.NewGuid(), Organization = null!, User = null!, OrganizationRole = null!, Tenant = null! });
+            new OrganizationMember { Id = Guid.NewGuid(), Organization = null!, User = null!, Role = null!, Tenant = null! });
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -239,7 +239,7 @@ public class CreateOrganizationCommandHandlerTests
         var actor = new Actor { Id = actorId, DisplayName = "Test Organization", ActorType = null!, Tenant = null! };
         _actorRepository.Create(Arg.Any<Actor>()).Returns(actor);
         _organizationMemberRepository.Create(Arg.Any<OrganizationMember>()).Returns(
-            new OrganizationMember { Id = Guid.NewGuid(), Organization = null!, User = null!, OrganizationRole = null!, Tenant = null! });
+            new OrganizationMember { Id = Guid.NewGuid(), Organization = null!, User = null!, Role = null!, Tenant = null! });
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);

@@ -1,8 +1,7 @@
-// ABOUTME: Database seeding infrastructure for lookup tables (all environments) and business entities (dev-only).
-// Lookup tables are seeded at runtime via LookupTableSeeder to avoid EF Core circular FK migration bug (#36682).
+// ABOUTME: Database seeding orchestrator. Seeds lookup tables in ALL environments at runtime.
+// ABOUTME: In Development, also seeds business entities (users, orgs, events) for testing.
 
 using Explore.Domain;
-using Explore.Domain.Enums;
 using Explore.Domain.Modules;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
@@ -12,215 +11,124 @@ namespace Explore.Persistence.Seed;
 /// <summary>
 /// Database seeder orchestrator. Called after migrations in application startup.
 ///
-/// Architecture:
-/// - Lookup/enum tables: Seeded via LookupTableSeeder (runs in ALL environments)
-/// - Business entities: Seeded via this class (Development environment only)
-///
-/// Production databases start empty (except lookup tables) and are populated via API/UI.
+/// ALL environments: Seeds lookup/enum tables via LookupTableSeeder.
+/// Development only: Seeds business entities (tenant, users, organizations, members, events)
+/// so developers don't have to manually create test data.
 /// </summary>
 public static class DatabaseSeeder
 {
-    /// <summary>
-    /// Seeds lookup tables (all environments) and development data (dev only).
-    /// Called after migrations in the application startup.
-    /// </summary>
-    /// <param name="context">The database context</param>
-    /// <param name="environment">The hosting environment to check</param>
-    /// <param name="cancellationToken">Cancellation token</param>
     public static async Task SeedAsync(
         ExploreDbContext context,
         IHostEnvironment environment,
         CancellationToken cancellationToken = default)
     {
-        // Lookup tables must exist in ALL environments (previously seeded via HasData in migrations)
+        // Lookup tables are required in ALL environments
         await LookupTableSeeder.SeedAsync(context, cancellationToken);
 
-        // Business entities only in Development
-        if (!environment.IsDevelopment())
+        // Business entities are seeded only in Development for testing
+        if (environment.IsDevelopment())
         {
-            return;
+            await SeedDevelopmentDataAsync(context, cancellationToken);
         }
-
-        await SeedDevelopmentDataAsync(context, cancellationToken);
     }
 
     /// <summary>
-    /// Seeds development/demo data for local development and testing.
-    /// This data is NOT applied in Production - production starts with empty business entities.
+    /// Seeds comprehensive test data for Development environment.
+    /// Handles circular FK between User/Organization ↔ Actor by inserting in phases.
     /// </summary>
     private static async Task SeedDevelopmentDataAsync(
         ExploreDbContext context,
-        CancellationToken cancellationToken)
+        CancellationToken ct)
     {
-        // Check if already seeded (idempotent)
-        if (await context.Tenants.AnyAsync(t => t.Id == SeedIds.DefaultTenantId, cancellationToken))
-        {
+        // Idempotent: skip if dev data already exists
+        if (await context.Set<Tenant>().AnyAsync(t => t.Id == SeedIds.DefaultTenantId, ct))
             return;
-        }
 
-        // Seed in dependency order
-        await SeedTenantsAsync(context, cancellationToken);
-        await SeedUsersAsync(context, cancellationToken);
-        await SeedOrganizationsAsync(context, cancellationToken);
-        await SeedActorsAsync(context, cancellationToken);
-        await SeedOrganizationMembersAsync(context, cancellationToken);
-        await SeedStorageObjectsAsync(context, cancellationToken);
-        await SeedTenantSettingsAsync(context, cancellationToken);
-        await SeedTenantCapabilitiesAsync(context, cancellationToken);
-        await SeedLocationsAsync(context, cancellationToken);
-        await SeedCategoriesAsync(context, cancellationToken);
-        await SeedTagsAsync(context, cancellationToken);
-        await SeedUserRolesAsync(context, cancellationToken);
-        await SeedSampleEventsAsync(context, cancellationToken);
+        // Phase 1: Tenant (foundation for all tenant-scoped entities)
+        context.Set<Tenant>().Add(SeedData.DefaultTenant);
+        await context.SaveChangesAsync(ct);
 
-        await context.SaveChangesAsync(cancellationToken);
-    }
+        // Phase 2: Users without ActorId (circular dependency — Actor references User)
+        var adminUser = SeedData.AdminUser;
+        var regularUser = SeedData.RegularUser;
+        var moderatorUser = SeedData.ModeratorUser;
+        context.Set<User>().AddRange(adminUser, regularUser, moderatorUser);
+        await context.SaveChangesAsync(ct);
 
-    private static async Task SeedTenantsAsync(ExploreDbContext context, CancellationToken ct)
-    {
-        if (!await context.Tenants.AnyAsync(ct))
-        {
-            context.Tenants.Add(SeedData.DefaultTenant);
-            await context.SaveChangesAsync(ct);
-        }
-    }
+        // Phase 3: Organizations without ActorId (circular dependency — Actor references Organization)
+        var islamuOrg = SeedData.IslamuOrg;
+        var techOrg = SeedData.TechOrg;
+        context.Set<Organization>().AddRange(islamuOrg, techOrg);
+        await context.SaveChangesAsync(ct);
 
-    private static async Task SeedUsersAsync(ExploreDbContext context, CancellationToken ct)
-    {
-        if (!await context.Users.AnyAsync(ct))
-        {
-            context.Users.Add(SeedData.SystemUser);
-            await context.SaveChangesAsync(ct);
-        }
-    }
+        // Phase 4: Actors (now Users + Organizations exist for FK references)
+        context.Set<Actor>().AddRange(
+            SeedData.AdminUserActor,
+            SeedData.RegularUserActor,
+            SeedData.ModeratorUserActor,
+            SeedData.IslamuOrgActor,
+            SeedData.TechOrgActor);
+        await context.SaveChangesAsync(ct);
 
-    private static async Task SeedOrganizationsAsync(ExploreDbContext context, CancellationToken ct)
-    {
-        if (!await context.Organizations.AnyAsync(ct))
-        {
-            context.Organizations.Add(SeedData.IslamuOrganization);
-            await context.SaveChangesAsync(ct);
-        }
-    }
+        // Phase 5: Resolve circular dependency — set ActorId on Users and Organizations
+        adminUser.ActorId = SeedIds.AdminUserActorId;
+        regularUser.ActorId = SeedIds.RegularUserActorId;
+        moderatorUser.ActorId = SeedIds.ModeratorUserActorId;
+        islamuOrg.ActorId = SeedIds.IslamuOrgActorId;
+        techOrg.ActorId = SeedIds.TechOrgActorId;
+        await context.SaveChangesAsync(ct);
 
-    private static async Task SeedActorsAsync(ExploreDbContext context, CancellationToken ct)
-    {
-        if (!await context.Actors.AnyAsync(ct))
-        {
-            context.Actors.AddRange(
-                SeedData.SystemUserActor,
-                SeedData.IslamuOrganizationActor);
-            await context.SaveChangesAsync(ct);
-        }
-    }
+        // Phase 6: Tenant users, organization members, storage objects
+        context.Set<TenantUser>().AddRange(
+            SeedData.AdminTenantUser,
+            SeedData.RegularTenantUser,
+            SeedData.ModeratorTenantUser);
 
-    private static async Task SeedOrganizationMembersAsync(ExploreDbContext context, CancellationToken ct)
-    {
-        if (!await context.OrganizationMembers.AnyAsync(ct))
-        {
-            context.OrganizationMembers.Add(SeedData.SystemUserIslamuMember);
-            await context.SaveChangesAsync(ct);
-        }
-    }
+        context.Set<OrganizationMember>().AddRange(
+            SeedData.AdminIslamuCreator,
+            SeedData.RegularIslamuMember,
+            SeedData.ModeratorIslamuMod,
+            SeedData.AdminTechCoOwner,
+            SeedData.RegularTechCreator);
 
-    private static async Task SeedStorageObjectsAsync(ExploreDbContext context, CancellationToken ct)
-    {
-        if (!await context.StorageObjects.AnyAsync(ct))
-        {
-            context.StorageObjects.AddRange(
-                SeedData.DefaultEventImage,
-                SeedData.DefaultProfileImage,
-                SeedData.DefaultOrganizationLogo);
-            await context.SaveChangesAsync(ct);
-        }
-    }
+        context.Set<StorageObject>().AddRange(
+            SeedData.DefaultEventImage,
+            SeedData.DefaultProfileImage,
+            SeedData.DefaultOrganizationLogo);
+        await context.SaveChangesAsync(ct);
 
-    private static async Task SeedTenantSettingsAsync(ExploreDbContext context, CancellationToken ct)
-    {
-        if (!await context.Set<TenantSettings>().AnyAsync(ct))
-        {
-            context.Set<TenantSettings>().Add(SeedData.DefaultTenantSettings);
-            await context.SaveChangesAsync(ct);
-        }
-    }
+        // Phase 7: Tenant settings and capabilities
+        context.Set<TenantSettings>().Add(SeedData.DefaultTenantSettings);
+        context.Set<TenantCapability>().AddRange(
+            SeedData.DefaultTenantCoreCapability,
+            SeedData.DefaultTenantIslamicCapability);
+        await context.SaveChangesAsync(ct);
 
-    private static async Task SeedTenantCapabilitiesAsync(ExploreDbContext context, CancellationToken ct)
-    {
-        if (!await context.Set<TenantCapability>().AnyAsync(ct))
-        {
-            context.Set<TenantCapability>().AddRange(
-                SeedData.DefaultTenantCoreCapability,
-                SeedData.DefaultTenantIslamicCapability);
-            await context.SaveChangesAsync(ct);
-        }
-    }
+        // Phase 8: Categories, tags, location
+        context.Set<Location>().Add(SeedData.OnlineLocation);
 
-    private static async Task SeedLocationsAsync(ExploreDbContext context, CancellationToken ct)
-    {
-        if (!await context.Locations.AnyAsync(ct))
-        {
-            context.Locations.Add(SeedData.OnlineLocation);
-            await context.SaveChangesAsync(ct);
-        }
-    }
+        context.Set<Category>().AddRange(
+            SeedData.IslamicStudiesCategory,
+            SeedData.QuranCategory,
+            SeedData.HadithCategory,
+            SeedData.FiqhCategory,
+            SeedData.AqeedahCategory,
+            SeedData.SeerahCategory,
+            SeedData.ArabicLanguageCategory,
+            SeedData.CommunityEventsCategory);
 
-    private static async Task SeedCategoriesAsync(ExploreDbContext context, CancellationToken ct)
-    {
-        if (!await context.Categories.AnyAsync(ct))
-        {
-            // Add parent categories first
-            context.Categories.AddRange(
-                SeedData.IslamicStudiesCategory,
-                SeedData.ArabicLanguageCategory,
-                SeedData.CommunityEventsCategory);
-            await context.SaveChangesAsync(ct);
+        context.Set<Tag>().AddRange(
+            SeedData.BeginnerTag,
+            SeedData.IntermediateTag,
+            SeedData.AdvancedTag,
+            SeedData.FreeTag,
+            SeedData.PaidTag,
+            SeedData.OnlineTag,
+            SeedData.InPersonTag);
+        await context.SaveChangesAsync(ct);
 
-            // Add child categories
-            context.Categories.AddRange(
-                SeedData.QuranCategory,
-                SeedData.HadithCategory,
-                SeedData.FiqhCategory,
-                SeedData.AqeedahCategory,
-                SeedData.SeerahCategory);
-            await context.SaveChangesAsync(ct);
-        }
-    }
-
-    private static async Task SeedTagsAsync(ExploreDbContext context, CancellationToken ct)
-    {
-        if (!await context.Tags.AnyAsync(ct))
-        {
-            context.Tags.AddRange(
-                SeedData.BeginnerTag,
-                SeedData.IntermediateTag,
-                SeedData.AdvancedTag,
-                SeedData.FreeTag,
-                SeedData.PaidTag,
-                SeedData.OnlineTag,
-                SeedData.InPersonTag);
-            await context.SaveChangesAsync(ct);
-        }
-    }
-
-    private static async Task SeedUserRolesAsync(ExploreDbContext context, CancellationToken ct)
-    {
-        if (!await context.UserRoles.AnyAsync(ct))
-        {
-            context.UserRoles.AddRange(
-                SeedData.SuperAdminRole,
-                SeedData.AdminRole,
-                SeedData.ModeratorRole,
-                SeedData.UserRoleData);
-            await context.SaveChangesAsync(ct);
-        }
-    }
-
-    private static async Task SeedSampleEventsAsync(ExploreDbContext context, CancellationToken ct)
-    {
-        if (!await context.Events.AnyAsync(ct))
-        {
-            context.Events.Add(SeedData.SampleEvent);
-            await context.SaveChangesAsync(ct);
-        }
+        // Phase 9: Sample event (depends on actors, storage, tenant)
+        context.Set<Event>().Add(SeedData.SampleEvent);
+        await context.SaveChangesAsync(ct);
     }
 }

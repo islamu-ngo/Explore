@@ -9,6 +9,6 @@ public class OrganizationInvitationDto
     public Guid Id { get; set; }
     public Guid OrganizationId { get; set; }
     public required string OrganizationName { get; set; }
-    public OrganizationRoleEnum Role { get; set; }
+    public RoleEnum Role { get; set; }
     public required string Email { get; set; }
 }

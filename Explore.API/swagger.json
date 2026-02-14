@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "https://localhost:63021/"
+      "url": "https://localhost:50992/"
     }
   ],
   "paths": {
@@ -17990,6 +17990,18 @@
           },
           "customDomain": {
             "type": "string"
+          },
+          "isIslamicModuleEnabled": {
+            "type": "boolean"
+          },
+          "isTechModuleEnabled": {
+            "type": "boolean"
+          },
+          "enabledModules": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },

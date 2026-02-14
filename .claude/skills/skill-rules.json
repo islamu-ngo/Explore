@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "version": "2.0",
-  "description": "Skill activation triggers for ISLAMU Event (Explore project) - ASP.NET Core, Blazor, and Clean Architecture context.",
-  "customizationNote": "File path patterns are currently Explore-specific (e.g., '**/Explore.Domain/**'). To use in other projects, replace 'Explore' with your project name (e.g., '**/YourProject.Domain/**') or use generic patterns like '**/*.Domain/**' if your project follows a different naming convention.",
+  "description": "Skill activation triggers for .NET Clean Architecture solutions (API, Application, Persistence, Blazor).",
+  "customizationNote": "Patterns are project-agnostic by default. If your solution uses non-standard naming, adjust path patterns to your folder structure.",
   "lastUpdated": "2026-01-19",
   "skills": {
     "clean-architecture-rules": {
@@ -30,8 +30,8 @@
       },
       "fileTriggers": {
         "pathPatterns": [
-          "**/Explore.Domain/**/*.cs",
-          "**/Explore.Application/**/*.cs"
+          "**/*Domain/**/*.cs",
+          "**/*Application/**/*.cs"
         ],
         "contentPatterns": [
           "using.*Infrastructure",
@@ -72,11 +72,11 @@
       },
       "fileTriggers": {
         "pathPatterns": [
-          "**/Explore.Application/**/*Handler.cs",
-          "**/Explore.Application/**/*Command.cs",
-          "**/Explore.Application/**/*Query.cs",
-          "**/Explore.Application/**/*Validator.cs",
-          "**/Explore.Application/**/*Request.cs"
+          "**/*Application/**/*Handler.cs",
+          "**/*Application/**/*Command.cs",
+          "**/*Application/**/*Query.cs",
+          "**/*Application/**/*Validator.cs",
+          "**/*Application/**/*Request.cs"
         ],
         "contentPatterns": [
           "IRequest",
@@ -176,7 +176,7 @@
       "type": "domain",
       "enforcement": "suggest",
       "priority": "high",
-      "description": "Authentication and authorization patterns for ISLAMU Event including Keycloak OIDC, JWT validation, user ID extraction, and controller authorization.",
+      "description": "Authentication and authorization patterns for OIDC/JWT APIs, including claim extraction and endpoint authorization.",
       "promptTriggers": {
         "keywords": [
           "auth",
@@ -200,6 +200,8 @@
       },
       "fileTriggers": {
         "pathPatterns": [
+          "**/*API/Program.cs",
+          "**/*Api/Program.cs",
           "**/Program.cs",
           "**/appsettings*.json",
           "**/*Controller.cs"
@@ -244,7 +246,7 @@
       },
       "fileTriggers": {
         "pathPatterns": [
-          "**/Explore.Persistence/**/*.cs",
+          "**/*Persistence/**/*.cs",
           "**/*DbContext.cs",
           "**/*Configuration.cs",
           "**/*Repository.cs"
@@ -263,7 +265,7 @@
       "type": "domain",
       "enforcement": "suggest",
       "priority": "medium",
-      "description": "Error tracking and Sentry integration for ISLAMU Event including API exception handling, Blazor error boundaries, and performance monitoring.",
+      "description": "Error tracking and observability patterns for API and application services including exception handling and performance monitoring.",
       "promptTriggers": {
         "keywords": [
           "error",
@@ -297,22 +299,22 @@
   },
   "architectureLayers": {
     "Domain": {
-      "project": "Explore.Domain",
+      "project": "{Project}.Domain",
       "description": "Core business logic, entities, enums, value objects. No external dependencies.",
       "allowedDependencies": []
     },
     "Application": {
-      "project": "Explore.Application",
+      "project": "{Project}.Application",
       "description": "Use cases, CQRS handlers, DTOs, interfaces, validation. Orchestrates domain logic.",
       "allowedDependencies": ["Domain"]
     },
     "Infrastructure": {
-      "projects": ["Explore.Persistence", "Explore.Infrastructure"],
+      "projects": ["{Project}.Persistence", "{Project}.Infrastructure"],
       "description": "Database access, external services, repository implementations.",
       "allowedDependencies": ["Application", "Domain"]
     },
     "Presentation": {
-      "projects": ["Explore.API", "Explore.Blazor", "Explore.Blazor.Client"],
+      "projects": ["{Project}.API", "{Project}.Blazor", "{Project}.Blazor.Client"],
       "description": "REST API controllers, Blazor UI components. Entry points to the application.",
       "allowedDependencies": ["Application", "Infrastructure"]
     }

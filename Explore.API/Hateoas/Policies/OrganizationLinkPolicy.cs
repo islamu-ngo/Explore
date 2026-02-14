@@ -1,6 +1,8 @@
 namespace Explore.API.Hateoas.Policies;
 
+using System.Collections.Generic;
 using System.Security.Claims;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.Organization;
 using Explore.Application.Hateoas;
@@ -45,13 +47,30 @@ public sealed class OrganizationDetailLinkPolicy : ILinkPolicy<OrganizationDto>
         // In a real implementation, you'd check if user is a member of this organization
         yield return LinkDefinition.Edit(
             RouteNames.UpdateOrganization,
-            new { id = dto.Id });
+            new { id = dto.Id })
+            .RequirePermission(
+                PermissionAction.Update,
+                dto,
+                dto.Id.ToString(),
+                new Dictionary<string, object>
+                {
+                    ["organizationId"] = dto.Id.ToString(),
+                    ["tenantId"] = dto.TenantId.ToString()
+                });
 
         // Delete link - requires admin role
         yield return LinkDefinition.Delete(
             RouteNames.DeleteOrganization,
-            new { id = dto.Id },
-            roles: new[] { "Admin" });
+            new { id = dto.Id })
+            .RequirePermission(
+                PermissionAction.Delete,
+                dto,
+                dto.Id.ToString(),
+                new Dictionary<string, object>
+                {
+                    ["organizationId"] = dto.Id.ToString(),
+                    ["tenantId"] = dto.TenantId.ToString()
+                });
     }
 }
 
@@ -83,6 +102,7 @@ public sealed class OrganizationCollectionLinkPolicy : ICollectionLinkPolicy<Org
     public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
     {
         // Create link - requires authentication
-        yield return LinkDefinition.Create(RouteNames.CreateOrganization);
+        yield return LinkDefinition.Create(RouteNames.CreateOrganization)
+            .RequirePermission(PermissionAction.Create, typeof(OrganizationDto), "organization");
     }
 }

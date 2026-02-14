@@ -17,37 +17,30 @@ public partial class AnnouncementBar
     {
         if (firstRender)
         {
-            await LoadDismissalState();
-        }
-    }
-
-    private async Task LoadDismissalState()
-    {
-        try
-        {
-            var dismissed = await JSRuntime.InvokeAsync<string?>("localStorage.getItem", "announcementDismissed");
-            if (dismissed == "true")
-            {
-                _isVisible = false;
-                StateHasChanged();
-            }
-        }
-        catch (JSException)
-        {
-            // Fail gracefully if localStorage is not available (e.g., during pre-rendering).
+            // Measure height and set CSS variable for sticky headers
+            await UpdateHeightVariable();
         }
     }
 
     private async Task CloseBar()
     {
         _isVisible = false;
+        await UpdateHeightVariable();
+    }
+
+    private async Task UpdateHeightVariable()
+    {
         try
         {
-            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "announcementDismissed", "true");
+            // If visible, measure. If not, set to 0.
+            // We use a simple JS script here or rely on the fact that if it's removed from DOM, height is 0.
+            // But we need to update the variable.
+            var height = _isVisible ? await JSRuntime.InvokeAsync<double>("eval", "document.querySelector('.announcement-bar')?.offsetHeight || 0") : 0;
+            await JSRuntime.InvokeVoidAsync("document.documentElement.style.setProperty", "--announcement-bar-height", $"{height}px");
         }
-        catch (JSException)
+        catch
         {
-            // Fail gracefully.
+            // Ignore JS errors
         }
     }
 }

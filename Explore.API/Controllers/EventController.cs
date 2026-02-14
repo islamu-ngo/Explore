@@ -138,7 +138,7 @@ public class EventController : ControllerBase
             SortDescending = sortDescending
         }, cancellationToken);
 
-        var halResource = _resourceAssembler.ToCollectionResource(
+        var halResource = await _resourceAssembler.ToCollectionResource(
             result,
             RouteNames.GetEvents,
             additionalRouteValues: null,
@@ -186,7 +186,7 @@ public class EventController : ControllerBase
 
             _logger.LogInformation("Retrieved {Count} events", result?.Items?.Count ?? 0);
 
-            var halResource = _resourceAssembler.ToCollectionResource(
+            var halResource = await _resourceAssembler.ToCollectionResource(
                 result!,
                 RouteNames.GetMyEvents,
                 additionalRouteValues: null,
@@ -221,7 +221,7 @@ public class EventController : ControllerBase
             return NotFound();
         }
 
-        var halResource = _resourceAssembler.ToResource(@event, HttpContext);
+        var halResource = await _resourceAssembler.ToResource(@event, HttpContext);
         return Ok(halResource);
     }
 

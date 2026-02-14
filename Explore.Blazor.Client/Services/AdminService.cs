@@ -40,7 +40,6 @@ public interface IAdminService
     Task<ICollection<LanguageListDto>> GetLanguagesAsync();
 
     // Lookup tables - Organization/Actor related
-    Task<ICollection<OrganizationRoleListDto>> GetOrganizationRolesAsync();
     Task<ICollection<OrganizationPositionListDto>> GetOrganizationPositionsAsync();
     Task<ICollection<ActorTypeListDto>> GetActorTypesAsync();
     Task<ICollection<StatusTypeListDto>> GetApprovalStatusesAsync();
@@ -356,24 +355,6 @@ public class AdminService : IAdminService
         {
             _logger.LogError(ex, "[AdminService.GetLanguagesAsync] Unexpected error fetching languages");
             return new List<LanguageListDto>();
-        }
-    }
-
-    public async Task<ICollection<OrganizationRoleListDto>> GetOrganizationRolesAsync()
-    {
-        try
-        {
-            return await _apiClient.OrganizationroleAllAsync();
-        }
-        catch (ApiException ex)
-        {
-            _logger.LogError(ex, "[AdminService.GetOrganizationRolesAsync] API error fetching organization roles. StatusCode: {StatusCode}", ex.StatusCode);
-            return new List<OrganizationRoleListDto>();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[AdminService.GetOrganizationRolesAsync] Unexpected error fetching organization roles");
-            return new List<OrganizationRoleListDto>();
         }
     }
 

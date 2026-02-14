@@ -7,6 +7,7 @@ using Explore.Application.Features.Events.Handlers.Commands;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
+using Explore.Domain.Constants;
 using Microsoft.Extensions.Caching.Hybrid;
 using NSubstitute;
 using TUnit.Assertions;
@@ -196,7 +197,7 @@ public class CreateEventCommandHandlerTests
         _userContext.GetRequiredUserId().Returns(userId);
 
         // Mock Admin Check Failure
-        _organizationMemberRepository.IsUserAdminOfOrganization(organizationId, userId).Returns(false);
+        _organizationMemberRepository.HasPermissionInOrganization(organizationId, userId, PermissionCodes.EventCreate).Returns(false);
 
         // Mock Validation Dependencies
         _organizationRepository.Exists(organizationId).Returns(true);

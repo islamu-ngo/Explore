@@ -26,4 +26,7 @@ public class InstanceGovernanceSettingsDto
     public bool LockTenantBrandLogoUrl { get; set; }
     public bool LockTenantBrandFaviconUrl { get; set; }
     public bool LockTenantBrandCustomCssUrl { get; set; }
+
+    // Authorization
+    public string AuthorizationProvider { get; set; } = "local";
 }
