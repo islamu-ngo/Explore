@@ -1,6 +1,7 @@
 // ABOUTME: Handles completion of tenant onboarding by persisting tenant policy choices.
-// ABOUTME: Restricts completion to tenant administrators or instance administrators for the current tenant.
+// ABOUTME: Restricts completion to tenant administrators (Owner/Admin) or instance administrators only.
 
+using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
@@ -15,21 +16,18 @@ public class CompleteTenantOnboardingCommandHandler : IRequestHandler<CompleteTe
 {
     private readonly ITenantContext _tenantContext;
     private readonly ITenantOnboardingStateRepository _tenantOnboardingStateRepository;
-    private readonly ITenantMemberRepository _tenantMemberRepository;
-    private readonly IInstanceAdministratorRepository _instanceAdministratorRepository;
+    private readonly IAdminContext _adminContext;
     private readonly ITenantPolicySettingService _policySettingService;
 
     public CompleteTenantOnboardingCommandHandler(
         ITenantContext tenantContext,
         ITenantOnboardingStateRepository tenantOnboardingStateRepository,
-        ITenantMemberRepository tenantMemberRepository,
-        IInstanceAdministratorRepository instanceAdministratorRepository,
+        IAdminContext adminContext,
         ITenantPolicySettingService policySettingService)
     {
         _tenantContext = tenantContext;
         _tenantOnboardingStateRepository = tenantOnboardingStateRepository;
-        _tenantMemberRepository = tenantMemberRepository;
-        _instanceAdministratorRepository = instanceAdministratorRepository;
+        _adminContext = adminContext;
         _policySettingService = policySettingService;
     }
 
@@ -38,7 +36,7 @@ public class CompleteTenantOnboardingCommandHandler : IRequestHandler<CompleteTe
         var response = new BaseCommandResponse<Guid>();
         var tenantId = _tenantContext.TenantId;
 
-        if (!await IsUserAuthorizedAsync(tenantId, request.UserId))
+        if (!await IsUserAuthorizedAsync(tenantId, cancellationToken))
         {
             response.Success = false;
             response.Message = "Only tenant administrators or instance administrators can complete tenant onboarding.";
@@ -74,13 +72,13 @@ public class CompleteTenantOnboardingCommandHandler : IRequestHandler<CompleteTe
         return response;
     }
 
-    private async Task<bool> IsUserAuthorizedAsync(Guid tenantId, Guid userId)
+    private async Task<bool> IsUserAuthorizedAsync(Guid tenantId, CancellationToken cancellationToken)
     {
-        if (await _tenantMemberRepository.IsTenantMember(tenantId, userId))
+        if (await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken))
         {
             return true;
         }
 
-        return await _instanceAdministratorRepository.IsUserInstanceAdmin(userId);
+        return await _adminContext.IsInstanceAdminAsync(cancellationToken);
     }
 }

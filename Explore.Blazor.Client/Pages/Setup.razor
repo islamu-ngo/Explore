@@ -1,0 +1,314 @@
+@* ABOUTME: Setup secret entry page for first-run bootstrap access control. *@
+@* ABOUTME: Validates secret, stores it in sessionStorage, then routes to onboarding/login flow. *@
+
+@page "/setup"
+@rendermode InteractiveAuto
+@layout SetupLayout
+@implements IDisposable
+@inject IInstanceOnboardingService InstanceOnboardingService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@inject HttpClient Http
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-8">
+    <MudPaper Class="pa-6">
+        <MudText Typo="Typo.h4" Class="mb-2">Setup Access</MudText>
+
+        @if (_isLoading)
+        {
+            <MudStack Spacing="2" AlignItems="AlignItems.Center">
+                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+                <MudText Typo="Typo.body2">Checking instance status...</MudText>
+            </MudStack>
+        }
+        else if (_setupTimedOut)
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+                Setup window expired. Please restart the application.
+            </MudAlert>
+            @if (_instanceStartedAt.HasValue)
+            {
+                <MudText Typo="Typo.caption" Class="mt-2">
+                    Instance started at: @_instanceStartedAt.Value.ToString("yyyy-MM-dd HH:mm:ss") UTC
+                </MudText>
+            }
+        }
+        else if (_isAuthenticated && _hasStoredSecret)
+        {
+            <MudAlert Severity="Severity.Success" Class="mb-4">
+                Setup secret is validated and your session is authenticated.
+            </MudAlert>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ContinueToOnboardingAsync">
+                Continue to Instance Onboarding
+            </MudButton>
+            <MudButton Variant="Variant.Text" Color="Color.Default" Class="ml-2" OnClick="ClearStoredSecretAsync">
+                Clear Secret
+            </MudButton>
+        }
+        else
+        {
+            @if (_instanceStartedAt.HasValue)
+            {
+                <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3" NoIcon="true">
+                    <MudStack Direction="Direction.Row" Spacing="1" AlignItems="AlignItems.Center">
+                        <MudIcon Icon="@Icons.Material.Filled.Timer" Size="Size.Small" />
+                        <MudText Typo="Typo.body2">
+                            Setup window: @_remainingTime remaining
+                        </MudText>
+                    </MudStack>
+                </MudAlert>
+            }
+
+            <MudText Typo="Typo.body1" Class="mb-3">Enter setup secret</MudText>
+
+            @if (!string.IsNullOrWhiteSpace(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-3">@_errorMessage</MudAlert>
+            }
+
+            @if (_validationSucceeded)
+            {
+                <MudAlert Severity="Severity.Success" Class="mb-3">
+                    Secret validated successfully.
+                </MudAlert>
+            }
+
+            <MudTextField T="string"
+                          Label="Setup Secret"
+                          InputType="InputType.Password"
+                          Variant="Variant.Outlined"
+                          Immediate="true"
+                          @bind-Value="_secret"
+                          Disabled="_isValidating" />
+
+            <MudText Typo="Typo.caption" Class="mt-1 mb-3 d-block">
+                Check the <code>SETUP_SECRET</code> environment variable, or check the API server logs.
+            </MudText>
+
+            <MudStack Direction="Direction.Row" Spacing="2">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Disabled="_isValidating || string.IsNullOrWhiteSpace(_secret)"
+                           OnClick="ValidateAsync">
+                    Validate
+                </MudButton>
+
+                @if (_validationSucceeded)
+                {
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ContinueToLogin">
+                        Continue to Login
+                    </MudButton>
+                }
+            </MudStack>
+        }
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private bool _isLoading = true;
+    private bool _isValidating;
+    private bool _isAuthenticated;
+    private bool _setupTimedOut;
+    private bool _validationSucceeded;
+    private bool _hasStoredSecret;
+    private string _secret = string.Empty;
+    private string? _errorMessage;
+    private DateTime? _instanceStartedAt;
+    private string _remainingTime = string.Empty;
+    private Timer? _countdownTimer;
+    private bool _isSyncingSecret;
+    private bool _isSecretSyncedForAuthenticatedSession;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshStatusAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadSecretFromSessionAsync();
+        }
+
+        await EnsureSecretSyncedForAuthenticatedSessionAsync();
+    }
+
+    private async Task RefreshStatusAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        var status = await InstanceOnboardingService.GetStatusAsync();
+        if (status is null)
+        {
+            _errorMessage = "Could not determine setup status. Try refreshing.";
+            _isLoading = false;
+            return;
+        }
+
+        if (status.IsCompleted)
+        {
+            Navigation.NavigateTo("/", forceLoad: true);
+            return;
+        }
+
+        _isAuthenticated = status.IsAuthenticated;
+        _setupTimedOut = status.SetupTimedOut;
+        _instanceStartedAt = status.InstanceStartedAt;
+        UpdateRemainingTime();
+        StartCountdownTimer();
+        _isLoading = false;
+    }
+
+    private async Task ValidateAsync()
+    {
+        _isValidating = true;
+        _errorMessage = null;
+
+        var result = await InstanceOnboardingService.ValidateSecretAsync(_secret.Trim());
+        _isValidating = false;
+
+        if (!result.Valid)
+        {
+            _validationSucceeded = false;
+            _errorMessage = string.IsNullOrWhiteSpace(result.Error)
+                ? "Secret validation failed."
+                : result.Error;
+            return;
+        }
+
+        var persistResponse = await Http.PostAsJsonAsync("/bff/setup-secret", new { Secret = _secret.Trim() });
+        if (!persistResponse.IsSuccessStatusCode)
+        {
+            _validationSucceeded = false;
+            _errorMessage = "Secret validated but could not persist onboarding session. Try again.";
+            return;
+        }
+
+        await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", "setup-secret", _secret.Trim());
+        _hasStoredSecret = true;
+        _validationSucceeded = true;
+        _isSecretSyncedForAuthenticatedSession = false;
+    }
+
+    private void ContinueToLogin()
+    {
+        Navigation.NavigateTo("/auth/login?returnUrl=/setup", forceLoad: true);
+    }
+
+    private async Task LoadSecretFromSessionAsync()
+    {
+        var storedSecret = await JSRuntime.InvokeAsync<string?>("sessionStorage.getItem", "setup-secret");
+        _hasStoredSecret = !string.IsNullOrWhiteSpace(storedSecret);
+
+        if (_hasStoredSecret)
+        {
+            _secret = storedSecret!.Trim();
+            _validationSucceeded = true;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task ClearStoredSecretAsync()
+    {
+        await Http.DeleteAsync("/bff/setup-secret");
+        await JSRuntime.InvokeVoidAsync("sessionStorage.removeItem", "setup-secret");
+        _hasStoredSecret = false;
+        _validationSucceeded = false;
+        _secret = string.Empty;
+        _isSecretSyncedForAuthenticatedSession = false;
+    }
+
+    private async Task ContinueToOnboardingAsync()
+    {
+        var secret = _secret.Trim();
+        if (!string.IsNullOrWhiteSpace(secret))
+        {
+            var syncResponse = await Http.PostAsJsonAsync("/bff/setup-secret/sync", new { Secret = secret });
+            if (syncResponse.IsSuccessStatusCode)
+            {
+                _isSecretSyncedForAuthenticatedSession = true;
+            }
+        }
+
+        Navigation.NavigateTo("/onboarding/instance", forceLoad: true);
+    }
+
+    private async Task EnsureSecretSyncedForAuthenticatedSessionAsync()
+    {
+        if (_isSyncingSecret || _isSecretSyncedForAuthenticatedSession || !_isAuthenticated || !_hasStoredSecret)
+        {
+            return;
+        }
+
+        var secret = _secret.Trim();
+        if (string.IsNullOrWhiteSpace(secret))
+        {
+            secret = (await JSRuntime.InvokeAsync<string?>("sessionStorage.getItem", "setup-secret"))?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(secret))
+            {
+                return;
+            }
+
+            _secret = secret;
+        }
+
+        _isSyncingSecret = true;
+        try
+        {
+            var response = await Http.PostAsJsonAsync("/bff/setup-secret/sync", new { Secret = secret });
+            if (response.IsSuccessStatusCode)
+            {
+                _isSecretSyncedForAuthenticatedSession = true;
+            }
+        }
+        finally
+        {
+            _isSyncingSecret = false;
+        }
+    }
+
+    private void UpdateRemainingTime()
+    {
+        if (!_instanceStartedAt.HasValue)
+        {
+            _remainingTime = "unknown";
+            return;
+        }
+
+        var elapsed = DateTime.UtcNow - _instanceStartedAt.Value;
+        var remaining = TimeSpan.FromMinutes(60) - elapsed;
+
+        if (remaining <= TimeSpan.Zero)
+        {
+            _remainingTime = "expired";
+            _setupTimedOut = true;
+            _countdownTimer?.Dispose();
+            _countdownTimer = null;
+            return;
+        }
+
+        _remainingTime = $"{(int)remaining.TotalMinutes}m {remaining.Seconds}s";
+    }
+
+    private void StartCountdownTimer()
+    {
+        _countdownTimer?.Dispose();
+
+        if (_setupTimedOut || !_instanceStartedAt.HasValue)
+            return;
+
+        _countdownTimer = new Timer(_ =>
+        {
+            UpdateRemainingTime();
+            InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+    }
+
+    public void Dispose()
+    {
+        _countdownTimer?.Dispose();
+    }
+}

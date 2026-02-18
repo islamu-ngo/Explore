@@ -123,7 +123,8 @@ public class EventSessionTests
         {
             FullName = "Tenant",
             Slug = "tenant",
-            IsActive = true
+            TenantStatusId = 2,
+            TenantStatus = new TenantStatus { Id = 2, MasterCode = "ACTIVE", FullName = "Active", IsActiveState = true }
         };
     }
 }

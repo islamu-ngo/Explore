@@ -25,7 +25,13 @@ public class EventRepositoryTests
         var repository = new EventRepository(context);
 
         // Setup dependent data
-        var tenant = new Tenant { FullName = "Test Tenant", Slug = "test-tenant-" + Guid.NewGuid().ToString("N")[..8], IsActive = true };
+        var tenant = new Tenant
+        {
+            FullName = "Test Tenant",
+            Slug = "test-tenant-" + Guid.NewGuid().ToString("N")[..8],
+            TenantStatusId = 2,
+            TenantStatus = new TenantStatus { Id = 2, MasterCode = "ACTIVE", FullName = "Active", IsActiveState = true }
+        };
         context.Tenants.Add(tenant);
 
         var user = new User { Email = "test@example.com", FirstName = "Test", LastName = "User" };
@@ -94,7 +100,13 @@ public class EventRepositoryTests
         var repository = new EventRepository(context);
 
         // Setup dependent data
-        var tenant = new Tenant { FullName = "Test Tenant", Slug = "test-tenant-" + Guid.NewGuid().ToString("N")[..8], IsActive = true };
+        var tenant = new Tenant
+        {
+            FullName = "Test Tenant",
+            Slug = "test-tenant-" + Guid.NewGuid().ToString("N")[..8],
+            TenantStatusId = 2,
+            TenantStatus = new TenantStatus { Id = 2, MasterCode = "ACTIVE", FullName = "Active", IsActiveState = true }
+        };
         context.Tenants.Add(tenant);
 
         var user = new User { Email = "test2@example.com", FirstName = "Test", LastName = "User" };

@@ -91,6 +91,10 @@ public class CategoryServiceTests
         await _service.GetCategoriesAsync();
 
         // Assert
+        await _apiClient.Received(1).GetCategoriesAsync(
+            ApiConstants.FirstPage,
+            ApiConstants.DefaultPageSize,
+            Arg.Any<CancellationToken>());
     }
 
     #endregion

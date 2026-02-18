@@ -98,10 +98,12 @@ public static class PersistenceServicesRegistration
         services.AddScoped<ITenantUserRepository, TenantUserRepository>();
         services.AddScoped<ITenantSettingsRepository, TenantSettingsRepository>();
         services.AddScoped<IInstanceBootstrapStateRepository, InstanceBootstrapStateRepository>();
-        services.AddScoped<IInstanceAdministratorRepository, InstanceAdministratorRepository>();
+        services.AddScoped<IUserRoleRepository, UserRoleRepository>();
         services.AddScoped<ITenantMemberRepository, TenantMemberRepository>();
         services.AddScoped<ITenantOnboardingStateRepository, TenantOnboardingStateRepository>();
         services.AddScoped<ITenantNavigationLinkRepository, TenantNavigationLinkRepository>();
+        services.AddScoped<ITenantInvitationRepository, TenantInvitationRepository>();
+        services.AddScoped<ITenantLifecycleLogRepository, TenantLifecycleLogRepository>();
 
         // User & Authentication Repositories
         services.AddScoped<IUserRepository, UserRepository>();

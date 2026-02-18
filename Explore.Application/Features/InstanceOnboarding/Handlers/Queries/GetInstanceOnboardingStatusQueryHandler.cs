@@ -15,20 +15,20 @@ namespace Explore.Application.Features.InstanceOnboarding.Handlers.Queries;
 public class GetInstanceOnboardingStatusQueryHandler : IRequestHandler<GetInstanceOnboardingStatusQuery, InstanceOnboardingStatusDto>
 {
     private readonly IInstanceBootstrapStateRepository _instanceBootstrapStateRepository;
-    private readonly IInstanceAdministratorRepository _instanceAdministratorRepository;
+    private readonly IUserRoleRepository _userRoleRepository;
     private readonly ISystemSettingRepository _systemSettingRepository;
     private readonly ICurrentUserService _currentUserService;
     private readonly ISetupSecretProvider _setupSecretProvider;
 
     public GetInstanceOnboardingStatusQueryHandler(
         IInstanceBootstrapStateRepository instanceBootstrapStateRepository,
-        IInstanceAdministratorRepository instanceAdministratorRepository,
+        IUserRoleRepository userRoleRepository,
         ISystemSettingRepository systemSettingRepository,
         ICurrentUserService currentUserService,
         ISetupSecretProvider setupSecretProvider)
     {
         _instanceBootstrapStateRepository = instanceBootstrapStateRepository;
-        _instanceAdministratorRepository = instanceAdministratorRepository;
+        _userRoleRepository = userRoleRepository;
         _systemSettingRepository = systemSettingRepository;
         _currentUserService = currentUserService;
         _setupSecretProvider = setupSecretProvider;
@@ -59,7 +59,7 @@ public class GetInstanceOnboardingStatusQueryHandler : IRequestHandler<GetInstan
             return response;
         }
 
-        response.IsCurrentUserInstanceAdmin = await _instanceAdministratorRepository.IsUserInstanceAdmin(_currentUserService.UserId.Value);
+        response.IsCurrentUserInstanceAdmin = await _userRoleRepository.IsUserPlatformAdmin(_currentUserService.UserId.Value);
         return response;
     }
 

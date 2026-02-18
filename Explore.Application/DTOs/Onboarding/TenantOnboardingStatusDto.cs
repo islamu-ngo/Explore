@@ -8,6 +8,6 @@ public class TenantOnboardingStatusDto
     public bool IsCompleted { get; set; }
     public bool IsAuthenticated { get; set; }
     public bool IsCurrentUserTenantAdministrator { get; set; }
-    public bool IsCurrentUserInstanceAdministrator { get; set; }
+    public bool IsCurrentUserPlatformAdministrator { get; set; }
     public Guid TenantId { get; set; }
 }

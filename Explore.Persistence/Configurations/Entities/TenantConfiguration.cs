@@ -1,6 +1,4 @@
-using System;
 using Explore.Domain;
-using Explore.Persistence.Seed;
 using Explore.Persistence.ValueGenerators;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -15,6 +13,13 @@ public class TenantConfiguration : IEntityTypeConfiguration<Tenant>
 
         builder.Property(e => e.FullName).HasMaxLength(500).IsRequired();
         builder.Property(e => e.Slug).HasMaxLength(500).IsRequired();
+        builder.Property(e => e.Description).HasMaxLength(500);
+        builder.Property(e => e.TenantStatusId).IsRequired();
+
+        builder.HasOne(e => e.TenantStatus)
+            .WithMany()
+            .HasForeignKey(e => e.TenantStatusId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(e => e.Slug).IsUnique();
 

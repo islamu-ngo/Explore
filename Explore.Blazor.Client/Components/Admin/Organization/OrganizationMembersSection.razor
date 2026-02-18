@@ -50,11 +50,11 @@
                                         }
                                     </div>
                                 </div>
-                                <MudChip T="string"
-                                         Color="@RoleHelper.GetRoleColor(member.OrganizationRoleId)"
+                                 <MudChip T="string"
+                                         Color="@RoleHelper.GetRoleColor(member.RoleId)"
                                          Size="Size.Small"
                                          Variant="Variant.Filled">
-                                    @RoleHelper.GetRoleName(member.OrganizationRoleId)
+                                    @RoleHelper.GetRoleName(member.RoleId)
                                 </MudChip>
                             </div>
                         </MudListItem>

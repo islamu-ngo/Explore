@@ -1,10 +1,3 @@
 [mcp_servers.context7]
 url = "https://mcp.context7.com/mcp"
 http_headers = { "CONTEXT7_API_KEY" = "ctx7sk-7280a8a2-f4a8-47f1-a601-a944ff28abe3" }
-
-[mcp_servers.chrome_devtools]
-url = "http://localhost:3000/mcp"
-enabled_tools = ["open", "screenshot"]
-startup_timeout_sec = 20
-tool_timeout_sec = 45
-enabled = true

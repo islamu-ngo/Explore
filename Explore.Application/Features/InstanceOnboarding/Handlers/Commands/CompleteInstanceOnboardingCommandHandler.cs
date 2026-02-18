@@ -16,7 +16,7 @@ namespace Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
 public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<CompleteInstanceOnboardingCommand, BaseCommandResponse<Guid>>
 {
     private readonly IInstanceBootstrapStateRepository _instanceBootstrapStateRepository;
-    private readonly IInstanceAdministratorRepository _instanceAdministratorRepository;
+    private readonly IUserRoleRepository _userRoleRepository;
     private readonly ITenantMemberRepository _tenantMemberRepository;
     private readonly IRoleRepository _roleRepository;
     private readonly IUserRepository _userRepository;
@@ -27,7 +27,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
 
     public CompleteInstanceOnboardingCommandHandler(
         IInstanceBootstrapStateRepository instanceBootstrapStateRepository,
-        IInstanceAdministratorRepository instanceAdministratorRepository,
+        IUserRoleRepository userRoleRepository,
         ITenantMemberRepository tenantMemberRepository,
         IRoleRepository roleRepository,
         IUserRepository userRepository,
@@ -37,7 +37,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         ISetupSecretProvider setupSecretProvider)
     {
         _instanceBootstrapStateRepository = instanceBootstrapStateRepository;
-        _instanceAdministratorRepository = instanceAdministratorRepository;
+        _userRoleRepository = userRoleRepository;
         _tenantMemberRepository = tenantMemberRepository;
         _roleRepository = roleRepository;
         _userRepository = userRepository;
@@ -84,7 +84,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
 
         await _governanceSettingService.ApplySettingsAsync(defaultTenant.Id, request.Settings, request.UserId);
 
-        await EnsureInstanceAdministratorAsync(request.UserId);
+        await EnsurePlatformAdministratorRoleAsync(request.UserId);
         await EnsureDefaultTenantAdministratorAsync(defaultTenant.Id, request.UserId);
 
         if (bootstrap == null)
@@ -130,7 +130,14 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
             Id = PlatformDefaults.DefaultTenantId,
             FullName = PlatformDefaults.DefaultTenantName,
             Slug = PlatformDefaults.DefaultTenantSlug,
-            IsActive = true
+            TenantStatusId = (int)TenantStatusEnum.Active,
+            TenantStatus = new TenantStatus
+            {
+                Id = (int)TenantStatusEnum.Active,
+                MasterCode = "ACTIVE",
+                FullName = "Active",
+                IsActiveState = true
+            }
         });
     }
 
@@ -149,18 +156,28 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         });
     }
 
-    private async Task EnsureInstanceAdministratorAsync(Guid userId)
+    private async Task EnsurePlatformAdministratorRoleAsync(Guid userId)
     {
-        var existing = await _instanceAdministratorRepository.GetByUserId(userId);
+        var platformAdminRole = await _roleRepository.GetByMasterCodeAsync("platform.admin")
+            ?? await _roleRepository.GetByIdAsync((int)RoleEnum.Admin);
+
+        if (platformAdminRole == null || platformAdminRole.Scope != RoleScopeEnum.Platform)
+        {
+            return;
+        }
+
+        var existing = await _userRoleRepository.GetByUserAndRole(userId, platformAdminRole.Id);
         if (existing != null)
         {
             return;
         }
 
-        await _instanceAdministratorRepository.Create(new InstanceAdministrator
+        await _userRoleRepository.Create(new UserRole
         {
             UserId = userId,
             User = null!,
+            RoleId = platformAdminRole.Id,
+            Role = null!,
             GrantedAt = DateTime.UtcNow,
             GrantedBy = userId
         });

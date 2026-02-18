@@ -28,6 +28,20 @@ public class ApiTestFixture : IAsyncInitializer, IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         Client?.Dispose();
-        await Factory.DisposeAsync();
+
+        if (Factory is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await Factory.DisposeAsync();
+        }
+        catch (NullReferenceException ex)
+        {
+            // Workaround for intermittent WebApplicationFactory teardown race in test host.
+            Console.WriteLine($"Ignoring WebApplicationFactory teardown NullReferenceException: {ex.Message}");
+        }
     }
 }

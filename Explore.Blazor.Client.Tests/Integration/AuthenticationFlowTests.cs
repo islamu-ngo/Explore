@@ -242,19 +242,19 @@ public class AuthenticationFlowTests
     }
 
     [Test]
-    [DisplayName("SuperAdmin_HasAllAccess")]
-    public async Task SuperAdmin_HasAllAccess()
+    [DisplayName("Admin_HasAllAccess")]
+    public async Task Admin_HasAllAccess()
     {
-        // Arrange - Configure super admin user
+        // Arrange - Configure admin user
         using var ctx = CreateContext();
-        AuthenticationScenarios.SuperAdmin().Build(ctx);
+        AuthenticationScenarios.Admin().Build(ctx);
 
         var authState = ctx.Services.GetRequiredService<AuthenticationStateProvider>();
         var state = await authState.GetAuthenticationStateAsync();
 
-        // Assert - Should have super admin role
+        // Assert - Should have admin role
         await Assert.That(state.User.Identity?.IsAuthenticated ?? false).IsTrue();
-        await Assert.That(state.User.IsInRole(AuthenticationTestConstants.SuperAdminRole)).IsTrue();
+        await Assert.That(state.User.IsInRole(AuthenticationTestConstants.AdminRole)).IsTrue();
     }
 
     #endregion

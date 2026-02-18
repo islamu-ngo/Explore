@@ -1,0 +1,69 @@
+// ABOUTME: Unit tests for AnalyticsConfigResolver covering setting resolution and provider fallback behavior.
+// ABOUTME: Verifies runtime cache-backed resolver returns safe defaults for unsupported provider keys.
+
+using Explore.Application.Contracts.Infrastructure;
+using Explore.Domain.Constants;
+using Explore.Domain.Enums;
+using Explore.Infrastructure.Analytics;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
+using NSubstitute;
+
+namespace Event.Application.UnitTests.Infrastructure;
+
+public class AnalyticsConfigResolverTests
+{
+    [Test]
+    public async Task ResolveAsync_ValidSettings_ReturnsResolvedConfiguration()
+    {
+        var settingsResolver = Substitute.For<ISettingsResolver>();
+        var tenantContext = Substitute.For<ITenantContext>();
+        tenantContext.TenantId.Returns(Guid.Parse("018e4e5c-7f00-7000-8000-000000009001"));
+
+        settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsProvider, tenantContext.TenantId, Arg.Any<CancellationToken>())
+            .Returns("posthog");
+        settingsResolver.GetSettingAsync<bool>(GovernanceSettingKeys.AnalyticsEnabled, tenantContext.TenantId, Arg.Any<CancellationToken>())
+            .Returns(true);
+        settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsApiKey, tenantContext.TenantId, Arg.Any<CancellationToken>())
+            .Returns("pk_test");
+        settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsEndpointUrl, tenantContext.TenantId, Arg.Any<CancellationToken>())
+            .Returns("https://analytics.example.com");
+        settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsPersonalApiKey, tenantContext.TenantId, Arg.Any<CancellationToken>())
+            .Returns("ph_personal_test");
+
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var logger = Substitute.For<ILogger<AnalyticsConfigResolver>>();
+        var resolver = new AnalyticsConfigResolver(settingsResolver, tenantContext, cache, logger);
+
+        var config = await resolver.ResolveAsync();
+
+        await Assert.That(config.Provider).IsEqualTo(AnalyticsProviderEnum.Posthog);
+        await Assert.That(config.IsEnabled).IsTrue();
+        await Assert.That(config.ApiKey).IsEqualTo("pk_test");
+        await Assert.That(config.EndpointUrl).IsEqualTo("https://analytics.example.com");
+        await Assert.That(config.PersonalApiKey).IsEqualTo("ph_personal_test");
+    }
+
+    [Test]
+    public async Task ResolveAsync_InvalidProviderValue_FallsBackToNone()
+    {
+        var settingsResolver = Substitute.For<ISettingsResolver>();
+        var tenantContext = Substitute.For<ITenantContext>();
+        tenantContext.TenantId.Returns(Guid.Parse("018e4e5c-7f00-7000-8000-000000009002"));
+
+        settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsProvider, tenantContext.TenantId, Arg.Any<CancellationToken>())
+            .Returns("unknown-provider");
+        settingsResolver.GetSettingAsync<bool>(GovernanceSettingKeys.AnalyticsEnabled, tenantContext.TenantId, Arg.Any<CancellationToken>())
+            .Returns(true);
+        settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsApiKey, tenantContext.TenantId, Arg.Any<CancellationToken>())
+            .Returns("pk_test");
+
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var logger = Substitute.For<ILogger<AnalyticsConfigResolver>>();
+        var resolver = new AnalyticsConfigResolver(settingsResolver, tenantContext, cache, logger);
+
+        var config = await resolver.ResolveAsync();
+
+        await Assert.That(config.Provider).IsEqualTo(AnalyticsProviderEnum.None);
+    }
+}

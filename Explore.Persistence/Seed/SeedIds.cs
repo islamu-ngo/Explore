@@ -85,6 +85,7 @@ public static class SeedIds
     public static readonly Guid SystemSettingIslamicModuleId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000503");
     public static readonly Guid SystemSettingTechModuleId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000504");
     public static readonly Guid SystemSettingTenantSelfServiceRegistrationId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000505");
+    public static readonly Guid SystemSettingTenantWhiteLabelingEnabledId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000518");
     public static readonly Guid SystemSettingUserSubmissionEnabledId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000506");
     public static readonly Guid SystemSettingOrganizationVerificationRequiredId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000507");
     public static readonly Guid SystemSettingOrganizationTenantCanOmitVerificationId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000508");
@@ -118,6 +119,13 @@ public static class SeedIds
     public static readonly Guid SystemSettingS3RegionId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000535");
     public static readonly Guid SystemSettingS3ForcePathStyleId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000536");
     public static readonly Guid SystemSettingS3UploadUrlExpirationMinutesId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000537");
+
+    // ===== System Settings — Analytics =====
+    public static readonly Guid SystemSettingAnalyticsProviderId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000540");
+    public static readonly Guid SystemSettingAnalyticsEnabledId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000541");
+    public static readonly Guid SystemSettingAnalyticsApiKeyId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000542");
+    public static readonly Guid SystemSettingAnalyticsEndpointUrlId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000543");
+    public static readonly Guid SystemSettingAnalyticsPersonalApiKeyId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000544");
 
     // ===== Module Definitions =====
     public static readonly Guid ModuleCoreId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000600");

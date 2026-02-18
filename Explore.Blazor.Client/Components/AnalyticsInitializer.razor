@@ -1,0 +1,37 @@
+@using Explore.Blazor.Client.Services
+@inject IPublicExperienceService PublicExperienceService
+@inject IAnalyticsInterop AnalyticsInterop
+@inject ILogger<AnalyticsInitializer> Logger
+
+@code {
+    private bool _initialized;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _initialized)
+        {
+            return;
+        }
+
+        _initialized = true;
+
+        try
+        {
+            var settings = await PublicExperienceService.GetSettingsAsync();
+            if (settings is null)
+            {
+                return;
+            }
+
+            await AnalyticsInterop.InitAsync(
+                settings.AnalyticsProvider,
+                settings.AnalyticsEnabled,
+                settings.AnalyticsPublicApiKey,
+                settings.AnalyticsEndpointUrl);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Analytics initializer failed");
+        }
+    }
+}

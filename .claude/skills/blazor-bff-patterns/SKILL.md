@@ -34,10 +34,8 @@ Provides patterns for implementing the BFF architecture in Blazor hybrid applica
 
 **Triggered by**:
 - Keywords: "bff", "backend for frontend", "yarp", "proxy", "token forwarding", "cookie auth", "authentication state"
-- File patterns: `**/{Project}.Blazor/Program.cs`, `**/Services/**/*.cs`, `**/Extensions/**/*.cs`
+- File patterns: `**/*Blazor/Program.cs`, `**/*Blazor/Services/**/*.cs`, `**/*Blazor.Client/Services/**/*.cs`, `**/Extensions/**/*.cs`
 - Content patterns: YARP configuration, authentication handlers, service registration
-
-**Note**: Current file triggers are configured for the ISLAMU Event (Explore) implementation. Customize these patterns for your project.
 
 ## 🏗️ BFF Architecture
 
@@ -113,6 +111,7 @@ graph TD
 | [token-forwarding.md](resources/token-forwarding.md) | Access token extraction and forwarding |
 | [auth-state-management.md](resources/auth-state-management.md) | Authentication state serialization |
 | [service-layer-patterns.md](resources/service-layer-patterns.md) | Service wrappers for API clients |
+| [interactiveauto-yarp-security.md](resources/interactiveauto-yarp-security.md) | InteractiveAuto + YARP/BFF production security and middleware ordering |
 
 ## ⚡ Quick Reference
 
@@ -449,6 +448,8 @@ public class EventService : IEventService
 -   ✅ **DO** use `BrowserRequestCredentials.Include` for WASM requests.
 -   ✅ **DO** redirect to login on `401 Unauthorized` responses.
 -   ✅ **DO** serialize authentication state for WASM components.
+-   ✅ **DO** enforce anti-forgery validation for state-changing requests.
+-   ✅ **DO** configure forwarded headers correctly when running behind reverse proxies.
 
 ## ❌ Don'ts
 

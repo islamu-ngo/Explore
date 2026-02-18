@@ -4,7 +4,7 @@
 >
 > Placeholders use `{Placeholder}` syntax - see [../../../../docs/TEMPLATE_GLOSSARY.md](../../../../docs/TEMPLATE_GLOSSARY.md).
 >
-> **Note**: All code examples use the ISLAMU Event (Explore) implementation. Replace project-specific names with your values.
+> **Note**: Prefer the generic template first. Project-specific examples are optional reference only.
 
 ## Placeholder Substitutions
 
@@ -23,9 +23,9 @@ This document details the configuration for the Backend-for-Frontend (BFF) patte
 
 ## 1. YARP Reverse Proxy Setup
 
-YARP is used to proxy API calls from the Blazor client to the `Explore.API` backend. This is crucial for the BFF pattern as it allows for server-side token management.
+YARP is used to proxy API calls from the Blazor client to the `{Project}.API` backend. This is crucial for the BFF pattern as it allows for server-side token management.
 
-**File**: `Explore.Blazor/Program.cs`
+**File**: `{Project}.Blazor/Program.cs`
 
 ```csharp
 // Define the base URL for the backend API
@@ -93,14 +93,14 @@ builder.Services.AddReverseProxy()
 
 These endpoints handle the login and logout flows, leveraging ASP.NET Core's built-in authentication handlers.
 
-**File**: `Explore.Blazor/Program.cs`
+**File**: `{Project}.Blazor/Program.cs`
 
 ```csharp
 // Endpoint for initiating the login process
-app.MapGet("/login", async ctx =>
+app.MapGet("/auth/challenge", async ctx =>
 {
     var returnUrl = ctx.Request.Query["returnUrl"].ToString();
-    // Challenge the user with the OpenID Connect scheme, which redirects to Keycloak
+    // Challenge the user with the OpenID Connect scheme
     await ctx.ChallengeAsync(
         OpenIdConnectDefaults.AuthenticationScheme,
         new AuthenticationProperties
@@ -112,7 +112,7 @@ app.MapGet("/login", async ctx =>
 });
 
 // Endpoint for initiating the logout process
-app.MapGet("/logout", async ctx =>
+app.MapGet("/auth/signout", async ctx =>
 {
     // Sign out from cookie authentication
     await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
@@ -145,13 +145,13 @@ app.MapGet("/bff/me", (HttpContext ctx) =>
 
 ## 3. NSwag API Client Configuration
 
-NSwag generates C# clients for your OpenAPI/Swagger API. These clients need to be configured correctly in the BFF (`Explore.Blazor`) and the WASM client (`Explore.Blazor.Client`).
+NSwag generates C# clients for your OpenAPI/Swagger API. These clients need to be configured correctly in the BFF (`{Project}.Blazor`) and the WASM client (`{Project}.Blazor.Client`).
 
 ### BFF (Blazor Server) Configuration
 
 In the Blazor Server component of the hybrid app, the NSwag client can directly access the backend API because it's running on the server. The `AccessTokenForwardingHandler` ensures JWTs are sent.
 
-**File**: `Explore.Blazor/Program.cs`
+**File**: `{Project}.Blazor/Program.cs`
 
 ```csharp
 var exploreApiBaseUrl = builder.Configuration["ExploreApi:BaseUrl"] ?? "https://localhost:7039/";
@@ -179,11 +179,11 @@ builder.Services.AddHttpClient<IEventApiClient, EventApiClient>(client =>
 });
 ```
 
-### WASM Client (`Explore.Blazor.Client`) Configuration
+### WASM Client (`{Project}.Blazor.Client`) Configuration
 
 In the Blazor WebAssembly client, the NSwag client should **NOT** directly call the backend API. Instead, it calls the **BFF itself**, and the BFF's YARP proxy then forwards the request.
 
-**File**: `Explore.Blazor.Client/Program.cs`
+**File**: `{Project}.Blazor.Client/Program.cs`
 
 ```csharp
 // Register the NSwag generated API client for the WASM client
@@ -195,6 +195,18 @@ builder.Services.AddHttpClient<IEventApiClient, EventApiClient>(client =>
 .AddHttpMessageHandler<BrowserCredentialsMessageHandler>() // Attaches cookies to outgoing requests
 .AddHttpMessageHandler<BffUnauthorizedHandler>();           // Handles 401 Unauthorized responses
 ```
+
+---
+
+## 4. InteractiveAuto + YARP Operational Rules
+
+- Keep Blazor route mapping and API proxy mapping ordered intentionally (Blazor routes first, proxy catch-all routes last).
+- Enable antiforgery for state-changing endpoints and include a request header token for SPA/API writes.
+- Configure forwarded headers when behind TLS-terminating proxies so auth redirect URIs remain correct.
+- Keep BFF cookies secure and avoid token exposure to browser storage.
+- Keep `/login` and `/logout` as client routes (shim pages) that force-load to server auth endpoints (`/auth/challenge`, `/auth/signout`).
+
+See also: [interactiveauto-yarp-security.md](interactiveauto-yarp-security.md)
 
 ---
 

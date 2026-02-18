@@ -37,6 +37,7 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
     {
         var deploymentMode = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.DeploymentMode);
         var tenantSelfService = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantSelfServiceRegistration);
+        var tenantWhiteLabeling = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantWhiteLabelingEnabled);
         var defaultHomePage = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingDefaultPublicHomePage);
         var islamicModule = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.ModulesIslamicEnabled);
         var techModule = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.ModulesTechEnabled);
@@ -57,6 +58,7 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
         {
             DeploymentMode = DeserializeString(deploymentMode?.Value, "SingleTenant"),
             AllowTenantSelfServiceRegistration = DeserializeBoolean(tenantSelfService?.Value, false),
+            AllowTenantWhiteLabeling = DeserializeBoolean(tenantWhiteLabeling?.Value, false),
             DefaultPublicHomePage = NormalizeHomePage(DeserializeString(defaultHomePage?.Value, DefaultPublicHomePage)),
             EnableIslamicModule = DeserializeBoolean(islamicModule?.Value, true),
             EnableTechModule = DeserializeBoolean(techModule?.Value, true),
@@ -107,6 +109,15 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             "Tenant",
             1,
             "Whether tenants can self-register without manual instance admin invitation");
+
+        await UpsertSystemSettingAsync(
+            GovernanceSettingKeys.TenantWhiteLabelingEnabled,
+            JsonSerializer.Serialize(settings.DeploymentMode == "MultiTenant" && settings.AllowTenantWhiteLabeling),
+            SettingValueType.Boolean,
+            false,
+            "Tenant",
+            2,
+            "Whether tenant-level white-label branding overrides are enabled in multi-tenant mode");
 
         await UpsertSystemSettingAsync(
             GovernanceSettingKeys.RoutingDefaultPublicHomePage,

@@ -7,6 +7,7 @@ public class InstanceGovernanceSettingsDto
 {
     public string DeploymentMode { get; set; } = "SingleTenant";
     public bool AllowTenantSelfServiceRegistration { get; set; }
+    public bool AllowTenantWhiteLabeling { get; set; }
     public string DefaultPublicHomePage { get; set; } = "EventList";
     public bool EnableIslamicModule { get; set; } = true;
     public bool EnableTechModule { get; set; } = true;

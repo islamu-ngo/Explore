@@ -1,6 +1,5 @@
 namespace Event.Domain.UnitTests.Entities;
 
-using System.Reflection;
 using Explore.Domain;
 using Explore.Domain.Interfaces;
 
@@ -189,7 +188,8 @@ public class EventTests
         {
             FullName = "Tenant",
             Slug = "tenant",
-            IsActive = true
+            TenantStatusId = 2,
+            TenantStatus = new TenantStatus { Id = 2, MasterCode = "ACTIVE", FullName = "Active", IsActiveState = true }
         };
     }
 

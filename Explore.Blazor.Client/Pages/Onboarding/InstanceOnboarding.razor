@@ -1,12 +1,15 @@
 @page "/onboarding/instance"
 @using MudBlazor
 @using Microsoft.AspNetCore.Authorization
+@layout SetupLayout
 @attribute [Authorize]
 @attribute [StreamRendering]
 @inject IInstanceOnboardingService InstanceOnboardingService
 @inject IUserService UserService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
+@inject HttpClient Http
 
 <MudContainer MaxWidth="MaxWidth.Medium" Class="py-8">
     <MudPaper Class="pa-6">
@@ -28,7 +31,9 @@
         {
             <MudStack Spacing="3">
                 <MudText Typo="Typo.h6">Platform Governance</MudText>
-                <MudSelect T="string" Label="Deployment Mode" @bind-Value="_model.DeploymentMode" Variant="Variant.Outlined">
+                <MudText Typo="Typo.caption" Class="mb-1">Fields marked "(Required)" must be provided before completing onboarding.</MudText>
+
+                <MudSelect T="string" Label="Deployment Mode (Required)" @bind-Value="_model.DeploymentMode" Variant="Variant.Outlined" Required="true" RequiredError="Deployment mode is required.">
                     <MudSelectItem Value="@("SingleTenant")">Single Tenant</MudSelectItem>
                     <MudSelectItem Value="@("MultiTenant")">Multi Tenant</MudSelectItem>
                 </MudSelect>
@@ -39,7 +44,17 @@
                 <MudSwitch T="bool" @bind-Value="_model.AllowTenantSelfServiceRegistration" Color="Color.Primary">
                     Allow tenant self-service registration
                 </MudSwitch>
-                <MudSelect T="string" Label="Default Public Home Page" @bind-Value="_model.DefaultPublicHomePage" Variant="Variant.Outlined">
+                <MudSwitch T="bool"
+                           @bind-Value="_model.AllowTenantWhiteLabeling"
+                           Disabled="@(!_model.DeploymentMode.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase))"
+                           Color="Color.Primary">
+                    Allow tenant white-label branding
+                </MudSwitch>
+                @if (!_model.DeploymentMode.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase))
+                {
+                    <MudText Typo="Typo.caption">Tenant white-labeling is only available in multi-tenant mode.</MudText>
+                }
+                <MudSelect T="string" Label="Default Public Home Page (Required)" @bind-Value="_model.DefaultPublicHomePage" Variant="Variant.Outlined" Required="true" RequiredError="Default public home page is required.">
                     <MudSelectItem Value="@("EventList")">Event List</MudSelectItem>
                     <MudSelectItem Value="@("LandingPage")">Landing Page</MudSelectItem>
                 </MudSelect>
@@ -49,7 +64,7 @@
 
                 <MudDivider />
                 <MudText Typo="Typo.h6">Domain Governance</MudText>
-                <MudTextField Label="Instance Base Domain"
+                <MudTextField Label="Instance Base Domain (Optional)"
                               Variant="Variant.Outlined"
                               @bind-Value="_model.InstanceBaseDomain"
                               Placeholder="example.com"
@@ -84,13 +99,15 @@
 
                 <MudDivider />
                 <MudText Typo="Typo.h6">Default Branding</MudText>
-                <MudTextField Label="Brand Display Name"
+                <MudTextField Label="Brand Display Name (Required)"
                               Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="Brand display name is required."
                               @bind-Value="_model.DefaultBrandDisplayName" />
-                <MudTextField Label="Brand Logo URL"
+                <MudTextField Label="Brand Logo URL (Optional)"
                               Variant="Variant.Outlined"
                               @bind-Value="_model.DefaultBrandLogoUrl" />
-                <MudTextField Label="Brand Favicon URL"
+                <MudTextField Label="Brand Favicon URL (Optional)"
                               Variant="Variant.Outlined"
                               @bind-Value="_model.DefaultBrandFaviconUrl" />
                 <MudTextField Label="Advanced: Custom CSS URL (Optional)"
@@ -126,6 +143,7 @@
     private bool _isLoading = true;
     private bool _isSaving;
     private string? _errorMessage;
+    private bool _setupSecretSynced;
 
     protected override async Task OnInitializedAsync()
     {
@@ -140,6 +158,26 @@
 
         _model = await InstanceOnboardingService.GetSettingsAsync();
         _isLoading = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _setupSecretSynced)
+        {
+            return;
+        }
+
+        var secret = (await JSRuntime.InvokeAsync<string?>("sessionStorage.getItem", "setup-secret"))?.Trim();
+        if (string.IsNullOrWhiteSpace(secret))
+        {
+            return;
+        }
+
+        var syncResponse = await Http.PostAsJsonAsync("/bff/setup-secret/sync", new { Secret = secret });
+        if (syncResponse.IsSuccessStatusCode)
+        {
+            _setupSecretSynced = true;
+        }
     }
 
     private async Task CompleteOnboardingAsync()

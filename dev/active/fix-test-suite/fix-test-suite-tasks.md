@@ -1,6 +1,6 @@
 # Task Checklist: Comprehensive Test Suite Restoration
 
-**Last Updated: 2026-02-05**
+**Last Updated: 2026-02-16 02:07 Europe/Brussels**
 
 This checklist is for tracking the progress of fixing the solution's test suite. Mark items as complete as they are finished.
 
@@ -16,7 +16,7 @@ This checklist is for tracking the progress of fixing the solution's test suite.
     - [ ] **New**: Change `EnsureCreated()` to `Migrate()` in `PostgreSqlContainerFixture.cs` to ensure test database uses migrations.
     - [ ] **New**: Run `dotnet test Event.Persistence.IntegrationTests` and confirm the 2 tests pass.
 
-- [ ] **Task 1.2: Correct Blazor Client Test Context**
+- [x] ✅ **Task 1.2: Correct Blazor Client Test Context**
     - [ ] Identify all failing tests in `Explore.Blazor.Client.Tests` that throw `InvalidOperationException` for `IUserService`.
     - [ ] In each failing test, ensure the `BlazorTestContext` is initialized and `AddAllCoreMocks()` is called before rendering the component.
     - [ ] Run `dotnet test Explore.Blazor.Client.Tests` and confirm the number of DI-related errors is zero.
@@ -28,7 +28,7 @@ This checklist is for tracking the progress of fixing the solution's test suite.
 
 ## Phase 2: Test Logic & Assertion Correction
 
-- [ ] **Task 2.1: Fix Secrets Unit Test Assertions**
+- [x] ✅ **Task 2.1: Fix Secrets Unit Test Assertions**
     - [ ] Open `Explore.Secrets.UnitTests/Services/RotationAwareDbContextFactoryTests.cs`.
     - [ ] In `CurrentConnectionStringRedacted_ShouldRedactPassword`, change the assertion to expect `"Password=***"`.
     - [ ] In `CurrentConnectionStringRedacted_WithPwd_ShouldRedact`, change the assertion to expect `"Pwd=***"`.
@@ -46,7 +46,7 @@ This checklist is for tracking the progress of fixing the solution's test suite.
     - [ ] Update the test's arrangement, action, or assertion to match the current, correct application behavior.
     - [ ] Repeat until all tests in the project pass.
 
-- [ ] **Task 2.4: Refactor and Correct Blazor Client Tests**
+- [x] ✅ **Task 2.4: Refactor and Correct Blazor Client Tests**
     - [ ] Go through each remaining failing test in the `Explore.Blazor.Client.Tests` project.
     - [ ] For tests in `EventServiceTests`, ensure the mock `HttpClient` (via `MockHttp`) is set up correctly to return the expected responses for the API calls being made.
     - [ ] Fix any remaining assertion logic errors.
@@ -56,5 +56,32 @@ This checklist is for tracking the progress of fixing the solution's test suite.
 
 - [ ] **Task 3.1: Full Solution Test Run**
     - [ ] Run `dotnet test` from the root of the solution.
-    - [ ] Confirm the final output shows all 825 tests passing.
+    - [ ] Confirm the final output shows all tests passing.
     - [ ] Review the build output for any lingering warnings and address them.
+
+## Context Reset Session Update (2026-02-15)
+
+- ✅ Confirmed passing projects this session:
+  - `Event.Application.UnitTests`
+  - `Event.Domain.UnitTests`
+  - `Event.Architecture.Tests`
+  - `Explore.Secrets.UnitTests`
+  - `Explore.Blazor.Client.Tests`
+- ⚠️ Persistence integration tests remain blocked by Docker availability.
+- ⚠️ API integration tests still fail with 8 HATEOAS link assertion failures.
+
+### New Immediate Tasks
+
+- [ ] **Task 3.2 (New):** Resolve environment blocker for persistence integration tests
+  - Start Docker daemon and verify `npipe://./pipe/docker_engine` connectivity.
+  - Re-run `dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet`.
+
+- [ ] **Task 3.3 (New):** Triage and fix remaining API integration failures (8 tests)
+  - Re-run `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`.
+  - Fix failing HATEOAS relation expectations (`self`/`canonical`/collection links) or update contract generation code.
+
+## Build Error Hotfix (2026-02-16)
+
+- [x] ✅ **Task 3.4 (New):** Fix NSwag contract drift compile failures (`OrganizationRoleId` -> `RoleId`)
+  - Updated all stale `OrganizationMemberDto.OrganizationRoleId` references in Organization pages/components.
+  - Verified solution compiles with `dotnet build Explore.sln --configuration Release --no-restore /clp:ErrorsOnly`.

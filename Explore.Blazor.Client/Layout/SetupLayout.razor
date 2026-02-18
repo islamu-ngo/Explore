@@ -1,0 +1,15 @@
+@* ABOUTME: Minimal layout used during first-run setup to avoid exposing full app chrome before onboarding. *@
+@* ABOUTME: Renders setup pages with Mud providers but without nav/footer links. *@
+
+@inherits LayoutComponentBase
+
+<MudThemeProvider />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudMainContent>
+        @Body
+    </MudMainContent>
+</MudLayout>

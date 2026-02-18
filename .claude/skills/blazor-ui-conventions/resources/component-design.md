@@ -12,6 +12,14 @@ This document outlines best practices for designing and structuring Blazor compo
 
 Blazor components are primarily defined in `.razor` files, which combine HTML markup with C# code. You can choose between a single-file approach or a code-behind approach.
 
+### Routing Strategy Note
+
+Routable components can be wired by:
+- Native Blazor routing via `@page`, or
+- Centralized route configuration via a router library (for example Blazouter `RouteConfig`).
+
+Follow the project's chosen routing strategy consistently.
+
 ### Single-File Component (.razor)
 
 Convenient for simpler components or prototyping where C# logic is minimal.
@@ -19,7 +27,7 @@ Convenient for simpler components or prototyping where C# logic is minimal.
 ```razor
 @page "/{entities}" @* Makes this component routable *@
 @using MudBlazor @* Common using directives *@
-@inject IMediator Mediator @* Inject dependencies *@
+@inject I{Entity}Service {Entity}Service @* Inject app service wrapper (common in Blazor+BFF) *@
 @inject ISnackbar Snackbar
 
 <PageTitle>{Entities} List</PageTitle> @* Sets browser tab title *@
@@ -51,7 +59,7 @@ Convenient for simpler components or prototyping where C# logic is minimal.
     private async Task Load{Entities}()
     {
         // Logic to load {entity} data
-        // _{entities} = await Mediator.Send(new Get{Entity}ListRequest());
+        // _{entities} = (await {Entity}Service.GetAll{Entities}Async()).ToList();
     }
 }
 ```
@@ -75,7 +83,7 @@ Recommended for more complex components, pages, or when separating UI from logic
 **`{Entity}List.razor.cs`**:
 ```csharp
 using Microsoft.AspNetCore.Components; // Base component functionality
-using MediatR; // Example dependency
+using {Project}.Blazor.Client.Services; // Example dependency
 using MudBlazor; // Example dependency
 
 namespace {Project}.Blazor.Components.Pages; // Namespace matching component location
@@ -84,7 +92,7 @@ namespace {Project}.Blazor.Components.Pages; // Namespace matching component loc
 public partial class {Entity}ListBase : ComponentBase
 {
     // Injected properties are available in markup and code-behind
-    [Inject] protected IMediator Mediator { get; set; } = null!;
+    [Inject] protected I{Entity}Service {Entity}Service { get; set; } = null!;
     [Inject] protected ISnackbar Snackbar { get; set; } = null!;
 
     // Protected properties are accessible from the .razor file

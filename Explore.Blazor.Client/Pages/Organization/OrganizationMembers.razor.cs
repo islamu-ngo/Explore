@@ -32,7 +32,7 @@ public partial class OrganizationMembers
             .Where(x => string.IsNullOrWhiteSpace(_searchString) ||
                         (x.UserFullName?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
                         (x.UserEmail?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false))
-            .Where(x => _roleFilter == null || x.OrganizationRoleId == _roleFilter);
+            .Where(x => _roleFilter == null || x.RoleId == _roleFilter);
 
     protected override async Task OnInitializedAsync()
     {
@@ -58,7 +58,7 @@ public partial class OrganizationMembers
             var me = Members.FirstOrDefault(m => m.UserId.ToString().Equals(currentUserId, StringComparison.OrdinalIgnoreCase));
             if (me != null)
             {
-                currentUserRole = me.OrganizationRoleId;
+                currentUserRole = me.RoleId;
             }
         }
     }

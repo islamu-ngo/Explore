@@ -3,6 +3,8 @@
 
 using System;
 using System.Security.Claims;
+using Explore.API.Filters;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Features.InstanceOnboarding.Requests.Queries;
@@ -11,6 +13,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Explore.API.Controllers;
 
@@ -19,10 +22,17 @@ namespace Explore.API.Controllers;
 public class InstanceOnboardingController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly ISetupSecretProvider _setupSecretProvider;
+    private readonly ILogger<InstanceOnboardingController> _logger;
 
-    public InstanceOnboardingController(IMediator mediator)
+    public InstanceOnboardingController(
+        IMediator mediator,
+        ISetupSecretProvider setupSecretProvider,
+        ILogger<InstanceOnboardingController> logger)
     {
         _mediator = mediator;
+        _setupSecretProvider = setupSecretProvider;
+        _logger = logger;
     }
 
     [HttpGet("status")]
@@ -56,6 +66,8 @@ public class InstanceOnboardingController : ControllerBase
 
     [HttpPost("complete")]
     [Authorize]
+    [SetupSecretRequired]
+    [EnableRateLimiting("SetupSecret")]
     [EndpointSummary("Complete Instance Onboarding")]
     [EndpointDescription("Completes first-run onboarding, assigns the current user as instance admin, and persists instance governance settings.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
@@ -84,11 +96,17 @@ public class InstanceOnboardingController : ControllerBase
             return BadRequest(response);
         }
 
+        _logger.LogWarning(
+            "Instance claimed by admin (userId: {UserId}) from IP: {IpAddress}. Bootstrap mode disabled.",
+            currentUserId, HttpContext.Connection.RemoteIpAddress);
+
         return Ok(response);
     }
 
     [HttpPut("settings")]
     [Authorize]
+    [SetupSecretRequired]
+    [EnableRateLimiting("SetupSecret")]
     [EndpointSummary("Update Instance Governance Settings")]
     [EndpointDescription("Updates instance governance settings at runtime. Requires instance administrator membership.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
@@ -146,6 +164,8 @@ public class InstanceOnboardingController : ControllerBase
 
     [HttpPut("storage-settings")]
     [Authorize]
+    [SetupSecretRequired]
+    [EnableRateLimiting("SetupSecret")]
     [EndpointSummary("Update Instance Storage Settings")]
     [EndpointDescription("Updates instance S3 storage settings. Requires instance administrator membership.")]
     [Consumes("application/json")]
@@ -186,6 +206,8 @@ public class InstanceOnboardingController : ControllerBase
 
     [HttpPost("test-storage")]
     [Authorize]
+    [SetupSecretRequired]
+    [EnableRateLimiting("SetupSecret")]
     [EndpointSummary("Test Storage Connection")]
     [EndpointDescription("Tests the S3 storage connection using current settings. Returns success or failure with message.")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
@@ -204,6 +226,23 @@ public class InstanceOnboardingController : ControllerBase
         return Ok(new { success, message = success ? "Connection successful." : "Connection failed. Please verify your S3 settings." });
     }
 
+    [HttpPost("validate-secret")]
+    [AllowAnonymous]
+    [EnableRateLimiting("SetupSecret")]
+    [EndpointSummary("Validate Setup Secret")]
+    [EndpointDescription("Validates the provided setup secret. Returns whether the secret is correct. Rate limited to 5 attempts per minute.")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status410Gone)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
+    public ActionResult ValidateSecret([FromBody] ValidateSetupSecretRequest request)
+    {
+        if (!_setupSecretProvider.IsSetupModeActive)
+            return StatusCode(StatusCodes.Status410Gone, new { valid = false, error = "Setup already completed." });
+
+        var isValid = _setupSecretProvider.ValidateSecret(request.Secret);
+        return Ok(new { valid = isValid });
+    }
+
     private Guid? GetCurrentUserId()
     {
         var claim = User.FindFirst("sub")?.Value
@@ -212,4 +251,9 @@ public class InstanceOnboardingController : ControllerBase
 
         return Guid.TryParse(claim, out var parsedUserId) ? parsedUserId : null;
     }
+}
+
+public class ValidateSetupSecretRequest
+{
+    public string? Secret { get; set; }
 }

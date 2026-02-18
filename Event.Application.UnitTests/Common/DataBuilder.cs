@@ -147,7 +147,14 @@ public static class DataBuilder
         .RuleFor(t => t.Id, f => Guid.NewGuid())
         .RuleFor(t => t.FullName, f => f.Company.CompanyName())
         .RuleFor(t => t.Slug, f => f.Lorem.Slug())
-        .RuleFor(t => t.IsActive, f => true);
+        .RuleFor(t => t.TenantStatusId, f => (int)Explore.Domain.Enums.TenantStatusEnum.Active)
+        .RuleFor(t => t.TenantStatus, f => new TenantStatus
+        {
+            Id = (int)Explore.Domain.Enums.TenantStatusEnum.Active,
+            MasterCode = "ACTIVE",
+            FullName = "Active",
+            IsActiveState = true
+        });
 
     public static Faker<TenantUser> TenantUser => new Faker<TenantUser>()
         .RuleFor(t => t.Id, f => Guid.NewGuid())

@@ -22,6 +22,7 @@ internal static class InstanceGovernanceSettingHelpers
     {
         var deploymentMode = await systemSettingRepository.GetByKey(GovernanceSettingKeys.DeploymentMode);
         var tenantSelfService = await systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantSelfServiceRegistration);
+        var tenantWhiteLabeling = await systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantWhiteLabelingEnabled);
         var defaultHomePage = await systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingDefaultPublicHomePage);
         var islamicModule = await systemSettingRepository.GetByKey(GovernanceSettingKeys.ModulesIslamicEnabled);
         var techModule = await systemSettingRepository.GetByKey(GovernanceSettingKeys.ModulesTechEnabled);
@@ -41,6 +42,7 @@ internal static class InstanceGovernanceSettingHelpers
         {
             DeploymentMode = DeserializeString(deploymentMode?.Value, "SingleTenant"),
             AllowTenantSelfServiceRegistration = DeserializeBoolean(tenantSelfService?.Value, false),
+            AllowTenantWhiteLabeling = DeserializeBoolean(tenantWhiteLabeling?.Value, false),
             DefaultPublicHomePage = NormalizeHomePage(DeserializeString(defaultHomePage?.Value, DefaultPublicHomePage)),
             EnableIslamicModule = DeserializeBoolean(islamicModule?.Value, true),
             EnableTechModule = DeserializeBoolean(techModule?.Value, true),
@@ -98,6 +100,16 @@ internal static class InstanceGovernanceSettingHelpers
             "Tenant",
             1,
             "Whether tenants can self-register without manual instance admin invitation");
+
+        await UpsertSystemSettingAsync(
+            systemSettingRepository,
+            GovernanceSettingKeys.TenantWhiteLabelingEnabled,
+            JsonSerializer.Serialize(settings.DeploymentMode == "MultiTenant" && settings.AllowTenantWhiteLabeling),
+            SettingValueType.Boolean,
+            false,
+            "Tenant",
+            2,
+            "Whether tenant-level white-label branding overrides are enabled in multi-tenant mode");
 
         await UpsertSystemSettingAsync(
             systemSettingRepository,

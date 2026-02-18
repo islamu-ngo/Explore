@@ -1,5 +1,5 @@
 // ABOUTME: Authorization filter that blocks endpoints in single-tenant deployment mode.
-// ABOUTME: Returns 404 to hide SuperAdmin endpoints from discovery in simplified deployments.
+// ABOUTME: Returns 404 to hide platform-admin endpoints from discovery in simplified deployments.
 
 using Explore.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
@@ -26,7 +26,7 @@ public class BlockInSingleTenantAttribute : Attribute, IAuthorizationFilter
 {
     /// <summary>
     /// Called early in the filter pipeline to confirm request is authorized.
-    /// In single-tenant mode with HideSuperAdminInSingleTenant enabled, returns 404.
+    /// In single-tenant mode with HidePlatformAdminInSingleTenant enabled, returns 404.
     /// </summary>
     public void OnAuthorization(AuthorizationFilterContext context)
     {
@@ -34,7 +34,7 @@ public class BlockInSingleTenantAttribute : Attribute, IAuthorizationFilter
             .GetRequiredService<IOptions<DeploymentSettings>>().Value;
 
         // Only block if in single-tenant mode AND hiding is enabled
-        if (deploymentSettings.IsSingleTenant && deploymentSettings.HideSuperAdminInSingleTenant)
+        if (deploymentSettings.IsSingleTenant && deploymentSettings.HidePlatformAdminInSingleTenant)
         {
             // Return 404 to hide the endpoint from discovery
             // Using NotFoundResult instead of ForbidResult to prevent enumeration

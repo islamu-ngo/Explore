@@ -10,11 +10,10 @@ namespace Explore.Domain.Enums;
 public enum RoleEnum
 {
     // Platform scope (1-9)
-    SuperAdmin = 1,
-    Admin = 2,
-    Moderator = 3,
-    Editor = 4,
-    Member = 5,
+    Admin = 1,
+    Moderator = 2,
+    Editor = 3,
+    Member = 4,
 
     // Tenant scope (10-19)
     TenantOwner = 10,

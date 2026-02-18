@@ -7,8 +7,6 @@ using Explore.Application.Features.PublicExperience.Requests.Queries;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using NSubstitute;
-using TUnit.Assertions;
-using TUnit.Core;
 
 namespace Event.Application.UnitTests.Features.PublicExperience.Queries;
 
@@ -16,6 +14,7 @@ public class GetPublicExperienceSettingsQueryHandlerTests
 {
     private readonly ITenantContext _tenantContext;
     private readonly ISystemSettingRepository _systemSettingRepository;
+    private readonly ISettingsResolver _settingsResolver;
     private readonly ITenantPolicySettingService _policySettingService;
     private readonly IModuleService _moduleService;
     private readonly GetPublicExperienceSettingsQueryHandler _handler;
@@ -24,12 +23,14 @@ public class GetPublicExperienceSettingsQueryHandlerTests
     {
         _tenantContext = Substitute.For<ITenantContext>();
         _systemSettingRepository = Substitute.For<ISystemSettingRepository>();
+        _settingsResolver = Substitute.For<ISettingsResolver>();
         _policySettingService = Substitute.For<ITenantPolicySettingService>();
         _moduleService = Substitute.For<IModuleService>();
 
         _handler = new GetPublicExperienceSettingsQueryHandler(
             _tenantContext,
             _systemSettingRepository,
+            _settingsResolver,
             _policySettingService,
             _moduleService);
     }
@@ -123,5 +124,61 @@ public class GetPublicExperienceSettingsQueryHandlerTests
         await Assert.That(result.DeploymentMode).IsEqualTo("SingleTenant");
         await Assert.That(result.IsIslamicModuleEnabled).IsTrue();
         await Assert.That(result.IsTechModuleEnabled).IsFalse();
+    }
+
+    [Test]
+    public async Task Handle_WithAnalyticsConfigured_ReturnsAnalyticsBootstrapSettings()
+    {
+        // Arrange
+        var tenantId = Guid.NewGuid();
+        _tenantContext.TenantId.Returns(tenantId);
+
+        _policySettingService.ReadEffectiveTenantSettingsAsync(tenantId).Returns(new TenantPolicySettingsDto());
+        _moduleService.GetEnabledModulesAsync(tenantId, Arg.Any<CancellationToken>())
+            .Returns(new List<ModuleInfo>());
+
+        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsProvider, tenantId, Arg.Any<CancellationToken>())
+            .Returns("posthog");
+        _settingsResolver.GetSettingAsync<bool>(GovernanceSettingKeys.AnalyticsEnabled, tenantId, Arg.Any<CancellationToken>())
+            .Returns(true);
+        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsApiKey, tenantId, Arg.Any<CancellationToken>())
+            .Returns("public-key");
+        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsEndpointUrl, tenantId, Arg.Any<CancellationToken>())
+            .Returns("https://analytics.example.com");
+
+        // Act
+        var result = await _handler.Handle(new GetPublicExperienceSettingsQuery(), CancellationToken.None);
+
+        // Assert
+        await Assert.That(result.AnalyticsProvider).IsEqualTo("posthog");
+        await Assert.That(result.AnalyticsEnabled).IsTrue();
+        await Assert.That(result.AnalyticsPublicApiKey).IsEqualTo("public-key");
+        await Assert.That(result.AnalyticsEndpointUrl).IsEqualTo("https://analytics.example.com");
+    }
+
+    [Test]
+    public async Task Handle_WhenAnalyticsApiKeyMissing_DisablesAnalyticsInPayload()
+    {
+        // Arrange
+        var tenantId = Guid.NewGuid();
+        _tenantContext.TenantId.Returns(tenantId);
+
+        _policySettingService.ReadEffectiveTenantSettingsAsync(tenantId).Returns(new TenantPolicySettingsDto());
+        _moduleService.GetEnabledModulesAsync(tenantId, Arg.Any<CancellationToken>())
+            .Returns(new List<ModuleInfo>());
+
+        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsProvider, tenantId, Arg.Any<CancellationToken>())
+            .Returns("posthog");
+        _settingsResolver.GetSettingAsync<bool>(GovernanceSettingKeys.AnalyticsEnabled, tenantId, Arg.Any<CancellationToken>())
+            .Returns(true);
+        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsApiKey, tenantId, Arg.Any<CancellationToken>())
+            .Returns(string.Empty);
+
+        // Act
+        var result = await _handler.Handle(new GetPublicExperienceSettingsQuery(), CancellationToken.None);
+
+        // Assert
+        await Assert.That(result.AnalyticsProvider).IsEqualTo("posthog");
+        await Assert.That(result.AnalyticsEnabled).IsFalse();
     }
 }

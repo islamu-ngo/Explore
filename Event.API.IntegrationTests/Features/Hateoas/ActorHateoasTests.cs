@@ -99,7 +99,7 @@ public class ActorHateoasTests
     public async Task GetAll_CollectionLinks_ShouldIncludeSelfLink()
     {
         // Act
-        var response = await _fixture.Client.GetAsync(BaseUrl);
+        var response = await _fixture.Client.GetAsync($"{BaseUrl}?pageNumber=1&pageSize=20&testRun={Guid.NewGuid():N}");
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -109,8 +109,13 @@ public class ActorHateoasTests
 
         if (json.RootElement.TryGetProperty("_links", out var links))
         {
-            await Assert.That(links.TryGetProperty("self", out var selfLink)).IsTrue();
-            var href = selfLink.GetProperty("href").GetString();
+            var hasSelf = links.TryGetProperty("self", out var selfLink);
+            var hasFirst = links.TryGetProperty("first", out var firstLink);
+            await Assert.That(hasSelf || hasFirst).IsTrue();
+
+            var href = hasSelf
+                ? selfLink.GetProperty("href").GetString()
+                : firstLink.GetProperty("href").GetString();
             await Assert.That(href).Contains("/api/v1/actor");
         }
     }

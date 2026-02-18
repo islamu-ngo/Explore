@@ -10,7 +10,7 @@ priority: high
 
 > **Project-Agnostic Blazor UI Patterns**
 >
-> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../../docs/TEMPLATE_GLOSSARY.md).
+> Placeholders use `{Placeholder}` syntax - see [../../../docs/TEMPLATE_GLOSSARY.md](../../../docs/TEMPLATE_GLOSSARY.md).
 
 ## Purpose
 
@@ -54,6 +54,7 @@ graph TD
 | [component-design.md](resources/component-design.md) | Blazor component structure, lifecycle, parameters, `EventCallback`, and best practices for parent-child communication. |
 | [state-management.md](resources/state-management.md) | Comprehensive guide to Blazor state management techniques (component state, parameters, cascading values, scoped/singleton services). |
 | [render-modes.md](resources/render-modes.md) | Explanation of Blazor render modes (InteractiveAuto, Server, WebAssembly, Static SSR) and their appropriate use cases. |
+| [blazouter-routing.md](resources/blazouter-routing.md) | Centralized route configuration with Blazouter, guards, and route parameter patterns. |
 | [bem-methodology.md](resources/bem-methodology.md) | Guidelines for BEM (Block, Element, Modifier) CSS naming convention for maintainable stylesheets. |
 | [theming.md](resources/theming.md) | Customizing MudBlazor themes, dark/light mode switching, and consistent styling. |
 | [common-patterns.md](resources/common-patterns.md) | Real-world Blazor implementation patterns for forms, dialogs, tables, navigation, loading states, error handling, search/filter, and infinite scroll. |
@@ -118,7 +119,7 @@ graph TD
 
 ### 3. Theming
 
-**Rule**: Global styles and theme overrides are managed in `wwwroot/css/StyleGlobal.css` and `wwwroot/css/variables.css`. Dark/Light mode switching is handled via a `CascadingValue`.
+**Rule**: Global styles and theme overrides are managed in your app-level stylesheet(s) (for example `wwwroot/css/site.css` and `wwwroot/css/variables.css`). Dark/Light mode switching is handled via a `CascadingValue`.
 
 ```csharp
 // App.razor logic for cascading theme
@@ -153,11 +154,11 @@ graph TD
 
 ### 4. Component Structure & Lifecycle
 
-**Rule**: Use `ParameterState` for MudBlazor components to prevent infinite re-render loops. Use `OnInitializedAsync` for initial data fetching and `EventCallback` for child-to-parent communication.
+**Rule**: Use standard `[Parameter]` + `EventCallback` as the default pattern. Use `ParameterState` when building custom MudBlazor stateful/base components. Use `OnInitializedAsync` for initial data fetching.
 
-#### MudBlazor ParameterState Framework (Preferred)
+#### MudBlazor ParameterState Framework (When Needed)
 
-**Critical Pattern**: MudBlazor components (v7+) must use `ParameterState<T>` to avoid infinite loops when parameters change.
+**Use This Pattern**: For custom MudBlazor stateful/base components where parameter orchestration needs explicit state tracking.
 
 ```razor
 @* Child Component: {Entity}Card.razor (MudBlazor) *@
@@ -202,7 +203,7 @@ graph TD
 }
 ```
 
-**Why ParameterState?** Prevents infinite re-render loops in MudBlazor components by managing parameter change tracking separately from Blazor's built-in mechanism. It is the standard for MudBlazor v7 component development.
+**Why ParameterState?** It can prevent parameter update feedback loops and centralize parameter change handling in advanced/custom MudBlazor components.
 
 *For more details, see [component-design.md](resources/component-design.md).*
 
@@ -227,6 +228,12 @@ graph TD
 @rendermode InteractiveAuto // Default for interactive pages
 ```
 *For more details, see [render-modes.md](resources/render-modes.md).*
+
+### 6.1 Routing with Blazouter (if used)
+
+**Rule**: When using Blazouter, keep route definitions centralized in a route config file and apply guards there, instead of relying only on scattered `@page` directives.
+
+*For more details, see [blazouter-routing.md](resources/blazouter-routing.md).*
 
 ### 7. Common Patterns
 

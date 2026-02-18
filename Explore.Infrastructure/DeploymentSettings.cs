@@ -27,11 +27,11 @@ public class DeploymentSettings
     public Guid DefaultTenantId { get; set; } = Guid.Empty;
 
     /// <summary>
-    /// Whether to hide SuperAdmin endpoints in SingleTenant mode.
+    /// Whether to hide platform-admin endpoints in SingleTenant mode.
     /// When true, tenant management and system settings endpoints return 404.
     /// Default: true.
     /// </summary>
-    public bool HideSuperAdminInSingleTenant { get; set; } = true;
+    public bool HidePlatformAdminInSingleTenant { get; set; } = true;
 
     /// <summary>
     /// Default tenant subdomain used for URL generation in SingleTenant mode.
@@ -57,14 +57,14 @@ public enum DeploymentMode
     /// <summary>
     /// Single-tenant mode: One tenant, simplified administration.
     /// Tenant resolution is skipped, all entities use DefaultTenantId.
-    /// SuperAdmin endpoints may be hidden based on configuration.
+    /// Platform-admin endpoints may be hidden based on configuration.
     /// </summary>
     SingleTenant = 1,
 
     /// <summary>
     /// Multi-tenant mode: Multiple tenants with full isolation.
     /// Tenant resolved from subdomain or X-Tenant-Id header.
-    /// Full SuperAdmin functionality available.
+    /// Full platform-admin functionality available.
     /// </summary>
     MultiTenant = 2
 }

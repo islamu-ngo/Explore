@@ -91,6 +91,10 @@ public class LocationServiceTests
         await _service.GetAllLocationsAsync();
 
         // Assert
+        await _apiClient.Received(1).GetLocationsAsync(
+            ApiConstants.FirstPage,
+            ApiConstants.DefaultPageSize,
+            Arg.Any<CancellationToken>());
     }
 
     #endregion

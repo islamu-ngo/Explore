@@ -12,16 +12,16 @@ namespace Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
 
 public class UpdateInstanceStorageSettingsCommandHandler : IRequestHandler<UpdateInstanceStorageSettingsCommand, BaseCommandResponse<Guid>>
 {
-    private readonly IInstanceAdministratorRepository _instanceAdministratorRepository;
+    private readonly IUserRoleRepository _userRoleRepository;
     private readonly IInstanceStorageSettingService _storageSettingService;
     private readonly IS3ConfigResolver _s3ConfigResolver;
 
     public UpdateInstanceStorageSettingsCommandHandler(
-        IInstanceAdministratorRepository instanceAdministratorRepository,
+        IUserRoleRepository userRoleRepository,
         IInstanceStorageSettingService storageSettingService,
         IS3ConfigResolver s3ConfigResolver)
     {
-        _instanceAdministratorRepository = instanceAdministratorRepository;
+        _userRoleRepository = userRoleRepository;
         _storageSettingService = storageSettingService;
         _s3ConfigResolver = s3ConfigResolver;
     }
@@ -30,7 +30,7 @@ public class UpdateInstanceStorageSettingsCommandHandler : IRequestHandler<Updat
     {
         var response = new BaseCommandResponse<Guid>();
 
-        var isInstanceAdmin = await _instanceAdministratorRepository.IsUserInstanceAdmin(request.UserId);
+        var isInstanceAdmin = await _userRoleRepository.IsUserPlatformAdmin(request.UserId);
         if (!isInstanceAdmin)
         {
             response.Success = false;

@@ -31,6 +31,8 @@ public static class LookupTableSeeder
     {
         await SeedActorTypesAsync(context, cancellationToken);
         await SeedApprovalStatusesAsync(context, cancellationToken);
+        await SeedAnalyticsProvidersAsync(context, cancellationToken);
+        await SeedTenantStatusesAsync(context, cancellationToken);
         await SeedAudienceAgesAsync(context, cancellationToken);
         await SeedAudienceGendersAsync(context, cancellationToken);
         await SeedDidCustodyTypesAsync(context, cancellationToken);
@@ -69,6 +71,32 @@ public static class LookupTableSeeder
             new ApprovalStatus { Id = (int)ApprovalStatusEnum.Pending, MasterCode = "PENDING", FullName = "Pending", Description = "Status is pending approval of Admin verifying the Existence of Legal Entity" },
             new ApprovalStatus { Id = (int)ApprovalStatusEnum.Approved, MasterCode = "APPROVED", FullName = "Approved", Description = "Status has been approved by Admin after verifying the Existence of Legal Entity" },
             new ApprovalStatus { Id = (int)ApprovalStatusEnum.Rejected, MasterCode = "REJECTED", FullName = "Rejected", Description = "Status has been rejected by Admin after failing to verify the Existence of Legal Entity" });
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedAnalyticsProvidersAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<AnalyticsProvider>().AnyAsync(ct)) return;
+
+        context.Set<AnalyticsProvider>().AddRange(
+            new AnalyticsProvider { Id = (int)AnalyticsProviderEnum.None, MasterCode = "NONE", FullName = "None", Description = "Analytics disabled" },
+            new AnalyticsProvider { Id = (int)AnalyticsProviderEnum.Posthog, MasterCode = "POSTHOG", FullName = "PostHog", Description = "PostHog analytics provider" },
+            new AnalyticsProvider { Id = (int)AnalyticsProviderEnum.Plausible, MasterCode = "PLAUSIBLE", FullName = "Plausible", Description = "Plausible analytics provider" },
+            new AnalyticsProvider { Id = (int)AnalyticsProviderEnum.Rybbit, MasterCode = "RYBBIT", FullName = "Rybbit", Description = "Rybbit analytics provider" },
+            new AnalyticsProvider { Id = (int)AnalyticsProviderEnum.RudderStack, MasterCode = "RUDDERSTACK", FullName = "RudderStack", Description = "RudderStack analytics provider" });
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedTenantStatusesAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<TenantStatus>().AnyAsync(ct)) return;
+
+        context.Set<TenantStatus>().AddRange(
+            new TenantStatus { Id = (int)TenantStatusEnum.Provisioning, MasterCode = "PROVISIONING", FullName = "Provisioning", Description = "Tenant is being set up", IsActiveState = false },
+            new TenantStatus { Id = (int)TenantStatusEnum.Active, MasterCode = "ACTIVE", FullName = "Active", Description = "Tenant is active and operational", IsActiveState = true },
+            new TenantStatus { Id = (int)TenantStatusEnum.Suspended, MasterCode = "SUSPENDED", FullName = "Suspended", Description = "Tenant is temporarily suspended", IsActiveState = false },
+            new TenantStatus { Id = (int)TenantStatusEnum.Archived, MasterCode = "ARCHIVED", FullName = "Archived", Description = "Tenant is archived and read-only", IsActiveState = false },
+            new TenantStatus { Id = (int)TenantStatusEnum.Purged, MasterCode = "PURGED", FullName = "Purged", Description = "Tenant data has been permanently removed", IsActiveState = false });
         await context.SaveChangesAsync(ct);
     }
 
@@ -248,6 +276,7 @@ public static class LookupTableSeeder
             new SystemSetting { Id = SeedIds.SystemSettingIslamicModuleId, SettingKey = GovernanceSettingKeys.ModulesIslamicEnabled, Value = "true", ValueType = SettingValueType.Boolean, IsLocked = false, Description = "Enable Islamic event module", Category = "Modules", DisplayOrder = 1, CreatedAt = seedTimestamp },
             new SystemSetting { Id = SeedIds.SystemSettingTechModuleId, SettingKey = GovernanceSettingKeys.ModulesTechEnabled, Value = "true", ValueType = SettingValueType.Boolean, IsLocked = false, Description = "Enable Tech event module", Category = "Modules", DisplayOrder = 2, CreatedAt = seedTimestamp },
             new SystemSetting { Id = SeedIds.SystemSettingTenantSelfServiceRegistrationId, SettingKey = GovernanceSettingKeys.TenantSelfServiceRegistration, Value = "false", ValueType = SettingValueType.Boolean, IsLocked = false, Description = "Whether tenants can self-register without manual instance admin invitation", Category = "Tenant", DisplayOrder = 1, CreatedAt = seedTimestamp },
+            new SystemSetting { Id = SeedIds.SystemSettingTenantWhiteLabelingEnabledId, SettingKey = GovernanceSettingKeys.TenantWhiteLabelingEnabled, Value = "false", ValueType = SettingValueType.Boolean, IsLocked = false, Description = "Whether tenant-level white-label branding overrides are enabled in multi-tenant mode", Category = "Tenant", DisplayOrder = 2, CreatedAt = seedTimestamp },
             new SystemSetting { Id = SeedIds.SystemSettingRoutingDefaultPublicHomePageId, SettingKey = GovernanceSettingKeys.RoutingDefaultPublicHomePage, Value = "\"EventList\"", ValueType = SettingValueType.String, IsLocked = false, AllowedValues = "[\"EventList\", \"LandingPage\"]", Description = "Default public home page for tenants", Category = "Routing", DisplayOrder = 1, CreatedAt = seedTimestamp },
             new SystemSetting { Id = SeedIds.SystemSettingUserSubmissionEnabledId, SettingKey = GovernanceSettingKeys.EventsUserSubmissionEnabled, Value = "true", ValueType = SettingValueType.Boolean, IsLocked = false, Description = "Whether tenant users are allowed to submit events", Category = "Events", DisplayOrder = 3, CreatedAt = seedTimestamp },
             new SystemSetting { Id = SeedIds.SystemSettingOrganizationVerificationRequiredId, SettingKey = GovernanceSettingKeys.OrganizationsVerificationRequired, Value = "true", ValueType = SettingValueType.Boolean, IsLocked = false, Description = "Whether organization verification is required before organizations can operate", Category = "Organizations", DisplayOrder = 1, CreatedAt = seedTimestamp },
@@ -280,7 +309,14 @@ public static class LookupTableSeeder
             new SystemSetting { Id = SeedIds.SystemSettingS3SecretAccessKeyId, SettingKey = GovernanceSettingKeys.S3SecretAccessKey, Value = "\"\"", ValueType = SettingValueType.String, IsLocked = false, Description = "S3 secret access key for authentication (stored encrypted)", Category = "ObjectStorage", DisplayOrder = 5, CreatedAt = seedTimestamp },
             new SystemSetting { Id = SeedIds.SystemSettingS3RegionId, SettingKey = GovernanceSettingKeys.S3Region, Value = "\"fsn1\"", ValueType = SettingValueType.String, IsLocked = false, Description = "S3 region identifier (e.g., fsn1 for Hetzner, us-east-1 for AWS)", Category = "ObjectStorage", DisplayOrder = 6, CreatedAt = seedTimestamp },
             new SystemSetting { Id = SeedIds.SystemSettingS3ForcePathStyleId, SettingKey = GovernanceSettingKeys.S3ForcePathStyle, Value = "true", ValueType = SettingValueType.Boolean, IsLocked = false, Description = "Use path-style URLs (required by most non-AWS S3 providers)", Category = "ObjectStorage", DisplayOrder = 7, CreatedAt = seedTimestamp },
-            new SystemSetting { Id = SeedIds.SystemSettingS3UploadUrlExpirationMinutesId, SettingKey = GovernanceSettingKeys.S3UploadUrlExpirationMinutes, Value = "60", ValueType = SettingValueType.Integer, IsLocked = false, Description = "Presigned upload URL expiration time in minutes", Category = "ObjectStorage", DisplayOrder = 8, CreatedAt = seedTimestamp }
+            new SystemSetting { Id = SeedIds.SystemSettingS3UploadUrlExpirationMinutesId, SettingKey = GovernanceSettingKeys.S3UploadUrlExpirationMinutes, Value = "60", ValueType = SettingValueType.Integer, IsLocked = false, Description = "Presigned upload URL expiration time in minutes", Category = "ObjectStorage", DisplayOrder = 8, CreatedAt = seedTimestamp },
+
+            // Analytics
+            new SystemSetting { Id = SeedIds.SystemSettingAnalyticsProviderId, SettingKey = GovernanceSettingKeys.AnalyticsProvider, Value = "\"none\"", ValueType = SettingValueType.String, IsLocked = false, Description = "Analytics provider (none, posthog, plausible, rybbit, rudderstack)", AllowedValues = "[\"none\",\"posthog\",\"plausible\",\"rybbit\",\"rudderstack\"]", Category = "Analytics", DisplayOrder = 1, CreatedAt = seedTimestamp },
+            new SystemSetting { Id = SeedIds.SystemSettingAnalyticsEnabledId, SettingKey = GovernanceSettingKeys.AnalyticsEnabled, Value = "false", ValueType = SettingValueType.Boolean, IsLocked = false, Description = "Enable analytics tracking", Category = "Analytics", DisplayOrder = 2, CreatedAt = seedTimestamp },
+            new SystemSetting { Id = SeedIds.SystemSettingAnalyticsApiKeyId, SettingKey = GovernanceSettingKeys.AnalyticsApiKey, Value = "\"\"", ValueType = SettingValueType.String, IsLocked = false, Description = "Analytics provider public/write API key", Category = "Analytics", DisplayOrder = 3, CreatedAt = seedTimestamp },
+            new SystemSetting { Id = SeedIds.SystemSettingAnalyticsEndpointUrlId, SettingKey = GovernanceSettingKeys.AnalyticsEndpointUrl, Value = "\"\"", ValueType = SettingValueType.String, IsLocked = false, Description = "Analytics provider endpoint URL (supports self-hosted deployments)", Category = "Analytics", DisplayOrder = 4, CreatedAt = seedTimestamp },
+            new SystemSetting { Id = SeedIds.SystemSettingAnalyticsPersonalApiKeyId, SettingKey = GovernanceSettingKeys.AnalyticsPersonalApiKey, Value = "\"\"", ValueType = SettingValueType.String, IsLocked = false, Description = "Personal API key used for analytics feature flag evaluation when supported", Category = "Analytics", DisplayOrder = 5, CreatedAt = seedTimestamp }
         };
 
         var existingIds = await context.Set<SystemSetting>()
@@ -331,7 +367,6 @@ public static class LookupTableSeeder
         var expectedRoles = new[]
         {
             // Platform scope (1-9)
-            new Role { Id = (int)RoleEnum.SuperAdmin, MasterCode = "platform.super_admin", FullName = "Super Admin", Description = "Full platform control", Scope = RoleScopeEnum.Platform, IsSystem = true },
             new Role { Id = (int)RoleEnum.Admin, MasterCode = "platform.admin", FullName = "Admin", Description = "Platform administration", Scope = RoleScopeEnum.Platform, IsSystem = true },
             new Role { Id = (int)RoleEnum.Moderator, MasterCode = "platform.moderator", FullName = "Moderator", Description = "Platform moderation", Scope = RoleScopeEnum.Platform, IsSystem = true },
             new Role { Id = (int)RoleEnum.Editor, MasterCode = "platform.editor", FullName = "Editor", Description = "Platform content editing", Scope = RoleScopeEnum.Platform, IsSystem = true },

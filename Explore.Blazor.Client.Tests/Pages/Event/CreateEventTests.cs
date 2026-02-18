@@ -146,10 +146,10 @@ public class CreateEventTests : IDisposable
 
         // Act - Component should render without throwing
         var cut = _ctx.RenderMudComponent<CreateEvent>();
-        await Task.Delay(100);
+        cut.WaitForState(() => cut.Markup.Length > 0, TimeSpan.FromSeconds(2));
 
-        // Assert - Component rendered
-        await Assert.That(cut).IsNotNull();
+        // Assert - Component rendered and produced markup
+        await Assert.That(cut.Markup).IsNotEmpty();
     }
 
     [Test]
@@ -160,7 +160,10 @@ public class CreateEventTests : IDisposable
 
         // Act
         var cut = _ctx.RenderMudComponent<CreateEvent>();
-        await Task.Delay(300);
+        cut.WaitForState(
+            () => cut.Markup.Contains("mud-input", StringComparison.OrdinalIgnoreCase)
+               || cut.Markup.Contains("mud-alert", StringComparison.OrdinalIgnoreCase),
+            TimeSpan.FromSeconds(3));
 
         // Assert - Should render either the form or an error state
         // Without valid organizationId from RouterState, it shows permission error
@@ -171,71 +174,48 @@ public class CreateEventTests : IDisposable
 
     #endregion
 
-    #region Service Mock Verification Tests
+    #region Behavior Interaction Tests
 
     [Test]
-    public async Task CreateEvent_AdminServiceMocks_AreConfigured()
+    public async Task CreateEvent_WhenRendered_RequestsLookupDataFromAdminService()
     {
-        // Verify mock configuration is correct
-        var eventTypes = await _adminService.GetEventTypesAsync();
-        await Assert.That(eventTypes.Count).IsEqualTo(2);
+        // Arrange
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
 
-        var genders = await _adminService.GetAudienceGendersAsync();
-        await Assert.That(genders.Count).IsEqualTo(2);
+        // Act
+        var cut = _ctx.RenderMudComponent<CreateEvent>();
+        cut.WaitForState(() => cut.Markup.Contains("mud-alert", StringComparison.OrdinalIgnoreCase)
+                              || cut.Markup.Contains("mud-input", StringComparison.OrdinalIgnoreCase),
+            TimeSpan.FromSeconds(3));
 
-        var ages = await _adminService.GetAudienceAgesAsync();
-        await Assert.That(ages.Count).IsEqualTo(2);
+        // Assert - component behavior triggers lookup requests
+        await _adminService.Received(1).GetEventTypesAsync();
+        await _adminService.Received(1).GetAudienceGendersAsync();
+        await _adminService.Received(1).GetAudienceAgesAsync();
+        await _adminService.Received(1).GetEventFormatsAsync();
+        await _adminService.Received(1).GetVisibilityTypesAsync();
+        await _adminService.Received(1).GetRegistrationModesAsync();
+        await _adminService.Received(1).GetLanguagesAsync();
     }
 
     [Test]
-    public async Task CreateEvent_OrganizationServiceMock_IsConfigured()
+    public async Task CreateEvent_WhenRendered_LoadsUserAndOrganizationContext()
     {
-        // Verify mock configuration
-        var orgs = await _organizationService.GetMyOrganizationsAsync();
-        await Assert.That(orgs.Count).IsEqualTo(1);
-        await Assert.That(orgs.First().FullName).IsEqualTo("Test Organization");
-    }
+        // Arrange
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
 
-    [Test]
-    public async Task CreateEvent_UserServiceMock_IsConfigured()
-    {
-        // Verify mock configuration
-        var user = await _userService.GetCurrentUserAsync();
-        await Assert.That(user).IsNotNull();
-        await Assert.That(user!.FirstName).IsEqualTo("Test");
-    }
+        // Act
+        var cut = _ctx.RenderMudComponent<CreateEvent>();
+        cut.WaitForState(() => cut.Markup.Contains("mud-alert", StringComparison.OrdinalIgnoreCase)
+                              || cut.Markup.Contains("mud-input", StringComparison.OrdinalIgnoreCase),
+            TimeSpan.FromSeconds(3));
 
-    [Test]
-    public async Task CreateEvent_CategoryServiceMock_IsConfigured()
-    {
-        // Verify mock configuration
-        var categories = await _categoryService.GetAllCategoriesAsync();
-        await Assert.That(categories).IsNotNull();
-    }
-
-    [Test]
-    public async Task CreateEvent_TagServiceMock_IsConfigured()
-    {
-        // Verify mock configuration
-        var tags = await _tagService.GetAllTagsAsync();
-        await Assert.That(tags).IsNotNull();
-    }
-
-    [Test]
-    public async Task CreateEvent_LocationServiceMock_IsConfigured()
-    {
-        // Verify mock configuration
-        var locations = await _locationService.GetAllLocationsAsync();
-        await Assert.That(locations).IsNotNull();
-    }
-
-    [Test]
-    public async Task CreateEvent_EventServiceMock_CreateReturnsSuccess()
-    {
-        // Verify mock configuration
-        var result = await _eventService.CreateEventAsync(new CreateEventDto());
-        await Assert.That(result.Success).IsTrue();
-        await Assert.That(result.Id).IsNotEqualTo(Guid.Empty);
+        // Assert - component behavior loads principal context dependencies
+        await _userService.Received(1).GetCurrentUserAsync();
+        await _organizationService.Received().GetMyOrganizationsAsync();
+        await _categoryService.Received().GetAllCategoriesAsync();
+        await _tagService.Received().GetAllTagsAsync();
+        await _locationService.Received().GetAllLocationsAsync();
     }
 
     #endregion

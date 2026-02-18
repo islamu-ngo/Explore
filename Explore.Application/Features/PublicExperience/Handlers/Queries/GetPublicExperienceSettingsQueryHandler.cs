@@ -16,17 +16,20 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
 {
     private readonly ITenantContext _tenantContext;
     private readonly ISystemSettingRepository _systemSettingRepository;
+    private readonly ISettingsResolver _settingsResolver;
     private readonly ITenantPolicySettingService _policySettingService;
     private readonly IModuleService _moduleService;
 
     public GetPublicExperienceSettingsQueryHandler(
         ITenantContext tenantContext,
         ISystemSettingRepository systemSettingRepository,
+        ISettingsResolver settingsResolver,
         ITenantPolicySettingService policySettingService,
         IModuleService moduleService)
     {
         _tenantContext = tenantContext;
         _systemSettingRepository = systemSettingRepository;
+        _settingsResolver = settingsResolver;
         _policySettingService = policySettingService;
         _moduleService = moduleService;
     }
@@ -40,6 +43,12 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
 
         var deploymentModeSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.DeploymentMode);
         var deploymentMode = DeserializeString(deploymentModeSetting?.Value, "SingleTenant");
+        var analyticsProvider = await _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsProvider, tenantId, cancellationToken) ?? "none";
+        var analyticsEnabled = await _settingsResolver.GetSettingAsync<bool>(GovernanceSettingKeys.AnalyticsEnabled, tenantId, cancellationToken);
+        var analyticsPublicApiKey = await _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsApiKey, tenantId, cancellationToken);
+        var analyticsEndpointUrl = await _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsEndpointUrl, tenantId, cancellationToken);
+        var hasAnalyticsApiKey = !string.IsNullOrWhiteSpace(analyticsPublicApiKey);
+        var shouldEnableAnalytics = analyticsEnabled && analyticsProvider != "none" && hasAnalyticsApiKey;
 
         return new PublicExperienceSettingsDto
         {
@@ -55,7 +64,11 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
             CustomDomain = effectiveTenantSettings.CustomDomain,
             IsIslamicModuleEnabled = enabledModuleKeys.Contains("Mod_Islamic"),
             IsTechModuleEnabled = enabledModuleKeys.Contains("Mod_Tech"),
-            EnabledModules = enabledModuleKeys
+            EnabledModules = enabledModuleKeys,
+            AnalyticsProvider = analyticsProvider,
+            AnalyticsEnabled = shouldEnableAnalytics,
+            AnalyticsPublicApiKey = analyticsPublicApiKey ?? string.Empty,
+            AnalyticsEndpointUrl = analyticsEndpointUrl ?? string.Empty
         };
     }
 

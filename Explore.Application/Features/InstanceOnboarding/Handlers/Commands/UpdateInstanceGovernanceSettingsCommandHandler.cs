@@ -7,6 +7,7 @@ using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Constants;
+using Explore.Domain.Enums;
 using MediatR;
 using TenantSettingsEntity = Explore.Domain.TenantSettings;
 
@@ -14,20 +15,20 @@ namespace Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
 
 public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<UpdateInstanceGovernanceSettingsCommand, BaseCommandResponse<Guid>>
 {
-    private readonly IInstanceAdministratorRepository _instanceAdministratorRepository;
+    private readonly IUserRoleRepository _userRoleRepository;
     private readonly IInstanceBootstrapStateRepository _instanceBootstrapStateRepository;
     private readonly ITenantRepository _tenantRepository;
     private readonly ITenantSettingsRepository _tenantSettingsRepository;
     private readonly IInstanceGovernanceSettingService _governanceSettingService;
 
     public UpdateInstanceGovernanceSettingsCommandHandler(
-        IInstanceAdministratorRepository instanceAdministratorRepository,
+        IUserRoleRepository userRoleRepository,
         IInstanceBootstrapStateRepository instanceBootstrapStateRepository,
         ITenantRepository tenantRepository,
         ITenantSettingsRepository tenantSettingsRepository,
         IInstanceGovernanceSettingService governanceSettingService)
     {
-        _instanceAdministratorRepository = instanceAdministratorRepository;
+        _userRoleRepository = userRoleRepository;
         _instanceBootstrapStateRepository = instanceBootstrapStateRepository;
         _tenantRepository = tenantRepository;
         _tenantSettingsRepository = tenantSettingsRepository;
@@ -38,7 +39,7 @@ public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<Up
     {
         var response = new BaseCommandResponse<Guid>();
 
-        var isInstanceAdmin = await _instanceAdministratorRepository.IsUserInstanceAdmin(request.UserId);
+        var isInstanceAdmin = await _userRoleRepository.IsUserPlatformAdmin(request.UserId);
         if (!isInstanceAdmin)
         {
             response.Success = false;
@@ -92,7 +93,14 @@ public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<Up
             Id = PlatformDefaults.DefaultTenantId,
             FullName = PlatformDefaults.DefaultTenantName,
             Slug = PlatformDefaults.DefaultTenantSlug,
-            IsActive = true
+            TenantStatusId = (int)TenantStatusEnum.Active,
+            TenantStatus = new TenantStatus
+            {
+                Id = (int)TenantStatusEnum.Active,
+                MasterCode = "ACTIVE",
+                FullName = "Active",
+                IsActiveState = true
+            }
         });
     }
 

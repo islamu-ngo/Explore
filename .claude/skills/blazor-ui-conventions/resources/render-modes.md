@@ -61,7 +61,7 @@ Blazor provides four primary render modes, each with distinct characteristics re
 
 ### Usage:
 
-Apply `InteractiveAuto` to routable components (`@page` directive) or individual interactive components.
+Apply `InteractiveAuto` to routable components (native `@page` routing or centralized router configuration) or individual interactive components.
 
 ```razor
 @page "/{entities}"

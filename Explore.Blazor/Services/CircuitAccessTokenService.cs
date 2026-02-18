@@ -15,20 +15,79 @@ public interface ICircuitAccessTokenService
     void SetToken(string? token);
 }
 
+public interface ISetupSecretSessionService
+{
+    void SetForUser(string userId, string secret);
+    string? GetForUser(string userId);
+    void ClearForUser(string userId);
+}
+
+public sealed class SetupSecretSessionService : ISetupSecretSessionService
+{
+    private static readonly ConcurrentDictionary<string, SecretEntry> _store = new();
+
+    public void SetForUser(string userId, string secret)
+    {
+        if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(secret))
+        {
+            return;
+        }
+
+        _store[userId] = new SecretEntry(secret.Trim(), DateTime.UtcNow);
+        CleanupExpiredEntries();
+    }
+
+    public string? GetForUser(string userId)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return null;
+        }
+
+        if (!_store.TryGetValue(userId, out var entry))
+        {
+            return null;
+        }
+
+        if (entry.StoredAtUtc < DateTime.UtcNow.AddHours(-2))
+        {
+            _store.TryRemove(userId, out _);
+            return null;
+        }
+
+        return entry.Secret;
+    }
+
+    public void ClearForUser(string userId)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return;
+        }
+
+        _store.TryRemove(userId, out _);
+    }
+
+    private static void CleanupExpiredEntries()
+    {
+        var cutoff = DateTime.UtcNow.AddHours(-2);
+        foreach (var key in _store.Where(kvp => kvp.Value.StoredAtUtc < cutoff).Select(kvp => kvp.Key).ToList())
+        {
+            _store.TryRemove(key, out _);
+        }
+    }
+
+    private sealed record SecretEntry(string Secret, DateTime StoredAtUtc);
+}
+
 /// <summary>
-/// Stores the access token for the current user session.
-/// Uses a static ConcurrentDictionary keyed by user identity for cross-scope access.
-/// Also stores a "latest token" for fallback when user ID cannot be determined.
+/// Stores access tokens keyed by user identity.
+/// Tokens are only resolved for the current authenticated user.
 /// </summary>
 public class CircuitAccessTokenService : ICircuitAccessTokenService
 {
-    // Static storage for tokens indexed by user identifier
-    // This allows the HttpMessageHandler to access the token regardless of scope
+    // User-scoped token cache (keyed by user id).
     private static readonly ConcurrentDictionary<string, TokenEntry> _tokenStore = new();
-
-    // Fallback: store the most recent valid token for cases where userId can't be determined
-    private static TokenEntry? _latestToken;
-    private static readonly object _latestTokenLock = new();
 
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<CircuitAccessTokenService> _logger;
@@ -59,13 +118,6 @@ public class CircuitAccessTokenService : ICircuitAccessTokenService
         _logger.LogDebug("[CircuitAccessTokenService] SetToken called. Token length: {TokenLen}, UserId: {UserId}",
             token.Length, userId ?? "(null)");
 
-        // Always store as latest token (fallback)
-        lock (_latestTokenLock)
-        {
-            _latestToken = new TokenEntry(token, DateTime.UtcNow);
-        }
-        _logger.LogDebug("[CircuitAccessTokenService] Stored as latest token (length: {TokenLen})", token.Length);
-
         if (!string.IsNullOrEmpty(userId))
         {
             _userId = userId;
@@ -76,7 +128,7 @@ public class CircuitAccessTokenService : ICircuitAccessTokenService
         }
         else
         {
-            _logger.LogWarning("[CircuitAccessTokenService] Could not extract userId from token - stored as latest only");
+            _logger.LogWarning("[CircuitAccessTokenService] Could not extract userId from token - token not persisted to shared cache");
         }
     }
 
@@ -128,38 +180,6 @@ public class CircuitAccessTokenService : ICircuitAccessTokenService
     }
 
     /// <summary>
-    /// Try to get any valid token from the store (for unauthenticated contexts).
-    /// First checks the static store, then falls back to the latest stored token.
-    /// </summary>
-    public static string? GetAnyValidToken(ILogger? logger = null)
-    {
-        var cutoff = DateTime.UtcNow.AddHours(-1);
-        var validEntries = _tokenStore.Values.Where(e => e.CreatedAt > cutoff).ToList();
-        logger?.LogDebug("[CircuitAccessTokenService.GetAnyValidToken] Total store entries: {Total}, Valid entries: {Valid}",
-            _tokenStore.Count, validEntries.Count);
-
-        var entry = validEntries.FirstOrDefault();
-        if (entry != null)
-        {
-            logger?.LogDebug("[CircuitAccessTokenService.GetAnyValidToken] Found valid token from store (length: {Len})", entry.Token.Length);
-            return entry.Token;
-        }
-
-        // Fallback to latest token
-        lock (_latestTokenLock)
-        {
-            if (_latestToken != null && _latestToken.CreatedAt > cutoff)
-            {
-                logger?.LogDebug("[CircuitAccessTokenService.GetAnyValidToken] Found valid latest token (length: {Len})", _latestToken.Token.Length);
-                return _latestToken.Token;
-            }
-        }
-
-        logger?.LogDebug("[CircuitAccessTokenService.GetAnyValidToken] No valid tokens found anywhere");
-        return null;
-    }
-
-    /// <summary>
     /// Get token for a specific user ID.
     /// </summary>
     public static string? GetTokenForUser(string userId, ILogger? logger = null)
@@ -199,18 +219,21 @@ public class CircuitAccessTokenService : ICircuitAccessTokenService
 
 /// <summary>
 /// HTTP message handler that forwards the access token and tenant ID to API requests.
-/// Uses multiple strategies to obtain the token.
+/// Resolves token for the current authenticated user only.
 /// </summary>
 public class AccessTokenForwardingHandler : DelegatingHandler
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly ISetupSecretSessionService _setupSecretSessionService;
     private readonly ILogger<AccessTokenForwardingHandler> _logger;
 
     public AccessTokenForwardingHandler(
         IHttpContextAccessor httpContextAccessor,
+        ISetupSecretSessionService setupSecretSessionService,
         ILogger<AccessTokenForwardingHandler> logger)
     {
         _httpContextAccessor = httpContextAccessor;
+        _setupSecretSessionService = setupSecretSessionService;
         _logger = logger;
     }
 
@@ -248,7 +271,7 @@ public class AccessTokenForwardingHandler : DelegatingHandler
             }
         }
 
-        // Strategy 2: Try to get token from static store by user ID
+        // Strategy 2: Try to get token from shared store by current user ID
         if (string.IsNullOrEmpty(token))
         {
             var userId = httpContext?.User?.FindFirst("sub")?.Value
@@ -259,18 +282,12 @@ public class AccessTokenForwardingHandler : DelegatingHandler
                 token = CircuitAccessTokenService.GetTokenForUser(userId, _logger);
                 if (!string.IsNullOrEmpty(token))
                 {
-                    source = "StaticStore(userId)";
+                    source = "TokenStore(userId)";
                 }
             }
-        }
-
-        // Strategy 3: Last resort - get any valid token from store
-        if (string.IsNullOrEmpty(token))
-        {
-            token = CircuitAccessTokenService.GetAnyValidToken(_logger);
-            if (!string.IsNullOrEmpty(token))
+            else if (isAuthenticated)
             {
-                source = "StaticStore(any)";
+                _logger.LogWarning("[AccessTokenForwardingHandler] Authenticated user has no resolvable user identifier claims at {Path}", request.RequestUri?.PathAndQuery);
             }
         }
 
@@ -279,6 +296,10 @@ public class AccessTokenForwardingHandler : DelegatingHandler
         {
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
             _logger.LogDebug("[AccessTokenForwardingHandler] Added Bearer token from {Source} to {Path}", source, request.RequestUri?.PathAndQuery);
+        }
+        else if (!string.IsNullOrEmpty(token))
+        {
+            _logger.LogDebug("[AccessTokenForwardingHandler] Authorization header already present for {Path}; token source was {Source}", request.RequestUri?.PathAndQuery, source);
         }
         else if (string.IsNullOrEmpty(token))
         {
@@ -289,7 +310,7 @@ public class AccessTokenForwardingHandler : DelegatingHandler
             }
             else
             {
-                _logger.LogWarning("[AccessTokenForwardingHandler] No token available for {Path} - request will likely fail with 401", path);
+                _logger.LogWarning("[AccessTokenForwardingHandler] No token available for current user at {Path} - request will likely fail with 401", path);
             }
         }
 
@@ -315,6 +336,27 @@ public class AccessTokenForwardingHandler : DelegatingHandler
                 forwardedHost, request.RequestUri?.PathAndQuery);
         }
 
+        var pathAndQuery = request.RequestUri?.PathAndQuery ?? string.Empty;
+        var setupSecret = httpContext?.Request.Cookies["setup-secret"];
+        if (string.IsNullOrWhiteSpace(setupSecret))
+        {
+            var userId = httpContext?.User?.FindFirst("sub")?.Value
+                ?? httpContext?.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            if (!string.IsNullOrWhiteSpace(userId))
+            {
+                setupSecret = _setupSecretSessionService.GetForUser(userId);
+            }
+        }
+
+        if (RequiresSetupSecret(pathAndQuery) &&
+            !request.Headers.Contains("X-Setup-Secret") &&
+            !string.IsNullOrWhiteSpace(setupSecret))
+        {
+            request.Headers.Add("X-Setup-Secret", setupSecret);
+            _logger.LogDebug("[AccessTokenForwardingHandler] Forwarded setup secret header for {Path}", pathAndQuery);
+        }
+
         return await base.SendAsync(request, cancellationToken);
     }
 
@@ -322,5 +364,13 @@ public class AccessTokenForwardingHandler : DelegatingHandler
     {
         return pathAndQuery.Contains("/api/v1/PublicExperience/settings", StringComparison.OrdinalIgnoreCase)
             || pathAndQuery.Contains("/api/v1/InstanceOnboarding/status", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool RequiresSetupSecret(string pathAndQuery)
+    {
+        return pathAndQuery.Contains("/api/v1/InstanceOnboarding/complete", StringComparison.OrdinalIgnoreCase)
+            || pathAndQuery.Contains("/api/v1/InstanceOnboarding/settings", StringComparison.OrdinalIgnoreCase)
+            || pathAndQuery.Contains("/api/v1/InstanceOnboarding/storage-settings", StringComparison.OrdinalIgnoreCase)
+            || pathAndQuery.Contains("/api/v1/InstanceOnboarding/test-storage", StringComparison.OrdinalIgnoreCase);
     }
 }

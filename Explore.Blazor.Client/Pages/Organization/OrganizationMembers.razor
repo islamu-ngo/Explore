@@ -82,12 +82,12 @@
                     <MudText Typo="Typo.body2">@context.UserEmail</MudText>
                 </MudTd>
                 <MudTd DataLabel="Role">
-                    <MudChip T="string" Color="@GetRoleColor(context.OrganizationRoleId ?? 0)" Size="Size.Small" Variant="Variant.Filled">@GetRoleName(context.OrganizationRoleId ?? 0)</MudChip>
+                    <MudChip T="string" Color="@GetRoleColor(context.RoleId ?? 0)" Size="Size.Small" Variant="Variant.Filled">@GetRoleName(context.RoleId ?? 0)</MudChip>
                 </MudTd>
                 @if (RoleHelper.CanManage(currentUserRole))
                 {
                     <MudTd DataLabel="Actions" Style="text-align:right">
-                        @if (context.OrganizationRoleId != RoleHelper.OrgCreator)
+                        @if (context.RoleId != RoleHelper.OrgCreator)
                         {
                             <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
                                 <MudMenuItem OnClick="@(() => OpenEditRoleDialog(context))" Icon="@Icons.Material.Filled.Edit">Change Role</MudMenuItem>

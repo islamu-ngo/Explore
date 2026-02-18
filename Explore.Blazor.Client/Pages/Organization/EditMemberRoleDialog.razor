@@ -30,7 +30,7 @@
 
     protected override void OnInitialized()
     {
-        newRoleId = Member.OrganizationRoleId ?? RoleHelper.OrgMember;
+        newRoleId = Member.RoleId ?? RoleHelper.OrgMember;
     }
 
     private void Cancel() => MudDialog.Cancel();

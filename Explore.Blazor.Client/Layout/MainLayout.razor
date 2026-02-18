@@ -4,17 +4,16 @@
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
+<AnalyticsInitializer />
 
 <MudLayout class="main-layout">
-
-    <!-- Fixed header container wrapping AnnouncementBar and NavMenu - full width -->
-    <div class="main-layout__header">
-        <!-- Announcement Bar -->
-        <AnnouncementBar />
-
-        <!-- Navigation Menu (handles its own content max-width) -->
-        <NavMenu OnToggleTheme="DarkModeToggle" />
-    </div>
+    @if (!_hideChrome)
+    {
+        <div class="main-layout__header">
+            <AnnouncementBar />
+            <NavMenu OnToggleTheme="DarkModeToggle" />
+        </div>
+    }
 
     <MudMainContent>
         <div class="main-layout__content-wrapper">
@@ -22,7 +21,9 @@
         </div>
     </MudMainContent>
 
-    <!-- Full-width footer outside main content -->
-    <Footer />
+    @if (!_hideChrome)
+    {
+        <Footer />
+    }
 
 </MudLayout>

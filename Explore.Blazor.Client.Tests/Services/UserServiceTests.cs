@@ -51,7 +51,7 @@ public class UserServiceTests
     {
         // Arrange
         _apiClient.SyncAsync(Arg.Any<CancellationToken>())
-            .ThrowsAsync(new ApiException("Response parsing issue", 200, null, null, null));
+            .ThrowsAsync(CreateApiException("Response parsing issue", 200));
 
         // Act
         var result = await _service.SyncUserAsync();
@@ -67,7 +67,7 @@ public class UserServiceTests
     {
         // Arrange
         _apiClient.SyncAsync(Arg.Any<CancellationToken>())
-            .ThrowsAsync(new ApiException("Unauthorized", 401, "unauthorized", null, null));
+            .ThrowsAsync(CreateApiException("Unauthorized", 401, "unauthorized"));
 
         // Act
         var result = await _service.SyncUserAsync();
@@ -114,7 +114,7 @@ public class UserServiceTests
                 callCount++;
                 if (callCount == 1)
                 {
-                    throw new ApiException("Not Found", 404, null, null, null);
+                    throw CreateApiException("Not Found", 404);
                 }
 
                 return expectedUser;
@@ -136,7 +136,7 @@ public class UserServiceTests
     {
         // Arrange
         _apiClient.UserGETAsync(Arg.Any<CancellationToken>())
-            .ThrowsAsync(new ApiException("Not Found", 404, null, null, null));
+            .ThrowsAsync(CreateApiException("Not Found", 404));
 
         _apiClient.SyncAsync(Arg.Any<CancellationToken>())
             .Returns(new BaseCommandResponseOfGuid
@@ -154,11 +154,46 @@ public class UserServiceTests
     }
 
     [Test]
+    public async Task GetCurrentUserAsync_ReturnsNull_WhenInitialCallReturns404AndSyncThrows()
+    {
+        // Arrange
+        _apiClient.UserGETAsync(Arg.Any<CancellationToken>())
+            .ThrowsAsync(CreateApiException("Not Found", 404));
+
+        _apiClient.SyncAsync(Arg.Any<CancellationToken>())
+            .ThrowsAsync(CreateApiException("Gateway timeout", 504));
+
+        // Act
+        var result = await _service.GetCurrentUserAsync();
+
+        // Assert
+        await Assert.That(result).IsNull();
+    }
+
+    [Test]
+    public async Task GetCurrentUserAsync_ReturnsNull_WhenRetryAfterSyncStillFails()
+    {
+        // Arrange
+        _apiClient.UserGETAsync(Arg.Any<CancellationToken>())
+            .ThrowsAsync(CreateApiException("Not Found", 404));
+
+        _apiClient.SyncAsync(Arg.Any<CancellationToken>())
+            .Returns(ComponentDataBuilder.SuccessResponse());
+
+        // Act
+        var result = await _service.GetCurrentUserAsync();
+
+        // Assert
+        await Assert.That(result).IsNull();
+        await _apiClient.Received(2).UserGETAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task GetCurrentUserAsync_ReturnsNull_WhenApiReturns401()
     {
         // Arrange
         _apiClient.UserGETAsync(Arg.Any<CancellationToken>())
-            .ThrowsAsync(new ApiException("Unauthorized", 401, null, null, null));
+            .ThrowsAsync(CreateApiException("Unauthorized", 401));
 
         // Act
         var result = await _service.GetCurrentUserAsync();
@@ -173,7 +208,7 @@ public class UserServiceTests
     {
         // Arrange
         _apiClient.UserGETAsync(Arg.Any<CancellationToken>())
-            .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
+            .ThrowsAsync(CreateApiException("Server Error", 500));
 
         // Act
         var result = await _service.GetCurrentUserAsync();
@@ -221,7 +256,7 @@ public class UserServiceTests
         };
 
         _apiClient.UserPUTAsync(Arg.Any<UpdateUserDto>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new ApiException("Bad Request", 400, null, null, null));
+            .ThrowsAsync(CreateApiException("Bad Request", 400));
 
         // Act
         var result = await _service.UpdateUserAsync(updateDto);
@@ -255,7 +290,7 @@ public class UserServiceTests
     {
         // Arrange
         _apiClient.UserDELETEAsync(Arg.Any<CancellationToken>())
-            .ThrowsAsync(new ApiException("Forbidden", 403, null, null, null));
+            .ThrowsAsync(CreateApiException("Forbidden", 403));
 
         // Act
         var result = await _service.DeleteUserAsync();
@@ -265,4 +300,14 @@ public class UserServiceTests
     }
 
     #endregion
+
+    private static ApiException CreateApiException(string message, int statusCode, string response = "")
+    {
+        return new ApiException(
+            message,
+            statusCode,
+            response,
+            new Dictionary<string, IEnumerable<string>>(),
+            new InvalidOperationException(message));
+    }
 }

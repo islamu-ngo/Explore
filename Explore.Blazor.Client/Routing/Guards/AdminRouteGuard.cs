@@ -16,6 +16,11 @@ public sealed class AdminRouteGuard(AuthenticationStateProvider authStateProvide
 {
     public async Task<bool> CanActivateAsync(RouteMatch match)
     {
+        if (authStateProvider is null)
+        {
+            return false;
+        }
+
         var authState = await authStateProvider.GetAuthenticationStateAsync().ConfigureAwait(false);
         var user = authState.User;
         if (user.Identity?.IsAuthenticated != true)
@@ -29,12 +34,21 @@ public sealed class AdminRouteGuard(AuthenticationStateProvider authStateProvide
                || user.HasClaim(c => c.Type == "explore:admin:tenant");
     }
 
-    public Task<string?> GetRedirectPathAsync(RouteMatch match)
+    public async Task<string?> GetRedirectPathAsync(RouteMatch match)
     {
+        if (authStateProvider is not null)
+        {
+            var authState = await authStateProvider.GetAuthenticationStateAsync().ConfigureAwait(false);
+            if (authState?.User?.Identity?.IsAuthenticated == true)
+            {
+                return "/";
+            }
+        }
+
         var returnUrl = string.IsNullOrWhiteSpace(match.MatchedPath)
             ? "/"
             : match.MatchedPath;
 
-        return Task.FromResult<string?>($"/login?returnUrl={Uri.EscapeDataString(returnUrl)}");
+        return $"/login?returnUrl={Uri.EscapeDataString(returnUrl)}";
     }
 }

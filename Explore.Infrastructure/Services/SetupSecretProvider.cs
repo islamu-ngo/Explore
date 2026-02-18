@@ -109,10 +109,12 @@ public class SetupSecretProvider : ISetupSecretProvider
 
     private static string GenerateCryptoRandomSecret()
     {
-        var bytes = RandomNumberGenerator.GetBytes(24);
-        return Convert.ToBase64String(bytes)
+        // 48 bytes → 64 Base64 chars; after stripping +/=/  we still have ≥ 32 alphanumeric chars.
+        var bytes = RandomNumberGenerator.GetBytes(48);
+        var filtered = Convert.ToBase64String(bytes)
             .Replace("+", "")
             .Replace("/", "")
-            .Replace("=", "")[..32];
+            .Replace("=", "");
+        return filtered[..32];
     }
 }

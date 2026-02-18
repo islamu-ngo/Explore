@@ -53,7 +53,7 @@ public class HomeTests : IDisposable
 
         // Act
         var cut = _ctx.RenderMudComponent<Home>();
-        await Task.Delay(100); // Wait for auth check
+        cut.WaitForState(() => !cut.Markup.Contains("Loading", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(2));
 
         // Assert - Should render authenticated content
         // LandingPageForUsers typically has different content than non-user page
@@ -71,7 +71,7 @@ public class HomeTests : IDisposable
 
         // Act
         var cut = _ctx.RenderMudComponent<Home>();
-        await Task.Delay(100); // Wait for auth check
+        cut.WaitForState(() => !cut.Markup.Contains("Loading", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(2));
 
         // Assert - Should render anonymous content
         await Assert.That(cut.Markup).DoesNotContain("Loading");
@@ -90,7 +90,7 @@ public class HomeTests : IDisposable
 
         // Act
         var cut = _ctx.RenderMudComponent<Home>();
-        await Task.Delay(100);
+        cut.WaitForState(() => !cut.Markup.Contains("Loading", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(2));
 
         // Assert - PageTitle component renders in head, check landing page content instead
         // LandingPageForNonUsers has specific content like "Sign Up" and "Explore"
@@ -110,7 +110,7 @@ public class HomeTests : IDisposable
 
         // Act - Should not throw
         var cut = _ctx.RenderMudComponent<Home>();
-        await Task.Delay(100);
+        cut.WaitForState(() => !cut.Markup.Contains("Loading", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(2));
 
         // Assert - Should render without crash
         await Assert.That(cut.Markup).DoesNotContain("Loading");

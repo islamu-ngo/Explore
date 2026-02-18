@@ -4,7 +4,7 @@
 >
 > Placeholders use `{Placeholder}` syntax - see [../../../../docs/TEMPLATE_GLOSSARY.md](../../../../docs/TEMPLATE_GLOSSARY.md).
 >
-> **Note**: All code examples in this document use the ISLAMU Event (Explore) implementation as a concrete reference. Replace `Explore`, `Event`, and related names with your project-specific values.
+> **Note**: Prefer generic templates first. Project-specific examples are optional references only.
 
 ## Placeholder Substitutions
 

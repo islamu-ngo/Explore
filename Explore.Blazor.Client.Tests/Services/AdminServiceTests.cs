@@ -55,7 +55,7 @@ public class AdminServiceTests
     {
         // Arrange
         _apiClient.GetOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
+            .ThrowsAsync(CreateApiException("Server Error", 500));
 
         // Act
         var result = await _service.GetOrganizationRequestsAsync();
@@ -76,6 +76,10 @@ public class AdminServiceTests
         await _service.GetOrganizationRequestsAsync();
 
         // Assert
+        await _apiClient.Received(1).GetOrganizationsAsync(
+            ApiConstants.FirstPage,
+            ApiConstants.DefaultPageSize,
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -105,7 +109,7 @@ public class AdminServiceTests
         // Arrange
         var orgId = Guid.NewGuid();
         _apiClient.GetOrganizationByIdAsync(orgId, Arg.Any<CancellationToken>())
-            .ThrowsAsync(new ApiException("Not Found", 404, null, null, null));
+            .ThrowsAsync(CreateApiException("Not Found", 404));
 
         // Act
         var result = await _service.GetOrganizationDetailsAsync(orgId);
@@ -140,6 +144,36 @@ public class AdminServiceTests
     }
 
     [Test]
+    public async Task ApproveOrganizationAsync_ReturnsTrue_WhenApiThrowsStatus200()
+    {
+        // Arrange
+        var orgId = Guid.NewGuid();
+        _apiClient.UpdatestatustypeAsync(orgId, Arg.Any<UpdateOrganizationApprovalStatusDto>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(CreateApiException("No content body", 200));
+
+        // Act
+        var result = await _service.ApproveOrganizationAsync(orgId);
+
+        // Assert
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task RejectOrganizationAsync_ReturnsTrue_WhenApiThrowsStatus204()
+    {
+        // Arrange
+        var orgId = Guid.NewGuid();
+        _apiClient.UpdatestatustypeAsync(orgId, Arg.Any<UpdateOrganizationApprovalStatusDto>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(CreateApiException("No content body", 204));
+
+        // Act
+        var result = await _service.RejectOrganizationAsync(orgId);
+
+        // Assert
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
     public async Task RejectOrganizationAsync_ReturnsTrue_WhenApiSucceeds()
     {
         // Arrange
@@ -164,7 +198,7 @@ public class AdminServiceTests
         // Arrange
         var orgId = Guid.NewGuid();
         _apiClient.UpdatestatustypeAsync(orgId, Arg.Any<UpdateOrganizationApprovalStatusDto>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new ApiException("Forbidden", 403, null, null, null));
+            .ThrowsAsync(CreateApiException("Forbidden", 403));
 
         // Act
         var result = await _service.RevertToPendingAsync(orgId);
@@ -203,7 +237,7 @@ public class AdminServiceTests
     {
         // Arrange
         _apiClient.EventtypeAllAsync(Arg.Any<CancellationToken>())
-            .ThrowsAsync(new ApiException("Error", 500, null, null, null));
+            .ThrowsAsync(CreateApiException("Error", 500));
 
         // Act
         var result = await _service.GetEventTypesAsync();
@@ -236,7 +270,7 @@ public class AdminServiceTests
     {
         // Arrange
         _apiClient.LanguageAllAsync(Arg.Any<CancellationToken>())
-            .ThrowsAsync(new ApiException("Error", 500, null, null, null));
+            .ThrowsAsync(CreateApiException("Error", 500));
 
         // Act
         var result = await _service.GetLanguagesAsync();
@@ -269,7 +303,7 @@ public class AdminServiceTests
     {
         // Arrange
         _apiClient.ActortypeAllAsync(Arg.Any<CancellationToken>())
-            .ThrowsAsync(new ApiException("Error", 500, null, null, null));
+            .ThrowsAsync(CreateApiException("Error", 500));
 
         // Act
         var result = await _service.GetActorTypesAsync();
@@ -307,7 +341,7 @@ public class AdminServiceTests
     {
         // Arrange
         _apiClient.GetCategoriesAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new ApiException("Error", 500, null, null, null));
+            .ThrowsAsync(CreateApiException("Error", 500));
 
         // Act
         var result = await _service.GetCategoriesAsync();
@@ -343,9 +377,9 @@ public class AdminServiceTests
         // Arrange
         var categoryId = Guid.NewGuid();
         _apiClient.GetCategoryByIdAsync(categoryId, Arg.Any<CancellationToken>())
-            .ThrowsAsync(new ApiException("Not Found", 404, null, null, null));
+            .ThrowsAsync(CreateApiException("Not Found", 404));
         _apiClient.GetCategoryByIdAsync(categoryId)
-            .ThrowsAsync(new ApiException("Not Found", 404, null, null, null));
+            .ThrowsAsync(CreateApiException("Not Found", 404));
 
         // Act
         var result = await _service.GetCategoryByIdAsync(categoryId);
@@ -376,7 +410,7 @@ public class AdminServiceTests
         // Arrange
         var dto = new CreateCategoryDto { FullName = "New Category" };
         _apiClient.CreateCategoryAsync(dto, Arg.Any<CancellationToken>())
-            .ThrowsAsync(new ApiException("Bad Request", 400, null, null, null));
+            .ThrowsAsync(CreateApiException("Bad Request", 400));
 
         // Act
         var result = await _service.CreateCategoryAsync(dto);
@@ -439,7 +473,7 @@ public class AdminServiceTests
         // Arrange
         var categoryId = Guid.NewGuid();
         _apiClient.DeleteCategoryAsync(categoryId, Arg.Any<CancellationToken>())
-            .ThrowsAsync(new ApiException("Forbidden", 403, null, null, null));
+            .ThrowsAsync(CreateApiException("Forbidden", 403));
 
         // Act
         var result = await _service.DeleteCategoryAsync(categoryId);
@@ -577,7 +611,7 @@ public class AdminServiceTests
         // Arrange
         var locationId = Guid.NewGuid();
         _apiClient.DeleteLocationAsync(locationId, Arg.Any<CancellationToken>())
-            .ThrowsAsync(new ApiException("Not Found", 404, null, null, null));
+            .ThrowsAsync(CreateApiException("Not Found", 404));
 
         // Act
         var result = await _service.DeleteLocationAsync(locationId);
@@ -645,6 +679,16 @@ public class AdminServiceTests
                 Items = items.Cast<object>().ToList()
             }
         };
+    }
+
+    private static ApiException CreateApiException(string message, int statusCode, string response = "")
+    {
+        return new ApiException(
+            message,
+            statusCode,
+            response,
+            new Dictionary<string, IEnumerable<string>>(),
+            new InvalidOperationException(message));
     }
 
     #endregion

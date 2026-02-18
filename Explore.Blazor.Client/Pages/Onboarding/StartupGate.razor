@@ -44,13 +44,7 @@
 
             if (!instanceStatus.IsCompleted)
             {
-                if (!instanceStatus.IsAuthenticated)
-                {
-                    Navigation.NavigateTo("/login?returnUrl=/startup", forceLoad: true);
-                    return;
-                }
-
-                Navigation.NavigateTo("/onboarding/instance");
+                Navigation.NavigateTo("/setup");
                 return;
             }
 
@@ -59,7 +53,7 @@
                 var tenantStatus = await TenantOnboardingService.GetStatusAsync();
                 if (tenantStatus != null &&
                     !tenantStatus.IsCompleted &&
-                    (tenantStatus.IsCurrentUserTenantAdministrator || tenantStatus.IsCurrentUserInstanceAdministrator))
+                    (tenantStatus.IsCurrentUserTenantAdministrator || tenantStatus.IsCurrentUserPlatformAdministrator))
                 {
                     Navigation.NavigateTo("/onboarding/tenant");
                     return;

@@ -16,6 +16,12 @@ public class OrganizationHateoasTests
     private readonly ApiTestFixture _fixture;
     private const string BaseUrl = "/api/v1/organization";
 
+    private static string WithCacheBust(string endpoint)
+    {
+        var separator = endpoint.Contains('?', StringComparison.Ordinal) ? "&" : "?";
+        return $"{endpoint}{separator}pageNumber=1&pageSize=20&testRun={Guid.NewGuid():N}";
+    }
+
     public OrganizationHateoasTests(ApiTestFixture fixture)
     {
         _fixture = fixture;
@@ -25,7 +31,7 @@ public class OrganizationHateoasTests
     public async Task GetAll_ShouldIncludeCollectionLinks()
     {
         // Act
-        var response = await _fixture.Client.GetAsync(BaseUrl);
+        var response = await _fixture.Client.GetAsync(WithCacheBust(BaseUrl));
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);

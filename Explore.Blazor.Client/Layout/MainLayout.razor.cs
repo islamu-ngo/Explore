@@ -5,17 +5,19 @@ using System.Net.Http;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.Extensions.Logging;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Layout;
 
-public partial class MainLayout : LayoutComponentBase
+public partial class MainLayout : LayoutComponentBase, IDisposable
 {
     private bool _isDarkMode = false;
     private bool _isInitialized = false;
     private MudTheme? _theme;
     private MudThemeProvider _mudThemeProvider = null!;
+    private bool _hideChrome;
 
     [Inject]
     protected IUserService UserService { get; set; } = null!;
@@ -28,6 +30,9 @@ public partial class MainLayout : LayoutComponentBase
 
     [Inject]
     protected HttpClient HttpClient { get; set; } = null!;
+
+    [Inject]
+    protected NavigationManager NavigationManager { get; set; } = null!;
 
     [CascadingParameter(Name = "InitialTheme")]
     public bool? InitialTheme { get; set; }
@@ -54,6 +59,9 @@ public partial class MainLayout : LayoutComponentBase
             PaletteDark = _darkPalette,
             LayoutProperties = new LayoutProperties()
         };
+
+        UpdateChromeVisibility();
+        NavigationManager.LocationChanged += OnLocationChanged;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -171,4 +179,35 @@ public partial class MainLayout : LayoutComponentBase
         Divider = "#252525",
         OverlayLight = "rgba(0,0,0,0.8)"
     };
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        UpdateChromeVisibility();
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void UpdateChromeVisibility()
+    {
+        var relative = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        var path = relative.Split('?', '#')[0];
+
+        if (!path.StartsWith('/'))
+        {
+            path = "/" + path;
+        }
+
+        if (path.Length > 1)
+        {
+            path = path.TrimEnd('/');
+        }
+
+        _hideChrome = path.Equals("/setup", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith("/onboarding/", StringComparison.OrdinalIgnoreCase)
+            || path.Equals("/startup", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+    }
 }

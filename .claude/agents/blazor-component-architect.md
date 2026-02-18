@@ -20,7 +20,7 @@ Designs, reviews, and refactors Blazor components for the {Project} platform. En
 
 **Triggered by**:
 - Keywords: "blazor", "component", "razor", "mudblazor", "page", "dialog", "layout", "wasm", "server", "bff", "render mode", "component design", "refactoring", "architecture review"
-- File patterns: `**/*.razor`, `**/*.razor.cs`, `**/{Project}.Blazor/**/*.cs`, `**/{Project}.Blazor.Client/**/*.cs`
+- File patterns: `**/*.razor`, `**/*.razor.cs`, `**/*Blazor/**/*.cs`, `**/*Blazor.Client/**/*.cs`
 
 ## {Project} Blazor Architecture
 
@@ -33,11 +33,11 @@ This checklist helps ensure components adhere to established patterns and best p
 ### Component Structure & Lifecycle
 
 - [ ] Component has clear single responsibility.
-- [ ] Uses `@page` directive for routable pages.
+- [ ] Uses the project's routing strategy consistently (`@page` routing or centralized Blazouter `RouteConfig`).
 - [ ] Uses `@rendermode` appropriately (InteractiveAuto/Server/WebAssembly). See `blazor-ui-conventions` (render modes).
 - [ ] Proper `@using` statements are present.
 - [ ] `@code` block is organized (fields → properties → lifecycle → methods).
-- [ ] **MudBlazor components use `ParameterState<T>` for parameters** (prevents infinite re-render loops). See `blazor-ui-conventions` (component design).
+- [ ] Parameter handling matches the local pattern: standard `[Parameter]` + `EventCallback` for most app components; use `ParameterState<T>` when building custom MudBlazor base/stateful components.
 - [ ] EventCallbacks are used for child → parent communication. See `blazor-ui-conventions` (component design).
 - [ ] Implements `IDisposable` for event cleanup. See `blazor-ui-conventions` (component design, state management).
 - [ ] Data loading in `OnInitializedAsync` (not `OnAfterRender`). See `blazor-ui-conventions` (component design).
@@ -71,6 +71,7 @@ This checklist helps ensure components adhere to established patterns and best p
 - [ ] No direct HttpContext access in WASM components. See `blazor-ui-conventions` (render modes) and `blazor-bff-patterns`.
 - [ ] Cookie-based authentication and token forwarding handled by BFF. See `blazor-bff-patterns`.
 - [ ] Theme state management (if applicable) follows `blazor-ui-conventions` (theming).
+- [ ] Route guards and route params follow the configured routing library conventions (for example Blazouter guards and `RouterStateService.GetParam`).
 
 ### Performance & Accessibility
 

@@ -2,6 +2,7 @@ using System.IO.Compression;
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text.RegularExpressions;
+using System.Threading.RateLimiting;
 using Explore.API.BackgroundServices;
 using Explore.API.Extensions;
 using Explore.API.Services;
@@ -13,6 +14,7 @@ using Explore.Persistence.Seed;
 using Explore.Secrets.Extensions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -383,6 +385,18 @@ builder.Services.AddHealthChecks()
     }, tags: ["live", "ready"])
     .AddDbContextCheck<ExploreDbContext>("database", tags: ["ready"]);
 
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddFixedWindowLimiter("SetupSecret", opt =>
+    {
+        opt.PermitLimit = 5;
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        opt.QueueLimit = 0;
+    });
+});
+
 var app = builder.Build();
 
 // Register graceful shutdown handlers for zero-downtime deployments
@@ -451,6 +465,7 @@ if (!builder.Environment.IsEnvironment("Testing"))
 // Console.WriteLine guarantees visibility in all environments (bypasses Serilog log-level filters).
 // Matches established Infisical bootstrap pattern (InfisicalConfigurationProvider.cs).
 var setupSecretProvider = app.Services.GetRequiredService<Explore.Application.Contracts.Services.ISetupSecretProvider>();
+string? setupSecretForStartupReminder = null;
 if (setupSecretProvider.IsSetupModeActive)
 {
     if (setupSecretProvider.IsFromEnvironmentVariable)
@@ -461,6 +476,7 @@ if (setupSecretProvider.IsSetupModeActive)
     {
         app.Logger.LogWarning("[SetupSecret] No SETUP_SECRET env var found. Auto-generated secret for bootstrap.");
         var secretForLog = ((Explore.Infrastructure.Services.SetupSecretProvider)setupSecretProvider).GetSecretForLogging();
+        setupSecretForStartupReminder = secretForLog;
         Console.WriteLine();
         Console.WriteLine("+=============================================================+");
         Console.WriteLine("| SETUP SECRET (auto-generated, not persisted across restarts |");
@@ -476,6 +492,22 @@ if (setupSecretProvider.IsSetupModeActive)
 else
 {
     app.Logger.LogInformation("[SetupSecret] Instance onboarding already completed. Setup mode inactive.");
+}
+
+if (!string.IsNullOrWhiteSpace(setupSecretForStartupReminder))
+{
+    app.Lifetime.ApplicationStarted.Register(() =>
+    {
+        Console.WriteLine();
+        Console.WriteLine("+=============================================================+");
+        Console.WriteLine("| STARTUP COMPLETE — SETUP SECRET                             |");
+        Console.WriteLine("|                                                             |");
+        Console.WriteLine($"|  {setupSecretForStartupReminder,-55} |");
+        Console.WriteLine("|                                                             |");
+        Console.WriteLine("| Open /setup in Blazor to continue onboarding.               |");
+        Console.WriteLine("+=============================================================+");
+        Console.WriteLine();
+    });
 }
 
 // Configure the HTTP request pipeline.
@@ -532,6 +564,7 @@ app.UseHateoas();
 
 app.UseRouting();
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 app.UseOutputCache();
 app.MapControllers();

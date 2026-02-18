@@ -179,29 +179,6 @@ public static class AuthenticationScenarios
             .WithPolicy(AuthenticationTestConstants.ContentModerationPolicy);
     }
 
-    /// <summary>
-    /// Creates a super administrator scenario.
-    /// Super admins have full system access including multi-tenant operations.
-    /// </summary>
-    /// <param name="userId">Optional custom user ID</param>
-    /// <returns>Builder configured for super admin</returns>
-    public static AuthenticationTestBuilder SuperAdmin(Guid? userId = null)
-    {
-        return new AuthenticationTestBuilder()
-            .WithUser(userId ?? AuthenticationTestConstants.AdminUserId, "Super Admin")
-            .WithEmail("superadmin@islamu.org")
-            .WithDefaultTenant()
-            .WithRoles(
-                AuthenticationTestConstants.SuperAdminRole,
-                AuthenticationTestConstants.AdminRole,
-                AuthenticationTestConstants.UserRole)
-            .WithPolicies(
-                AuthenticationTestConstants.AdminPolicy,
-                AuthenticationTestConstants.ManageOrganizationPolicy,
-                AuthenticationTestConstants.CreateEventPolicy,
-                AuthenticationTestConstants.ContentModerationPolicy);
-    }
-
     #endregion
 
     #region Event Scenarios

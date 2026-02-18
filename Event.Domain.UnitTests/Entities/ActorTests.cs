@@ -102,7 +102,13 @@ public class ActorTests
         {
             DisplayName = "Actor",
             ActorType = new ActorType { FullName = "User", MasterCode = "USER" },
-            Tenant = new Tenant { FullName = "Tenant", Slug = "tenant", IsActive = true }
+            Tenant = new Tenant
+            {
+                FullName = "Tenant",
+                Slug = "tenant",
+                TenantStatusId = 2,
+                TenantStatus = new TenantStatus { Id = 2, MasterCode = "ACTIVE", FullName = "Active", IsActiveState = true }
+            }
         };
     }
 }

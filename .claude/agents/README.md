@@ -54,6 +54,7 @@ Agents are autonomous Claude instances that handle specific complex tasks. Unlik
 **Capabilities**:
 - Blazor hybrid rendering patterns (Server + WASM)
 - MudBlazor component best practices
+- Blazouter route/guard patterns
 - BFF architecture validation
 - Service layer patterns
 - Authentication state management
@@ -123,6 +124,7 @@ Use the documentation-architect agent to document the {Entity}Session endpoints
 **Capabilities**:
 - Blazor compilation error resolution
 - MudBlazor component debugging
+- Blazouter routing/guard debugging
 - Render mode issue diagnosis
 - Razor syntax fixes
 

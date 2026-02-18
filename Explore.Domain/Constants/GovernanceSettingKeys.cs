@@ -7,6 +7,7 @@ public static class GovernanceSettingKeys
 {
     public const string DeploymentMode = "deployment.mode";
     public const string TenantSelfServiceRegistration = "tenants.self_service_registration";
+    public const string TenantWhiteLabelingEnabled = "tenants.white_labeling_enabled";
     public const string RoutingDefaultPublicHomePage = "routing.default_public_home_page";
     public const string EventsUserSubmissionEnabled = "events.user_submission_enabled";
     public const string EventsRequireApproval = "events.require_approval";
@@ -46,4 +47,11 @@ public static class GovernanceSettingKeys
 
     // Authorization Provider
     public const string AuthorizationProvider = "authorization.provider";
+
+    // Analytics
+    public const string AnalyticsProvider = "analytics.provider";
+    public const string AnalyticsEnabled = "analytics.enabled";
+    public const string AnalyticsApiKey = "analytics.api_key";
+    public const string AnalyticsEndpointUrl = "analytics.endpoint_url";
+    public const string AnalyticsPersonalApiKey = "analytics.personal_api_key";
 }

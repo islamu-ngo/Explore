@@ -23,4 +23,678 @@
   type: task
   description: '<p class="editor-paragraph-block" data-id="5b492a4a-45a7-445d-a5ea-56b73ba0f3be"><span>In
     .NET, you usually have to choose between Speed and Consistency.<br><br>In-Memory
-    Caching (IMemoryCache):<br></span><span data-name="check_mark_button" 
+    Caching (IMemoryCache):</span></p><p class="editor-paragraph-block" data-id="b17f7103-82db-4678-b59d-bf2f4fdf2702"><span>
+    Blazing fast (nanoseconds).<br> Data is stuck on one server. If you have 10 nodes,
+    you have 10 caches.<br><br>Distributed Caching (IDistributedCache / Redis):<br>Shared
+    across all servers. Consistent data.<br>Network latency. Serialization costs.
+    It''s slower.<br><br>The Solution: HybridCache.<br><br>Don''t choose one. Use
+    both.<br><br>A Hybrid Cache creates a tiered architecture:<br><br>- L1 (Local):
+    The app checks RAM first. If it''s there, return instantly.<br>- L2 (Distributed):
+    If missing locally, check Redis.<br>- Source: If missing in Redis, fetch from
+    DB, then populate both L1 and L2.<br><br>While Microsoft is working on a native
+    implementation, I still swear by FusionCache as the most robust, battle-tested
+    library for this.<br><br>I wrote a guide on how to set this up properly: </span><a
+    target="_blank" class="text-accent-secondary underline underline-offset-[3px]
+    hover:text-accent-primary transition-colors cursor-pointer" href="https://lnkd.in/d6NKgMVp"
+    rel="noopener noreferrer"><strong>https://lnkd.in/d6NKgMVp</strong></a></p>'
+  state: Todo
+  priority: none
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-57
+  title: ARM Build Support
+  type: task
+  description: <p class="editor-paragraph-block" data-id="afa283ca-aab2-426e-bb5a-814a9a47a428"><em>"GitKraken
+    Desktop is ARM'd with new performance improvements!" - GitKraken</em></p><p class="editor-paragraph-block"
+    data-id="87fcfda5-32f7-4157-ac7f-677100c47175">should use a same sentence for
+    ISLAMU Event.</p>
+  state: Backlog
+  priority: none
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-56
+  title: No secrets leaking!
+  type: task
+  description: <p class="editor-paragraph-block" data-id="bd57a72b-6315-4949-94e3-1631230dad39">Ensure
+    secrets are removed before pushing to github!</p><p class="editor-paragraph-block"
+    data-id="81993f4a-d637-424f-b757-8d4f8d73577b">Like the dbconnectionstring in
+    D context factory in persistence projrct</p>
+  state: Done
+  priority: urgent
+  labels:
+  - Sec
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-55
+  title: Add Event Content property
+  type: task
+  description: '<p class="editor-paragraph-block" data-id="5b116732-7223-464a-a445-26a340b5bff7">Add
+    Event Content property so the description is meant to be short and displayed in
+    the viewcard component in ui.</p><p class="editor-paragraph-block" data-id="0a480d6a-a829-444d-a694-96f56331ceae">The
+    content will be Text in markdown like in plane and other, allow for text editor
+    and open standard, the images will be only the url inside the ![]() !</p><p class="editor-paragraph-block"
+    data-id="b80fa44f-742f-4a96-8740-276fe0d91ea6">fun fact: i was like oh no i have
+    description as nullable inside codebase! will need to change it everywhere now!</p><p
+    class="editor-paragraph-block" data-id="d8d1834f-a4cc-4208-9632-381bcabaf69b">but
+    then i was like let''s rename it to content. And then i was like hum… let''s just
+    keep it like that and add content porperty!</p>'
+  state: Todo
+  priority: none
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-54
+  title: Support Third Party IDP
+  type: task
+  description: <p class="editor-paragraph-block" data-id="d8955f07-544b-4499-865a-e384e8234987">Use
+    case:</p><p class="editor-paragraph-block" data-id="fa21f041-e553-4c3a-b198-a4a3c16bb7ef">Login
+    with your PDS like Bluesky for example</p><h2 class="editor-heading-block" data-id="666b2e53-fc1e-4cea-833c-e4169328a337">Implementation</h2><p
+    class="editor-paragraph-block" data-id="b2e9a9da-b4b6-4b42-b501-ddff0bd99d3d">The
+    flow I envision is inspired by Jan their web chat!</p><p class="editor-paragraph-block"
+    data-id="f590138f-52ce-43a2-8245-d91a1e45bae5">You first login with your IDP,
+    then if the IDP doesn't provide all the info your app needs for like user creating
+    or other onboarding flows then when he login with idp if successsfull redirect
+    to keycloak, where keycloak identity user, display his name and ask for only the
+    additional data required. Then Redirect him to The app!</p><p class="editor-paragraph-block"
+    data-id="e32241c9-1506-469f-babd-c2839661d2d0"></p>
+  state: Backlog
+  priority: none
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-53
+  title: 'perf: db indexes to add'
+  type: task
+  description: '<p class="editor-paragraph-block" data-id="f5ae951e-c13b-4f3e-847f-b4250882376d">For
+    Postgres, minimum practical indexes:</p><h3 class="editor-heading-block" data-id="4675637f-5540-4f23-89e5-a021a6721ed1">A.
+    Foreign keys</h3><p class="editor-paragraph-block" data-id="c65fa6a0-a019-408f-bd4c-2e10b41583d0">Index
+    every FK column used in joins (Postgres doesn’t auto-index them):</p><ul class="list-disc
+    pl-7 space-y-(--list-spacing-y) tight" data-id="c8ed0c94-0feb-45a1-abe9-0f3f313b4d7b"
+    data-tight="true"><li class="not-prose space-y-2" data-id="7ebd2390-d38c-4bfd-b211-f71de8f8520e"><p
+    class="editor-paragraph-block" data-id="5d23c97f-d540-4dd0-9607-591f329b7957">event(tenant_id),
+    event(actor_id), event(event_status_id), etc.</p></li><li class="not-prose space-y-2"
+    data-id="4963e443-8162-4ce2-a98a-4149cd400e1c"><p class="editor-paragraph-block"
+    data-id="641ee39e-280a-41ab-882e-9bfb754606e6">event_session(event_id), event_session(tenant_id),
+    event_session(location_id)</p></li><li class="not-prose space-y-2" data-id="529614a7-96e1-4551-bff3-12838220b413"><p
+    class="editor-paragraph-block" data-id="89397e42-5eae-43cb-8019-4d2556f6d19f">join
+    tables: (event_id), (tag_id), (category_id) etc.</p></li></ul><h3 class="editor-heading-block"
+    data-id="fc3870e3-cde2-4b64-b869-c9683ebfdc26">B. Search</h3><p class="editor-paragraph-block"
+    data-id="9c947073-9b76-42ca-8c61-87570321ce5f">If you’ll do keyword search:</p><ul
+    class="list-disc pl-7 space-y-(--list-spacing-y) tight" data-id="c0031fd7-65b9-4e69-a569-06a29f5b2151"
+    data-tight="true"><li class="not-prose space-y-2" data-id="04301468-55e7-4d8b-a4bf-c7096a3f49d6"><p
+    class="editor-paragraph-block" data-id="da90f118-36ed-457d-9ee5-8e86c2c72136">Add
+    tsvector (or generated column) on event.title + event.description</p></li><li
+    class="not-prose space-y-2" data-id="d0789dd0-6728-40a7-bc9e-192848034c69"><p
+    class="editor-paragraph-block" data-id="753c777a-9068-47d9-a986-5214335b65c3">GIN
+    index on it</p></li><li class="not-prose space-y-2" data-id="39aefc83-ae12-4007-9efa-14fade5cd4cb"><p
+    class="editor-paragraph-block" data-id="3739e9f6-84b1-4c25-ace1-a0cedbc3336b">Also
+    consider trigram index on title for “contains” search</p></li></ul><h3 class="editor-heading-block"
+    data-id="e742c4a6-bdfe-41b5-abba-79bb0048e34b">C. Filtering paths</h3><p class="editor-paragraph-block"
+    data-id="9c8b3fda-e250-4ed7-b3c7-93b146b35fa1">Common filters you listed suggest
+    composite indexes like:</p><ul class="list-disc pl-7 space-y-(--list-spacing-y)
+    tight" data-id="c42d302d-6658-4bc5-be8b-71da976a36c3" data-tight="true"><li class="not-prose
+    space-y-2" data-id="73ff2439-dce0-466b-a02c-7d30fb48f935"><p class="editor-paragraph-block"
+    data-id="7a3b451c-2acd-47ef-8fe6-1fe054918b77">event(tenant_id, visibility_type_id,
+    event_status_id, first_session_date)</p></li><li class="not-prose space-y-2" data-id="7aa22c4a-622a-42db-94d3-8772b60a7d7b"><p
+    class="editor-paragraph-block" data-id="75bcf187-8140-4690-8ecc-2b81b536bf9a">event(tenant_id,
+    madhab_id)</p></li><li class="not-prose space-y-2" data-id="44c57098-1551-4c68-8161-6ebfb6df0c8f"><p
+    class="editor-paragraph-block" data-id="18df5f1a-fe34-44e1-8df1-3f75b65a61e1">event(audience_gender_id,
+    audience_age_id) (maybe with tenant_id first)</p></li></ul><h3 class="editor-heading-block"
+    data-id="27601695-7549-4560-aece-5e86443bd643">D. Slugs</h3><p class="editor-paragraph-block"
+    data-id="3d70e146-67fb-4b03-ae2e-fa11da420aa4">You have slug on event and event_session.<br>Add
+    unique constraints:</p><ul class="list-disc pl-7 space-y-(--list-spacing-y) tight"
+    data-id="e6059ef4-fbc7-4168-b0ef-8b1873b905a6" data-tight="true"><li class="not-prose
+    space-y-2" data-id="788c351c-bd9b-491e-aa32-2d9751056e63"><p class="editor-paragraph-block"
+    data-id="9d31ac77-605c-45c4-8ae9-3d3ec73c163a">unique (tenant_id, slug) for events</p></li><li
+    class="not-prose space-y-2" data-id="b6395f12-bcb7-4359-a534-d8e073744267"><p
+    class="editor-paragraph-block" data-id="e45d54bb-76ab-443f-b472-3acbb9d09ae9">unique
+    (tenant_id, slug) for sessions (or (event_id, slug))</p></li></ul><p class="editor-paragraph-block"
+    data-id="d8465a09-d9b6-4bff-b512-1a85f51919e2">Also consider citext for slugs/emails
+    to avoid case bugs.</p>'
+  state: Backlog
+  priority: none
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-52
+  title: Triggers for counter update in Event
+  type: task
+  description: '<h2 class="editor-heading-block" data-id="5fc2d726-2a83-4651-849b-cac43579b26f">Counters
+    and derived fields: decide how they stay correct</h2><p class="editor-paragraph-block"
+    data-id="29c8655d-a79f-4ae3-b47c-be0586bde8ad">You have several “derived” or “counter
+    cache” fields:</p><ul class="list-disc pl-7 space-y-(--list-spacing-y) tight"
+    data-id="20044f10-6e8f-499e-972c-32305fe701ec" data-tight="true"><li class="not-prose
+    space-y-2" data-id="6d3422f5-094f-4526-bfe0-c7d9b08b4c29"><p class="editor-paragraph-block"
+    data-id="b5dac63e-cc9f-48c5-811b-4285df2540c0">event.session_count</p></li><li
+    class="not-prose space-y-2" data-id="c3fce04b-fd9f-40a2-b4fe-12af1aa66800"><p
+    class="editor-paragraph-block" data-id="50292819-a8b0-4a2e-ac76-cad24bdad442">event.first_session_date,
+    event.last_session_date</p></li><li class="not-prose space-y-2" data-id="17b933aa-e000-48fe-a5da-5491e3ce8630"><p
+    class="editor-paragraph-block" data-id="2bc8de82-b212-49ad-b6d8-fd33586a9f19">event_session.current_audience_attendees</p></li><li
+    class="not-prose space-y-2" data-id="7336feef-4716-42d1-a336-5f7cbc5d4db0"><p
+    class="editor-paragraph-block" data-id="4a2ecd9f-e6d2-4774-9d7f-96574bf73847"><a
+    target="_blank" class="text-accent-secondary underline underline-offset-[3px]
+    hover:text-accent-primary transition-colors cursor-pointer" href="http://event.total"
+    rel="noopener noreferrer">event.total</a>_views</p></li></ul><p class="editor-paragraph-block"
+    data-id="c152bf95-550b-4bfd-98b8-c7d751a2252a">These are fine, but only if you
+    define how they are maintained:</p><ul class="list-disc pl-7 space-y-(--list-spacing-y)
+    tight" data-id="e3857b46-b485-4a13-8573-cd8b81ade50e" data-tight="true"><li class="not-prose
+    space-y-2" data-id="9f055ab2-d969-4343-b36f-f3b65ec4592d"><p class="editor-paragraph-block"
+    data-id="6e51f5ab-7422-4ca6-929f-1fde7d6811c7"><strong>Triggers</strong> (correctness
+    first)</p></li><li class="not-prose space-y-2" data-id="13346dbf-7635-4777-8adc-46412568cfac"><p
+    class="editor-paragraph-block" data-id="ffec6226-4bf1-44f4-8bf6-2fcd1a8a856a"><strong>Background
+    job/materialized view</strong> (scalability first)</p></li><li class="not-prose
+    space-y-2" data-id="1c02801c-7068-45c3-b400-e5481e9dc782"><p class="editor-paragraph-block"
+    data-id="6cfb68ae-0e30-44f4-9d02-38a2421e0ef3"><strong>Application-only writes</strong>
+    (most fragile)</p></li></ul><p class="editor-paragraph-block" data-id="d4d243cf-6783-431e-8bd6-537b53295597">If
+    you want reliability, I’d do:</p><ul class="list-disc pl-7 space-y-(--list-spacing-y)
+    tight" data-id="5f76a41f-4670-4628-b456-d41893bf7c64" data-tight="true"><li class="not-prose
+    space-y-2" data-id="8e4e1701-0027-4409-9c63-92159ede82f4"><p class="editor-paragraph-block"
+    data-id="9b58e1e9-95e7-46a6-8ec3-216865a43b8a">event.first_session_date/last_session_date/session_count
+    maintained by trigger on event_session</p></li><li class="not-prose space-y-2"
+    data-id="7e51ca3a-8706-4974-93ee-19af4fde6177"><p class="editor-paragraph-block"
+    data-id="d3918286-a055-46b9-9496-873f4d4f29ae">current_audience_attendees maintained
+    by trigger on event_registration (and enforce max constraint)</p></li></ul><p
+    class="editor-paragraph-block" data-id="e4e8ed7f-78a0-47a7-a2bd-40a91ec5ad07">Also
+    enforce:</p><ul class="list-disc pl-7 space-y-(--list-spacing-y) tight" data-id="b4c98bad-1896-48cf-9d1b-aa87f4ee6d7b"
+    data-tight="true"><li class="not-prose space-y-2" data-id="4ed23680-3906-47ae-b2a4-3414b7fd5d02"><p
+    class="editor-paragraph-block" data-id="9e1e4b4c-6a11-4d6b-881c-3971785fe684">event_registration
+    unique per (user_id, event_session_id) to prevent double-RSVP</p></li></ul>'
+  state: Backlog
+  priority: none
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-51
+  title: 'feat: Event session registration modes'
+  type: task
+  description: <p class="editor-paragraph-block" data-id="e8d03b22-2d9b-4f26-acd2-3a1049550fb0">Rules
+    (business logic):</p><ul class="list-disc pl-7 space-y-(--list-spacing-y) tight"
+    data-id="76336316-0d8d-455f-a0b2-68ab20ada97e" data-tight="true"><li class="not-prose
+    space-y-2" data-id="6a64d541-746e-4f00-9377-0a04afd8392b"><p class="editor-paragraph-block"
+    data-id="616b9792-17e5-45b4-a270-708b3629f5b3">If mode = FREE  create registration
+    with status APPROVED immediately</p></li><li class="not-prose space-y-2" data-id="9b7956b3-1df3-45fc-b65e-96ec2527707e"><p
+    class="editor-paragraph-block" data-id="066345d9-35f8-4a9f-919c-676d1b9c64c5">If
+    mode = APPROVAL  create with PENDING and later switch to APPROVED/REJECTED</p></li><li
+    class="not-prose space-y-2" data-id="1fbd5b4c-ea85-4b7f-9e89-906cd192d3d7"><p
+    class="editor-paragraph-block" data-id="2d1ada18-7c19-46ec-953a-7e7a30d613ca">If
+    mode = INVITE  only allow if invite valid; usually create as APPROVED (or PENDING
+    if you want extra review)</p></li><li class="not-prose space-y-2" data-id="af99638c-7c2e-4615-b127-134702094982"><p
+    class="editor-paragraph-block" data-id="45793bef-5fc9-4739-bfa9-82610852f590">If
+    mode = EXTERNAL  <strong>don’t create</strong>event_registration at all (or create
+    only as a “bookmark/interest” row), because the real registration happens elsewhere</p></li></ul>
+  state: Backlog
+  priority: none
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-50
+  title: 'feat: agenda items for event session'
+  type: task
+  description: <h3 class="editor-heading-block" data-id="2aca3816-836d-4f13-982e-08c9f4d6b7b0">Constraints
+    you almost certainly want (PostgreSQL)</h3><ol class="list-decimal pl-7 space-y-(--list-spacing-y)
+    tight" data-id="5f64a7a4-57f3-448a-beb4-b111e8cb8d82" data-tight="true"><li class="not-prose
+    space-y-2" data-id="691e2527-b86d-45f7-a66e-79b924cf8f2f"><p class="editor-paragraph-block"
+    data-id="03e4b04a-f127-4367-81ff-7c92d700ee75">Basic check:</p></li></ol><ul class="list-disc
+    pl-7 space-y-(--list-spacing-y) tight" data-id="b8a61490-94cd-4f7e-995f-9981b8157721"
+    data-tight="true"><li class="not-prose space-y-2" data-id="745cee8d-c15c-4f78-97e4-c8f33c5fcdfd"><p
+    class="editor-paragraph-block" data-id="0ee366f8-cffc-4f42-b18c-128a2c483452">end_time
+    &gt; start_time</p></li></ul><ol class="list-decimal pl-7 space-y-(--list-spacing-y)
+    tight" data-id="5714b456-b689-43b7-b456-40ec04a23c1f" data-tight="true"><li class="not-prose
+    space-y-2" data-id="6f3f78ba-1725-417a-87b7-ddde3ce39a35"><p class="editor-paragraph-block"
+    data-id="dd108de1-97fd-4f53-bb73-e1ffab1f9bfc">Item must fit inside session window
+    (either enforced in app or via triggers):</p></li></ol><ul class="list-disc pl-7
+    space-y-(--list-spacing-y) tight" data-id="5d7a8c64-0e40-46d7-ba7b-f03b4b754e25"
+    data-tight="true"><li class="not-prose space-y-2" data-id="669ba62b-8f95-4bcc-a519-86f880a3002c"><p
+    class="editor-paragraph-block" data-id="a33eb1b2-f6b6-4f84-a6a3-2fbf9e9ec0f0">agenda_item.start_time
+    &gt;= event_session.start_time</p></li><li class="not-prose space-y-2" data-id="4977aed9-592d-4927-87c2-05c22b65d50b"><p
+    class="editor-paragraph-block" data-id="0f0d1adf-1eb9-4cfa-b69a-a5989d3a9146">agenda_item.end_time
+    &lt;= event_session.end_time</p></li></ul><ol class="list-decimal pl-7 space-y-(--list-spacing-y)
+    tight" data-id="735ece3f-7a30-472c-b912-9901787477b1" data-tight="true"><li class="not-prose
+    space-y-2" data-id="c56d1d0a-ccb2-4261-88ef-c5a28adaad39"><p class="editor-paragraph-block"
+    data-id="fcfae29a-1075-4d23-8a1d-06e79f46ac0b">Prevent overlapping agenda items
+    in the same session (very useful):</p></li></ol><ul class="list-disc pl-7 space-y-(--list-spacing-y)
+    tight" data-id="e3d4df57-0e35-4c7f-8824-21711fe26141" data-tight="true"><li class="not-prose
+    space-y-2" data-id="99087024-5be1-4bca-b147-388fa0986144"><p class="editor-paragraph-block"
+    data-id="5e431e41-0151-4195-8e6b-80642e3378d0">Use an <strong>exclusion constraint</strong>
+    on a range type (tstzrange if you use timestamptz).</p></li></ul><p class="editor-paragraph-block"
+    data-id="bbc1481b-d1bc-4019-b392-c1fafb8b07f7">If you can, strongly consider using
+    timestamptz instead of timestamp (time zones + Google Calendar will thank you).</p>
+  state: Backlog
+  priority: low
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-49
+  title: Stage Timer
+  type: task
+  description: <p class="editor-paragraph-block" data-id="ce008cd0-2602-46c3-a1db-15ed3436eb6a"><a
+    target="_blank" class="text-accent-secondary underline underline-offset-[3px]
+    hover:text-accent-primary transition-colors cursor-pointer" href="https://stagetimer.io/"
+    rel="noopener noreferrer">https://stagetimer.io/</a></p><external-embed-component
+    data-id="6bc56291-0b95-4814-b0e8-c01b84997dd8" src="https://stagetimer.io/" id="6bc56291-0b95-4814-b0e8-c01b84997dd8"
+    data-embed-data="{&quot;meta&quot;:{&quot;description&quot;:&quot;Show a fullscreen
+    timer to your presenter while you control it from another device. Runs in the
+    browser. Basic version is free. Works on all screen sizes.&quot;,&quot;title&quot;:&quot;Remote-controlled
+    Countdown Timer | stagetimer.io&quot;,&quot;medium&quot;:&quot;link&quot;,&quot;theme-color&quot;:&quot;#1f1716&quot;,&quot;canonical&quot;:&quot;https://stagetimer.io/&quot;,&quot;site&quot;:&quot;stagetimer.io&quot;},&quot;links&quot;:{&quot;thumbnail&quot;:[{&quot;href&quot;:&quot;https://preview-screenshot.stagetimer.io/stagetimer.io.jpg?c=dc070f6d30f0434872b3bbb414c14968&quot;,&quot;type&quot;:&quot;image/jpeg&quot;,&quot;rel&quot;:[&quot;twitter&quot;,&quot;thumbnail&quot;,&quot;ssl&quot;,&quot;og&quot;],&quot;media&quot;:{&quot;width&quot;:1200,&quot;height&quot;:627}}],&quot;icon&quot;:[{&quot;href&quot;:&quot;https://stagetimer.io/apple-touch-icon.png&quot;,&quot;rel&quot;:[&quot;apple-touch-icon&quot;,&quot;icon&quot;,&quot;ssl&quot;],&quot;type&quot;:&quot;image/png&quot;,&quot;media&quot;:{&quot;width&quot;:180,&quot;height&quot;:180}},{&quot;href&quot;:&quot;https://stagetimer.io/favicon-32x32.png&quot;,&quot;rel&quot;:[&quot;icon&quot;,&quot;ssl&quot;],&quot;type&quot;:&quot;image/png&quot;,&quot;media&quot;:{&quot;width&quot;:32,&quot;height&quot;:32}},{&quot;href&quot;:&quot;https://stagetimer.io/favicon-16x16.png&quot;,&quot;rel&quot;:[&quot;icon&quot;,&quot;ssl&quot;],&quot;type&quot;:&quot;image/png&quot;,&quot;media&quot;:{&quot;width&quot;:16,&quot;height&quot;:16}},{&quot;href&quot;:&quot;https://stagetimer.io/favicon.ico&quot;,&quot;rel&quot;:[&quot;icon&quot;,&quot;ssl&quot;],&quot;type&quot;:&quot;image/x-icon&quot;},{&quot;href&quot;:&quot;https://stagetimer.io/safari-pinned-tab.svg&quot;,&quot;rel&quot;:[&quot;mask-icon&quot;,&quot;icon&quot;,&quot;ssl&quot;],&quot;type&quot;:&quot;image/svg+xml&quot;,&quot;color&quot;:&quot;#1f1716&quot;}]},&quot;rel&quot;:[]}"
+    data-is-rich-card="false" data-has-embed-failed="false" data-has-tried-embedding="true"
+    data-entity-name="stagetimer.io" data-entity-type="embed"></external-embed-component><external-embed-component
+    data-id="57218d15-857e-4985-b4e0-60173f43590c" src="https://stagetimer.io/" id="57218d15-857e-4985-b4e0-60173f43590c"
+    data-embed-data="{&quot;meta&quot;:{&quot;description&quot;:&quot;Show a fullscreen
+    timer to your presenter while you control it from another device. Runs in the
+    browser. Basic version is free. Works on all screen sizes.&quot;,&quot;title&quot;:&quot;Remote-controlled
+    Countdown Timer | stagetimer.io&quot;,&quot;medium&quot;:&quot;link&quot;,&quot;theme-color&quot;:&quot;#1f1716&quot;,&quot;canonical&quot;:&quot;https://stagetimer.io/&quot;,&quot;site&quot;:&quot;stagetimer.io&quot;},&quot;links&quot;:{&quot;thumbnail&quot;:[{&quot;href&quot;:&quot;https://preview-screenshot.stagetimer.io/stagetimer.io.jpg?c=dc070f6d30f0434872b3bbb414c14968&quot;,&quot;type&quot;:&quot;image/jpeg&quot;,&quot;rel&quot;:[&quot;twitter&quot;,&quot;thumbnail&quot;,&quot;ssl&quot;,&quot;og&quot;],&quot;media&quot;:{&quot;width&quot;:1200,&quot;height&quot;:627}}],&quot;icon&quot;:[{&quot;href&quot;:&quot;https://stagetimer.io/apple-touch-icon.png&quot;,&quot;rel&quot;:[&quot;apple-touch-icon&quot;,&quot;icon&quot;,&quot;ssl&quot;],&quot;type&quot;:&quot;image/png&quot;,&quot;media&quot;:{&quot;width&quot;:180,&quot;height&quot;:180}},{&quot;href&quot;:&quot;https://stagetimer.io/favicon-32x32.png&quot;,&quot;rel&quot;:[&quot;icon&quot;,&quot;ssl&quot;],&quot;type&quot;:&quot;image/png&quot;,&quot;media&quot;:{&quot;width&quot;:32,&quot;height&quot;:32}},{&quot;href&quot;:&quot;https://stagetimer.io/favicon-16x16.png&quot;,&quot;rel&quot;:[&quot;icon&quot;,&quot;ssl&quot;],&quot;type&quot;:&quot;image/png&quot;,&quot;media&quot;:{&quot;width&quot;:16,&quot;height&quot;:16}},{&quot;href&quot;:&quot;https://stagetimer.io/favicon.ico&quot;,&quot;rel&quot;:[&quot;icon&quot;,&quot;ssl&quot;],&quot;type&quot;:&quot;image/x-icon&quot;},{&quot;href&quot;:&quot;https://stagetimer.io/safari-pinned-tab.svg&quot;,&quot;rel&quot;:[&quot;mask-icon&quot;,&quot;icon&quot;,&quot;ssl&quot;],&quot;type&quot;:&quot;image/svg+xml&quot;,&quot;color&quot;:&quot;#1f1716&quot;}]},&quot;rel&quot;:[]}"
+    data-is-rich-card="true" data-has-embed-failed="false" data-has-tried-embedding="false"
+    data-entity-name="stagetimer.io" data-entity-type="rich_card"></external-embed-component>
+  state: Backlog
+  priority: low
+  labels:
+  - Feature
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-48
+  title: 'feat: Email Verification'
+  type: task
+  description: <p class="editor-paragraph-block" data-id="5cc81f01-2499-4c63-b0f3-ee03b190070b">Inside
+    keycloak?</p><p class="editor-paragraph-block" data-id="2f2fbe0e-91b3-4219-b0d9-4d0f93524e86"></p>
+  state: Todo
+  priority: medium
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-47
+  title: 'blazor: send uploads to Object Storage'
+  type: task
+  description: <p></p>
+  state: Done
+  priority: urgent
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-46
+  title: ci/cd deploy application
+  type: task
+  description: <p></p>
+  state: Todo
+  priority: urgent
+  due_date: '2025-12-28'
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-45
+  title: 'blazor: Tests'
+  type: task
+  description: <p></p>
+  state: Todo
+  priority: none
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-44
+  title: 'blazor: responsiveness'
+  type: task
+  description: <p></p>
+  state: Todo
+  priority: urgent
+  due_date: '2025-12-28'
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-43
+  title: 'feat: multiple emails support per account or update'
+  type: task
+  description: <p class="editor-paragraph-block" data-id="ace0689f-6de6-40c0-9037-1f4b364a2897">why?
+    to help users transition to their new better email.<br>another implementation
+    could be to simply update email indeed..</p><p class="editor-paragraph-block"
+    data-id="7aa58bd6-e4fc-4e9c-bdf5-438b63942ccd">but as github does it was inspiration.
+    so having a logic of primary email. and allowing for login and password reset
+    trough other emails configured and more usecases.</p><p class="editor-paragraph-block"
+    data-id="4df77419-3984-407f-9ec9-0b0b3cd8398d">but implementation seems hard…  maybe
+    not possible with keycloak or needing writting custom plugin? anyway!</p>
+  state: Backlog
+  priority: high
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-42
+  title: 'feat(blazor/localization): Get longitute and latitude from browser API'
+  type: task
+  description: <p></p>
+  state: Todo
+  priority: urgent
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-41
+  title: 'research: Scope of Event Management Capabilities?'
+  type: task
+  description: <p class="editor-paragraph-block" data-id="a3ad295c-a1e5-4aeb-acfb-4e67d0382d52">Should
+    ISLAMU Explore Also implement bussiness reports about all the pricings and kost
+    and finances and comptabilité? or not?</p><p class="editor-paragraph-block" data-id="658a57a1-dfb2-4649-aab0-ee227c4d27f8">Reason
+    not to could be there are other tools for that, like odoo and quonto or othres.</p><p
+    class="editor-paragraph-block" data-id="0a6fabd1-c311-48d5-a09f-0c016c4e2b6e">Maybe
+    Just Integrations for seamless integration with other tools?</p>
+  state: In Progress
+  priority: high
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-40
+  title: 'fix(auth): reduce lifespan of access token when MVP is OUT!'
+  type: task
+  description: <image-component src="0f237042-8c08-4770-bc25-e575739eea31" id="88591b55-36e0-418b-addd-e9a69009f3f8"
+    width="300px" height="163px" aspectratio="1.8375451263537905" alignment="left"
+    status="uploaded"></image-component><p class="editor-paragraph-block">in islamu-dev,
+    realm settings, token, under access token</p>
+  state: Todo
+  priority: urgent
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-39
+  title: 'style(blazor): Landing Page'
+  type: task
+  description: <p></p>
+  state: Done
+  priority: urgent
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-38
+  title: 'feat(api): Add Categories & Tags'
+  type: task
+  description: <p></p>
+  state: Todo
+  priority: high
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-37
+  title: 'feat(blazor): Sort and Filter By Categories & Tags'
+  type: task
+  description: <p></p>
+  state: Todo
+  priority: high
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-36
+  title: 'feat(api): Categories & Tags Advanced Filtering for Programs'
+  type: task
+  description: <p></p>
+  state: Todo
+  priority: high
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-35
+  title: 'feat(api): Cerbos PDP for Program Controller'
+  type: task
+  description: <p></p>
+  state: Todo
+  priority: high
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-34
+  title: 'ci: add initial deployment pipeline to development'
+  type: task
+  description: <p></p>
+  state: Todo
+  priority: urgent
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-33
+  title: 'style(prototype): Event List'
+  type: task
+  description: <p></p>
+  state: Done
+  priority: urgent
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-32
+  title: 'style(blazor): Footer'
+  type: task
+  description: <p></p>
+  state: Done
+  priority: urgent
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-31
+  title: 'research: Infisical Cloud vs Infisical Self Hosted?'
+  type: task
+  description: <p></p>
+  state: Done
+  priority: urgent
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-30
+  title: 'feat(orchestration): pass Env Variable from Infisical'
+  type: task
+  description: <p></p>
+  state: Done
+  priority: urgent
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-29
+  title: 'feat(orchestration): Initialize Aspire Template'
+  type: task
+  description: <p></p>
+  state: Done
+  priority: urgent
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-28
+  title: 'feat(blazor): Initiate Mudblazor Template'
+  type: task
+  description: <p></p>
+  state: Done
+  priority: urgent
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-27
+  title: 'legal(license): AGPLv3 License'
+  type: task
+  description: <p></p>
+  state: Done
+  priority: urgent
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-26
+  title: 'docs(readme): fix badges and add emojis to Titles'
+  type: task
+  description: <p></p>
+  state: Done
+  priority: high
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-25
+  title: 'style(prototype): Website Header'
+  type: task
+  description: <p></p>
+  state: Done
+  priority: urgent
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-24
+  title: 'style(prototype): Website Footer'
+  type: task
+  description: <p></p>
+  state: Done
+  priority: urgent
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-23
+  title: 'feat: Vector Database for Advanced Search'
+  type: task
+  description: <p></p>
+  state: Backlog
+  priority: medium
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-22
+  title: 'feat(blazor): Maps Integration in Program Detail Page'
+  type: task
+  description: <p></p>
+  state: Backlog
+  priority: medium
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-21
+  title: 'research: Keycloak vs Duende vs AspNet.Identity vs SST OpenAuth vs Faroe'
+  type: task
+  description: <p></p>
+  state: Done
+  priority: urgent
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-20
+  title: 'feat: Notificatoin Center for new Programs of Subscribed Org'
+  type: task
+  description: <p></p>
+  state: Backlog
+  priority: high
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-19
+  title: 'feat: Allow Subscription to Organizations for Users'
+  type: task
+  description: <p></p>
+  state: Backlog
+  priority: high
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-18
+  title: 'feat: Weekly Newsletter Programs to come Feed'
+  type: task
+  description: <p></p>
+  state: Backlog
+  priority: medium
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-17
+  title: 'docs: Event Quality Checklist'
+  type: task
+  description: <p></p>
+  state: In Progress
+  priority: none
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-16
+  title: 'feat(api): Custom Feed Algorithm for Logged in Users'
+  type: task
+  description: <p></p>
+  state: Todo
+  priority: high
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-15
+  title: 'feat: Program Widget for Third Party Easy Embeding'
+  type: task
+  description: <p></p>
+  state: Backlog
+  priority: medium
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-14
+  title: 'feat: QR-Code for Programs'
+  type: task
+  description: <p></p>
+  state: Backlog
+  priority: high
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-13
+  title: 'research: Object Storage Service to choose?'
+  type: task
+  description: <p></p>
+  state: In Progress
+  priority: none
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-12
+  title: 'research: Posthog vs easy Self Hostable Alternative?'
+  type: task
+  description: <p></p>
+  state: Done
+  priority: urgent
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-11
+  title: 'research(blazor): Interactivity Auto vs Full SSR?'
+  type: task
+  description: <p></p>
+  state: Done
+  priority: urgent
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-10
+  title: 'feat: Send Email Verification for Registration'
+  type: task
+  description: <p></p>
+  state: Todo
+  priority: high
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-9
+  title: 'feat(api): Pagination Programs'
+  type: task
+  description: <p class="editor-paragraph-block"></p>
+  state: Todo
+  priority: medium
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-8
+  title: 'feat(api): Feed Algorithm'
+  type: task
+  description: <p class="editor-paragraph-block">Just like YouTube, so if there are
+    to many programs how to make sur quality is shown more, diversity is applied (seeing
+    all types of programs). </p><p class="editor-paragraph-block">By it by region(see
+    different feed in Belgium than in france speaking of digital non regional programs),
+    by language. And more. </p>
+  state: Todo
+  priority: low
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-7
+  title: 'feat(blazor): Automate API Client Generation with NSwagg!'
+  type: task
+  description: <p></p>
+  state: Todo
+  priority: high
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-6
+  title: 'feat(blazor): Use NSwag Generated API Client'
+  type: task
+  description: <p></p>
+  state: Done
+  priority: urgent
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-5
+  title: 'reseach: Investigate top 3 Competitors'
+  type: task
+  description: <p class="editor-paragraph-block" data-id="e888af0c-12e0-4ed4-9516-4660ef7eaeb1"><span>then
+    Minimum 10 to 15?Look at how they are doingHow they are getting FinancesHow they
+    implemented UI &amp; UX!How they are attracting Customers How they are sending
+    Emails and more!</span></p>
+  state: In Progress
+  priority: urgent
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-4
+  title: 'style(prototype): Landing Page'
+  type: task
+  description: <p></p>
+  state: Done
+  priority: urgent
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-3
+  title: 'feat(api): Authorize & Authenticate Blazor requests'
+  type: task
+  description: <span>Currently getting 401 unauthorized even when sending correct
+    token…</span>
+  state: Done
+  priority: urgent
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-2
+  title: 'style(prototype): Event Details Page'
+  type: task
+  description: <p></p>
+  state: Done
+  priority: urgent
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2
+- id: EVENT-1
+  title: 'research: "Interview" Multiple Events Organizators'
+  type: task
+  description: <p class="editor-paragraph-block" data-id="a5e04da2-be10-4212-a556-164511baa0d8"><span>Maybe
+    15 Mosques.And 15 Non MosquesAnd 15 IndividualsMosquesMasjid Al AmalMasjid Al
+    KhalilNon MosquesSapience InstituteIndividualsMohammed HijabSabboor AhmadMohammed
+    Hoblos</span></p>
+  state: Todo
+  priority: high
+  assignees:
+  - e3d2b253-7b68-45e1-b101-1c21711c28b2

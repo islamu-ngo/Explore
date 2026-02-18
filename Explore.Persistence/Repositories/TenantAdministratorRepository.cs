@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
@@ -49,5 +50,14 @@ public class TenantMemberRepository : GenericRepository<TenantMember, Guid>, ITe
         return await _dbContext.TenantMembers
             .AsNoTracking()
             .AnyAsync(x => x.TenantId == tenantId && x.UserId == userId);
+    }
+
+    public async Task<bool> IsTenantAdmin(Guid tenantId, Guid userId)
+    {
+        return await _dbContext.TenantMembers
+            .AsNoTracking()
+            .AnyAsync(x => x.TenantId == tenantId
+                && x.UserId == userId
+                && (x.RoleId == (int)RoleEnum.TenantOwner || x.RoleId == (int)RoleEnum.TenantAdmin));
     }
 }

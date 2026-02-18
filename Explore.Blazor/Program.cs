@@ -94,7 +94,9 @@ builder.Services.AddScoped<ILookupCacheService, LookupCacheService>();
 builder.Services.AddScoped<IInstanceOnboardingService, InstanceOnboardingService>();
 builder.Services.AddScoped<ITenantOnboardingService, TenantOnboardingService>();
 builder.Services.AddScoped<IPublicExperienceService, PublicExperienceService>();
+builder.Services.AddScoped<IAnalyticsInterop, ServerAnalyticsInterop>();
 builder.Services.AddScoped<ICircuitAccessTokenService, CircuitAccessTokenService>();
+builder.Services.AddSingleton<ISetupSecretSessionService, SetupSecretSessionService>();
 builder.Services.AddTransient<AccessTokenForwardingHandler>();
 // Configure multi-tenancy settings
 builder.Services.Configure<TenantConfiguration>(builder.Configuration.GetSection("Explore:MultiTenancy"));
@@ -372,6 +374,32 @@ builder.Services.AddReverseProxy()
                     TenantConstants.TenantIdHeaderName,
                     incomingTenantId);
             }
+
+            // Setup secret header forwarding with injection prevention.
+            // Strip first, then add trusted value from header/cookie/server-side user session.
+            transformContext.ProxyRequest.Headers.Remove("X-Setup-Secret");
+            var setupSecret = httpContext.Request.Headers["X-Setup-Secret"].FirstOrDefault();
+            if (string.IsNullOrWhiteSpace(setupSecret))
+            {
+                setupSecret = httpContext.Request.Cookies["setup-secret"];
+            }
+
+            if (string.IsNullOrWhiteSpace(setupSecret) && httpContext.User.Identity?.IsAuthenticated == true)
+            {
+                var userId = httpContext.User.FindFirst("sub")?.Value
+                    ?? httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+                if (!string.IsNullOrWhiteSpace(userId))
+                {
+                    var setupSecretSessionService = httpContext.RequestServices.GetRequiredService<ISetupSecretSessionService>();
+                    setupSecret = setupSecretSessionService.GetForUser(userId);
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(setupSecret))
+            {
+                transformContext.ProxyRequest.Headers.Add("X-Setup-Secret", setupSecret);
+            }
         });
     });
 
@@ -393,36 +421,6 @@ builder.Services.AddHealthChecks()
     }, tags: ["live", "ready"]);
 
 var app = builder.Build();
-
-// Setup secret bootstrap logging — defense in depth, both API and BFF log the secret.
-// Console.WriteLine guarantees visibility in all environments (bypasses Serilog log-level filters).
-var setupSecretProvider = app.Services.GetRequiredService<Explore.Application.Contracts.Services.ISetupSecretProvider>();
-if (setupSecretProvider.IsSetupModeActive)
-{
-    if (setupSecretProvider.IsFromEnvironmentVariable)
-    {
-        app.Logger.LogInformation("[SetupSecret] SETUP_SECRET loaded from environment variable.");
-    }
-    else
-    {
-        app.Logger.LogWarning("[SetupSecret] No SETUP_SECRET env var found. Auto-generated secret for bootstrap.");
-        var secretForLog = ((Explore.Infrastructure.Services.SetupSecretProvider)setupSecretProvider).GetSecretForLogging();
-        Console.WriteLine();
-        Console.WriteLine("+=============================================================+");
-        Console.WriteLine("| SETUP SECRET (auto-generated, not persisted across restarts |");
-        Console.WriteLine("| unless you set the SETUP_SECRET environment variable):      |");
-        Console.WriteLine("|                                                             |");
-        Console.WriteLine($"|  {secretForLog,-55} |");
-        Console.WriteLine("|                                                             |");
-        Console.WriteLine("| Use this at /setup to claim this instance.                  |");
-        Console.WriteLine("+=============================================================+");
-        Console.WriteLine();
-    }
-}
-else
-{
-    app.Logger.LogInformation("[SetupSecret] Instance onboarding already completed. Setup mode inactive.");
-}
 
 // ============================================================================
 // CRITICAL: Forwarded Headers for Reverse Proxy / SSL Termination (Coolify)
@@ -547,10 +545,33 @@ app.Use(async (ctx, next) =>
 app.Use(async (ctx, next) =>
 {
     if (HttpMethods.IsGet(ctx.Request.Method) &&
-        string.Equals(ctx.Request.Path.Value, "/", StringComparison.Ordinal))
+        (string.Equals(ctx.Request.Path.Value, "/", StringComparison.Ordinal) ||
+         string.Equals(ctx.Request.Path.Value, "/setup", StringComparison.Ordinal)))
     {
-        ctx.Response.Redirect("/startup");
-        return;
+        var isCompleted = false;
+        try
+        {
+            var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
+            var statusClient = clientFactory.CreateClient("BffClient");
+            var status = await statusClient.GetFromJsonAsync<InstanceOnboardingStatusModel>("api/v1/InstanceOnboarding/status");
+            isCompleted = status?.IsCompleted == true;
+        }
+        catch (Exception ex)
+        {
+            app.Logger.LogWarning(ex, "Failed to resolve instance onboarding status for startup redirect.");
+        }
+
+        if (string.Equals(ctx.Request.Path.Value, "/", StringComparison.Ordinal) && !isCompleted)
+        {
+            ctx.Response.Redirect("/setup");
+            return;
+        }
+
+        if (string.Equals(ctx.Request.Path.Value, "/setup", StringComparison.Ordinal) && isCompleted)
+        {
+            ctx.Response.Redirect("/");
+            return;
+        }
     }
 
     await next();
@@ -673,6 +694,13 @@ app.MapGet("/auth/challenge", async ctx =>
     }
 });
 
+app.MapGet("/auth/login", ctx =>
+{
+    var returnUrl = Uri.EscapeDataString(GetSafeReturnUrl(ctx, app.Logger));
+    ctx.Response.Redirect($"/auth/challenge?returnUrl={returnUrl}");
+    return Task.CompletedTask;
+});
+
 app.MapGet("/auth/signout", async ctx =>
 {
     var returnUrl = GetSafeReturnUrl(ctx, app.Logger);
@@ -778,6 +806,88 @@ app.MapPost("/bff/theme", (HttpContext ctx) =>
     return Results.BadRequest();
 }).ExcludeFromDescription();
 
+app.MapPost("/bff/setup-secret", async (HttpContext ctx) =>
+{
+    var setupSecretSessionService = ctx.RequestServices.GetRequiredService<ISetupSecretSessionService>();
+    var payload = await ctx.Request.ReadFromJsonAsync<SetupSecretCookieRequest>();
+    var secret = payload?.Secret?.Trim();
+
+    if (string.IsNullOrWhiteSpace(secret))
+    {
+        return Results.BadRequest();
+    }
+
+    ctx.Response.Cookies.Append("setup-secret", secret, new CookieOptions
+    {
+        MaxAge = TimeSpan.FromMinutes(60),
+        Path = "/",
+        SameSite = SameSiteMode.Lax,
+        HttpOnly = true,
+        Secure = !app.Environment.IsDevelopment()
+    });
+
+    var userId = ctx.User.FindFirst("sub")?.Value
+        ?? ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (!string.IsNullOrWhiteSpace(userId))
+    {
+        setupSecretSessionService.SetForUser(userId, secret);
+    }
+
+    return Results.Ok();
+}).ExcludeFromDescription();
+
+app.MapPost("/bff/setup-secret/sync", async (HttpContext ctx) =>
+{
+    var setupSecretSessionService = ctx.RequestServices.GetRequiredService<ISetupSecretSessionService>();
+    var payload = await ctx.Request.ReadFromJsonAsync<SetupSecretCookieRequest>();
+    var secret = payload?.Secret?.Trim();
+    if (string.IsNullOrWhiteSpace(secret))
+    {
+        return Results.BadRequest();
+    }
+
+    var userId = ctx.User.FindFirst("sub")?.Value
+        ?? ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (string.IsNullOrWhiteSpace(userId))
+    {
+        return Results.Unauthorized();
+    }
+
+    setupSecretSessionService.SetForUser(userId, secret);
+
+    ctx.Response.Cookies.Append("setup-secret", secret, new CookieOptions
+    {
+        MaxAge = TimeSpan.FromMinutes(60),
+        Path = "/",
+        SameSite = SameSiteMode.Lax,
+        HttpOnly = true,
+        Secure = !app.Environment.IsDevelopment()
+    });
+
+    return Results.Ok();
+}).ExcludeFromDescription();
+
+app.MapDelete("/bff/setup-secret", (HttpContext ctx) =>
+{
+    var setupSecretSessionService = ctx.RequestServices.GetRequiredService<ISetupSecretSessionService>();
+    ctx.Response.Cookies.Delete("setup-secret", new CookieOptions
+    {
+        Path = "/",
+        SameSite = SameSiteMode.Lax,
+        HttpOnly = true,
+        Secure = !app.Environment.IsDevelopment()
+    });
+
+    var userId = ctx.User.FindFirst("sub")?.Value
+        ?? ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (!string.IsNullOrWhiteSpace(userId))
+    {
+        setupSecretSessionService.ClearForUser(userId);
+    }
+
+    return Results.Ok();
+}).ExcludeFromDescription();
+
 app.MapGet("/bff/me", (HttpContext ctx) =>
 {
     if (ctx.User.Identity?.IsAuthenticated != true)
@@ -813,3 +923,8 @@ app.MapRazorComponents<App>()
 app.MapReverseProxy();
 
 await app.RunAsync();
+
+file sealed class SetupSecretCookieRequest
+{
+    public string? Secret { get; set; }
+}

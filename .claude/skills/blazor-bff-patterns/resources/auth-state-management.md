@@ -4,7 +4,7 @@
 >
 > Placeholders use `{Placeholder}` syntax - see [../../../../docs/TEMPLATE_GLOSSARY.md](../../../../docs/TEMPLATE_GLOSSARY.md).
 >
-> **Note**: Code examples use ISLAMU Event (Explore) implementation. Replace with your project names.
+> **Note**: Use generic templates first. Keep project-specific examples as optional references.
 
 ## Placeholder Substitutions
 
@@ -24,7 +24,7 @@ This document describes how authentication state is managed and shared across th
 
 To seamlessly transition user authentication from the server-rendered part to the client-rendered part of the Blazor Hybrid app, the authentication state is serialized.
 
-**File**: `Explore.Blazor/Program.cs` (Server-side Blazor)
+**File**: `{Project}.Blazor/Program.cs` (Server-side Blazor)
 
 ```csharp
 builder.Services.AddRazorComponents()
@@ -36,7 +36,7 @@ builder.Services.AddRazorComponents()
 builder.Services.AddCascadingAuthenticationState(); // Makes AuthenticationStateProvider injectable
 ```
 
-**File**: `Explore.Blazor.Client/Program.cs` (Blazor WebAssembly)
+**File**: `{Project}.Blazor.Client/Program.cs` (Blazor WebAssembly)
 
 ```csharp
 builder.Services.AddAuthorizationCore(); // Basic authorization services
@@ -112,7 +112,7 @@ When accessing claims, be aware of the common types and the fallback pattern for
 *   `context.User.Identity?.Name`: Typically the `preferred_username` or `name` claim.
 *   `user.FindFirst("sub")?.Value`: The standard OIDC subject (user ID) claim.
 *   `user.FindFirst("email")?.Value`: The user's email address.
-*   `user.FindAll("realm_access.roles").Select(c => c.Value)`: Roles assigned to the user in Keycloak.
+*   `user.FindAll("realm_access.roles").Select(c => c.Value)`: Roles assigned by your identity provider.
 
 *For the critical User ID extraction fallback pattern, refer to the `auth-patterns` skill.*
 
@@ -120,16 +120,16 @@ When accessing claims, be aware of the common types and the fallback pattern for
 
 ## 3. WASM Message Handlers for Authentication
 
-In the Blazor WASM client (`Explore.Blazor.Client`), custom `DelegatingHandler`s are used to manage credentials (cookies) and handle unauthorized responses.
+In the Blazor WASM client (`{Project}.Blazor.Client`), custom `DelegatingHandler`s are used to manage credentials (cookies) and handle unauthorized responses.
 
 ### `BrowserCredentialsMessageHandler`
 
 Ensures that credentials (the session cookie) are included with every HTTP request made by the WASM client to the BFF.
 
-**File**: `Explore.Blazor.Client/Services/BrowserCredentialsMessageHandler.cs`
+**File**: `{Project}.Blazor.Client/Services/BrowserCredentialsMessageHandler.cs`
 
 ```csharp
-namespace Explore.Blazor.Client.Services;
+namespace {Project}.Blazor.Client.Services;
 
 using System.Net.Http;
 using System.Threading;
@@ -144,6 +144,7 @@ public class BrowserCredentialsMessageHandler : DelegatingHandler
     {
         // ✅ CRITICAL: Include cookies with requests to the BFF
         request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
+        request.SetBrowserRequestMode(BrowserRequestMode.SameOrigin);
         return base.SendAsync(request, cancellationToken);
     }
 }
@@ -151,12 +152,12 @@ public class BrowserCredentialsMessageHandler : DelegatingHandler
 
 ### `BffUnauthorizedHandler`
 
-Intercepts `401 Unauthorized` responses from the BFF and redirects the user to the login page.
+Intercepts `401 Unauthorized` responses from the BFF and redirects the user to the login page while avoiding redirect loops.
 
-**File**: `Explore.Blazor.Client/Services/BffUnauthorizedHandler.cs`
+**File**: `{Project}.Blazor.Client/Services/BffUnauthorizedHandler.cs`
 
 ```csharp
-namespace Explore.Blazor.Client.Services;
+namespace {Project}.Blazor.Client.Services;
 
 using System.Net;
 using System.Net.Http;
@@ -181,8 +182,26 @@ public class BffUnauthorizedHandler : DelegatingHandler
 
         if (response.StatusCode == HttpStatusCode.Unauthorized)
         {
-            // ✅ Redirect to login page if 401 Unauthorized is received
-            _navigationManager.NavigateTo("/login?returnUrl=" + Uri.EscapeDataString(_navigationManager.Uri));
+            var path = request.RequestUri?.AbsolutePath ?? string.Empty;
+            var currentRelativePath = _navigationManager.ToBaseRelativePath(_navigationManager.Uri);
+
+            // Avoid loops on auth endpoints and login page
+            if (path.StartsWith("/login", StringComparison.OrdinalIgnoreCase) ||
+                path.StartsWith("/logout", StringComparison.OrdinalIgnoreCase) ||
+                path.StartsWith("/auth", StringComparison.OrdinalIgnoreCase) ||
+                currentRelativePath.StartsWith("login", StringComparison.OrdinalIgnoreCase))
+            {
+                return response;
+            }
+
+            // Optionally allow selected anonymous endpoints to stay non-interruptive
+            var isAnonymousApi = path.StartsWith("/api/v1/public", StringComparison.OrdinalIgnoreCase);
+            if (!isAnonymousApi)
+            {
+                _navigationManager.NavigateTo(
+                    "/login?returnUrl=" + Uri.EscapeDataString(_navigationManager.Uri),
+                    forceLoad: true);
+            }
         }
 
         return response;
@@ -192,7 +211,7 @@ public class BffUnauthorizedHandler : DelegatingHandler
 
 ### Registration of WASM Message Handlers
 
-**File**: `Explore.Blazor.Client/Program.cs`
+**File**: `{Project}.Blazor.Client/Program.cs`
 
 ```csharp
 builder.Services.AddTransient<BrowserCredentialsMessageHandler>();

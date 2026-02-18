@@ -18,7 +18,7 @@ For each task in `/dev/active/`:
   - Last Updated timestamp
 
 - Update `[task-name]-tasks.md` with:
-  - Mark completed tasks as ✅ 
+  - Mark completed tasks as ✅
   - Add any new tasks discovered
   - Update in-progress tasks with current status
   - Reorder priorities if needed
@@ -53,3 +53,36 @@ If switching to a new conversation:
 ## Additional Context: $ARGUMENTS
 
 **Priority**: Focus on capturing information that would be hard to rediscover or reconstruct from code alone.
+
+## Journaling
+
+Use your **journal** (`dev/_journal/journal.md`) to record important facts, insights, and preferences before you forget.
+
+**For major decisions or requirements**, create dedicated documents:
+- `dev/_journal/MAJOR_DECISIONS.md`
+- `dev/_journal/journal.md` - General insights, patterns, failures
+
+**Journal format** (`dev/_journal/journal.md`):
+
+```md
+## Failed Approaches
+- [Date] Tried X approach for Y problem, but it failed because Z.
+
+## Key Decisions
+- [Date] Refactored for consistency and fixing logical flow in Bugman X manuscript.
+
+## Deferred Fixes
+- [Date] Fix inconsistent character names in Chapter 4.
+```
+
+- Each entry must be timestamped and formatted as above.
+- Review your journal weekly.
+- Search it before starting complex tasks.
+- Document architectural decisions and user feedback trends.
+- Record issues for later rather than fixing unrelated things mid-task.
+- Before starting complex tasks:
+  - Search the journal for relevant past experiences.
+  - Document decisions and their outcomes.
+  - Track recurring user feedback or collaboration patterns.
+  - When you find something unrelated but worth fixing, log it instead of fixing it immediately.
+  - Review the journal weekly to reinforce learning and memory.

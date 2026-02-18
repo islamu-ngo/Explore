@@ -61,4 +61,8 @@ public class PublicExperienceSettingsModel
     public bool IsIslamicModuleEnabled { get; set; }
     public bool IsTechModuleEnabled { get; set; }
     public List<string> EnabledModules { get; set; } = new();
+    public string AnalyticsProvider { get; set; } = "none";
+    public bool AnalyticsEnabled { get; set; }
+    public string AnalyticsPublicApiKey { get; set; } = string.Empty;
+    public string AnalyticsEndpointUrl { get; set; } = string.Empty;
 }

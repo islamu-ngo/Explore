@@ -2,12 +2,14 @@
 // ABOUTME: Powers first-run startup gating and runtime instance settings updates from Blazor pages.
 
 using System.Net.Http.Json;
+using Microsoft.JSInterop;
 
 namespace Explore.Blazor.Client.Services;
 
 public interface IInstanceOnboardingService
 {
     Task<InstanceOnboardingStatusModel?> GetStatusAsync();
+    Task<SetupSecretValidationResult> ValidateSecretAsync(string secret);
     Task<InstanceGovernanceSettingsModel> GetSettingsAsync();
     Task<InstanceCommandResponseModel> CompleteAsync(InstanceGovernanceSettingsModel settings);
     Task<InstanceCommandResponseModel> UpdateSettingsAsync(InstanceGovernanceSettingsModel settings);
@@ -19,13 +21,16 @@ public interface IInstanceOnboardingService
 public class InstanceOnboardingService : IInstanceOnboardingService
 {
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IJSRuntime _jsRuntime;
     private readonly ILogger<InstanceOnboardingService> _logger;
 
     public InstanceOnboardingService(
         IHttpClientFactory httpClientFactory,
+        IJSRuntime jsRuntime,
         ILogger<InstanceOnboardingService> logger)
     {
         _httpClientFactory = httpClientFactory;
+        _jsRuntime = jsRuntime;
         _logger = logger;
     }
 
@@ -55,6 +60,22 @@ public class InstanceOnboardingService : IInstanceOnboardingService
         {
             _logger.LogError(ex, "Failed to fetch instance governance settings.");
             return new InstanceGovernanceSettingsModel();
+        }
+    }
+
+    public async Task<SetupSecretValidationResult> ValidateSecretAsync(string secret)
+    {
+        try
+        {
+            var client = _httpClientFactory.CreateClient("BffClient");
+            var response = await client.PostAsJsonAsync("api/v1/InstanceOnboarding/validate-secret", new { secret });
+            var result = await response.Content.ReadFromJsonAsync<SetupSecretValidationResult>();
+            return result ?? new SetupSecretValidationResult { Valid = false };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to validate setup secret.");
+            return new SetupSecretValidationResult { Valid = false };
         }
     }
 
@@ -93,6 +114,8 @@ public class InstanceOnboardingService : IInstanceOnboardingService
                 Content = JsonContent.Create(settings)
             };
 
+            await AddSetupSecretHeaderAsync(request);
+
             var response = await client.SendAsync(request);
             var payload = await response.Content.ReadFromJsonAsync<InstanceCommandResponseModel>();
 
@@ -126,7 +149,10 @@ public class InstanceOnboardingService : IInstanceOnboardingService
         try
         {
             var client = _httpClientFactory.CreateClient("BffClient");
-            var response = await client.PostAsync("api/v1/InstanceOnboarding/test-storage", null);
+            using var request = new HttpRequestMessage(HttpMethod.Post, "api/v1/InstanceOnboarding/test-storage");
+            await AddSetupSecretHeaderAsync(request);
+
+            var response = await client.SendAsync(request);
             var result = await response.Content.ReadFromJsonAsync<StorageConnectionTestResult>();
             return result ?? new StorageConnectionTestResult { Success = false, Message = "Empty response." };
         }
@@ -146,6 +172,8 @@ public class InstanceOnboardingService : IInstanceOnboardingService
             {
                 Content = JsonContent.Create(settings)
             };
+
+            await AddSetupSecretHeaderAsync(request);
 
             var response = await client.SendAsync(request);
             var payload = await response.Content.ReadFromJsonAsync<InstanceCommandResponseModel>();
@@ -174,6 +202,57 @@ public class InstanceOnboardingService : IInstanceOnboardingService
             };
         }
     }
+
+    private async Task AddSetupSecretHeaderAsync(HttpRequestMessage request)
+    {
+        if (request.Headers.Contains("X-Setup-Secret"))
+        {
+            return;
+        }
+
+        var requestPath = GetRequestPath(request.RequestUri);
+        if (!RequiresSetupSecret(requestPath))
+        {
+            return;
+        }
+
+        try
+        {
+            var secret = await _jsRuntime.InvokeAsync<string?>("sessionStorage.getItem", "setup-secret");
+            if (!string.IsNullOrWhiteSpace(secret))
+            {
+                request.Headers.Add("X-Setup-Secret", secret.Trim());
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Could not read setup-secret from sessionStorage for {Path}", requestPath);
+        }
+    }
+
+    private static string GetRequestPath(Uri? requestUri)
+    {
+        if (requestUri is null)
+        {
+            return string.Empty;
+        }
+
+        var path = requestUri.IsAbsoluteUri ? requestUri.PathAndQuery : requestUri.OriginalString;
+        if (!path.StartsWith('/'))
+        {
+            path = "/" + path;
+        }
+
+        return path;
+    }
+
+    private static bool RequiresSetupSecret(string pathAndQuery)
+    {
+        return pathAndQuery.Contains("/api/v1/InstanceOnboarding/complete", StringComparison.OrdinalIgnoreCase)
+            || pathAndQuery.Contains("/api/v1/InstanceOnboarding/settings", StringComparison.OrdinalIgnoreCase)
+            || pathAndQuery.Contains("/api/v1/InstanceOnboarding/storage-settings", StringComparison.OrdinalIgnoreCase)
+            || pathAndQuery.Contains("/api/v1/InstanceOnboarding/test-storage", StringComparison.OrdinalIgnoreCase);
+    }
 }
 
 public class InstanceOnboardingStatusModel
@@ -182,12 +261,17 @@ public class InstanceOnboardingStatusModel
     public bool IsAuthenticated { get; set; }
     public bool IsCurrentUserInstanceAdmin { get; set; }
     public string? SelectedDeploymentMode { get; set; }
+    public bool IsSetupModeActive { get; set; }
+    public bool SetupSecretFromEnvironment { get; set; }
+    public bool SetupTimedOut { get; set; }
+    public DateTime? InstanceStartedAt { get; set; }
 }
 
 public class InstanceGovernanceSettingsModel
 {
     public string DeploymentMode { get; set; } = "SingleTenant";
     public bool AllowTenantSelfServiceRegistration { get; set; }
+    public bool AllowTenantWhiteLabeling { get; set; }
     public string DefaultPublicHomePage { get; set; } = "EventList";
     public bool EnableIslamicModule { get; set; } = true;
     public bool EnableTechModule { get; set; } = true;
@@ -233,4 +317,10 @@ public class StorageConnectionTestResult
 {
     public bool Success { get; set; }
     public string Message { get; set; } = string.Empty;
+}
+
+public class SetupSecretValidationResult
+{
+    public bool Valid { get; set; }
+    public string? Error { get; set; }
 }

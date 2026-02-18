@@ -1,6 +1,6 @@
 # Context: Test Suite Restoration
 
-**Last Updated: 2026-02-05**
+**Last Updated: 2026-02-16 02:07 Europe/Brussels**
 
 This document contains the essential context and key file locations required to execute the plan for restoring the test suite. The information is derived from the initial `dotnet test` output and the subsequent `codebase_investigator` analysis.
 
@@ -93,3 +93,52 @@ This document contains the essential context and key file locations required to 
 
 *   **`Explore.Blazor.Client.Tests/**/*.cs` (All test files)**
     *   **Purpose**: These files contain the 28 failing tests. After fixing the DI issues, the remaining failures (e.g., in `EventServiceTests`) will need to be addressed by correcting mock setups and assertions.
+
+## 3. Context Reset Session Update (2026-02-15)
+
+### Current implementation state
+- While finishing analytics verification, the following project-level test status was confirmed:
+  - `Event.Application.UnitTests`: passing (`256 passed`)
+  - `Event.Domain.UnitTests`: passing
+  - `Event.Architecture.Tests`: passing
+  - `Explore.Secrets.UnitTests`: passing
+  - `Explore.Blazor.Client.Tests`: passing (`489 passed` from recent run)
+  - `Event.Persistence.IntegrationTests`: failing due to Docker unavailable (`npipe://./pipe/docker_engine`)
+  - `Event.API.IntegrationTests`: failing with 8 HATEOAS link assertions
+
+### Key decisions made this session
+- Treated persistence integration test failure as environment blocker (Docker), not immediate code-fix target.
+- Kept focus on analytics implementation and deferred API integration suite fixes to this test-restoration track.
+
+### Files modified and why
+- No direct code changes made under this track in this session; this is a status and blocker refresh.
+
+### Blockers/issues discovered
+- External environment dependency remains unresolved for persistence integration tests (Docker daemon not reachable).
+- API integration suite still has failing HATEOAS link assertions requiring dedicated diagnosis.
+
+### Next immediate steps
+1. Start Docker and rerun `Event.Persistence.IntegrationTests` to separate environment from code issues.
+2. Rerun `Event.API.IntegrationTests` and isolate 8 failing HATEOAS tests by endpoint and expected relation.
+3. Fix failing API tests or corresponding response generation if contracts changed.
+
+## 4. Build Restoration Update (2026-02-16)
+
+### Complex problem solved
+- Resolved compile failures caused by NSwag/API contract change from `OrganizationRoleId` to unified `RoleId` in `OrganizationMemberDto`.
+
+### Files modified and why
+- `Explore.Blazor.Client/Components/Admin/Organization/OrganizationMembersSection.razor`
+  - Replaced stale `member.OrganizationRoleId` with `member.RoleId` for role badge display.
+- `Explore.Blazor.Client/Pages/Organization/OrganizationMembers.razor`
+  - Replaced `context.OrganizationRoleId` with `context.RoleId` in role chip and creator guard.
+- `Explore.Blazor.Client/Pages/Organization/OrganizationMembers.razor.cs`
+  - Replaced filter and current-user-role resolution from `OrganizationRoleId` to `RoleId`.
+- `Explore.Blazor.Client/Pages/Organization/OrganizationDetails.razor.cs`
+  - Replaced current-user-role assignment from `OrganizationRoleId` to `RoleId`.
+- `Explore.Blazor.Client/Pages/Organization/EditMemberRoleDialog.razor`
+  - Replaced initial selected role from `Member.OrganizationRoleId` to `Member.RoleId`.
+
+### Verification evidence
+- Command: `dotnet build Explore.sln --configuration Release --no-restore /clp:ErrorsOnly`
+- Result: `0 Erreur(s)` (solution build restored).

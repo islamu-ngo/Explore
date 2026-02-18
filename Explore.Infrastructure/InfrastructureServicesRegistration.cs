@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.Strategies;
 using Explore.Application.Models;
+using Explore.Infrastructure.Analytics;
 using Explore.Infrastructure.Identity;
 using Explore.Infrastructure.Mail;
 using Explore.Infrastructure.Services;
@@ -98,6 +99,31 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<IEventStrategy, IslamicEventStrategy>();
         services.AddScoped<IEventStrategy, TechEventStrategy>();
         services.AddScoped<IStrategyResolver, StrategyResolver>();
+
+        // Analytics providers (runtime-switchable via SystemSetting "analytics.provider")
+        // All concrete providers are always registered; RuntimeAnalyticsProvider delegates at runtime.
+        // Config resolved per-tenant from cascading settings engine (SystemSetting -> TenantSetting)
+        services.AddHttpClient<PostHogAnalyticsProvider>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(5);
+        });
+        services.AddHttpClient<PlausibleAnalyticsProvider>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(5);
+        });
+        services.AddHttpClient<RybbitAnalyticsProvider>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(5);
+        });
+        services.AddHttpClient<RudderStackAnalyticsProvider>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(5);
+        });
+        services.AddScoped<NullAnalyticsProvider>();
+        services.AddScoped<IAnalyticsConfigResolver, AnalyticsConfigResolver>();
+        services.AddScoped<RuntimeAnalyticsProvider>();
+        services.AddScoped<IAnalyticsProvider>(sp => sp.GetRequiredService<RuntimeAnalyticsProvider>());
+        services.AddScoped<IAnalyticsFeatureFlagProvider>(sp => sp.GetRequiredService<RuntimeAnalyticsProvider>());
 
         // PDS Synchronization services
         services.Configure<PdsSyncSettings>(configuration.GetSection(PdsSyncSettings.SectionName));

@@ -14,12 +14,12 @@ namespace Explore.Infrastructure.Identity;
 /// <summary>
 /// Resolves the current user's administrative authority using database tables only.
 /// Identity is read from authenticated claims (sub/nameidentifier/sid) and authority
-/// is resolved from InstanceAdministrators, TenantAdministrators, and OrganizationMembers.
+/// is resolved from platform role assignments, TenantMembers, and OrganizationMembers.
 /// </summary>
 public class AdminContext : IAdminContext, IAdminCacheInvalidator
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly IInstanceAdministratorRepository _instanceAdminRepo;
+    private readonly IUserRoleRepository _userRoleRepository;
     private readonly ITenantMemberRepository _tenantAdminRepo;
     private readonly IOrganizationMemberRepository _orgMemberRepo;
     private readonly IMemoryCache _cache;
@@ -30,14 +30,14 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
 
     public AdminContext(
         IHttpContextAccessor httpContextAccessor,
-        IInstanceAdministratorRepository instanceAdminRepo,
+        IUserRoleRepository userRoleRepository,
         ITenantMemberRepository tenantAdminRepo,
         IOrganizationMemberRepository orgMemberRepo,
         IMemoryCache cache,
         ILogger<AdminContext> logger)
     {
         _httpContextAccessor = httpContextAccessor;
-        _instanceAdminRepo = instanceAdminRepo;
+        _userRoleRepository = userRoleRepository;
         _tenantAdminRepo = tenantAdminRepo;
         _orgMemberRepo = orgMemberRepo;
         _cache = cache;
@@ -71,7 +71,7 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         return await _cache.GetOrCreateAsync(cacheKey, async entry =>
         {
             entry.SlidingExpiration = CacheExpiration;
-            var isAdmin = await _instanceAdminRepo.IsUserInstanceAdmin(uid.Value);
+            var isAdmin = await _userRoleRepository.IsUserPlatformAdmin(uid.Value);
             _logger.LogDebug("AdminContext: User {UserId} IsInstanceAdmin={IsAdmin} (from DB)", uid, isAdmin);
             return isAdmin;
         });

@@ -234,6 +234,35 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("actor_types", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.AnalyticsProvider", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_analytics_providers");
+
+                    b.ToTable("analytics_providers", (string)null);
+                });
+
             modelBuilder.Entity("Explore.Domain.AppSetting", b =>
                 {
                     b.Property<string>("ConfigKey")
@@ -1562,37 +1591,6 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("indexed_dids", (string)null);
                 });
 
-            modelBuilder.Entity("Explore.Domain.InstanceAdministrator", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime>("GrantedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("granted_at")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<Guid?>("GrantedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("granted_by");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("user_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_instance_administrators");
-
-                    b.HasIndex("UserId")
-                        .IsUnique()
-                        .HasDatabaseName("ix_instance_administrators_user_id");
-
-                    b.ToTable("InstanceAdministrators", (string)null);
-                });
-
             modelBuilder.Entity("Explore.Domain.InstanceBootstrapState", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2705,21 +2703,42 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
                         .HasColumnName("full_name");
 
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_active");
-
                     b.Property<string>("Slug")
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
                         .HasColumnName("slug");
+
+                    b.Property<int>("TenantStatusId")
+                        .HasColumnType("integer")
+                        .HasColumnName("tenant_status_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
 
                     b.HasKey("Id")
                         .HasName("pk_tenants");
@@ -2728,7 +2747,168 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_tenants_slug");
 
+                    b.HasIndex("TenantStatusId")
+                        .HasDatabaseName("ix_tenants_tenant_status_id");
+
                     b.ToTable("tenants", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.TenantInvitation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("AcceptedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("accepted_at");
+
+                    b.Property<Guid?>("AcceptedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("accepted_by_user_id");
+
+                    b.Property<string>("AllowedDomain")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("allowed_domain");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("email");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<Guid>("InvitedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("invited_by_user_id");
+
+                    b.Property<bool>("IsAccepted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_accepted");
+
+                    b.Property<int>("RoleId")
+                        .HasColumnType("integer")
+                        .HasColumnName("role_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("token");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_tenant_invitations");
+
+                    b.HasIndex("RoleId")
+                        .HasDatabaseName("ix_tenant_invitations_role_id");
+
+                    b.HasIndex("Token")
+                        .IsUnique()
+                        .HasDatabaseName("ix_tenant_invitations_token");
+
+                    b.HasIndex("TenantId", "Email")
+                        .HasDatabaseName("ix_tenant_invitations_tenant_id_email");
+
+                    b.ToTable("TenantInvitations", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.TenantLifecycleLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("NewStatusId")
+                        .HasColumnType("integer")
+                        .HasColumnName("new_status_id");
+
+                    b.Property<int?>("OldStatusId")
+                        .HasColumnType("integer")
+                        .HasColumnName("old_status_id");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("reason");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime>("TransitionedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("transitioned_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid>("TransitionedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("transitioned_by_user_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_tenant_lifecycle_logs");
+
+                    b.HasIndex("NewStatusId")
+                        .HasDatabaseName("ix_tenant_lifecycle_logs_new_status_id");
+
+                    b.HasIndex("OldStatusId")
+                        .HasDatabaseName("ix_tenant_lifecycle_logs_old_status_id");
+
+                    b.HasIndex("TransitionedByUserId")
+                        .HasDatabaseName("ix_tenant_lifecycle_logs_transitioned_by_user_id");
+
+                    b.HasIndex("TenantId", "TransitionedAt")
+                        .HasDatabaseName("ix_tenant_lifecycle_logs_tenant_id_transitioned_at");
+
+                    b.ToTable("TenantLifecycleLogs", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantMember", b =>
@@ -2956,6 +3136,39 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_tenant_settings_tenant_id");
 
                     b.ToTable("tenant_settings", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.TenantStatus", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("full_name");
+
+                    b.Property<bool>("IsActiveState")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active_state");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_tenant_statuses");
+
+                    b.ToTable("tenant_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantUser", b =>
@@ -3214,6 +3427,47 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_user_external_logins_user_id");
 
                     b.ToTable("user_external_logins", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.UserRole", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("GrantedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("granted_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid?>("GrantedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("granted_by");
+
+                    b.Property<int>("RoleId")
+                        .HasColumnType("integer")
+                        .HasColumnName("role_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_roles");
+
+                    b.HasIndex("RoleId")
+                        .HasDatabaseName("ix_user_roles_role_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_user_roles_user_id");
+
+                    b.HasIndex("UserId", "RoleId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_user_roles_user_id_role_id");
+
+                    b.ToTable("UserRoles", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.VisibilityType", b =>
@@ -3704,18 +3958,6 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Event");
                 });
 
-            modelBuilder.Entity("Explore.Domain.InstanceAdministrator", b =>
-                {
-                    b.HasOne("Explore.Domain.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_instance_administrators_users_user_id");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("Explore.Domain.Location", b =>
                 {
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
@@ -3956,6 +4198,68 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Tenant");
                 });
 
+            modelBuilder.Entity("Explore.Domain.Tenant", b =>
+                {
+                    b.HasOne("Explore.Domain.TenantStatus", "TenantStatus")
+                        .WithMany()
+                        .HasForeignKey("TenantStatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_tenants_tenant_statuses_tenant_status_id");
+
+                    b.Navigation("TenantStatus");
+                });
+
+            modelBuilder.Entity("Explore.Domain.TenantInvitation", b =>
+                {
+                    b.HasOne("Explore.Domain.Role", "Role")
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_tenant_invitations_roles_role_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_tenant_invitations_tenants_tenant_id");
+
+                    b.Navigation("Role");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.TenantLifecycleLog", b =>
+                {
+                    b.HasOne("Explore.Domain.TenantStatus", "NewStatus")
+                        .WithMany()
+                        .HasForeignKey("NewStatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_tenant_lifecycle_logs_tenant_statuses_new_status_id");
+
+                    b.HasOne("Explore.Domain.TenantStatus", "OldStatus")
+                        .WithMany()
+                        .HasForeignKey("OldStatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_tenant_lifecycle_logs_tenant_statuses_old_status_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_tenant_lifecycle_logs_tenants_tenant_id");
+
+                    b.Navigation("NewStatus");
+
+                    b.Navigation("OldStatus");
+
+                    b.Navigation("Tenant");
+                });
+
             modelBuilder.Entity("Explore.Domain.TenantMember", b =>
                 {
                     b.HasOne("Explore.Domain.Role", "Role")
@@ -4113,6 +4417,27 @@ namespace Explore.Persistence.Migrations
                         .HasConstraintName("fk_user_external_logins_users_user_id");
 
                     b.Navigation("Tenant");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Explore.Domain.UserRole", b =>
+                {
+                    b.HasOne("Explore.Domain.Role", "Role")
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_roles_roles_role_id");
+
+                    b.HasOne("Explore.Domain.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_roles_users_user_id");
+
+                    b.Navigation("Role");
 
                     b.Navigation("User");
                 });

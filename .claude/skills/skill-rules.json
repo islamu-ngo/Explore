@@ -98,6 +98,8 @@
           "component",
           "razor",
           "mudblazor",
+          "blazouter",
+          "route guard",
           "ui",
           "page",
           "dialog",
@@ -119,13 +121,14 @@
         "pathPatterns": [
           "**/*.razor",
           "**/*.razor.cs",
-          "**/Explore.Blazor/**/*.cs",
-          "**/Explore.Blazor.Client/**/*.cs",
+          "**/*Blazor/**/*.cs",
+          "**/*Blazor.Client/**/*.cs",
           "**/*.css",
           "**/*.scss"
         ],
         "contentPatterns": [
           "<Mud",
+          "Blazouter",
           "@page",
           "@inject",
           "[Parameter]",
@@ -145,6 +148,8 @@
           "bff",
           "yarp",
           "proxy",
+          "interactiveauto",
+          "antiforgery",
           "token forwarding",
           "cookie",
           "api client",
@@ -159,15 +164,16 @@
       },
       "fileTriggers": {
         "pathPatterns": [
-          "**/Explore.Blazor/Program.cs",
-          "**/Explore.Blazor/Services/**/*.cs",
-          "**/Explore.Blazor.Client/Services/**/*.cs",
-          "**/Explore.Blazor.Client/Clients/**/*.cs"
+          "**/*Blazor/Program.cs",
+          "**/*Blazor/Services/**/*.cs",
+          "**/*Blazor.Client/Services/**/*.cs",
+          "**/*Blazor.Client/Clients/**/*.cs"
         ],
         "contentPatterns": [
           "AddReverseProxy",
           "AccessTokenForwardingHandler",
-          "IEventApiClient",
+          "AddAntiforgery",
+          "ApiClient",
           "HttpClient"
         ]
       }

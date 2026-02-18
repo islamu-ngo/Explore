@@ -29,7 +29,8 @@ public static class SeedData
         Id = SeedIds.DefaultTenantId,
         FullName = "ISLAMU Default Tenant",
         Slug = "default",
-        IsActive = true
+        TenantStatusId = (int)TenantStatusEnum.Active,
+        TenantStatus = null!
     };
 
     // ===== Users =====

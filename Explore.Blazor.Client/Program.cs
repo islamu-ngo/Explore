@@ -88,6 +88,7 @@ builder.Services.AddScoped<ILookupCacheService, LookupCacheService>();
 builder.Services.AddScoped<IInstanceOnboardingService, InstanceOnboardingService>();
 builder.Services.AddScoped<ITenantOnboardingService, TenantOnboardingService>();
 builder.Services.AddScoped<IPublicExperienceService, PublicExperienceService>();
+builder.Services.AddScoped<IAnalyticsInterop, AnalyticsInterop>();
 builder.Services.AddScoped<ITenantNavigationService, TenantNavigationService>();
 
 // Register AuthStateService for centralized auth context

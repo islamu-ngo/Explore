@@ -1,20 +1,23 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using Microsoft.JSInterop;
 
 namespace Explore.Blazor.Client.Tests.Services;
 
 public class InstanceOnboardingServiceTests
 {
     private readonly System.Net.Http.IHttpClientFactory _httpClientFactory;
+    private readonly IJSRuntime _jsRuntime;
     private readonly ILogger<InstanceOnboardingService> _logger;
     private readonly InstanceOnboardingService _service;
 
     public InstanceOnboardingServiceTests()
     {
         _httpClientFactory = Substitute.For<System.Net.Http.IHttpClientFactory>();
+        _jsRuntime = new NullJsRuntime();
         _logger = Substitute.For<ILogger<InstanceOnboardingService>>();
-        _service = new InstanceOnboardingService(_httpClientFactory, _logger);
+        _service = new InstanceOnboardingService(_httpClientFactory, _jsRuntime, _logger);
     }
 
     #region GetStatusAsync
@@ -42,6 +45,32 @@ public class InstanceOnboardingServiceTests
     }
 
     [Test]
+    public async Task GetStatusAsync_ReturnsSetupFields_WhenApiSucceeds()
+    {
+        // Arrange
+        var startedAt = new DateTime(2026, 2, 15, 10, 0, 0, DateTimeKind.Utc);
+        var expected = new InstanceOnboardingStatusModel
+        {
+            IsCompleted = false,
+            IsSetupModeActive = true,
+            SetupSecretFromEnvironment = true,
+            SetupTimedOut = false,
+            InstanceStartedAt = startedAt
+        };
+        SetupBffClient(CreateJsonResponse(expected));
+
+        // Act
+        var result = await _service.GetStatusAsync();
+
+        // Assert
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.IsSetupModeActive).IsTrue();
+        await Assert.That(result.SetupSecretFromEnvironment).IsTrue();
+        await Assert.That(result.SetupTimedOut).IsFalse();
+        await Assert.That(result.InstanceStartedAt).IsEqualTo(startedAt);
+    }
+
+    [Test]
     public async Task GetStatusAsync_ReturnsNull_WhenApiThrows()
     {
         // Arrange
@@ -66,6 +95,7 @@ public class InstanceOnboardingServiceTests
         {
             DeploymentMode = "MultiTenant",
             AllowTenantSelfServiceRegistration = true,
+            AllowTenantWhiteLabeling = true,
             DefaultPublicHomePage = "Home"
         };
         SetupBffClient(CreateJsonResponse(expected));
@@ -76,6 +106,7 @@ public class InstanceOnboardingServiceTests
         // Assert
         await Assert.That(result.DeploymentMode).IsEqualTo("MultiTenant");
         await Assert.That(result.AllowTenantSelfServiceRegistration).IsTrue();
+        await Assert.That(result.AllowTenantWhiteLabeling).IsTrue();
         await Assert.That(result.DefaultPublicHomePage).IsEqualTo("Home");
     }
 
@@ -130,6 +161,55 @@ public class InstanceOnboardingServiceTests
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Request failed.");
         await Assert.That(result.Errors).Contains("network failed");
+    }
+
+    #endregion
+
+    #region ValidateSecretAsync
+
+    [Test]
+    public async Task ValidateSecretAsync_ReturnsValid_WhenApiSucceeds()
+    {
+        // Arrange
+        var expected = new SetupSecretValidationResult { Valid = true };
+        SetupBffClient(CreateJsonResponse(expected));
+
+        // Act
+        var result = await _service.ValidateSecretAsync("test-secret");
+
+        // Assert
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result.Valid).IsTrue();
+    }
+
+    [Test]
+    public async Task ValidateSecretAsync_ReturnsInvalid_WhenApiReturnsInvalid()
+    {
+        // Arrange
+        var expected = new SetupSecretValidationResult { Valid = false, Error = "Invalid setup secret." };
+        SetupBffClient(CreateJsonResponse(expected));
+
+        // Act
+        var result = await _service.ValidateSecretAsync("wrong-secret");
+
+        // Assert
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result.Valid).IsFalse();
+        await Assert.That(result.Error).IsEqualTo("Invalid setup secret.");
+    }
+
+    [Test]
+    public async Task ValidateSecretAsync_ReturnsInvalid_WhenApiThrows()
+    {
+        // Arrange
+        SetupBffClient(_ => throw new HttpRequestException("connection refused"));
+
+        // Act
+        var result = await _service.ValidateSecretAsync("any-secret");
+
+        // Assert
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result.Valid).IsFalse();
     }
 
     #endregion
@@ -214,5 +294,18 @@ public class InstanceOnboardingServiceTests
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             => _handler(request);
+    }
+
+    private sealed class NullJsRuntime : IJSRuntime
+    {
+        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
+        {
+            return new ValueTask<TValue>(default(TValue)!);
+        }
+
+        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
+        {
+            return new ValueTask<TValue>(default(TValue)!);
+        }
     }
 }

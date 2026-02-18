@@ -92,7 +92,7 @@ public partial class OrganizationDetails
                 var me = members.FirstOrDefault(m => m.UserId.ToString().Equals(currentUserId, StringComparison.OrdinalIgnoreCase));
                 if (me != null)
                 {
-                    currentUserRole = me.OrganizationRoleId;
+                    currentUserRole = me.RoleId;
                 }
             }
             catch (Exception ex)

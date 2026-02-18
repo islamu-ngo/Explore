@@ -88,11 +88,6 @@ public static class AuthenticationTestConstants
     public const string AdminRole = "Admin";
 
     /// <summary>
-    /// Super Admin role name.
-    /// </summary>
-    public const string SuperAdminRole = "SuperAdmin";
-
-    /// <summary>
     /// Organization Owner role name.
     /// </summary>
     public const string OrganizationOwnerRole = "OrganizationOwner";

@@ -15,6 +15,12 @@ public class HateoasLinkGeneratorTests
 {
     private readonly ApiTestFixture _fixture;
 
+    private static string WithCacheBust(string endpoint)
+    {
+        var separator = endpoint.Contains('?', StringComparison.Ordinal) ? "&" : "?";
+        return $"{endpoint}{separator}pageNumber=1&pageSize=20&testRun={Guid.NewGuid():N}";
+    }
+
     public HateoasLinkGeneratorTests(ApiTestFixture fixture)
     {
         _fixture = fixture;
@@ -33,7 +39,7 @@ public class HateoasLinkGeneratorTests
     public async Task LinkGenerator_CollectionEndpoints_ShouldHaveSelfLink(string endpoint)
     {
         // Act
-        var response = await _fixture.Client.GetAsync(endpoint);
+        var response = await _fixture.Client.GetAsync(WithCacheBust(endpoint));
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);

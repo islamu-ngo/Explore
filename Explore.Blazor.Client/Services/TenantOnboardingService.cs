@@ -108,7 +108,7 @@ public class TenantOnboardingStatusModel
     public bool IsCompleted { get; set; }
     public bool IsAuthenticated { get; set; }
     public bool IsCurrentUserTenantAdministrator { get; set; }
-    public bool IsCurrentUserInstanceAdministrator { get; set; }
+    public bool IsCurrentUserPlatformAdministrator { get; set; }
     public Guid TenantId { get; set; }
 }
 
@@ -118,6 +118,7 @@ public class TenantPolicySettingsModel
     public bool RequireEventApproval { get; set; }
     public bool RequireOrganizationVerification { get; set; } = true;
     public bool CanTenantOmitVerification { get; set; }
+    public bool IsTenantWhiteLabelingEnabled { get; set; }
     public string PreferredHomePage { get; set; } = "EventList";
     public string InstanceBaseDomain { get; set; } = string.Empty;
     public string Subdomain { get; set; } = string.Empty;

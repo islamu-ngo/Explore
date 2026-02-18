@@ -4,6 +4,7 @@
 using System.Text.Json;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Domain.Constants;
+using Explore.Domain.Enums;
 using Explore.Infrastructure;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -221,7 +222,7 @@ public class TenantContext : ITenantContext
             return null;
         }
 
-        return dbContext.Tenants.AsNoTracking().Any(t => t.Id == tenantId && t.IsActive)
+        return dbContext.Tenants.AsNoTracking().Any(t => t.Id == tenantId && t.TenantStatusId == (int)TenantStatusEnum.Active)
             ? tenantId
             : null;
     }
@@ -254,14 +255,14 @@ public class TenantContext : ITenantContext
             .Select(s => s.TenantId)
             .FirstOrDefault();
 
-        if (tenantId != Guid.Empty && dbContext.Tenants.AsNoTracking().Any(t => t.Id == tenantId && t.IsActive))
+        if (tenantId != Guid.Empty && dbContext.Tenants.AsNoTracking().Any(t => t.Id == tenantId && t.TenantStatusId == (int)TenantStatusEnum.Active))
         {
             return tenantId;
         }
 
         var slugTenant = dbContext.Tenants
             .AsNoTracking()
-            .FirstOrDefault(t => t.IsActive && t.Slug.ToLower() == candidateSubdomain);
+            .FirstOrDefault(t => t.TenantStatusId == (int)TenantStatusEnum.Active && t.Slug.ToLower() == candidateSubdomain);
 
         return slugTenant?.Id;
     }

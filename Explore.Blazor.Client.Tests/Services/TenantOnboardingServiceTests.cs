@@ -28,7 +28,7 @@ public class TenantOnboardingServiceTests
             IsCompleted = true,
             IsAuthenticated = true,
             IsCurrentUserTenantAdministrator = true,
-            IsCurrentUserInstanceAdministrator = false,
+            IsCurrentUserPlatformAdministrator = false,
             TenantId = Guid.NewGuid()
         };
         SetupBffClient(CreateJsonResponse(expected));
@@ -67,6 +67,7 @@ public class TenantOnboardingServiceTests
         {
             AllowUserSubmittedEvents = false,
             RequireEventApproval = true,
+            IsTenantWhiteLabelingEnabled = true,
             PreferredHomePage = "Dashboard",
             BrandDisplayName = "Tenant Brand"
         };
@@ -77,6 +78,7 @@ public class TenantOnboardingServiceTests
 
         // Assert
         await Assert.That(result.RequireEventApproval).IsTrue();
+        await Assert.That(result.IsTenantWhiteLabelingEnabled).IsTrue();
         await Assert.That(result.PreferredHomePage).IsEqualTo("Dashboard");
         await Assert.That(result.BrandDisplayName).IsEqualTo("Tenant Brand");
     }

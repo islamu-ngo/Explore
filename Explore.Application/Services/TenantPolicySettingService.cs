@@ -1,7 +1,6 @@
 // ABOUTME: Service implementation for managing tenant policy settings with instance-level delegation constraints.
 // ABOUTME: Applies tenant overrides with enforcement of instance-level delegation constraints.
 
-using System.Linq;
 using System.Text.Json;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
@@ -36,6 +35,8 @@ public class TenantPolicySettingService : ITenantPolicySettingService
         var systemRequireApproval = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsRequireApproval);
         var systemRequireVerification = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.OrganizationsVerificationRequired);
         var systemTenantCanOmitVerification = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.OrganizationsTenantCanOmitVerification);
+        var systemDeploymentMode = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.DeploymentMode);
+        var systemTenantWhiteLabeling = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantWhiteLabelingEnabled);
         var systemHomePage = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingDefaultPublicHomePage);
         var systemInstanceBaseDomain = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.DomainsInstanceBaseDomain);
         var systemAllowCustomDomain = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.DomainsAllowTenantCustomDomain);
@@ -59,6 +60,8 @@ public class TenantPolicySettingService : ITenantPolicySettingService
 
         var tenant = await _tenantRepository.GetById(tenantId);
         var fallbackSubdomain = NormalizeSubdomain(tenant?.Slug) ?? "default";
+        var isMultiTenant = DeserializeString(systemDeploymentMode?.Value, "SingleTenant").Equals("MultiTenant", StringComparison.OrdinalIgnoreCase);
+        var isTenantWhiteLabelingEnabled = isMultiTenant && DeserializeBoolean(systemTenantWhiteLabeling?.Value, false);
         var canOverrideHomePage = systemHomePage?.IsLocked != true;
         var canOverrideSubdomain = systemTenantSubdomain?.IsLocked != true;
         var canOverrideCustomDomain = systemTenantCustomDomain?.IsLocked != true
@@ -85,6 +88,7 @@ public class TenantPolicySettingService : ITenantPolicySettingService
                 systemRequireApproval?.IsLocked != true),
             RequireOrganizationVerification = requireVerification,
             CanTenantOmitVerification = canOmitVerification,
+            IsTenantWhiteLabelingEnabled = isTenantWhiteLabelingEnabled,
             PreferredHomePage = NormalizeHomePage(ResolveString(
                 tenantHomePage?.Value,
                 systemHomePage?.Value,
@@ -105,29 +109,29 @@ public class TenantPolicySettingService : ITenantPolicySettingService
                 tenantBrandDisplayName?.Value,
                 systemBrandDisplayName?.Value,
                 DefaultBrandDisplayName,
-                systemBrandDisplayName?.IsLocked != true),
+                isTenantWhiteLabelingEnabled && systemBrandDisplayName?.IsLocked != true),
             BrandLogoUrl = ResolveString(
                 tenantBrandLogoUrl?.Value,
                 systemBrandLogoUrl?.Value,
                 string.Empty,
-                systemBrandLogoUrl?.IsLocked != true),
+                isTenantWhiteLabelingEnabled && systemBrandLogoUrl?.IsLocked != true),
             BrandFaviconUrl = ResolveString(
                 tenantBrandFaviconUrl?.Value,
                 systemBrandFaviconUrl?.Value,
                 string.Empty,
-                systemBrandFaviconUrl?.IsLocked != true),
+                isTenantWhiteLabelingEnabled && systemBrandFaviconUrl?.IsLocked != true),
             BrandCustomCssUrl = ResolveString(
                 tenantBrandCustomCssUrl?.Value,
                 systemBrandCustomCssUrl?.Value,
                 string.Empty,
-                systemBrandCustomCssUrl?.IsLocked != true),
+                isTenantWhiteLabelingEnabled && systemBrandCustomCssUrl?.IsLocked != true),
             CanOverrideHomePagePreference = canOverrideHomePage,
             CanOverrideSubdomain = canOverrideSubdomain,
             CanOverrideCustomDomain = canOverrideCustomDomain,
-            CanOverrideBrandDisplayName = systemBrandDisplayName?.IsLocked != true,
-            CanOverrideBrandLogoUrl = systemBrandLogoUrl?.IsLocked != true,
-            CanOverrideBrandFaviconUrl = systemBrandFaviconUrl?.IsLocked != true,
-            CanOverrideBrandCustomCssUrl = systemBrandCustomCssUrl?.IsLocked != true
+            CanOverrideBrandDisplayName = isTenantWhiteLabelingEnabled && systemBrandDisplayName?.IsLocked != true,
+            CanOverrideBrandLogoUrl = isTenantWhiteLabelingEnabled && systemBrandLogoUrl?.IsLocked != true,
+            CanOverrideBrandFaviconUrl = isTenantWhiteLabelingEnabled && systemBrandFaviconUrl?.IsLocked != true,
+            CanOverrideBrandCustomCssUrl = isTenantWhiteLabelingEnabled && systemBrandCustomCssUrl?.IsLocked != true
         };
     }
 
@@ -137,6 +141,8 @@ public class TenantPolicySettingService : ITenantPolicySettingService
         var requireApprovalSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsRequireApproval);
         var requireVerificationSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.OrganizationsVerificationRequired);
         var canOmitVerificationSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.OrganizationsTenantCanOmitVerification);
+        var deploymentModeSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.DeploymentMode);
+        var tenantWhiteLabelingSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantWhiteLabelingEnabled);
         var homePageSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingDefaultPublicHomePage);
         var allowCustomDomainSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.DomainsAllowTenantCustomDomain);
         var subdomainSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.DomainsTenantSubdomain);
@@ -147,6 +153,8 @@ public class TenantPolicySettingService : ITenantPolicySettingService
         var brandCustomCssUrlSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.BrandingCustomCssUrl);
         var tenant = await _tenantRepository.GetById(tenantId);
         var fallbackSubdomain = NormalizeSubdomain(tenant?.Slug) ?? "default";
+        var isMultiTenant = DeserializeString(deploymentModeSetting?.Value, "SingleTenant").Equals("MultiTenant", StringComparison.OrdinalIgnoreCase);
+        var isTenantWhiteLabelingEnabled = isMultiTenant && DeserializeBoolean(tenantWhiteLabelingSetting?.Value, false);
 
         await SetBooleanTenantOverrideAsync(
             tenantId,
@@ -200,28 +208,28 @@ public class TenantPolicySettingService : ITenantPolicySettingService
             tenantId,
             GovernanceSettingKeys.BrandingDisplayName,
             settings.BrandDisplayName,
-            brandDisplayNameSetting?.IsLocked != true,
+            isTenantWhiteLabelingEnabled && brandDisplayNameSetting?.IsLocked != true,
             actorUserId);
 
         await SetStringTenantOverrideAsync(
             tenantId,
             GovernanceSettingKeys.BrandingLogoUrl,
             settings.BrandLogoUrl,
-            brandLogoUrlSetting?.IsLocked != true,
+            isTenantWhiteLabelingEnabled && brandLogoUrlSetting?.IsLocked != true,
             actorUserId);
 
         await SetStringTenantOverrideAsync(
             tenantId,
             GovernanceSettingKeys.BrandingFaviconUrl,
             settings.BrandFaviconUrl,
-            brandFaviconUrlSetting?.IsLocked != true,
+            isTenantWhiteLabelingEnabled && brandFaviconUrlSetting?.IsLocked != true,
             actorUserId);
 
         await SetStringTenantOverrideAsync(
             tenantId,
             GovernanceSettingKeys.BrandingCustomCssUrl,
             settings.BrandCustomCssUrl,
-            brandCustomCssUrlSetting?.IsLocked != true,
+            isTenantWhiteLabelingEnabled && brandCustomCssUrlSetting?.IsLocked != true,
             actorUserId);
     }
 

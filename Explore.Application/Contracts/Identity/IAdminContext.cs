@@ -1,5 +1,5 @@
 // ABOUTME: Contract for resolving the current user's administrative authority across the hierarchy.
-// DB-first authority model: identity from claims, authority from database admin tables.
+// DB-first authority model: identity from claims, authority from role assignments and memberships.
 
 namespace Explore.Application.Contracts.Identity;
 
@@ -18,13 +18,13 @@ public interface IAdminContext
 
     /// <summary>
     /// Gets whether the current user is an Instance Administrator.
-    /// Resolved from the InstanceAdministrators database table.
+    /// Resolved from platform-scoped role assignments.
     /// </summary>
     Task<bool> IsInstanceAdminAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets whether the current user is a Tenant Administrator for the specified tenant.
-    /// Resolved strictly from the TenantAdministrators database table.
+    /// Resolved strictly from tenant membership assignments.
     /// </summary>
     Task<bool> IsTenantAdminAsync(Guid tenantId, CancellationToken cancellationToken = default);
 

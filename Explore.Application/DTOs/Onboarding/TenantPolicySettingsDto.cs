@@ -9,6 +9,7 @@ public class TenantPolicySettingsDto
     public bool RequireEventApproval { get; set; }
     public bool RequireOrganizationVerification { get; set; } = true;
     public bool CanTenantOmitVerification { get; set; }
+    public bool IsTenantWhiteLabelingEnabled { get; set; }
     public string PreferredHomePage { get; set; } = "EventList";
     public string InstanceBaseDomain { get; set; } = string.Empty;
     public string Subdomain { get; set; } = string.Empty;

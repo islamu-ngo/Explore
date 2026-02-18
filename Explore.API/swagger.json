@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "https://localhost:50992/"
+      "url": "https://localhost:60816/"
     }
   ],
   "paths": {
@@ -5339,6 +5339,85 @@
         }
       }
     },
+    "/api/v1/instanceonboarding/validate-secret": {
+      "post": {
+        "tags": [
+          "InstanceOnboarding"
+        ],
+        "summary": "Validate Setup Secret",
+        "description": "Validates the provided setup secret. Returns whether the secret is correct. Rate limited to 5 attempts per minute.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidateSetupSecretRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidateSetupSecretRequest"
+              }
+            },
+            "application/*\u002Bjson": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidateSetupSecretRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {}
+              },
+              "application/json": {
+                "schema": {}
+              },
+              "text/json": {
+                "schema": {}
+              }
+            }
+          },
+          "410": {
+            "description": "Gone",
+            "content": {
+              "text/plain": {
+                "schema": {}
+              },
+              "application/json": {
+                "schema": {}
+              },
+              "text/json": {
+                "schema": {}
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/language": {
       "get": {
         "tags": [
@@ -7387,112 +7466,6 @@
         }
       }
     },
-    "/api/v1/organizationrole": {
-      "get": {
-        "tags": [
-          "OrganizationRole"
-        ],
-        "summary": "Get all Organization Roles",
-        "description": "Retrieve a list of all organization roles (Owner, Admin, Member)",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/OrganizationRoleListDto"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/OrganizationRoleListDto"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/OrganizationRoleListDto"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/organizationrole/{id}": {
-      "get": {
-        "tags": [
-          "OrganizationRole"
-        ],
-        "summary": "Get Organization Role by ID",
-        "description": "Retrieve details of a specific organization role",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/OrganizationRoleDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OrganizationRoleDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OrganizationRoleDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/publicexperience/settings": {
       "get": {
         "tags": [
@@ -7603,6 +7576,123 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RegistrationModeDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/role": {
+      "get": {
+        "tags": [
+          "Role"
+        ],
+        "summary": "Get all Roles",
+        "description": "Retrieve roles, optionally filtered by scope (Platform, Tenant, Organization). Returns all roles when no scope specified.",
+        "operationId": "GetRoles",
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/RoleScopeEnum"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RoleListDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RoleListDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RoleListDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/role/{id}": {
+      "get": {
+        "tags": [
+          "Role"
+        ],
+        "summary": "Get Role by ID",
+        "description": "Retrieve details of a specific role including scope and system flag.",
+        "operationId": "GetRoleById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleDto"
                 }
               }
             }
@@ -11248,112 +11338,6 @@
         }
       }
     },
-    "/api/v1/userrole": {
-      "get": {
-        "tags": [
-          "UserRole"
-        ],
-        "summary": "Get all User Roles",
-        "description": "Retrieve a list of all user roles (Admin, Moderator, User, etc.)",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/UserRoleListDto"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/UserRoleListDto"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/UserRoleListDto"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/userrole/{id}": {
-      "get": {
-        "tags": [
-          "UserRole"
-        ],
-        "summary": "Get User Role by ID",
-        "description": "Retrieve details of a specific user role",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserRoleDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserRoleDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserRoleDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/visibilitytype": {
       "get": {
         "tags": [
@@ -11839,7 +11823,7 @@
             "type": "string"
           },
           "role": {
-            "$ref": "#/components/schemas/OrganizationRoleEnum"
+            "$ref": "#/components/schemas/RoleEnum"
           }
         }
       },
@@ -13258,7 +13242,7 @@
             "type": "string",
             "format": "uuid"
           },
-          "userRoleId": {
+          "roleId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -16880,6 +16864,9 @@
           "allowTenantSelfServiceRegistration": {
             "type": "boolean"
           },
+          "allowTenantWhiteLabeling": {
+            "type": "boolean"
+          },
           "defaultPublicHomePage": {
             "type": "string"
           },
@@ -16936,6 +16923,9 @@
           },
           "lockTenantBrandCustomCssUrl": {
             "type": "boolean"
+          },
+          "authorizationProvider": {
+            "type": "string"
           }
         }
       },
@@ -16956,6 +16946,22 @@
               "null",
               "string"
             ]
+          },
+          "isSetupModeActive": {
+            "type": "boolean"
+          },
+          "setupSecretFromEnvironment": {
+            "type": "boolean"
+          },
+          "setupTimedOut": {
+            "type": "boolean"
+          },
+          "instanceStartedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         }
       },
@@ -17421,7 +17427,7 @@
             "type": "string"
           },
           "role": {
-            "$ref": "#/components/schemas/OrganizationRoleEnum"
+            "$ref": "#/components/schemas/RoleEnum"
           },
           "email": {
             "type": "string"
@@ -17501,7 +17507,7 @@
                 "type": "null"
               },
               {
-                "$ref": "#/components/schemas/OrganizationRoleEnum"
+                "$ref": "#/components/schemas/RoleEnum"
               }
             ]
           },
@@ -17553,7 +17559,7 @@
               "string"
             ]
           },
-          "organizationRoleId": {
+          "roleId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -17561,7 +17567,7 @@
             ],
             "format": "int32"
           },
-          "organizationRoleFullName": {
+          "roleName": {
             "type": [
               "null",
               "string"
@@ -17686,67 +17692,6 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
-          }
-        }
-      },
-      "OrganizationRoleDto": {
-        "required": [
-          "masterCode",
-          "fullName"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "masterCode": {
-            "type": "string"
-          },
-          "fullName": {
-            "type": "string"
-          },
-          "description": {
-            "type": [
-              "null",
-              "string"
-            ]
-          }
-        }
-      },
-      "OrganizationRoleEnum": {
-        "type": "integer"
-      },
-      "OrganizationRoleListDto": {
-        "required": [
-          "masterCode",
-          "fullName"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "masterCode": {
-            "type": "string"
-          },
-          "fullName": {
-            "type": "string"
-          },
-          "description": {
-            "type": [
-              "null",
-              "string"
-            ]
           }
         }
       },
@@ -18002,6 +17947,18 @@
             "items": {
               "type": "string"
             }
+          },
+          "analyticsProvider": {
+            "type": "string"
+          },
+          "analyticsEnabled": {
+            "type": "boolean"
+          },
+          "analyticsPublicApiKey": {
+            "type": "string"
+          },
+          "analyticsEndpointUrl": {
+            "type": "string"
           }
         }
       },
@@ -18062,6 +18019,76 @@
             ]
           }
         }
+      },
+      "RoleDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "masterCode": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "scope": {
+            "$ref": "#/components/schemas/RoleScopeEnum"
+          },
+          "isSystem": {
+            "type": "boolean"
+          }
+        }
+      },
+      "RoleEnum": {
+        "type": "integer"
+      },
+      "RoleListDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "masterCode": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/RoleScopeEnum"
+          },
+          "isSystem": {
+            "type": "boolean"
+          }
+        }
+      },
+      "RoleScopeEnum": {
+        "type": "integer"
       },
       "SkillLevel": {
         "type": "integer"
@@ -18469,7 +18496,7 @@
           "isCurrentUserTenantAdministrator": {
             "type": "boolean"
           },
-          "isCurrentUserInstanceAdministrator": {
+          "isCurrentUserPlatformAdministrator": {
             "type": "boolean"
           },
           "tenantId": {
@@ -18491,6 +18518,9 @@
             "type": "boolean"
           },
           "canTenantOmitVerification": {
+            "type": "boolean"
+          },
+          "isTenantWhiteLabelingEnabled": {
             "type": "boolean"
           },
           "preferredHomePage": {
@@ -18591,7 +18621,7 @@
           "userEmail",
           "userFullName",
           "tenantFullName",
-          "userRoleName"
+          "roleName"
         ],
         "type": "object",
         "properties": {
@@ -18620,7 +18650,7 @@
           "tenantFullName": {
             "type": "string"
           },
-          "userRoleId": {
+          "roleId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -18628,7 +18658,7 @@
             ],
             "format": "int32"
           },
-          "userRoleName": {
+          "roleName": {
             "type": "string"
           }
         }
@@ -18638,7 +18668,7 @@
           "userEmail",
           "userFullName",
           "tenantFullName",
-          "userRoleName"
+          "roleName"
         ],
         "type": "object",
         "properties": {
@@ -18667,7 +18697,7 @@
           "tenantFullName": {
             "type": "string"
           },
-          "userRoleId": {
+          "roleId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -18675,7 +18705,7 @@
             ],
             "format": "int32"
           },
-          "userRoleName": {
+          "roleName": {
             "type": "string"
           }
         }
@@ -19331,7 +19361,7 @@
             "format": "uuid"
           },
           "role": {
-            "$ref": "#/components/schemas/OrganizationRoleEnum"
+            "$ref": "#/components/schemas/RoleEnum"
           }
         }
       },
@@ -19533,7 +19563,7 @@
             "type": "string",
             "format": "uuid"
           },
-          "userRoleId": {
+          "roleId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -19946,57 +19976,10 @@
           }
         }
       },
-      "UserRoleDto": {
-        "required": [
-          "masterCode",
-          "fullName"
-        ],
+      "ValidateSetupSecretRequest": {
         "type": "object",
         "properties": {
-          "id": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "masterCode": {
-            "type": "string"
-          },
-          "fullName": {
-            "type": "string"
-          },
-          "description": {
-            "type": [
-              "null",
-              "string"
-            ]
-          }
-        }
-      },
-      "UserRoleListDto": {
-        "required": [
-          "masterCode",
-          "fullName"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "masterCode": {
-            "type": "string"
-          },
-          "fullName": {
-            "type": "string"
-          },
-          "description": {
+          "secret": {
             "type": [
               "null",
               "string"
@@ -20150,13 +20133,13 @@
       "name": "OrganizationReview"
     },
     {
-      "name": "OrganizationRole"
-    },
-    {
       "name": "PublicExperience"
     },
     {
       "name": "RegistrationMode"
+    },
+    {
+      "name": "Role"
     },
     {
       "name": "StorageObject"
@@ -20190,9 +20173,6 @@
     },
     {
       "name": "UserExternalLogin"
-    },
-    {
-      "name": "UserRole"
     },
     {
       "name": "VisibilityType"

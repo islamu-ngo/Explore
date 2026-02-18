@@ -136,6 +136,8 @@ public class ExploreDbContext : DbContext
 
         modelBuilder.Entity<TenantNavigationLink>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+        modelBuilder.Entity<TenantInvitation>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
         // ===== Module Governance Entities =====
         modelBuilder.Entity<TenantCapability>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
@@ -212,7 +214,9 @@ public class ExploreDbContext : DbContext
     public DbSet<TenantSettings> TenantSettings { get; set; }
     public DbSet<TenantMember> TenantMembers { get; set; }
     public DbSet<TenantOnboardingState> TenantOnboardingStates { get; set; }
-    public DbSet<InstanceAdministrator> InstanceAdministrators { get; set; }
+    public DbSet<TenantInvitation> TenantInvitations { get; set; }
+    public DbSet<TenantLifecycleLog> TenantLifecycleLogs { get; set; }
+    public DbSet<UserRole> UserRoles { get; set; }
     public DbSet<TenantNavigationLink> TenantNavigationLinks { get; set; }
     public DbSet<InstanceBootstrapState> InstanceBootstrapStates { get; set; }
 
@@ -261,7 +265,8 @@ public class ExploreDbContext : DbContext
     public DbSet<Madhab> Madhabs { get; set; }
     public DbSet<Language> Languages { get; set; }
     public DbSet<ApprovalStatus> ApprovalStatuses { get; set; }
-
+    public DbSet<TenantStatus> TenantStatuses { get; set; }
+    public DbSet<AnalyticsProvider> AnalyticsProviders { get; set; }
     // ===== Categories & Tags =====
     public DbSet<Category> Categories { get; set; }
     public DbSet<Tag> Tags { get; set; }

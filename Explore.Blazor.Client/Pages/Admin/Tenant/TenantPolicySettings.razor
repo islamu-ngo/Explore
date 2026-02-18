@@ -115,7 +115,7 @@
     protected override async Task OnInitializedAsync()
     {
         var status = await TenantOnboardingService.GetStatusAsync();
-        _canEdit = status?.IsCurrentUserTenantAdministrator == true || status?.IsCurrentUserInstanceAdministrator == true;
+        _canEdit = status?.IsCurrentUserTenantAdministrator == true || status?.IsCurrentUserPlatformAdministrator == true;
 
         if (!_canEdit)
         {

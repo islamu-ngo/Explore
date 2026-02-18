@@ -1,6 +1,7 @@
 // ABOUTME: Handles tenant onboarding status queries for startup flow routing decisions.
 // ABOUTME: Combines tenant onboarding completion state with current user's tenant/instance admin eligibility.
 
+using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Onboarding;
@@ -12,21 +13,18 @@ namespace Explore.Application.Features.TenantOnboarding.Handlers.Queries;
 public class GetTenantOnboardingStatusQueryHandler : IRequestHandler<GetTenantOnboardingStatusQuery, TenantOnboardingStatusDto>
 {
     private readonly ITenantOnboardingStateRepository _tenantOnboardingStateRepository;
-    private readonly ITenantMemberRepository _tenantMemberRepository;
-    private readonly IInstanceAdministratorRepository _instanceAdministratorRepository;
+    private readonly IAdminContext _adminContext;
     private readonly ITenantContext _tenantContext;
     private readonly ICurrentUserService _currentUserService;
 
     public GetTenantOnboardingStatusQueryHandler(
         ITenantOnboardingStateRepository tenantOnboardingStateRepository,
-        ITenantMemberRepository tenantMemberRepository,
-        IInstanceAdministratorRepository instanceAdministratorRepository,
+        IAdminContext adminContext,
         ITenantContext tenantContext,
         ICurrentUserService currentUserService)
     {
         _tenantOnboardingStateRepository = tenantOnboardingStateRepository;
-        _tenantMemberRepository = tenantMemberRepository;
-        _instanceAdministratorRepository = instanceAdministratorRepository;
+        _adminContext = adminContext;
         _tenantContext = tenantContext;
         _currentUserService = currentUserService;
     }
@@ -42,7 +40,7 @@ public class GetTenantOnboardingStatusQueryHandler : IRequestHandler<GetTenantOn
             IsCompleted = onboardingState?.IsCompleted == true,
             IsAuthenticated = _currentUserService.IsAuthenticated,
             IsCurrentUserTenantAdministrator = false,
-            IsCurrentUserInstanceAdministrator = false
+            IsCurrentUserPlatformAdministrator = false
         };
 
         if (!_currentUserService.IsAuthenticated || !_currentUserService.UserId.HasValue)
@@ -50,9 +48,8 @@ public class GetTenantOnboardingStatusQueryHandler : IRequestHandler<GetTenantOn
             return response;
         }
 
-        var userId = _currentUserService.UserId.Value;
-        response.IsCurrentUserTenantAdministrator = await _tenantMemberRepository.IsTenantMember(tenantId, userId);
-        response.IsCurrentUserInstanceAdministrator = await _instanceAdministratorRepository.IsUserInstanceAdmin(userId);
+        response.IsCurrentUserTenantAdministrator = await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken);
+        response.IsCurrentUserPlatformAdministrator = await _adminContext.IsInstanceAdminAsync(cancellationToken);
 
         return response;
     }
