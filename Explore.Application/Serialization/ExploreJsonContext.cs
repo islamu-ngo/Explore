@@ -169,6 +169,7 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(TenantListDto))]
 [JsonSerializable(typeof(TenantOnboardingStatusDto))]
 [JsonSerializable(typeof(TenantPolicySettingsDto))]
+[JsonSerializable(typeof(BaseCommandResponse<Guid>))]
 [JsonSerializable(typeof(TenantSettingsDto))]
 [JsonSerializable(typeof(TenantSettingsListDto))]
 [JsonSerializable(typeof(TenantUserDto))]

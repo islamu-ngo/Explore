@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Organizations.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using MediatR;
@@ -24,6 +25,7 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
     private readonly IMapper _mapper;
     private readonly ITenantContext _tenantContext;
     private readonly HybridCache _cache;
+    private readonly BusinessMetrics _metrics;
 
     public CreateOrganizationCommandHandler(
         IOrganizationRepository organizationRepository,
@@ -33,7 +35,8 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
         IUserContext userContext,
         IMapper mapper,
         ITenantContext tenantContext,
-        HybridCache cache)
+        HybridCache cache,
+        BusinessMetrics metrics)
     {
         _organizationRepository = organizationRepository;
         _organizationMemberRepository = organizationMemberRepository;
@@ -43,6 +46,7 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
         _mapper = mapper;
         _tenantContext = tenantContext;
         _cache = cache;
+        _metrics = metrics;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateOrganizationCommand request, CancellationToken cancellationToken)
@@ -122,6 +126,8 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
         response.Success = true;
         response.Message = "Organization created successfully. You are now the creator and admin of this organization.";
         response.Id = organization.Id;
+
+        _metrics.RecordOrganizationCreated(_tenantContext.TenantId.ToString());
 
         await _cache.RemoveAsync($"organization:detail:{organization.Id}", cancellationToken);
 

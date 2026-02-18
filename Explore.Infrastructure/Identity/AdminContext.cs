@@ -60,19 +60,21 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         }
     }
 
-    public async Task<bool> IsInstanceAdminAsync(CancellationToken cancellationToken = default)
+    public Task<bool> IsInstanceAdminAsync(CancellationToken cancellationToken = default)
+    {
+        var uid = UserId;
+        return uid == null ? Task.FromResult(false) : IsInstanceAdminAsync(uid.Value, cancellationToken);
+    }
+
+    public async Task<bool> IsInstanceAdminAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         // DB-first authority: resolve from database only.
-        var uid = UserId;
-        if (uid == null)
-            return false;
-
-        var cacheKey = $"{CacheKeyPrefix}Instance_{uid}";
+        var cacheKey = $"{CacheKeyPrefix}Instance_{userId}";
         return await _cache.GetOrCreateAsync(cacheKey, async entry =>
         {
             entry.SlidingExpiration = CacheExpiration;
-            var isAdmin = await _userRoleRepository.IsUserPlatformAdmin(uid.Value);
-            _logger.LogDebug("AdminContext: User {UserId} IsInstanceAdmin={IsAdmin} (from DB)", uid, isAdmin);
+            var isAdmin = await _userRoleRepository.IsUserPlatformAdmin(userId);
+            _logger.LogDebug("AdminContext: User {UserId} IsInstanceAdmin={IsAdmin} (from DB)", userId, isAdmin);
             return isAdmin;
         });
     }
@@ -105,32 +107,40 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         });
     }
 
-    public async Task<IReadOnlyList<Guid>> GetAdminTenantIdsAsync(CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<Guid>> GetAdminTenantIdsAsync(CancellationToken cancellationToken = default)
     {
         var uid = UserId;
-        if (uid == null)
-            return Array.Empty<Guid>();
+        return uid == null
+            ? Task.FromResult<IReadOnlyList<Guid>>(Array.Empty<Guid>())
+            : GetAdminTenantIdsAsync(uid.Value, cancellationToken);
+    }
 
-        var cacheKey = $"{CacheKeyPrefix}TenantIds_{uid}";
+    public async Task<IReadOnlyList<Guid>> GetAdminTenantIdsAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var cacheKey = $"{CacheKeyPrefix}TenantIds_{userId}";
         return await _cache.GetOrCreateAsync(cacheKey, async entry =>
         {
             entry.SlidingExpiration = CacheExpiration;
-            var admins = await _tenantAdminRepo.GetByUserId(uid.Value);
+            var admins = await _tenantAdminRepo.GetByUserId(userId);
             return (IReadOnlyList<Guid>)admins.Select(a => a.TenantId).ToList().AsReadOnly();
         }) ?? Array.Empty<Guid>();
     }
 
-    public async Task<IReadOnlyList<Guid>> GetAdminOrganizationIdsAsync(CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<Guid>> GetAdminOrganizationIdsAsync(CancellationToken cancellationToken = default)
     {
         var uid = UserId;
-        if (uid == null)
-            return Array.Empty<Guid>();
+        return uid == null
+            ? Task.FromResult<IReadOnlyList<Guid>>(Array.Empty<Guid>())
+            : GetAdminOrganizationIdsAsync(uid.Value, cancellationToken);
+    }
 
-        var cacheKey = $"{CacheKeyPrefix}OrgIds_{uid}";
+    public async Task<IReadOnlyList<Guid>> GetAdminOrganizationIdsAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var cacheKey = $"{CacheKeyPrefix}OrgIds_{userId}";
         return await _cache.GetOrCreateAsync(cacheKey, async entry =>
         {
             entry.SlidingExpiration = CacheExpiration;
-            var orgIds = await _orgMemberRepo.GetOrganizationIdsWhereUserHasPermission(uid.Value, PermissionCodes.OrganizationManage);
+            var orgIds = await _orgMemberRepo.GetOrganizationIdsWhereUserHasPermission(userId, PermissionCodes.OrganizationManage);
             return (IReadOnlyList<Guid>)orgIds.AsReadOnly();
         }) ?? Array.Empty<Guid>();
     }

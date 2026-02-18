@@ -10,6 +10,12 @@ internal static class ServiceCollectionExtensions
     {
         services.AddSwaggerGen(options =>
         {
+            options.SwaggerDoc("v0.1", new OpenApiInfo
+            {
+                Title = "Explore API",
+                Version = "v0.1"
+            });
+
             options.CustomSchemaIds(id => id.FullName!.Replace('+', '-'));
 
             // Add schema filter for HAL wrapper types to properly expose inner DTOs

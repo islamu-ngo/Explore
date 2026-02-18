@@ -53,6 +53,9 @@ public class CompleteTenantOnboardingCommandHandler : IRequestHandler<CompleteTe
                 TenantId = tenantId,
                 Tenant = null!,
                 IsCompleted = true,
+                CurrentStep = 4,
+                TotalSteps = 4,
+                CompletedStepsJson = "[\"Identity\",\"Policies\",\"Branding\",\"Review\"]",
                 CreatedAt = DateTime.UtcNow,
                 CompletedAt = DateTime.UtcNow,
                 CompletedByUserId = request.UserId
@@ -61,6 +64,12 @@ public class CompleteTenantOnboardingCommandHandler : IRequestHandler<CompleteTe
         else
         {
             onboardingState.IsCompleted = true;
+            onboardingState.CurrentStep = Math.Max(onboardingState.CurrentStep, 4);
+            onboardingState.TotalSteps = Math.Max(onboardingState.TotalSteps, 4);
+            if (string.IsNullOrWhiteSpace(onboardingState.CompletedStepsJson))
+            {
+                onboardingState.CompletedStepsJson = "[\"Identity\",\"Policies\",\"Branding\",\"Review\"]";
+            }
             onboardingState.CompletedAt = DateTime.UtcNow;
             onboardingState.CompletedByUserId = request.UserId;
             await _tenantOnboardingStateRepository.Update(onboardingState);

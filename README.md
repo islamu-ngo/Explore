@@ -154,7 +154,7 @@ Visit **[event.openislamu.org](https://event.openislamu.org)** to:
 ### 🖥️ Self-Host Your Instance
 
 **Prerequisites:**
-- Docker Desktop
+- Docker
 - .NET 10 SDK (for development)
 - PostgreSQL 16+ with PostGIS (or use Docker)
 

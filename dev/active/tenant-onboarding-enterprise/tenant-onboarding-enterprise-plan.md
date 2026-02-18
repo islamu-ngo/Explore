@@ -17,6 +17,7 @@ Transform the tenant admin onboarding experience from a minimal flat form into a
 6. **Onboarding wizard with checklist** — Multi-step stepper with progress tracking and funnel analytics
 7. **Single-tenant identity** — Enforce instance admin = tenant admin in single-tenant mode
 8. **Configuration lock enforcement** — Backend-enforced lock pattern, not UI-only
+9. **Instance onboarding routing** — Post-completion routing based on deployment mode and preferred home page
 
 ### Enterprise SaaS Patterns Applied
 - **Stripe**: Progressive checklist, idempotency keys for provisioning
@@ -172,6 +173,16 @@ TenantInvitations (NEW — enhanced)
 #### Task 1.4: Extend TenantOnboardingState with Steps
 - **File**: `Explore.Domain/TenantOnboardingState.cs`
 - Add CurrentStep, TotalSteps, CompletedStepsJson
+
+---
+
+### Phase 1.6: Instance Onboarding Routing (Effort: S — 2-3 hours)
+
+#### Task 1.6: Update post-onboarding routing behavior
+- **Files**: `Explore.Blazor.Client/Pages/Onboarding/InstanceOnboarding.razor`, `Explore.Blazor.Client/Pages/Onboarding/StartupGate.razor`
+- Use instance-level preferred home page for SingleTenant flow (LandingPage/EventList)
+- In MultiTenant mode, redirect to instance admin area (not tenant onboarding)
+- Ensure tenant onboarding is only prompted when MultiTenant mode and tenant admin must complete it
 
 #### Task 1.5: Create TenantLifecycleLog Entity (NEW)
 - **File**: `Explore.Domain/TenantLifecycleLog.cs` (NEW)

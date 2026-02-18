@@ -9,12 +9,17 @@ public interface IPublicExperienceService
 {
     Task<PublicExperienceSettingsModel?> GetSettingsAsync();
     string ResolveHomeRoute(PublicExperienceSettingsModel? settings);
+    Task<PublicExperienceSettingsModel?> GetCachedSettingsAsync();
+    void ResetCache();
 }
 
 public class PublicExperienceService : IPublicExperienceService
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<PublicExperienceService> _logger;
+    private PublicExperienceSettingsModel? _cachedSettings;
+    private DateTimeOffset _cacheExpiresAt;
+    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
 
     public PublicExperienceService(
         IHttpClientFactory httpClientFactory,
@@ -29,7 +34,9 @@ public class PublicExperienceService : IPublicExperienceService
         try
         {
             var client = _httpClientFactory.CreateClient("BffClient");
-            return await client.GetFromJsonAsync<PublicExperienceSettingsModel>("api/v1/PublicExperience/settings");
+            var settings = await client.GetFromJsonAsync<PublicExperienceSettingsModel>("api/v1/PublicExperience/settings");
+            Cache(settings);
+            return settings;
         }
         catch (Exception ex)
         {
@@ -38,11 +45,34 @@ public class PublicExperienceService : IPublicExperienceService
         }
     }
 
+    public async Task<PublicExperienceSettingsModel?> GetCachedSettingsAsync()
+    {
+        if (_cachedSettings != null && DateTimeOffset.UtcNow <= _cacheExpiresAt)
+        {
+            return _cachedSettings;
+        }
+
+        var settings = await GetSettingsAsync();
+        return settings ?? _cachedSettings;
+    }
+
+    public void ResetCache()
+    {
+        _cachedSettings = null;
+        _cacheExpiresAt = default;
+    }
+
     public string ResolveHomeRoute(PublicExperienceSettingsModel? settings)
     {
         return settings?.PreferredHomePage?.Equals("LandingPage", StringComparison.OrdinalIgnoreCase) == true
             ? "/home"
             : "/events";
+    }
+
+    private void Cache(PublicExperienceSettingsModel? settings)
+    {
+        _cachedSettings = settings;
+        _cacheExpiresAt = DateTimeOffset.UtcNow.Add(CacheDuration);
     }
 }
 
@@ -60,6 +90,7 @@ public class PublicExperienceSettingsModel
     public string CustomDomain { get; set; } = string.Empty;
     public bool IsIslamicModuleEnabled { get; set; }
     public bool IsTechModuleEnabled { get; set; }
+    public bool AllowUserSubmittedEvents { get; set; } = true;
     public List<string> EnabledModules { get; set; } = new();
     public string AnalyticsProvider { get; set; } = "none";
     public bool AnalyticsEnabled { get; set; }

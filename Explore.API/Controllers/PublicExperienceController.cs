@@ -1,6 +1,7 @@
 // ABOUTME: Anonymous-safe API surface for effective tenant public experience settings.
 // ABOUTME: Exposes home-page routing and white-label values resolved from cascading policies.
 
+using Asp.Versioning;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Features.PublicExperience.Requests.Queries;
 using MediatR;
@@ -10,7 +11,8 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Explore.API.Controllers;
 
-[Route("api/v1/[controller]")]
+[ApiVersion("0.1")]
+[Route("api/[controller]")]
 [ApiController]
 public class PublicExperienceController : ControllerBase
 {

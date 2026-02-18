@@ -11,7 +11,7 @@ namespace Event.Api.IntegrationTests.Features;
 public class LocationControllerTests
 {
     private readonly ApiTestFixture _fixture;
-    private const string BaseUrl = "/api/v1/location";
+    private const string BaseUrl = "/api/location";
 
     public LocationControllerTests(ApiTestFixture fixture)
     {

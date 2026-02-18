@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.OrganizationReview;
 using Explore.Application.Features.OrganizationReviews.Commands.CreateOrganizationReview;
@@ -12,7 +13,8 @@ using Microsoft.AspNetCore.OutputCaching;
 
 namespace Explore.API.Controllers;
 
-[Route("api/v1/[controller]")]
+[ApiVersion("0.1")]
+[Route("api/[controller]")]
 [ApiController]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public class OrganizationReviewController : ControllerBase

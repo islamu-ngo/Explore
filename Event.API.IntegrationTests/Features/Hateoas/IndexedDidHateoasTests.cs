@@ -14,7 +14,7 @@ namespace Event.Api.IntegrationTests.Features.Hateoas;
 public class IndexedDidHateoasTests
 {
     private readonly ApiTestFixture _fixture;
-    private const string BaseUrl = "/api/v1/indexeddid";
+    private const string BaseUrl = "/api/indexeddid";
 
     public IndexedDidHateoasTests(ApiTestFixture fixture)
     {
@@ -53,7 +53,7 @@ public class IndexedDidHateoasTests
         {
             await Assert.That(links.TryGetProperty("self", out var selfLink)).IsTrue();
             var href = selfLink.GetProperty("href").GetString();
-            await Assert.That(href).Contains("/api/v1/indexeddid");
+            await Assert.That(href).Contains("/api/indexeddid");
         }
     }
 
@@ -102,7 +102,7 @@ public class IndexedDidHateoasTests
             {
                 await Assert.That(itemLinks.TryGetProperty("self", out var selfLink)).IsTrue();
                 var href = selfLink.GetProperty("href").GetString();
-                await Assert.That(href).Contains("/api/v1/indexeddid/");
+                await Assert.That(href).Contains("/api/indexeddid/");
             }
         }
     }
@@ -131,7 +131,7 @@ public class IndexedDidHateoasTests
                 if (itemLinks.TryGetProperty("actor", out var actorLink))
                 {
                     var href = actorLink.GetProperty("href").GetString();
-                    await Assert.That(href).Contains("/api/v1/actor/by-did/");
+                    await Assert.That(href).Contains("/api/actor/by-did/");
                 }
             }
         }
@@ -185,14 +185,14 @@ public class IndexedDidHateoasTests
                 if (links.TryGetProperty("collection", out var collectionLink))
                 {
                     var href = collectionLink.GetProperty("href").GetString();
-                    await Assert.That(href).Contains("/api/v1/indexeddid");
+                    await Assert.That(href).Contains("/api/indexeddid");
                 }
 
                 // And actor link
                 if (links.TryGetProperty("actor", out var actorLink))
                 {
                     var href = actorLink.GetProperty("href").GetString();
-                    await Assert.That(href).Contains("/api/v1/actor/by-did/");
+                    await Assert.That(href).Contains("/api/actor/by-did/");
                 }
             }
         }

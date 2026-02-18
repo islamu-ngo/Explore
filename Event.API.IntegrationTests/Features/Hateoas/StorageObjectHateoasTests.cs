@@ -14,7 +14,7 @@ namespace Event.Api.IntegrationTests.Features.Hateoas;
 public class StorageObjectHateoasTests
 {
     private readonly ApiTestFixture _fixture;
-    private const string BaseUrl = "/api/v1/storageobject";
+    private const string BaseUrl = "/api/storageobject";
 
     public StorageObjectHateoasTests(ApiTestFixture fixture)
     {
@@ -55,7 +55,7 @@ public class StorageObjectHateoasTests
         {
             await Assert.That(links.TryGetProperty("self", out var selfLink)).IsTrue();
             var href = selfLink.GetProperty("href").GetString();
-            await Assert.That(href).Contains("/api/v1/storageobject");
+            await Assert.That(href).Contains("/api/storageobject");
         }
     }
 
@@ -104,7 +104,7 @@ public class StorageObjectHateoasTests
             {
                 await Assert.That(itemLinks.TryGetProperty("self", out var selfLink)).IsTrue();
                 var href = selfLink.GetProperty("href").GetString();
-                await Assert.That(href).Contains("/api/v1/storageobject/");
+                await Assert.That(href).Contains("/api/storageobject/");
             }
         }
     }
@@ -145,7 +145,7 @@ public class StorageObjectHateoasTests
                 if (links.TryGetProperty("collection", out var collectionLink))
                 {
                     var href = collectionLink.GetProperty("href").GetString();
-                    await Assert.That(href).Contains("/api/v1/storageobject");
+                    await Assert.That(href).Contains("/api/storageobject");
                 }
             }
         }

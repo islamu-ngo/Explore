@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.IndexedDid;
 using Explore.Application.Features.IndexedDids.Requests.Commands;
@@ -11,7 +12,8 @@ using Microsoft.AspNetCore.OutputCaching;
 
 namespace Explore.API.Controllers;
 
-[Route("api/v1/indexeddid")]
+[ApiVersion("0.1")]
+[Route("api/indexeddid")]
 [ApiController]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public class IndexedDidController : ControllerBase

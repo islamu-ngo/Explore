@@ -1,5 +1,5 @@
 // ABOUTME: Component tests for NavMenu admin section visibility based on DB-backed admin claims.
-// Verifies that admin menu items are shown/hidden based on explore:admin:* claims.
+// Verifies that admin menu items are shown/hidden per admin authority level (instance, tenant, organization).
 
 using Explore.Blazor.Client.Layout;
 using Explore.Blazor.Client.Tests.Common.Authentication;
@@ -8,9 +8,11 @@ namespace Explore.Blazor.Client.Tests.Layout;
 
 /// <summary>
 /// Tests for the NavMenu admin section rendering behavior.
-/// The admin section (Admin Dashboard, Instance Settings, Tenant Settings) should only
-/// appear when the authenticated user has explore:admin:instance or explore:admin:tenant claims.
-/// The admin section is inside the user dropdown, so tests must open it before asserting.
+/// Admin links are shown based on the user's admin authority claims:
+/// - Instance admin: Admin Dashboard, Instance Settings, Tenant Settings
+/// - Tenant admin: Admin Dashboard, Tenant Settings (no Instance Settings)
+/// - Organization admin: Organization Settings link(s)
+/// - Regular user: no admin section at all
 /// </summary>
 public class NavMenuAdminTests : IDisposable
 {
@@ -40,6 +42,7 @@ public class NavMenuAdminTests : IDisposable
         await Assert.That(cut.Markup).DoesNotContain("Admin Dashboard");
         await Assert.That(cut.Markup).DoesNotContain("Instance Settings");
         await Assert.That(cut.Markup).DoesNotContain("Tenant Settings");
+        await Assert.That(cut.Markup).DoesNotContain("Organization Settings");
     }
 
     [Test]
@@ -53,76 +56,15 @@ public class NavMenuAdminTests : IDisposable
         var cut = _ctx.RenderComponent<NavMenu>();
         OpenDropdown(cut);
 
-        // Assert — dropdown is open but no admin section for regular users
+        // Assert
         await Assert.That(cut.Markup).DoesNotContain("Admin Dashboard");
         await Assert.That(cut.Markup).DoesNotContain("Instance Settings");
         await Assert.That(cut.Markup).DoesNotContain("Tenant Settings");
+        await Assert.That(cut.Markup).DoesNotContain("Organization Settings");
     }
 
     [Test]
-    public async Task NavMenu_InstanceAdmin_ShowsAdminSection()
-    {
-        // Arrange — user with explore:admin:instance claim
-        _ctx.SetAuthenticatedUserWithClaims(
-            AuthenticationTestConstants.AdminUserId,
-            "Admin User",
-            new Claim("explore:admin:instance", "true"));
-        SetupNavMenuServices();
-
-        // Act
-        var cut = _ctx.RenderComponent<NavMenu>();
-        OpenDropdown(cut);
-
-        // Assert
-        await Assert.That(cut.Markup).Contains("Admin Dashboard");
-        await Assert.That(cut.Markup).Contains("Instance Settings");
-        await Assert.That(cut.Markup).Contains("Tenant Settings");
-    }
-
-    [Test]
-    public async Task NavMenu_TenantAdmin_ShowsAdminSection()
-    {
-        // Arrange — user with explore:admin:tenant claim
-        var tenantId = AuthenticationTestConstants.DefaultTenantId;
-        _ctx.SetAuthenticatedUserWithClaims(
-            AuthenticationTestConstants.AdminUserId,
-            "Admin User",
-            new Claim("explore:admin:tenant", tenantId.ToString()));
-        SetupNavMenuServices();
-
-        // Act
-        var cut = _ctx.RenderComponent<NavMenu>();
-        OpenDropdown(cut);
-
-        // Assert
-        await Assert.That(cut.Markup).Contains("Admin Dashboard");
-        await Assert.That(cut.Markup).Contains("Instance Settings");
-        await Assert.That(cut.Markup).Contains("Tenant Settings");
-    }
-
-    [Test]
-    public async Task NavMenu_OrganizationAdminOnly_DoesNotShowAdminSection()
-    {
-        // Arrange — user with only explore:admin:organization claim (not instance/tenant)
-        var orgId = Guid.NewGuid();
-        _ctx.SetAuthenticatedUserWithClaims(
-            AuthenticationTestConstants.AdminUserId,
-            "Org Admin User",
-            new Claim("explore:admin:organization", orgId.ToString()));
-        SetupNavMenuServices();
-
-        // Act
-        var cut = _ctx.RenderComponent<NavMenu>();
-        OpenDropdown(cut);
-
-        // Assert — organization admin alone does NOT show admin section
-        await Assert.That(cut.Markup).DoesNotContain("Admin Dashboard");
-        await Assert.That(cut.Markup).DoesNotContain("Instance Settings");
-        await Assert.That(cut.Markup).DoesNotContain("Tenant Settings");
-    }
-
-    [Test]
-    public async Task NavMenu_AdminSection_ContainsCorrectLinks()
+    public async Task NavMenu_InstanceAdmin_ShowsAllPlatformAdminLinks()
     {
         // Arrange
         _ctx.SetAuthenticatedUserWithClaims(
@@ -135,40 +77,164 @@ public class NavMenuAdminTests : IDisposable
         var cut = _ctx.RenderComponent<NavMenu>();
         OpenDropdown(cut);
 
-        // Assert — verify the admin links point to correct routes
+        // Assert -- instance admin sees Dashboard, Instance Settings, and Tenant Settings
+        await Assert.That(cut.Markup).Contains("Admin Dashboard");
+        await Assert.That(cut.Markup).Contains("Instance Settings");
+        await Assert.That(cut.Markup).Contains("Tenant Settings");
+    }
+
+    [Test]
+    public async Task NavMenu_TenantAdmin_ShowsDashboardAndTenantSettings_NotInstanceSettings()
+    {
+        // Arrange
+        var tenantId = AuthenticationTestConstants.DefaultTenantId;
+        _ctx.SetAuthenticatedUserWithClaims(
+            AuthenticationTestConstants.AdminUserId,
+            "Tenant Admin User",
+            new Claim("explore:admin:tenant", tenantId.ToString()));
+        SetupNavMenuServices();
+
+        // Act
+        var cut = _ctx.RenderComponent<NavMenu>();
+        OpenDropdown(cut);
+
+        // Assert -- tenant admin sees Dashboard and Tenant Settings but NOT Instance Settings
+        await Assert.That(cut.Markup).Contains("Admin Dashboard");
+        await Assert.That(cut.Markup).Contains("Tenant Settings");
+        await Assert.That(cut.Markup).DoesNotContain("Instance Settings");
+    }
+
+    [Test]
+    public async Task NavMenu_OrganizationAdminOnly_ShowsOrganizationSettings()
+    {
+        // Arrange
+        var orgId = Guid.NewGuid();
+        _ctx.SetAuthenticatedUserWithClaims(
+            AuthenticationTestConstants.AdminUserId,
+            "Org Admin User",
+            new Claim("explore:admin:organization", orgId.ToString()));
+        SetupNavMenuServices();
+
+        // Act
+        var cut = _ctx.RenderComponent<NavMenu>();
+        OpenDropdown(cut);
+
+        // Assert -- org admin sees Organization Settings but not platform-level admin links
+        await Assert.That(cut.Markup).Contains("Organization Settings");
+        await Assert.That(cut.Markup).Contains($"/admin/organization/{orgId}/settings");
+        await Assert.That(cut.Markup).DoesNotContain("Admin Dashboard");
+        await Assert.That(cut.Markup).DoesNotContain("Instance Settings");
+        await Assert.That(cut.Markup).DoesNotContain("Tenant Settings");
+    }
+
+    [Test]
+    public async Task NavMenu_OrganizationAdmin_MultipleOrgs_ShowsLinkPerOrg()
+    {
+        // Arrange
+        var orgId1 = Guid.NewGuid();
+        var orgId2 = Guid.NewGuid();
+        _ctx.SetAuthenticatedUserWithClaims(
+            AuthenticationTestConstants.AdminUserId,
+            "Multi-Org Admin",
+            new Claim("explore:admin:organization", orgId1.ToString()),
+            new Claim("explore:admin:organization", orgId2.ToString()));
+        SetupNavMenuServices();
+
+        // Act
+        var cut = _ctx.RenderComponent<NavMenu>();
+        OpenDropdown(cut);
+
+        // Assert -- one link per administered organization
+        await Assert.That(cut.Markup).Contains($"/admin/organization/{orgId1}/settings");
+        await Assert.That(cut.Markup).Contains($"/admin/organization/{orgId2}/settings");
+    }
+
+    [Test]
+    public async Task NavMenu_InstanceAdminWithOrgClaim_ShowsBothPlatformAndOrgLinks()
+    {
+        // Arrange
+        var orgId = Guid.NewGuid();
+        _ctx.SetAuthenticatedUserWithClaims(
+            AuthenticationTestConstants.AdminUserId,
+            "Super Admin",
+            new Claim("explore:admin:instance", "true"),
+            new Claim("explore:admin:organization", orgId.ToString()));
+        SetupNavMenuServices();
+
+        // Act
+        var cut = _ctx.RenderComponent<NavMenu>();
+        OpenDropdown(cut);
+
+        // Assert -- sees all platform admin links plus the org link
+        await Assert.That(cut.Markup).Contains("Admin Dashboard");
+        await Assert.That(cut.Markup).Contains("Instance Settings");
+        await Assert.That(cut.Markup).Contains("Tenant Settings");
+        await Assert.That(cut.Markup).Contains($"/admin/organization/{orgId}/settings");
+    }
+
+    [Test]
+    public async Task NavMenu_InstanceAdmin_ContainsCorrectRoutes()
+    {
+        // Arrange
+        _ctx.SetAuthenticatedUserWithClaims(
+            AuthenticationTestConstants.AdminUserId,
+            "Admin User",
+            new Claim("explore:admin:instance", "true"));
+        SetupNavMenuServices();
+
+        // Act
+        var cut = _ctx.RenderComponent<NavMenu>();
+        OpenDropdown(cut);
+
+        // Assert
         await Assert.That(cut.Markup).Contains("href=\"/admin\"");
         await Assert.That(cut.Markup).Contains("href=\"/admin/instance/settings\"");
         await Assert.That(cut.Markup).Contains("href=\"/admin/tenant/settings\"");
     }
 
-    /// <summary>
-    /// Opens the user dropdown by clicking the toggle button.
-    /// The admin section is inside the dropdown and only rendered when _dropdownOpen is true.
-    /// </summary>
+    [Test]
+    public async Task NavMenu_TenantAdmin_ContainsCorrectRoutes()
+    {
+        // Arrange
+        var tenantId = AuthenticationTestConstants.DefaultTenantId;
+        _ctx.SetAuthenticatedUserWithClaims(
+            AuthenticationTestConstants.AdminUserId,
+            "Tenant Admin",
+            new Claim("explore:admin:tenant", tenantId.ToString()));
+        SetupNavMenuServices();
+
+        // Act
+        var cut = _ctx.RenderComponent<NavMenu>();
+        OpenDropdown(cut);
+
+        // Assert
+        await Assert.That(cut.Markup).Contains("href=\"/admin\"");
+        await Assert.That(cut.Markup).Contains("href=\"/admin/tenant/settings\"");
+        await Assert.That(cut.Markup).DoesNotContain("href=\"/admin/instance/settings\"");
+    }
+
     private static void OpenDropdown(IRenderedComponent<NavMenu> cut)
     {
         var dropdownButton = cut.Find(".navbar__user-btn");
         dropdownButton.Click();
     }
 
-    /// <summary>
-    /// Registers all mock services required by NavMenu component.
-    /// </summary>
     private void SetupNavMenuServices()
     {
-        // IUserService — NavMenu calls GetCurrentUserAsync
         var userService = Substitute.For<IUserService>();
         userService.GetCurrentUserAsync().Returns((UserDto?)null);
         _ctx.Services.AddSingleton(userService);
 
-        // IPublicExperienceService — NavMenu calls GetSettingsAsync for branding
         var publicExperienceService = Substitute.For<IPublicExperienceService>();
         publicExperienceService.GetSettingsAsync().Returns((PublicExperienceSettingsModel?)null);
         _ctx.Services.AddSingleton(publicExperienceService);
 
-        // ITenantNavigationService — NavMenu calls GetNavigationLinksAsync
         var tenantNavigationService = Substitute.For<ITenantNavigationService>();
         tenantNavigationService.GetNavigationLinksAsync().Returns(new List<TenantNavigationLinkDto>());
         _ctx.Services.AddSingleton(tenantNavigationService);
+
+        var eligibilityService = Substitute.For<IEventCreationEligibilityService>();
+        eligibilityService.GetEligibilityAsync().Returns(EventCreationEligibility.NotEligible);
+        _ctx.Services.AddSingleton(eligibilityService);
     }
 }

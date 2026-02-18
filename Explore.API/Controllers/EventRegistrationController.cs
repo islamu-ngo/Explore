@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using Asp.Versioning;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.Features.EventRegistrations.Requests.Commands;
 using Explore.Application.Features.EventRegistrations.Requests.Queries;
@@ -13,7 +14,8 @@ using Microsoft.AspNetCore.OutputCaching;
 
 namespace Explore.API.Controllers;
 
-[Route("api/v1/[controller]")]
+[ApiVersion("0.1")]
+[Route("api/[controller]")]
 [ApiController]
 public class EventRegistrationController : ControllerBase
 {

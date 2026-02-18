@@ -72,7 +72,7 @@ public class HalSchemaFilter : ISchemaFilter
         if (dtoSchema is OpenApiSchemaReference schemaRef)
         {
             var refId = schemaRef.Id;
-            if (context.SchemaRepository.Schemas.TryGetValue(refId, out var referencedSchema))
+            if (refId is not null && context.SchemaRepository.Schemas.TryGetValue(refId, out var referencedSchema))
             {
                 resolvedSchema = referencedSchema as OpenApiSchema;
             }

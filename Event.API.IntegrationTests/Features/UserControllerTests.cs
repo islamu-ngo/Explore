@@ -11,7 +11,7 @@ namespace Event.Api.IntegrationTests.Features;
 public class UserControllerTests
 {
     private readonly ApiTestFixture _fixture;
-    private const string BaseUrl = "/api/v1/user";
+    private const string BaseUrl = "/api/user";
 
     public UserControllerTests(ApiTestFixture fixture)
     {

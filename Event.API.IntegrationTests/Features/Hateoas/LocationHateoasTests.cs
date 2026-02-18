@@ -14,7 +14,7 @@ namespace Event.Api.IntegrationTests.Features.Hateoas;
 public class LocationHateoasTests
 {
     private readonly ApiTestFixture _fixture;
-    private const string BaseUrl = "/api/v1/location";
+    private const string BaseUrl = "/api/location";
 
     public LocationHateoasTests(ApiTestFixture fixture)
     {
@@ -62,7 +62,7 @@ public class LocationHateoasTests
             {
                 await Assert.That(itemLinks.TryGetProperty("self", out var selfLink)).IsTrue();
                 var href = selfLink.GetProperty("href").GetString();
-                await Assert.That(href).Contains("/api/v1/location/");
+                await Assert.That(href).Contains("/api/location/");
             }
         }
     }
@@ -89,7 +89,7 @@ public class LocationHateoasTests
             {
                 await Assert.That(itemLinks.TryGetProperty("collection", out var collectionLink)).IsTrue();
                 var href = collectionLink.GetProperty("href").GetString();
-                await Assert.That(href).IsEqualTo("/api/v1/location");
+                await Assert.That(href).IsEqualTo("/api/location");
             }
         }
     }

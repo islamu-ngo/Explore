@@ -2,7 +2,7 @@
     NavMenu Component - BEM Methodology
     Block: navbar
     Elements: __content, __brand, __brand-icon, __brand-text, __brand-highlight,
-              __links, __link, __actions, __theme-toggle, __login-btn,
+              __links, __link, __actions, __theme-toggle, __create-event-btn, __login-btn,
               __user-dropdown, __user-btn, __user-avatar, __user-name, __user-arrow,
               __dropdown-menu, __dropdown-header, __dropdown-divider, __dropdown-section-label,
               __dropdown-item, __dropdown-overlay
@@ -76,6 +76,19 @@
 
             <AuthorizeView>
                 <Authorized>
+                    @if (_eventCreationEligibility.CanCreate)
+                    {
+                        <a href="@_eventCreationEligibility.CreateEventRoute" style="text-decoration: none;">
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.Add"
+                                       Size="Size.Small"
+                                       Class="navbar__create-event-btn">
+                                Create Event
+                            </MudButton>
+                        </a>
+                    }
+
                     <!-- User Dropdown -->
                     <div class="navbar__user-dropdown">
                         <div class="navbar__user-btn" @onclick="ToggleDropdown" @onclick:stopPropagation
@@ -122,22 +135,42 @@
                                     My Registrations
                                 </a>
 
-                                @if (IsAdmin(context.User))
+                                @if (HasAnyAdminAuthority(context.User))
                                 {
                                     <div class="navbar__dropdown-divider"></div>
                                     <div class="navbar__dropdown-section-label">Admin</div>
-                                    <a href="/admin" class="navbar__dropdown-item" @onclick="CloseDropdown">
-                                        <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Size="Size.Small" />
-                                        Admin Dashboard
-                                    </a>
-                                    <a href="/admin/instance/settings" class="navbar__dropdown-item" @onclick="CloseDropdown">
-                                        <MudIcon Icon="@Icons.Material.Filled.Dns" Size="Size.Small" />
-                                        Instance Settings
-                                    </a>
-                                    <a href="/admin/tenant/settings" class="navbar__dropdown-item" @onclick="CloseDropdown">
-                                        <MudIcon Icon="@Icons.Material.Filled.Domain" Size="Size.Small" />
-                                        Tenant Settings
-                                    </a>
+
+                                    @if (IsInstanceOrTenantAdmin(context.User))
+                                    {
+                                        <a href="/admin" class="navbar__dropdown-item" @onclick="CloseDropdown">
+                                            <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Size="Size.Small" />
+                                            Admin Dashboard
+                                        </a>
+                                    }
+
+                                    @if (IsInstanceAdmin(context.User))
+                                    {
+                                        <a href="/admin/instance/settings" class="navbar__dropdown-item" @onclick="CloseDropdown">
+                                            <MudIcon Icon="@Icons.Material.Filled.Dns" Size="Size.Small" />
+                                            Instance Settings
+                                        </a>
+                                    }
+
+                                    @if (IsInstanceOrTenantAdmin(context.User))
+                                    {
+                                        <a href="/admin/tenant/settings" class="navbar__dropdown-item" @onclick="CloseDropdown">
+                                            <MudIcon Icon="@Icons.Material.Filled.Domain" Size="Size.Small" />
+                                            Tenant Settings
+                                        </a>
+                                    }
+
+                                    @foreach (var orgId in GetAdminOrganizationIds(context.User))
+                                    {
+                                        <a href="@($"/admin/organization/{orgId}/settings")" class="navbar__dropdown-item" @onclick="CloseDropdown">
+                                            <MudIcon Icon="@Icons.Material.Filled.CorporateFare" Size="Size.Small" />
+                                            Organization Settings
+                                        </a>
+                                    }
                                 }
 
                                 <div class="navbar__dropdown-divider"></div>

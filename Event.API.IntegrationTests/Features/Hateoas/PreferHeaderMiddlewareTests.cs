@@ -25,7 +25,7 @@ public class PreferHeaderMiddlewareTests
     public async Task Middleware_WithReturnMinimal_ShouldSetPreferenceAppliedHeader()
     {
         // Arrange
-        var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organization");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/organization");
         request.Headers.Add("Prefer", "return=minimal");
 
         // Act
@@ -43,7 +43,7 @@ public class PreferHeaderMiddlewareTests
     public async Task Middleware_WithReturnRepresentation_ShouldNotSetPreferenceAppliedHeader()
     {
         // Arrange
-        var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organization");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/organization");
         request.Headers.Add("Prefer", "return=representation");
 
         // Act
@@ -59,7 +59,7 @@ public class PreferHeaderMiddlewareTests
     public async Task Middleware_WithoutPreferHeader_ShouldNotSetPreferenceAppliedHeader()
     {
         // Arrange & Act
-        var response = await _fixture.Client.GetAsync("/api/v1/organization");
+        var response = await _fixture.Client.GetAsync("/api/organization");
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -70,7 +70,7 @@ public class PreferHeaderMiddlewareTests
     public async Task Middleware_WithMultiplePreferences_ShouldParseReturnMinimal()
     {
         // Arrange
-        var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organization");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/organization");
         request.Headers.Add("Prefer", "return=minimal, respond-async, wait=100");
 
         // Act
@@ -88,7 +88,7 @@ public class PreferHeaderMiddlewareTests
     public async Task Middleware_WithCaseInsensitiveMinimal_ShouldRecognizeMinimal()
     {
         // Arrange
-        var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organization");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/organization");
         request.Headers.Add("Prefer", "return=MINIMAL");
 
         // Act
@@ -103,7 +103,7 @@ public class PreferHeaderMiddlewareTests
     public async Task Middleware_WithSpacesInPreferHeader_ShouldParseCorrectly()
     {
         // Arrange
-        var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organization");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/organization");
         request.Headers.Add("Prefer", "  return=minimal  ,  wait=100  ");
 
         // Act
@@ -122,7 +122,7 @@ public class PreferHeaderMiddlewareTests
     public async Task Middleware_WithReturnMinimal_ItemsShouldNotHaveLinks()
     {
         // Arrange
-        var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organization");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/organization");
         request.Headers.Add("Prefer", "return=minimal");
 
         // Act
@@ -148,7 +148,7 @@ public class PreferHeaderMiddlewareTests
     public async Task Middleware_WithReturnMinimal_CollectionShouldStillHavePaginationMetadata()
     {
         // Arrange
-        var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organization");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/organization");
         request.Headers.Add("Prefer", "return=minimal");
 
         // Act
@@ -170,7 +170,7 @@ public class PreferHeaderMiddlewareTests
     public async Task Middleware_WithoutPreferHeader_ItemsShouldHaveLinks()
     {
         // Arrange & Act
-        var response = await _fixture.Client.GetAsync("/api/v1/organization");
+        var response = await _fixture.Client.GetAsync("/api/organization");
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -196,7 +196,7 @@ public class PreferHeaderMiddlewareTests
     public async Task Middleware_WithBooleanPreference_ShouldNotAffectResponse()
     {
         // Arrange
-        var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organization");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/organization");
         request.Headers.Add("Prefer", "respond-async");
 
         // Act
@@ -220,7 +220,7 @@ public class PreferHeaderMiddlewareTests
     public async Task Middleware_WithEmptyPreferHeader_ShouldNotAffectResponse()
     {
         // Arrange
-        var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organization");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/organization");
         request.Headers.Add("Prefer", "");
 
         // Act
@@ -235,7 +235,7 @@ public class PreferHeaderMiddlewareTests
     public async Task Middleware_WithUnknownPreferValue_ShouldIgnore()
     {
         // Arrange
-        var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organization");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/organization");
         request.Headers.Add("Prefer", "return=unknown");
 
         // Act
@@ -256,13 +256,13 @@ public class PreferHeaderMiddlewareTests
     #region Multiple Endpoints
 
     [Test]
-    [Arguments("/api/v1/organization")]
-    [Arguments("/api/v1/event")]
-    [Arguments("/api/v1/eventsession")]
-    [Arguments("/api/v1/actor")]
-    [Arguments("/api/v1/location")]
-    [Arguments("/api/v1/category")]
-    [Arguments("/api/v1/tag")]
+    [Arguments("/api/organization")]
+    [Arguments("/api/event")]
+    [Arguments("/api/eventsession")]
+    [Arguments("/api/actor")]
+    [Arguments("/api/location")]
+    [Arguments("/api/category")]
+    [Arguments("/api/tag")]
     public async Task Middleware_AllEndpoints_ShouldRespectPreferMinimal(string endpoint)
     {
         // Arrange

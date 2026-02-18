@@ -26,6 +26,9 @@ public partial class NavMenu
     [Inject]
     protected ITenantNavigationService TenantNavigationService { get; set; } = null!;
 
+    [Inject]
+    protected IEventCreationEligibilityService EventCreationEligibilityService { get; set; } = null!;
+
     [Parameter]
     public EventCallback OnToggleTheme { get; set; }
 
@@ -36,12 +39,14 @@ public partial class NavMenu
     private string _brandLogoUrl = string.Empty;
     public string SearchQuery { get; set; } = "";
     private ICollection<TenantNavigationLinkDto> _navigationLinks = new List<TenantNavigationLinkDto>();
+    private EventCreationEligibility _eventCreationEligibility = EventCreationEligibility.NotEligible;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadPublicExperienceAsync();
         await LoadCurrentUserAsync();
         await LoadNavigationLinksAsync();
+        await LoadEventCreationEligibilityAsync();
     }
 
     private void HandleSearchKeyPress(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
@@ -109,18 +114,41 @@ public partial class NavMenu
         return DisplayHelper.GetInitials(name);
     }
 
-    private static bool IsAdmin(ClaimsPrincipal user)
+    // DB-first authority: admin claims are added by AdminClaimsTransformation
+    // and serialized to WASM via AddAuthenticationStateSerialization.
+    // Claim types match Explore.Application.Authorization.AdminClaimTypes constants.
+
+    private static bool HasAnyAdminAuthority(ClaimsPrincipal user)
     {
         if (user.Identity?.IsAuthenticated != true)
-        {
             return false;
-        }
 
-        // DB-first authority: admin claims are added by AdminClaimsTransformation
-        // and serialized to WASM via AddAuthenticationStateSerialization.
-        // Claim types match Explore.Application.Authorization.AdminClaimTypes constants.
         return user.HasClaim(c => c.Type == "explore:admin:instance")
-               || user.HasClaim(c => c.Type == "explore:admin:tenant");
+               || user.HasClaim(c => c.Type == "explore:admin:tenant")
+               || user.HasClaim(c => c.Type == "explore:admin:organization");
+    }
+
+    private static bool IsInstanceAdmin(ClaimsPrincipal user)
+    {
+        return user.Identity?.IsAuthenticated == true
+               && user.HasClaim(c => c.Type == "explore:admin:instance");
+    }
+
+    private static bool IsInstanceOrTenantAdmin(ClaimsPrincipal user)
+    {
+        return user.Identity?.IsAuthenticated == true
+               && (user.HasClaim(c => c.Type == "explore:admin:instance")
+                   || user.HasClaim(c => c.Type == "explore:admin:tenant"));
+    }
+
+    private static IEnumerable<string> GetAdminOrganizationIds(ClaimsPrincipal user)
+    {
+        if (user.Identity?.IsAuthenticated != true)
+            return [];
+
+        return user.FindAll("explore:admin:organization")
+                   .Select(c => c.Value)
+                   .Where(v => Guid.TryParse(v, out _));
     }
 
     private async Task LoadNavigationLinksAsync()
@@ -133,6 +161,24 @@ public partial class NavMenu
         {
             // Silently fail - navigation links are optional
             _navigationLinks = new List<TenantNavigationLinkDto>();
+        }
+    }
+
+    private async Task LoadEventCreationEligibilityAsync()
+    {
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            if (authState.User.Identity?.IsAuthenticated != true)
+            {
+                return;
+            }
+
+            _eventCreationEligibility = await EventCreationEligibilityService.GetEligibilityAsync();
+        }
+        catch
+        {
+            // Silently fail - button simply won't appear
         }
     }
 }

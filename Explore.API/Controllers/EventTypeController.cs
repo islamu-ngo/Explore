@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using Explore.Application.DTOs.EventType;
 using Explore.Application.Features.EventTypes.Requests.Queries;
 using MediatR;
@@ -9,7 +10,8 @@ using Microsoft.AspNetCore.OutputCaching;
 
 namespace Explore.API.Controllers;
 
-[Route("api/v1/[controller]")]
+[ApiVersion("0.1")]
+[Route("api/[controller]")]
 [ApiController]
 public class EventTypeController : ControllerBase
 {

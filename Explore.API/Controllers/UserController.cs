@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Asp.Versioning;
 using Explore.Application.DTOs.Organization;
 using Explore.Application.DTOs.User;
 using Explore.Application.Features.Users.Requests.Commands;
@@ -10,7 +11,8 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Explore.API.Controllers;
 
-[Route("api/v1/[controller]")]
+[ApiVersion("0.1")]
+[Route("api/[controller]")]
 [ApiController]
 public class UserController : ControllerBase
 {

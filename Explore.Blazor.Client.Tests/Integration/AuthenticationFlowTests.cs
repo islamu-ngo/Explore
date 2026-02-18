@@ -525,6 +525,10 @@ public class AuthenticationFlowTests
         var tenantNavigationService = Substitute.For<ITenantNavigationService>();
         tenantNavigationService.GetNavigationLinksAsync().Returns(new List<TenantNavigationLinkDto>());
         ctx.Services.AddSingleton(tenantNavigationService);
+
+        var eligibilityService = Substitute.For<IEventCreationEligibilityService>();
+        eligibilityService.GetEligibilityAsync().Returns(EventCreationEligibility.NotEligible);
+        ctx.Services.AddSingleton(eligibilityService);
     }
 
     private static void RegisterOrganizationServices(BlazorTestContext ctx)

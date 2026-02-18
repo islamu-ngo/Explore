@@ -1,0 +1,68 @@
+@page "/"
+@using Explore.Blazor.Client.Pages.Event
+@using Explore.Blazor.Client.Pages.Landing
+@inject IStartupRoutingService StartupRoutingService
+@inject NavigationManager Navigation
+
+@switch (_state)
+{
+    case RootState.Loading:
+        <MudContainer Class="d-flex justify-center align-center" Style="min-height: 60vh;">
+            <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+        </MudContainer>
+        break;
+    case RootState.ShowLanding:
+        <Home />
+        break;
+    case RootState.ShowEvents:
+        <EventList />
+        break;
+    default:
+        <MudContainer Class="d-flex justify-center align-center" Style="min-height: 60vh;">
+            <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+        </MudContainer>
+        break;
+}
+
+@code {
+    private RootState _state = RootState.Loading;
+    private bool _isInitialized;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (_isInitialized)
+        {
+            return;
+        }
+
+        _isInitialized = true;
+        await ResolveRootAsync();
+    }
+
+    private async Task ResolveRootAsync()
+    {
+        var decision = await StartupRoutingService.GetRootDecisionAsync();
+        switch (decision)
+        {
+            case StartupRouteDecision.Setup:
+                Navigation.NavigateTo("/setup", forceLoad: true);
+                return;
+            case StartupRouteDecision.InstanceAdmin:
+                Navigation.NavigateTo("/admin/instance/settings", forceLoad: true);
+                return;
+            case StartupRouteDecision.PublicLanding:
+                _state = RootState.ShowLanding;
+                return;
+            default:
+                _state = RootState.ShowEvents;
+                return;
+        }
+    }
+
+    private enum RootState
+    {
+        Loading,
+        ShowLanding,
+        ShowEvents
+    }
+}

@@ -19,8 +19,8 @@ public class EventsControllerTests
     public async Task GetAll_ShouldReturnOk()
     {
         // Act
-        // Route is "api/v1/[controller]" -> "api/v1/Event" (singular based on class name EventController)
-        var response = await _fixture.Client.GetAsync("/api/v1/event");
+        // Route is "api/[controller]" -> "api/Event" (singular based on class name EventController)
+        var response = await _fixture.Client.GetAsync("/api/event");
 
         // Debug: Print content if error
         if (response.StatusCode != HttpStatusCode.OK)
@@ -39,7 +39,7 @@ public class EventsControllerTests
     public async Task GetById_WithInvalidId_ShouldReturnNotFound()
     {
         // Act
-        var response = await _fixture.Client.GetAsync($"/api/v1/event/{Guid.NewGuid()}");
+        var response = await _fixture.Client.GetAsync($"/api/event/{Guid.NewGuid()}");
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);

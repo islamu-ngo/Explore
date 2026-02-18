@@ -14,7 +14,7 @@ namespace Event.Api.IntegrationTests.Features.Hateoas;
 public class EventRegistrationHateoasTests
 {
     private readonly ApiTestFixture _fixture;
-    private const string BaseUrl = "/api/v1/eventregistration";
+    private const string BaseUrl = "/api/eventregistration";
 
     public EventRegistrationHateoasTests(ApiTestFixture fixture)
     {
@@ -55,7 +55,7 @@ public class EventRegistrationHateoasTests
             {
                 await Assert.That(links.TryGetProperty("self", out var selfLink)).IsTrue();
                 var href = selfLink.GetProperty("href").GetString();
-                await Assert.That(href).Contains("/api/v1/eventregistration");
+                await Assert.That(href).Contains("/api/eventregistration");
             }
         }
     }
@@ -106,7 +106,7 @@ public class EventRegistrationHateoasTests
                 {
                     await Assert.That(itemLinks.TryGetProperty("self", out var selfLink)).IsTrue();
                     var href = selfLink.GetProperty("href").GetString();
-                    await Assert.That(href).Contains("/api/v1/eventregistration/");
+                    await Assert.That(href).Contains("/api/eventregistration/");
                 }
             }
         }
@@ -136,7 +136,7 @@ public class EventRegistrationHateoasTests
                     if (itemLinks.TryGetProperty("user", out var userLink))
                     {
                         var href = userLink.GetProperty("href").GetString();
-                        await Assert.That(href).Contains("/api/v1/user/");
+                        await Assert.That(href).Contains("/api/user/");
                     }
                 }
             }
@@ -167,7 +167,7 @@ public class EventRegistrationHateoasTests
                     if (itemLinks.TryGetProperty("event-session", out var sessionLink))
                     {
                         var href = sessionLink.GetProperty("href").GetString();
-                        await Assert.That(href).Contains("/api/v1/eventsession/");
+                        await Assert.That(href).Contains("/api/eventsession/");
                     }
                 }
             }
@@ -198,7 +198,7 @@ public class EventRegistrationHateoasTests
                     if (itemLinks.TryGetProperty("event", out var eventLink))
                     {
                         var href = eventLink.GetProperty("href").GetString();
-                        await Assert.That(href).Contains("/api/v1/event/");
+                        await Assert.That(href).Contains("/api/event/");
                     }
                 }
             }

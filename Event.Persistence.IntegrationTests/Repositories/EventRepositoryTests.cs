@@ -25,12 +25,13 @@ public class EventRepositoryTests
         var repository = new EventRepository(context);
 
         // Setup dependent data
+        var activeStatus = await context.TenantStatuses.FindAsync(2);
         var tenant = new Tenant
         {
             FullName = "Test Tenant",
             Slug = "test-tenant-" + Guid.NewGuid().ToString("N")[..8],
-            TenantStatusId = 2,
-            TenantStatus = new TenantStatus { Id = 2, MasterCode = "ACTIVE", FullName = "Active", IsActiveState = true }
+            TenantStatusId = activeStatus?.Id ?? 2,
+            TenantStatus = activeStatus!
         };
         context.Tenants.Add(tenant);
 
@@ -100,12 +101,13 @@ public class EventRepositoryTests
         var repository = new EventRepository(context);
 
         // Setup dependent data
+        var activeStatus = await context.TenantStatuses.FindAsync(2);
         var tenant = new Tenant
         {
             FullName = "Test Tenant",
             Slug = "test-tenant-" + Guid.NewGuid().ToString("N")[..8],
-            TenantStatusId = 2,
-            TenantStatus = new TenantStatus { Id = 2, MasterCode = "ACTIVE", FullName = "Active", IsActiveState = true }
+            TenantStatusId = activeStatus?.Id ?? 2,
+            TenantStatus = activeStatus!
         };
         context.Tenants.Add(tenant);
 

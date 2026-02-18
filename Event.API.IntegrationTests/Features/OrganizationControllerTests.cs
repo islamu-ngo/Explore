@@ -12,7 +12,7 @@ namespace Event.Api.IntegrationTests.Features;
 public class OrganizationControllerTests
 {
     private readonly ApiTestFixture _fixture;
-    private const string BaseUrl = "/api/v1/organization";
+    private const string BaseUrl = "/api/organization";
 
     public OrganizationControllerTests(ApiTestFixture fixture)
     {

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Asp.Versioning;
 using Explore.Application.DTOs.OrganizationPosition;
 using Explore.Application.Features.OrganizationPositions.Requests.Queries;
 using MediatR;
@@ -10,7 +11,8 @@ using Microsoft.AspNetCore.OutputCaching;
 
 namespace Explore.API.Controllers;
 
-[Route("api/v1/[controller]")]
+[ApiVersion("0.1")]
+[Route("api/[controller]")]
 [ApiController]
 public class OrganizationPositionController : ControllerBase
 {

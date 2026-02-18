@@ -14,7 +14,7 @@ namespace Event.Api.IntegrationTests.Features.Hateoas;
 public class OrganizationReviewHateoasTests
 {
     private readonly ApiTestFixture _fixture;
-    private const string BaseUrl = "/api/v1/organizationreview";
+    private const string BaseUrl = "/api/organizationreview";
 
     public OrganizationReviewHateoasTests(ApiTestFixture fixture)
     {
@@ -53,7 +53,7 @@ public class OrganizationReviewHateoasTests
         {
             await Assert.That(links.TryGetProperty("self", out var selfLink)).IsTrue();
             var href = selfLink.GetProperty("href").GetString();
-            await Assert.That(href).Contains("/api/v1/organizationreview");
+            await Assert.That(href).Contains("/api/organizationreview");
         }
     }
 
@@ -102,7 +102,7 @@ public class OrganizationReviewHateoasTests
             {
                 await Assert.That(itemLinks.TryGetProperty("self", out var selfLink)).IsTrue();
                 var href = selfLink.GetProperty("href").GetString();
-                await Assert.That(href).Contains("/api/v1/organizationreview/");
+                await Assert.That(href).Contains("/api/organizationreview/");
             }
         }
     }
@@ -131,7 +131,7 @@ public class OrganizationReviewHateoasTests
                 if (itemLinks.TryGetProperty("organization", out var orgLink))
                 {
                     var href = orgLink.GetProperty("href").GetString();
-                    await Assert.That(href).Contains("/api/v1/organization/");
+                    await Assert.That(href).Contains("/api/organization/");
                 }
             }
         }
@@ -173,14 +173,14 @@ public class OrganizationReviewHateoasTests
                 if (links.TryGetProperty("reviewer", out var reviewerLink))
                 {
                     var href = reviewerLink.GetProperty("href").GetString();
-                    await Assert.That(href).Contains("/api/v1/user/");
+                    await Assert.That(href).Contains("/api/user/");
                 }
 
                 // And organization link
                 if (links.TryGetProperty("organization", out var orgLink))
                 {
                     var href = orgLink.GetProperty("href").GetString();
-                    await Assert.That(href).Contains("/api/v1/organization/");
+                    await Assert.That(href).Contains("/api/organization/");
                 }
             }
         }

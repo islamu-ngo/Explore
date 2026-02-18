@@ -5,9 +5,11 @@ using System.Text.RegularExpressions;
 using System.Threading.RateLimiting;
 using Explore.API.BackgroundServices;
 using Explore.API.Extensions;
+using Explore.API.Middleware;
 using Explore.API.Services;
 using Explore.Application;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Telemetry;
 using Explore.Infrastructure;
 using Explore.Persistence;
 using Explore.Persistence.Seed;
@@ -21,8 +23,6 @@ using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
-using Polly.Bulkhead;
-//using Microsoft.OpenApi.Models;
 using Scalar.AspNetCore;
 using Serilog;
 using static Microsoft.AspNetCore.Http.StatusCodes;
@@ -124,6 +124,12 @@ builder.Services.AddScoped<ITenantContext, TenantContext>();
 builder.Services.AddHateoas();
 builder.Services.AddHateoasAssemblers();
 
+// API versioning: media type strategy (Accept: application/json;v=1.0)
+builder.Services.AddApiMediaTypeVersioning();
+
+// Business metrics (OpenTelemetry)
+builder.Services.AddSingleton<BusinessMetrics>();
+
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -144,6 +150,13 @@ builder.Services.AddSwaggerGenWithAuth(builder.Configuration);
 // Register document transformer to add missing DTO schemas that are hidden inside HAL wrappers
 builder.Services.AddOpenApi("explore-api", options =>
 {
+    options.ShouldInclude = (description) => true;
+    options.AddDocumentTransformer((document, _, _) =>
+    {
+        document.Info.Title = "Explore API";
+        document.Info.Version = "v0.1";
+        return Task.CompletedTask;
+    });
     options.AddDocumentTransformer<Explore.API.OpenApi.HalDtoSchemaTransformer>();
 });
 
@@ -156,30 +169,37 @@ builder.Services.AddHostedService<OpenApiExportService>();
 // Register PDS sync background worker for AT Protocol federation
 builder.Services.AddHostedService<PdsSyncWorker>();
 
+// CORS: hardened policies with configurable allowed origins
+// Dev policy remains permissive; production policies use explicit origin allowlists
+var corsAllowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins")
+    .Get<string[]>() ?? ["https://iloveibadah.app"];
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("InternalAppPolicy", // ISLAMU!
-        builder => builder.AllowAnyOrigin()
+    options.AddPolicy("InternalAppPolicy",
+        policy => policy.WithOrigins(corsAllowedOrigins)
             .AllowAnyMethod()
-            .AllowAnyHeader());
-
-    options.AddPolicy("ExternalAppPolicy", // for external apps or scripts that need to access the API for community
-        builder => builder.AllowAnyOrigin()
-            .AllowAnyMethod()
-            .AllowAnyHeader());
-
-    options.AddPolicy("InternalWebsitePolicy", // only my website can access some API enpoints, so even if they have the token they cannot access it
-        builder => builder.WithOrigins("https://iloveibadah.app") // specify the allowed origin(s) here
             .AllowAnyHeader()
-            .AllowAnyMethod());
+            .AllowCredentials());
 
-    options.AddPolicy("ExternalWebsitePolicy", // for external apps or scripts that need to access the API for community
-        builder => builder.AllowAnyOrigin()
-            .WithMethods()
-            .WithHeaders());
+    options.AddPolicy("ExternalAppPolicy",
+        policy => policy.WithOrigins(corsAllowedOrigins)
+            .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+            .AllowAnyHeader());
 
-    options.AddPolicy("DevPolicy", // for development purposes only
-        builder => builder.AllowAnyOrigin()
+    options.AddPolicy("InternalWebsitePolicy",
+        policy => policy.WithOrigins("https://iloveibadah.app")
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials());
+
+    options.AddPolicy("ExternalWebsitePolicy",
+        policy => policy.WithOrigins(corsAllowedOrigins)
+            .WithMethods("GET", "OPTIONS")
+            .WithHeaders("Accept", "Content-Type", "Authorization", "X-Tenant-Id"));
+
+    options.AddPolicy("DevPolicy",
+        policy => policy.AllowAnyOrigin()
             .AllowAnyHeader()
             .AllowAnyMethod());
 });
@@ -385,17 +405,12 @@ builder.Services.AddHealthChecks()
     }, tags: ["live", "ready"])
     .AddDbContextCheck<ExploreDbContext>("database", tags: ["ready"]);
 
-builder.Services.AddRateLimiter(options =>
-{
-    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    options.AddFixedWindowLimiter("SetupSecret", opt =>
-    {
-        opt.PermitLimit = 5;
-        opt.Window = TimeSpan.FromMinutes(1);
-        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-        opt.QueueLimit = 0;
-    });
-});
+// Request timeouts: default 30s, lookups 10s, complex 60s
+builder.Services.AddApiRequestTimeouts(builder.Configuration);
+
+// Tiered rate limiting: global (IP), authenticated (user), write (stricter)
+// Supports X-Forwarded-For for reverse proxy deployments (ngrok, Cloudflare)
+builder.Services.AddApiRateLimiting(builder.Configuration, builder.Environment);
 
 var app = builder.Build();
 
@@ -518,7 +533,7 @@ if (app.Environment.IsDevelopment())
     //Microsoft.IdentityModel.Tokens.JsonWebTokenHandler.DefaultMapInboundClaims = false;
     app.MapOpenApi();
     app.UseSwagger();
-    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Explore API v1"));
+    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v0.1/swagger.json", "Explore API v0.1"));
     app.MapScalarApiReference();
     app.UseCors("DevPolicy"); // for development purposes only
 
@@ -548,13 +563,14 @@ else
 
 app.UseApiExceptionHandling();
 
-//app.UseForwardedHeaders(new ForwardedHeadersOptions
-//{
-//    ForwardedHeaders = ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedFor,
-//    // En environnement conteneur/proxy, on nettoie pour accepter les proxies dynamiques
-//    KnownNetworks = { }, // vide
-//    KnownProxies = { }   // vide
-//});
+// Security: add protective headers to all responses
+app.UseSecurityHeaders();
+
+// Observability: correlation ID propagation (incoming + outgoing + Serilog)
+app.UseCorrelationId();
+
+// Observability: structured request logging (after correlation ID so it's available)
+app.UseRequestLogging();
 
 app.UseResponseCompression();
 app.UseHttpsRedirection();
@@ -563,10 +579,15 @@ app.UseHttpsRedirection();
 app.UseHateoas();
 
 app.UseRouting();
+app.UseRequestTimeouts();
 app.UseAuthentication();
 app.UseRateLimiter();
 app.UseAuthorization();
 app.UseOutputCache();
+
+// Performance: ETag / conditional requests (after output cache)
+app.UseETag();
+
 app.MapControllers();
 
 // Map health check endpoints for Coolify/container orchestration

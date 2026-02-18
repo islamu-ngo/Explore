@@ -1,6 +1,7 @@
 // ABOUTME: Unified role controller replacing OrganizationRoleController and UserRoleController.
 // ABOUTME: Supports scope filtering via query parameter (Platform, Tenant, Organization).
 
+using Asp.Versioning;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Role;
 using Explore.Application.Features.Roles.Requests.Queries;
@@ -13,7 +14,8 @@ using Microsoft.AspNetCore.OutputCaching;
 
 namespace Explore.API.Controllers;
 
-[Route("api/v1/[controller]")]
+[ApiVersion("0.1")]
+[Route("api/[controller]")]
 [ApiController]
 public class RoleController : ControllerBase
 {

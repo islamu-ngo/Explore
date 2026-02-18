@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using Explore.Application.DTOs.SyncState;
 using Explore.Application.Features.SyncStates.Requests.Commands;
 using Explore.Application.Features.SyncStates.Requests.Queries;
@@ -9,7 +10,8 @@ using Microsoft.AspNetCore.OutputCaching;
 
 namespace Explore.API.Controllers;
 
-[Route("api/v1/[controller]")]
+[ApiVersion("0.1")]
+[Route("api/[controller]")]
 [ApiController]
 public class SyncStateController : ControllerBase
 {

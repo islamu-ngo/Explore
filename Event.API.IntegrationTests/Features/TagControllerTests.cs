@@ -11,7 +11,7 @@ namespace Event.Api.IntegrationTests.Features;
 public class TagControllerTests
 {
     private readonly ApiTestFixture _fixture;
-    private const string BaseUrl = "/api/v1/tag";
+    private const string BaseUrl = "/api/tag";
 
     public TagControllerTests(ApiTestFixture fixture)
     {

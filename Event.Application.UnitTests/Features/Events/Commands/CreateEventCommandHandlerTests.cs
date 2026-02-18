@@ -1,3 +1,4 @@
+using System.Diagnostics.Metrics;
 using AutoMapper;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
@@ -6,6 +7,7 @@ using Explore.Application.DTOs.Event;
 using Explore.Application.Features.Events.Handlers.Commands;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -48,6 +50,9 @@ public class CreateEventCommandHandlerTests
         _mapper = Substitute.For<IMapper>();
         _cache = Substitute.For<HybridCache>();
 
+        var meterFactory = Substitute.For<IMeterFactory>();
+        meterFactory.Create(Arg.Any<MeterOptions>()).Returns(new Meter("test"));
+
         _handler = new CreateEventCommandHandler(
             _eventRepository,
             _eventSessionRepository,
@@ -61,7 +66,8 @@ public class CreateEventCommandHandlerTests
             _userContext,
             _tenantContext,
             _mapper,
-            _cache
+            _cache,
+            new BusinessMetrics(meterFactory)
         );
     }
 

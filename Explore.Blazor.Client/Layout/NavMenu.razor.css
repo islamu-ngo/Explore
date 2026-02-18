@@ -13,6 +13,7 @@
  *       .navbar__link / .navbar__link--active
  *     .navbar__actions
  *       .navbar__theme-toggle
+ *       .navbar__create-event-btn
  *       .navbar__login-btn
  *       .navbar__user-dropdown
  *         .navbar__user-btn
@@ -174,6 +175,13 @@
 /* Element: navbar__theme-toggle */
 .navbar__theme-toggle {
     /* Styling handled by MudBlazor */
+}
+
+/* Element: navbar__create-event-btn */
+::deep .navbar__create-event-btn {
+    border-radius: 999px !important;
+    font-weight: 600 !important;
+    margin-right: 8px;
 }
 
 /* Element: navbar__login-btn */

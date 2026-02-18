@@ -12,6 +12,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Asp.Versioning.Mvc" />
+    <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" />
     <PackageReference Include="Aspire.Keycloak.Authentication" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />

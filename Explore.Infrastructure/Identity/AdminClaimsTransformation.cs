@@ -43,8 +43,14 @@ public sealed class AdminClaimsTransformation : IClaimsTransformation
             return principal;
         }
 
-        var userId = _adminContext.UserId;
-        if (userId == null)
+        // Extract userId from the principal parameter, NOT from HttpContext.User.
+        // During IClaimsTransformation, HttpContext.User hasn't been set to the
+        // authenticated principal yet, so IAdminContext.UserId returns null.
+        var sub = principal.FindFirst("sub")?.Value
+            ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? principal.FindFirst("sid")?.Value;
+
+        if (!Guid.TryParse(sub, out var userId))
         {
             return principal;
         }
@@ -54,21 +60,21 @@ public sealed class AdminClaimsTransformation : IClaimsTransformation
         try
         {
             // Resolve instance admin authority
-            var isInstanceAdmin = await _adminContext.IsInstanceAdminAsync();
+            var isInstanceAdmin = await _adminContext.IsInstanceAdminAsync(userId);
             if (isInstanceAdmin)
             {
                 identity.AddClaim(new Claim(AdminClaimTypes.InstanceAdmin, "true"));
             }
 
             // Resolve tenant admin authority (one claim per tenant)
-            var tenantIds = await _adminContext.GetAdminTenantIdsAsync();
+            var tenantIds = await _adminContext.GetAdminTenantIdsAsync(userId);
             foreach (var tenantId in tenantIds)
             {
                 identity.AddClaim(new Claim(AdminClaimTypes.TenantAdmin, tenantId.ToString()));
             }
 
             // Resolve organization admin authority (one claim per organization)
-            var orgIds = await _adminContext.GetAdminOrganizationIdsAsync();
+            var orgIds = await _adminContext.GetAdminOrganizationIdsAsync(userId);
             foreach (var orgId in orgIds)
             {
                 identity.AddClaim(new Claim(AdminClaimTypes.OrganizationAdmin, orgId.ToString()));

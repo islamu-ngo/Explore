@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Actor;
 using Explore.Application.Features.Actors.Requests.Commands;
@@ -16,7 +17,8 @@ namespace Explore.API.Controllers;
 /// All responses include HATEOAS links by default.
 /// Send "Prefer: return=minimal" header to strip links.
 /// </summary>
-[Route("api/v1/actor")]
+[ApiVersion("0.1")]
+[Route("api/actor")]
 [ApiController]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public class ActorController : ControllerBase

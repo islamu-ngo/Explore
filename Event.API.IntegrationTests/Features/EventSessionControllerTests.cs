@@ -11,7 +11,7 @@ namespace Event.Api.IntegrationTests.Features;
 public class EventSessionControllerTests
 {
     private readonly ApiTestFixture _fixture;
-    private const string BaseUrl = "/api/v1/eventsession";
+    private const string BaseUrl = "/api/eventsession";
 
     public EventSessionControllerTests(ApiTestFixture fixture)
     {

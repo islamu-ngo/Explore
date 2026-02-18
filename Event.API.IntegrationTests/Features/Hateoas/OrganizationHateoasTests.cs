@@ -14,7 +14,7 @@ namespace Event.Api.IntegrationTests.Features.Hateoas;
 public class OrganizationHateoasTests
 {
     private readonly ApiTestFixture _fixture;
-    private const string BaseUrl = "/api/v1/organization";
+    private const string BaseUrl = "/api/organization";
 
     private static string WithCacheBust(string endpoint)
     {
@@ -43,7 +43,7 @@ public class OrganizationHateoasTests
 
         // Collection should have self link
         await Assert.That(links.TryGetProperty("self", out var selfLink)).IsTrue();
-        await Assert.That(selfLink.GetProperty("href").GetString()).Contains("/api/v1/organization");
+        await Assert.That(selfLink.GetProperty("href").GetString()).Contains("/api/organization");
     }
 
     [Test]
@@ -93,7 +93,7 @@ public class OrganizationHateoasTests
                 await Assert.That(itemLinks.TryGetProperty("self", out var selfLink)).IsTrue();
 
                 var href = selfLink.GetProperty("href").GetString();
-                await Assert.That(href).Contains("/api/v1/organization/");
+                await Assert.That(href).Contains("/api/organization/");
             }
         }
     }
@@ -122,7 +122,7 @@ public class OrganizationHateoasTests
                 await Assert.That(itemLinks.TryGetProperty("collection", out var collectionLink)).IsTrue();
 
                 var href = collectionLink.GetProperty("href").GetString();
-                await Assert.That(href).IsEqualTo("/api/v1/organization");
+                await Assert.That(href).IsEqualTo("/api/organization");
             }
         }
     }
@@ -175,7 +175,7 @@ public class OrganizationHateoasTests
                 if (links.TryGetProperty("events", out var eventsLink))
                 {
                     var href = eventsLink.GetProperty("href").GetString();
-                    await Assert.That(href).Contains("/api/v1/event");
+                    await Assert.That(href).Contains("/api/event");
                 }
             }
         }

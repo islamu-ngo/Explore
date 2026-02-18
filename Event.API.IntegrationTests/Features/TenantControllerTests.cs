@@ -25,21 +25,21 @@ public class TenantControllerTests
     [Test]
     public async Task Tenant_GetAll_ShouldReturnUnauthorized()
     {
-        var response = await _fixture.Client.GetAsync("/api/v1/tenant");
+        var response = await _fixture.Client.GetAsync("/api/tenant");
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]
     public async Task Tenant_GetById_WithRandomId_ShouldNotReturnServerError()
     {
-        var response = await _fixture.Client.GetAsync($"/api/v1/tenant/{Guid.NewGuid()}");
+        var response = await _fixture.Client.GetAsync($"/api/tenant/{Guid.NewGuid()}");
         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
     }
 
     [Test]
     public async Task Tenant_Create_WithoutAuth_ShouldReturnUnauthorized()
     {
-        var response = await _fixture.Client.PostAsJsonAsync("/api/v1/tenant", new
+        var response = await _fixture.Client.PostAsJsonAsync("/api/tenant", new
         {
             FullName = "Test Tenant",
             Slug = "test-tenant",
@@ -55,21 +55,21 @@ public class TenantControllerTests
     [Test]
     public async Task TenantUser_GetAll_ShouldReturnUnauthorized()
     {
-        var response = await _fixture.Client.GetAsync("/api/v1/tenantuser");
+        var response = await _fixture.Client.GetAsync("/api/tenantuser");
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]
     public async Task TenantUser_GetById_WithRandomId_ShouldNotReturnServerError()
     {
-        var response = await _fixture.Client.GetAsync($"/api/v1/tenantuser/{1}");
+        var response = await _fixture.Client.GetAsync($"/api/tenantuser/{1}");
         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
     }
 
     [Test]
     public async Task TenantUser_Create_WithoutAuth_ShouldReturnUnauthorized()
     {
-        var response = await _fixture.Client.PostAsJsonAsync("/api/v1/tenantuser", new
+        var response = await _fixture.Client.PostAsJsonAsync("/api/tenantuser", new
         {
             UserId = Guid.NewGuid(),
             TenantId = Guid.NewGuid(),
@@ -85,14 +85,14 @@ public class TenantControllerTests
     [Test]
     public async Task TenantSettings_GetAll_ShouldReturnUnauthorized()
     {
-        var response = await _fixture.Client.GetAsync("/api/v1/tenantsettings");
+        var response = await _fixture.Client.GetAsync("/api/tenantsettings");
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]
     public async Task TenantSettings_GetById_WithRandomId_ShouldNotReturnServerError()
     {
-        var response = await _fixture.Client.GetAsync($"/api/v1/tenantsettings/{1}");
+        var response = await _fixture.Client.GetAsync($"/api/tenantsettings/{1}");
         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
     }
 

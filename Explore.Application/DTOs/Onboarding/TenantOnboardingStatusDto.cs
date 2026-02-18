@@ -10,4 +10,8 @@ public class TenantOnboardingStatusDto
     public bool IsCurrentUserTenantAdministrator { get; set; }
     public bool IsCurrentUserPlatformAdministrator { get; set; }
     public Guid TenantId { get; set; }
+    public int CurrentStep { get; set; }
+    public int TotalSteps { get; set; }
+    public string[] CompletedSteps { get; set; } = Array.Empty<string>();
+    public int ProgressPercentage { get; set; }
 }

@@ -62,6 +62,7 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
             InstanceBaseDomain = effectiveTenantSettings.InstanceBaseDomain,
             Subdomain = effectiveTenantSettings.Subdomain,
             CustomDomain = effectiveTenantSettings.CustomDomain,
+            AllowUserSubmittedEvents = effectiveTenantSettings.AllowUserSubmittedEvents,
             IsIslamicModuleEnabled = enabledModuleKeys.Contains("Mod_Islamic"),
             IsTechModuleEnabled = enabledModuleKeys.Contains("Mod_Tech"),
             EnabledModules = enabledModuleKeys,

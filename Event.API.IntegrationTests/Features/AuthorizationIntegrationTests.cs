@@ -44,7 +44,7 @@ public class AuthorizationIntegrationTests
             Postcode = 1000
         };
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/organization")
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/organization")
         {
             Content = JsonContent.Create(dto)
         };
@@ -70,7 +70,7 @@ public class AuthorizationIntegrationTests
             Postcode = 1000
         };
 
-        using var request = new HttpRequestMessage(HttpMethod.Put, $"/api/v1/organization/{Guid.NewGuid()}")
+        using var request = new HttpRequestMessage(HttpMethod.Put, $"/api/organization/{Guid.NewGuid()}")
         {
             Content = JsonContent.Create(dto)
         };
@@ -86,7 +86,7 @@ public class AuthorizationIntegrationTests
     public async Task GetMyOrganizations_WithoutAuth_ShouldReturnUnauthorized()
     {
         // Arrange — no X-Test-Auth header = anonymous
-        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organization/my");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/organization/my");
 
         // Act
         var response = await _fixture.Client.SendAsync(request);
@@ -100,13 +100,13 @@ public class AuthorizationIntegrationTests
     #region Anonymous Allow Tests — Read Endpoints
 
     [Test]
-    [Arguments("/api/v1/organization")]
-    [Arguments("/api/v1/event")]
-    [Arguments("/api/v1/eventsession")]
-    [Arguments("/api/v1/actor")]
-    [Arguments("/api/v1/location")]
-    [Arguments("/api/v1/category")]
-    [Arguments("/api/v1/tag")]
+    [Arguments("/api/organization")]
+    [Arguments("/api/event")]
+    [Arguments("/api/eventsession")]
+    [Arguments("/api/actor")]
+    [Arguments("/api/location")]
+    [Arguments("/api/category")]
+    [Arguments("/api/tag")]
     public async Task GetAllPublicEndpoints_WithoutAuth_ShouldReturnOk(string endpoint)
     {
         // Arrange — no X-Test-Auth header = anonymous
@@ -137,7 +137,7 @@ public class AuthorizationIntegrationTests
             Postcode = 1000
         };
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/organization")
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/organization")
         {
             Content = JsonContent.Create(dto)
         };
@@ -155,7 +155,7 @@ public class AuthorizationIntegrationTests
     public async Task GetMyOrganizations_WithAuth_ShouldNotReturnUnauthorized()
     {
         // Arrange — authenticated user via X-Test-Auth header
-        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organization/my");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/organization/my");
         request.Headers.Add(TestAuthHandler.AuthHeaderName,
             TestAuthHandler.CreateAuthHeaderValue(Guid.NewGuid(), "Auth User"));
 
@@ -177,7 +177,7 @@ public class AuthorizationIntegrationTests
         var dto = new UpdateOrganizationApprovalStatusDto { ApprovalStatusId = 1 };
 
         using var request = new HttpRequestMessage(HttpMethod.Put,
-            $"/api/v1/organization/updatestatustype/{Guid.NewGuid()}")
+            $"/api/organization/updatestatustype/{Guid.NewGuid()}")
         {
             Content = JsonContent.Create(dto)
         };
@@ -198,7 +198,7 @@ public class AuthorizationIntegrationTests
         var dto = new UpdateOrganizationApprovalStatusDto { ApprovalStatusId = 1 };
 
         using var request = new HttpRequestMessage(HttpMethod.Put,
-            $"/api/v1/organization/updatestatustype/{Guid.NewGuid()}")
+            $"/api/organization/updatestatustype/{Guid.NewGuid()}")
         {
             Content = JsonContent.Create(dto)
         };

@@ -14,7 +14,7 @@ namespace Event.Api.IntegrationTests.Features.Hateoas;
 public class EventSessionHateoasTests
 {
     private readonly ApiTestFixture _fixture;
-    private const string BaseUrl = "/api/v1/eventsession";
+    private const string BaseUrl = "/api/eventsession";
 
     public EventSessionHateoasTests(ApiTestFixture fixture)
     {
@@ -64,7 +64,7 @@ public class EventSessionHateoasTests
                 if (itemLinks.TryGetProperty("event", out var eventLink))
                 {
                     var href = eventLink.GetProperty("href").GetString();
-                    await Assert.That(href).Contains("/api/v1/event/");
+                    await Assert.That(href).Contains("/api/event/");
                 }
             }
         }
@@ -134,7 +134,7 @@ public class EventSessionHateoasTests
     public async Task GetByEvent_ShouldReturnSessionsForEvent()
     {
         // Arrange - First get an event
-        var eventsResponse = await _fixture.Client.GetAsync("/api/v1/event");
+        var eventsResponse = await _fixture.Client.GetAsync("/api/event");
         var eventsContent = await eventsResponse.Content.ReadAsStringAsync();
         var eventsJson = JsonDocument.Parse(eventsContent);
 

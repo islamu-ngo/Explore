@@ -39,20 +39,20 @@ public class AdminClaimsTransformationTests
     }
 
     [Test]
-    public async Task TransformAsync_AuthenticatedUser_NullUserId_ReturnsPrincipalUnchanged()
+    public async Task TransformAsync_AuthenticatedUser_NonGuidSub_ReturnsPrincipalUnchanged()
     {
-        // Arrange
-        var identity = new ClaimsIdentity(new[] { new Claim("sub", "test") }, "TestAuth");
+        // Arrange — "sub" claim is not a valid GUID, so userId extraction fails
+        var identity = new ClaimsIdentity(new[] { new Claim("sub", "not-a-guid") }, "TestAuth");
         var principal = new ClaimsPrincipal(identity);
-        _adminContext.UserId.Returns((Guid?)null);
 
         // Act
         var result = await _sut.TransformAsync(principal);
 
-        // Assert
+        // Assert — no admin context methods should be called
         await Assert.That(result.HasClaim(c => c.Type == AdminClaimTypes.InstanceAdmin)).IsFalse();
         await Assert.That(result.HasClaim(c => c.Type == AdminClaimTypes.TenantAdmin)).IsFalse();
         await Assert.That(result.HasClaim(c => c.Type == AdminClaimTypes.OrganizationAdmin)).IsFalse();
+        await _adminContext.DidNotReceive().IsInstanceAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -63,10 +63,9 @@ public class AdminClaimsTransformationTests
         var identity = new ClaimsIdentity(new[] { new Claim("sub", userId.ToString()) }, "TestAuth");
         var principal = new ClaimsPrincipal(identity);
 
-        _adminContext.UserId.Returns(userId);
-        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
-        _adminContext.GetAdminTenantIdsAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<Guid>().ToList().AsReadOnly() as IReadOnlyList<Guid>);
-        _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<Guid>().ToList().AsReadOnly() as IReadOnlyList<Guid>);
+        _adminContext.IsInstanceAdminAsync(userId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.GetAdminTenantIdsAsync(userId, Arg.Any<CancellationToken>()).Returns(Array.Empty<Guid>().ToList().AsReadOnly() as IReadOnlyList<Guid>);
+        _adminContext.GetAdminOrganizationIdsAsync(userId, Arg.Any<CancellationToken>()).Returns(Array.Empty<Guid>().ToList().AsReadOnly() as IReadOnlyList<Guid>);
 
         // Act
         var result = await _sut.TransformAsync(principal);
@@ -85,10 +84,9 @@ public class AdminClaimsTransformationTests
         var identity = new ClaimsIdentity(new[] { new Claim("sub", userId.ToString()) }, "TestAuth");
         var principal = new ClaimsPrincipal(identity);
 
-        _adminContext.UserId.Returns(userId);
-        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
-        _adminContext.GetAdminTenantIdsAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<Guid>().ToList().AsReadOnly() as IReadOnlyList<Guid>);
-        _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<Guid>().ToList().AsReadOnly() as IReadOnlyList<Guid>);
+        _adminContext.IsInstanceAdminAsync(userId, Arg.Any<CancellationToken>()).Returns(true);
+        _adminContext.GetAdminTenantIdsAsync(userId, Arg.Any<CancellationToken>()).Returns(Array.Empty<Guid>().ToList().AsReadOnly() as IReadOnlyList<Guid>);
+        _adminContext.GetAdminOrganizationIdsAsync(userId, Arg.Any<CancellationToken>()).Returns(Array.Empty<Guid>().ToList().AsReadOnly() as IReadOnlyList<Guid>);
 
         // Act
         var result = await _sut.TransformAsync(principal);
@@ -109,10 +107,9 @@ public class AdminClaimsTransformationTests
         var identity = new ClaimsIdentity(new[] { new Claim("sub", userId.ToString()) }, "TestAuth");
         var principal = new ClaimsPrincipal(identity);
 
-        _adminContext.UserId.Returns(userId);
-        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
-        _adminContext.GetAdminTenantIdsAsync(Arg.Any<CancellationToken>()).Returns(new List<Guid> { tenantId1, tenantId2 }.AsReadOnly() as IReadOnlyList<Guid>);
-        _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<Guid>().ToList().AsReadOnly() as IReadOnlyList<Guid>);
+        _adminContext.IsInstanceAdminAsync(userId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.GetAdminTenantIdsAsync(userId, Arg.Any<CancellationToken>()).Returns(new List<Guid> { tenantId1, tenantId2 }.AsReadOnly() as IReadOnlyList<Guid>);
+        _adminContext.GetAdminOrganizationIdsAsync(userId, Arg.Any<CancellationToken>()).Returns(Array.Empty<Guid>().ToList().AsReadOnly() as IReadOnlyList<Guid>);
 
         // Act
         var result = await _sut.TransformAsync(principal);
@@ -135,10 +132,9 @@ public class AdminClaimsTransformationTests
         var identity = new ClaimsIdentity(new[] { new Claim("sub", userId.ToString()) }, "TestAuth");
         var principal = new ClaimsPrincipal(identity);
 
-        _adminContext.UserId.Returns(userId);
-        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
-        _adminContext.GetAdminTenantIdsAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<Guid>().ToList().AsReadOnly() as IReadOnlyList<Guid>);
-        _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns(new List<Guid> { orgId1, orgId2, orgId3 }.AsReadOnly() as IReadOnlyList<Guid>);
+        _adminContext.IsInstanceAdminAsync(userId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.GetAdminTenantIdsAsync(userId, Arg.Any<CancellationToken>()).Returns(Array.Empty<Guid>().ToList().AsReadOnly() as IReadOnlyList<Guid>);
+        _adminContext.GetAdminOrganizationIdsAsync(userId, Arg.Any<CancellationToken>()).Returns(new List<Guid> { orgId1, orgId2, orgId3 }.AsReadOnly() as IReadOnlyList<Guid>);
 
         // Act
         var result = await _sut.TransformAsync(principal);
@@ -161,10 +157,9 @@ public class AdminClaimsTransformationTests
         var identity = new ClaimsIdentity(new[] { new Claim("sub", userId.ToString()) }, "TestAuth");
         var principal = new ClaimsPrincipal(identity);
 
-        _adminContext.UserId.Returns(userId);
-        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
-        _adminContext.GetAdminTenantIdsAsync(Arg.Any<CancellationToken>()).Returns(new List<Guid> { tenantId }.AsReadOnly() as IReadOnlyList<Guid>);
-        _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns(new List<Guid> { orgId }.AsReadOnly() as IReadOnlyList<Guid>);
+        _adminContext.IsInstanceAdminAsync(userId, Arg.Any<CancellationToken>()).Returns(true);
+        _adminContext.GetAdminTenantIdsAsync(userId, Arg.Any<CancellationToken>()).Returns(new List<Guid> { tenantId }.AsReadOnly() as IReadOnlyList<Guid>);
+        _adminContext.GetAdminOrganizationIdsAsync(userId, Arg.Any<CancellationToken>()).Returns(new List<Guid> { orgId }.AsReadOnly() as IReadOnlyList<Guid>);
 
         // Act
         var result = await _sut.TransformAsync(principal);
@@ -187,15 +182,13 @@ public class AdminClaimsTransformationTests
         }, "TestAuth");
         var principal = new ClaimsPrincipal(identity);
 
-        _adminContext.UserId.Returns(userId);
-
         // Act
         var result = await _sut.TransformAsync(principal);
 
         // Assert — IAdminContext should never be called since claims already exist
-        await _adminContext.DidNotReceive().IsInstanceAdminAsync(Arg.Any<CancellationToken>());
-        await _adminContext.DidNotReceive().GetAdminTenantIdsAsync(Arg.Any<CancellationToken>());
-        await _adminContext.DidNotReceive().GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>());
+        await _adminContext.DidNotReceive().IsInstanceAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _adminContext.DidNotReceive().GetAdminTenantIdsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _adminContext.DidNotReceive().GetAdminOrganizationIdsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         // Only the original claim should exist (no duplicates)
         var instanceClaims = result.FindAll(c => c.Type == AdminClaimTypes.InstanceAdmin);
         await Assert.That(instanceClaims.Count()).IsEqualTo(1);
@@ -214,13 +207,11 @@ public class AdminClaimsTransformationTests
         }, "TestAuth");
         var principal = new ClaimsPrincipal(identity);
 
-        _adminContext.UserId.Returns(userId);
-
         // Act
         var result = await _sut.TransformAsync(principal);
 
         // Assert — IAdminContext should never be called since claims already exist
-        await _adminContext.DidNotReceive().IsInstanceAdminAsync(Arg.Any<CancellationToken>());
+        await _adminContext.DidNotReceive().IsInstanceAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -236,13 +227,11 @@ public class AdminClaimsTransformationTests
         }, "TestAuth");
         var principal = new ClaimsPrincipal(identity);
 
-        _adminContext.UserId.Returns(userId);
-
         // Act
         var result = await _sut.TransformAsync(principal);
 
         // Assert — IAdminContext should never be called since claims already exist
-        await _adminContext.DidNotReceive().IsInstanceAdminAsync(Arg.Any<CancellationToken>());
+        await _adminContext.DidNotReceive().IsInstanceAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -253,8 +242,7 @@ public class AdminClaimsTransformationTests
         var identity = new ClaimsIdentity(new[] { new Claim("sub", userId.ToString()) }, "TestAuth");
         var principal = new ClaimsPrincipal(identity);
 
-        _adminContext.UserId.Returns(userId);
-        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).ThrowsAsync(new InvalidOperationException("DB connection failed"));
+        _adminContext.IsInstanceAdminAsync(userId, Arg.Any<CancellationToken>()).ThrowsAsync(new InvalidOperationException("DB connection failed"));
 
         // Act
         var result = await _sut.TransformAsync(principal);
@@ -281,10 +269,9 @@ public class AdminClaimsTransformationTests
         var identity = new ClaimsIdentity(new[] { new Claim("sub", userId.ToString()) }, "TestAuth");
         var principal = new ClaimsPrincipal(identity);
 
-        _adminContext.UserId.Returns(userId);
-        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
-        _adminContext.GetAdminTenantIdsAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<Guid>().ToList().AsReadOnly() as IReadOnlyList<Guid>);
-        _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<Guid>().ToList().AsReadOnly() as IReadOnlyList<Guid>);
+        _adminContext.IsInstanceAdminAsync(userId, Arg.Any<CancellationToken>()).Returns(true);
+        _adminContext.GetAdminTenantIdsAsync(userId, Arg.Any<CancellationToken>()).Returns(Array.Empty<Guid>().ToList().AsReadOnly() as IReadOnlyList<Guid>);
+        _adminContext.GetAdminOrganizationIdsAsync(userId, Arg.Any<CancellationToken>()).Returns(Array.Empty<Guid>().ToList().AsReadOnly() as IReadOnlyList<Guid>);
 
         // Act
         var result = await _sut.TransformAsync(principal);
@@ -306,17 +293,36 @@ public class AdminClaimsTransformationTests
         var identity = new ClaimsIdentity(new[] { new Claim("sub", userId.ToString()) }, "TestAuth");
         var principal = new ClaimsPrincipal(identity);
 
-        _adminContext.UserId.Returns(userId);
-        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
-        _adminContext.GetAdminTenantIdsAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<Guid>().ToList().AsReadOnly() as IReadOnlyList<Guid>);
-        _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<Guid>().ToList().AsReadOnly() as IReadOnlyList<Guid>);
+        _adminContext.IsInstanceAdminAsync(userId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.GetAdminTenantIdsAsync(userId, Arg.Any<CancellationToken>()).Returns(Array.Empty<Guid>().ToList().AsReadOnly() as IReadOnlyList<Guid>);
+        _adminContext.GetAdminOrganizationIdsAsync(userId, Arg.Any<CancellationToken>()).Returns(Array.Empty<Guid>().ToList().AsReadOnly() as IReadOnlyList<Guid>);
 
         // Act
         await _sut.TransformAsync(principal);
 
-        // Assert — all three admin resolution methods should be called
-        await _adminContext.Received(1).IsInstanceAdminAsync(Arg.Any<CancellationToken>());
-        await _adminContext.Received(1).GetAdminTenantIdsAsync(Arg.Any<CancellationToken>());
-        await _adminContext.Received(1).GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>());
+        // Assert — all three admin resolution methods should be called with the userId
+        await _adminContext.Received(1).IsInstanceAdminAsync(userId, Arg.Any<CancellationToken>());
+        await _adminContext.Received(1).GetAdminTenantIdsAsync(userId, Arg.Any<CancellationToken>());
+        await _adminContext.Received(1).GetAdminOrganizationIdsAsync(userId, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task TransformAsync_UsesNameIdentifierClaim_WhenSubMissing()
+    {
+        // Arrange — no "sub" claim, but ClaimTypes.NameIdentifier is present
+        var userId = Guid.NewGuid();
+        var identity = new ClaimsIdentity(new[] { new Claim(ClaimTypes.NameIdentifier, userId.ToString()) }, "TestAuth");
+        var principal = new ClaimsPrincipal(identity);
+
+        _adminContext.IsInstanceAdminAsync(userId, Arg.Any<CancellationToken>()).Returns(true);
+        _adminContext.GetAdminTenantIdsAsync(userId, Arg.Any<CancellationToken>()).Returns(Array.Empty<Guid>().ToList().AsReadOnly() as IReadOnlyList<Guid>);
+        _adminContext.GetAdminOrganizationIdsAsync(userId, Arg.Any<CancellationToken>()).Returns(Array.Empty<Guid>().ToList().AsReadOnly() as IReadOnlyList<Guid>);
+
+        // Act
+        var result = await _sut.TransformAsync(principal);
+
+        // Assert — should still resolve admin claims via NameIdentifier fallback
+        await Assert.That(result.HasClaim(AdminClaimTypes.InstanceAdmin, "true")).IsTrue();
+        await _adminContext.Received(1).IsInstanceAdminAsync(userId, Arg.Any<CancellationToken>());
     }
 }

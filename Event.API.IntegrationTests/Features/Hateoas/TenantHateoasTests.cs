@@ -14,7 +14,7 @@ namespace Event.Api.IntegrationTests.Features.Hateoas;
 public class TenantHateoasTests
 {
     private readonly ApiTestFixture _fixture;
-    private const string BaseUrl = "/api/v1/tenant";
+    private const string BaseUrl = "/api/tenant";
 
     public TenantHateoasTests(ApiTestFixture fixture)
     {
@@ -55,7 +55,7 @@ public class TenantHateoasTests
         {
             await Assert.That(links.TryGetProperty("self", out var selfLink)).IsTrue();
             var href = selfLink.GetProperty("href").GetString();
-            await Assert.That(href).Contains("/api/v1/tenant");
+            await Assert.That(href).Contains("/api/tenant");
         }
     }
 
@@ -106,7 +106,7 @@ public class TenantHateoasTests
             {
                 await Assert.That(itemLinks.TryGetProperty("self", out var selfLink)).IsTrue();
                 var href = selfLink.GetProperty("href").GetString();
-                await Assert.That(href).Contains("/api/v1/tenant/");
+                await Assert.That(href).Contains("/api/tenant/");
             }
         }
     }
@@ -136,7 +136,7 @@ public class TenantHateoasTests
                 if (itemLinks.TryGetProperty("by-slug", out var bySlugLink))
                 {
                     var href = bySlugLink.GetProperty("href").GetString();
-                    await Assert.That(href).Contains("/api/v1/tenant/by-slug/");
+                    await Assert.That(href).Contains("/api/tenant/by-slug/");
                 }
             }
         }

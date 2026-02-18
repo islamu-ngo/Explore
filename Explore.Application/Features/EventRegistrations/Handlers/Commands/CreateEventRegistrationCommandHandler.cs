@@ -8,6 +8,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventRegistration.Validators;
 using Explore.Application.Features.EventRegistrations.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Telemetry;
 using Explore.Domain;
 using MediatR;
 
@@ -21,6 +22,7 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
     private readonly IApprovalStatusRepository _approvalStatusRepository;
     private readonly ITenantContext _tenantContext;
     private readonly IMapper _mapper;
+    private readonly BusinessMetrics _metrics;
 
     public CreateEventRegistrationCommandHandler(
         IEventRegistrationRepository eventRegistrationRepository,
@@ -28,7 +30,8 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
         IEventSessionRepository eventSessionRepository,
         IApprovalStatusRepository approvalStatusRepository,
         ITenantContext tenantContext,
-        IMapper mapper)
+        IMapper mapper,
+        BusinessMetrics metrics)
     {
         _eventRegistrationRepository = eventRegistrationRepository;
         _userRepository = userRepository;
@@ -36,6 +39,7 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
         _approvalStatusRepository = approvalStatusRepository;
         _tenantContext = tenantContext;
         _mapper = mapper;
+        _metrics = metrics;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateEventRegistrationCommand request, CancellationToken cancellationToken)
@@ -63,6 +67,8 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
         response.Success = true;
         response.Id = eventRegistration.Id;
         response.Message = "Event Registration created successfully.";
+
+        _metrics.RecordRegistrationCreated(_tenantContext.TenantId.ToString());
 
         return response;
     }

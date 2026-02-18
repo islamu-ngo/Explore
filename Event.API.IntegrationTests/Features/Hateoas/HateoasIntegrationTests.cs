@@ -35,13 +35,13 @@ public class HateoasIntegrationTests
     #region Default HAL Response Tests
 
     [Test]
-    [Arguments("/api/v1/organization")]
-    [Arguments("/api/v1/event")]
-    [Arguments("/api/v1/eventsession")]
-    [Arguments("/api/v1/actor")]
-    [Arguments("/api/v1/location")]
-    [Arguments("/api/v1/category")]
-    [Arguments("/api/v1/tag")]
+    [Arguments("/api/organization")]
+    [Arguments("/api/event")]
+    [Arguments("/api/eventsession")]
+    [Arguments("/api/actor")]
+    [Arguments("/api/location")]
+    [Arguments("/api/category")]
+    [Arguments("/api/tag")]
     public async Task GetAll_WithoutPreferHeader_ShouldIncludeLinks(string endpoint)
     {
         // Act
@@ -69,12 +69,12 @@ public class HateoasIntegrationTests
     public async Task GetById_WithValidId_ShouldIncludeSelfLink()
     {
         // Arrange - First get a list to find an ID (or use a known structure)
-        var listResponse = await _fixture.Client.GetAsync("/api/v1/organization");
+        var listResponse = await _fixture.Client.GetAsync("/api/organization");
         await Assert.That(listResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
         // Even with empty data, a GET by random ID should return HAL structure or 404
         var randomId = Guid.NewGuid();
-        var response = await _fixture.Client.GetAsync($"/api/v1/organization/{randomId}");
+        var response = await _fixture.Client.GetAsync($"/api/organization/{randomId}");
 
         // Assert - Either 404 (not found) or 200 with HAL structure
         if (response.StatusCode == HttpStatusCode.OK)
@@ -94,13 +94,13 @@ public class HateoasIntegrationTests
     #region Prefer Header Tests (RFC 7240)
 
     [Test]
-    [Arguments("/api/v1/organization")]
-    [Arguments("/api/v1/event")]
-    [Arguments("/api/v1/eventsession")]
-    [Arguments("/api/v1/actor")]
-    [Arguments("/api/v1/location")]
-    [Arguments("/api/v1/category")]
-    [Arguments("/api/v1/tag")]
+    [Arguments("/api/organization")]
+    [Arguments("/api/event")]
+    [Arguments("/api/eventsession")]
+    [Arguments("/api/actor")]
+    [Arguments("/api/location")]
+    [Arguments("/api/category")]
+    [Arguments("/api/tag")]
     public async Task GetAll_WithPreferMinimal_ShouldExcludeLinks(string endpoint)
     {
         // Arrange
@@ -130,8 +130,8 @@ public class HateoasIntegrationTests
     }
 
     [Test]
-    [Arguments("/api/v1/organization")]
-    [Arguments("/api/v1/event")]
+    [Arguments("/api/organization")]
+    [Arguments("/api/event")]
     public async Task GetAll_WithPreferMinimal_ShouldReturnPreferenceAppliedHeader(string endpoint)
     {
         // Arrange
@@ -156,7 +156,7 @@ public class HateoasIntegrationTests
     public async Task GetAll_WithPreferRepresentation_ShouldIncludeLinks()
     {
         // Arrange
-        var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organization");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/organization");
         request.Headers.Add("Prefer", "return=representation");
 
         // Act
@@ -173,7 +173,7 @@ public class HateoasIntegrationTests
     public async Task GetAll_WithMultiplePreferValues_ShouldProcessReturnMinimal()
     {
         // Arrange - Multiple preferences separated by comma
-        var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organization");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/organization");
         request.Headers.Add("Prefer", "return=minimal, respond-async, wait=100");
 
         // Act
@@ -190,7 +190,7 @@ public class HateoasIntegrationTests
     public async Task GetAll_WithoutPreferHeader_ShouldNotReturnPreferenceAppliedHeader()
     {
         // Act
-        var response = await _fixture.Client.GetAsync(WithCacheBust("/api/v1/organization"));
+        var response = await _fixture.Client.GetAsync(WithCacheBust("/api/organization"));
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -207,7 +207,7 @@ public class HateoasIntegrationTests
     public async Task GetAll_FirstPage_ShouldHaveCorrectPaginationLinks()
     {
         // Act
-        var response = await _fixture.Client.GetAsync("/api/v1/organization?pageNumber=1&pageSize=5");
+        var response = await _fixture.Client.GetAsync("/api/organization?pageNumber=1&pageSize=5");
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -229,7 +229,7 @@ public class HateoasIntegrationTests
     public async Task GetAll_ShouldIncludePaginationMetadata()
     {
         // Act
-        var response = await _fixture.Client.GetAsync("/api/v1/organization?pageNumber=1&pageSize=10");
+        var response = await _fixture.Client.GetAsync("/api/organization?pageNumber=1&pageSize=10");
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -252,7 +252,7 @@ public class HateoasIntegrationTests
     public async Task GetAll_PaginationLinks_ShouldContainCorrectParameters()
     {
         // Act
-        var response = await _fixture.Client.GetAsync("/api/v1/event?pageNumber=1&pageSize=5");
+        var response = await _fixture.Client.GetAsync("/api/event?pageNumber=1&pageSize=5");
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -277,7 +277,7 @@ public class HateoasIntegrationTests
     public async Task GetAll_ShouldReturnValidHalJsonStructure()
     {
         // Act
-        var response = await _fixture.Client.GetAsync("/api/v1/organization");
+        var response = await _fixture.Client.GetAsync("/api/organization");
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -298,7 +298,7 @@ public class HateoasIntegrationTests
     public async Task GetAll_LinksFormat_ShouldBeRfc8288Compliant()
     {
         // Act
-        var response = await _fixture.Client.GetAsync("/api/v1/organization");
+        var response = await _fixture.Client.GetAsync("/api/organization");
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -323,7 +323,7 @@ public class HateoasIntegrationTests
     public async Task GetAll_Links_ShouldIncludeHttpMethod()
     {
         // Act
-        var response = await _fixture.Client.GetAsync("/api/v1/organization");
+        var response = await _fixture.Client.GetAsync("/api/organization");
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -346,7 +346,7 @@ public class HateoasIntegrationTests
     public async Task GetAll_EmbeddedItems_ShouldHaveCorrectDtoProperties()
     {
         // Act
-        var response = await _fixture.Client.GetAsync("/api/v1/organization");
+        var response = await _fixture.Client.GetAsync("/api/organization");
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -378,7 +378,7 @@ public class HateoasIntegrationTests
     public async Task GetAll_ShouldUseIanaLinkRelations()
     {
         // Act
-        using var request = new HttpRequestMessage(HttpMethod.Get, WithCacheBust("/api/v1/organization"));
+        using var request = new HttpRequestMessage(HttpMethod.Get, WithCacheBust("/api/organization"));
         request.Headers.CacheControl = new CacheControlHeaderValue { NoCache = true, NoStore = true };
         request.Headers.Pragma.Add(new NameValueHeaderValue("no-cache"));
         var response = await _fixture.Client.SendAsync(request);
@@ -423,7 +423,7 @@ public class HateoasIntegrationTests
     public async Task GetAll_ShouldReturnJsonContentType()
     {
         // Act
-        var response = await _fixture.Client.GetAsync("/api/v1/organization");
+        var response = await _fixture.Client.GetAsync("/api/organization");
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -436,7 +436,7 @@ public class HateoasIntegrationTests
     public async Task GetAll_WithAcceptHalJson_ShouldReturnHalJsonContentType()
     {
         // Arrange
-        var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organization");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/organization");
         request.Headers.Add("Accept", "application/hal+json");
 
         // Act
@@ -463,7 +463,7 @@ public class HateoasIntegrationTests
         var content = JsonContent.Create(new { FullName = "Test" });
 
         // Act
-        var response = await _fixture.Client.PostAsync("/api/v1/organization", content);
+        var response = await _fixture.Client.PostAsync("/api/organization", content);
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);

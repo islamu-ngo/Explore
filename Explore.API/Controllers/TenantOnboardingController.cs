@@ -1,20 +1,20 @@
 // ABOUTME: API controller for tenant onboarding status and tenant policy onboarding actions.
 // ABOUTME: Exposes tenant onboarding questionnaire state and completion/update endpoints.
 
-using System;
 using System.Security.Claims;
+using Asp.Versioning;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Features.TenantOnboarding.Requests.Commands;
 using Explore.Application.Features.TenantOnboarding.Requests.Queries;
 using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Explore.API.Controllers;
 
-[Route("api/v1/[controller]")]
+[ApiVersion("0.1")]
+[Route("api/[controller]")]
 [ApiController]
 public class TenantOnboardingController : ControllerBase
 {
@@ -74,7 +74,7 @@ public class TenantOnboardingController : ControllerBase
 
         if (!response.Success)
         {
-            if (response.Message.Contains("Only tenant administrators", StringComparison.OrdinalIgnoreCase))
+            if (response.Message?.Contains("Only tenant administrators", StringComparison.OrdinalIgnoreCase) == true)
             {
                 return Forbid();
             }
@@ -112,11 +112,40 @@ public class TenantOnboardingController : ControllerBase
 
         if (!response.Success)
         {
-            if (response.Message.Contains("Only tenant administrators", StringComparison.OrdinalIgnoreCase))
+            if (response.Message?.Contains("Only tenant administrators", StringComparison.OrdinalIgnoreCase) == true)
             {
                 return Forbid();
             }
 
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
+
+    [HttpPut("steps")]
+    [Authorize]
+    [EndpointSummary("Save Tenant Onboarding Step Progress")]
+    [EndpointDescription("Persists tenant onboarding step progress without completing onboarding.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> SaveStep([FromBody] SaveTenantOnboardingStepCommand command, CancellationToken cancellationToken = default)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (!currentUserId.HasValue)
+        {
+            return BadRequest(new BaseCommandResponse<Guid>
+            {
+                Success = false,
+                Message = "Invalid user identity."
+            });
+        }
+
+        command.UserId = currentUserId.Value;
+
+        var response = await _mediator.Send(command, cancellationToken);
+        if (!response.Success)
+        {
             return BadRequest(response);
         }
 

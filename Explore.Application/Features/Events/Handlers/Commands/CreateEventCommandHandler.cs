@@ -9,6 +9,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event.Validators;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
@@ -32,6 +33,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     private readonly ITenantContext _tenantContext;
     private readonly IMapper _mapper;
     private readonly HybridCache _cache;
+    private readonly BusinessMetrics _metrics;
 
     public CreateEventCommandHandler(
         IEventRepository eventRepository,
@@ -46,7 +48,8 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         IUserContext userContext,
         ITenantContext tenantContext,
         IMapper mapper,
-        HybridCache cache)
+        HybridCache cache,
+        BusinessMetrics metrics)
     {
         _eventRepository = eventRepository;
         _eventSessionRepository = eventSessionRepository;
@@ -61,6 +64,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         _tenantContext = tenantContext;
         _mapper = mapper;
         _cache = cache;
+        _metrics = metrics;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
@@ -201,6 +205,8 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         response.Success = true;
         response.Id = @event.Id;
         response.Message = "Event and session created successfully.";
+
+        _metrics.RecordEventCreated(_tenantContext.TenantId.ToString());
 
         await _cache.RemoveAsync($"event:detail:{@event.Id}", cancellationToken);
         await _cache.RemoveAsync("events:list:1:20", cancellationToken);

@@ -88,8 +88,10 @@ builder.Services.AddScoped<ILookupCacheService, LookupCacheService>();
 builder.Services.AddScoped<IInstanceOnboardingService, InstanceOnboardingService>();
 builder.Services.AddScoped<ITenantOnboardingService, TenantOnboardingService>();
 builder.Services.AddScoped<IPublicExperienceService, PublicExperienceService>();
+builder.Services.AddScoped<IStartupRoutingService, StartupRoutingService>();
 builder.Services.AddScoped<IAnalyticsInterop, AnalyticsInterop>();
 builder.Services.AddScoped<ITenantNavigationService, TenantNavigationService>();
+builder.Services.AddScoped<IEventCreationEligibilityService, EventCreationEligibilityService>();
 
 // Register AuthStateService for centralized auth context
 builder.Services.AddScoped<IAuthStateService, AuthStateService>();

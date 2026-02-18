@@ -45,7 +45,7 @@
         _routes = new List<RouteConfig>
         {
             // Public routes - accessible to everyone (no guards)
-            new RouteConfig { Path = "/", Component = typeof(StartupGate), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/", Component = typeof(HomeStart), Transition = RouteTransition.Fade, EnableCache = false },
             new RouteConfig { Path = "/events", Component = typeof(EventList), Transition = RouteTransition.Fade },
             new RouteConfig { Path = "/event/detail/:eventId", Component = typeof(EventDetail), Transition = RouteTransition.Fade },
             new RouteConfig { Path = "/welcome", Component = typeof(LandingPageForNonUsers), Transition = RouteTransition.Fade },

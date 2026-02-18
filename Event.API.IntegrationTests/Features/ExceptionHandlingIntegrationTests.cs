@@ -29,7 +29,7 @@ public class ExceptionHandlingIntegrationTests
         ]);
 
         using var client = CreateClientThatThrows(new Explore.Application.Exceptions.ValidationException(validationResult));
-        var response = await client.GetAsync($"/api/v1/actor/{Guid.NewGuid()}");
+        var response = await client.GetAsync($"/api/actor/{Guid.NewGuid()}");
 
         await ProblemDetailsAssertions.AssertProblemDetailsAsync(response, HttpStatusCode.BadRequest, "Validation failed");
 
@@ -44,7 +44,7 @@ public class ExceptionHandlingIntegrationTests
     public async Task ExceptionPipeline_WhenMediatorThrowsNotFoundException_ReturnsProblemDetailsNotFound()
     {
         using var client = CreateClientThatThrows(new NotFoundException("Organization", Guid.NewGuid()));
-        var response = await client.GetAsync($"/api/v1/actor/{Guid.NewGuid()}");
+        var response = await client.GetAsync($"/api/actor/{Guid.NewGuid()}");
 
         await ProblemDetailsAssertions.AssertProblemDetailsAsync(response, HttpStatusCode.NotFound, "Resource not found");
 
@@ -59,7 +59,7 @@ public class ExceptionHandlingIntegrationTests
         const string sensitiveMessage = "Sensitive internals should not be exposed";
 
         using var client = CreateClientThatThrows(new Exception(sensitiveMessage));
-        var response = await client.GetAsync($"/api/v1/actor/{Guid.NewGuid()}");
+        var response = await client.GetAsync($"/api/actor/{Guid.NewGuid()}");
 
         await ProblemDetailsAssertions.AssertProblemDetailsAsync(response, HttpStatusCode.InternalServerError, "Internal server error");
 

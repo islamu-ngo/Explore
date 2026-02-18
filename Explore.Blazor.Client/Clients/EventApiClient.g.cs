@@ -31,11 +31,6 @@ namespace Explore.Blazor.Client.Clients
     {
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>OK</returns>
-        /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task MigrateAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
         /// Get all Actors
         /// </summary>
@@ -1669,6 +1664,17 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Save Tenant Onboarding Step Progress
+        /// </summary>
+        /// <remarks>
+        /// Persists tenant onboarding step progress without completing onboarding.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> StepsAsync(SaveTenantOnboardingStepCommand body, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Get all Tenant Settings
         /// </summary>
         /// <remarks>
@@ -1946,6 +1952,11 @@ namespace Explore.Blazor.Client.Clients
         /// <exception cref="ApiException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<VisibilityTypeDto> VisibilitytypeAsync(int id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task MigrateAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
@@ -1981,72 +1992,6 @@ namespace Explore.Blazor.Client.Clients
         partial void ProcessResponse(System.Net.Http.HttpClient client, System.Net.Http.HttpResponseMessage response);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>OK</returns>
-        /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task MigrateAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
-        {
-            var client_ = _httpClient;
-            var disposeClient_ = false;
-            try
-            {
-                using (var request_ = new System.Net.Http.HttpRequestMessage())
-                {
-                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
-                    request_.Method = new System.Net.Http.HttpMethod("POST");
-
-                    var urlBuilder_ = new System.Text.StringBuilder();
-                
-                    // Operation Path: "admin/migrate"
-                    urlBuilder_.Append("admin/migrate");
-
-                    PrepareRequest(client_, request_, urlBuilder_);
-
-                    var url_ = urlBuilder_.ToString();
-                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
-
-                    PrepareRequest(client_, request_, url_);
-
-                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-                    var disposeResponse_ = true;
-                    try
-                    {
-                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
-                        foreach (var item_ in response_.Headers)
-                            headers_[item_.Key] = item_.Value;
-                        if (response_.Content != null && response_.Content.Headers != null)
-                        {
-                            foreach (var item_ in response_.Content.Headers)
-                                headers_[item_.Key] = item_.Value;
-                        }
-
-                        ProcessResponse(client_, response_);
-
-                        var status_ = (int)response_.StatusCode;
-                        if (status_ == 200)
-                        {
-                            return;
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
-                    }
-                    finally
-                    {
-                        if (disposeResponse_)
-                            response_.Dispose();
-                    }
-                }
-            }
-            finally
-            {
-                if (disposeClient_)
-                    client_.Dispose();
-            }
-        }
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
         /// Get all Actors
         /// </summary>
@@ -2064,12 +2009,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/actor"
-                    urlBuilder_.Append("api/v1/actor");
+                    // Operation Path: "api/actor"
+                    urlBuilder_.Append("api/actor");
                     urlBuilder_.Append('?');
                     if (pageNumber != null)
                     {
@@ -2155,15 +2100,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/actor"
-                    urlBuilder_.Append("api/v1/actor");
+                    // Operation Path: "api/actor"
+                    urlBuilder_.Append("api/actor");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -2258,12 +2203,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/actor/{id}"
-                    urlBuilder_.Append("api/v1/actor/");
+                    // Operation Path: "api/actor/{id}"
+                    urlBuilder_.Append("api/actor/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -2353,15 +2298,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/actor/{id}"
-                    urlBuilder_.Append("api/v1/actor/");
+                    // Operation Path: "api/actor/{id}"
+                    urlBuilder_.Append("api/actor/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -2471,8 +2416,8 @@ namespace Explore.Blazor.Client.Clients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/actor/{id}"
-                    urlBuilder_.Append("api/v1/actor/");
+                    // Operation Path: "api/actor/{id}"
+                    urlBuilder_.Append("api/actor/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -2573,12 +2518,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/actor/by-did/{did}"
-                    urlBuilder_.Append("api/v1/actor/by-did/");
+                    // Operation Path: "api/actor/by-did/{did}"
+                    urlBuilder_.Append("api/actor/by-did/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(did, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -2664,12 +2609,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/actor/by-tenant/{tenantId}"
-                    urlBuilder_.Append("api/v1/actor/by-tenant/");
+                    // Operation Path: "api/actor/by-tenant/{tenantId}"
+                    urlBuilder_.Append("api/actor/by-tenant/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(tenantId, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -2742,12 +2687,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/actorkeystore"
-                    urlBuilder_.Append("api/v1/actorkeystore");
+                    // Operation Path: "api/actorkeystore"
+                    urlBuilder_.Append("api/actorkeystore");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -2823,15 +2768,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/actorkeystore"
-                    urlBuilder_.Append("api/v1/actorkeystore");
+                    // Operation Path: "api/actorkeystore"
+                    urlBuilder_.Append("api/actorkeystore");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -2916,12 +2861,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/actorkeystore/{id}"
-                    urlBuilder_.Append("api/v1/actorkeystore/");
+                    // Operation Path: "api/actorkeystore/{id}"
+                    urlBuilder_.Append("api/actorkeystore/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -3011,15 +2956,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/actorkeystore/{id}"
-                    urlBuilder_.Append("api/v1/actorkeystore/");
+                    // Operation Path: "api/actorkeystore/{id}"
+                    urlBuilder_.Append("api/actorkeystore/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -3118,8 +3063,8 @@ namespace Explore.Blazor.Client.Clients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/actorkeystore/{id}"
-                    urlBuilder_.Append("api/v1/actorkeystore/");
+                    // Operation Path: "api/actorkeystore/{id}"
+                    urlBuilder_.Append("api/actorkeystore/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -3197,12 +3142,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/actortype"
-                    urlBuilder_.Append("api/v1/actortype");
+                    // Operation Path: "api/actortype"
+                    urlBuilder_.Append("api/actortype");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -3277,12 +3222,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/actortype/{id}"
-                    urlBuilder_.Append("api/v1/actortype/");
+                    // Operation Path: "api/actortype/{id}"
+                    urlBuilder_.Append("api/actortype/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -3365,12 +3310,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/approvalstatus"
-                    urlBuilder_.Append("api/v1/approvalstatus");
+                    // Operation Path: "api/approvalstatus"
+                    urlBuilder_.Append("api/approvalstatus");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -3440,14 +3385,14 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/approvalstatus"
-                    urlBuilder_.Append("api/v1/approvalstatus");
+                    // Operation Path: "api/approvalstatus"
+                    urlBuilder_.Append("api/approvalstatus");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -3511,12 +3456,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/approvalstatus/{id}"
-                    urlBuilder_.Append("api/v1/approvalstatus/");
+                    // Operation Path: "api/approvalstatus/{id}"
+                    urlBuilder_.Append("api/approvalstatus/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -3590,14 +3535,14 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/approvalstatus/{id}"
-                    urlBuilder_.Append("api/v1/approvalstatus/");
+                    // Operation Path: "api/approvalstatus/{id}"
+                    urlBuilder_.Append("api/approvalstatus/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -3665,8 +3610,8 @@ namespace Explore.Blazor.Client.Clients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/approvalstatus/{id}"
-                    urlBuilder_.Append("api/v1/approvalstatus/");
+                    // Operation Path: "api/approvalstatus/{id}"
+                    urlBuilder_.Append("api/approvalstatus/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -3728,12 +3673,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/atprotorecord"
-                    urlBuilder_.Append("api/v1/atprotorecord");
+                    // Operation Path: "api/atprotorecord"
+                    urlBuilder_.Append("api/atprotorecord");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -3803,15 +3748,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/atprotorecord"
-                    urlBuilder_.Append("api/v1/atprotorecord");
+                    // Operation Path: "api/atprotorecord"
+                    urlBuilder_.Append("api/atprotorecord");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -3880,12 +3825,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/atprotorecord/{id}"
-                    urlBuilder_.Append("api/v1/atprotorecord/");
+                    // Operation Path: "api/atprotorecord/{id}"
+                    urlBuilder_.Append("api/atprotorecord/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -3959,15 +3904,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/atprotorecord/{id}"
-                    urlBuilder_.Append("api/v1/atprotorecord/");
+                    // Operation Path: "api/atprotorecord/{id}"
+                    urlBuilder_.Append("api/atprotorecord/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -4040,8 +3985,8 @@ namespace Explore.Blazor.Client.Clients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/atprotorecord/{id}"
-                    urlBuilder_.Append("api/v1/atprotorecord/");
+                    // Operation Path: "api/atprotorecord/{id}"
+                    urlBuilder_.Append("api/atprotorecord/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -4109,12 +4054,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/audienceage"
-                    urlBuilder_.Append("api/v1/audienceage");
+                    // Operation Path: "api/audienceage"
+                    urlBuilder_.Append("api/audienceage");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -4189,12 +4134,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/audienceage/{id}"
-                    urlBuilder_.Append("api/v1/audienceage/");
+                    // Operation Path: "api/audienceage/{id}"
+                    urlBuilder_.Append("api/audienceage/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -4277,12 +4222,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/audiencegender"
-                    urlBuilder_.Append("api/v1/audiencegender");
+                    // Operation Path: "api/audiencegender"
+                    urlBuilder_.Append("api/audiencegender");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -4357,12 +4302,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/audiencegender/{id}"
-                    urlBuilder_.Append("api/v1/audiencegender/");
+                    // Operation Path: "api/audiencegender/{id}"
+                    urlBuilder_.Append("api/audiencegender/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -4445,12 +4390,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/category"
-                    urlBuilder_.Append("api/v1/category");
+                    // Operation Path: "api/category"
+                    urlBuilder_.Append("api/category");
                     urlBuilder_.Append('?');
                     if (pageNumber != null)
                     {
@@ -4536,15 +4481,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/category"
-                    urlBuilder_.Append("api/v1/category");
+                    // Operation Path: "api/category"
+                    urlBuilder_.Append("api/category");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -4639,12 +4584,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/category/{id}"
-                    urlBuilder_.Append("api/v1/category/");
+                    // Operation Path: "api/category/{id}"
+                    urlBuilder_.Append("api/category/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -4734,15 +4679,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/category/{id}"
-                    urlBuilder_.Append("api/v1/category/");
+                    // Operation Path: "api/category/{id}"
+                    urlBuilder_.Append("api/category/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -4852,8 +4797,8 @@ namespace Explore.Blazor.Client.Clients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/category/{id}"
-                    urlBuilder_.Append("api/v1/category/");
+                    // Operation Path: "api/category/{id}"
+                    urlBuilder_.Append("api/category/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -4941,12 +4886,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/didcustodytype"
-                    urlBuilder_.Append("api/v1/didcustodytype");
+                    // Operation Path: "api/didcustodytype"
+                    urlBuilder_.Append("api/didcustodytype");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -5021,12 +4966,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/didcustodytype/{id}"
-                    urlBuilder_.Append("api/v1/didcustodytype/");
+                    // Operation Path: "api/didcustodytype/{id}"
+                    urlBuilder_.Append("api/didcustodytype/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -5109,12 +5054,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/event"
-                    urlBuilder_.Append("api/v1/event");
+                    // Operation Path: "api/event"
+                    urlBuilder_.Append("api/event");
                     urlBuilder_.Append('?');
                     if (pageNumber != null)
                     {
@@ -5316,15 +5261,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/event"
-                    urlBuilder_.Append("api/v1/event");
+                    // Operation Path: "api/event"
+                    urlBuilder_.Append("api/event");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -5416,12 +5361,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/event/my"
-                    urlBuilder_.Append("api/v1/event/my");
+                    // Operation Path: "api/event/my"
+                    urlBuilder_.Append("api/event/my");
                     urlBuilder_.Append('?');
                     if (pageNumber != null)
                     {
@@ -5516,12 +5461,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/event/{id}"
-                    urlBuilder_.Append("api/v1/event/");
+                    // Operation Path: "api/event/{id}"
+                    urlBuilder_.Append("api/event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -5611,15 +5556,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/event/{id}"
-                    urlBuilder_.Append("api/v1/event/");
+                    // Operation Path: "api/event/{id}"
+                    urlBuilder_.Append("api/event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -5729,8 +5674,8 @@ namespace Explore.Blazor.Client.Clients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/event/{id}"
-                    urlBuilder_.Append("api/v1/event/");
+                    // Operation Path: "api/event/{id}"
+                    urlBuilder_.Append("api/event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -5832,15 +5777,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/event/with-sessions"
-                    urlBuilder_.Append("api/v1/event/with-sessions");
+                    // Operation Path: "api/event/with-sessions"
+                    urlBuilder_.Append("api/event/with-sessions");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -5935,12 +5880,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/event/{id}/aspects/islamic"
-                    urlBuilder_.Append("api/v1/event/");
+                    // Operation Path: "api/event/{id}/aspects/islamic"
+                    urlBuilder_.Append("api/event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
                     urlBuilder_.Append("/aspects/islamic");
 
@@ -6031,15 +5976,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/event/{id}/aspects/islamic"
-                    urlBuilder_.Append("api/v1/event/");
+                    // Operation Path: "api/event/{id}/aspects/islamic"
+                    urlBuilder_.Append("api/event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
                     urlBuilder_.Append("/aspects/islamic");
 
@@ -6150,8 +6095,8 @@ namespace Explore.Blazor.Client.Clients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/event/{id}/aspects/islamic"
-                    urlBuilder_.Append("api/v1/event/");
+                    // Operation Path: "api/event/{id}/aspects/islamic"
+                    urlBuilder_.Append("api/event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
                     urlBuilder_.Append("/aspects/islamic");
 
@@ -6243,12 +6188,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/event/{id}/aspects/tech"
-                    urlBuilder_.Append("api/v1/event/");
+                    // Operation Path: "api/event/{id}/aspects/tech"
+                    urlBuilder_.Append("api/event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
                     urlBuilder_.Append("/aspects/tech");
 
@@ -6339,15 +6284,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/event/{id}/aspects/tech"
-                    urlBuilder_.Append("api/v1/event/");
+                    // Operation Path: "api/event/{id}/aspects/tech"
+                    urlBuilder_.Append("api/event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
                     urlBuilder_.Append("/aspects/tech");
 
@@ -6458,8 +6403,8 @@ namespace Explore.Blazor.Client.Clients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/event/{id}/aspects/tech"
-                    urlBuilder_.Append("api/v1/event/");
+                    // Operation Path: "api/event/{id}/aspects/tech"
+                    urlBuilder_.Append("api/event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
                     urlBuilder_.Append("/aspects/tech");
 
@@ -6548,12 +6493,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/eventformat"
-                    urlBuilder_.Append("api/v1/eventformat");
+                    // Operation Path: "api/eventformat"
+                    urlBuilder_.Append("api/eventformat");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -6628,12 +6573,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/eventformat/{id}"
-                    urlBuilder_.Append("api/v1/eventformat/");
+                    // Operation Path: "api/eventformat/{id}"
+                    urlBuilder_.Append("api/eventformat/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -6716,12 +6661,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/eventregistration"
-                    urlBuilder_.Append("api/v1/eventregistration");
+                    // Operation Path: "api/eventregistration"
+                    urlBuilder_.Append("api/eventregistration");
                     urlBuilder_.Append('?');
                     if (pageNumber != null)
                     {
@@ -6807,15 +6752,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/eventregistration"
-                    urlBuilder_.Append("api/v1/eventregistration");
+                    // Operation Path: "api/eventregistration"
+                    urlBuilder_.Append("api/eventregistration");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -6910,12 +6855,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/eventregistration/{id}"
-                    urlBuilder_.Append("api/v1/eventregistration/");
+                    // Operation Path: "api/eventregistration/{id}"
+                    urlBuilder_.Append("api/eventregistration/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -7005,15 +6950,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/eventregistration/{id}"
-                    urlBuilder_.Append("api/v1/eventregistration/");
+                    // Operation Path: "api/eventregistration/{id}"
+                    urlBuilder_.Append("api/eventregistration/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -7122,8 +7067,8 @@ namespace Explore.Blazor.Client.Clients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/eventregistration/{id}"
-                    urlBuilder_.Append("api/v1/eventregistration/");
+                    // Operation Path: "api/eventregistration/{id}"
+                    urlBuilder_.Append("api/eventregistration/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -7214,12 +7159,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/eventregistration/by-session/{eventSessionId}"
-                    urlBuilder_.Append("api/v1/eventregistration/by-session/");
+                    // Operation Path: "api/eventregistration/by-session/{eventSessionId}"
+                    urlBuilder_.Append("api/eventregistration/by-session/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventSessionId, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -7295,12 +7240,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/eventregistration/by-user/{userId}"
-                    urlBuilder_.Append("api/v1/eventregistration/by-user/");
+                    // Operation Path: "api/eventregistration/by-user/{userId}"
+                    urlBuilder_.Append("api/eventregistration/by-user/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(userId, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -7373,12 +7318,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/eventsessionagendaitem"
-                    urlBuilder_.Append("api/v1/eventsessionagendaitem");
+                    // Operation Path: "api/eventsessionagendaitem"
+                    urlBuilder_.Append("api/eventsessionagendaitem");
                     urlBuilder_.Append('?');
                     if (pageNumber != null)
                     {
@@ -7464,15 +7409,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/eventsessionagendaitem"
-                    urlBuilder_.Append("api/v1/eventsessionagendaitem");
+                    // Operation Path: "api/eventsessionagendaitem"
+                    urlBuilder_.Append("api/eventsessionagendaitem");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -7547,12 +7492,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/eventsessionagendaitem/{id}"
-                    urlBuilder_.Append("api/v1/eventsessionagendaitem/");
+                    // Operation Path: "api/eventsessionagendaitem/{id}"
+                    urlBuilder_.Append("api/eventsessionagendaitem/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -7632,15 +7577,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/eventsessionagendaitem/{id}"
-                    urlBuilder_.Append("api/v1/eventsessionagendaitem/");
+                    // Operation Path: "api/eventsessionagendaitem/{id}"
+                    urlBuilder_.Append("api/eventsessionagendaitem/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -7719,8 +7664,8 @@ namespace Explore.Blazor.Client.Clients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/eventsessionagendaitem/{id}"
-                    urlBuilder_.Append("api/v1/eventsessionagendaitem/");
+                    // Operation Path: "api/eventsessionagendaitem/{id}"
+                    urlBuilder_.Append("api/eventsessionagendaitem/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -7791,12 +7736,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/eventsessionagendaitem/by-session/{sessionId}"
-                    urlBuilder_.Append("api/v1/eventsessionagendaitem/by-session/");
+                    // Operation Path: "api/eventsessionagendaitem/by-session/{sessionId}"
+                    urlBuilder_.Append("api/eventsessionagendaitem/by-session/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(sessionId, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -7869,12 +7814,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/eventsession"
-                    urlBuilder_.Append("api/v1/eventsession");
+                    // Operation Path: "api/eventsession"
+                    urlBuilder_.Append("api/eventsession");
                     urlBuilder_.Append('?');
                     if (pageNumber != null)
                     {
@@ -7960,15 +7905,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/eventsession"
-                    urlBuilder_.Append("api/v1/eventsession");
+                    // Operation Path: "api/eventsession"
+                    urlBuilder_.Append("api/eventsession");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -8063,12 +8008,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/eventsession/{id}"
-                    urlBuilder_.Append("api/v1/eventsession/");
+                    // Operation Path: "api/eventsession/{id}"
+                    urlBuilder_.Append("api/eventsession/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -8158,15 +8103,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/eventsession/{id}"
-                    urlBuilder_.Append("api/v1/eventsession/");
+                    // Operation Path: "api/eventsession/{id}"
+                    urlBuilder_.Append("api/eventsession/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -8276,8 +8221,8 @@ namespace Explore.Blazor.Client.Clients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/eventsession/{id}"
-                    urlBuilder_.Append("api/v1/eventsession/");
+                    // Operation Path: "api/eventsession/{id}"
+                    urlBuilder_.Append("api/eventsession/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -8368,12 +8313,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/eventsession/by-event/{eventId}"
-                    urlBuilder_.Append("api/v1/eventsession/by-event/");
+                    // Operation Path: "api/eventsession/by-event/{eventId}"
+                    urlBuilder_.Append("api/eventsession/by-event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -8446,12 +8391,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/eventstatus"
-                    urlBuilder_.Append("api/v1/eventstatus");
+                    // Operation Path: "api/eventstatus"
+                    urlBuilder_.Append("api/eventstatus");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -8526,12 +8471,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/eventstatus/{id}"
-                    urlBuilder_.Append("api/v1/eventstatus/");
+                    // Operation Path: "api/eventstatus/{id}"
+                    urlBuilder_.Append("api/eventstatus/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -8614,12 +8559,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/eventtype"
-                    urlBuilder_.Append("api/v1/eventtype");
+                    // Operation Path: "api/eventtype"
+                    urlBuilder_.Append("api/eventtype");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -8689,14 +8634,14 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/eventtype"
-                    urlBuilder_.Append("api/v1/eventtype");
+                    // Operation Path: "api/eventtype"
+                    urlBuilder_.Append("api/eventtype");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -8760,12 +8705,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/eventtype/{id}"
-                    urlBuilder_.Append("api/v1/eventtype/");
+                    // Operation Path: "api/eventtype/{id}"
+                    urlBuilder_.Append("api/eventtype/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -8839,14 +8784,14 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/eventtype/{id}"
-                    urlBuilder_.Append("api/v1/eventtype/");
+                    // Operation Path: "api/eventtype/{id}"
+                    urlBuilder_.Append("api/eventtype/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -8914,8 +8859,8 @@ namespace Explore.Blazor.Client.Clients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/eventtype/{id}"
-                    urlBuilder_.Append("api/v1/eventtype/");
+                    // Operation Path: "api/eventtype/{id}"
+                    urlBuilder_.Append("api/eventtype/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -8983,12 +8928,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/filetype"
-                    urlBuilder_.Append("api/v1/filetype");
+                    // Operation Path: "api/filetype"
+                    urlBuilder_.Append("api/filetype");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -9063,12 +9008,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/filetype/{id}"
-                    urlBuilder_.Append("api/v1/filetype/");
+                    // Operation Path: "api/filetype/{id}"
+                    urlBuilder_.Append("api/filetype/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -9145,12 +9090,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/indexeddid"
-                    urlBuilder_.Append("api/v1/indexeddid");
+                    // Operation Path: "api/indexeddid"
+                    urlBuilder_.Append("api/indexeddid");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -9220,15 +9165,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/indexeddid"
-                    urlBuilder_.Append("api/v1/indexeddid");
+                    // Operation Path: "api/indexeddid"
+                    urlBuilder_.Append("api/indexeddid");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -9297,12 +9242,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/indexeddid/{did}"
-                    urlBuilder_.Append("api/v1/indexeddid/");
+                    // Operation Path: "api/indexeddid/{did}"
+                    urlBuilder_.Append("api/indexeddid/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(did, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -9376,15 +9321,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/indexeddid/{did}"
-                    urlBuilder_.Append("api/v1/indexeddid/");
+                    // Operation Path: "api/indexeddid/{did}"
+                    urlBuilder_.Append("api/indexeddid/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(did, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -9458,8 +9403,8 @@ namespace Explore.Blazor.Client.Clients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/indexeddid/{did}"
-                    urlBuilder_.Append("api/v1/indexeddid/");
+                    // Operation Path: "api/indexeddid/{did}"
+                    urlBuilder_.Append("api/indexeddid/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(did, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -9527,12 +9472,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/instanceonboarding/status"
-                    urlBuilder_.Append("api/v1/instanceonboarding/status");
+                    // Operation Path: "api/instanceonboarding/status"
+                    urlBuilder_.Append("api/instanceonboarding/status");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -9604,12 +9549,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/instanceonboarding/settings"
-                    urlBuilder_.Append("api/v1/instanceonboarding/settings");
+                    // Operation Path: "api/instanceonboarding/settings"
+                    urlBuilder_.Append("api/instanceonboarding/settings");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -9695,15 +9640,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/instanceonboarding/settings"
-                    urlBuilder_.Append("api/v1/instanceonboarding/settings");
+                    // Operation Path: "api/instanceonboarding/settings"
+                    urlBuilder_.Append("api/instanceonboarding/settings");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -9799,15 +9744,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/instanceonboarding/complete"
-                    urlBuilder_.Append("api/v1/instanceonboarding/complete");
+                    // Operation Path: "api/instanceonboarding/complete"
+                    urlBuilder_.Append("api/instanceonboarding/complete");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -9889,12 +9834,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/instanceonboarding/storage-settings"
-                    urlBuilder_.Append("api/v1/instanceonboarding/storage-settings");
+                    // Operation Path: "api/instanceonboarding/storage-settings"
+                    urlBuilder_.Append("api/instanceonboarding/storage-settings");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -9980,15 +9925,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/instanceonboarding/storage-settings"
-                    urlBuilder_.Append("api/v1/instanceonboarding/storage-settings");
+                    // Operation Path: "api/instanceonboarding/storage-settings"
+                    urlBuilder_.Append("api/instanceonboarding/storage-settings");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -10081,12 +10026,12 @@ namespace Explore.Blazor.Client.Clients
                 {
                     request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/instanceonboarding/test-storage"
-                    urlBuilder_.Append("api/v1/instanceonboarding/test-storage");
+                    // Operation Path: "api/instanceonboarding/test-storage"
+                    urlBuilder_.Append("api/instanceonboarding/test-storage");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -10172,15 +10117,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/instanceonboarding/validate-secret"
-                    urlBuilder_.Append("api/v1/instanceonboarding/validate-secret");
+                    // Operation Path: "api/instanceonboarding/validate-secret"
+                    urlBuilder_.Append("api/instanceonboarding/validate-secret");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -10272,12 +10217,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/language"
-                    urlBuilder_.Append("api/v1/language");
+                    // Operation Path: "api/language"
+                    urlBuilder_.Append("api/language");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -10352,12 +10297,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/language/{id}"
-                    urlBuilder_.Append("api/v1/language/");
+                    // Operation Path: "api/language/{id}"
+                    urlBuilder_.Append("api/language/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -10430,12 +10375,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/location"
-                    urlBuilder_.Append("api/v1/location");
+                    // Operation Path: "api/location"
+                    urlBuilder_.Append("api/location");
                     urlBuilder_.Append('?');
                     if (pageNumber != null)
                     {
@@ -10521,15 +10466,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/location"
-                    urlBuilder_.Append("api/v1/location");
+                    // Operation Path: "api/location"
+                    urlBuilder_.Append("api/location");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -10624,12 +10569,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/location/{id}"
-                    urlBuilder_.Append("api/v1/location/");
+                    // Operation Path: "api/location/{id}"
+                    urlBuilder_.Append("api/location/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -10719,15 +10664,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/location/{id}"
-                    urlBuilder_.Append("api/v1/location/");
+                    // Operation Path: "api/location/{id}"
+                    urlBuilder_.Append("api/location/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -10837,8 +10782,8 @@ namespace Explore.Blazor.Client.Clients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/location/{id}"
-                    urlBuilder_.Append("api/v1/location/");
+                    // Operation Path: "api/location/{id}"
+                    urlBuilder_.Append("api/location/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -10929,12 +10874,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/location/by-city/{city}"
-                    urlBuilder_.Append("api/v1/location/by-city/");
+                    // Operation Path: "api/location/by-city/{city}"
+                    urlBuilder_.Append("api/location/by-city/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(city, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -11010,12 +10955,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/location/by-country/{country}"
-                    urlBuilder_.Append("api/v1/location/by-country/");
+                    // Operation Path: "api/location/by-country/{country}"
+                    urlBuilder_.Append("api/location/by-country/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(country, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -11088,12 +11033,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/madhab"
-                    urlBuilder_.Append("api/v1/madhab");
+                    // Operation Path: "api/madhab"
+                    urlBuilder_.Append("api/madhab");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -11168,12 +11113,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/madhab/{id}"
-                    urlBuilder_.Append("api/v1/madhab/");
+                    // Operation Path: "api/madhab/{id}"
+                    urlBuilder_.Append("api/madhab/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -11256,12 +11201,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/module/available"
-                    urlBuilder_.Append("api/v1/module/available");
+                    // Operation Path: "api/module/available"
+                    urlBuilder_.Append("api/module/available");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -11333,12 +11278,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/module/enabled"
-                    urlBuilder_.Append("api/v1/module/enabled");
+                    // Operation Path: "api/module/enabled"
+                    urlBuilder_.Append("api/module/enabled");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -11413,12 +11358,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/module/{moduleKey}/enabled"
-                    urlBuilder_.Append("api/v1/module/");
+                    // Operation Path: "api/module/{moduleKey}/enabled"
+                    urlBuilder_.Append("api/module/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(moduleKey, System.Globalization.CultureInfo.InvariantCulture)));
                     urlBuilder_.Append("/enabled");
 
@@ -11495,12 +11440,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/module/{moduleKey}/schema"
-                    urlBuilder_.Append("api/v1/module/");
+                    // Operation Path: "api/module/{moduleKey}/schema"
+                    urlBuilder_.Append("api/module/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(moduleKey, System.Globalization.CultureInfo.InvariantCulture)));
                     urlBuilder_.Append("/schema");
 
@@ -11588,12 +11533,12 @@ namespace Explore.Blazor.Client.Clients
                 {
                     request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/module/{moduleKey}/enable"
-                    urlBuilder_.Append("api/v1/module/");
+                    // Operation Path: "api/module/{moduleKey}/enable"
+                    urlBuilder_.Append("api/module/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(moduleKey, System.Globalization.CultureInfo.InvariantCulture)));
                     urlBuilder_.Append("/enable");
 
@@ -11701,12 +11646,12 @@ namespace Explore.Blazor.Client.Clients
                 {
                     request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/module/{moduleKey}/disable"
-                    urlBuilder_.Append("api/v1/module/");
+                    // Operation Path: "api/module/{moduleKey}/disable"
+                    urlBuilder_.Append("api/module/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(moduleKey, System.Globalization.CultureInfo.InvariantCulture)));
                     urlBuilder_.Append("/disable");
 
@@ -11810,12 +11755,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/organization"
-                    urlBuilder_.Append("api/v1/organization");
+                    // Operation Path: "api/organization"
+                    urlBuilder_.Append("api/organization");
                     urlBuilder_.Append('?');
                     if (pageNumber != null)
                     {
@@ -11901,15 +11846,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/organization"
-                    urlBuilder_.Append("api/v1/organization");
+                    // Operation Path: "api/organization"
+                    urlBuilder_.Append("api/organization");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -12001,12 +11946,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/organization/my"
-                    urlBuilder_.Append("api/v1/organization/my");
+                    // Operation Path: "api/organization/my"
+                    urlBuilder_.Append("api/organization/my");
                     urlBuilder_.Append('?');
                     if (pageNumber != null)
                     {
@@ -12101,12 +12046,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/organization/{id}"
-                    urlBuilder_.Append("api/v1/organization/");
+                    // Operation Path: "api/organization/{id}"
+                    urlBuilder_.Append("api/organization/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -12196,15 +12141,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/organization/{id}"
-                    urlBuilder_.Append("api/v1/organization/");
+                    // Operation Path: "api/organization/{id}"
+                    urlBuilder_.Append("api/organization/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -12314,8 +12259,8 @@ namespace Explore.Blazor.Client.Clients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/organization/{id}"
-                    urlBuilder_.Append("api/v1/organization/");
+                    // Operation Path: "api/organization/{id}"
+                    urlBuilder_.Append("api/organization/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -12420,15 +12365,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/organization/updatestatustype/{id}"
-                    urlBuilder_.Append("api/v1/organization/updatestatustype/");
+                    // Operation Path: "api/organization/updatestatustype/{id}"
+                    urlBuilder_.Append("api/organization/updatestatustype/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -12523,12 +12468,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/organizationmember/{organizationId}"
-                    urlBuilder_.Append("api/v1/organizationmember/");
+                    // Operation Path: "api/organizationmember/{organizationId}"
+                    urlBuilder_.Append("api/organizationmember/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(organizationId, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -12599,15 +12544,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/organizationmember"
-                    urlBuilder_.Append("api/v1/organizationmember");
+                    // Operation Path: "api/organizationmember"
+                    urlBuilder_.Append("api/organizationmember");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -12677,15 +12622,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/organizationmember/role"
-                    urlBuilder_.Append("api/v1/organizationmember/role");
+                    // Operation Path: "api/organizationmember/role"
+                    urlBuilder_.Append("api/organizationmember/role");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -12751,12 +12696,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/organizationmember/invitations"
-                    urlBuilder_.Append("api/v1/organizationmember/invitations");
+                    // Operation Path: "api/organizationmember/invitations"
+                    urlBuilder_.Append("api/organizationmember/invitations");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -12826,12 +12771,12 @@ namespace Explore.Blazor.Client.Clients
                 {
                     request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/organizationmember/invitations/{id}/accept"
-                    urlBuilder_.Append("api/v1/organizationmember/invitations/");
+                    // Operation Path: "api/organizationmember/invitations/{id}/accept"
+                    urlBuilder_.Append("api/organizationmember/invitations/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
                     urlBuilder_.Append("/accept");
 
@@ -12903,12 +12848,12 @@ namespace Explore.Blazor.Client.Clients
                 {
                     request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/organizationmember/invitations/{id}/decline"
-                    urlBuilder_.Append("api/v1/organizationmember/invitations/");
+                    // Operation Path: "api/organizationmember/invitations/{id}/decline"
+                    urlBuilder_.Append("api/organizationmember/invitations/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
                     urlBuilder_.Append("/decline");
 
@@ -12979,12 +12924,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/organizationmember/{id}"
-                    urlBuilder_.Append("api/v1/organizationmember/");
+                    // Operation Path: "api/organizationmember/{id}"
+                    urlBuilder_.Append("api/organizationmember/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -13057,12 +13002,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/organizationposition"
-                    urlBuilder_.Append("api/v1/organizationposition");
+                    // Operation Path: "api/organizationposition"
+                    urlBuilder_.Append("api/organizationposition");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -13137,12 +13082,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/organizationposition/{id}"
-                    urlBuilder_.Append("api/v1/organizationposition/");
+                    // Operation Path: "api/organizationposition/{id}"
+                    urlBuilder_.Append("api/organizationposition/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -13219,12 +13164,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/organizationreview"
-                    urlBuilder_.Append("api/v1/organizationreview");
+                    // Operation Path: "api/organizationreview"
+                    urlBuilder_.Append("api/organizationreview");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -13294,15 +13239,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/organizationreview"
-                    urlBuilder_.Append("api/v1/organizationreview");
+                    // Operation Path: "api/organizationreview"
+                    urlBuilder_.Append("api/organizationreview");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -13371,12 +13316,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/organizationreview/{organizationId}"
-                    urlBuilder_.Append("api/v1/organizationreview/");
+                    // Operation Path: "api/organizationreview/{organizationId}"
+                    urlBuilder_.Append("api/organizationreview/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(organizationId, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -13446,12 +13391,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/organizationreview/user/{userId}"
-                    urlBuilder_.Append("api/v1/organizationreview/user/");
+                    // Operation Path: "api/organizationreview/user/{userId}"
+                    urlBuilder_.Append("api/organizationreview/user/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(userId, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -13524,12 +13469,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/publicexperience/settings"
-                    urlBuilder_.Append("api/v1/publicexperience/settings");
+                    // Operation Path: "api/publicexperience/settings"
+                    urlBuilder_.Append("api/publicexperience/settings");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -13601,12 +13546,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/registrationmode"
-                    urlBuilder_.Append("api/v1/registrationmode");
+                    // Operation Path: "api/registrationmode"
+                    urlBuilder_.Append("api/registrationmode");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -13681,12 +13626,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/registrationmode/{id}"
-                    urlBuilder_.Append("api/v1/registrationmode/");
+                    // Operation Path: "api/registrationmode/{id}"
+                    urlBuilder_.Append("api/registrationmode/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -13769,12 +13714,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/role"
-                    urlBuilder_.Append("api/v1/role");
+                    // Operation Path: "api/role"
+                    urlBuilder_.Append("api/role");
                     urlBuilder_.Append('?');
                     if (scope != null)
                     {
@@ -13855,12 +13800,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/role/{id}"
-                    urlBuilder_.Append("api/v1/role/");
+                    // Operation Path: "api/role/{id}"
+                    urlBuilder_.Append("api/role/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -13943,12 +13888,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/storageobject"
-                    urlBuilder_.Append("api/v1/storageobject");
+                    // Operation Path: "api/storageobject"
+                    urlBuilder_.Append("api/storageobject");
                     urlBuilder_.Append('?');
                     if (pageNumber != null)
                     {
@@ -14034,15 +13979,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/storageobject"
-                    urlBuilder_.Append("api/v1/storageobject");
+                    // Operation Path: "api/storageobject"
+                    urlBuilder_.Append("api/storageobject");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -14137,12 +14082,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/storageobject/{id}"
-                    urlBuilder_.Append("api/v1/storageobject/");
+                    // Operation Path: "api/storageobject/{id}"
+                    urlBuilder_.Append("api/storageobject/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -14232,15 +14177,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/storageobject/{id}"
-                    urlBuilder_.Append("api/v1/storageobject/");
+                    // Operation Path: "api/storageobject/{id}"
+                    urlBuilder_.Append("api/storageobject/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -14349,8 +14294,8 @@ namespace Explore.Blazor.Client.Clients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/storageobject/{id}"
-                    urlBuilder_.Append("api/v1/storageobject/");
+                    // Operation Path: "api/storageobject/{id}"
+                    urlBuilder_.Append("api/storageobject/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -14444,8 +14389,8 @@ namespace Explore.Blazor.Client.Clients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/storageobject/file/{fileKey}"
-                    urlBuilder_.Append("api/v1/storageobject/file/");
+                    // Operation Path: "api/storageobject/file/{fileKey}"
+                    urlBuilder_.Append("api/storageobject/file/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(fileKey, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -14516,12 +14461,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/storageobject/{id}/presigned-url"
-                    urlBuilder_.Append("api/v1/storageobject/");
+                    // Operation Path: "api/storageobject/{id}/presigned-url"
+                    urlBuilder_.Append("api/storageobject/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
                     urlBuilder_.Append("/presigned-url");
                     urlBuilder_.Append('?');
@@ -14614,12 +14559,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/storageobject/presigned-url-by-key/{objectKey}"
-                    urlBuilder_.Append("api/v1/storageobject/presigned-url-by-key/");
+                    // Operation Path: "api/storageobject/presigned-url-by-key/{objectKey}"
+                    urlBuilder_.Append("api/storageobject/presigned-url-by-key/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(objectKey, System.Globalization.CultureInfo.InvariantCulture)));
                     urlBuilder_.Append('?');
                     if (expirationMinutes != null)
@@ -14712,15 +14657,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/storageobject/generate-upload-url"
-                    urlBuilder_.Append("api/v1/storageobject/generate-upload-url");
+                    // Operation Path: "api/storageobject/generate-upload-url"
+                    urlBuilder_.Append("api/storageobject/generate-upload-url");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -14806,12 +14751,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/syncstate"
-                    urlBuilder_.Append("api/v1/syncstate");
+                    // Operation Path: "api/syncstate"
+                    urlBuilder_.Append("api/syncstate");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -14881,15 +14826,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/syncstate"
-                    urlBuilder_.Append("api/v1/syncstate");
+                    // Operation Path: "api/syncstate"
+                    urlBuilder_.Append("api/syncstate");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -14958,12 +14903,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/syncstate/{id}"
-                    urlBuilder_.Append("api/v1/syncstate/");
+                    // Operation Path: "api/syncstate/{id}"
+                    urlBuilder_.Append("api/syncstate/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -15037,15 +14982,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/syncstate/{id}"
-                    urlBuilder_.Append("api/v1/syncstate/");
+                    // Operation Path: "api/syncstate/{id}"
+                    urlBuilder_.Append("api/syncstate/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -15118,8 +15063,8 @@ namespace Explore.Blazor.Client.Clients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/syncstate/{id}"
-                    urlBuilder_.Append("api/v1/syncstate/");
+                    // Operation Path: "api/syncstate/{id}"
+                    urlBuilder_.Append("api/syncstate/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -15187,12 +15132,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/tag"
-                    urlBuilder_.Append("api/v1/tag");
+                    // Operation Path: "api/tag"
+                    urlBuilder_.Append("api/tag");
                     urlBuilder_.Append('?');
                     if (pageNumber != null)
                     {
@@ -15278,15 +15223,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/tag"
-                    urlBuilder_.Append("api/v1/tag");
+                    // Operation Path: "api/tag"
+                    urlBuilder_.Append("api/tag");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -15381,12 +15326,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/tag/{id}"
-                    urlBuilder_.Append("api/v1/tag/");
+                    // Operation Path: "api/tag/{id}"
+                    urlBuilder_.Append("api/tag/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -15476,15 +15421,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/tag/{id}"
-                    urlBuilder_.Append("api/v1/tag/");
+                    // Operation Path: "api/tag/{id}"
+                    urlBuilder_.Append("api/tag/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -15594,8 +15539,8 @@ namespace Explore.Blazor.Client.Clients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/tag/{id}"
-                    urlBuilder_.Append("api/v1/tag/");
+                    // Operation Path: "api/tag/{id}"
+                    urlBuilder_.Append("api/tag/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -15677,12 +15622,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/tagtype"
-                    urlBuilder_.Append("api/v1/tagtype");
+                    // Operation Path: "api/tagtype"
+                    urlBuilder_.Append("api/tagtype");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -15751,12 +15696,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/tagtype/{id}"
-                    urlBuilder_.Append("api/v1/tagtype/");
+                    // Operation Path: "api/tagtype/{id}"
+                    urlBuilder_.Append("api/tagtype/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -15829,12 +15774,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/tenant"
-                    urlBuilder_.Append("api/v1/tenant");
+                    // Operation Path: "api/tenant"
+                    urlBuilder_.Append("api/tenant");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -15910,15 +15855,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/tenant"
-                    urlBuilder_.Append("api/v1/tenant");
+                    // Operation Path: "api/tenant"
+                    urlBuilder_.Append("api/tenant");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -16003,12 +15948,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/tenant/{id}"
-                    urlBuilder_.Append("api/v1/tenant/");
+                    // Operation Path: "api/tenant/{id}"
+                    urlBuilder_.Append("api/tenant/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -16098,15 +16043,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/tenant/{id}"
-                    urlBuilder_.Append("api/v1/tenant/");
+                    // Operation Path: "api/tenant/{id}"
+                    urlBuilder_.Append("api/tenant/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -16205,8 +16150,8 @@ namespace Explore.Blazor.Client.Clients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/tenant/{id}"
-                    urlBuilder_.Append("api/v1/tenant/");
+                    // Operation Path: "api/tenant/{id}"
+                    urlBuilder_.Append("api/tenant/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -16284,12 +16229,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/tenant/navigation"
-                    urlBuilder_.Append("api/v1/tenant/navigation");
+                    // Operation Path: "api/tenant/navigation"
+                    urlBuilder_.Append("api/tenant/navigation");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -16365,15 +16310,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/tenant/navigation"
-                    urlBuilder_.Append("api/v1/tenant/navigation");
+                    // Operation Path: "api/tenant/navigation"
+                    urlBuilder_.Append("api/tenant/navigation");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -16462,15 +16407,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/tenant/navigation/{id}"
-                    urlBuilder_.Append("api/v1/tenant/navigation/");
+                    // Operation Path: "api/tenant/navigation/{id}"
+                    urlBuilder_.Append("api/tenant/navigation/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -16566,12 +16511,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/tenant/navigation/{id}"
-                    urlBuilder_.Append("api/v1/tenant/navigation/");
+                    // Operation Path: "api/tenant/navigation/{id}"
+                    urlBuilder_.Append("api/tenant/navigation/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -16658,15 +16603,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/tenant/navigation/reorder"
-                    urlBuilder_.Append("api/v1/tenant/navigation/reorder");
+                    // Operation Path: "api/tenant/navigation/reorder"
+                    urlBuilder_.Append("api/tenant/navigation/reorder");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -16748,12 +16693,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/tenantonboarding/status"
-                    urlBuilder_.Append("api/v1/tenantonboarding/status");
+                    // Operation Path: "api/tenantonboarding/status"
+                    urlBuilder_.Append("api/tenantonboarding/status");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -16825,12 +16770,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/tenantonboarding/settings"
-                    urlBuilder_.Append("api/v1/tenantonboarding/settings");
+                    // Operation Path: "api/tenantonboarding/settings"
+                    urlBuilder_.Append("api/tenantonboarding/settings");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -16906,15 +16851,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/tenantonboarding/settings"
-                    urlBuilder_.Append("api/v1/tenantonboarding/settings");
+                    // Operation Path: "api/tenantonboarding/settings"
+                    urlBuilder_.Append("api/tenantonboarding/settings");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -17010,15 +16955,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/tenantonboarding/complete"
-                    urlBuilder_.Append("api/v1/tenantonboarding/complete");
+                    // Operation Path: "api/tenantonboarding/complete"
+                    urlBuilder_.Append("api/tenantonboarding/complete");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -17094,6 +17039,100 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Save Tenant Onboarding Step Progress
+        /// </summary>
+        /// <remarks>
+        /// Persists tenant onboarding step progress without completing onboarding.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> StepsAsync(SaveTenantOnboardingStepCommand body, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("PUT");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+                
+                    // Operation Path: "api/tenantonboarding/steps"
+                    urlBuilder_.Append("api/tenantonboarding/steps");
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<BaseCommandResponseOfGuid>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Get all Tenant Settings
         /// </summary>
         /// <remarks>
@@ -17110,12 +17149,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/tenantsettings"
-                    urlBuilder_.Append("api/v1/tenantsettings");
+                    // Operation Path: "api/tenantsettings"
+                    urlBuilder_.Append("api/tenantsettings");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -17191,15 +17230,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/tenantsettings"
-                    urlBuilder_.Append("api/v1/tenantsettings");
+                    // Operation Path: "api/tenantsettings"
+                    urlBuilder_.Append("api/tenantsettings");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -17284,12 +17323,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/tenantsettings/{id}"
-                    urlBuilder_.Append("api/v1/tenantsettings/");
+                    // Operation Path: "api/tenantsettings/{id}"
+                    urlBuilder_.Append("api/tenantsettings/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -17379,15 +17418,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/tenantsettings/{id}"
-                    urlBuilder_.Append("api/v1/tenantsettings/");
+                    // Operation Path: "api/tenantsettings/{id}"
+                    urlBuilder_.Append("api/tenantsettings/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -17486,8 +17525,8 @@ namespace Explore.Blazor.Client.Clients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/tenantsettings/{id}"
-                    urlBuilder_.Append("api/v1/tenantsettings/");
+                    // Operation Path: "api/tenantsettings/{id}"
+                    urlBuilder_.Append("api/tenantsettings/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -17565,12 +17604,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/tenantuser"
-                    urlBuilder_.Append("api/v1/tenantuser");
+                    // Operation Path: "api/tenantuser"
+                    urlBuilder_.Append("api/tenantuser");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -17646,15 +17685,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/tenantuser"
-                    urlBuilder_.Append("api/v1/tenantuser");
+                    // Operation Path: "api/tenantuser"
+                    urlBuilder_.Append("api/tenantuser");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -17739,12 +17778,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/tenantuser/{id}"
-                    urlBuilder_.Append("api/v1/tenantuser/");
+                    // Operation Path: "api/tenantuser/{id}"
+                    urlBuilder_.Append("api/tenantuser/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -17834,15 +17873,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/tenantuser/{id}"
-                    urlBuilder_.Append("api/v1/tenantuser/");
+                    // Operation Path: "api/tenantuser/{id}"
+                    urlBuilder_.Append("api/tenantuser/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -17941,8 +17980,8 @@ namespace Explore.Blazor.Client.Clients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/tenantuser/{id}"
-                    urlBuilder_.Append("api/v1/tenantuser/");
+                    // Operation Path: "api/tenantuser/{id}"
+                    urlBuilder_.Append("api/tenantuser/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -18020,12 +18059,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/userauthenticationtoken"
-                    urlBuilder_.Append("api/v1/userauthenticationtoken");
+                    // Operation Path: "api/userauthenticationtoken"
+                    urlBuilder_.Append("api/userauthenticationtoken");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -18101,15 +18140,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/userauthenticationtoken"
-                    urlBuilder_.Append("api/v1/userauthenticationtoken");
+                    // Operation Path: "api/userauthenticationtoken"
+                    urlBuilder_.Append("api/userauthenticationtoken");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -18194,12 +18233,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/userauthenticationtoken/{id}"
-                    urlBuilder_.Append("api/v1/userauthenticationtoken/");
+                    // Operation Path: "api/userauthenticationtoken/{id}"
+                    urlBuilder_.Append("api/userauthenticationtoken/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -18289,15 +18328,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/userauthenticationtoken/{id}"
-                    urlBuilder_.Append("api/v1/userauthenticationtoken/");
+                    // Operation Path: "api/userauthenticationtoken/{id}"
+                    urlBuilder_.Append("api/userauthenticationtoken/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -18396,8 +18435,8 @@ namespace Explore.Blazor.Client.Clients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/userauthenticationtoken/{id}"
-                    urlBuilder_.Append("api/v1/userauthenticationtoken/");
+                    // Operation Path: "api/userauthenticationtoken/{id}"
+                    urlBuilder_.Append("api/userauthenticationtoken/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -18476,12 +18515,12 @@ namespace Explore.Blazor.Client.Clients
                 {
                     request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/user/sync"
-                    urlBuilder_.Append("api/v1/user/sync");
+                    // Operation Path: "api/user/sync"
+                    urlBuilder_.Append("api/user/sync");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -18547,12 +18586,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/user"
-                    urlBuilder_.Append("api/v1/user");
+                    // Operation Path: "api/user"
+                    urlBuilder_.Append("api/user");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -18622,15 +18661,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/user"
-                    urlBuilder_.Append("api/v1/user");
+                    // Operation Path: "api/user"
+                    urlBuilder_.Append("api/user");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -18699,8 +18738,8 @@ namespace Explore.Blazor.Client.Clients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/user"
-                    urlBuilder_.Append("api/v1/user");
+                    // Operation Path: "api/user"
+                    urlBuilder_.Append("api/user");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -18770,12 +18809,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/user/{userId}/organizations"
-                    urlBuilder_.Append("api/v1/user/");
+                    // Operation Path: "api/user/{userId}/organizations"
+                    urlBuilder_.Append("api/user/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(userId, System.Globalization.CultureInfo.InvariantCulture)));
                     urlBuilder_.Append("/organizations");
 
@@ -18849,12 +18888,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/userexternallogin"
-                    urlBuilder_.Append("api/v1/userexternallogin");
+                    // Operation Path: "api/userexternallogin"
+                    urlBuilder_.Append("api/userexternallogin");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -18930,15 +18969,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/userexternallogin"
-                    urlBuilder_.Append("api/v1/userexternallogin");
+                    // Operation Path: "api/userexternallogin"
+                    urlBuilder_.Append("api/userexternallogin");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -19023,12 +19062,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/userexternallogin/{id}"
-                    urlBuilder_.Append("api/v1/userexternallogin/");
+                    // Operation Path: "api/userexternallogin/{id}"
+                    urlBuilder_.Append("api/userexternallogin/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -19118,15 +19157,15 @@ namespace Explore.Blazor.Client.Clients
                 {
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/userexternallogin/{id}"
-                    urlBuilder_.Append("api/v1/userexternallogin/");
+                    // Operation Path: "api/userexternallogin/{id}"
+                    urlBuilder_.Append("api/userexternallogin/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -19225,8 +19264,8 @@ namespace Explore.Blazor.Client.Clients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/userexternallogin/{id}"
-                    urlBuilder_.Append("api/v1/userexternallogin/");
+                    // Operation Path: "api/userexternallogin/{id}"
+                    urlBuilder_.Append("api/userexternallogin/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -19304,12 +19343,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/visibilitytype"
-                    urlBuilder_.Append("api/v1/visibilitytype");
+                    // Operation Path: "api/visibilitytype"
+                    urlBuilder_.Append("api/visibilitytype");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -19384,12 +19423,12 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/v1/visibilitytype/{id}"
-                    urlBuilder_.Append("api/v1/visibilitytype/");
+                    // Operation Path: "api/visibilitytype/{id}"
+                    urlBuilder_.Append("api/visibilitytype/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -19433,6 +19472,72 @@ namespace Explore.Blazor.Client.Clients
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
                             }
                             throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task MigrateAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+                
+                    // Operation Path: "admin/migrate"
+                    urlBuilder_.Append("admin/migrate");
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            return;
                         }
                         else
                         {
@@ -23710,6 +23815,9 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("allowTenantSelfServiceRegistration")]
         public bool? AllowTenantSelfServiceRegistration { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("allowTenantWhiteLabeling")]
+        public bool? AllowTenantWhiteLabeling { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("defaultPublicHomePage")]
         public string? DefaultPublicHomePage { get; set; } = default!;
 
@@ -24726,12 +24834,14 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("isTechModuleEnabled")]
         public bool? IsTechModuleEnabled { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("allowUserSubmittedEvents")]
+        public bool? AllowUserSubmittedEvents { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("enabledModules")]
         public System.Collections.Generic.ICollection<string>? EnabledModules { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("analyticsProviderId")]
-        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public int? AnalyticsProviderId { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("analyticsProvider")]
+        public string? AnalyticsProvider { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("analyticsEnabled")]
         public bool? AnalyticsEnabled { get; set; } = default!;
@@ -24870,6 +24980,35 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("isSystem")]
         public bool? IsSystem { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class SaveTenantOnboardingStepCommand
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("userId")]
+        public System.Guid? UserId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("currentStep")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? CurrentStep { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("totalSteps")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? TotalSteps { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("completedSteps")]
+        public System.Collections.Generic.ICollection<string>? CompletedSteps { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -25292,11 +25431,26 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("isCurrentUserTenantAdministrator")]
         public bool? IsCurrentUserTenantAdministrator { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("isCurrentUserInstanceAdministrator")]
-        public bool? IsCurrentUserInstanceAdministrator { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("isCurrentUserPlatformAdministrator")]
+        public bool? IsCurrentUserPlatformAdministrator { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
         public System.Guid? TenantId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("currentStep")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? CurrentStep { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("totalSteps")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? TotalSteps { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("completedSteps")]
+        public System.Collections.Generic.ICollection<string>? CompletedSteps { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("progressPercentage")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ProgressPercentage { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -25324,6 +25478,9 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("canTenantOmitVerification")]
         public bool? CanTenantOmitVerification { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isTenantWhiteLabelingEnabled")]
+        public bool? IsTenantWhiteLabelingEnabled { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("preferredHomePage")]
         public string? PreferredHomePage { get; set; } = default!;

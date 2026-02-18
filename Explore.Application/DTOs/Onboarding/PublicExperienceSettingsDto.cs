@@ -17,6 +17,7 @@ public class PublicExperienceSettingsDto
     public string CustomDomain { get; set; } = string.Empty;
     public bool IsIslamicModuleEnabled { get; set; }
     public bool IsTechModuleEnabled { get; set; }
+    public bool AllowUserSubmittedEvents { get; set; } = true;
     public List<string> EnabledModules { get; set; } = new();
     public string AnalyticsProvider { get; set; } = "none";
     public bool AnalyticsEnabled { get; set; }

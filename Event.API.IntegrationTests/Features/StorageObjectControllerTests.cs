@@ -11,7 +11,7 @@ namespace Event.Api.IntegrationTests.Features;
 public class StorageObjectControllerTests
 {
     private readonly ApiTestFixture _fixture;
-    private const string BaseUrl = "/api/v1/storageobject";
+    private const string BaseUrl = "/api/storageobject";
 
     public StorageObjectControllerTests(ApiTestFixture fixture)
     {

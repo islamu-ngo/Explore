@@ -11,7 +11,7 @@ namespace Event.Api.IntegrationTests.Features;
 public class CategoryControllerTests
 {
     private readonly ApiTestFixture _fixture;
-    private const string BaseUrl = "/api/v1/category";
+    private const string BaseUrl = "/api/category";
 
     public CategoryControllerTests(ApiTestFixture fixture)
     {

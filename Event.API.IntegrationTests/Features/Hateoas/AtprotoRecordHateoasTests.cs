@@ -14,7 +14,7 @@ namespace Event.Api.IntegrationTests.Features.Hateoas;
 public class AtprotoRecordHateoasTests
 {
     private readonly ApiTestFixture _fixture;
-    private const string BaseUrl = "/api/v1/atprotorecord";
+    private const string BaseUrl = "/api/atprotorecord";
 
     public AtprotoRecordHateoasTests(ApiTestFixture fixture)
     {
@@ -55,7 +55,7 @@ public class AtprotoRecordHateoasTests
         {
             await Assert.That(links.TryGetProperty("self", out var selfLink)).IsTrue();
             var href = selfLink.GetProperty("href").GetString();
-            await Assert.That(href).Contains("/api/v1/atprotorecord");
+            await Assert.That(href).Contains("/api/atprotorecord");
         }
     }
 
@@ -106,7 +106,7 @@ public class AtprotoRecordHateoasTests
             {
                 await Assert.That(itemLinks.TryGetProperty("self", out var selfLink)).IsTrue();
                 var href = selfLink.GetProperty("href").GetString();
-                await Assert.That(href).Contains("/api/v1/atprotorecord/");
+                await Assert.That(href).Contains("/api/atprotorecord/");
             }
         }
     }
@@ -136,7 +136,7 @@ public class AtprotoRecordHateoasTests
                 if (itemLinks.TryGetProperty("did", out var didLink))
                 {
                     var href = didLink.GetProperty("href").GetString();
-                    await Assert.That(href).Contains("/api/v1/indexeddid/");
+                    await Assert.That(href).Contains("/api/indexeddid/");
                 }
             }
         }
@@ -184,14 +184,14 @@ public class AtprotoRecordHateoasTests
                 if (links.TryGetProperty("did", out var didLink))
                 {
                     var href = didLink.GetProperty("href").GetString();
-                    await Assert.That(href).Contains("/api/v1/indexeddid/");
+                    await Assert.That(href).Contains("/api/indexeddid/");
                 }
 
                 // May have by-uri link if URI is set
                 if (links.TryGetProperty("by-uri", out var byUriLink))
                 {
                     var href = byUriLink.GetProperty("href").GetString();
-                    await Assert.That(href).Contains("/api/v1/atprotorecord/by-uri");
+                    await Assert.That(href).Contains("/api/atprotorecord/by-uri");
                 }
             }
         }

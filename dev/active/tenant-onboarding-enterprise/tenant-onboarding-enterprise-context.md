@@ -28,13 +28,16 @@
 - Implemented Phase 1 Task 1.2: updated `Tenant` entity with `TenantStatusId` FK, `TenantStatus` nav, `Description`, computed `IsActive`, `IAuditableEntity`; updated TenantConfiguration, TenantContext, onboarding handlers, seed data, and all impacted tests
 - Implemented Phase 1 Task 1.3: created `TenantInvitation` entity (Token, Email, RoleId, AllowedDomain, ExpiresAt, InvitedByUserId, AcceptedAt/ByUserId) + EF configuration + DbContext/query filter registration
 - Implemented Phase 1 Task 1.5: created `TenantLifecycleLog` entity (OldStatusId nullable, NewStatusId, TransitionedByUserId, Reason, TransitionedAt) + EF configuration + DbContext registration
-- **Skipped Task 1.4** (onboarding step persistence) per user instruction
+- **Task 1.4 unskipped** (onboarding step persistence) per user instruction
+- **Phase 3 Tasks 3.4, 3.5, 3.9 discovered already complete**: ITenantInvitationRepository + impl, ITenantLifecycleLogRepository + impl, DI registrations in PersistenceServicesRegistration.cs (lines 105-106)
+- **Updated dev docs** to reflect true state: tasks.md summary table, phase headers, context.md SESSION PROGRESS
 
 ### In Progress
-- Phase 1 domain layer complete (except Task 1.4 skipped). Next: Phase 3 infrastructure (TenantStatus seed, remaining configs).
+- **Phase 2: Application Layer** — Starting with Task 2.3 (ITenantProvisioningService), then Task 2.1 (CreateTenantCommandHandler)
+- **Scope expansion**: instance onboarding post-completion routing based on deployment mode and default home page preference
 
 ### Blockers
-- None -- no tenant-onboarding implementation blocker identified
+- None — build green (0 errors), ready to implement Phase 2
 
 ---
 
@@ -91,6 +94,12 @@
 ### D12: Tenant White-Labeling Requires Platform Toggle + Multi-Tenant Mode
 **Decision**: Tenant branding overrides are only enabled when both conditions are true: (1) instance deployment mode is `MultiTenant`, and (2) platform admin enabled `tenants.white_labeling_enabled`.
 **Rationale**: White-labeling is a tenant capability, not a guaranteed default. Enforcing dual gating avoids accidental tenant-brand drift in single-tenant deployments and keeps platform-admin governance explicit.
+
+### D13: Instance Onboarding Redirect Behavior (Single vs Multi-Tenant)
+**Decision**: After completing instance onboarding, do not redirect to tenant onboarding. Instead:
+- **SingleTenant**: route to the instance-level preferred home page (LandingPage or EventList), then allow tenant admins to override in tenant onboarding when available.
+- **MultiTenant**: route to instance admin area (platform management pages), not tenant onboarding.
+**Rationale**: Aligns with enterprise onboarding expectations; single-tenant acts as unified admin, while multi-tenant continues in platform admin area.
 
 ---
 
@@ -234,5 +243,7 @@ To continue this work:
 1. Read this file for current state
 2. Read `tenant-onboarding-enterprise-plan.md` for full plan
 3. Check `tenant-onboarding-enterprise-tasks.md` for progress checklist
-4. Start with Phase 0 (auth fix) -- it's the critical security issue
+4. **Phase 2 Application Layer is NEXT**: Start with Task 2.3 (ITenantProvisioningService)
 5. Follow Clean Architecture layer order: Domain -> Application -> Infrastructure -> API -> Blazor
+6. Build is green. Tasks 3.4, 3.5, 3.9 (repos + DI) already done.
+7. Task 1.4 was deliberately skipped per user instruction — do NOT implement unless asked

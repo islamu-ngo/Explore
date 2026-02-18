@@ -152,7 +152,7 @@
         var status = await InstanceOnboardingService.GetStatusAsync();
         if (status?.IsCompleted == true)
         {
-            Navigation.NavigateTo("/events");
+            Navigation.NavigateTo("/startup", forceLoad: true);
             return;
         }
 

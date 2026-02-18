@@ -25,21 +25,21 @@ public class FederationControllerTests
     [Test]
     public async Task ActorKeyStore_GetAll_ShouldReturnUnauthorized()
     {
-        var response = await _fixture.Client.GetAsync("/api/v1/actorkeystore");
+        var response = await _fixture.Client.GetAsync("/api/actorkeystore");
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]
     public async Task ActorKeyStore_GetById_WithRandomId_ShouldNotReturnServerError()
     {
-        var response = await _fixture.Client.GetAsync($"/api/v1/actorkeystore/{Guid.NewGuid()}");
+        var response = await _fixture.Client.GetAsync($"/api/actorkeystore/{Guid.NewGuid()}");
         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
     }
 
     [Test]
     public async Task ActorKeyStore_Create_WithoutAuth_ShouldReturnUnauthorized()
     {
-        var response = await _fixture.Client.PostAsJsonAsync("/api/v1/actorkeystore", new
+        var response = await _fixture.Client.PostAsJsonAsync("/api/actorkeystore", new
         {
             ActorId = Guid.NewGuid(),
             KeyPurpose = "signing",
@@ -53,7 +53,7 @@ public class FederationControllerTests
     [Test]
     public async Task ActorKeyStore_Delete_WithoutAuth_ShouldReturnUnauthorized()
     {
-        var response = await _fixture.Client.DeleteAsync($"/api/v1/actorkeystore/{Guid.NewGuid()}");
+        var response = await _fixture.Client.DeleteAsync($"/api/actorkeystore/{Guid.NewGuid()}");
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
@@ -64,14 +64,14 @@ public class FederationControllerTests
     [Test]
     public async Task IndexedDid_GetAll_ShouldReturnOk()
     {
-        var response = await _fixture.Client.GetAsync("/api/v1/indexeddid");
+        var response = await _fixture.Client.GetAsync("/api/indexeddid");
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
     }
 
     [Test]
     public async Task IndexedDid_GetById_WithValidDid_ShouldNotReturnServerError()
     {
-        var response = await _fixture.Client.GetAsync("/api/v1/indexeddid/did:plc:test");
+        var response = await _fixture.Client.GetAsync("/api/indexeddid/did:plc:test");
         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
     }
 
@@ -82,14 +82,14 @@ public class FederationControllerTests
     [Test]
     public async Task SyncState_GetAll_ShouldReturnUnauthorized()
     {
-        var response = await _fixture.Client.GetAsync("/api/v1/syncstate");
+        var response = await _fixture.Client.GetAsync("/api/syncstate");
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]
     public async Task SyncState_GetById_WithRandomId_ShouldNotReturnServerError()
     {
-        var response = await _fixture.Client.GetAsync($"/api/v1/syncstate/{1}");
+        var response = await _fixture.Client.GetAsync($"/api/syncstate/{1}");
         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
     }
 
@@ -100,21 +100,21 @@ public class FederationControllerTests
     [Test]
     public async Task AtprotoRecord_GetAll_ShouldReturnUnauthorized()
     {
-        var response = await _fixture.Client.GetAsync("/api/v1/atprotorecord");
+        var response = await _fixture.Client.GetAsync("/api/atprotorecord");
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]
     public async Task AtprotoRecord_GetById_WithRandomId_ShouldNotReturnServerError()
     {
-        var response = await _fixture.Client.GetAsync($"/api/v1/atprotorecord/{Guid.NewGuid()}");
+        var response = await _fixture.Client.GetAsync($"/api/atprotorecord/{Guid.NewGuid()}");
         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
     }
 
     [Test]
     public async Task AtprotoRecord_Create_WithoutAuth_ShouldReturnUnauthorized()
     {
-        var response = await _fixture.Client.PostAsJsonAsync("/api/v1/atprotorecord", new
+        var response = await _fixture.Client.PostAsJsonAsync("/api/atprotorecord", new
         {
             Did = "did:plc:test",
             Collection = "app.bsky.feed.post",
@@ -126,7 +126,7 @@ public class FederationControllerTests
     [Test]
     public async Task AtprotoRecord_Delete_WithoutAuth_ShouldReturnUnauthorized()
     {
-        var response = await _fixture.Client.DeleteAsync($"/api/v1/atprotorecord/{Guid.NewGuid()}");
+        var response = await _fixture.Client.DeleteAsync($"/api/atprotorecord/{Guid.NewGuid()}");
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
@@ -137,14 +137,14 @@ public class FederationControllerTests
     [Test]
     public async Task UserAuthenticationToken_GetAll_ShouldReturnUnauthorized()
     {
-        var response = await _fixture.Client.GetAsync("/api/v1/userauthenticationtoken");
+        var response = await _fixture.Client.GetAsync("/api/userauthenticationtoken");
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]
     public async Task UserAuthenticationToken_GetById_WithRandomId_ShouldNotReturnServerError()
     {
-        var response = await _fixture.Client.GetAsync($"/api/v1/userauthenticationtoken/{Guid.NewGuid()}");
+        var response = await _fixture.Client.GetAsync($"/api/userauthenticationtoken/{Guid.NewGuid()}");
         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
     }
 
@@ -155,14 +155,14 @@ public class FederationControllerTests
     [Test]
     public async Task UserExternalLogin_GetAll_ShouldReturnUnauthorized()
     {
-        var response = await _fixture.Client.GetAsync("/api/v1/userexternallogin");
+        var response = await _fixture.Client.GetAsync("/api/userexternallogin");
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]
     public async Task UserExternalLogin_GetById_WithRandomId_ShouldNotReturnServerError()
     {
-        var response = await _fixture.Client.GetAsync($"/api/v1/userexternallogin/{Guid.NewGuid()}");
+        var response = await _fixture.Client.GetAsync($"/api/userexternallogin/{Guid.NewGuid()}");
         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
     }
 

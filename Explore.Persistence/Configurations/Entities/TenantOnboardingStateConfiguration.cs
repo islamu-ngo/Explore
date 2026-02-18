@@ -23,6 +23,17 @@ public class TenantOnboardingStateConfiguration : IEntityTypeConfiguration<Tenan
             .IsRequired()
             .HasDefaultValue(false);
 
+        builder.Property(e => e.CurrentStep)
+            .IsRequired()
+            .HasDefaultValue(0);
+
+        builder.Property(e => e.TotalSteps)
+            .IsRequired()
+            .HasDefaultValue(0);
+
+        builder.Property(e => e.CompletedStepsJson)
+            .HasColumnType("jsonb");
+
         builder.Property(e => e.CreatedAt)
             .IsRequired()
             .HasDefaultValueSql("NOW()");

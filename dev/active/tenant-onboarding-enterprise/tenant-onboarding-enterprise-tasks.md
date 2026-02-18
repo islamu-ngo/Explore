@@ -4,7 +4,7 @@
 
 ---
 
-## Phase 0: Critical Authorization Fix ⏳ NOT STARTED
+## Phase 0: Critical Authorization Fix ✅ COMPLETE
 **Priority: CRITICAL | Effort: S (2-3 hours)**
 
 - [x] **Task 0.1**: Fix CompleteTenantOnboardingCommandHandler authorization
@@ -22,7 +22,7 @@
 
 ---
 
-## Phase 1: Domain Layer ⏳ NOT STARTED
+## Phase 1: Domain Layer 🟡 IN PROGRESS (Task 1.4 unskipped)
 **Priority: HIGH | Effort: M (5-7 hours)**
 
 - [x] **Task 1.1**: Create TenantStatus lookup table entity + TenantStatusEnum
@@ -49,6 +49,17 @@
 - [ ] **Task 1.4**: Extend TenantOnboardingState with step tracking
   - File: `Explore.Domain/TenantOnboardingState.cs`
   - Add: CurrentStep (int), TotalSteps (int), CompletedStepsJson (string?)
+
+---
+
+## Phase 1.6: Instance Onboarding Routing ⏳ NOT STARTED
+**Priority: MEDIUM | Effort: S (2-3 hours)**
+
+- [ ] **Task 1.6**: Update instance onboarding post-completion routing behavior
+  - Files: `Explore.Blazor.Client/Pages/Onboarding/InstanceOnboarding.razor`, `Explore.Blazor.Client/Pages/Onboarding/StartupGate.razor`
+  - SingleTenant: route to preferred home page (LandingPage/EventList)
+  - MultiTenant: route to instance admin area (not tenant onboarding)
+  - Ensure tenant onboarding is only prompted when MultiTenant mode and tenant admin must complete it
 
 - [x] **Task 1.5**: Create TenantLifecycleLog entity
   - File: `Explore.Domain/TenantLifecycleLog.cs` (NEW)
@@ -126,7 +137,7 @@
 
 ---
 
-## Phase 3: Infrastructure Layer ⏳ NOT STARTED
+## Phase 3: Infrastructure Layer 🟡 MOSTLY DONE (7/9)
 **Priority: MEDIUM | Effort: M (5-7 hours)**
 
 - [x] **Task 3.1**: Create TenantStatus lookup table EF config + seed
@@ -147,13 +158,13 @@
   - Tenant query filter registered in ExploreDbContext
   - Dependencies: Task 1.3
 
-- [ ] **Task 3.4**: Create ITenantInvitationRepository + Implementation
-  - Files: NEW interface in `Contracts/Persistence/` + impl in `Repositories/`
+- [x] **Task 3.4**: Create ITenantInvitationRepository + Implementation
+  - Files: `Explore.Application/Contracts/Persistence/ITenantInvitationRepository.cs`, `Explore.Persistence/Repositories/TenantInvitationRepository.cs`
   - Methods: GetByTokenAsync, GetPendingByEmailAsync, ExistsActiveAsync
   - Dependencies: Task 1.3, 3.3
 
-- [ ] **Task 3.5**: Create ITenantLifecycleLogRepository + Implementation
-  - Files: NEW interface in `Contracts/Persistence/` + impl in `Repositories/`
+- [x] **Task 3.5**: Create ITenantLifecycleLogRepository + Implementation
+  - Files: `Explore.Application/Contracts/Persistence/ITenantLifecycleLogRepository.cs`, `Explore.Persistence/Repositories/TenantLifecycleLogRepository.cs`
   - Methods: GetByTenantIdAsync, CreateAsync
   - Dependencies: Task 1.5, 3.2
 
@@ -173,9 +184,9 @@
   - Existing tenants default to TenantStatusId=2 (Active)
   - Dependencies: Tasks 3.1-3.7
 
-- [ ] **Task 3.9**: Register new services in DI
-  - Files: PersistenceServicesRegistration.cs, ApplicationServicesRegistration.cs
-  - Register: ITenantInvitationRepository, ITenantLifecycleLogRepository, ITenantProvisioningService
+- [x] **Task 3.9**: Register new services in DI (partial — repos done, ITenantProvisioningService pending Task 2.3)
+  - Files: PersistenceServicesRegistration.cs (lines 105-106 ✅), ApplicationServicesRegistration.cs (pending ITenantProvisioningService)
+  - Register: ~~ITenantInvitationRepository~~✅, ~~ITenantLifecycleLogRepository~~✅, ITenantProvisioningService (pending)
 
 ---
 
@@ -274,13 +285,13 @@
 
 ## Summary
 
-| Phase | Tasks | Status | Effort |
-|-------|-------|--------|--------|
-| Phase 0: Auth Fix + Lock | 2 | ⏳ Not Started | S (2-3h) |
-| Phase 1: Domain (+lookup +lifecycle log) | 5 | ⏳ Not Started | M (5-7h) |
-| Phase 2: Application (+transactions +security +analytics) | 7 | ⏳ Not Started | L (12-16h) |
-| Phase 3: Infrastructure (+seed +lifecycle config) | 9 | ⏳ Not Started | M (5-7h) |
-| Phase 4: API (+lifecycle history) | 5 | ⏳ Not Started | M (4-6h) |
-| Phase 5: Blazor UI | 6 | ⏳ Not Started | L (12-16h) |
-| Phase 6: Testing & Docs | 4 | ⏳ Not Started | M (7-9h) |
-| **Total** | **38** | | **XL (47-64h)** |
+| Phase | Tasks | Done | Status | Effort |
+|-------|-------|------|--------|--------|
+| Phase 0: Auth Fix + Lock | 2 | 2/2 | ✅ Complete | S (2-3h) |
+| Phase 1: Domain (+lookup +lifecycle log) | 5 | 4/5 | ✅ Complete (Task 1.4 skipped per user) | M (5-7h) |
+| Phase 2: Application (+transactions +security +analytics) | 7 | 0/7 | ⏳ Not Started — **NEXT** | L (12-16h) |
+| Phase 3: Infrastructure (+seed +lifecycle config) | 9 | 7/9 | 🟡 Mostly Done (3.7 blocked on 1.4, 3.8 deferred) | M (5-7h) |
+| Phase 4: API (+lifecycle history) | 5 | 0/5 | ⏳ Not Started | M (4-6h) |
+| Phase 5: Blazor UI | 6 | 0/6 | ⏳ Not Started | L (12-16h) |
+| Phase 6: Testing & Docs | 4 | 0/4 | ⏳ Not Started | M (7-9h) |
+| **Total** | **38** | **13/38** | | **XL (47-64h)** |

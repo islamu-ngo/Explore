@@ -1,3 +1,4 @@
+using System.Diagnostics.Metrics;
 using AutoMapper;
 using Event.Application.UnitTests.Common;
 using Explore.Application.Contracts.Identity;
@@ -6,6 +7,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Organization;
 using Explore.Application.Features.Organizations.Handlers.Commands;
 using Explore.Application.Features.Organizations.Requests.Commands;
+using Explore.Application.Telemetry;
 using Explore.Domain;
 using Microsoft.Extensions.Caching.Hybrid;
 using NSubstitute;
@@ -37,6 +39,9 @@ public class CreateOrganizationCommandHandlerTests
         _tenantContext = Substitute.For<ITenantContext>();
         _cache = Substitute.For<HybridCache>();
 
+        var meterFactory = Substitute.For<IMeterFactory>();
+        meterFactory.Create(Arg.Any<MeterOptions>()).Returns(new Meter("test"));
+
         _handler = new CreateOrganizationCommandHandler(
             _organizationRepository,
             _organizationMemberRepository,
@@ -45,7 +50,8 @@ public class CreateOrganizationCommandHandlerTests
             _userContext,
             _mapper,
             _tenantContext,
-            _cache
+            _cache,
+            new BusinessMetrics(meterFactory)
         );
     }
 

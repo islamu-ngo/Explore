@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Asp.Versioning;
 using Explore.Application.DTOs.TenantSettings;
 using Explore.Application.Features.TenantSettings.Requests.Commands;
 using Explore.Application.Features.TenantSettings.Requests.Queries;
@@ -12,7 +13,8 @@ using Microsoft.AspNetCore.OutputCaching;
 
 namespace Explore.API.Controllers;
 
-[Route("api/v1/[controller]")]
+[ApiVersion("0.1")]
+[Route("api/[controller]")]
 [ApiController]
 public class TenantSettingsController : ControllerBase
 {

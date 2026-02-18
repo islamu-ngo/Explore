@@ -11,7 +11,7 @@ namespace Event.Api.IntegrationTests.Features;
 public class ActorControllerTests
 {
     private readonly ApiTestFixture _fixture;
-    private const string BaseUrl = "/api/v1/actor";
+    private const string BaseUrl = "/api/actor";
 
     public ActorControllerTests(ApiTestFixture fixture)
     {

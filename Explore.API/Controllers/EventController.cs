@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.EventAspects;
@@ -19,7 +20,8 @@ namespace Explore.API.Controllers;
 /// All responses include HATEOAS links by default.
 /// Send "Prefer: return=minimal" header to strip links.
 /// </summary>
-[Route("api/v1/[controller]")]
+[ApiVersion("0.1")]
+[Route("api/[controller]")]
 [ApiController]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public class EventController : ControllerBase

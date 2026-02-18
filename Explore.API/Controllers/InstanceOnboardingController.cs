@@ -3,6 +3,7 @@
 
 using System;
 using System.Security.Claims;
+using Asp.Versioning;
 using Explore.API.Filters;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
@@ -17,7 +18,8 @@ using Microsoft.AspNetCore.RateLimiting;
 
 namespace Explore.API.Controllers;
 
-[Route("api/v1/[controller]")]
+[ApiVersion("0.1")]
+[Route("api/[controller]")]
 [ApiController]
 public class InstanceOnboardingController : ControllerBase
 {

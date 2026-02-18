@@ -1,6 +1,7 @@
 // ABOUTME: API controller for module governance and discovery.
 // Provides endpoints to list available modules and check tenant capabilities.
 
+using Asp.Versioning;
 using Explore.Application.Contracts.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,7 +12,8 @@ namespace Explore.API.Controllers;
 /// Module governance and discovery API endpoints.
 /// Provides information about available modules and tenant capabilities.
 /// </summary>
-[Route("api/v1/[controller]")]
+[ApiVersion("0.1")]
+[Route("api/[controller]")]
 [ApiController]
 public class ModuleController : ControllerBase
 {

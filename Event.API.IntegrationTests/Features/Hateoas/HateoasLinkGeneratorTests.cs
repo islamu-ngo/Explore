@@ -29,13 +29,13 @@ public class HateoasLinkGeneratorTests
     #region Self Link Generation
 
     [Test]
-    [Arguments("/api/v1/organization")]
-    [Arguments("/api/v1/event")]
-    [Arguments("/api/v1/eventsession")]
-    [Arguments("/api/v1/actor")]
-    [Arguments("/api/v1/location")]
-    [Arguments("/api/v1/category")]
-    [Arguments("/api/v1/tag")]
+    [Arguments("/api/organization")]
+    [Arguments("/api/event")]
+    [Arguments("/api/eventsession")]
+    [Arguments("/api/actor")]
+    [Arguments("/api/location")]
+    [Arguments("/api/category")]
+    [Arguments("/api/tag")]
     public async Task LinkGenerator_CollectionEndpoints_ShouldHaveSelfLink(string endpoint)
     {
         // Act
@@ -58,7 +58,7 @@ public class HateoasLinkGeneratorTests
 
         var hrefValue = href.GetString();
         await Assert.That(hrefValue).IsNotNull();
-        await Assert.That(hrefValue).StartsWith("/api/v1/");
+        await Assert.That(hrefValue).StartsWith("/api/");
     }
 
     #endregion
@@ -69,7 +69,7 @@ public class HateoasLinkGeneratorTests
     public async Task LinkGenerator_FirstPage_ShouldHaveFirstLink()
     {
         // Act
-        var response = await _fixture.Client.GetAsync("/api/v1/organization?pageNumber=1&pageSize=5");
+        var response = await _fixture.Client.GetAsync("/api/organization?pageNumber=1&pageSize=5");
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -89,7 +89,7 @@ public class HateoasLinkGeneratorTests
     public async Task LinkGenerator_FirstPage_ShouldNotHavePrevLink()
     {
         // Act
-        var response = await _fixture.Client.GetAsync("/api/v1/organization?pageNumber=1&pageSize=5");
+        var response = await _fixture.Client.GetAsync("/api/organization?pageNumber=1&pageSize=5");
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -107,7 +107,7 @@ public class HateoasLinkGeneratorTests
     public async Task LinkGenerator_SelfLink_ShouldIncludePaginationParameters()
     {
         // Act
-        var response = await _fixture.Client.GetAsync("/api/v1/organization?pageNumber=2&pageSize=10");
+        var response = await _fixture.Client.GetAsync("/api/organization?pageNumber=2&pageSize=10");
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -132,7 +132,7 @@ public class HateoasLinkGeneratorTests
     public async Task LinkGenerator_ItemLinks_ShouldIncludeSelfLink()
     {
         // Act
-        var response = await _fixture.Client.GetAsync("/api/v1/organization");
+        var response = await _fixture.Client.GetAsync("/api/organization");
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -149,7 +149,7 @@ public class HateoasLinkGeneratorTests
             {
                 await Assert.That(itemLinks.TryGetProperty("self", out var selfLink)).IsTrue();
                 var href = selfLink.GetProperty("href").GetString();
-                await Assert.That(href).Contains("/api/v1/organization/");
+                await Assert.That(href).Contains("/api/organization/");
             }
         }
     }
@@ -158,7 +158,7 @@ public class HateoasLinkGeneratorTests
     public async Task LinkGenerator_ItemLinks_ShouldIncludeCollectionLink()
     {
         // Act
-        var response = await _fixture.Client.GetAsync("/api/v1/organization");
+        var response = await _fixture.Client.GetAsync("/api/organization");
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -175,7 +175,7 @@ public class HateoasLinkGeneratorTests
             {
                 await Assert.That(itemLinks.TryGetProperty("collection", out var collectionLink)).IsTrue();
                 var href = collectionLink.GetProperty("href").GetString();
-                await Assert.That(href).IsEqualTo("/api/v1/organization");
+                await Assert.That(href).IsEqualTo("/api/organization");
             }
         }
     }
@@ -188,7 +188,7 @@ public class HateoasLinkGeneratorTests
     public async Task LinkGenerator_AllLinks_ShouldStartWithSlash()
     {
         // Act
-        var response = await _fixture.Client.GetAsync("/api/v1/organization");
+        var response = await _fixture.Client.GetAsync("/api/organization");
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -210,7 +210,7 @@ public class HateoasLinkGeneratorTests
     public async Task LinkGenerator_AllLinks_ShouldNotBeAbsoluteUrls()
     {
         // Act
-        var response = await _fixture.Client.GetAsync("/api/v1/organization");
+        var response = await _fixture.Client.GetAsync("/api/organization");
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -238,7 +238,7 @@ public class HateoasLinkGeneratorTests
     public async Task LinkGenerator_SelfLink_ShouldHaveGetMethod()
     {
         // Act
-        var response = await _fixture.Client.GetAsync("/api/v1/organization");
+        var response = await _fixture.Client.GetAsync("/api/organization");
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -262,7 +262,7 @@ public class HateoasLinkGeneratorTests
     public async Task LinkGenerator_Events_ShouldHaveSessionsLink()
     {
         // Act
-        var response = await _fixture.Client.GetAsync("/api/v1/event");
+        var response = await _fixture.Client.GetAsync("/api/event");
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -281,7 +281,7 @@ public class HateoasLinkGeneratorTests
                 if (itemLinks.TryGetProperty("sessions", out var sessionsLink))
                 {
                     var href = sessionsLink.GetProperty("href").GetString();
-                    await Assert.That(href).Contains("/api/v1/eventsession/by-event/");
+                    await Assert.That(href).Contains("/api/eventsession/by-event/");
                 }
             }
         }
@@ -291,7 +291,7 @@ public class HateoasLinkGeneratorTests
     public async Task LinkGenerator_EventSessions_ShouldHaveEventLink()
     {
         // Act
-        var response = await _fixture.Client.GetAsync("/api/v1/eventsession");
+        var response = await _fixture.Client.GetAsync("/api/eventsession");
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -310,7 +310,7 @@ public class HateoasLinkGeneratorTests
                 if (itemLinks.TryGetProperty("event", out var eventLink))
                 {
                     var href = eventLink.GetProperty("href").GetString();
-                    await Assert.That(href).Contains("/api/v1/event/");
+                    await Assert.That(href).Contains("/api/event/");
                 }
             }
         }
@@ -320,7 +320,7 @@ public class HateoasLinkGeneratorTests
     public async Task LinkGenerator_Categories_ShouldHaveChildrenLink()
     {
         // Act
-        var response = await _fixture.Client.GetAsync("/api/v1/category");
+        var response = await _fixture.Client.GetAsync("/api/category");
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -339,7 +339,7 @@ public class HateoasLinkGeneratorTests
                 if (itemLinks.TryGetProperty("children", out var childrenLink))
                 {
                     var href = childrenLink.GetProperty("href").GetString();
-                    await Assert.That(href).Contains("/api/v1/category/children/");
+                    await Assert.That(href).Contains("/api/category/children/");
                 }
             }
         }

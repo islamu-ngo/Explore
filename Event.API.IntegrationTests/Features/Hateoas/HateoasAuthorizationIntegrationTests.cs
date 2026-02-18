@@ -30,8 +30,8 @@ public class HateoasAuthorizationIntegrationTests
     #region Anonymous Link Filtering
 
     [Test]
-    [Arguments("/api/v1/organization")]
-    [Arguments("/api/v1/event")]
+    [Arguments("/api/organization")]
+    [Arguments("/api/event")]
     public async Task GetAll_Anonymous_ShouldNotIncludeCreateLink(string endpoint)
     {
         // Arrange — no X-Test-Auth header = anonymous
@@ -55,8 +55,8 @@ public class HateoasAuthorizationIntegrationTests
     }
 
     [Test]
-    [Arguments("/api/v1/organization")]
-    [Arguments("/api/v1/event")]
+    [Arguments("/api/organization")]
+    [Arguments("/api/event")]
     public async Task GetAll_Anonymous_ShouldIncludePublicLinks(string endpoint)
     {
         // Arrange — no X-Test-Auth header = anonymous
@@ -84,8 +84,8 @@ public class HateoasAuthorizationIntegrationTests
     #region Authenticated Link Filtering
 
     [Test]
-    [Arguments("/api/v1/organization")]
-    [Arguments("/api/v1/event")]
+    [Arguments("/api/organization")]
+    [Arguments("/api/event")]
     public async Task GetAll_Authenticated_ShouldIncludeCreateLink(string endpoint)
     {
         // Arrange — authenticated user via X-Test-Auth header
@@ -117,7 +117,7 @@ public class HateoasAuthorizationIntegrationTests
     public async Task GetAll_Authenticated_ShouldIncludePublicLinks()
     {
         // Arrange — authenticated user via X-Test-Auth header
-        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organization");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/organization");
         request.Headers.Add(TestAuthHandler.AuthHeaderName,
             TestAuthHandler.CreateAuthHeaderValue(Guid.NewGuid(), "Auth User"));
 
@@ -146,7 +146,7 @@ public class HateoasAuthorizationIntegrationTests
     public async Task GetAll_Authenticated_WithPreferMinimal_ShouldStripItemLinks()
     {
         // Arrange — authenticated user with minimal preference via X-Test-Auth header
-        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organization");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/organization");
         request.Headers.Add(TestAuthHandler.AuthHeaderName,
             TestAuthHandler.CreateAuthHeaderValue(Guid.NewGuid(), "Auth User"));
         request.Headers.Add("Prefer", "return=minimal");
@@ -183,7 +183,7 @@ public class HateoasAuthorizationIntegrationTests
     public async Task ErrorResponse_WithoutAuth_ShouldNotLeakHateoasStructure()
     {
         // Arrange — POST without auth (no X-Test-Auth header) should return 401
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/organization")
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/organization")
         {
             Content = JsonContent.Create(new { FullName = "Test" })
         };

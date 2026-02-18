@@ -1,6 +1,7 @@
 // ABOUTME: Handles first-run instance onboarding completion, role assignment, and governance persistence.
 // ABOUTME: Establishes the first instance admin and default tenant admin mapping for a clean database.
 
+using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
@@ -24,6 +25,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
     private readonly ITenantSettingsRepository _tenantSettingsRepository;
     private readonly IInstanceGovernanceSettingService _governanceSettingService;
     private readonly ISetupSecretProvider _setupSecretProvider;
+    private readonly IAdminCacheInvalidator _adminCacheInvalidator;
 
     public CompleteInstanceOnboardingCommandHandler(
         IInstanceBootstrapStateRepository instanceBootstrapStateRepository,
@@ -34,7 +36,8 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         ITenantRepository tenantRepository,
         ITenantSettingsRepository tenantSettingsRepository,
         IInstanceGovernanceSettingService governanceSettingService,
-        ISetupSecretProvider setupSecretProvider)
+        ISetupSecretProvider setupSecretProvider,
+        IAdminCacheInvalidator adminCacheInvalidator)
     {
         _instanceBootstrapStateRepository = instanceBootstrapStateRepository;
         _userRoleRepository = userRoleRepository;
@@ -45,6 +48,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         _tenantSettingsRepository = tenantSettingsRepository;
         _governanceSettingService = governanceSettingService;
         _setupSecretProvider = setupSecretProvider;
+        _adminCacheInvalidator = adminCacheInvalidator;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(CompleteInstanceOnboardingCommand request, CancellationToken cancellationToken)
@@ -86,6 +90,10 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
 
         await EnsurePlatformAdministratorRoleAsync(request.UserId);
         await EnsureDefaultTenantAdministratorAsync(defaultTenant.Id, request.UserId);
+
+        // Invalidate cached admin status so the new roles are recognized immediately
+        // without waiting for the 5-minute sliding cache expiration.
+        _adminCacheInvalidator.InvalidateUser(request.UserId);
 
         if (bootstrap == null)
         {

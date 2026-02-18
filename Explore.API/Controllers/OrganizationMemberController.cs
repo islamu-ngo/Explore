@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using Asp.Versioning;
 using Explore.Application.DTOs.OrganizationMember;
 using Explore.Application.Features.OrganizationMembers.Requests.Commands;
 using Explore.Application.Features.OrganizationMembers.Requests.Queries;
@@ -13,7 +14,8 @@ using Microsoft.AspNetCore.OutputCaching;
 
 namespace Explore.API.Controllers;
 
-[Route("api/v1/[controller]")]
+[ApiVersion("0.1")]
+[Route("api/[controller]")]
 [ApiController]
 [Authorize]
 public class OrganizationMemberController : ControllerBase

@@ -23,6 +23,13 @@ public interface IAdminContext
     Task<bool> IsInstanceAdminAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets whether the specified user is an Instance Administrator.
+    /// Use this overload when the caller already knows the userId (e.g. during claims transformation
+    /// where HttpContext.User is not yet set to the authenticated principal).
+    /// </summary>
+    Task<bool> IsInstanceAdminAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets whether the current user is a Tenant Administrator for the specified tenant.
     /// Resolved strictly from tenant membership assignments.
     /// </summary>
@@ -40,7 +47,19 @@ public interface IAdminContext
     Task<IReadOnlyList<Guid>> GetAdminTenantIdsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets all tenant IDs where the specified user has administrative rights.
+    /// Use this overload when the caller already knows the userId.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetAdminTenantIdsAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets all organization IDs where the current user has administrative rights.
     /// </summary>
     Task<IReadOnlyList<Guid>> GetAdminOrganizationIdsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets all organization IDs where the specified user has administrative rights.
+    /// Use this overload when the caller already knows the userId.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetAdminOrganizationIdsAsync(Guid userId, CancellationToken cancellationToken = default);
 }
