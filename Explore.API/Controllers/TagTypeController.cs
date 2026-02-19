@@ -20,7 +20,7 @@ public class TagTypeController : ControllerBase
         _mediator = mediator;
     }
 
-    // GET: api/v1/tagtype
+    // GET: api/tagtype
     [HttpGet]
     [AllowAnonymous]
     [OutputCache(PolicyName = "LookupData")]
@@ -30,7 +30,7 @@ public class TagTypeController : ControllerBase
         return Ok(tagTypes);
     }
 
-    // GET: api/v1/tagtype/{id}
+    // GET: api/tagtype/{id}
     [HttpGet("{id}")]
     [AllowAnonymous]
     [OutputCache(PolicyName = "DetailData")]

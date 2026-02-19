@@ -181,7 +181,7 @@ A fully enterprise-grade API with:
   - [ ] All controllers decorated with `[ApiVersion("1.0")]`
   - [ ] `Asp.Versioning` package registered
   - [ ] OpenAPI docs show version info
-  - [ ] Existing `api/v1/` URLs continue to work identically
+  - [ ] Existing `api/` URLs continue to work identically
   - [ ] Architecture test validating all controllers have `[ApiVersion]`
   - [ ] Integration test for version negotiation
 - **Effort**: M
@@ -445,7 +445,7 @@ A fully enterprise-grade API with:
 
 **Most likely failure point**: **Task 3.3 (Idempotency Keys)** is the highest-complexity task. The interaction between `IdempotencyMiddleware`, `HybridCache`, and the database persistence layer is non-trivial. Edge cases include: partial failures (request processed but response not cached), concurrent identical requests racing, and serialization of diverse response types. The TTL cleanup also needs a background service. **Recommendation**: Start with a simpler in-memory-only idempotency check (using `HybridCache` alone, no DB table) and add persistence later if needed.
 
-**Second risk area**: **Task 3.1 (API Versioning)** has a deceptively large blast radius. Every controller file needs modification, and the route templates change from `[Route("api/v1/[controller]")]` to `[Route("api/v{version:apiVersion}/[controller]")]`. This touches 40+ controllers. While the change is mechanical, any typo breaks the endpoint. **Mitigation**: Write the architecture test first (Task 6.3), then apply changes systematically.
+**Second risk area**: **Task 3.1 (API Versioning)** has a deceptively large blast radius. Every controller file needs modification, and the route templates change from `[Route("api/[controller]")]` to `[Route("api/v{version:apiVersion}/[controller]")]`. This touches 40+ controllers. While the change is mechanical, any typo breaks the endpoint. **Mitigation**: Write the architecture test first (Task 6.3), then apply changes systematically.
 
 **Third risk area**: **Task 5.2 (Optimistic Concurrency)** could break existing update flows if clients don't send the `RowVersion` back. PostgreSQL's `xmin` is auto-managed but requires EF Core-specific configuration with the Npgsql provider. This needs careful testing with the existing integration test suite.
 

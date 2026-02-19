@@ -215,7 +215,7 @@ dotnet build
 dotnet run --project Explore.AppHost
 
 # Regenerate NSwag client (if needed)
-nswag openapi2csclient /input:https://localhost:7039/swagger/v1/swagger.json /output:Explore.Blazor.Client/Clients/EventApiClient.g.cs /namespace:Explore.Blazor.Client.Clients /classname:EventApiClient
+nswag openapi2csclient /input:https://localhost:7039/swagger/swagger.json /output:Explore.Blazor.Client/Clients/EventApiClient.g.cs /namespace:Explore.Blazor.Client.Clients /classname:EventApiClient
 ```
 
 ---

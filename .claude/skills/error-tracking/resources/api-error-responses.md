@@ -43,7 +43,7 @@ Add extensions for operational tracing:
   "title": "Validation failed",
   "status": 400,
   "detail": "One or more validation errors occurred.",
-  "instance": "/api/v1/events",
+  "instance": "/api/events",
   "traceId": "00-1f6...",
   "errors": {
     "title": ["Title is required"],

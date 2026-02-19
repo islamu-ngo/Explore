@@ -44,7 +44,7 @@ Current Flow:
 └─────────────────┘    └─────────────────┘    └─────────────────┘
         │                      │
         │ HttpClient           │ HttpClient + Token
-        │ /bff/api/*           │ api/v1/*
+        │ /bff/api/*           │ api/*
         └──────────────────────┘
 
 Services use: HttpClient.GetFromJsonAsync("/bff/api/Event")
@@ -440,7 +440,7 @@ If API changes, regenerate the client:
 
 ```bash
 # Using NSwag CLI
-nswag openapi2csclient /input:https://localhost:7039/swagger/v1/swagger.json /output:Clients/EventApiClient.g.cs /namespace:Explore.Blazor.Client.Clients /classname:EventApiClient
+nswag openapi2csclient /input:https://localhost:7039/swagger/swagger.json /output:Clients/EventApiClient.g.cs /namespace:Explore.Blazor.Client.Clients /classname:EventApiClient
 ```
 
 Or configure in `.csproj` for build-time generation.

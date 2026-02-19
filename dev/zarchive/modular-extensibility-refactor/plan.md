@@ -189,11 +189,11 @@ var allEvents = await _dbContext.Events
 **2.6 Create Settings Controller**
 - Location: `Explore.API/Controllers/SettingsController.cs`
 - Endpoints:
-  - `GET /api/v1/settings/{key}` - Get resolved setting value
-  - `GET /api/v1/settings/system` - List all system settings (Admin only)
-  - `PUT /api/v1/settings/system/{key}` - Upsert system setting (Admin only)
-  - `PUT /api/v1/settings/tenant/{key}` - Upsert tenant setting (Tenant Admin)
-  - `POST /api/v1/settings/system/{key}/lock` - Lock setting (Admin only)
+  - `GET /api/settings/{key}` - Get resolved setting value
+  - `GET /api/settings/system` - List all system settings (Admin only)
+  - `PUT /api/settings/system/{key}` - Upsert system setting (Admin only)
+  - `PUT /api/settings/tenant/{key}` - Upsert tenant setting (Tenant Admin)
+  - `POST /api/settings/system/{key}/lock` - Lock setting (Admin only)
 - Acceptance: All endpoints functional with proper authorization
 
 ---
@@ -321,7 +321,7 @@ var allEvents = await _dbContext.Events
 
 **4.3 Create Module Discovery Endpoint**
 - Location: `Explore.API/Controllers/ModulesController.cs`
-- `GET /api/v1/modules/available` - Returns modules enabled for current tenant
+- `GET /api/modules/available` - Returns modules enabled for current tenant
 - Response includes:
   - Module key, name, description
   - Wizard schema URL for dynamic forms
@@ -498,15 +498,15 @@ var allEvents = await _dbContext.Events
 
 **8.1 Update Event Link Policy**
 - Add aspect-specific detail links:
-  - `self` → `/api/v1/events/{id}`
-  - `islamic-details` → `/api/v1/events/{id}/islamic` (if aspect exists)
-  - `tech-details` → `/api/v1/events/{id}/tech` (if aspect exists)
+  - `self` → `/api/events/{id}`
+  - `islamic-details` → `/api/events/{id}/islamic` (if aspect exists)
+  - `tech-details` → `/api/events/{id}/tech` (if aspect exists)
 - Acceptance: Links generated based on available aspects
 
 **8.2 Create Aspect Detail Endpoints**
-- `GET /api/v1/events/{id}/islamic` - Get Islamic aspect only
-- `PUT /api/v1/events/{id}/islamic` - Update Islamic aspect
-- `DELETE /api/v1/events/{id}/islamic` - Remove Islamic aspect
+- `GET /api/events/{id}/islamic` - Get Islamic aspect only
+- `PUT /api/events/{id}/islamic` - Update Islamic aspect
+- `DELETE /api/events/{id}/islamic` - Remove Islamic aspect
 - Same for Tech aspect
 - Acceptance: Dedicated aspect endpoints work
 
@@ -517,8 +517,8 @@ var allEvents = await _dbContext.Events
 - Acceptance: Scalar docs show all endpoints
 
 **8.4 Add Query Filtering by Aspects**
-- `GET /api/v1/events?aspect=Islamic` - Filter by aspect presence
-- `GET /api/v1/events?madhab=Hanafi` - Filter by aspect property
+- `GET /api/events?aspect=Islamic` - Filter by aspect presence
+- `GET /api/events?madhab=Hanafi` - Filter by aspect property
 - Use Query Specification pattern for dynamic filters
 - Acceptance: Filtering works efficiently
 

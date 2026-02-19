@@ -584,8 +584,8 @@ Instead of the API returning one big object, the API returns the **Core Event** 
 
 * **UI Logic:**
 1. UI receives event.
-2. UI sees "Islamic" in aspects -> Calls `GET /api/v1/events/100/islamic-details`
-3. UI sees "Tech" in aspects -> Calls `GET /api/v1/events/100/tech-details`
+2. UI sees "Islamic" in aspects -> Calls `GET /api/events/100/islamic-details`
+3. UI sees "Tech" in aspects -> Calls `GET /api/events/100/tech-details`
 
 
 

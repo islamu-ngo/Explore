@@ -84,7 +84,7 @@ public string? MetadataJson { get; set; }
 
 ### 4.2 API Discovery Endpoint
 
-* **`GET /api/v1/modules/available`**: Returns only modules enabled for the current `TenantId`.
+* **`GET /api/modules/available`**: Returns only modules enabled for the current `TenantId`.
 * This drives the **Dynamic Step Sequencer** in the UI.
 
 ---

@@ -33,7 +33,7 @@ public class HalResourceTests
         var dto = new TestDto(Guid.NewGuid(), "Test", "Description");
         var links = new Dictionary<string, HalLink>
         {
-            [LinkRelations.Self] = HalLink.Create("/api/v1/test/123")
+            [LinkRelations.Self] = HalLink.Create("/api/test/123")
         };
 
         // Act
@@ -53,7 +53,7 @@ public class HalResourceTests
         var resource = new HalResource<TestDto>(dto);
 
         // Act
-        resource.WithLink("custom", HalLink.Create("/api/v1/custom"));
+        resource.WithLink("custom", HalLink.Create("/api/custom"));
 
         // Assert
         await Assert.That(resource.Links.Count).IsEqualTo(1);
@@ -68,12 +68,12 @@ public class HalResourceTests
         var resource = new HalResource<TestDto>(dto);
 
         // Act
-        resource.WithSelfLink("/api/v1/test/123");
+        resource.WithSelfLink("/api/test/123");
 
         // Assert
         await Assert.That(resource.Links.Count).IsEqualTo(1);
         await Assert.That(resource.Links.ContainsKey(LinkRelations.Self)).IsTrue();
-        await Assert.That(resource.Links[LinkRelations.Self].Href).IsEqualTo("/api/v1/test/123");
+        await Assert.That(resource.Links[LinkRelations.Self].Href).IsEqualTo("/api/test/123");
     }
 
     [Test]
@@ -101,9 +101,9 @@ public class HalResourceTests
 
         // Act
         resource
-            .WithSelfLink("/api/v1/test/123")
-            .WithLink(LinkRelations.Collection, HalLink.Create("/api/v1/test"))
-            .WithLink(LinkRelations.Edit, HalLink.CreateAction("/api/v1/test/123", "PUT"));
+            .WithSelfLink("/api/test/123")
+            .WithLink(LinkRelations.Collection, HalLink.Create("/api/test"))
+            .WithLink(LinkRelations.Edit, HalLink.CreateAction("/api/test/123", "PUT"));
 
         // Assert
         await Assert.That(resource.Links.Count).IsEqualTo(3);

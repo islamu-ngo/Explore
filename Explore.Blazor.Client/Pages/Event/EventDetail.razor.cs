@@ -1,7 +1,7 @@
 using Blazouter.Services;
 using Explore.Blazor.Client.Clients;
-using Explore.Blazor.Client.Components.Event;
 using Explore.Blazor.Client.Helpers;
+using Explore.Blazor.Client.Serialization;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Contracts;
 using Microsoft.AspNetCore.Components;
@@ -16,6 +16,8 @@ namespace Explore.Blazor.Client.Pages.Event;
 /// </summary>
 public partial class EventDetail : ComponentBase
 {
+    private const string EventStateKey = "event-detail.state";
+
     [Inject] private NavigationManager Navigation { get; set; } = default!;
     [Inject] private IEventService EventService { get; set; } = default!;
     [Inject] private IDialogService DialogService { get; set; } = default!;
@@ -24,6 +26,7 @@ public partial class EventDetail : ComponentBase
     [Inject] private IUserService UserService { get; set; } = default!;
     [Inject] private Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
     [Inject] private IEventAspectService EventAspectService { get; set; } = default!;
+    [Inject] private PersistentComponentState ComponentState { get; set; } = default!;
 
     // Changed from private to protected to be accessible by Razor view
     [Inject] protected ILogger<EventDetail> Logger { get; set; } = default!;
@@ -58,6 +61,12 @@ public partial class EventDetail : ComponentBase
         {
             EventId = id;
         }
+
+        if (TryRestoreState())
+        {
+            return;
+        }
+
         await LoadEventDataAsync();
     }
 
@@ -104,6 +113,80 @@ public partial class EventDetail : ComponentBase
             _isCheckingRegistration = false;
             _isCheckingAuth = false;
         }
+
+        if (_eventDetails != null)
+        {
+            PersistState();
+        }
+    }
+
+    private bool TryRestoreState()
+    {
+        if (!ComponentState.TryTakeFromJson<EventDetailState>(EventStateKey, out var state) || state == null)
+        {
+            return false;
+        }
+
+        EventId = state.EventId;
+        _eventDetails = state.EventDetails;
+        _eventSessions = state.EventSessions;
+        _primarySession = state.PrimarySession;
+        _islamicAspect = state.IslamicAspect;
+        _techAspect = state.TechAspect;
+        _appearance = state.Appearance ?? new EventAppearanceSettings();
+        _isLoading = false;
+        _isCheckingRegistration = true;
+        _isCheckingAuth = true;
+
+        _ = InvokeAsync(async () =>
+        {
+            var registrationTask = CheckRegistrationStatusAsync();
+            var authTask = CheckDeleteAuthorizationAsync();
+            await Task.WhenAll(registrationTask, authTask);
+            _isCheckingRegistration = false;
+            _isCheckingAuth = false;
+            StateHasChanged();
+        });
+
+        return true;
+    }
+
+    private void PersistState()
+    {
+        var state = new EventDetailState
+        {
+            EventId = EventId,
+            EventDetails = _eventDetails,
+            EventSessions = _eventSessions?.ToList() ?? new List<EventSessionListDto>(),
+            PrimarySession = _primarySession,
+            IslamicAspect = _islamicAspect,
+            TechAspect = _techAspect,
+            Appearance = _appearance
+        };
+
+        ComponentState.PersistAsJson(EventStateKey, state);
+    }
+
+    internal sealed class EventDetailState
+    {
+        public Guid EventId { get; init; }
+        public EventDto? EventDetails { get; init; }
+        public List<EventSessionListDto> EventSessions { get; init; } = new();
+        public EventSessionListDto? PrimarySession { get; init; }
+        public EventIslamicAspectDto? IslamicAspect { get; init; }
+        public EventTechAspectDto? TechAspect { get; init; }
+        public EventAppearanceSettings? Appearance { get; init; }
+    }
+
+    private static Type ResolveComponentType(string componentTypeName)
+    {
+        var type = Type.GetType(componentTypeName, throwOnError: false);
+        if (type != null)
+        {
+            return type;
+        }
+
+        throw new InvalidOperationException($"Component type '{componentTypeName}' was not found.");
     }
 
     /// <summary>
@@ -397,11 +480,11 @@ public partial class EventDetail : ComponentBase
                 Position = DialogPosition.Center
             };
 
-            var dialog = await DialogService.ShowAsync<Explore.Blazor.Client.Components.Event.SessionSelectionDialog>(
+            var dialog = DialogService.Show(
+                ResolveComponentType("Explore.Blazor.Client.Components.Event.SessionSelectionDialog"),
                 "Select Session",
                 parameters,
-                options
-            );
+                options);
 
             var result = await dialog.Result;
 
@@ -446,11 +529,11 @@ public partial class EventDetail : ComponentBase
             Position = DialogPosition.Center
         };
 
-        var dialog = await DialogService.ShowAsync<Components.EventRegistration>(
+        var dialog = DialogService.Show(
+            ResolveComponentType("Explore.Blazor.Client.Components.EventRegistration"),
             "Register",
             parameters,
-            options
-        );
+            options);
 
         var result = await dialog.Result;
 
@@ -543,7 +626,11 @@ public partial class EventDetail : ComponentBase
             FullWidth = true
         };
 
-        var dialog = await DialogService.ShowAsync<DeleteEventDialog>("Delete Event", parameters, options);
+        var dialog = DialogService.Show(
+            ResolveComponentType("Explore.Blazor.Client.Components.Event.DeleteEventDialog"),
+            "Delete Event",
+            parameters,
+            options);
         var result = await dialog.Result;
 
         if (result != null && !result.Canceled)
@@ -590,7 +677,8 @@ public partial class EventDetail : ComponentBase
             FullWidth = true
         };
 
-        var dialog = await DialogService.ShowAsync<IslamicAspectEditDialog>(
+        var dialog = DialogService.Show(
+            ResolveComponentType("Explore.Blazor.Client.Components.Event.IslamicAspectEditDialog"),
             existingAspect == null ? "Add Islamic Characteristics" : "Edit Islamic Characteristics",
             parameters,
             options);
@@ -638,7 +726,8 @@ public partial class EventDetail : ComponentBase
             FullWidth = true
         };
 
-        var dialog = await DialogService.ShowAsync<TechAspectEditDialog>(
+        var dialog = DialogService.Show(
+            ResolveComponentType("Explore.Blazor.Client.Components.Event.TechAspectEditDialog"),
             existingAspect == null ? "Add Tech Characteristics" : "Edit Tech Characteristics",
             parameters,
             options);

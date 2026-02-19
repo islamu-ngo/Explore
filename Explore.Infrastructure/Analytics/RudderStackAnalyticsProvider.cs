@@ -29,7 +29,7 @@ public class RudderStackAnalyticsProvider : IAnalyticsProvider
 
     public Task IdentifyAsync(string distinctId, IDictionary<string, object>? traits = null, CancellationToken cancellationToken = default)
     {
-        return SendAsync("/v1/identify", new
+        return SendAsync("/identify", new
         {
             userId = distinctId,
             traits = traits ?? new Dictionary<string, object>()
@@ -38,7 +38,7 @@ public class RudderStackAnalyticsProvider : IAnalyticsProvider
 
     public Task TrackAsync(string distinctId, string eventName, IDictionary<string, object>? properties = null, CancellationToken cancellationToken = default)
     {
-        return SendAsync("/v1/track", new
+        return SendAsync("/track", new
         {
             userId = distinctId,
             @event = eventName,
@@ -48,7 +48,7 @@ public class RudderStackAnalyticsProvider : IAnalyticsProvider
 
     public Task PageViewAsync(string distinctId, string pagePath, IDictionary<string, object>? properties = null, CancellationToken cancellationToken = default)
     {
-        return SendAsync("/v1/page", new
+        return SendAsync("/page", new
         {
             userId = distinctId,
             name = pagePath,
@@ -58,7 +58,7 @@ public class RudderStackAnalyticsProvider : IAnalyticsProvider
 
     public Task GroupIdentifyAsync(string groupType, string groupKey, IDictionary<string, object>? properties = null, CancellationToken cancellationToken = default)
     {
-        return SendAsync("/v1/group", new
+        return SendAsync("/group", new
         {
             userId = groupKey,
             groupId = groupKey,

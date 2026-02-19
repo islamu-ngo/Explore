@@ -75,7 +75,7 @@
 - **DI registration**: ICapabilityCeilingService + IPermissionRegistryService registered in ApplicationServicesRegistration
 - **Serialization context**: PermissionDto, PermissionListDto, RolePermissionDto added to ExploreJsonContext (all 6 variant sections × 3 types = 18 entries)
 - **AutoMapper**: Permission→PermissionDto and Permission→PermissionListDto mappings added to MappingProfile
-- **Phase 5.1**: RoleController created (unified GET /api/v1/role with scope filter, GET /api/v1/role/{id})
+- **Phase 5.1**: RoleController created (unified GET /api/role with scope filter, GET /api/role/{id})
 
 ### Completed (Session 8 — Legacy Code Cleanup + Permission-Based Auth Refactoring)
 - **Legacy code removal** from 12+ files (all OrganizationRole/UserRole/TenantAdministratorRole references):

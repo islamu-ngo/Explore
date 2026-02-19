@@ -3,7 +3,7 @@
 @using Explore.Blazor.Client.Services.Contracts
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
-@attribute [StreamRendering]
+@rendermode @(new InteractiveAutoRenderMode(prerender: false))
 
 <MudText Typo="Typo.h4" GutterBottom="true">Event Statuses</MudText>
 

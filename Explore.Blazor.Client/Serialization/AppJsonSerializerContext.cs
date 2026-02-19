@@ -4,6 +4,7 @@
 
 using System.Text.Json.Serialization;
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Pages.Event;
 using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Models.Responses;
 
@@ -69,6 +70,7 @@ namespace Explore.Blazor.Client.Serialization;
 [JsonSerializable(typeof(EventFormatListDto))]
 [JsonSerializable(typeof(EventIslamicAspectDto))]
 [JsonSerializable(typeof(EventListDto))]
+[JsonSerializable(typeof(EventDetail.EventDetailState))]
 [JsonSerializable(typeof(EventRegistrationDto))]
 [JsonSerializable(typeof(EventRegistrationListDto))]
 [JsonSerializable(typeof(EventSessionAgendaItemDto))]

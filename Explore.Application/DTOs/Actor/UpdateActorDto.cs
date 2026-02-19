@@ -4,7 +4,7 @@ namespace Explore.Application.DTOs.Actor;
 
 /// <summary>
 /// Update Actor payload (Id required)
-/// Used for PUT /api/v1/actor/{id}
+/// Used for PUT /api/actor/{id}
 /// Note: UserId and OrganizationId cannot be changed after creation.
 /// The Actor's ownership (User or Organization) is immutable.
 /// </summary>

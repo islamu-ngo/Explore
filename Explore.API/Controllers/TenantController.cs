@@ -30,7 +30,7 @@ public class TenantController : ControllerBase
         _mediator = mediator;
     }
 
-    // GET: api/v1/tenant
+    // GET: api/tenant
     [HttpGet]
     [EndpointSummary("Get all Tenants")]
     [EndpointDescription("Retrieve a list of all tenants")]
@@ -43,7 +43,7 @@ public class TenantController : ControllerBase
         return Ok(tenants);
     }
 
-    // GET: api/v1/tenant/{id}
+    // GET: api/tenant/{id}
     [HttpGet("{id}")]
     [EndpointSummary("Get Tenant by ID")]
     [EndpointDescription("Retrieve details of a specific tenant")]
@@ -62,7 +62,7 @@ public class TenantController : ControllerBase
         return Ok(tenant);
     }
 
-    // POST: api/v1/tenant
+    // POST: api/tenant
     [HttpPost]
     [EndpointSummary("Create new Tenant")]
     [EndpointDescription("Create a new tenant")]
@@ -82,7 +82,7 @@ public class TenantController : ControllerBase
         return Ok(response);
     }
 
-    // PUT: api/v1/tenant/{id}
+    // PUT: api/tenant/{id}
     [HttpPut("{id}")]
     [EndpointSummary("Update Tenant")]
     [EndpointDescription("Update an existing tenant")]
@@ -108,7 +108,7 @@ public class TenantController : ControllerBase
         return Ok(response);
     }
 
-    // DELETE: api/v1/tenant/{id}
+    // DELETE: api/tenant/{id}
     [HttpDelete("{id}")]
     [EndpointSummary("Delete Tenant")]
     [EndpointDescription("Delete a tenant")]
@@ -128,7 +128,7 @@ public class TenantController : ControllerBase
         return NoContent();
     }
 
-    // GET: api/v1/tenant/navigation
+    // GET: api/tenant/navigation
     [HttpGet("navigation")]
     [EndpointSummary("Get Tenant Navigation Links")]
     [EndpointDescription("Retrieve all navigation links for the current tenant")]
@@ -141,7 +141,7 @@ public class TenantController : ControllerBase
         return Ok(links);
     }
 
-    // POST: api/v1/tenant/navigation
+    // POST: api/tenant/navigation
     [HttpPost("navigation")]
     [EndpointSummary("Create Tenant Navigation Link")]
     [EndpointDescription("Create a new navigation link for the tenant")]
@@ -167,7 +167,7 @@ public class TenantController : ControllerBase
         return Ok(response);
     }
 
-    // PUT: api/v1/tenant/navigation/{id}
+    // PUT: api/tenant/navigation/{id}
     [HttpPut("navigation/{id}")]
     [EndpointSummary("Update Tenant Navigation Link")]
     [EndpointDescription("Update an existing navigation link")]
@@ -200,7 +200,7 @@ public class TenantController : ControllerBase
         return Ok(response);
     }
 
-    // DELETE: api/v1/tenant/navigation/{id}
+    // DELETE: api/tenant/navigation/{id}
     [HttpDelete("navigation/{id}")]
     [EndpointSummary("Delete Tenant Navigation Link")]
     [EndpointDescription("Delete a navigation link")]
@@ -226,7 +226,7 @@ public class TenantController : ControllerBase
         return Ok(response);
     }
 
-    // PUT: api/v1/tenant/navigation/reorder
+    // PUT: api/tenant/navigation/reorder
     [HttpPut("navigation/reorder")]
     [EndpointSummary("Reorder Tenant Navigation Links")]
     [EndpointDescription("Reorder multiple navigation links")]

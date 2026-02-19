@@ -4,7 +4,7 @@
 @using Explore.Blazor.Client.Components.Admin
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
-@attribute [StreamRendering]
+@rendermode @(new InteractiveAutoRenderMode(prerender: false))
 @inject ILocationService LocationService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar

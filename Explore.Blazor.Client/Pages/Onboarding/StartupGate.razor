@@ -5,6 +5,7 @@
 @inject IPublicExperienceService PublicExperienceService
 @inject NavigationManager Navigation
 @inject ILogger<StartupGate> Logger
+@rendermode @(new InteractiveAutoRenderMode(prerender: false))
 
 <MudContainer Class="d-flex justify-center align-center" Style="min-height: 60vh;">
     @if (!string.IsNullOrEmpty(_error))

@@ -20,7 +20,7 @@ apiV1.MapGet("/YourResource", async (HttpContext ctx) =>
     await BffApiExtensions.ExecuteAsync(
         () => ctx.GetApiClient().YourResourceAllAsync(),
         logger,
-        "GET /api/v1/YourResource"
+        "GET /api/YourResource"
     ));
 ```
 
@@ -30,7 +30,7 @@ apiV1.MapGet("/YourResource/{id}", async (Guid id, HttpContext ctx) =>
     await BffApiExtensions.ExecuteAsync(
         () => ctx.GetApiClient().YourResourceGETAsync(id),
         logger,
-        $"GET /api/v1/YourResource/{id}"
+        $"GET /api/YourResource/{id}"
     ));
 ```
 
@@ -45,7 +45,7 @@ apiV1.MapPost("/YourResource", async (HttpContext ctx) =>
     return await BffApiExtensions.ExecuteAsync(
         () => ctx.GetApiClient().YourResourcePOSTAsync(dto),
         logger,
-        "POST /api/v1/YourResource"
+        "POST /api/YourResource"
     );
 })
 .RequireAuthorization(); // Add if authentication required
@@ -62,7 +62,7 @@ apiV1.MapPut("/YourResource/{id}", async (Guid id, HttpContext ctx) =>
     return await BffApiExtensions.ExecuteAsync(
         () => ctx.GetApiClient().YourResourcePUTAsync(id, dto),
         logger,
-        $"PUT /api/v1/YourResource/{id}"
+        $"PUT /api/YourResource/{id}"
     );
 })
 .RequireAuthorization();
@@ -74,7 +74,7 @@ apiV1.MapDelete("/YourResource/{id}", async (Guid id, HttpContext ctx) =>
     await BffApiExtensions.ExecuteVoidAsync(
         () => ctx.GetApiClient().YourResourceDELETEAsync(id),
         logger,
-        $"DELETE /api/v1/YourResource/{id}"
+        $"DELETE /api/YourResource/{id}"
     ))
     .RequireAuthorization();
 ```
@@ -87,7 +87,7 @@ apiV1.MapGet("/Public", async (HttpContext ctx) =>
     await BffApiExtensions.ExecuteAsync(
         () => ctx.GetApiClient().PublicAsync(),
         logger,
-        "GET /api/v1/Public"
+        "GET /api/Public"
     ));
 ```
 
@@ -97,7 +97,7 @@ apiV1.MapGet("/Protected", async (HttpContext ctx) =>
     await BffApiExtensions.ExecuteAsync(
         () => ctx.GetApiClient().ProtectedAsync(),
         logger,
-        "GET /api/v1/Protected"
+        "GET /api/Protected"
     ))
     .RequireAuthorization(); // <-- Add this
 ```
@@ -108,7 +108,7 @@ apiV1.MapGet("/Search", async (string query, HttpContext ctx) =>
     await BffApiExtensions.ExecuteAsync(
         () => ctx.GetApiClient().SearchAsync(query),
         logger,
-        $"GET /api/v1/Search?query={query}"
+        $"GET /api/Search?query={query}"
     ));
 ```
 
@@ -118,7 +118,7 @@ apiV1.MapGet("/Filter", async (string category, int page, HttpContext ctx) =>
     await BffApiExtensions.ExecuteAsync(
         () => ctx.GetApiClient().FilterAsync(category, page),
         logger,
-        $"GET /api/v1/Filter?category={category}&page={page}"
+        $"GET /api/Filter?category={category}&page={page}"
     ));
 ```
 
@@ -159,11 +159,11 @@ All endpoints automatically log:
 
 Example log output:
 ```
-INFO: BFF: Executing GET /api/v1/YourResource
-INFO: BFF: GET /api/v1/YourResource completed successfully
+INFO: BFF: Executing GET /api/YourResource
+INFO: BFF: GET /api/YourResource completed successfully
 
 // or on error:
-ERROR: BFF: POST /api/v1/YourResource failed with status 400
+ERROR: BFF: POST /api/YourResource failed with status 400
 ```
 
 ## Testing Your Endpoint
@@ -171,10 +171,10 @@ ERROR: BFF: POST /api/v1/YourResource failed with status 400
 ### 1. Manual Testing (Browser/Postman)
 ```bash
 # Public endpoint
-GET https://localhost:7071/api/v1/YourResource
+GET https://localhost:7071/api/YourResource
 
 # Authenticated endpoint (requires login first)
-POST https://localhost:7071/api/v1/YourResource
+POST https://localhost:7071/api/YourResource
 Content-Type: application/json
 
 {
@@ -243,7 +243,7 @@ apiV1.MapGet("/Resource", async (HttpContext ctx) =>
     await BffApiExtensions.ExecuteAsync(
         () => ctx.GetApiClient().ResourceAllAsync(),
         logger,
-        "GET /api/v1/Resource"
+        "GET /api/Resource"
     ));
 ```
 
@@ -257,7 +257,7 @@ apiV1.MapPost("/Resource", async (HttpContext ctx) =>
     return await BffApiExtensions.ExecuteAsync(
         () => ctx.GetApiClient().ResourcePOSTAsync(dto),
         logger,
-        "POST /api/v1/Resource"
+        "POST /api/Resource"
     );
 })
 .RequireAuthorization();

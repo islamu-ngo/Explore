@@ -238,12 +238,12 @@ dotnet run
 The following endpoints are ready to use (implemented this session):
 
 ```
-GET    /api/v1/Event/{id}/aspects/islamic    - Get Islamic aspect
-PUT    /api/v1/Event/{id}/aspects/islamic    - Create/Update Islamic aspect
-DELETE /api/v1/Event/{id}/aspects/islamic    - Delete Islamic aspect
-GET    /api/v1/Event/{id}/aspects/tech       - Get Tech aspect
-PUT    /api/v1/Event/{id}/aspects/tech       - Create/Update Tech aspect
-DELETE /api/v1/Event/{id}/aspects/tech       - Delete Tech aspect
+GET    /api/Event/{id}/aspects/islamic    - Get Islamic aspect
+PUT    /api/Event/{id}/aspects/islamic    - Create/Update Islamic aspect
+DELETE /api/Event/{id}/aspects/islamic    - Delete Islamic aspect
+GET    /api/Event/{id}/aspects/tech       - Get Tech aspect
+PUT    /api/Event/{id}/aspects/tech       - Create/Update Tech aspect
+DELETE /api/Event/{id}/aspects/tech       - Delete Tech aspect
 ```
 
 **NSwag Client Methods** (should be generated):

@@ -58,7 +58,7 @@ Implementing two critical features for production readiness:
 ### Component Interaction
 
 ```
-HTTP Request (DELETE /api/v1/event/{id})
+HTTP Request (DELETE /api/event/{id})
     ↓
 EventController [Authorize]
     ↓

@@ -26,7 +26,7 @@ public class RoleController : ControllerBase
         _mediator = mediator;
     }
 
-    // GET: api/v1/role?scope=Organization
+    // GET: api/role?scope=Organization
     [HttpGet(Name = RouteNames.GetRoles)]
     [EndpointSummary("Get all Roles")]
     [EndpointDescription("Retrieve roles, optionally filtered by scope (Platform, Tenant, Organization). Returns all roles when no scope specified.")]
@@ -41,7 +41,7 @@ public class RoleController : ControllerBase
         return Ok(roles);
     }
 
-    // GET: api/v1/role/{id}
+    // GET: api/role/{id}
     [HttpGet("{id}", Name = RouteNames.GetRoleById)]
     [EndpointSummary("Get Role by ID")]
     [EndpointDescription("Retrieve details of a specific role including scope and system flag.")]

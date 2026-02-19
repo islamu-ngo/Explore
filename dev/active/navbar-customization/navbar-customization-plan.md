@@ -85,11 +85,11 @@ This plan details the implementation of a **Navbar Customization** feature for t
 ### Task 4.1: Update `TenantController`
 - **File**: `Explore.API/Controllers/TenantController.cs`
 - **Endpoints**:
-  - `GET /api/v1/tenant/navigation` (Anonymous/Public) - Cached 5-10m.
-  - `POST /api/v1/tenant/navigation` (Admin only)
-  - `PUT /api/v1/tenant/navigation/{id}` (Admin only)
-  - `DELETE /api/v1/tenant/navigation/{id}` (Admin only)
-  - `PUT /api/v1/tenant/navigation/reorder` (Admin only)
+  - `GET /api/tenant/navigation` (Anonymous/Public) - Cached 5-10m.
+  - `POST /api/tenant/navigation` (Admin only)
+  - `PUT /api/tenant/navigation/{id}` (Admin only)
+  - `DELETE /api/tenant/navigation/{id}` (Admin only)
+  - `PUT /api/tenant/navigation/reorder` (Admin only)
 
 ---
 

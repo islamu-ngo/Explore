@@ -23,7 +23,7 @@ public class AudienceGenderController : ControllerBase
         _mediator = mediator;
     }
 
-    // GET: api/v1/audiencegender
+    // GET: api/audiencegender
     [HttpGet]
     [EndpointSummary("Get all Audience Gender types")]
     [EndpointDescription("Retrieve a list of all audience gender types (Men-only, Women-only, Mixed, Family)")]
@@ -36,7 +36,7 @@ public class AudienceGenderController : ControllerBase
         return Ok(audienceGenders);
     }
 
-    // GET: api/v1/audiencegender/{id}
+    // GET: api/audiencegender/{id}
     [HttpGet("{id}")]
     [EndpointSummary("Get Audience Gender type by ID")]
     [EndpointDescription("Retrieve details of a specific audience gender type")]

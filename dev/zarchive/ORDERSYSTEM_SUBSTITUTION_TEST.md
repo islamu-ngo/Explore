@@ -107,7 +107,7 @@ public class CreateOrderCommand : IRequest<BaseCommandResponse<int>>
 
 ### Generic Template
 ```csharp
-[Route("api/v1/[controller]")]
+[Route("api/[controller]")]
 [ApiController]
 public class {Entity}Controller : ControllerBase
 {
@@ -133,7 +133,7 @@ public class {Entity}Controller : ControllerBase
 
 ### OrderSystem Implementation
 ```csharp
-[Route("api/v1/[controller]")]
+[Route("api/[controller]")]
 [ApiController]
 public class OrderController : ControllerBase
 {

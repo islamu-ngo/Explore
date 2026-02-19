@@ -3,7 +3,7 @@
 @using Microsoft.AspNetCore.Authorization
 @layout SetupLayout
 @attribute [Authorize]
-@attribute [StreamRendering]
+@rendermode @(new InteractiveAutoRenderMode(prerender: false))
 @inject IInstanceOnboardingService InstanceOnboardingService
 @inject IUserService UserService
 @inject NavigationManager Navigation
@@ -152,7 +152,7 @@
         var status = await InstanceOnboardingService.GetStatusAsync();
         if (status?.IsCompleted == true)
         {
-            Navigation.NavigateTo("/startup", forceLoad: true);
+            Navigation.NavigateTo("/startup");
             return;
         }
 
@@ -191,7 +191,7 @@
         if (response.Success)
         {
             Snackbar.Add("Instance onboarding completed.", Severity.Success);
-            Navigation.NavigateTo("/", forceLoad: true);
+            Navigation.NavigateTo("/");
             return;
         }
 

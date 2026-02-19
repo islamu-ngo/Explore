@@ -598,7 +598,7 @@ public class ImageStorageService : IImageStorageService
 
             // Get presigned URL from the API via BFF
             using var httpClient = _httpClientFactory.CreateClient("BffClient");
-            var response = await httpClient.GetAsync($"/api/v1/StorageObject/presigned-url-by-key/{objectKey}?expirationMinutes=60");
+            var response = await httpClient.GetAsync($"/api/StorageObject/presigned-url-by-key/{objectKey}?expirationMinutes=60");
 
             if (response.IsSuccessStatusCode)
             {
@@ -627,7 +627,7 @@ public class ImageStorageService : IImageStorageService
         try
         {
             using var httpClient = _httpClientFactory.CreateClient("BffClient");
-            var response = await httpClient.GetAsync($"/api/v1/StorageObject/{storageObjectId}/presigned-url?expirationMinutes=60");
+            var response = await httpClient.GetAsync($"/api/StorageObject/{storageObjectId}/presigned-url?expirationMinutes=60");
 
             if (response.IsSuccessStatusCode)
             {

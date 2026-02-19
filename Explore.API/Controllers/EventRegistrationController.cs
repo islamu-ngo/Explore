@@ -28,7 +28,7 @@ public class EventRegistrationController : ControllerBase
         _logger = logger;
     }
 
-    // GET: api/v1/eventregistration
+    // GET: api/eventregistration
     [HttpGet]
     [EndpointSummary("Get all Event Registrations")]
     [EndpointDescription("Retrieve a paginated list of all event registrations across all sessions. Default page size is 20, max is 100.")]
@@ -45,7 +45,7 @@ public class EventRegistrationController : ControllerBase
         return Ok(eventRegistrations);
     }
 
-    // GET: api/v1/eventregistration/{id}
+    // GET: api/eventregistration/{id}
     [HttpGet("{id}")]
     [EndpointSummary("Get Event Registration by ID")]
     [EndpointDescription("Retrieve details of a specific event registration including approval status")]
@@ -59,7 +59,7 @@ public class EventRegistrationController : ControllerBase
         return Ok(eventRegistration);
     }
 
-    // GET: api/v1/eventregistration/by-session/{eventSessionId}
+    // GET: api/eventregistration/by-session/{eventSessionId}
     [HttpGet("by-session/{eventSessionId}")]
     [EndpointSummary("Get Registrations by Event Session")]
     [EndpointDescription("Retrieve all user registrations for a specific event session")]
@@ -72,7 +72,7 @@ public class EventRegistrationController : ControllerBase
         return Ok(registrations);
     }
 
-    // GET: api/v1/eventregistration/by-user/{userId}
+    // GET: api/eventregistration/by-user/{userId}
     [HttpGet("by-user/{userId}")]
     [EndpointSummary("Get Registrations by User")]
     [EndpointDescription("Retrieve all event registrations for a specific user")]
@@ -84,7 +84,7 @@ public class EventRegistrationController : ControllerBase
         return Ok(registrations);
     }
 
-    // POST: api/v1/eventregistration
+    // POST: api/eventregistration
     [HttpPost]
     [EndpointSummary("Register User for Event Session")]
     [EndpointDescription("Create a new event registration (may require approval depending on registration mode)")]
@@ -99,7 +99,7 @@ public class EventRegistrationController : ControllerBase
         return Ok(response);
     }
 
-    // PUT: api/v1/eventregistration/{id}
+    // PUT: api/eventregistration/{id}
     [HttpPut("{id}")]
     [EndpointSummary("Update Event Registration")]
     [EndpointDescription("Update an existing event registration (e.g., change approval status)")]
@@ -126,7 +126,7 @@ public class EventRegistrationController : ControllerBase
         return Ok(response);
     }
 
-    // DELETE: api/v1/eventregistration/{id}
+    // DELETE: api/eventregistration/{id}
     [HttpDelete("{id}")]
     [EndpointSummary("Cancel Event Registration")]
     [EndpointDescription("Delete/cancel a user's event registration")]

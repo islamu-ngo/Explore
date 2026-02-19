@@ -361,7 +361,7 @@ using static Microsoft.AspNetCore.Http.StatusCodes;
 
 namespace {Project}.API.Controllers;
 
-[Route("api/v1/[controller]")]
+[Route("api/[controller]")]
 [ApiController]
 public class {Entity}Controller : ControllerBase
 {
@@ -379,7 +379,7 @@ public class {Entity}Controller : ControllerBase
         _logger = logger;
     }
 
-    // POST: api/v1/{entity}
+    // POST: api/{entity}
     [HttpPost]
     [EndpointSummary("Create {Entity}")]
     [EndpointDescription("Creates a new {entity}. Requires authentication.")]
@@ -401,7 +401,7 @@ public class {Entity}Controller : ControllerBase
         return Ok(response);
     }
 
-    // GET: api/v1/{entity}
+    // GET: api/{entity}
     [HttpGet]
     [EndpointSummary("List {Entities}")]
     [EndpointDescription("Returns a list of {entities}.")]
@@ -413,7 +413,7 @@ public class {Entity}Controller : ControllerBase
         return Ok({entities});
     }
 
-    // GET: api/v1/{entity}/{id}
+    // GET: api/{entity}/{id}
     [HttpGet("{id}")]
     [EndpointSummary("Get {Entity} Details")]
     [EndpointDescription("Returns {entity} details.")]
@@ -432,7 +432,7 @@ public class {Entity}Controller : ControllerBase
         return Ok({entity});
     }
 
-    // GET: api/v1/{entity}/my
+    // GET: api/{entity}/my
     [HttpGet("my")]
     [EndpointSummary("List My {Entities}")]
     [EndpointDescription("Returns {entities} owned by the current user.")]

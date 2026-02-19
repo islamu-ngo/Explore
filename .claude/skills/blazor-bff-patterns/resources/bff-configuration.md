@@ -40,8 +40,8 @@ var proxyRoutes = new[]
         ClusterId = "explore-api", // ID of the cluster to forward to
         Match = new RouteMatch
         {
-            // All requests starting with /api/v1/ will be proxied
-            Path = "/api/v1/{**catchall}"
+            // All requests starting with /api/ will be proxied
+            Path = "/api/{**catchall}"
         }
     }
 };
@@ -84,7 +84,7 @@ builder.Services.AddReverseProxy()
 ### Key Points
 
 *   **`exploreApiBaseUrl`**: Should be configured in `appsettings.json` or environment variables.
-*   **`Path = "/api/v1/{**catchall}"`**: This route captures all requests intended for the backend API.
+*   **`Path = "/api/{**catchall}"`**: This route captures all requests intended for the backend API.
 *   **`AddTransforms`**: This is where the magic happens. It intercepts the outgoing request from the BFF to the API, extracts the JWT from the user's session cookie (which was obtained during OIDC login), and attaches it as an `Authorization: Bearer` header. This makes the backend API oblivious to the cookie-based authentication, only seeing standard JWTs.
 
 ---

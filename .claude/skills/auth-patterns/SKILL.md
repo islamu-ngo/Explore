@@ -58,7 +58,7 @@ sequenceDiagram
     Keycloak-->>-BFF: Returns JWTs
     BFF-->>-Browser: Stores tokens in secure, HttpOnly cookie & redirects
 
-    Browser->>+BFF: Makes API call (/api/v1/...)
+    Browser->>+BFF: Makes API call (/api/...)
     BFF->>+API: YARP proxy reads token from cookie, attaches as "Authorization: Bearer" header
     API->>API: Validates JWT signature & claims
     API-->>-BFF: Returns data

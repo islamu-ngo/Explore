@@ -79,7 +79,7 @@ $response = Invoke-RestMethod -Uri "https://{oidc-provider-host}/realms/{realm}/
 $token = $response.access_token
 
 # Test API endpoint with obtained token
-Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}" `
+Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}" `
     -Headers @{ Authorization = "Bearer $token" } `
     -Verbose
 ```

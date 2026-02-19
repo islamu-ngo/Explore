@@ -133,7 +133,7 @@ var proxyRoutes = new[]
         ClusterId = "{project}-api",
         Match = new RouteMatch
         {
-            Path = "/api/v1/{**catchall}"  // Catch all API routes
+            Path = "/api/{**catchall}"  // Catch all API routes
         }
     }
 };
@@ -181,7 +181,7 @@ var proxyRoutes = new[]
         ClusterId = "explore-api",
         Match = new RouteMatch
         {
-            Path = "/api/v1/{**catchall}"  // Catch all API routes
+            Path = "/api/{**catchall}"  // Catch all API routes
         }
     }
 };

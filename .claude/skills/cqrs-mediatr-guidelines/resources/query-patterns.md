@@ -492,7 +492,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
-[Route("api/v1/[controller]")]
+[Route("api/[controller]")]
 [ApiController]
 public class {Entity}Controller : ControllerBase
 {

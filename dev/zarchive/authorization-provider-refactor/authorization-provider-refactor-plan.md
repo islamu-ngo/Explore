@@ -679,8 +679,8 @@ The existing code is already well-structured. This phase renames the providers, 
 #### Task 5.1: Create Unified `RoleController`
 - **File**: `Explore.API/Controllers/RoleController.cs`
 - **Acceptance Criteria**:
-  - [ ] `GET /api/v1/roles?scope=organization` — list roles by scope
-  - [ ] `GET /api/v1/roles/{id}` — get role details
+  - [ ] `GET /api/roles?scope=organization` — list roles by scope
+  - [ ] `GET /api/roles/{id}` — get role details
   - [ ] Replaces `OrganizationRoleController` and `UserRoleController`
   - [ ] Old controllers marked for deletion
 - **Effort**: M
@@ -708,8 +708,8 @@ The existing code is already well-structured. This phase renames the providers, 
 #### Task 5.4: Add Authorization Provider Admin Endpoint
 - **File**: `Explore.API/Controllers/SystemSettingsController.cs` (or new endpoint)
 - **Acceptance Criteria**:
-  - [ ] `GET /api/v1/system-settings/authorization-provider` — returns current mode
-  - [ ] `PUT /api/v1/system-settings/authorization-provider` — switches mode
+  - [ ] `GET /api/system-settings/authorization-provider` — returns current mode
+  - [ ] `PUT /api/system-settings/authorization-provider` — switches mode
   - [ ] Protected by `[AuthorizeResource("instance_setting", PermissionAction.Update)]`
   - [ ] Logs to `ConfigurationChangeLog`
   - [ ] Validates: only accepts "local" or "cerbos"
@@ -752,7 +752,7 @@ The existing code is already well-structured. This phase renames the providers, 
 - **Files**: `OrganizationMemberService.cs`, `AdminService.cs`
 - **Acceptance Criteria**:
   - [ ] `GetOrganizationRolesAsync()` → `GetRolesAsync(scope: "organization")`
-  - [ ] API endpoint URLs updated to `/api/v1/roles?scope=organization`
+  - [ ] API endpoint URLs updated to `/api/roles?scope=organization`
 - **Effort**: S
 - **Dependencies**: Task 5.1
 
@@ -784,7 +784,7 @@ The existing code is already well-structured. This phase renames the providers, 
 #### Task 7.2: Update Integration Tests
 - **Files**: `Event.API.IntegrationTests/`
 - **Acceptance Criteria**:
-  - [ ] `LookupTableControllerTests` — test new `/api/v1/roles?scope=...` endpoint
+  - [ ] `LookupTableControllerTests` — test new `/api/roles?scope=...` endpoint
   - [ ] `LinkTableControllerTests` — OrganizationMember tests with new DTO shape
   - [ ] `OrganizationMemberHateoasTests` — HATEOAS links work with renamed properties
   - [ ] `TenantControllerTests` — uses new `RoleId`

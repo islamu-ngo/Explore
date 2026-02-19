@@ -113,7 +113,7 @@
 
 | Decision | Rationale |
 |----------|-----------|
-| **Media type API versioning** (Accept header: `application/json;v=1.0`) | User explicit request. Keeps URLs clean (no `/v1/` changes). Standard approach for APIs consumed by controlled clients. |
+| **Media type API versioning** (Accept header: `application/json;v=1.0`) | User explicit request. Keeps URLs clean (no `/` changes). Standard approach for APIs consumed by controlled clients. |
 | ETag via response body hash (not entity version) | Works with OutputCache; no entity changes needed for Phase 3.2 |
 | Idempotency via HybridCache + DB table | Survives restarts; HybridCache for fast lookup (deferred to future session) |
 | Cursor pagination keyset-based (not token) | More efficient for PostgreSQL; no session state (deferred to future session) |

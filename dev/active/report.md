@@ -75,7 +75,7 @@ builder.Services.AddOutputCache(options =>
         .Expire(TimeSpan.FromSeconds(30))
         .Tag("api"));
 
-    // Cache GET /api/v1/event for 60 seconds
+    // Cache GET /api/event for 60 seconds
     options.AddPolicy("Events", builder => builder
         .Expire(TimeSpan.FromSeconds(60))
         .Tag("events")
@@ -424,7 +424,7 @@ string result = JsonSerializer.Serialize(new ErrorDetails() { ... },
 
 ### 9. API Versioning Middleware
 
-**Current State**: Manual URL path versioning (`/api/v1/`)
+**Current State**: Manual URL path versioning (`/api/`)
 **Recommendation**: Use official API Versioning package for enterprise features
 
 ```csharp

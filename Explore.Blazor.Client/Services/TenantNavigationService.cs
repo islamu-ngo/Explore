@@ -17,7 +17,7 @@ public class TenantNavigationService : ITenantNavigationService
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<TenantNavigationService> _logger;
-    private const string ApiEndpoint = "/api/v1/tenant/navigation";
+    private const string ApiEndpoint = "/api/tenant/navigation";
 
     public TenantNavigationService(HttpClient httpClient, ILogger<TenantNavigationService> logger)
     {

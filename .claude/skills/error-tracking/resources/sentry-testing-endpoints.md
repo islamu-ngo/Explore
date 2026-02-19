@@ -23,7 +23,7 @@ using Sentry;
 
 namespace {Project}.API.Controllers;
 
-[Route("api/v1/[controller]")]
+[Route("api/[controller]")]
 [ApiController]
 public class {Entity}Controller : ControllerBase
 {
@@ -103,7 +103,7 @@ Use `curl` or your preferred HTTP client to hit these endpoints. Replace `https:
 ### Test Error Capture
 
 ```bash
-curl -v https://localhost:7001/api/v1/{entity}/sentry/test-error
+curl -v https://localhost:7001/api/{entity}/sentry/test-error
 ```
 
 *Expected Sentry Outcome*: An error event should appear in your Sentry dashboard, with tags like `test:true` and `endpoint:sentry/test-error`, and the message "This is a test Sentry exception from the API!". If you have `UseExceptionHandler` configured, the client will receive a `ProblemDetails` response.
@@ -111,7 +111,7 @@ curl -v https://localhost:7001/api/v1/{entity}/sentry/test-error
 ### Test Performance Tracking
 
 ```bash
-curl -v https://localhost:7001/api/v1/{entity}/sentry/test-performance
+curl -v https://localhost:7001/api/{entity}/sentry/test-performance
 ```
 
 *Expected Sentry Outcome*: A transaction named `test.performance` with operation `manual-api-endpoint` should appear in your Sentry dashboard's "Performance" section. The duration should be around 1.5 seconds, and you should see a child span named `db.query` (simulate_db_call) within it.

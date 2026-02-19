@@ -175,7 +175,7 @@ Explore.Blazor.Client/Services/EventRegistrationService.cs
 
 ---
 
-## API Endpoint Reference (GET /api/v1/event — 35 params)
+## API Endpoint Reference (GET /api/event — 35 params)
 
 ### Core Params (always available)
 pageNumber, pageSize, searchTerm, categoryId, tagId, formatId, madhabId, locationId, registrationModeId, languageId, dateFrom, dateTo, eventTypeId, audienceGenderId, audienceAgeId, eventStatusId

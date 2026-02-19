@@ -3,6 +3,7 @@
 @using Explore.Blazor.Client.Pages.Landing
 @inject IStartupRoutingService StartupRoutingService
 @inject NavigationManager Navigation
+@rendermode @(new InteractiveAutoRenderMode(prerender: false))
 
 @switch (_state)
 {
@@ -45,10 +46,10 @@
         switch (decision)
         {
             case StartupRouteDecision.Setup:
-                Navigation.NavigateTo("/setup", forceLoad: true);
+                Navigation.NavigateTo("/setup");
                 return;
             case StartupRouteDecision.InstanceAdmin:
-                Navigation.NavigateTo("/admin/instance/settings", forceLoad: true);
+                Navigation.NavigateTo("/admin/instance/settings");
                 return;
             case StartupRouteDecision.PublicLanding:
                 _state = RootState.ShowLanding;

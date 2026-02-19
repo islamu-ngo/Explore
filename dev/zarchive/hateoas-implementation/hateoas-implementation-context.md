@@ -493,7 +493,7 @@ public HalResource<T> ToResource(T dto, HttpContext context)
 }
 
 // Client opt-out request:
-// GET /api/v1/organization/123
+// GET /api/organization/123
 // Prefer: return=minimal
 //
 // Response:

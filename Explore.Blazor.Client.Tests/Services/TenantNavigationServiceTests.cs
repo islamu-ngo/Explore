@@ -33,7 +33,7 @@ public class TenantNavigationServiceTests
         await Assert.That(result.Count).IsEqualTo(2);
         await Assert.That(handler.LastRequest).IsNotNull();
         await Assert.That(handler.LastRequest!.Method).IsEqualTo(HttpMethod.Get);
-        await Assert.That(handler.LastRequest.RequestUri!.PathAndQuery).IsEqualTo("/api/v1/tenant/navigation");
+        await Assert.That(handler.LastRequest.RequestUri!.PathAndQuery).IsEqualTo("/api/tenant/navigation");
     }
 
     [Test]
@@ -73,7 +73,7 @@ public class TenantNavigationServiceTests
         await Assert.That(result.Message).Contains("API error");
         await Assert.That(handler.LastRequest).IsNotNull();
         await Assert.That(handler.LastRequest!.Method).IsEqualTo(HttpMethod.Post);
-        await Assert.That(handler.LastRequest.RequestUri!.PathAndQuery).IsEqualTo("/api/v1/tenant/navigation");
+        await Assert.That(handler.LastRequest.RequestUri!.PathAndQuery).IsEqualTo("/api/tenant/navigation");
     }
 
     [Test]
@@ -101,7 +101,7 @@ public class TenantNavigationServiceTests
         await Assert.That(result!.Success).IsTrue();
         await Assert.That(handler.LastRequest).IsNotNull();
         await Assert.That(handler.LastRequest!.Method).IsEqualTo(HttpMethod.Put);
-        await Assert.That(handler.LastRequest.RequestUri!.PathAndQuery).IsEqualTo($"/api/v1/tenant/navigation/{linkId}");
+        await Assert.That(handler.LastRequest.RequestUri!.PathAndQuery).IsEqualTo($"/api/tenant/navigation/{linkId}");
     }
 
     [Test]
@@ -146,7 +146,7 @@ public class TenantNavigationServiceTests
         await Assert.That(result!.Success).IsTrue();
         await Assert.That(handler.LastRequest).IsNotNull();
         await Assert.That(handler.LastRequest!.Method).IsEqualTo(HttpMethod.Put);
-        await Assert.That(handler.LastRequest.RequestUri!.PathAndQuery).IsEqualTo("/api/v1/tenant/navigation/reorder");
+        await Assert.That(handler.LastRequest.RequestUri!.PathAndQuery).IsEqualTo("/api/tenant/navigation/reorder");
     }
 
     private TenantNavigationService CreateService(HttpMessageHandler handler)

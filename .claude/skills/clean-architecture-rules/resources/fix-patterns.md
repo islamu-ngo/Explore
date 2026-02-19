@@ -226,7 +226,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-[Route("api/v1/[controller]")]
+[Route("api/[controller]")]
 [ApiController]
 public class {Entity}Controller : ControllerBase
 {
@@ -754,7 +754,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-[Route("api/v1/[controller]")]
+[Route("api/[controller]")]
 [ApiController]
 public class {Entity}Controller : ControllerBase
 {
@@ -780,7 +780,7 @@ public class {Entity}Controller : ControllerBase
 
     protected override async Task OnInitializedAsync()
     {
-        _{entities} = await Http.GetFromJsonAsync<List<{Entity}ListDto>>("/api/v1/{entity}");
+        _{entities} = await Http.GetFromJsonAsync<List<{Entity}ListDto>>("/api/{entity}");
     }
 }
 ```

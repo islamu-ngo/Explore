@@ -23,7 +23,7 @@ public class AudienceAgeController : ControllerBase
         _mediator = mediator;
     }
 
-    // GET: api/v1/audienceage
+    // GET: api/audienceage
     [HttpGet]
     [EndpointSummary("Get all Audience Age groups")]
     [EndpointDescription("Retrieve a list of all audience age groups (Children, Youth, Adults, Seniors, All Ages)")]
@@ -36,7 +36,7 @@ public class AudienceAgeController : ControllerBase
         return Ok(audienceAges);
     }
 
-    // GET: api/v1/audienceage/{id}
+    // GET: api/audienceage/{id}
     [HttpGet("{id}")]
     [EndpointSummary("Get Audience Age group by ID")]
     [EndpointDescription("Retrieve details of a specific audience age group")]

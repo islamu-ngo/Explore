@@ -20,7 +20,7 @@ public class LanguageController : ControllerBase
         _mediator = mediator;
     }
 
-    // GET: api/v1/language
+    // GET: api/language
     [HttpGet]
     [EndpointSummary("Get all Languages")]
     [EndpointDescription("Get a list of all available languages (lookup table)")]
@@ -32,7 +32,7 @@ public class LanguageController : ControllerBase
         return Ok(languages);
     }
 
-    // GET: api/v1/language/{id}
+    // GET: api/language/{id}
     [HttpGet("{id}")]
     [EndpointSummary("Get Language Details")]
     [EndpointDescription("Get detailed information about a specific language")]

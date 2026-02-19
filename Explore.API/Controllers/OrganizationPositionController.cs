@@ -23,7 +23,7 @@ public class OrganizationPositionController : ControllerBase
         _mediator = mediator;
     }
 
-    // GET: api/v1/organizationposition
+    // GET: api/organizationposition
     [HttpGet]
     [EndpointSummary("Get all Organization Positions")]
     [EndpointDescription("Retrieve a list of all organization positions (President, Secretary, Member)")]
@@ -36,7 +36,7 @@ public class OrganizationPositionController : ControllerBase
         return Ok(organizationPositions);
     }
 
-    // GET: api/v1/organizationposition/{id}
+    // GET: api/organizationposition/{id}
     [HttpGet("{id}")]
     [EndpointSummary("Get Organization Position by ID")]
     [EndpointDescription("Retrieve details of a specific organization position")]

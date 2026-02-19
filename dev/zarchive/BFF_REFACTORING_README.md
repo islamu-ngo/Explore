@@ -42,26 +42,26 @@ GetApiClient()          // Resolves scoped IEventApiClient from DI
 
 ### Endpoint Structure
 
-#### Primary Endpoints (`/api/v1/...`)
+#### Primary Endpoints (`/api/...`)
 These are the main endpoints used by the WebAssembly client via NSwag:
 
 ```
-/api/v1/Organization             // GET, POST
-/api/v1/Organization/{id}        // GET, PUT
-/api/v1/Organization/my          // GET (authenticated)
-/api/v1/Organization/updatestatustype/{id}  // PUT (admin)
+/api/Organization             // GET, POST
+/api/Organization/{id}        // GET, PUT
+/api/Organization/my          // GET (authenticated)
+/api/Organization/updatestatustype/{id}  // PUT (admin)
 
-/api/v1/Event                    // GET, POST
-/api/v1/Event/{id}               // GET, PUT, DELETE
-/api/v1/Event/my                 // GET (authenticated)
+/api/Event                    // GET, POST
+/api/Event/{id}               // GET, PUT, DELETE
+/api/Event/my                 // GET (authenticated)
 
-/api/v1/User                     // GET, PUT, DELETE
-/api/v1/User/sync                // POST
+/api/User                     // GET, PUT, DELETE
+/api/User/sync                // POST
 
-/api/v1/EventType                // GET
-/api/v1/AudienceGender           // GET
-/api/v1/AudienceAge              // GET
-/api/v1/StatusType               // GET
+/api/EventType                // GET
+/api/AudienceGender           // GET
+/api/AudienceAge              // GET
+/api/StatusType               // GET
 ```
 
 #### Legacy Endpoints (`/bff/api/...`)
@@ -142,10 +142,10 @@ All API calls are logged with:
 
 Example log output:
 ```
-INFO: BFF: Executing GET /api/v1/Organization
-INFO: BFF: GET /api/v1/Organization completed successfully
+INFO: BFF: Executing GET /api/Organization
+INFO: BFF: GET /api/Organization completed successfully
 
-ERROR: BFF: POST /api/v1/Organization failed with status 400
+ERROR: BFF: POST /api/Organization failed with status 400
 ```
 
 ## Security
@@ -158,7 +158,7 @@ ERROR: BFF: POST /api/v1/Organization failed with status 400
 5. Duende automatically refreshes expired tokens
 
 ### Authorization
-- Public endpoints: `/api/v1/Organization` (GET), `/api/v1/Event` (GET), lookup data
+- Public endpoints: `/api/Organization` (GET), `/api/Event` (GET), lookup data
 - Authenticated endpoints: All POST, PUT, DELETE operations
 - `.RequireAuthorization()` applied to protected endpoints
 
@@ -238,7 +238,7 @@ apiV1.MapPost("/NewResource", async (HttpContext ctx) =>
     return await BffApiExtensions.ExecuteAsync(
         () => ctx.GetApiClient().NewResourcePOSTAsync(dto),
         logger,
-        "POST /api/v1/NewResource"
+        "POST /api/NewResource"
     );
 })
 .RequireAuthorization();

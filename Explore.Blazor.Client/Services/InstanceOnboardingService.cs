@@ -39,7 +39,7 @@ public class InstanceOnboardingService : IInstanceOnboardingService
         try
         {
             var client = _httpClientFactory.CreateClient("BffClient");
-            return await client.GetFromJsonAsync<InstanceOnboardingStatusModel>("api/v1/InstanceOnboarding/status");
+            return await client.GetFromJsonAsync<InstanceOnboardingStatusModel>("api/InstanceOnboarding/status");
         }
         catch (Exception ex)
         {
@@ -53,7 +53,7 @@ public class InstanceOnboardingService : IInstanceOnboardingService
         try
         {
             var client = _httpClientFactory.CreateClient("BffClient");
-            var result = await client.GetFromJsonAsync<InstanceGovernanceSettingsModel>("api/v1/InstanceOnboarding/settings");
+            var result = await client.GetFromJsonAsync<InstanceGovernanceSettingsModel>("api/InstanceOnboarding/settings");
             return result ?? new InstanceGovernanceSettingsModel();
         }
         catch (Exception ex)
@@ -68,7 +68,7 @@ public class InstanceOnboardingService : IInstanceOnboardingService
         try
         {
             var client = _httpClientFactory.CreateClient("BffClient");
-            var response = await client.PostAsJsonAsync("api/v1/InstanceOnboarding/validate-secret", new { secret });
+            var response = await client.PostAsJsonAsync("api/InstanceOnboarding/validate-secret", new { secret });
             var result = await response.Content.ReadFromJsonAsync<SetupSecretValidationResult>();
             return result ?? new SetupSecretValidationResult { Valid = false };
         }
@@ -81,12 +81,12 @@ public class InstanceOnboardingService : IInstanceOnboardingService
 
     public async Task<InstanceCommandResponseModel> CompleteAsync(InstanceGovernanceSettingsModel settings)
     {
-        return await SendAsync(HttpMethod.Post, "api/v1/InstanceOnboarding/complete", settings);
+        return await SendAsync(HttpMethod.Post, "api/InstanceOnboarding/complete", settings);
     }
 
     public async Task<InstanceCommandResponseModel> UpdateSettingsAsync(InstanceGovernanceSettingsModel settings)
     {
-        return await SendAsync(HttpMethod.Put, "api/v1/InstanceOnboarding/settings", settings);
+        return await SendAsync(HttpMethod.Put, "api/InstanceOnboarding/settings", settings);
     }
 
     public async Task<InstanceStorageSettingsModel> GetStorageSettingsAsync()
@@ -94,7 +94,7 @@ public class InstanceOnboardingService : IInstanceOnboardingService
         try
         {
             var client = _httpClientFactory.CreateClient("BffClient");
-            var result = await client.GetFromJsonAsync<InstanceStorageSettingsModel>("api/v1/InstanceOnboarding/storage-settings");
+            var result = await client.GetFromJsonAsync<InstanceStorageSettingsModel>("api/InstanceOnboarding/storage-settings");
             return result ?? new InstanceStorageSettingsModel();
         }
         catch (Exception ex)
@@ -109,7 +109,7 @@ public class InstanceOnboardingService : IInstanceOnboardingService
         try
         {
             var client = _httpClientFactory.CreateClient("BffClient");
-            using var request = new HttpRequestMessage(HttpMethod.Put, "api/v1/InstanceOnboarding/storage-settings")
+            using var request = new HttpRequestMessage(HttpMethod.Put, "api/InstanceOnboarding/storage-settings")
             {
                 Content = JsonContent.Create(settings)
             };
@@ -149,7 +149,7 @@ public class InstanceOnboardingService : IInstanceOnboardingService
         try
         {
             var client = _httpClientFactory.CreateClient("BffClient");
-            using var request = new HttpRequestMessage(HttpMethod.Post, "api/v1/InstanceOnboarding/test-storage");
+            using var request = new HttpRequestMessage(HttpMethod.Post, "api/InstanceOnboarding/test-storage");
             await AddSetupSecretHeaderAsync(request);
 
             var response = await client.SendAsync(request);
@@ -248,10 +248,10 @@ public class InstanceOnboardingService : IInstanceOnboardingService
 
     private static bool RequiresSetupSecret(string pathAndQuery)
     {
-        return pathAndQuery.Contains("/api/v1/InstanceOnboarding/complete", StringComparison.OrdinalIgnoreCase)
-            || pathAndQuery.Contains("/api/v1/InstanceOnboarding/settings", StringComparison.OrdinalIgnoreCase)
-            || pathAndQuery.Contains("/api/v1/InstanceOnboarding/storage-settings", StringComparison.OrdinalIgnoreCase)
-            || pathAndQuery.Contains("/api/v1/InstanceOnboarding/test-storage", StringComparison.OrdinalIgnoreCase);
+        return pathAndQuery.Contains("/api/InstanceOnboarding/complete", StringComparison.OrdinalIgnoreCase)
+            || pathAndQuery.Contains("/api/InstanceOnboarding/settings", StringComparison.OrdinalIgnoreCase)
+            || pathAndQuery.Contains("/api/InstanceOnboarding/storage-settings", StringComparison.OrdinalIgnoreCase)
+            || pathAndQuery.Contains("/api/InstanceOnboarding/test-storage", StringComparison.OrdinalIgnoreCase);
     }
 }
 

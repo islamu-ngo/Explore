@@ -23,7 +23,7 @@ public class ActorTypeController : ControllerBase
         _mediator = mediator;
     }
 
-    // GET: api/v1/actortype
+    // GET: api/actortype
     [HttpGet]
     [EndpointSummary("Get all Actor Types")]
     [EndpointDescription("Retrieve a list of all actor types (User, Organization, Service, Bot)")]
@@ -36,7 +36,7 @@ public class ActorTypeController : ControllerBase
         return Ok(actorTypes);
     }
 
-    // GET: api/v1/actortype/{id}
+    // GET: api/actortype/{id}
     [HttpGet("{id}")]
     [EndpointSummary("Get Actor Type by ID")]
     [EndpointDescription("Retrieve details of a specific actor type")]

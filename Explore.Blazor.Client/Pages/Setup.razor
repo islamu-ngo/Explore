@@ -2,7 +2,7 @@
 @* ABOUTME: Validates secret, stores it in sessionStorage, then routes to onboarding/login flow. *@
 
 @page "/setup"
-@rendermode InteractiveAuto
+@rendermode @(new InteractiveAutoRenderMode(prerender: false))
 @layout SetupLayout
 @implements IDisposable
 @inject IInstanceOnboardingService InstanceOnboardingService
@@ -149,7 +149,7 @@
 
         if (status.IsCompleted)
         {
-            Navigation.NavigateTo("/", forceLoad: true);
+            Navigation.NavigateTo("/");
             return;
         }
 
@@ -233,7 +233,7 @@
             }
         }
 
-        Navigation.NavigateTo("/onboarding/instance", forceLoad: true);
+        Navigation.NavigateTo("/onboarding/instance");
     }
 
     private async Task EnsureSecretSyncedForAuthenticatedSessionAsync()

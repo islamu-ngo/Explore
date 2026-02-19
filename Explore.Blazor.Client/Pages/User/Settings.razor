@@ -3,6 +3,7 @@
 @using Explore.Blazor.Client.Components.Settings
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
+@rendermode @(new InteractiveAutoRenderMode(prerender: false))
 
 <PageTitle>Settings</PageTitle>
 

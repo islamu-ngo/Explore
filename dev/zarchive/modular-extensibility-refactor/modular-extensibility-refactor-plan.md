@@ -157,7 +157,7 @@ public async Task Delete(T entity)
 │                              PRESENTATION LAYER                              │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────────────┐  │
 │  │  Explore.API    │  │ Explore.Blazor  │  │  Module Discovery Endpoint  │  │
-│  │  (REST + HATEOAS)│  │ (BFF Pattern)   │  │  GET /api/v1/modules       │  │
+│  │  (REST + HATEOAS)│  │ (BFF Pattern)   │  │  GET /api/modules       │  │
 │  └────────┬────────┘  └────────┬────────┘  └──────────────┬──────────────┘  │
 └───────────┼────────────────────┼───────────────────────────┼────────────────┘
             │                    │                           │
@@ -204,7 +204,7 @@ public async Task Delete(T entity)
 ┌─────────────────────────────────────────────────────────────────────────┐
 │ CREATE EVENT WITH ISLAMIC ASPECT                                        │
 ├─────────────────────────────────────────────────────────────────────────┤
-│ 1. Client POST /api/v1/events with aspect data                          │
+│ 1. Client POST /api/events with aspect data                          │
 │ 2. Controller → MediatR → CreateEventCommandHandler                     │
 │ 3. Handler validates via EventAspectValidator (ModuleKey = "Islamic")   │
 │ 4. Handler creates Event + EventIslamicAspect in same transaction       │
@@ -1463,7 +1463,7 @@ public interface IModuleService
 ```csharp
 namespace Explore.API.Controllers;
 
-[Route("api/v1/[controller]")]
+[Route("api/[controller]")]
 [ApiController]
 public class ModuleController : ControllerBase
 {
@@ -1500,8 +1500,8 @@ public class ModuleController : ControllerBase
 - [ ] `ModuleDefinition` entity with seed data
 - [ ] `TenantCapability` entity with tenant filter
 - [ ] `IModuleService` interface and implementation
-- [ ] `GET /api/v1/modules/available` endpoint
-- [ ] `GET /api/v1/modules/{moduleKey}/schema` endpoint
+- [ ] `GET /api/modules/available` endpoint
+- [ ] `GET /api/modules/{moduleKey}/schema` endpoint
 - [ ] Cache module queries for performance
 - [ ] Unit tests for module service
 - [ ] Integration tests for discovery endpoint
@@ -1604,7 +1604,7 @@ public class IslamicEventStrategy : IEventStrategy
         yield return new LinkDto
         {
             Rel = "islamic-details",
-            Href = $"/api/v1/events/{@event.Id}/islamic",
+            Href = $"/api/events/{@event.Id}/islamic",
             Method = "GET"
         };
     }
@@ -2114,7 +2114,7 @@ public class BlockInSingleTenantAttribute : Attribute, IAuthorizationFilter
 
 **Usage**:
 ```csharp
-[Route("api/v1/admin/tenants")]
+[Route("api/admin/tenants")]
 [ApiController]
 [Authorize(Roles = "SuperAdmin")]
 [BlockInSingleTenant]  // This controller is hidden in SingleTenant mode
@@ -2162,19 +2162,19 @@ Update all handlers, DTOs, controllers, and tests to work with the new architect
 public IEnumerable<LinkDto> GetLinks(EventDto @event, HttpContext context)
 {
     // Base links
-    yield return new LinkDto { Rel = "self", Href = $"/api/v1/events/{@event.Id}", Method = "GET" };
-    yield return new LinkDto { Rel = "update", Href = $"/api/v1/events/{@event.Id}", Method = "PUT" };
-    yield return new LinkDto { Rel = "delete", Href = $"/api/v1/events/{@event.Id}", Method = "DELETE" };
+    yield return new LinkDto { Rel = "self", Href = $"/api/events/{@event.Id}", Method = "GET" };
+    yield return new LinkDto { Rel = "update", Href = $"/api/events/{@event.Id}", Method = "PUT" };
+    yield return new LinkDto { Rel = "delete", Href = $"/api/events/{@event.Id}", Method = "DELETE" };
     
     // Aspect-specific links
     if (@event.AvailableAspects.Contains("Islamic"))
     {
-        yield return new LinkDto { Rel = "islamic-aspect", Href = $"/api/v1/events/{@event.Id}/islamic", Method = "GET" };
+        yield return new LinkDto { Rel = "islamic-aspect", Href = $"/api/events/{@event.Id}/islamic", Method = "GET" };
     }
     
     if (@event.AvailableAspects.Contains("Tech"))
     {
-        yield return new LinkDto { Rel = "tech-aspect", Href = $"/api/v1/events/{@event.Id}/tech", Method = "GET" };
+        yield return new LinkDto { Rel = "tech-aspect", Href = $"/api/events/{@event.Id}/tech", Method = "GET" };
     }
 }
 ```
@@ -2204,13 +2204,13 @@ public class EventAspectTests : IntegrationTestBase
         };
         
         // Act
-        var response = await Client.PostAsJsonAsync("/api/v1/events", createDto);
+        var response = await Client.PostAsJsonAsync("/api/events", createDto);
         
         // Assert
         response.EnsureSuccessStatusCode();
         var result = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
         
-        var eventResponse = await Client.GetFromJsonAsync<EventDto>($"/api/v1/events/{result.Id}");
+        var eventResponse = await Client.GetFromJsonAsync<EventDto>($"/api/events/{result.Id}");
         Assert.Contains("Islamic", eventResponse.AvailableAspects);
         Assert.NotNull(eventResponse.IslamicAspect);
         Assert.Equal(1, eventResponse.IslamicAspect.MadhabId);
@@ -2223,7 +2223,7 @@ public class EventAspectTests : IntegrationTestBase
         
         // Act
         var response = await Client.GetFromJsonAsync<List<EventListDto>>(
-            "/api/v1/events?filters[madhab]=Hanafi");
+            "/api/events?filters[madhab]=Hanafi");
         
         // Assert
         Assert.All(response, e => Assert.Contains("Islamic", e.AvailableAspects));

@@ -6,6 +6,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using Explore.Blazor.Client.Components.Admin.Organization
 @attribute [Authorize]
+@rendermode @(new InteractiveAutoRenderMode(prerender: false))
 
 <PageTitle>Organization Settings</PageTitle>
 

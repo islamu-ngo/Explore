@@ -23,7 +23,7 @@ public class EventStatusController : ControllerBase
         _mediator = mediator;
     }
 
-    // GET: api/v1/eventstatus
+    // GET: api/eventstatus
     [HttpGet]
     [EndpointSummary("Get all Event Statuses")]
     [EndpointDescription("Retrieve a list of all event lifecycle statuses (Draft, Published, Cancelled, Completed)")]
@@ -36,7 +36,7 @@ public class EventStatusController : ControllerBase
         return Ok(eventStatuses);
     }
 
-    // GET: api/v1/eventstatus/{id}
+    // GET: api/eventstatus/{id}
     [HttpGet("{id}")]
     [EndpointSummary("Get Event Status by ID")]
     [EndpointDescription("Retrieve details of a specific event lifecycle status")]

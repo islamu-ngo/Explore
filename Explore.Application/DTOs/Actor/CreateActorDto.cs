@@ -4,7 +4,7 @@ namespace Explore.Application.DTOs.Actor;
 
 /// <summary>
 /// Create Actor payload (no Id)
-/// Used for POST /api/v1/actor
+/// Used for POST /api/actor
 /// An Actor must be linked to either a User OR an Organization (exactly one, not both, not neither)
 /// </summary>
 public class CreateActorDto

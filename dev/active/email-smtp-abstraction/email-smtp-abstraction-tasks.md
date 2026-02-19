@@ -64,8 +64,8 @@
 ## Phase 6: Admin API Endpoint ⏳ NOT STARTED
 **Effort: S (~30min) | Depends on: Phase 2**
 
-- [ ] **6.1** Add `POST /api/v1/admin/email/test-connection` endpoint
-- [ ] **6.2** Add `POST /api/v1/admin/email/send-test` endpoint (optional)
+- [ ] **6.1** Add `POST /api/admin/email/test-connection` endpoint
+- [ ] **6.2** Add `POST /api/admin/email/send-test` endpoint (optional)
 
 ---
 

@@ -43,7 +43,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 #### Media Type Versioning
 ```http
-GET /api/v1/event HTTP/1.1
+GET /api/event HTTP/1.1
 Accept: application/json;v=1.0
 ```
 
@@ -51,12 +51,12 @@ When no version is specified, the API defaults to version 1.0.
 
 #### Conditional Requests (ETag)
 ```http
-GET /api/v1/category HTTP/1.1
+GET /api/category HTTP/1.1
 
 HTTP/1.1 200 OK
 ETag: W/"abc123..."
 
-GET /api/v1/category HTTP/1.1
+GET /api/category HTTP/1.1
 If-None-Match: W/"abc123..."
 
 HTTP/1.1 304 Not Modified
@@ -64,7 +64,7 @@ HTTP/1.1 304 Not Modified
 
 #### Correlation ID
 ```http
-GET /api/v1/event HTTP/1.1
+GET /api/event HTTP/1.1
 X-Correlation-ID: my-trace-id-123
 
 HTTP/1.1 200 OK

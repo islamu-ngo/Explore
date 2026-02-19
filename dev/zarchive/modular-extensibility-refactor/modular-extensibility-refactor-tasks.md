@@ -460,10 +460,10 @@
 ### 4.7 API Controller
 
 - [ ] Create `ModuleController.cs` in `Explore.API/Controllers/`:
-  - [ ] `GET /api/v1/modules/available` - list available modules
-  - [ ] `GET /api/v1/modules/{moduleKey}/schema` - get wizard schema
-  - [ ] `POST /api/v1/admin/modules/{moduleKey}/enable` - enable for tenant (Admin)
-  - [ ] `POST /api/v1/admin/modules/{moduleKey}/disable` - disable for tenant (Admin)
+  - [ ] `GET /api/modules/available` - list available modules
+  - [ ] `GET /api/modules/{moduleKey}/schema` - get wizard schema
+  - [ ] `POST /api/admin/modules/{moduleKey}/enable` - enable for tenant (Admin)
+  - [ ] `POST /api/admin/modules/{moduleKey}/disable` - disable for tenant (Admin)
 
 ### 4.8 Integration with Aspects
 

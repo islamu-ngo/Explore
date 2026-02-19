@@ -34,7 +34,7 @@ public class PublicExperienceService : IPublicExperienceService
         try
         {
             var client = _httpClientFactory.CreateClient("BffClient");
-            var settings = await client.GetFromJsonAsync<PublicExperienceSettingsModel>("api/v1/PublicExperience/settings");
+            var settings = await client.GetFromJsonAsync<PublicExperienceSettingsModel>("api/PublicExperience/settings");
             Cache(settings);
             return settings;
         }

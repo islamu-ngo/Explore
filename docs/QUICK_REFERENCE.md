@@ -404,7 +404,7 @@ public class Get{Entity}ListRequestHandler : IRequestHandler<Get{Entity}ListRequ
 ## Controller Pattern
 
 ```csharp
-[Route("api/v1/[controller]")]
+[Route("api/[controller]")]
 [ApiController]
 public class {Entity}Controller : ControllerBase
 {

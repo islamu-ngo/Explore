@@ -23,7 +23,7 @@ public class FileTypeController : ControllerBase
         _mediator = mediator;
     }
 
-    // GET: api/v1/filetype
+    // GET: api/filetype
     [HttpGet]
     [EndpointSummary("Get all File Types")]
     [EndpointDescription("Retrieve a list of all file types (Image, Document, Video, Audio)")]
@@ -36,7 +36,7 @@ public class FileTypeController : ControllerBase
         return Ok(fileTypes);
     }
 
-    // GET: api/v1/filetype/{id}
+    // GET: api/filetype/{id}
     [HttpGet("{id}")]
     [EndpointSummary("Get File Type by ID")]
     [EndpointDescription("Retrieve details of a specific file type")]

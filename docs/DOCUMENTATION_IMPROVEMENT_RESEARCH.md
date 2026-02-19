@@ -157,11 +157,11 @@ The Diátaxis framework organizes documentation into four distinct categories ba
 
 **Example Structure**:
 ```markdown
-### POST /api/v1/event
+### POST /api/event
 
 **cURL Example**:
 ```bash
-curl -X POST https://api.example.com/api/v1/event \
+curl -X POST https://api.example.com/api/event \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -182,7 +182,7 @@ var response = await client.EventPOSTAsync(new CreateEventDto
 
 **JavaScript Example**:
 ```javascript
-const response = await fetch('https://api.example.com/api/v1/event', {
+const response = await fetch('https://api.example.com/api/event', {
   method: 'POST',
   headers: {
     'Authorization': 'Bearer YOUR_TOKEN',

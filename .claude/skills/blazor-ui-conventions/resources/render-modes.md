@@ -196,7 +196,7 @@ Apply `InteractiveAuto` to routable components (native `@page` routing or centra
     private async Task SyncToServer()
     {
         // Make HTTP call to backend API
-        // await Http.PostAsJsonAsync("api/v1/{entities}/drafts", draft{Entity});
+        // await Http.PostAsJsonAsync("api/{entities}/drafts", draft{Entity});
     }
 }
 ```
@@ -348,7 +348,7 @@ Move logic with side effects to `OnAfterRenderAsync(true)` or ensure your code h
         {
             // Fetch data here if it shouldn't run on the server prerender,
             // or if it's dependent on client-side state.
-            // _{entities} = await Http.GetFromJsonAsync<List<{Entity}ListDto>>("api/v1/{entities}");
+            // _{entities} = await Http.GetFromJsonAsync<List<{Entity}ListDto>>("api/{entities}");
             // StateHasChanged(); // Required if you update state after async operation in OnAfterRenderAsync
         }
     }

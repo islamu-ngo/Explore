@@ -25,7 +25,7 @@ public class TenantUserController : ControllerBase
         _mediator = mediator;
     }
 
-    // GET: api/v1/tenantuser
+    // GET: api/tenantuser
     [HttpGet]
     [EndpointSummary("Get all Tenant Users")]
     [EndpointDescription("Retrieve a list of all tenant users")]
@@ -38,7 +38,7 @@ public class TenantUserController : ControllerBase
         return Ok(tenantUsers);
     }
 
-    // GET: api/v1/tenantuser/{id}
+    // GET: api/tenantuser/{id}
     [HttpGet("{id}")]
     [EndpointSummary("Get Tenant User by ID")]
     [EndpointDescription("Retrieve details of a specific tenant user")]
@@ -57,7 +57,7 @@ public class TenantUserController : ControllerBase
         return Ok(tenantUser);
     }
 
-    // POST: api/v1/tenantuser
+    // POST: api/tenantuser
     [HttpPost]
     [EndpointSummary("Create new Tenant User")]
     [EndpointDescription("Create a new tenant user association")]
@@ -77,7 +77,7 @@ public class TenantUserController : ControllerBase
         return Ok(response);
     }
 
-    // PUT: api/v1/tenantuser/{id}
+    // PUT: api/tenantuser/{id}
     [HttpPut("{id}")]
     [EndpointSummary("Update Tenant User")]
     [EndpointDescription("Update an existing tenant user association")]
@@ -103,7 +103,7 @@ public class TenantUserController : ControllerBase
         return Ok(response);
     }
 
-    // DELETE: api/v1/tenantuser/{id}
+    // DELETE: api/tenantuser/{id}
     [HttpDelete("{id}")]
     [EndpointSummary("Delete Tenant User")]
     [EndpointDescription("Delete a tenant user association")]

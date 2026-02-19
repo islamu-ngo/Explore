@@ -4,7 +4,7 @@
 
 **Error**: `PostgresException: 23505: duplicate key value violates unique constraint "ix_users_email"`
 
-**When**: User sync endpoint `POST /api/v1/User/sync` fails when there's already a user in the database with the same email.
+**When**: User sync endpoint `POST /api/User/sync` fails when there's already a user in the database with the same email.
 
 ## Root Cause Analysis
 
@@ -190,14 +190,14 @@ Return Error                    Continue
 1. **Test Same User Sync** (should work):
    ```bash
    # Login with existing user
-   # Call POST /api/v1/User/sync
+   # Call POST /api/User/sync
    # Check logs for: "Existing user found - Updating"
    ```
 
 2. **Test New User Sync** (should work):
    ```bash
    # Login with brand new Keycloak user
-   # Call POST /api/v1/User/sync
+   # Call POST /api/User/sync
    # Check logs for: "User created successfully"
    ```
 

@@ -4,7 +4,7 @@ namespace Explore.Application.DTOs.Actor;
 
 /// <summary>
 /// Actor list view with minimal properties
-/// Used for GET /api/v1/actor
+/// Used for GET /api/actor
 /// </summary>
 public class ActorListDto
 {

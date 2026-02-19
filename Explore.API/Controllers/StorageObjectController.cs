@@ -25,7 +25,7 @@ public class StorageObjectController : ControllerBase
         _mediator = mediator;
     }
 
-    // GET: api/v1/storageobject
+    // GET: api/storageobject
     [HttpGet]
     [EndpointSummary("Get all Storage Objects")]
     [EndpointDescription("Retrieve a paginated list of all storage objects (files, images, documents, etc.). Default page size is 20, max is 100.")]
@@ -42,7 +42,7 @@ public class StorageObjectController : ControllerBase
         return Ok(storageObjects);
     }
 
-    // GET: api/v1/storageobject/{id}
+    // GET: api/storageobject/{id}
     [HttpGet("{id}")]
     [EndpointSummary("Get Storage Object by ID")]
     [EndpointDescription("Retrieve details of a specific storage object")]
@@ -62,7 +62,7 @@ public class StorageObjectController : ControllerBase
         return Ok(storageObject);
     }
 
-    // GET: api/v1/storageobject/file/{*fileKey}
+    // GET: api/storageobject/file/{*fileKey}
     [HttpGet("file/{*fileKey}")]
     [EndpointSummary("Get File Content")]
     [EndpointDescription("Retrieve the content of a file from storage by its key")]
@@ -91,7 +91,7 @@ public class StorageObjectController : ControllerBase
         }
     }
 
-    // GET: api/v1/storageobject/{id}/presigned-url
+    // GET: api/storageobject/{id}/presigned-url
     [HttpGet("{id}/presigned-url")]
     [EndpointSummary("Get Presigned Download URL")]
     [EndpointDescription("Generate a time-limited presigned URL for viewing/downloading a file from S3-compatible storage")]
@@ -115,7 +115,7 @@ public class StorageObjectController : ControllerBase
         return Ok(result);
     }
 
-    // GET: api/v1/storageobject/presigned-url-by-key/{*objectKey}
+    // GET: api/storageobject/presigned-url-by-key/{*objectKey}
     [HttpGet("presigned-url-by-key/{*objectKey}")]
     [EndpointSummary("Get Presigned Download URL by Key")]
     [EndpointDescription("Generate a time-limited presigned URL for viewing/downloading a file using its object key")]
@@ -144,7 +144,7 @@ public class StorageObjectController : ControllerBase
         return Ok(result);
     }
 
-    // POST: api/v1/storageobject/generate-upload-url
+    // POST: api/storageobject/generate-upload-url
     [HttpPost("generate-upload-url")]
     [EndpointSummary("Generate Pre-signed Upload URL")]
     [EndpointDescription("Generate a pre-signed URL for uploading a file directly to S3-compatible storage (Hetzner Object Storage)")]
@@ -163,7 +163,7 @@ public class StorageObjectController : ControllerBase
         return Ok(response);
     }
 
-    // POST: api/v1/storageobject
+    // POST: api/storageobject
     [HttpPost]
     [EndpointSummary("Create Storage Object Record")]
     [EndpointDescription("Create a storage object record after successful file upload to S3")]
@@ -178,7 +178,7 @@ public class StorageObjectController : ControllerBase
         return Ok(response);
     }
 
-    // PUT: api/v1/storageobject/{id}
+    // PUT: api/storageobject/{id}
     [HttpPut("{id}")]
     [EndpointSummary("Update Storage Object")]
     [EndpointDescription("Update an existing storage object")]
@@ -205,7 +205,7 @@ public class StorageObjectController : ControllerBase
         return Ok(response);
     }
 
-    // DELETE: api/v1/storageobject/{id}
+    // DELETE: api/storageobject/{id}
     [HttpDelete("{id}")]
     [EndpointSummary("Delete Storage Object")]
     [EndpointDescription("Delete a storage object")]

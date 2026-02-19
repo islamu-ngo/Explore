@@ -362,15 +362,15 @@ public class AccessTokenForwardingHandler : DelegatingHandler
 
     private static bool IsAnonymousAllowedPath(string pathAndQuery)
     {
-        return pathAndQuery.Contains("/api/v1/PublicExperience/settings", StringComparison.OrdinalIgnoreCase)
-            || pathAndQuery.Contains("/api/v1/InstanceOnboarding/status", StringComparison.OrdinalIgnoreCase);
+        return pathAndQuery.Contains("/api/PublicExperience/settings", StringComparison.OrdinalIgnoreCase)
+            || pathAndQuery.Contains("/api/InstanceOnboarding/status", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool RequiresSetupSecret(string pathAndQuery)
     {
-        return pathAndQuery.Contains("/api/v1/InstanceOnboarding/complete", StringComparison.OrdinalIgnoreCase)
-            || pathAndQuery.Contains("/api/v1/InstanceOnboarding/settings", StringComparison.OrdinalIgnoreCase)
-            || pathAndQuery.Contains("/api/v1/InstanceOnboarding/storage-settings", StringComparison.OrdinalIgnoreCase)
-            || pathAndQuery.Contains("/api/v1/InstanceOnboarding/test-storage", StringComparison.OrdinalIgnoreCase);
+        return pathAndQuery.Contains("/api/InstanceOnboarding/complete", StringComparison.OrdinalIgnoreCase)
+            || pathAndQuery.Contains("/api/InstanceOnboarding/settings", StringComparison.OrdinalIgnoreCase)
+            || pathAndQuery.Contains("/api/InstanceOnboarding/storage-settings", StringComparison.OrdinalIgnoreCase)
+            || pathAndQuery.Contains("/api/InstanceOnboarding/test-storage", StringComparison.OrdinalIgnoreCase);
     }
 }

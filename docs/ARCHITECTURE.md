@@ -117,7 +117,7 @@ sequenceDiagram
     participant Handler
     participant Repository
 
-    Client->>Controller: HTTP Request (e.g., POST /api/v1/{entity})
+    Client->>Controller: HTTP Request (e.g., POST /api/{entity})
     Controller->>MediatR: `_mediator.Send(command)`
     MediatR->>Handler: `Handle(command)`
     Handler->>Repository: `_repository.Create(entity)`
@@ -161,7 +161,7 @@ graph LR
 
 -   The **BFF** (`{Project}.Blazor`) handles the OIDC authentication flow with your identity provider (e.g., Keycloak) and maintains the user session in a secure, `HttpOnly` cookie.
 -   The **WASM Client** (`{Project}.Blazor.Client`) is "dumb" regarding authentication; it simply sends the cookie with each request to the BFF.
--   The **BFF** uses **YARP** as a reverse proxy. When a request for `/api/v1/...` arrives, it reads the access token from the session cookie and forwards the request to the `{Project}.API` backend with a `Authorization: Bearer <token>` header.
+-   The **BFF** uses **YARP** as a reverse proxy. When a request for `/api/...` arrives, it reads the access token from the session cookie and forwards the request to the `{Project}.API` backend with a `Authorization: Bearer <token>` header.
 -   This architecture ensures **no tokens are ever exposed to the browser**.
 
 ### Implementation Example: ISLAMU Event

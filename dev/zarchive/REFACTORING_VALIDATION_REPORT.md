@@ -53,7 +53,7 @@ For each file, we validate:
 - ✅ Substitution table present (lines 7-15)
 - ✅ All 5 hardcoded instances replaced
 - ✅ Controller template fully generic (`{Entity}Controller`, `{IdType}`)
-- ✅ URL patterns use placeholders (`/api/v1/{entity}`)
+- ✅ URL patterns use placeholders (`/api/{entity}`)
 - ✅ CQRS examples use generic patterns
 - ✅ Code samples syntactically valid with substitution
 - ✅ Concrete examples marked "Implementation Example: ISLAMU Event"

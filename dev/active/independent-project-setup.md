@@ -312,7 +312,7 @@ $ErrorActionPreference = "Stop"
 # Configuration
 $ApiProjectPath = "Explore.API"
 $ApiUrl = "https://localhost:7039"
-$SwaggerUrl = "$ApiUrl/swagger/v1/swagger.json"
+$SwaggerUrl = "$ApiUrl/swagger/swagger.json"
 $OutputSwaggerPath = "Explore.API/swagger.json"
 $ClientOutputPath = "Explore.Blazor.Client/Clients/EventApiClient.g.cs"
 $MaxWaitSeconds = 60

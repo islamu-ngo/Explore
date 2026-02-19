@@ -67,13 +67,13 @@ Refer to the `auth-patterns` skill for details on expected behavior for HTTP 401
 
 ```powershell
 # ✅ GET endpoints should succeed without auth (AllowAnonymous)
-Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}" -Method GET
+Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}" -Method GET
 
 # Expected: 200 OK with {entity} list
 
 # ❌ POST without auth should fail with 401
 try {
-    Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}" `
+    Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}" `
         -Method POST `
         -ContentType "application/json" `
         -Body '{"title": "Test {Entity}"}'
@@ -93,7 +93,7 @@ Refer to the `auth-patterns` skill for details on expected behavior for HTTP 401
 ```powershell
 # ❌ Invalid token format
 try {
-    Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}" `
+    Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}" `
         -Method POST `
         -Headers @{ Authorization = "Bearer invalid-token-here" } `
         -ContentType "application/json" `
@@ -116,7 +116,7 @@ Refer to the `auth-patterns` skill for details on implementing resource-level au
 $tokenUserA = "eyJhbGciOiJSUzI1..."
 
 # User A creates an {entity}
-$createResponse = Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}" `
+$createResponse = Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}" `
     -Method POST `
     -Headers @{ Authorization = "Bearer $tokenUserA" } `
     -ContentType "application/json" `
@@ -138,7 +138,7 @@ $tokenUserB = "eyJhbGciOiJSUzI1..."
 
 # ❌ User B tries to update User A's {entity} (should fail)
 try {
-    Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}/${entity}Id" `
+    Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}/${entity}Id" `
         -Method PUT `
         -Headers @{ Authorization = "Bearer $tokenUserB" } `
         -ContentType "application/json" `
@@ -157,7 +157,7 @@ try {
 
 # ❌ User B tries to delete User A's {entity} (should fail)
 try {
-    Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}/${entity}Id" `
+    Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}/${entity}Id" `
         -Method DELETE `
         -Headers @{ Authorization = "Bearer $tokenUserB" }
 } catch {
@@ -182,7 +182,7 @@ $tokenAdmin = "eyJhbGciOiJSUzI1..."
 
 # ❌ Regular user tries to verify {relatedEntity} (admin-only)
 try {
-    Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{relatedEntity}/{id}/verify" `
+    Invoke-RestMethod -Uri "https://localhost:7001/api/{relatedEntity}/{id}/verify" `
         -Method POST `
         -Headers @{ Authorization = "Bearer $tokenUser" }
 } catch {
@@ -192,7 +192,7 @@ try {
 # Expected: 403 Forbidden
 
 # ✅ Admin verifies {relatedEntity} (should succeed)
-Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{relatedEntity}/{id}/verify" `
+Invoke-RestMethod -Uri "https://localhost:7001/api/{relatedEntity}/{id}/verify" `
     -Method POST `
     -Headers @{ Authorization = "Bearer $tokenAdmin" }
 
@@ -210,7 +210,7 @@ $token = "eyJhbGciOiJSUzI1..."
 
 # ❌ Missing required fields
 try {
-    Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}" `
+    Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}" `
         -Method POST `
         -Headers @{ Authorization = "Bearer $token" } `
         -ContentType "application/json" `
@@ -224,7 +224,7 @@ try {
 
 # ❌ Invalid FK references
 try {
-    Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}" `
+    Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}" `
         -Method POST `
         -Headers @{ Authorization = "Bearer $token" } `
         -ContentType "application/json" `
@@ -255,7 +255,7 @@ $token = "eyJhbGciOiJSUzI1..."
 
 # ❌ SQL injection in query parameter
 try {
-    Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}?search=' OR 1=1--" `
+    Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}?search=' OR 1=1--" `
         -Headers @{ Authorization = "Bearer $token" }
 } catch {
     # Should either return 400 or safe results (no database error)
@@ -274,7 +274,7 @@ Refer to the `error-tracking` skill for general security considerations and logg
 $token = "eyJhbGciOiJSUzI1..."
 
 # Create {entity} with XSS payload
-$response = Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}" `
+$response = Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}" `
     -Method POST `
     -Headers @{ Authorization = "Bearer $token" } `
     -ContentType "application/json" `
@@ -301,13 +301,13 @@ Refer to the `auth-patterns` skill for guidelines on configuring CORS, especiall
 
 ```powershell
 # ❌ Request from unauthorized origin
-$response = Invoke-WebRequest -Uri "https://localhost:7001/api/v1/{entity}" `
+$response = Invoke-WebRequest -Uri "https://localhost:7001/api/{entity}" `
     -Headers @{ Origin = "https://malicious-site.com" }
 
 $response.Headers["Access-Control-Allow-Origin"]  # Should NOT be malicious-site.com
 
 # ✅ Request from allowed origin
-$response = Invoke-WebRequest -Uri "https://localhost:7001/api/v1/{entity}" `
+$response = Invoke-WebRequest -Uri "https://localhost:7001/api/{entity}" `
     -Headers @{ Origin = "https://localhost:7002" }
 
 $response.Headers["Access-Control-Allow-Origin"]  # Should be https://localhost:7002
@@ -323,7 +323,7 @@ Refer to the `cqrs-mediatr-guidelines` skill for details on expected request/res
 $token = "eyJhbGciOiJSUzI1..."
 
 # ✅ CREATE: Create new {entity} (returns BaseCommandResponse<Guid>)
-$createResponse = Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}" `
+$createResponse = Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}" `
     -Method POST `
     -Headers @{ Authorization = "Bearer $token" } `
     -ContentType "application/json" `
@@ -347,17 +347,17 @@ $createResponse.message  # Should be "{Entity} created successfully."
 ${entity}Id = $createResponse.id
 
 # ✅ READ: Get {entity} by ID (returns {Entity}Dto)
-${entity} = Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}/${entity}Id"
+${entity} = Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}/${entity}Id"
 
 # Expected: 200 OK with {entity} details
 
 # ✅ LIST: Get all {entities} (returns List<{Entity}ListDto>)
-${entities} = Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}"
+${entities} = Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}"
 
 # Expected: 200 OK with list of {entities}
 
 # ✅ UPDATE: Update {entity} (returns BaseCommandResponse<Guid>)
-$updateResponse = Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}/${entity}Id" `
+$updateResponse = Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}/${entity}Id" `
     -Method PUT `
     -Headers @{ Authorization = "Bearer $token" } `
     -ContentType "application/json" `
@@ -371,7 +371,7 @@ $updateResponse = Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}
 $updateResponse.success  # Should be $true
 
 # ✅ DELETE: Delete {entity} (returns bool/NoContent)
-Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}/${entity}Id" `
+Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}/${entity}Id" `
     -Method DELETE `
     -Headers @{ Authorization = "Bearer $token" }
 
@@ -379,7 +379,7 @@ Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}/${entity}Id" `
 
 # ❌ Verify deletion: Get deleted {entity}
 try {
-    Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}/${entity}Id"
+    Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}/${entity}Id"
 } catch {
     $_.Exception.Response.StatusCode  # Should be 404
 }
@@ -539,7 +539,7 @@ public class {Entity}ControllerTests : IClassFixture<WebApplicationFactory<Progr
     public async Task Get{Entities}_WithoutAuth_Returns200()
     {
         // Arrange & Act - GET is AllowAnonymous
-        var response = await _client.GetAsync("/api/v1/{entity}");
+        var response = await _client.GetAsync("/api/{entity}");
 
         // Assert - Should succeed (public read access)
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -552,7 +552,7 @@ public class {Entity}ControllerTests : IClassFixture<WebApplicationFactory<Progr
         var dto = new { title = "Test {Entity}" };
 
         // Act - POST requires auth
-        var response = await _client.PostAsJsonAsync("/api/v1/{entity}", dto);
+        var response = await _client.PostAsJsonAsync("/api/{entity}", dto);
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -576,7 +576,7 @@ public class {Entity}ControllerTests : IClassFixture<WebApplicationFactory<Progr
         };
 
         // Act
-        var response = await _client.PostAsJsonAsync("/api/v1/{entity}", dto);
+        var response = await _client.PostAsJsonAsync("/api/{entity}", dto);
 
         // Assert - Returns BaseCommandResponse<Guid>
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -595,7 +595,7 @@ public class {Entity}ControllerTests : IClassFixture<WebApplicationFactory<Progr
         var invalid{Entity} = new { description = "Missing title and required FKs" };
 
         // Act
-        var response = await _client.PostAsJsonAsync("/api/v1/{entity}", invalid{Entity});
+        var response = await _client.PostAsJsonAsync("/api/{entity}", invalid{Entity});
 
         // Assert - FluentValidation returns errors
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -610,7 +610,7 @@ public class {Entity}ControllerTests : IClassFixture<WebApplicationFactory<Progr
 
         // User A creates {entity}
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokenUserA);
-        var createResponse = await _client.PostAsJsonAsync("/api/v1/{entity}", new
+        var createResponse = await _client.PostAsJsonAsync("/api/{entity}", new
         {
             title = "Test {Entity}",
             {lookupEntity}Id = 1,
@@ -626,14 +626,14 @@ public class {Entity}ControllerTests : IClassFixture<WebApplicationFactory<Progr
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokenUserB);
 
         // Act
-        var deleteResponse = await _client.DeleteAsync($"/api/v1/{entity}/{{{entity}Id}}");
+        var deleteResponse = await _client.DeleteAsync($"/api/{entity}/{{{entity}Id}}");
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, deleteResponse.StatusCode);
 
         // Cleanup
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokenUserA);
-        await _client.DeleteAsync($"/api/v1/{entity}/{{{entity}Id}}");
+        await _client.DeleteAsync($"/api/{entity}/{{{entity}Id}}");
     }
 
     private async Task<string> GetValidToken(string username = "testuser@example.com")
@@ -650,7 +650,7 @@ public class {Entity}ControllerTests : IClassFixture<WebApplicationFactory<Progr
 Use this checklist for each endpoint:
 
 ```markdown
-## Endpoint: GET /api/v1/{entity}
+## Endpoint: GET /api/{entity}
 
 - [x] Unauthenticated request returns 200 (AllowAnonymous)
 - [ ] Returns List<{Entity}ListDto>
@@ -659,7 +659,7 @@ Use this checklist for each endpoint:
 - [ ] SQL injection attempts blocked
 - [ ] CORS headers correct
 
-## Endpoint: POST /api/v1/{entity}
+## Endpoint: POST /api/{entity}
 
 - [ ] Unauthenticated request returns 401
 - [ ] Valid data creates {entity} (returns BaseCommandResponse<Guid> with success=true)
@@ -669,7 +669,7 @@ Use this checklist for each endpoint:
 - [ ] SQL injection blocked
 - [ ] XSS payloads sanitized
 
-## Endpoint: PUT /api/v1/{entity}/{id}
+## Endpoint: PUT /api/{entity}/{id}
 
 - [ ] Unauthenticated request returns 401
 - [ ] Owner can update (returns BaseCommandResponse<Guid>)
@@ -677,7 +677,7 @@ Use this checklist for each endpoint:
 - [ ] Invalid ID returns 404
 - [ ] Validation errors return 400
 
-## Endpoint: DELETE /api/v1/{entity}/{id}
+## Endpoint: DELETE /api/{entity}/{id}
 
 - [ ] Unauthenticated request returns 401
 - [ ] Owner can delete (204)
@@ -696,7 +696,7 @@ Use this checklist for each endpoint:
 | **XSS** | `<script>alert('XSS')</script>` | HTML encoded |
 | **CSRF** | Cross-origin POST without token | CORS error or 401 |
 | **Mass Assignment** | Send extra fields in DTO | Extra fields ignored |
-| **Insecure Direct Object Reference** | Access `/api/v1/{entity}/{other-user-id}` | 403 Forbidden |
+| **Insecure Direct Object Reference** | Access `/api/{entity}/{other-user-id}` | 403 Forbidden |
 
 ## Related Skills
 
@@ -715,7 +715,7 @@ Provide test results in this format:
 ## Test Results: {Entity} API
 
 ### Authentication Tests
-✅ PASS: GET /api/v1/{entity} is public (AllowAnonymous)
+✅ PASS: GET /api/{entity} is public (AllowAnonymous)
 ✅ PASS: POST without auth blocked (401)
 ✅ PASS: Invalid token rejected (401)
 ✅ PASS: Expired token rejected (401)
@@ -737,7 +737,7 @@ Provide test results in this format:
 ✅ PASS: CORS headers correct
 
 ### Issues Found
-1. **Critical**: Admin authorization not enforced on DELETE /api/v1/{entity}/{id}
+1. **Critical**: Admin authorization not enforced on DELETE /api/{entity}/{id}
    - Expected: 403 for non-admin users
    - Actual: 200 (deletion succeeded)
    - Fix: Add ownership/permission check in Delete{Entity}CommandHandler

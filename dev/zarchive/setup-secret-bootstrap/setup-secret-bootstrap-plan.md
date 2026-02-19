@@ -77,7 +77,7 @@ Boot: API starts -> Resolve ISetupSecretProvider (Singleton)
      +==============================================================+
 
 User visits / -> redirect /setup
-  -> Blazor calls GET /api/v1/InstanceOnboarding/status
+  -> Blazor calls GET /api/InstanceOnboarding/status
   -> Response: { isCompleted: false, isSetupModeActive: true, setupSecretFromEnvironment: false }
   -> Blazor shows "Enter setup secret" form
   -> Help text: "Check the SETUP_SECRET env var, or check the API server logs."
@@ -344,7 +344,7 @@ Inject `ISetupSecretProvider`, call `Lock()` after successful completion to tran
 
 ### Phase 3: Blazor BFF Layer - Setup Route & UI (2.5 hours)
 
-#### Task 3.1: Add `POST /api/v1/InstanceOnboarding/validate-secret` API Endpoint
+#### Task 3.1: Add `POST /api/InstanceOnboarding/validate-secret` API Endpoint
 
 **Files:**
 - `Explore.API/Controllers/InstanceOnboardingController.cs`
@@ -365,7 +365,7 @@ public ActionResult ValidateSecret([FromBody] ValidateSetupSecretRequest request
 }
 ```
 
-The Blazor client calls this through YARP: `POST /api/v1/InstanceOnboarding/validate-secret`.
+The Blazor client calls this through YARP: `POST /api/InstanceOnboarding/validate-secret`.
 
 **Acceptance:** API endpoint validates secrets. Returns 410 when locked. Rate limited to 5/min.
 
@@ -423,7 +423,7 @@ public DateTime? InstanceStartedAt { get; set; }
 - `Explore.Blazor.Client/Pages/Setup.razor` - NEW
 
 **Flow:**
-1. On load: call GET /api/v1/InstanceOnboarding/status
+1. On load: call GET /api/InstanceOnboarding/status
 2. If `IsCompleted` -> redirect to `/`
 3. Show "Enter setup secret" form with:
    - Secret input field (password type)

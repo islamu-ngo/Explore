@@ -26,7 +26,7 @@ public class AtprotoRecordController : ControllerBase
         _logger = logger;
     }
 
-    // GET: api/v1/atprotoRecord
+    // GET: api/atprotoRecord
     [HttpGet]
     [Authorize]
     [OutputCache(PolicyName = "ListData")]
@@ -36,7 +36,7 @@ public class AtprotoRecordController : ControllerBase
         return Ok(atprotoRecords);
     }
 
-    // GET: api/v1/atprotoRecord/{id}
+    // GET: api/atprotoRecord/{id}
     [HttpGet("{id}")]
     [Authorize]
     [OutputCache(PolicyName = "DetailData")]
@@ -51,7 +51,7 @@ public class AtprotoRecordController : ControllerBase
         return Ok(atprotoRecord);
     }
 
-    // POST: api/v1/atprotoRecord
+    // POST: api/atprotoRecord
     [HttpPost]
     [Authorize]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateAtprotoRecordDto dto, CancellationToken cancellationToken = default)
@@ -61,7 +61,7 @@ public class AtprotoRecordController : ControllerBase
         return Ok(response);
     }
 
-    // PUT: api/v1/atprotoRecord/{id}
+    // PUT: api/atprotoRecord/{id}
     [HttpPut("{id}")]
     [Authorize]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateAtprotoRecordDto dto, CancellationToken cancellationToken = default)
@@ -82,7 +82,7 @@ public class AtprotoRecordController : ControllerBase
         return Ok(response);
     }
 
-    // DELETE: api/v1/atprotoRecord/{id}
+    // DELETE: api/atprotoRecord/{id}
     [HttpDelete("{id}")]
     [Authorize]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)

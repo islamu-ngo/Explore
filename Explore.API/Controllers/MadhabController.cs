@@ -23,7 +23,7 @@ public class MadhabController : ControllerBase
         _mediator = mediator;
     }
 
-    // GET: api/v1/madhab
+    // GET: api/madhab
     [HttpGet]
     [EndpointSummary("Get all Madhabs")]
     [EndpointDescription("Retrieve a list of all Islamic jurisprudence schools (Hanafi, Maliki, Shafi'i, Hanbali)")]
@@ -36,7 +36,7 @@ public class MadhabController : ControllerBase
         return Ok(madhabs);
     }
 
-    // GET: api/v1/madhab/{id}
+    // GET: api/madhab/{id}
     [HttpGet("{id}")]
     [EndpointSummary("Get Madhab by ID")]
     [EndpointDescription("Retrieve details of a specific Islamic jurisprudence school")]

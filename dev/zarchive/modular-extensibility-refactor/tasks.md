@@ -169,11 +169,11 @@ This task checklist implements the blocks defined in the authoritative source:
 
 ### 2.9 Create Settings Controller
 - [ ] Create `SettingsController.cs` in API/Controllers:
-  - [ ] `GET /api/v1/settings/{key}` [AllowAnonymous]
-  - [ ] `GET /api/v1/settings/system` [Authorize(Roles = "Admin")]
-  - [ ] `PUT /api/v1/settings/system/{key}` [Authorize(Roles = "Admin")]
-  - [ ] `PUT /api/v1/settings/tenant/{key}` [Authorize]
-  - [ ] `POST /api/v1/settings/system/{key}/lock` [Authorize(Roles = "Admin")]
+  - [ ] `GET /api/settings/{key}` [AllowAnonymous]
+  - [ ] `GET /api/settings/system` [Authorize(Roles = "Admin")]
+  - [ ] `PUT /api/settings/system/{key}` [Authorize(Roles = "Admin")]
+  - [ ] `PUT /api/settings/tenant/{key}` [Authorize]
+  - [ ] `POST /api/settings/system/{key}/lock` [Authorize(Roles = "Admin")]
 - [ ] Add OpenAPI documentation (EndpointSummary, ProducesResponseType)
 - [ ] **Acceptance**: All endpoints functional with authorization
 
@@ -357,7 +357,7 @@ This task checklist implements the blocks defined in the authoritative source:
 
 ### 4.4 Create Module Discovery Endpoint
 - [ ] Create `ModulesController.cs`:
-  - [ ] `GET /api/v1/modules/available` [AllowAnonymous]
+  - [ ] `GET /api/modules/available` [AllowAnonymous]
 - [ ] Response includes module key, name, description, wizard schema URL
 - [ ] Add OpenAPI documentation
 - [ ] **Acceptance**: Endpoint returns correct modules per tenant
@@ -566,9 +566,9 @@ This task checklist implements the blocks defined in the authoritative source:
 
 ### 8.2 Create Aspect Detail Endpoints
 - [ ] Add to `EventController.cs`:
-  - [ ] `GET /api/v1/events/{id}/islamic` [AllowAnonymous]
-  - [ ] `PUT /api/v1/events/{id}/islamic` [Authorize]
-  - [ ] `DELETE /api/v1/events/{id}/islamic` [Authorize]
+  - [ ] `GET /api/events/{id}/islamic` [AllowAnonymous]
+  - [ ] `PUT /api/events/{id}/islamic` [Authorize]
+  - [ ] `DELETE /api/events/{id}/islamic` [Authorize]
   - [ ] Same for tech aspect
 - [ ] Create MediatR queries/commands for aspect-only operations
 - [ ] **Acceptance**: Dedicated aspect endpoints work

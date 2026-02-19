@@ -21,7 +21,7 @@
 - [x] **2.4** Update `GetInstanceOnboardingStatusQueryHandler` with `ISetupSecretProvider`
 - [x] **2.5** Add audit logging on instance claim (`LogWarning` with userId + IP)
 - [x] **2.6** Call `Lock()` after completion in `CompleteInstanceOnboardingCommandHandler`
-- [x] **2.7** Add `POST /api/v1/InstanceOnboarding/validate-secret` API endpoint
+- [x] **2.7** Add `POST /api/InstanceOnboarding/validate-secret` API endpoint
 
 ## Phase 3: Blazor BFF Layer - Setup Route & UI ✅ COMPLETE
 

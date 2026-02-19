@@ -71,7 +71,7 @@ Wrap any potentially error-prone content with an `ErrorBoundary` component. It p
     {
         try
         {
-            _{entities} = await Http.GetFromJsonAsync<List<{Entity}ListDto>>("api/v1/{entity}");
+            _{entities} = await Http.GetFromJsonAsync<List<{Entity}ListDto>>("api/{entity}");
         }
         catch (Exception ex)
         {

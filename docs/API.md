@@ -56,7 +56,7 @@ The `{Project}.API` is a stateless REST API built on ASP.NET Core, following Cle
 | Architecture | Clean Architecture + CQRS |
 | Authentication | JWT Bearer (Keycloak) |
 | Documentation | OpenAPI 3.0 (Scalar + Swagger) |
-| Versioning | URL path (`/api/v1/`) |
+| Versioning | URL path (`/api/`) |
 | Serialization | System.Text.Json |
 
 ### Request Flow
@@ -82,22 +82,22 @@ HTTP Request → Controller → MediatR → Handler → Repository → Entity �
 
 **Generic Pattern:**
 ```
-/api/v1/{resource}
-/api/v1/{resource}/{id}
-/api/v1/{resource}/{id}/{subresource}
+/api/{resource}
+/api/{resource}/{id}
+/api/{resource}/{id}/{subresource}
 ```
 
 **Generic Examples:**
-- `GET /api/v1/{entity}` - List entities
-- `GET /api/v1/{entity}/{id}` - Get entity details
-- `GET /api/v1/{childEntity}/by-{parentEntity}/{parentId}` - Get children
-- `POST /api/v1/{entity}` - Create entity
+- `GET /api/{entity}` - List entities
+- `GET /api/{entity}/{id}` - Get entity details
+- `GET /api/{childEntity}/by-{parentEntity}/{parentId}` - Get children
+- `POST /api/{entity}` - Create entity
 
 ### Implementation Examples: ISLAMU Event
-- `GET /api/v1/event` - List events
-- `GET /api/v1/event/{id}` - Get event details
-- `GET /api/v1/eventsession/by-event/{eventId}` - Get sessions for event
-- `POST /api/v1/organization` - Create organization
+- `GET /api/event` - List events
+- `GET /api/event/{id}` - Get event details
+- `GET /api/eventsession/by-event/{eventId}` - Get sessions for event
+- `POST /api/organization` - Create organization
 
 ---
 
@@ -108,7 +108,7 @@ HTTP Request → Controller → MediatR → Handler → Repository → Entity �
 **Generic Template:**
 
 ```csharp
-[Route("api/v1/[controller]")]
+[Route("api/[controller]")]
 [ApiController]
 public class {Entity}Controller : ControllerBase
 {
@@ -131,7 +131,7 @@ public class {Entity}Controller : ControllerBase
 ### Implementation Example: ISLAMU Event
 
 ```csharp
-[Route("api/v1/[controller]")]
+[Route("api/[controller]")]
 [ApiController]
 public class EventController : ControllerBase
 {
@@ -335,7 +335,7 @@ public class HalCollectionResource<T>
 
 **Request:**
 ```http
-GET /api/v1/events/123e4567-e89b-12d3-a456-426614174000
+GET /api/events/123e4567-e89b-12d3-a456-426614174000
 Accept: application/hal+json
 ```
 
@@ -349,11 +349,11 @@ Accept: application/hal+json
   },
   "_links": {
     "self": {
-      "href": "/api/v1/events/123e4567-e89b-12d3-a456-426614174000",
+      "href": "/api/events/123e4567-e89b-12d3-a456-426614174000",
       "method": "GET"
     },
     "update": {
-      "href": "/api/v1/events/123e4567-e89b-12d3-a456-426614174000",
+      "href": "/api/events/123e4567-e89b-12d3-a456-426614174000",
       "method": "PUT"
     }
   }
@@ -366,7 +366,7 @@ Clients can request payloads without hypermedia overhead using the standard `Pre
 
 **Request:**
 ```http
-GET /api/v1/events/123...
+GET /api/events/123...
 Prefer: return=minimal
 ```
 
@@ -496,7 +496,7 @@ public class HalCollectionResource<T>
 
 **Request:**
 ```http
-GET /api/v1/events/123e4567-e89b-12d3-a456-426614174000
+GET /api/events/123e4567-e89b-12d3-a456-426614174000
 Accept: application/hal+json
 ```
 
@@ -512,19 +512,19 @@ Accept: application/hal+json
   },
   "_links": {
     "self": {
-      "href": "/api/v1/events/123e4567-e89b-12d3-a456-426614174000",
+      "href": "/api/events/123e4567-e89b-12d3-a456-426614174000",
       "method": "GET"
     },
     "update": {
-      "href": "/api/v1/events/123e4567-e89b-12d3-a456-426614174000",
+      "href": "/api/events/123e4567-e89b-12d3-a456-426614174000",
       "method": "PUT"
     },
     "delete": {
-      "href": "/api/v1/events/123e4567-e89b-12d3-a456-426614174000",
+      "href": "/api/events/123e4567-e89b-12d3-a456-426614174000",
       "method": "DELETE"
     },
     "sessions": {
-      "href": "/api/v1/events/123e4567-e89b-12d3-a456-426614174000/sessions",
+      "href": "/api/events/123e4567-e89b-12d3-a456-426614174000/sessions",
       "method": "GET"
     }
   }
@@ -535,7 +535,7 @@ Accept: application/hal+json
 
 **Request:**
 ```http
-GET /api/v1/events?pageNumber=1&pageSize=10
+GET /api/events?pageNumber=1&pageSize=10
 Accept: application/hal+json
 ```
 
@@ -558,19 +558,19 @@ Accept: application/hal+json
   },
   "_links": {
     "self": {
-      "href": "/api/v1/events?pageNumber=1&pageSize=10",
+      "href": "/api/events?pageNumber=1&pageSize=10",
       "method": "GET"
     },
     "first": {
-      "href": "/api/v1/events?pageNumber=1&pageSize=10",
+      "href": "/api/events?pageNumber=1&pageSize=10",
       "method": "GET"
     },
     "next": {
-      "href": "/api/v1/events?pageNumber=2&pageSize=10",
+      "href": "/api/events?pageNumber=2&pageSize=10",
       "method": "GET"
     },
     "last": {
-      "href": "/api/v1/events?pageNumber=5&pageSize=10",
+      "href": "/api/events?pageNumber=5&pageSize=10",
       "method": "GET"
     }
   },
@@ -587,7 +587,7 @@ Clients can request minimal responses without hypermedia links using the `Prefer
 
 **Request:**
 ```http
-GET /api/v1/events/123e4567-e89b-12d3-a456-426614174000
+GET /api/events/123e4567-e89b-12d3-a456-426614174000
 Prefer: return=minimal
 ```
 
@@ -685,12 +685,12 @@ public class PaginatedResult<T>
 
 **Generic Pattern:**
 ```
-GET /api/v1/{entity}?pageNumber=1&pageSize=20
+GET /api/{entity}?pageNumber=1&pageSize=20
 ```
 
 **Example (ISLAMU Event):**
 ```
-GET /api/v1/event?pageNumber=1&pageSize=20
+GET /api/event?pageNumber=1&pageSize=20
 ```
 
 | Parameter | Type | Default | Max | Description |
@@ -734,7 +734,7 @@ Any unhandled exception (System.Exception) is caught by the global `ExceptionHan
   "title": "An error occurred while processing your request.",
   "status": 500,
   "detail": "Database connection timeout",
-  "instance": "/api/v1/events"
+  "instance": "/api/events"
 }
 ```
 
@@ -948,40 +948,40 @@ public async Task<BaseCommandResponse> Handle(UpdateEventCommand request, Cancel
 
 | Resource | Endpoint | Description |
 |----------|----------|-------------|
-| Events | `/api/v1/event` | Event management |
-| Event Sessions | `/api/v1/eventsession` | Session management |
-| Organizations | `/api/v1/organization` | Organization management |
-| Registrations | `/api/v1/eventregistration` | Event registration |
-| Locations | `/api/v1/location` | Venue management |
-| Categories | `/api/v1/category` | Event categories |
-| Tags | `/api/v1/tag` | Event tags |
+| Events | `/api/event` | Event management |
+| Event Sessions | `/api/eventsession` | Session management |
+| Organizations | `/api/organization` | Organization management |
+| Registrations | `/api/eventregistration` | Event registration |
+| Locations | `/api/location` | Venue management |
+| Categories | `/api/category` | Event categories |
+| Tags | `/api/tag` | Event tags |
 
 ### Lookup Tables (Read-Only)
 
 | Resource | Endpoint | Description |
 |----------|----------|-------------|
-| Event Types | `/api/v1/eventtype` | Conference, Webinar, etc. |
-| Event Formats | `/api/v1/eventformat` | In-person, Online, Hybrid |
-| Event Statuses | `/api/v1/eventstatus` | Draft, Published, etc. |
-| Audience Ages | `/api/v1/audienceage` | Children, Youth, Adults |
-| Audience Genders | `/api/v1/audiencegender` | Men, Women, Mixed |
-| Madhabs | `/api/v1/madhab` | Islamic jurisprudence schools |
-| Languages | `/api/v1/language` | Event languages |
-| Registration Modes | `/api/v1/registrationmode` | Registration options |
+| Event Types | `/api/eventtype` | Conference, Webinar, etc. |
+| Event Formats | `/api/eventformat` | In-person, Online, Hybrid |
+| Event Statuses | `/api/eventstatus` | Draft, Published, etc. |
+| Audience Ages | `/api/audienceage` | Children, Youth, Adults |
+| Audience Genders | `/api/audiencegender` | Men, Women, Mixed |
+| Madhabs | `/api/madhab` | Islamic jurisprudence schools |
+| Languages | `/api/language` | Event languages |
+| Registration Modes | `/api/registrationmode` | Registration options |
 
 ### User & Identity
 
 | Resource | Endpoint | Description |
 |----------|----------|-------------|
-| Users | `/api/v1/user` | User management |
-| Actors | `/api/v1/actor` | Identity (user/org) actors |
-| Organization Members | `/api/v1/organizationmember` | Org membership |
+| Users | `/api/user` | User management |
+| Actors | `/api/actor` | Identity (user/org) actors |
+| Organization Members | `/api/organizationmember` | Org membership |
 
 ### Storage
 
 | Resource | Endpoint | Description |
 |----------|----------|-------------|
-| Storage Objects | `/api/v1/storageobject` | File/image storage |
+| Storage Objects | `/api/storageobject` | File/image storage |
 
 ---
 

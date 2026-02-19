@@ -610,7 +610,7 @@ Avoid calling `StateHasChanged()` unnecessarily, as it can impact performance. B
 
     private async Task LoadData()
     {
-        _data = await Http.GetFromJsonAsync<List<{Entity}Dto>>("api/v1/{entities}");
+        _data = await Http.GetFromJsonAsync<List<{Entity}Dto>>("api/{entities}");
         // StateHasChanged() NOT needed - Blazor will re-render after this async method completes
     }
 

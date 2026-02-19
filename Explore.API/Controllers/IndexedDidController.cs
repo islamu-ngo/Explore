@@ -32,7 +32,7 @@ public class IndexedDidController : ControllerBase
         _resourceAssembler = resourceAssembler;
     }
 
-    // GET: api/v1/indexeddid
+    // GET: api/indexeddid
     [HttpGet(Name = RouteNames.GetIndexedDids)]
     [AllowAnonymous]
     [OutputCache(PolicyName = "ListData")]
@@ -46,7 +46,7 @@ public class IndexedDidController : ControllerBase
         return Ok(halResource);
     }
 
-    // GET: api/v1/indexeddid/{did}
+    // GET: api/indexeddid/{did}
     [HttpGet("{did}", Name = RouteNames.GetIndexedDidByDid)]
     [AllowAnonymous]
     [OutputCache(PolicyName = "DetailData")]
@@ -62,7 +62,7 @@ public class IndexedDidController : ControllerBase
         return Ok(halResource);
     }
 
-    // POST: api/v1/indexeddid
+    // POST: api/indexeddid
     [HttpPost]
     [Authorize]
     public async Task<ActionResult<BaseCommandResponse<string>>> Create([FromBody] CreateIndexedDidDto dto, CancellationToken cancellationToken = default)
@@ -72,7 +72,7 @@ public class IndexedDidController : ControllerBase
         return Ok(response);
     }
 
-    // PUT: api/v1/indexeddid/{did}
+    // PUT: api/indexeddid/{did}
     [HttpPut("{did}")]
     [Authorize]
     public async Task<ActionResult<BaseCommandResponse<string>>> Update(string did, [FromBody] UpdateIndexedDidDto dto, CancellationToken cancellationToken = default)
@@ -93,7 +93,7 @@ public class IndexedDidController : ControllerBase
         return Ok(response);
     }
 
-    // DELETE: api/v1/indexeddid/{did}
+    // DELETE: api/indexeddid/{did}
     [HttpDelete("{did}")]
     [Authorize]
     public async Task<ActionResult> Delete(string did, CancellationToken cancellationToken = default)

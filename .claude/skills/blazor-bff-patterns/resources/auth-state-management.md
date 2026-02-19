@@ -195,7 +195,7 @@ public class BffUnauthorizedHandler : DelegatingHandler
             }
 
             // Optionally allow selected anonymous endpoints to stay non-interruptive
-            var isAnonymousApi = path.StartsWith("/api/v1/public", StringComparison.OrdinalIgnoreCase);
+            var isAnonymousApi = path.StartsWith("/api/public", StringComparison.OrdinalIgnoreCase);
             if (!isAnonymousApi)
             {
                 _navigationManager.NavigateTo(

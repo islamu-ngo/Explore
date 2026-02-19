@@ -34,7 +34,7 @@ public class CircuitAccessTokenServiceTests
         var terminal = new CaptureHandler();
         handler.InnerHandler = terminal;
 
-        var request = new HttpRequestMessage(HttpMethod.Get, "https://localhost/api/v1/protected");
+        var request = new HttpRequestMessage(HttpMethod.Get, "https://localhost/api/protected");
         var response = await handler.InvokeAsync(request);
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -64,7 +64,7 @@ public class CircuitAccessTokenServiceTests
         var terminal = new CaptureHandler();
         handler.InnerHandler = terminal;
 
-        var request = new HttpRequestMessage(HttpMethod.Get, "https://localhost/api/v1/protected");
+        var request = new HttpRequestMessage(HttpMethod.Get, "https://localhost/api/protected");
         var response = await handler.InvokeAsync(request);
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -95,7 +95,7 @@ public class CircuitAccessTokenServiceTests
         var terminal = new CaptureHandler();
         handler.InnerHandler = terminal;
 
-        var request = new HttpRequestMessage(HttpMethod.Get, "https://localhost/api/v1/protected");
+        var request = new HttpRequestMessage(HttpMethod.Get, "https://localhost/api/protected");
         var response = await handler.InvokeAsync(request);
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -141,7 +141,7 @@ public class CircuitAccessTokenServiceTests
         var terminal = new CaptureHandler();
         handler.InnerHandler = terminal;
 
-        var request = new HttpRequestMessage(HttpMethod.Post, "https://localhost/api/v1/InstanceOnboarding/complete");
+        var request = new HttpRequestMessage(HttpMethod.Post, "https://localhost/api/InstanceOnboarding/complete");
         _ = await handler.InvokeAsync(request);
 
         IEnumerable<string> values = Array.Empty<string>();
@@ -177,7 +177,7 @@ public class CircuitAccessTokenServiceTests
         var terminal = new CaptureHandler();
         handler.InnerHandler = terminal;
 
-        var request = new HttpRequestMessage(HttpMethod.Get, "https://localhost/api/v1/events");
+        var request = new HttpRequestMessage(HttpMethod.Get, "https://localhost/api/events");
         _ = await handler.InvokeAsync(request);
 
         await Assert.That(terminal.Request?.Headers.Contains("X-Setup-Secret")).IsFalse();
@@ -201,7 +201,7 @@ public class CircuitAccessTokenServiceTests
         var terminal = new CaptureHandler();
         handler.InnerHandler = terminal;
 
-        var request = new HttpRequestMessage(HttpMethod.Post, "https://localhost/api/v1/InstanceOnboarding/complete");
+        var request = new HttpRequestMessage(HttpMethod.Post, "https://localhost/api/InstanceOnboarding/complete");
         _ = await handler.InvokeAsync(request);
 
         IEnumerable<string> values = Array.Empty<string>();

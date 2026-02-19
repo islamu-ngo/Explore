@@ -27,7 +27,7 @@ public class EventSessionAgendaItemController : ControllerBase
         _logger = logger;
     }
 
-    // GET: api/v1/eventsessionagendaitem
+    // GET: api/eventsessionagendaitem
     [HttpGet]
     [EndpointSummary("Get all Agenda Items")]
     [EndpointDescription("Retrieve a paginated list of all event session agenda items. Default page size is 20, max is 100.")]
@@ -44,7 +44,7 @@ public class EventSessionAgendaItemController : ControllerBase
         return Ok(agendaItems);
     }
 
-    // GET: api/v1/eventsessionagendaitem/{id}
+    // GET: api/eventsessionagendaitem/{id}
     [HttpGet("{id}")]
     [EndpointSummary("Get Agenda Item Details")]
     [EndpointDescription("Get detailed information about a specific agenda item")]
@@ -62,7 +62,7 @@ public class EventSessionAgendaItemController : ControllerBase
         return Ok(agendaItem);
     }
 
-    // GET: api/v1/eventsessionagendaitem/by-session/{sessionId}
+    // GET: api/eventsessionagendaitem/by-session/{sessionId}
     [HttpGet("by-session/{sessionId}")]
     [EndpointSummary("Get Agenda Items by Session")]
     [EndpointDescription("Get all agenda items for a specific event session")]
@@ -74,7 +74,7 @@ public class EventSessionAgendaItemController : ControllerBase
         return Ok(agendaItems);
     }
 
-    // POST: api/v1/eventsessionagendaitem
+    // POST: api/eventsessionagendaitem
     [HttpPost]
     [EndpointSummary("Create Agenda Item")]
     [EndpointDescription("Create a new agenda item for an event session")]
@@ -92,7 +92,7 @@ public class EventSessionAgendaItemController : ControllerBase
         return Ok(response);
     }
 
-    // PUT: api/v1/eventsessionagendaitem/{id}
+    // PUT: api/eventsessionagendaitem/{id}
     [HttpPut("{id}")]
     [EndpointSummary("Update Agenda Item")]
     [EndpointDescription("Update an existing agenda item")]
@@ -115,7 +115,7 @@ public class EventSessionAgendaItemController : ControllerBase
         return Ok(response);
     }
 
-    // DELETE: api/v1/eventsessionagendaitem/{id}
+    // DELETE: api/eventsessionagendaitem/{id}
     [HttpDelete("{id}")]
     [EndpointSummary("Delete Agenda Item")]
     [EndpointDescription("Delete an agenda item")]

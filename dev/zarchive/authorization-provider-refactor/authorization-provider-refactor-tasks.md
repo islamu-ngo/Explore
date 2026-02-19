@@ -70,7 +70,7 @@
 
 ## Phase 5: API Layer — Controllers & HATEOAS ✅ COMPLETE
 
-- [x] **5.1** Create unified `RoleController` (GET /api/v1/role?scope=...) [M]
+- [x] **5.1** Create unified `RoleController` (GET /api/role?scope=...) [M]
 - [x] **5.2** Update HATEOAS (OrganizationMemberLinkPolicy, TenantUserLinkPolicy, RouteNames) [L]
 - [x] **5.3** Update `OrganizationMemberController` — already compatible with RoleId [S]
 - [x] **5.4** Integrated AuthorizationProvider into InstanceGovernanceSettingsDto + InstanceGovernanceSettingService [M]

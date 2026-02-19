@@ -115,8 +115,8 @@ Exposing the functionality and making the system aware of the new state.
 - **Task 4.1: Create Admin Impersonation API Endpoints**
   - **File**: `Explore.API/Controllers/AdminController.cs` (or a new `ImpersonationController.cs`)
   - **Acceptance Criteria**:
-    - [ ] Create `POST /api/v1/admin/impersonation/start` endpoint that maps to the `StartImpersonationCommand`.
-    - [ ] Create `POST /api/v1/admin/impersonation/stop` endpoint that maps to the `StopImpersonationCommand`.
+    - [ ] Create `POST /api/admin/impersonation/start` endpoint that maps to the `StartImpersonationCommand`.
+    - [ ] Create `POST /api/admin/impersonation/stop` endpoint that maps to the `StopImpersonationCommand`.
     - [ ] Both endpoints must be protected and require the Instance Administrator role.
   - **Effort**: M
   - **Note**: These endpoints will likely be called from the Blazor BFF, not directly from the client.

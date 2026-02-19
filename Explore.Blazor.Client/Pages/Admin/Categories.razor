@@ -4,8 +4,8 @@
 @using Explore.Blazor.Client.Components.Admin
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Authorization
-@attribute [StreamRendering]
 @attribute [Authorize]
+@rendermode @(new InteractiveAutoRenderMode(prerender: false))
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-8">
     <!-- Hero Section -->

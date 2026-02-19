@@ -23,7 +23,7 @@ public class DidCustodyTypeController : ControllerBase
         _mediator = mediator;
     }
 
-    // GET: api/v1/didcustodytype
+    // GET: api/didcustodytype
     [HttpGet]
     [EndpointSummary("Get all DID Custody Types")]
     [EndpointDescription("Retrieve a list of all DID custody types (Self-Custodied, Custodial, Managed)")]
@@ -36,7 +36,7 @@ public class DidCustodyTypeController : ControllerBase
         return Ok(didCustodyTypes);
     }
 
-    // GET: api/v1/didcustodytype/{id}
+    // GET: api/didcustodytype/{id}
     [HttpGet("{id}")]
     [EndpointSummary("Get DID Custody Type by ID")]
     [EndpointDescription("Retrieve details of a specific DID custody type")]

@@ -208,11 +208,11 @@ Controllers are named `{EntityName}Controller` and placed in `Explore.API/Contro
 
 | Controller | Route |
 |---|---|
-| `EventController` | `api/v1/event` |
-| `OrganizationController` | `api/v1/organization` |
-| `EventSessionController` | `api/v1/eventsession` |
+| `EventController` | `api/event` |
+| `OrganizationController` | `api/organization` |
+| `EventSessionController` | `api/eventsession` |
 
-Route convention: `api/v1/[controller]` (controller name lowercased, no hyphens).
+Route convention: `api/[controller]` (controller name lowercased, no hyphens).
 
 ---
 
@@ -345,7 +345,7 @@ Defined in `Explore.Domain/Constants/GovernanceSettingKeys.cs`.
 5. **Queries** = `Get{Entity}{Suffix}Request` in `Features/{Entities}/Requests/Queries/`
 6. **Handlers** = mirror command/query name + `Handler` suffix
 7. **Repositories** = `I{Entity}Repository` (interface) / `{Entity}Repository` (impl)
-8. **Controllers** = `{Entity}Controller`, route `api/v1/[controller]`
+8. **Controllers** = `{Entity}Controller`, route `api/[controller]`
 9. **Blazor pages** = `{Action}{Entity}.razor` or `{Entity}{Action}.razor` (varies by area)
 10. **Client services** = `{Entity}Service` / `I{Entity}Service`
 11. **DB columns** = snake_case (automatic via EF Core convention)

@@ -25,7 +25,7 @@ public class UserExternalLoginController : ControllerBase
         _mediator = mediator;
     }
 
-    // GET: api/v1/userexternallogin
+    // GET: api/userexternallogin
     [HttpGet]
     [EndpointSummary("Get all User External Logins")]
     [EndpointDescription("Retrieve a list of all user external logins")]
@@ -38,7 +38,7 @@ public class UserExternalLoginController : ControllerBase
         return Ok(logins);
     }
 
-    // GET: api/v1/userexternallogin/{id}
+    // GET: api/userexternallogin/{id}
     [HttpGet("{id}")]
     [EndpointSummary("Get User External Login by ID")]
     [EndpointDescription("Retrieve details of a specific user external login")]
@@ -57,7 +57,7 @@ public class UserExternalLoginController : ControllerBase
         return Ok(login);
     }
 
-    // POST: api/v1/userexternallogin
+    // POST: api/userexternallogin
     [HttpPost]
     [EndpointSummary("Create new User External Login")]
     [EndpointDescription("Create a new user external login")]
@@ -77,7 +77,7 @@ public class UserExternalLoginController : ControllerBase
         return Ok(response);
     }
 
-    // PUT: api/v1/userexternallogin/{id}
+    // PUT: api/userexternallogin/{id}
     [HttpPut("{id}")]
     [EndpointSummary("Update User External Login")]
     [EndpointDescription("Update an existing user external login")]
@@ -103,7 +103,7 @@ public class UserExternalLoginController : ControllerBase
         return Ok(response);
     }
 
-    // DELETE: api/v1/userexternallogin/{id}
+    // DELETE: api/userexternallogin/{id}
     [HttpDelete("{id}")]
     [EndpointSummary("Delete User External Login")]
     [EndpointDescription("Delete a user external login")]

@@ -12,8 +12,8 @@ public sealed class BffUnauthorizedHandler : DelegatingHandler
 {
     private static readonly string[] AnonymousApiPathPrefixes =
     [
-        "/api/v1/publicexperience/settings",
-        "/api/v1/instanceonboarding/status"
+        "/api/publicexperience/settings",
+        "/api/instanceonboarding/status"
     ];
 
     private readonly NavigationManager _nav;

@@ -23,7 +23,7 @@ public class RegistrationModeController : ControllerBase
         _mediator = mediator;
     }
 
-    // GET: api/v1/registrationmode
+    // GET: api/registrationmode
     [HttpGet]
     [EndpointSummary("Get all Registration Modes")]
     [EndpointDescription("Retrieve a list of all registration modes (Open, ApprovalRequired, InvitationOnly)")]
@@ -36,7 +36,7 @@ public class RegistrationModeController : ControllerBase
         return Ok(registrationModes);
     }
 
-    // GET: api/v1/registrationmode/{id}
+    // GET: api/registrationmode/{id}
     [HttpGet("{id}")]
     [EndpointSummary("Get Registration Mode by ID")]
     [EndpointDescription("Retrieve details of a specific registration mode")]

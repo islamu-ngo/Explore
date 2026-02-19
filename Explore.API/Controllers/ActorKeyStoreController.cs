@@ -25,7 +25,7 @@ public class ActorKeyStoreController : ControllerBase
         _mediator = mediator;
     }
 
-    // GET: api/v1/actorkeystore
+    // GET: api/actorkeystore
     [HttpGet]
     [EndpointSummary("Get all Actor Key Stores")]
     [EndpointDescription("Retrieve a list of all actor key stores")]
@@ -38,7 +38,7 @@ public class ActorKeyStoreController : ControllerBase
         return Ok(keyStores);
     }
 
-    // GET: api/v1/actorkeystore/{id}
+    // GET: api/actorkeystore/{id}
     [HttpGet("{id}")]
     [EndpointSummary("Get Actor Key Store by ID")]
     [EndpointDescription("Retrieve details of a specific actor key store")]
@@ -57,7 +57,7 @@ public class ActorKeyStoreController : ControllerBase
         return Ok(keyStore);
     }
 
-    // POST: api/v1/actorkeystore
+    // POST: api/actorkeystore
     [HttpPost]
     [EndpointSummary("Create new Actor Key Store")]
     [EndpointDescription("Create a new actor key store")]
@@ -77,7 +77,7 @@ public class ActorKeyStoreController : ControllerBase
         return Ok(response);
     }
 
-    // PUT: api/v1/actorkeystore/{id}
+    // PUT: api/actorkeystore/{id}
     [HttpPut("{id}")]
     [EndpointSummary("Update Actor Key Store")]
     [EndpointDescription("Update an existing actor key store")]
@@ -103,7 +103,7 @@ public class ActorKeyStoreController : ControllerBase
         return Ok(response);
     }
 
-    // DELETE: api/v1/actorkeystore/{id}
+    // DELETE: api/actorkeystore/{id}
     [HttpDelete("{id}")]
     [EndpointSummary("Delete Actor Key Store")]
     [EndpointDescription("Delete an actor key store")]

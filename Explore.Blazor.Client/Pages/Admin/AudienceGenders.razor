@@ -3,7 +3,7 @@
 @using Explore.Blazor.Client.Services.Contracts
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
-@attribute [StreamRendering]
+@rendermode @(new InteractiveAutoRenderMode(prerender: false))
 
 <div class="admin-lookup">
     <!-- Hero Section -->

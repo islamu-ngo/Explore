@@ -76,7 +76,7 @@ public class IslamicEventStrategy : IEventStrategy
         yield return new StrategyLink
         {
             Rel = "islamic-aspect",
-            Href = $"/api/v1/events/{@event.Id}/aspects/islamic",
+            Href = $"/api/events/{@event.Id}/aspects/islamic",
             Method = "GET",
             Title = "Islamic event details"
         };
@@ -86,7 +86,7 @@ public class IslamicEventStrategy : IEventStrategy
             yield return new StrategyLink
             {
                 Rel = "madhab",
-                Href = $"/api/v1/madhabs/{@event.IslamicAspect.MadhabId}",
+                Href = $"/api/madhabs/{@event.IslamicAspect.MadhabId}",
                 Method = "GET",
                 Title = "Madhab information"
             };

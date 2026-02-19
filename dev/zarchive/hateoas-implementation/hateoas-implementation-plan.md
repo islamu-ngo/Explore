@@ -64,7 +64,7 @@ Explore.API/Controllers/
 ### Current Response Format
 
 ```json
-// GET /api/v1/organization/{id}
+// GET /api/organization/{id}
 {
   "id": "550e8400-e29b-41d4-a716-446655440000",
   "fullName": "ISLAMU Foundation",
@@ -89,7 +89,7 @@ Explore.API/Controllers/
 ### HAL+JSON Response Format
 
 ```json
-// GET /api/v1/organization/{id}
+// GET /api/organization/{id}
 // Content-Type: application/hal+json
 {
   "id": "550e8400-e29b-41d4-a716-446655440000",
@@ -98,19 +98,19 @@ Explore.API/Controllers/
   "country": "Belgium",
   "city": "Brussels",
   "_links": {
-    "self": { "href": "/api/v1/organization/550e8400-e29b-41d4-a716-446655440000" },
-    "collection": { "href": "/api/v1/organization" },
-    "events": { "href": "/api/v1/organization/550e8400-e29b-41d4-a716-446655440000/events" },
-    "members": { "href": "/api/v1/organization/550e8400-e29b-41d4-a716-446655440000/members" },
-    "update": { "href": "/api/v1/organization/550e8400-e29b-41d4-a716-446655440000", "method": "PUT" },
-    "delete": { "href": "/api/v1/organization/550e8400-e29b-41d4-a716-446655440000", "method": "DELETE" }
+    "self": { "href": "/api/organization/550e8400-e29b-41d4-a716-446655440000" },
+    "collection": { "href": "/api/organization" },
+    "events": { "href": "/api/organization/550e8400-e29b-41d4-a716-446655440000/events" },
+    "members": { "href": "/api/organization/550e8400-e29b-41d4-a716-446655440000/members" },
+    "update": { "href": "/api/organization/550e8400-e29b-41d4-a716-446655440000", "method": "PUT" },
+    "delete": { "href": "/api/organization/550e8400-e29b-41d4-a716-446655440000", "method": "DELETE" }
   },
   "_embedded": {
     "actor": {
       "id": "...",
       "displayName": "ISLAMU Foundation",
       "_links": {
-        "self": { "href": "/api/v1/actor/..." }
+        "self": { "href": "/api/actor/..." }
       }
     }
   }
@@ -120,7 +120,7 @@ Explore.API/Controllers/
 ### Paginated Collection Response
 
 ```json
-// GET /api/v1/event?pageNumber=2&pageSize=10
+// GET /api/event?pageNumber=2&pageSize=10
 // Content-Type: application/hal+json
 {
   "pageNumber": 2,
@@ -128,12 +128,12 @@ Explore.API/Controllers/
   "totalCount": 150,
   "totalPages": 15,
   "_links": {
-    "self": { "href": "/api/v1/event?pageNumber=2&pageSize=10" },
-    "first": { "href": "/api/v1/event?pageNumber=1&pageSize=10" },
-    "prev": { "href": "/api/v1/event?pageNumber=1&pageSize=10" },
-    "next": { "href": "/api/v1/event?pageNumber=3&pageSize=10" },
-    "last": { "href": "/api/v1/event?pageNumber=15&pageSize=10" },
-    "create": { "href": "/api/v1/event", "method": "POST" }
+    "self": { "href": "/api/event?pageNumber=2&pageSize=10" },
+    "first": { "href": "/api/event?pageNumber=1&pageSize=10" },
+    "prev": { "href": "/api/event?pageNumber=1&pageSize=10" },
+    "next": { "href": "/api/event?pageNumber=3&pageSize=10" },
+    "last": { "href": "/api/event?pageNumber=15&pageSize=10" },
+    "create": { "href": "/api/event", "method": "POST" }
   },
   "_embedded": {
     "items": [
@@ -141,8 +141,8 @@ Explore.API/Controllers/
         "id": "...",
         "title": "Ramadan Conference 2026",
         "_links": {
-          "self": { "href": "/api/v1/event/..." },
-          "sessions": { "href": "/api/v1/event/.../sessions" }
+          "self": { "href": "/api/event/..." },
+          "sessions": { "href": "/api/event/.../sessions" }
         }
       }
     ]
@@ -155,7 +155,7 @@ Explore.API/Controllers/
 Clients requesting minimal payloads (e.g., mobile apps, high-frequency polling) send:
 
 ```http
-GET /api/v1/organization/550e8400-e29b-41d4-a716-446655440000
+GET /api/organization/550e8400-e29b-41d4-a716-446655440000
 Prefer: return=minimal
 ```
 
@@ -814,7 +814,7 @@ organization    - Parent organization
 ### Single Resource
 
 ```json
-GET /api/v1/event/550e8400-e29b-41d4-a716-446655440000
+GET /api/event/550e8400-e29b-41d4-a716-446655440000
 Accept: application/hal+json
 
 {
@@ -825,19 +825,19 @@ Accept: application/hal+json
   "eventStatusName": "Published",
   "_links": {
     "self": {
-      "href": "/api/v1/event/550e8400-e29b-41d4-a716-446655440000"
+      "href": "/api/event/550e8400-e29b-41d4-a716-446655440000"
     },
     "collection": {
-      "href": "/api/v1/event"
+      "href": "/api/event"
     },
     "sessions": {
-      "href": "/api/v1/event/550e8400-e29b-41d4-a716-446655440000/sessions"
+      "href": "/api/event/550e8400-e29b-41d4-a716-446655440000/sessions"
     },
     "organization": {
-      "href": "/api/v1/organization/123e4567-e89b-12d3-a456-426614174000"
+      "href": "/api/organization/123e4567-e89b-12d3-a456-426614174000"
     },
     "edit": {
-      "href": "/api/v1/event/550e8400-e29b-41d4-a716-446655440000",
+      "href": "/api/event/550e8400-e29b-41d4-a716-446655440000",
       "method": "PUT"
     }
   },
@@ -847,7 +847,7 @@ Accept: application/hal+json
         "id": "...",
         "title": "Opening Ceremony",
         "_links": {
-          "self": { "href": "/api/v1/eventsession/..." }
+          "self": { "href": "/api/eventsession/..." }
         }
       }
     ]
@@ -858,7 +858,7 @@ Accept: application/hal+json
 ### Collection Resource
 
 ```json
-GET /api/v1/event?pageNumber=1&pageSize=10
+GET /api/event?pageNumber=1&pageSize=10
 Accept: application/hal+json
 
 {
@@ -867,18 +867,18 @@ Accept: application/hal+json
   "totalCount": 50,
   "totalPages": 5,
   "_links": {
-    "self": { "href": "/api/v1/event?pageNumber=1&pageSize=10" },
-    "first": { "href": "/api/v1/event?pageNumber=1&pageSize=10" },
-    "next": { "href": "/api/v1/event?pageNumber=2&pageSize=10" },
-    "last": { "href": "/api/v1/event?pageNumber=5&pageSize=10" },
-    "create": { "href": "/api/v1/event", "method": "POST" }
+    "self": { "href": "/api/event?pageNumber=1&pageSize=10" },
+    "first": { "href": "/api/event?pageNumber=1&pageSize=10" },
+    "next": { "href": "/api/event?pageNumber=2&pageSize=10" },
+    "last": { "href": "/api/event?pageNumber=5&pageSize=10" },
+    "create": { "href": "/api/event", "method": "POST" }
   },
   "_embedded": {
     "items": [
       {
         "id": "...",
         "title": "Event 1",
-        "_links": { "self": { "href": "/api/v1/event/..." } }
+        "_links": { "self": { "href": "/api/event/..." } }
       }
     ]
   }

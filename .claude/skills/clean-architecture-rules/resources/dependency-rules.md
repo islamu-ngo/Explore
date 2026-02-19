@@ -403,7 +403,7 @@ public async Task<ActionResult<List<{Entity}ListDto>>> GetAll()
 // Blazor.Client calls API
 @inject HttpClient Http
 
-var {entities} = await Http.GetFromJsonAsync<List<{Entity}ListDto>>("/api/v1/{entity}");
+var {entities} = await Http.GetFromJsonAsync<List<{Entity}ListDto>>("/api/{entity}");
 ```
 
 ---

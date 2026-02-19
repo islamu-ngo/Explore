@@ -2720,11 +2720,11 @@ README.md
 10: 
 11: ## Route and Method Conventions
 12: 
-13: - Collection read: `GET /api/v1/{entities}` -> query request -> paginated DTO result.
-14: - Item read: `GET /api/v1/{entities}/{id}` -> query request -> item DTO or `404`.
-15: - Create: `POST /api/v1/{entities}` -> command -> `BaseCommandResponse<Guid>` and `201 Created`.
-16: - Update: `PUT /api/v1/{entities}/{id}` -> command -> `BaseCommandResponse<Guid>` and `200 OK`.
-17: - Delete: `DELETE /api/v1/{entities}/{id}` -> command -> `bool` and `204`/`404`.
+13: - Collection read: `GET /api/{entities}` -> query request -> paginated DTO result.
+14: - Item read: `GET /api/{entities}/{id}` -> query request -> item DTO or `404`.
+15: - Create: `POST /api/{entities}` -> command -> `BaseCommandResponse<Guid>` and `201 Created`.
+16: - Update: `PUT /api/{entities}/{id}` -> command -> `BaseCommandResponse<Guid>` and `200 OK`.
+17: - Delete: `DELETE /api/{entities}/{id}` -> command -> `bool` and `204`/`404`.
 18: 
 19: Use route constraints for clarity (`{id:guid}`) where applicable.
 20: 
@@ -2865,7 +2865,7 @@ README.md
 43:   "title": "Validation failed",
 44:   "status": 400,
 45:   "detail": "One or more validation errors occurred.",
-46:   "instance": "/api/v1/events",
+46:   "instance": "/api/events",
 47:   "traceId": "00-1f6...",
 48:   "errors": {
 49:     "title": ["Title is required"],
@@ -9845,7 +9845,7 @@ README.md
 461: 
 462: #### Task 5.4: Integration test — connection test endpoint (optional)
 463: - **File**: `Event.API.IntegrationTests/Features/EmailConnectionTests.cs`
-464: - **What**: Test that the `/api/v1/admin/email/test-connection` endpoint works
+464: - **What**: Test that the `/api/admin/email/test-connection` endpoint works
 465: - **Acceptance Criteria**:
 466:   - [ ] Uses WebApplicationFactory
 467:   - [ ] Mocks SMTP (no real connection)
@@ -9859,7 +9859,7 @@ README.md
 475: 
 476: #### Task 6.1: Add email test connection endpoint
 477: - **File**: Add to existing admin controller or create `Explore.API/Controllers/EmailController.cs`
-478: - **What**: `POST /api/v1/admin/email/test-connection` — tests current SMTP configuration
+478: - **What**: `POST /api/admin/email/test-connection` — tests current SMTP configuration
 479: - **Authorization**: `[Authorize(Roles = "Admin")]`
 480: - **Response**: `EmailResult` (success/failure + timing)
 481: - **Acceptance Criteria**:
@@ -9870,7 +9870,7 @@ README.md
 486: 
 487: #### Task 6.2: Add send test email endpoint (optional)
 488: - **File**: Same controller
-489: - **What**: `POST /api/v1/admin/email/send-test` — sends a test email to verify end-to-end
+489: - **What**: `POST /api/admin/email/send-test` — sends a test email to verify end-to-end
 490: - **Authorization**: `[Authorize(Roles = "Admin")]`
 491: - **Body**: `{ "to": "admin@example.com" }`
 492: - **Response**: `EmailResult`
@@ -10532,8 +10532,8 @@ README.md
 115: - **Task 4.1: Create Admin Impersonation API Endpoints**
 116:   - **File**: `Explore.API/Controllers/AdminController.cs` (or a new `ImpersonationController.cs`)
 117:   - **Acceptance Criteria**:
-118:     - [ ] Create `POST /api/v1/admin/impersonation/start` endpoint that maps to the `StartImpersonationCommand`.
-119:     - [ ] Create `POST /api/v1/admin/impersonation/stop` endpoint that maps to the `StopImpersonationCommand`.
+118:     - [ ] Create `POST /api/admin/impersonation/start` endpoint that maps to the `StartImpersonationCommand`.
+119:     - [ ] Create `POST /api/admin/impersonation/stop` endpoint that maps to the `StopImpersonationCommand`.
 120:     - [ ] Both endpoints must be protected and require the Instance Administrator role.
 121:   - **Effort**: M
 122:   - **Note**: These endpoints will likely be called from the Blazor BFF, not directly from the client.
@@ -10930,7 +10930,7 @@ README.md
 312: # Configuration
 313: $ApiProjectPath = "Explore.API"
 314: $ApiUrl = "https://localhost:7039"
-315: $SwaggerUrl = "$ApiUrl/swagger/v1/swagger.json"
+315: $SwaggerUrl = "$ApiUrl/swagger/swagger.json"
 316: $OutputSwaggerPath = "Explore.API/swagger.json"
 317: $ClientOutputPath = "Explore.Blazor.Client/Clients/EventApiClient.g.cs"
 318: $MaxWaitSeconds = 60
@@ -11425,11 +11425,11 @@ README.md
  85: ### Task 4.1: Update `TenantController`
  86: - **File**: `Explore.API/Controllers/TenantController.cs`
  87: - **Endpoints**:
- 88:   - `GET /api/v1/tenant/navigation` (Anonymous/Public) - Cached 5-10m.
- 89:   - `POST /api/v1/tenant/navigation` (Admin only)
- 90:   - `PUT /api/v1/tenant/navigation/{id}` (Admin only)
- 91:   - `DELETE /api/v1/tenant/navigation/{id}` (Admin only)
- 92:   - `PUT /api/v1/tenant/navigation/reorder` (Admin only)
+ 88:   - `GET /api/tenant/navigation` (Anonymous/Public) - Cached 5-10m.
+ 89:   - `POST /api/tenant/navigation` (Admin only)
+ 90:   - `PUT /api/tenant/navigation/{id}` (Admin only)
+ 91:   - `DELETE /api/tenant/navigation/{id}` (Admin only)
+ 92:   - `PUT /api/tenant/navigation/reorder` (Admin only)
  93: 
  94: ---
  95: 
@@ -11667,7 +11667,7 @@ README.md
  75:         .Expire(TimeSpan.FromSeconds(30))
  76:         .Tag("api"));
  77: 
- 78:     // Cache GET /api/v1/event for 60 seconds
+ 78:     // Cache GET /api/event for 60 seconds
  79:     options.AddPolicy("Events", builder => builder
  80:         .Expire(TimeSpan.FromSeconds(60))
  81:         .Tag("events")
@@ -12016,7 +12016,7 @@ README.md
 424: 
 425: ### 9. API Versioning Middleware
 426: 
-427: **Current State**: Manual URL path versioning (`/api/v1/`)
+427: **Current State**: Manual URL path versioning (`/api/`)
 428: **Recommendation**: Use official API Versioning package for enterprise features
 429: 
 430: ```csharp
@@ -14787,7 +14787,7 @@ README.md
 189: 
 190: - [ ] **Task 4.2**: Add self-service registration endpoint
 191:   - File: `Explore.API/Controllers/TenantController.cs`
-192:   - Endpoint: POST /api/v1/tenants/register
+192:   - Endpoint: POST /api/tenants/register
 193:   - Dependencies: Task 2.2
 194: 
 195: - [ ] **Task 4.3**: Add tenant lifecycle endpoints + lifecycle history
@@ -14797,7 +14797,7 @@ README.md
 199: 
 200: - [ ] **Task 4.4**: Add onboarding step save endpoint
 201:   - File: `Explore.API/Controllers/TenantOnboardingController.cs`
-202:   - Endpoint: PUT /api/v1/tenant-onboarding/steps/{stepId}
+202:   - Endpoint: PUT /api/tenant-onboarding/steps/{stepId}
 203:   - Dependencies: Task 2.7
 204: 
 205: - [ ] **Task 4.5**: Update Cerbos policies
@@ -16760,11 +16760,11 @@ README.md
 157: 
 158: **Example Structure**:
 159: ```markdown
-160: ### POST /api/v1/event
+160: ### POST /api/event
 161: 
 162: **cURL Example**:
 163: ```bash
-164: curl -X POST https://api.example.com/api/v1/event \
+164: curl -X POST https://api.example.com/api/event \
 165:   -H "Authorization: Bearer YOUR_TOKEN" \
 166:   -H "Content-Type: application/json" \
 167:   -d '{
@@ -16785,7 +16785,7 @@ README.md
 182: 
 183: **JavaScript Example**:
 184: ```javascript
-185: const response = await fetch('https://api.example.com/api/v1/event', {
+185: const response = await fetch('https://api.example.com/api/event', {
 186:   method: 'POST',
 187:   headers: {
 188:     'Authorization': 'Bearer YOUR_TOKEN',
@@ -18899,7 +18899,7 @@ README.md
 468: ### API Documentation
 469: - **Scalar UI**: Interactive API explorer at `/scalar/v1`
 470: - **Swagger UI**: OpenAPI documentation at `/swagger`
-471: - **OpenAPI Spec**: Machine-readable spec at `/swagger/v1/swagger.json`
+471: - **OpenAPI Spec**: Machine-readable spec at `/swagger/swagger.json`
 472: 
 473: ---
 474: 
@@ -19056,7 +19056,7 @@ README.md
  40:             Postcode = 1000
  41:         };
  42: 
- 43:         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/organization")
+ 43:         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/organization")
  44:         {
  45:             Content = JsonContent.Create(dto)
  46:         };
@@ -19082,7 +19082,7 @@ README.md
  66:             Postcode = 1000
  67:         };
  68: 
- 69:         using var request = new HttpRequestMessage(HttpMethod.Put, $"/api/v1/organization/{Guid.NewGuid()}")
+ 69:         using var request = new HttpRequestMessage(HttpMethod.Put, $"/api/organization/{Guid.NewGuid()}")
  70:         {
  71:             Content = JsonContent.Create(dto)
  72:         };
@@ -19098,7 +19098,7 @@ README.md
  82:     public async Task GetMyOrganizations_WithoutAuth_ShouldReturnUnauthorized()
  83:     {
  84: 
- 85:         using var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organization/my");
+ 85:         using var request = new HttpRequestMessage(HttpMethod.Get, "/api/organization/my");
  86: 
  87: 
  88:         var response = await _fixture.Client.SendAsync(request);
@@ -19112,13 +19112,13 @@ README.md
  96:     #region Anonymous Allow Tests — Read Endpoints
  97: 
  98:     [Test]
- 99:     [Arguments("/api/v1/organization")]
-100:     [Arguments("/api/v1/event")]
-101:     [Arguments("/api/v1/eventsession")]
-102:     [Arguments("/api/v1/actor")]
-103:     [Arguments("/api/v1/location")]
-104:     [Arguments("/api/v1/category")]
-105:     [Arguments("/api/v1/tag")]
+ 99:     [Arguments("/api/organization")]
+100:     [Arguments("/api/event")]
+101:     [Arguments("/api/eventsession")]
+102:     [Arguments("/api/actor")]
+103:     [Arguments("/api/location")]
+104:     [Arguments("/api/category")]
+105:     [Arguments("/api/tag")]
 106:     public async Task GetAllPublicEndpoints_WithoutAuth_ShouldReturnOk(string endpoint)
 107:     {
 108: 
@@ -19149,7 +19149,7 @@ README.md
 133:             Postcode = 1000
 134:         };
 135: 
-136:         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/organization")
+136:         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/organization")
 137:         {
 138:             Content = JsonContent.Create(dto)
 139:         };
@@ -19167,7 +19167,7 @@ README.md
 151:     public async Task GetMyOrganizations_WithAuth_ShouldNotReturnUnauthorized()
 152:     {
 153: 
-154:         using var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organization/my");
+154:         using var request = new HttpRequestMessage(HttpMethod.Get, "/api/organization/my");
 155:         request.Headers.Add(TestAuthHandler.AuthHeaderName,
 156:             TestAuthHandler.CreateAuthHeaderValue(Guid.NewGuid(), "Auth User"));
 157: 
@@ -19189,7 +19189,7 @@ README.md
 173:         var dto = new UpdateOrganizationApprovalStatusDto { ApprovalStatusId = 1 };
 174: 
 175:         using var request = new HttpRequestMessage(HttpMethod.Put,
-176:             $"/api/v1/organization/updatestatustype/{Guid.NewGuid()}")
+176:             $"/api/organization/updatestatustype/{Guid.NewGuid()}")
 177:         {
 178:             Content = JsonContent.Create(dto)
 179:         };
@@ -19210,7 +19210,7 @@ README.md
 194:         var dto = new UpdateOrganizationApprovalStatusDto { ApprovalStatusId = 1 };
 195: 
 196:         using var request = new HttpRequestMessage(HttpMethod.Put,
-197:             $"/api/v1/organization/updatestatustype/{Guid.NewGuid()}")
+197:             $"/api/organization/updatestatustype/{Guid.NewGuid()}")
 198:         {
 199:             Content = JsonContent.Create(dto)
 200:         };
@@ -19259,7 +19259,7 @@ README.md
  29:         ]);
  30: 
  31:         using var client = CreateClientThatThrows(new Explore.Application.Exceptions.ValidationException(validationResult));
- 32:         var response = await client.GetAsync($"/api/v1/actor/{Guid.NewGuid()}");
+ 32:         var response = await client.GetAsync($"/api/actor/{Guid.NewGuid()}");
  33: 
  34:         await ProblemDetailsAssertions.AssertProblemDetailsAsync(response, HttpStatusCode.BadRequest, "Validation failed");
  35: 
@@ -19274,7 +19274,7 @@ README.md
  44:     public async Task ExceptionPipeline_WhenMediatorThrowsNotFoundException_ReturnsProblemDetailsNotFound()
  45:     {
  46:         using var client = CreateClientThatThrows(new NotFoundException("Organization", Guid.NewGuid()));
- 47:         var response = await client.GetAsync($"/api/v1/actor/{Guid.NewGuid()}");
+ 47:         var response = await client.GetAsync($"/api/actor/{Guid.NewGuid()}");
  48: 
  49:         await ProblemDetailsAssertions.AssertProblemDetailsAsync(response, HttpStatusCode.NotFound, "Resource not found");
  50: 
@@ -19289,7 +19289,7 @@ README.md
  59:         const string sensitiveMessage = "Sensitive internals should not be exposed";
  60: 
  61:         using var client = CreateClientThatThrows(new Exception(sensitiveMessage));
- 62:         var response = await client.GetAsync($"/api/v1/actor/{Guid.NewGuid()}");
+ 62:         var response = await client.GetAsync($"/api/actor/{Guid.NewGuid()}");
  63: 
  64:         await ProblemDetailsAssertions.AssertProblemDetailsAsync(response, HttpStatusCode.InternalServerError, "Internal server error");
  65: 
@@ -19370,7 +19370,7 @@ README.md
  14: public class EventHateoasTests
  15: {
  16:     private readonly ApiTestFixture _fixture;
- 17:     private const string BaseUrl = "/api/v1/event";
+ 17:     private const string BaseUrl = "/api/event";
  18: 
  19:     public EventHateoasTests(ApiTestFixture fixture)
  20:     {
@@ -19420,7 +19420,7 @@ README.md
  64:                 if (itemLinks.TryGetProperty("sessions", out var sessionsLink))
  65:                 {
  66:                     var href = sessionsLink.GetProperty("href").GetString();
- 67:                     await Assert.That(href).Contains("/api/v1/eventsession/by-event/");
+ 67:                     await Assert.That(href).Contains("/api/eventsession/by-event/");
  68:                 }
  69:             }
  70:         }
@@ -19450,7 +19450,7 @@ README.md
  94:                 if (itemLinks.TryGetProperty("actor", out var actorLink))
  95:                 {
  96:                     var href = actorLink.GetProperty("href").GetString();
- 97:                     await Assert.That(href).Contains("/api/v1/actor/");
+ 97:                     await Assert.That(href).Contains("/api/actor/");
  98:                 }
  99:             }
 100:         }
@@ -19556,7 +19556,7 @@ README.md
  14: public class EventSessionHateoasTests
  15: {
  16:     private readonly ApiTestFixture _fixture;
- 17:     private const string BaseUrl = "/api/v1/eventsession";
+ 17:     private const string BaseUrl = "/api/eventsession";
  18: 
  19:     public EventSessionHateoasTests(ApiTestFixture fixture)
  20:     {
@@ -19606,7 +19606,7 @@ README.md
  64:                 if (itemLinks.TryGetProperty("event", out var eventLink))
  65:                 {
  66:                     var href = eventLink.GetProperty("href").GetString();
- 67:                     await Assert.That(href).Contains("/api/v1/event/");
+ 67:                     await Assert.That(href).Contains("/api/event/");
  68:                 }
  69:             }
  70:         }
@@ -19676,7 +19676,7 @@ README.md
 134:     public async Task GetByEvent_ShouldReturnSessionsForEvent()
 135:     {
 136: 
-137:         var eventsResponse = await _fixture.Client.GetAsync("/api/v1/event");
+137:         var eventsResponse = await _fixture.Client.GetAsync("/api/event");
 138:         var eventsContent = await eventsResponse.Content.ReadAsStringAsync();
 139:         var eventsJson = JsonDocument.Parse(eventsContent);
 140: 
@@ -19777,8 +19777,8 @@ README.md
  26:     #region Anonymous Link Filtering
  27: 
  28:     [Test]
- 29:     [Arguments("/api/v1/organization")]
- 30:     [Arguments("/api/v1/event")]
+ 29:     [Arguments("/api/organization")]
+ 30:     [Arguments("/api/event")]
  31:     public async Task GetAll_Anonymous_ShouldNotIncludeCreateLink(string endpoint)
  32:     {
  33: 
@@ -19802,8 +19802,8 @@ README.md
  51:     }
  52: 
  53:     [Test]
- 54:     [Arguments("/api/v1/organization")]
- 55:     [Arguments("/api/v1/event")]
+ 54:     [Arguments("/api/organization")]
+ 55:     [Arguments("/api/event")]
  56:     public async Task GetAll_Anonymous_ShouldIncludePublicLinks(string endpoint)
  57:     {
  58: 
@@ -19831,8 +19831,8 @@ README.md
  80:     #region Authenticated Link Filtering
  81: 
  82:     [Test]
- 83:     [Arguments("/api/v1/organization")]
- 84:     [Arguments("/api/v1/event")]
+ 83:     [Arguments("/api/organization")]
+ 84:     [Arguments("/api/event")]
  85:     public async Task GetAll_Authenticated_ShouldIncludeCreateLink(string endpoint)
  86:     {
  87: 
@@ -19864,7 +19864,7 @@ README.md
 113:     public async Task GetAll_Authenticated_ShouldIncludePublicLinks()
 114:     {
 115: 
-116:         using var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organization");
+116:         using var request = new HttpRequestMessage(HttpMethod.Get, "/api/organization");
 117:         request.Headers.Add(TestAuthHandler.AuthHeaderName,
 118:             TestAuthHandler.CreateAuthHeaderValue(Guid.NewGuid(), "Auth User"));
 119: 
@@ -19893,7 +19893,7 @@ README.md
 142:     public async Task GetAll_Authenticated_WithPreferMinimal_ShouldStripItemLinks()
 143:     {
 144: 
-145:         using var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organization");
+145:         using var request = new HttpRequestMessage(HttpMethod.Get, "/api/organization");
 146:         request.Headers.Add(TestAuthHandler.AuthHeaderName,
 147:             TestAuthHandler.CreateAuthHeaderValue(Guid.NewGuid(), "Auth User"));
 148:         request.Headers.Add("Prefer", "return=minimal");
@@ -19930,7 +19930,7 @@ README.md
 179:     public async Task ErrorResponse_WithoutAuth_ShouldNotLeakHateoasStructure()
 180:     {
 181: 
-182:         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/organization")
+182:         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/organization")
 183:         {
 184:             Content = JsonContent.Create(new { FullName = "Test" })
 185:         };
@@ -19972,7 +19972,7 @@ README.md
  14: public class IndexedDidHateoasTests
  15: {
  16:     private readonly ApiTestFixture _fixture;
- 17:     private const string BaseUrl = "/api/v1/indexeddid";
+ 17:     private const string BaseUrl = "/api/indexeddid";
  18: 
  19:     public IndexedDidHateoasTests(ApiTestFixture fixture)
  20:     {
@@ -20011,7 +20011,7 @@ README.md
  53:         {
  54:             await Assert.That(links.TryGetProperty("self", out var selfLink)).IsTrue();
  55:             var href = selfLink.GetProperty("href").GetString();
- 56:             await Assert.That(href).Contains("/api/v1/indexeddid");
+ 56:             await Assert.That(href).Contains("/api/indexeddid");
  57:         }
  58:     }
  59: 
@@ -20060,7 +20060,7 @@ README.md
 102:             {
 103:                 await Assert.That(itemLinks.TryGetProperty("self", out var selfLink)).IsTrue();
 104:                 var href = selfLink.GetProperty("href").GetString();
-105:                 await Assert.That(href).Contains("/api/v1/indexeddid/");
+105:                 await Assert.That(href).Contains("/api/indexeddid/");
 106:             }
 107:         }
 108:     }
@@ -20089,7 +20089,7 @@ README.md
 131:                 if (itemLinks.TryGetProperty("actor", out var actorLink))
 132:                 {
 133:                     var href = actorLink.GetProperty("href").GetString();
-134:                     await Assert.That(href).Contains("/api/v1/actor/by-did/");
+134:                     await Assert.That(href).Contains("/api/actor/by-did/");
 135:                 }
 136:             }
 137:         }
@@ -20143,14 +20143,14 @@ README.md
 185:                 if (links.TryGetProperty("collection", out var collectionLink))
 186:                 {
 187:                     var href = collectionLink.GetProperty("href").GetString();
-188:                     await Assert.That(href).Contains("/api/v1/indexeddid");
+188:                     await Assert.That(href).Contains("/api/indexeddid");
 189:                 }
 190: 
 191: 
 192:                 if (links.TryGetProperty("actor", out var actorLink))
 193:                 {
 194:                     var href = actorLink.GetProperty("href").GetString();
-195:                     await Assert.That(href).Contains("/api/v1/actor/by-did/");
+195:                     await Assert.That(href).Contains("/api/actor/by-did/");
 196:                 }
 197:             }
 198:         }
@@ -20196,7 +20196,7 @@ README.md
  14: public class LocationHateoasTests
  15: {
  16:     private readonly ApiTestFixture _fixture;
- 17:     private const string BaseUrl = "/api/v1/location";
+ 17:     private const string BaseUrl = "/api/location";
  18: 
  19:     public LocationHateoasTests(ApiTestFixture fixture)
  20:     {
@@ -20244,7 +20244,7 @@ README.md
  62:             {
  63:                 await Assert.That(itemLinks.TryGetProperty("self", out var selfLink)).IsTrue();
  64:                 var href = selfLink.GetProperty("href").GetString();
- 65:                 await Assert.That(href).Contains("/api/v1/location/");
+ 65:                 await Assert.That(href).Contains("/api/location/");
  66:             }
  67:         }
  68:     }
@@ -20271,7 +20271,7 @@ README.md
  89:             {
  90:                 await Assert.That(itemLinks.TryGetProperty("collection", out var collectionLink)).IsTrue();
  91:                 var href = collectionLink.GetProperty("href").GetString();
- 92:                 await Assert.That(href).IsEqualTo("/api/v1/location");
+ 92:                 await Assert.That(href).IsEqualTo("/api/location");
  93:             }
  94:         }
  95:     }
@@ -20406,7 +20406,7 @@ README.md
  14: public class OrganizationMemberHateoasTests
  15: {
  16:     private readonly ApiTestFixture _fixture;
- 17:     private const string BaseUrl = "/api/v1/organizationmember";
+ 17:     private const string BaseUrl = "/api/organizationmember";
  18: 
  19:     public OrganizationMemberHateoasTests(ApiTestFixture fixture)
  20:     {
@@ -20446,7 +20446,7 @@ README.md
  54:             {
  55:                 await Assert.That(links.TryGetProperty("self", out var selfLink)).IsTrue();
  56:                 var href = selfLink.GetProperty("href").GetString();
- 57:                 await Assert.That(href).Contains("/api/v1/organizationmember");
+ 57:                 await Assert.That(href).Contains("/api/organizationmember");
  58:             }
  59:         }
  60:     }
@@ -20497,7 +20497,7 @@ README.md
 105:                 {
 106:                     await Assert.That(itemLinks.TryGetProperty("self", out var selfLink)).IsTrue();
 107:                     var href = selfLink.GetProperty("href").GetString();
-108:                     await Assert.That(href).Contains("/api/v1/organizationmember/");
+108:                     await Assert.That(href).Contains("/api/organizationmember/");
 109:                 }
 110:             }
 111:         }
@@ -20527,7 +20527,7 @@ README.md
 135:                     if (itemLinks.TryGetProperty("user", out var userLink))
 136:                     {
 137:                         var href = userLink.GetProperty("href").GetString();
-138:                         await Assert.That(href).Contains("/api/v1/user/");
+138:                         await Assert.That(href).Contains("/api/user/");
 139:                     }
 140:                 }
 141:             }
@@ -20576,7 +20576,7 @@ README.md
 184:                 if (links.TryGetProperty("organization", out var orgLink))
 185:                 {
 186:                     var href = orgLink.GetProperty("href").GetString();
-187:                     await Assert.That(href).Contains("/api/v1/organization/");
+187:                     await Assert.That(href).Contains("/api/organization/");
 188:                 }
 189:             }
 190:         }
@@ -20639,7 +20639,7 @@ README.md
  14: public class OrganizationReviewHateoasTests
  15: {
  16:     private readonly ApiTestFixture _fixture;
- 17:     private const string BaseUrl = "/api/v1/organizationreview";
+ 17:     private const string BaseUrl = "/api/organizationreview";
  18: 
  19:     public OrganizationReviewHateoasTests(ApiTestFixture fixture)
  20:     {
@@ -20678,7 +20678,7 @@ README.md
  53:         {
  54:             await Assert.That(links.TryGetProperty("self", out var selfLink)).IsTrue();
  55:             var href = selfLink.GetProperty("href").GetString();
- 56:             await Assert.That(href).Contains("/api/v1/organizationreview");
+ 56:             await Assert.That(href).Contains("/api/organizationreview");
  57:         }
  58:     }
  59: 
@@ -20727,7 +20727,7 @@ README.md
 102:             {
 103:                 await Assert.That(itemLinks.TryGetProperty("self", out var selfLink)).IsTrue();
 104:                 var href = selfLink.GetProperty("href").GetString();
-105:                 await Assert.That(href).Contains("/api/v1/organizationreview/");
+105:                 await Assert.That(href).Contains("/api/organizationreview/");
 106:             }
 107:         }
 108:     }
@@ -20756,7 +20756,7 @@ README.md
 131:                 if (itemLinks.TryGetProperty("organization", out var orgLink))
 132:                 {
 133:                     var href = orgLink.GetProperty("href").GetString();
-134:                     await Assert.That(href).Contains("/api/v1/organization/");
+134:                     await Assert.That(href).Contains("/api/organization/");
 135:                 }
 136:             }
 137:         }
@@ -20798,14 +20798,14 @@ README.md
 173:                 if (links.TryGetProperty("reviewer", out var reviewerLink))
 174:                 {
 175:                     var href = reviewerLink.GetProperty("href").GetString();
-176:                     await Assert.That(href).Contains("/api/v1/user/");
+176:                     await Assert.That(href).Contains("/api/user/");
 177:                 }
 178: 
 179: 
 180:                 if (links.TryGetProperty("organization", out var orgLink))
 181:                 {
 182:                     var href = orgLink.GetProperty("href").GetString();
-183:                     await Assert.That(href).Contains("/api/v1/organization/");
+183:                     await Assert.That(href).Contains("/api/organization/");
 184:                 }
 185:             }
 186:         }
@@ -20878,7 +20878,7 @@ README.md
  25:     public async Task Middleware_WithReturnMinimal_ShouldSetPreferenceAppliedHeader()
  26:     {
  27: 
- 28:         var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organization");
+ 28:         var request = new HttpRequestMessage(HttpMethod.Get, "/api/organization");
  29:         request.Headers.Add("Prefer", "return=minimal");
  30: 
  31: 
@@ -20896,7 +20896,7 @@ README.md
  43:     public async Task Middleware_WithReturnRepresentation_ShouldNotSetPreferenceAppliedHeader()
  44:     {
  45: 
- 46:         var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organization");
+ 46:         var request = new HttpRequestMessage(HttpMethod.Get, "/api/organization");
  47:         request.Headers.Add("Prefer", "return=representation");
  48: 
  49: 
@@ -20912,7 +20912,7 @@ README.md
  59:     public async Task Middleware_WithoutPreferHeader_ShouldNotSetPreferenceAppliedHeader()
  60:     {
  61: 
- 62:         var response = await _fixture.Client.GetAsync("/api/v1/organization");
+ 62:         var response = await _fixture.Client.GetAsync("/api/organization");
  63: 
  64: 
  65:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -20923,7 +20923,7 @@ README.md
  70:     public async Task Middleware_WithMultiplePreferences_ShouldParseReturnMinimal()
  71:     {
  72: 
- 73:         var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organization");
+ 73:         var request = new HttpRequestMessage(HttpMethod.Get, "/api/organization");
  74:         request.Headers.Add("Prefer", "return=minimal, respond-async, wait=100");
  75: 
  76: 
@@ -20941,7 +20941,7 @@ README.md
  88:     public async Task Middleware_WithCaseInsensitiveMinimal_ShouldRecognizeMinimal()
  89:     {
  90: 
- 91:         var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organization");
+ 91:         var request = new HttpRequestMessage(HttpMethod.Get, "/api/organization");
  92:         request.Headers.Add("Prefer", "return=MINIMAL");
  93: 
  94: 
@@ -20956,7 +20956,7 @@ README.md
 103:     public async Task Middleware_WithSpacesInPreferHeader_ShouldParseCorrectly()
 104:     {
 105: 
-106:         var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organization");
+106:         var request = new HttpRequestMessage(HttpMethod.Get, "/api/organization");
 107:         request.Headers.Add("Prefer", "  return=minimal  ,  wait=100  ");
 108: 
 109: 
@@ -20975,7 +20975,7 @@ README.md
 122:     public async Task Middleware_WithReturnMinimal_ItemsShouldNotHaveLinks()
 123:     {
 124: 
-125:         var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organization");
+125:         var request = new HttpRequestMessage(HttpMethod.Get, "/api/organization");
 126:         request.Headers.Add("Prefer", "return=minimal");
 127: 
 128: 
@@ -21001,7 +21001,7 @@ README.md
 148:     public async Task Middleware_WithReturnMinimal_CollectionShouldStillHavePaginationMetadata()
 149:     {
 150: 
-151:         var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organization");
+151:         var request = new HttpRequestMessage(HttpMethod.Get, "/api/organization");
 152:         request.Headers.Add("Prefer", "return=minimal");
 153: 
 154: 
@@ -21023,7 +21023,7 @@ README.md
 170:     public async Task Middleware_WithoutPreferHeader_ItemsShouldHaveLinks()
 171:     {
 172: 
-173:         var response = await _fixture.Client.GetAsync("/api/v1/organization");
+173:         var response = await _fixture.Client.GetAsync("/api/organization");
 174: 
 175: 
 176:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -21049,7 +21049,7 @@ README.md
 196:     public async Task Middleware_WithBooleanPreference_ShouldNotAffectResponse()
 197:     {
 198: 
-199:         var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organization");
+199:         var request = new HttpRequestMessage(HttpMethod.Get, "/api/organization");
 200:         request.Headers.Add("Prefer", "respond-async");
 201: 
 202: 
@@ -21073,7 +21073,7 @@ README.md
 220:     public async Task Middleware_WithEmptyPreferHeader_ShouldNotAffectResponse()
 221:     {
 222: 
-223:         var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organization");
+223:         var request = new HttpRequestMessage(HttpMethod.Get, "/api/organization");
 224:         request.Headers.Add("Prefer", "");
 225: 
 226:         // Act
@@ -21088,7 +21088,7 @@ README.md
 235:     public async Task Middleware_WithUnknownPreferValue_ShouldIgnore()
 236:     {
 237: 
-238:         var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organization");
+238:         var request = new HttpRequestMessage(HttpMethod.Get, "/api/organization");
 239:         request.Headers.Add("Prefer", "return=unknown");
 240: 
 241: 
@@ -21109,13 +21109,13 @@ README.md
 256:     #region Multiple Endpoints
 257: 
 258:     [Test]
-259:     [Arguments("/api/v1/organization")]
-260:     [Arguments("/api/v1/event")]
-261:     [Arguments("/api/v1/eventsession")]
-262:     [Arguments("/api/v1/actor")]
-263:     [Arguments("/api/v1/location")]
-264:     [Arguments("/api/v1/category")]
-265:     [Arguments("/api/v1/tag")]
+259:     [Arguments("/api/organization")]
+260:     [Arguments("/api/event")]
+261:     [Arguments("/api/eventsession")]
+262:     [Arguments("/api/actor")]
+263:     [Arguments("/api/location")]
+264:     [Arguments("/api/category")]
+265:     [Arguments("/api/tag")]
 266:     public async Task Middleware_AllEndpoints_ShouldRespectPreferMinimal(string endpoint)
 267:     {
 268: 
@@ -21152,7 +21152,7 @@ README.md
  14: public class TagHateoasTests
  15: {
  16:     private readonly ApiTestFixture _fixture;
- 17:     private const string BaseUrl = "/api/v1/tag";
+ 17:     private const string BaseUrl = "/api/tag";
  18: 
  19:     public TagHateoasTests(ApiTestFixture fixture)
  20:     {
@@ -21198,7 +21198,7 @@ README.md
  60:             {
  61:                 await Assert.That(itemLinks.TryGetProperty("self", out var selfLink)).IsTrue();
  62:                 var href = selfLink.GetProperty("href").GetString();
- 63:                 await Assert.That(href).Contains("/api/v1/tag/");
+ 63:                 await Assert.That(href).Contains("/api/tag/");
  64:             }
  65:         }
  66:     }
@@ -21227,7 +21227,7 @@ README.md
  89:                 if (itemLinks.TryGetProperty("events", out var eventsLink))
  90:                 {
  91:                     var href = eventsLink.GetProperty("href").GetString();
- 92:                     await Assert.That(href).Contains("/api/v1/event");
+ 92:                     await Assert.That(href).Contains("/api/event");
  93:                 }
  94:             }
  95:         }
@@ -21255,7 +21255,7 @@ README.md
 117:             {
 118:                 await Assert.That(itemLinks.TryGetProperty("collection", out var collectionLink)).IsTrue();
 119:                 var href = collectionLink.GetProperty("href").GetString();
-120:                 await Assert.That(href).IsEqualTo("/api/v1/tag");
+120:                 await Assert.That(href).IsEqualTo("/api/tag");
 121:             }
 122:         }
 123:     }
@@ -21390,7 +21390,7 @@ README.md
  14: public class TenantSettingsHateoasTests
  15: {
  16:     private readonly ApiTestFixture _fixture;
- 17:     private const string BaseUrl = "/api/v1/tenantsettings";
+ 17:     private const string BaseUrl = "/api/tenantsettings";
  18: 
  19:     public TenantSettingsHateoasTests(ApiTestFixture fixture)
  20:     {
@@ -21430,7 +21430,7 @@ README.md
  54:             {
  55:                 await Assert.That(links.TryGetProperty("self", out var selfLink)).IsTrue();
  56:                 var href = selfLink.GetProperty("href").GetString();
- 57:                 await Assert.That(href).Contains("/api/v1/tenantsettings");
+ 57:                 await Assert.That(href).Contains("/api/tenantsettings");
  58:             }
  59:         }
  60:     }
@@ -21481,7 +21481,7 @@ README.md
 105:                 {
 106:                     await Assert.That(itemLinks.TryGetProperty("self", out var selfLink)).IsTrue();
 107:                     var href = selfLink.GetProperty("href").GetString();
-108:                     await Assert.That(href).Contains("/api/v1/tenantsettings/");
+108:                     await Assert.That(href).Contains("/api/tenantsettings/");
 109:                 }
 110:             }
 111:         }
@@ -21511,7 +21511,7 @@ README.md
 135:                     if (itemLinks.TryGetProperty("tenant", out var tenantLink))
 136:                     {
 137:                         var href = tenantLink.GetProperty("href").GetString();
-138:                         await Assert.That(href).Contains("/api/v1/tenant/");
+138:                         await Assert.That(href).Contains("/api/tenant/");
 139:                     }
 140:                 }
 141:             }
@@ -21559,7 +21559,7 @@ README.md
  14: public class TenantUserHateoasTests
  15: {
  16:     private readonly ApiTestFixture _fixture;
- 17:     private const string BaseUrl = "/api/v1/tenantuser";
+ 17:     private const string BaseUrl = "/api/tenantuser";
  18: 
  19:     public TenantUserHateoasTests(ApiTestFixture fixture)
  20:     {
@@ -21599,7 +21599,7 @@ README.md
  54:             {
  55:                 await Assert.That(links.TryGetProperty("self", out var selfLink)).IsTrue();
  56:                 var href = selfLink.GetProperty("href").GetString();
- 57:                 await Assert.That(href).Contains("/api/v1/tenantuser");
+ 57:                 await Assert.That(href).Contains("/api/tenantuser");
  58:             }
  59:         }
  60:     }
@@ -21650,7 +21650,7 @@ README.md
 105:                 {
 106:                     await Assert.That(itemLinks.TryGetProperty("self", out var selfLink)).IsTrue();
 107:                     var href = selfLink.GetProperty("href").GetString();
-108:                     await Assert.That(href).Contains("/api/v1/tenantuser/");
+108:                     await Assert.That(href).Contains("/api/tenantuser/");
 109:                 }
 110:             }
 111:         }
@@ -21680,7 +21680,7 @@ README.md
 135:                     if (itemLinks.TryGetProperty("user", out var userLink))
 136:                     {
 137:                         var href = userLink.GetProperty("href").GetString();
-138:                         await Assert.That(href).Contains("/api/v1/user/");
+138:                         await Assert.That(href).Contains("/api/user/");
 139:                     }
 140:                 }
 141:             }
@@ -23068,7 +23068,7 @@ README.md
  23:         };
  24:         var links = new Dictionary<string, HalLink>
  25:         {
- 26:             [LinkRelations.Self] = HalLink.Create("/api/v1/test?pageNumber=1&pageSize=10")
+ 26:             [LinkRelations.Self] = HalLink.Create("/api/test?pageNumber=1&pageSize=10")
  27:         };
  28: 
  29: 
@@ -23097,7 +23097,7 @@ README.md
  52:         var items = new List<HalResource<TestListDto>>();
  53:         var links = new Dictionary<string, HalLink>
  54:         {
- 55:             [LinkRelations.Self] = HalLink.Create("/api/v1/test")
+ 55:             [LinkRelations.Self] = HalLink.Create("/api/test")
  56:         };
  57: 
  58: 
@@ -23125,11 +23125,11 @@ README.md
  80:         };
  81:         var links = new Dictionary<string, HalLink>
  82:         {
- 83:             [LinkRelations.Self] = HalLink.Create("/api/v1/test?pageNumber=2&pageSize=10"),
- 84:             [LinkRelations.First] = HalLink.Create("/api/v1/test?pageNumber=1&pageSize=10"),
- 85:             [LinkRelations.Prev] = HalLink.Create("/api/v1/test?pageNumber=1&pageSize=10"),
- 86:             [LinkRelations.Next] = HalLink.Create("/api/v1/test?pageNumber=3&pageSize=10"),
- 87:             [LinkRelations.Last] = HalLink.Create("/api/v1/test?pageNumber=5&pageSize=10")
+ 83:             [LinkRelations.Self] = HalLink.Create("/api/test?pageNumber=2&pageSize=10"),
+ 84:             [LinkRelations.First] = HalLink.Create("/api/test?pageNumber=1&pageSize=10"),
+ 85:             [LinkRelations.Prev] = HalLink.Create("/api/test?pageNumber=1&pageSize=10"),
+ 86:             [LinkRelations.Next] = HalLink.Create("/api/test?pageNumber=3&pageSize=10"),
+ 87:             [LinkRelations.Last] = HalLink.Create("/api/test?pageNumber=5&pageSize=10")
  88:         };
  89: 
  90: 
@@ -23160,10 +23160,10 @@ README.md
 115:         };
 116:         var links = new Dictionary<string, HalLink>
 117:         {
-118:             [LinkRelations.Self] = HalLink.Create("/api/v1/test?pageNumber=1&pageSize=10"),
-119:             [LinkRelations.First] = HalLink.Create("/api/v1/test?pageNumber=1&pageSize=10"),
-120:             [LinkRelations.Next] = HalLink.Create("/api/v1/test?pageNumber=2&pageSize=10"),
-121:             [LinkRelations.Last] = HalLink.Create("/api/v1/test?pageNumber=3&pageSize=10")
+118:             [LinkRelations.Self] = HalLink.Create("/api/test?pageNumber=1&pageSize=10"),
+119:             [LinkRelations.First] = HalLink.Create("/api/test?pageNumber=1&pageSize=10"),
+120:             [LinkRelations.Next] = HalLink.Create("/api/test?pageNumber=2&pageSize=10"),
+121:             [LinkRelations.Last] = HalLink.Create("/api/test?pageNumber=3&pageSize=10")
 122: 
 123:         };
 124: 
@@ -23191,10 +23191,10 @@ README.md
 146:         };
 147:         var links = new Dictionary<string, HalLink>
 148:         {
-149:             [LinkRelations.Self] = HalLink.Create("/api/v1/test?pageNumber=3&pageSize=10"),
-150:             [LinkRelations.First] = HalLink.Create("/api/v1/test?pageNumber=1&pageSize=10"),
-151:             [LinkRelations.Prev] = HalLink.Create("/api/v1/test?pageNumber=2&pageSize=10"),
-152:             [LinkRelations.Last] = HalLink.Create("/api/v1/test?pageNumber=3&pageSize=10")
+149:             [LinkRelations.Self] = HalLink.Create("/api/test?pageNumber=3&pageSize=10"),
+150:             [LinkRelations.First] = HalLink.Create("/api/test?pageNumber=1&pageSize=10"),
+151:             [LinkRelations.Prev] = HalLink.Create("/api/test?pageNumber=2&pageSize=10"),
+152:             [LinkRelations.Last] = HalLink.Create("/api/test?pageNumber=3&pageSize=10")
 153: 
 154:         };
 155: 
@@ -23244,7 +23244,7 @@ README.md
 13:     public async Task Create_ShouldCreateLinkWithHrefOnly()
 14:     {
 15: 
-16:         var href = "/api/v1/resource/123";
+16:         var href = "/api/resource/123";
 17: 
 18: 
 19:         var link = HalLink.Create(href);
@@ -23260,7 +23260,7 @@ README.md
 29:     public async Task CreateAction_ShouldCreateLinkWithMethod()
 30:     {
 31: 
-32:         var href = "/api/v1/resource/123";
+32:         var href = "/api/resource/123";
 33:         var method = "DELETE";
 34: 
 35: 
@@ -23275,7 +23275,7 @@ README.md
 44:     public async Task CreateTemplated_ShouldCreateTemplatedLink()
 45:     {
 46: 
-47:         var hrefTemplate = "/api/v1/resource{?page,size}";
+47:         var hrefTemplate = "/api/resource{?page,size}";
 48:         var title = "Search resources";
 49: 
 50: 
@@ -23291,7 +23291,7 @@ README.md
 60:     public async Task CreateTemplated_WithoutTitle_ShouldHaveNullTitle()
 61:     {
 62: 
-63:         var hrefTemplate = "/api/v1/resource{?page}";
+63:         var hrefTemplate = "/api/resource{?page}";
 64: 
 65: 
 66:         var link = HalLink.CreateTemplated(hrefTemplate);
@@ -23307,7 +23307,7 @@ README.md
 76: 
 77:         var link = new HalLink
 78:         {
-79:             Href = "/api/v1/resource",
+79:             Href = "/api/resource",
 80:             Method = "POST",
 81:             Templated = false,
 82:             Title = "Create Resource",
@@ -23317,7 +23317,7 @@ README.md
 86:         };
 87: 
 88: 
-89:         await Assert.That(link.Href).IsEqualTo("/api/v1/resource");
+89:         await Assert.That(link.Href).IsEqualTo("/api/resource");
 90:         await Assert.That(link.Method).IsEqualTo("POST");
 91:         await Assert.That(link.Templated).IsEqualTo(false);
 92:         await Assert.That(link.Title).IsEqualTo("Create Resource");
@@ -23365,7 +23365,7 @@ README.md
  33:         var dto = new TestDto(Guid.NewGuid(), "Test", "Description");
  34:         var links = new Dictionary<string, HalLink>
  35:         {
- 36:             [LinkRelations.Self] = HalLink.Create("/api/v1/test/123")
+ 36:             [LinkRelations.Self] = HalLink.Create("/api/test/123")
  37:         };
  38: 
  39: 
@@ -23385,7 +23385,7 @@ README.md
  53:         var resource = new HalResource<TestDto>(dto);
  54: 
  55: 
- 56:         resource.WithLink("custom", HalLink.Create("/api/v1/custom"));
+ 56:         resource.WithLink("custom", HalLink.Create("/api/custom"));
  57: 
  58: 
  59:         await Assert.That(resource.Links.Count).IsEqualTo(1);
@@ -23400,12 +23400,12 @@ README.md
  68:         var resource = new HalResource<TestDto>(dto);
  69: 
  70: 
- 71:         resource.WithSelfLink("/api/v1/test/123");
+ 71:         resource.WithSelfLink("/api/test/123");
  72: 
  73: 
  74:         await Assert.That(resource.Links.Count).IsEqualTo(1);
  75:         await Assert.That(resource.Links.ContainsKey(LinkRelations.Self)).IsTrue();
- 76:         await Assert.That(resource.Links[LinkRelations.Self].Href).IsEqualTo("/api/v1/test/123");
+ 76:         await Assert.That(resource.Links[LinkRelations.Self].Href).IsEqualTo("/api/test/123");
  77:     }
  78: 
  79:     [Test]
@@ -23433,9 +23433,9 @@ README.md
 101: 
 102: 
 103:         resource
-104:             .WithSelfLink("/api/v1/test/123")
-105:             .WithLink(LinkRelations.Collection, HalLink.Create("/api/v1/test"))
-106:             .WithLink(LinkRelations.Edit, HalLink.CreateAction("/api/v1/test/123", "PUT"));
+104:             .WithSelfLink("/api/test/123")
+105:             .WithLink(LinkRelations.Collection, HalLink.Create("/api/test"))
+106:             .WithLink(LinkRelations.Edit, HalLink.CreateAction("/api/test/123", "PUT"));
 107: 
 108: 
 109:         await Assert.That(resource.Links.Count).IsEqualTo(3);
@@ -26447,7 +26447,7 @@ README.md
  7: 
  8: namespace Explore.API.Controllers;
  9: 
-10: [Route("api/v1/[controller]")]
+10: [Route("api/[controller]")]
 11: [ApiController]
 12: public class PublicExperienceController : ControllerBase
 13: {
@@ -26485,7 +26485,7 @@ README.md
 10: 
 11: namespace Explore.API.Controllers;
 12: 
-13: [Route("api/v1/[controller]")]
+13: [Route("api/[controller]")]
 14: [ApiController]
 15: public class RoleController : ControllerBase
 16: {
@@ -26547,7 +26547,7 @@ README.md
  11: 
  12: namespace Explore.API.Controllers;
  13: 
- 14: [Route("api/v1/[controller]")]
+ 14: [Route("api/[controller]")]
  15: [ApiController]
  16: public class TenantOnboardingController : ControllerBase
  17: {
@@ -38080,7 +38080,7 @@ README.md
  26: 
  27:     public Task IdentifyAsync(string distinctId, IDictionary<string, object>? traits = null, CancellationToken cancellationToken = default)
  28:     {
- 29:         return SendAsync("/v1/identify", new
+ 29:         return SendAsync("/identify", new
  30:         {
  31:             userId = distinctId,
  32:             traits = traits ?? new Dictionary<string, object>()
@@ -38089,7 +38089,7 @@ README.md
  35: 
  36:     public Task TrackAsync(string distinctId, string eventName, IDictionary<string, object>? properties = null, CancellationToken cancellationToken = default)
  37:     {
- 38:         return SendAsync("/v1/track", new
+ 38:         return SendAsync("/track", new
  39:         {
  40:             userId = distinctId,
  41:             @event = eventName,
@@ -38099,7 +38099,7 @@ README.md
  45: 
  46:     public Task PageViewAsync(string distinctId, string pagePath, IDictionary<string, object>? properties = null, CancellationToken cancellationToken = default)
  47:     {
- 48:         return SendAsync("/v1/page", new
+ 48:         return SendAsync("/page", new
  49:         {
  50:             userId = distinctId,
  51:             name = pagePath,
@@ -38109,7 +38109,7 @@ README.md
  55: 
  56:     public Task GroupIdentifyAsync(string groupType, string groupKey, IDictionary<string, object>? properties = null, CancellationToken cancellationToken = default)
  57:     {
- 58:         return SendAsync("/v1/group", new
+ 58:         return SendAsync("/group", new
  59:         {
  60:             userId = groupKey,
  61:             groupId = groupKey,
@@ -39872,7 +39872,7 @@ README.md
 73:         yield return new StrategyLink
 74:         {
 75:             Rel = "islamic-aspect",
-76:             Href = $"/api/v1/events/{@event.Id}/aspects/islamic",
+76:             Href = $"/api/events/{@event.Id}/aspects/islamic",
 77:             Method = "GET",
 78:             Title = "Islamic event details"
 79:         };
@@ -39882,7 +39882,7 @@ README.md
 83:             yield return new StrategyLink
 84:             {
 85:                 Rel = "madhab",
-86:                 Href = $"/api/v1/madhabs/{@event.IslamicAspect.MadhabId}",
+86:                 Href = $"/api/madhabs/{@event.IslamicAspect.MadhabId}",
 87:                 Method = "GET",
 88:                 Title = "Madhab information"
 89:             };
@@ -39972,7 +39972,7 @@ README.md
 77:         yield return new StrategyLink
 78:         {
 79:             Rel = "tech-aspect",
-80:             Href = $"/api/v1/events/{@event.Id}/aspects/tech",
+80:             Href = $"/api/events/{@event.Id}/aspects/tech",
 81:             Method = "GET",
 82:             Title = "Tech event details"
 83:         };
@@ -54783,12 +54783,12 @@ README.md
 238: The following endpoints are ready to use (implemented this session):
 239: 
 240: ```
-241: GET    /api/v1/Event/{id}/aspects/islamic    - Get Islamic aspect
-242: PUT    /api/v1/Event/{id}/aspects/islamic    - Create/Update Islamic aspect
-243: DELETE /api/v1/Event/{id}/aspects/islamic    - Delete Islamic aspect
-244: GET    /api/v1/Event/{id}/aspects/tech       - Get Tech aspect
-245: PUT    /api/v1/Event/{id}/aspects/tech       - Create/Update Tech aspect
-246: DELETE /api/v1/Event/{id}/aspects/tech       - Delete Tech aspect
+241: GET    /api/Event/{id}/aspects/islamic    - Get Islamic aspect
+242: PUT    /api/Event/{id}/aspects/islamic    - Create/Update Islamic aspect
+243: DELETE /api/Event/{id}/aspects/islamic    - Delete Islamic aspect
+244: GET    /api/Event/{id}/aspects/tech       - Get Tech aspect
+245: PUT    /api/Event/{id}/aspects/tech       - Create/Update Tech aspect
+246: DELETE /api/Event/{id}/aspects/tech       - Delete Tech aspect
 247: ```
 248: 
 249: **NSwag Client Methods** (should be generated):
@@ -55624,7 +55624,7 @@ README.md
 150: - [ ] Document ResourceAssembler pattern
 151:   - [ ] IResourceAssembler<TDto, TListDto> interface
 152:   - [ ] How to implement custom assemblers
-153: - [ ] Add complete example response (GET /api/v1/events)
+153: - [ ] Add complete example response (GET /api/events)
 154: - [ ] Document RouteNames constants usage
 155: - [ ] Cross-reference CODEBASE_INSIGHTS.md section 14
 156: 
@@ -56507,8 +56507,8 @@ README.md
 64: ## Phase 6: Admin API Endpoint ⏳ NOT STARTED
 65: **Effort: S (~30min) | Depends on: Phase 2**
 66: 
-67: - [ ] **6.1** Add `POST /api/v1/admin/email/test-connection` endpoint
-68: - [ ] **6.2** Add `POST /api/v1/admin/email/send-test` endpoint (optional)
+67: - [ ] **6.1** Add `POST /api/admin/email/test-connection` endpoint
+68: - [ ] **6.2** Add `POST /api/admin/email/send-test` endpoint (optional)
 69: 
 70: ---
 71: 
@@ -60177,16 +60177,16 @@ README.md
 264: 
 265: | Category | Controller | Routes |
 266: |----------|------------|--------|
-267: | **Events** | `EventController` | `/api/v1/event` |
-268: | **Sessions** | `EventSessionController` | `/api/v1/eventsession` |
-269: | **Organizations** | `OrganizationController` | `/api/v1/organization` |
-270: | **Actors** | `ActorController` | `/api/v1/actor` |
-271: | **Locations** | `LocationController` | `/api/v1/location` |
-272: | **Categories** | `CategoryController` | `/api/v1/category` |
-273: | **Tags** | `TagController` | `/api/v1/tag` |
-274: | **Users** | `UserController` | `/api/v1/user` |
-275: | **Tenants** | `TenantController` | `/api/v1/tenant` |
-276: | **Storage** | `StorageObjectController` | `/api/v1/storageobject` |
+267: | **Events** | `EventController` | `/api/event` |
+268: | **Sessions** | `EventSessionController` | `/api/eventsession` |
+269: | **Organizations** | `OrganizationController` | `/api/organization` |
+270: | **Actors** | `ActorController` | `/api/actor` |
+271: | **Locations** | `LocationController` | `/api/location` |
+272: | **Categories** | `CategoryController` | `/api/category` |
+273: | **Tags** | `TagController` | `/api/tag` |
+274: | **Users** | `UserController` | `/api/user` |
+275: | **Tenants** | `TenantController` | `/api/tenant` |
+276: | **Storage** | `StorageObjectController` | `/api/storageobject` |
 277: 
 278: ### HATEOAS Support
 279: 
@@ -60716,11 +60716,11 @@ README.md
 208: 
 209: | Controller | Route |
 210: |---|---|
-211: | `EventController` | `api/v1/event` |
-212: | `OrganizationController` | `api/v1/organization` |
-213: | `EventSessionController` | `api/v1/eventsession` |
+211: | `EventController` | `api/event` |
+212: | `OrganizationController` | `api/organization` |
+213: | `EventSessionController` | `api/eventsession` |
 214: 
-215: Route convention: `api/v1/[controller]` (controller name lowercased, no hyphens).
+215: Route convention: `api/[controller]` (controller name lowercased, no hyphens).
 216: 
 217: ---
 218: 
@@ -60853,7 +60853,7 @@ README.md
 345: 5. **Queries** = `Get{Entity}{Suffix}Request` in `Features/{Entities}/Requests/Queries/`
 346: 6. **Handlers** = mirror command/query name + `Handler` suffix
 347: 7. **Repositories** = `I{Entity}Repository` (interface) / `{Entity}Repository` (impl)
-348: 8. **Controllers** = `{Entity}Controller`, route `api/v1/[controller]`
+348: 8. **Controllers** = `{Entity}Controller`, route `api/[controller]`
 349: 9. **Blazor pages** = `{Action}{Entity}.razor` or `{Entity}{Action}.razor` (varies by area)
 350: 10. **Client services** = `{Entity}Service` / `I{Entity}Service`
 351: 11. **DB columns** = snake_case (automatic via EF Core convention)
@@ -61281,7 +61281,7 @@ README.md
  14: public class ActorHateoasTests
  15: {
  16:     private readonly ApiTestFixture _fixture;
- 17:     private const string BaseUrl = "/api/v1/actor";
+ 17:     private const string BaseUrl = "/api/actor";
  18: 
  19:     public ActorHateoasTests(ApiTestFixture fixture)
  20:     {
@@ -61327,7 +61327,7 @@ README.md
  60:             {
  61:                 await Assert.That(itemLinks.TryGetProperty("self", out var selfLink)).IsTrue();
  62:                 var href = selfLink.GetProperty("href").GetString();
- 63:                 await Assert.That(href).Contains("/api/v1/actor/");
+ 63:                 await Assert.That(href).Contains("/api/actor/");
  64:             }
  65:         }
  66:     }
@@ -61356,7 +61356,7 @@ README.md
  89:                 if (itemLinks.TryGetProperty("events", out var eventsLink))
  90:                 {
  91:                     var href = eventsLink.GetProperty("href").GetString();
- 92:                     await Assert.That(href).Contains("/api/v1/event");
+ 92:                     await Assert.That(href).Contains("/api/event");
  93:                 }
  94:             }
  95:         }
@@ -61383,7 +61383,7 @@ README.md
 116:             var href = hasSelf
 117:                 ? selfLink.GetProperty("href").GetString()
 118:                 : firstLink.GetProperty("href").GetString();
-119:             await Assert.That(href).Contains("/api/v1/actor");
+119:             await Assert.That(href).Contains("/api/actor");
 120:         }
 121:     }
 122: 
@@ -61486,7 +61486,7 @@ README.md
  14: public class AtprotoRecordHateoasTests
  15: {
  16:     private readonly ApiTestFixture _fixture;
- 17:     private const string BaseUrl = "/api/v1/atprotorecord";
+ 17:     private const string BaseUrl = "/api/atprotorecord";
  18: 
  19:     public AtprotoRecordHateoasTests(ApiTestFixture fixture)
  20:     {
@@ -61527,7 +61527,7 @@ README.md
  55:         {
  56:             await Assert.That(links.TryGetProperty("self", out var selfLink)).IsTrue();
  57:             var href = selfLink.GetProperty("href").GetString();
- 58:             await Assert.That(href).Contains("/api/v1/atprotorecord");
+ 58:             await Assert.That(href).Contains("/api/atprotorecord");
  59:         }
  60:     }
  61: 
@@ -61578,7 +61578,7 @@ README.md
 106:             {
 107:                 await Assert.That(itemLinks.TryGetProperty("self", out var selfLink)).IsTrue();
 108:                 var href = selfLink.GetProperty("href").GetString();
-109:                 await Assert.That(href).Contains("/api/v1/atprotorecord/");
+109:                 await Assert.That(href).Contains("/api/atprotorecord/");
 110:             }
 111:         }
 112:     }
@@ -61608,7 +61608,7 @@ README.md
 136:                 if (itemLinks.TryGetProperty("did", out var didLink))
 137:                 {
 138:                     var href = didLink.GetProperty("href").GetString();
-139:                     await Assert.That(href).Contains("/api/v1/indexeddid/");
+139:                     await Assert.That(href).Contains("/api/indexeddid/");
 140:                 }
 141:             }
 142:         }
@@ -61656,14 +61656,14 @@ README.md
 184:                 if (links.TryGetProperty("did", out var didLink))
 185:                 {
 186:                     var href = didLink.GetProperty("href").GetString();
-187:                     await Assert.That(href).Contains("/api/v1/indexeddid/");
+187:                     await Assert.That(href).Contains("/api/indexeddid/");
 188:                 }
 189: 
 190: 
 191:                 if (links.TryGetProperty("by-uri", out var byUriLink))
 192:                 {
 193:                     var href = byUriLink.GetProperty("href").GetString();
-194:                     await Assert.That(href).Contains("/api/v1/atprotorecord/by-uri");
+194:                     await Assert.That(href).Contains("/api/atprotorecord/by-uri");
 195:                 }
 196:             }
 197:         }
@@ -61726,7 +61726,7 @@ README.md
  14: public class CategoryHateoasTests
  15: {
  16:     private readonly ApiTestFixture _fixture;
- 17:     private const string BaseUrl = "/api/v1/category";
+ 17:     private const string BaseUrl = "/api/category";
  18: 
  19:     public CategoryHateoasTests(ApiTestFixture fixture)
  20:     {
@@ -61772,7 +61772,7 @@ README.md
  60:             {
  61:                 await Assert.That(itemLinks.TryGetProperty("self", out var selfLink)).IsTrue();
  62:                 var href = selfLink.GetProperty("href").GetString();
- 63:                 await Assert.That(href).Contains("/api/v1/category/");
+ 63:                 await Assert.That(href).Contains("/api/category/");
  64:             }
  65:         }
  66:     }
@@ -61801,7 +61801,7 @@ README.md
  89:                 if (itemLinks.TryGetProperty("children", out var childrenLink))
  90:                 {
  91:                     var href = childrenLink.GetProperty("href").GetString();
- 92:                     await Assert.That(href).Contains("/api/v1/category/children/");
+ 92:                     await Assert.That(href).Contains("/api/category/children/");
  93:                 }
  94:             }
  95:         }
@@ -61831,7 +61831,7 @@ README.md
 119:                 if (itemLinks.TryGetProperty("events", out var eventsLink))
 120:                 {
 121:                     var href = eventsLink.GetProperty("href").GetString();
-122:                     await Assert.That(href).Contains("/api/v1/event");
+122:                     await Assert.That(href).Contains("/api/event");
 123:                 }
 124:             }
 125:         }
@@ -61954,7 +61954,7 @@ README.md
  14: public class EventRegistrationHateoasTests
  15: {
  16:     private readonly ApiTestFixture _fixture;
- 17:     private const string BaseUrl = "/api/v1/eventregistration";
+ 17:     private const string BaseUrl = "/api/eventregistration";
  18: 
  19:     public EventRegistrationHateoasTests(ApiTestFixture fixture)
  20:     {
@@ -61995,7 +61995,7 @@ README.md
  55:             {
  56:                 await Assert.That(links.TryGetProperty("self", out var selfLink)).IsTrue();
  57:                 var href = selfLink.GetProperty("href").GetString();
- 58:                 await Assert.That(href).Contains("/api/v1/eventregistration");
+ 58:                 await Assert.That(href).Contains("/api/eventregistration");
  59:             }
  60:         }
  61:     }
@@ -62046,7 +62046,7 @@ README.md
 106:                 {
 107:                     await Assert.That(itemLinks.TryGetProperty("self", out var selfLink)).IsTrue();
 108:                     var href = selfLink.GetProperty("href").GetString();
-109:                     await Assert.That(href).Contains("/api/v1/eventregistration/");
+109:                     await Assert.That(href).Contains("/api/eventregistration/");
 110:                 }
 111:             }
 112:         }
@@ -62076,7 +62076,7 @@ README.md
 136:                     if (itemLinks.TryGetProperty("user", out var userLink))
 137:                     {
 138:                         var href = userLink.GetProperty("href").GetString();
-139:                         await Assert.That(href).Contains("/api/v1/user/");
+139:                         await Assert.That(href).Contains("/api/user/");
 140:                     }
 141:                 }
 142:             }
@@ -62107,7 +62107,7 @@ README.md
 167:                     if (itemLinks.TryGetProperty("event-session", out var sessionLink))
 168:                     {
 169:                         var href = sessionLink.GetProperty("href").GetString();
-170:                         await Assert.That(href).Contains("/api/v1/eventsession/");
+170:                         await Assert.That(href).Contains("/api/eventsession/");
 171:                     }
 172:                 }
 173:             }
@@ -62138,7 +62138,7 @@ README.md
 198:                     if (itemLinks.TryGetProperty("event", out var eventLink))
 199:                     {
 200:                         var href = eventLink.GetProperty("href").GetString();
-201:                         await Assert.That(href).Contains("/api/v1/event/");
+201:                         await Assert.That(href).Contains("/api/event/");
 202:                     }
 203:                 }
 204:             }
@@ -62186,7 +62186,7 @@ README.md
  14: public class EventSessionAgendaItemHateoasTests
  15: {
  16:     private readonly ApiTestFixture _fixture;
- 17:     private const string BaseUrl = "/api/v1/eventsessionagendaitem";
+ 17:     private const string BaseUrl = "/api/eventsessionagendaitem";
  18: 
  19:     public EventSessionAgendaItemHateoasTests(ApiTestFixture fixture)
  20:     {
@@ -62227,7 +62227,7 @@ README.md
  55:         {
  56:             await Assert.That(links.TryGetProperty("self", out var selfLink)).IsTrue();
  57:             var href = selfLink.GetProperty("href").GetString();
- 58:             await Assert.That(href).Contains("/api/v1/eventsessionagendaitem");
+ 58:             await Assert.That(href).Contains("/api/eventsessionagendaitem");
  59:         }
  60:     }
  61: 
@@ -62276,7 +62276,7 @@ README.md
 104:             {
 105:                 await Assert.That(itemLinks.TryGetProperty("self", out var selfLink)).IsTrue();
 106:                 var href = selfLink.GetProperty("href").GetString();
-107:                 await Assert.That(href).Contains("/api/v1/eventsessionagendaitem/");
+107:                 await Assert.That(href).Contains("/api/eventsessionagendaitem/");
 108:             }
 109:         }
 110:     }
@@ -62305,7 +62305,7 @@ README.md
 133:                 if (itemLinks.TryGetProperty("event-session", out var sessionLink))
 134:                 {
 135:                     var href = sessionLink.GetProperty("href").GetString();
-136:                     await Assert.That(href).Contains("/api/v1/eventsession/");
+136:                     await Assert.That(href).Contains("/api/eventsession/");
 137:                 }
 138:             }
 139:         }
@@ -62350,7 +62350,7 @@ README.md
 178:                 if (links.TryGetProperty("location", out var locationLink))
 179:                 {
 180:                     var href = locationLink.GetProperty("href").GetString();
-181:                     await Assert.That(href).Contains("/api/v1/location/");
+181:                     await Assert.That(href).Contains("/api/location/");
 182:                 }
 183:             }
 184:         }
@@ -62412,7 +62412,7 @@ README.md
  14: public class OrganizationHateoasTests
  15: {
  16:     private readonly ApiTestFixture _fixture;
- 17:     private const string BaseUrl = "/api/v1/organization";
+ 17:     private const string BaseUrl = "/api/organization";
  18: 
  19:     private static string WithCacheBust(string endpoint)
  20:     {
@@ -62441,7 +62441,7 @@ README.md
  43: 
  44: 
  45:         await Assert.That(links.TryGetProperty("self", out var selfLink)).IsTrue();
- 46:         await Assert.That(selfLink.GetProperty("href").GetString()).Contains("/api/v1/organization");
+ 46:         await Assert.That(selfLink.GetProperty("href").GetString()).Contains("/api/organization");
  47:     }
  48: 
  49:     [Test]
@@ -62491,7 +62491,7 @@ README.md
  93:                 await Assert.That(itemLinks.TryGetProperty("self", out var selfLink)).IsTrue();
  94: 
  95:                 var href = selfLink.GetProperty("href").GetString();
- 96:                 await Assert.That(href).Contains("/api/v1/organization/");
+ 96:                 await Assert.That(href).Contains("/api/organization/");
  97:             }
  98:         }
  99:     }
@@ -62520,7 +62520,7 @@ README.md
 122:                 await Assert.That(itemLinks.TryGetProperty("collection", out var collectionLink)).IsTrue();
 123: 
 124:                 var href = collectionLink.GetProperty("href").GetString();
-125:                 await Assert.That(href).IsEqualTo("/api/v1/organization");
+125:                 await Assert.That(href).IsEqualTo("/api/organization");
 126:             }
 127:         }
 128:     }
@@ -62573,7 +62573,7 @@ README.md
 175:                 if (links.TryGetProperty("events", out var eventsLink))
 176:                 {
 177:                     var href = eventsLink.GetProperty("href").GetString();
-178:                     await Assert.That(href).Contains("/api/v1/event");
+178:                     await Assert.That(href).Contains("/api/event");
 179:                 }
 180:             }
 181:         }
@@ -62619,7 +62619,7 @@ README.md
  14: public class StorageObjectHateoasTests
  15: {
  16:     private readonly ApiTestFixture _fixture;
- 17:     private const string BaseUrl = "/api/v1/storageobject";
+ 17:     private const string BaseUrl = "/api/storageobject";
  18: 
  19:     public StorageObjectHateoasTests(ApiTestFixture fixture)
  20:     {
@@ -62660,7 +62660,7 @@ README.md
  55:         {
  56:             await Assert.That(links.TryGetProperty("self", out var selfLink)).IsTrue();
  57:             var href = selfLink.GetProperty("href").GetString();
- 58:             await Assert.That(href).Contains("/api/v1/storageobject");
+ 58:             await Assert.That(href).Contains("/api/storageobject");
  59:         }
  60:     }
  61: 
@@ -62709,7 +62709,7 @@ README.md
 104:             {
 105:                 await Assert.That(itemLinks.TryGetProperty("self", out var selfLink)).IsTrue();
 106:                 var href = selfLink.GetProperty("href").GetString();
-107:                 await Assert.That(href).Contains("/api/v1/storageobject/");
+107:                 await Assert.That(href).Contains("/api/storageobject/");
 108:             }
 109:         }
 110:     }
@@ -62750,7 +62750,7 @@ README.md
 145:                 if (links.TryGetProperty("collection", out var collectionLink))
 146:                 {
 147:                     var href = collectionLink.GetProperty("href").GetString();
-148:                     await Assert.That(href).Contains("/api/v1/storageobject");
+148:                     await Assert.That(href).Contains("/api/storageobject");
 149:                 }
 150:             }
 151:         }
@@ -62812,7 +62812,7 @@ README.md
  14: public class TenantHateoasTests
  15: {
  16:     private readonly ApiTestFixture _fixture;
- 17:     private const string BaseUrl = "/api/v1/tenant";
+ 17:     private const string BaseUrl = "/api/tenant";
  18: 
  19:     public TenantHateoasTests(ApiTestFixture fixture)
  20:     {
@@ -62853,7 +62853,7 @@ README.md
  55:         {
  56:             await Assert.That(links.TryGetProperty("self", out var selfLink)).IsTrue();
  57:             var href = selfLink.GetProperty("href").GetString();
- 58:             await Assert.That(href).Contains("/api/v1/tenant");
+ 58:             await Assert.That(href).Contains("/api/tenant");
  59:         }
  60:     }
  61: 
@@ -62904,7 +62904,7 @@ README.md
 106:             {
 107:                 await Assert.That(itemLinks.TryGetProperty("self", out var selfLink)).IsTrue();
 108:                 var href = selfLink.GetProperty("href").GetString();
-109:                 await Assert.That(href).Contains("/api/v1/tenant/");
+109:                 await Assert.That(href).Contains("/api/tenant/");
 110:             }
 111:         }
 112:     }
@@ -62934,7 +62934,7 @@ README.md
 136:                 if (itemLinks.TryGetProperty("by-slug", out var bySlugLink))
 137:                 {
 138:                     var href = bySlugLink.GetProperty("href").GetString();
-139:                     await Assert.That(href).Contains("/api/v1/tenant/by-slug/");
+139:                     await Assert.That(href).Contains("/api/tenant/by-slug/");
 140:                 }
 141:             }
 142:         }
@@ -63036,7 +63036,7 @@ README.md
 11: public class UserControllerTests
 12: {
 13:     private readonly ApiTestFixture _fixture;
-14:     private const string BaseUrl = "/api/v1/user";
+14:     private const string BaseUrl = "/api/user";
 15: 
 16:     public UserControllerTests(ApiTestFixture fixture)
 17:     {
@@ -66393,7 +66393,7 @@ README.md
   8: 
   9: 
  10: 
- 11: [Route("api/v1/[controller]")]
+ 11: [Route("api/[controller]")]
  12: [ApiController]
  13: public class ModuleController : ControllerBase
  14: {
@@ -70645,7 +70645,7 @@ README.md
   4: 
   5: **Error**: `PostgresException: 23505: duplicate key value violates unique constraint "ix_users_email"`
   6: 
-  7: **When**: User sync endpoint `POST /api/v1/User/sync` fails when there's already a user in the database with the same email.
+  7: **When**: User sync endpoint `POST /api/User/sync` fails when there's already a user in the database with the same email.
   8: 
   9: ## Root Cause Analysis
  10: 
@@ -70831,14 +70831,14 @@ README.md
 190: 1. **Test Same User Sync** (should work):
 191:    ```bash
 192:    # Login with existing user
-193:    # Call POST /api/v1/User/sync
+193:    # Call POST /api/User/sync
 194:    # Check logs for: "Existing user found - Updating"
 195:    ```
 196: 
 197: 2. **Test New User Sync** (should work):
 198:    ```bash
 199:    # Login with brand new Keycloak user
-200:    # Call POST /api/v1/User/sync
+200:    # Call POST /api/User/sync
 201:    # Check logs for: "User created successfully"
 202:    ```
 203: 
@@ -79604,7 +79604,7 @@ README.md
  78:   "title": "An unexpected error occurred.",
  79:   "status": 500,
  80:   "detail": "Please try again later. If the problem persists, contact support.",
- 81:   "instance": "/api/v1/{entity}/some-failing-endpoint"
+ 81:   "instance": "/api/{entity}/some-failing-endpoint"
  82: }
  83: ```
  84: 
@@ -79724,7 +79724,7 @@ README.md
  71:     {
  72:         try
  73:         {
- 74:             _{entities} = await Http.GetFromJsonAsync<List<{Entity}ListDto>>("api/v1/{entity}");
+ 74:             _{entities} = await Http.GetFromJsonAsync<List<{Entity}ListDto>>("api/{entity}");
  75:         }
  76:         catch (Exception ex)
  77:         {
@@ -80359,7 +80359,7 @@ README.md
  23: 
  24: namespace {Project}.API.Controllers;
  25: 
- 26: [Route("api/v1/[controller]")]
+ 26: [Route("api/[controller]")]
  27: [ApiController]
  28: public class {Entity}Controller : ControllerBase
  29: {
@@ -80439,7 +80439,7 @@ README.md
 103: ### Test Error Capture
 104: 
 105: ```bash
-106: curl -v https://localhost:7001/api/v1/{entity}/sentry/test-error
+106: curl -v https://localhost:7001/api/{entity}/sentry/test-error
 107: ```
 108: 
 109: *Expected Sentry Outcome*: An error event should appear in your Sentry dashboard, with tags like `test:true` and `endpoint:sentry/test-error`, and the message "This is a test Sentry exception from the API!". If you have `UseExceptionHandler` configured, the client will receive a `ProblemDetails` response.
@@ -80447,7 +80447,7 @@ README.md
 111: ### Test Performance Tracking
 112: 
 113: ```bash
-114: curl -v https://localhost:7001/api/v1/{entity}/sentry/test-performance
+114: curl -v https://localhost:7001/api/{entity}/sentry/test-performance
 115: ```
 116: 
 117: *Expected Sentry Outcome*: A transaction named `test.performance` with operation `manual-api-endpoint` should appear in your Sentry dashboard's "Performance" section. The duration should be around 1.5 seconds, and you should see a child span named `db.query` (simulate_db_call) within it.
@@ -81369,7 +81369,7 @@ README.md
  11: public class EventSessionControllerTests
  12: {
  13:     private readonly ApiTestFixture _fixture;
- 14:     private const string BaseUrl = "/api/v1/eventsession";
+ 14:     private const string BaseUrl = "/api/eventsession";
  15: 
  16:     public EventSessionControllerTests(ApiTestFixture fixture)
  17:     {
@@ -81535,21 +81535,21 @@ README.md
  25:     [Test]
  26:     public async Task ActorKeyStore_GetAll_ShouldReturnUnauthorized()
  27:     {
- 28:         var response = await _fixture.Client.GetAsync("/api/v1/actorkeystore");
+ 28:         var response = await _fixture.Client.GetAsync("/api/actorkeystore");
  29:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
  30:     }
  31: 
  32:     [Test]
  33:     public async Task ActorKeyStore_GetById_WithRandomId_ShouldNotReturnServerError()
  34:     {
- 35:         var response = await _fixture.Client.GetAsync($"/api/v1/actorkeystore/{Guid.NewGuid()}");
+ 35:         var response = await _fixture.Client.GetAsync($"/api/actorkeystore/{Guid.NewGuid()}");
  36:         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
  37:     }
  38: 
  39:     [Test]
  40:     public async Task ActorKeyStore_Create_WithoutAuth_ShouldReturnUnauthorized()
  41:     {
- 42:         var response = await _fixture.Client.PostAsJsonAsync("/api/v1/actorkeystore", new
+ 42:         var response = await _fixture.Client.PostAsJsonAsync("/api/actorkeystore", new
  43:         {
  44:             ActorId = Guid.NewGuid(),
  45:             KeyPurpose = "signing",
@@ -81563,7 +81563,7 @@ README.md
  53:     [Test]
  54:     public async Task ActorKeyStore_Delete_WithoutAuth_ShouldReturnUnauthorized()
  55:     {
- 56:         var response = await _fixture.Client.DeleteAsync($"/api/v1/actorkeystore/{Guid.NewGuid()}");
+ 56:         var response = await _fixture.Client.DeleteAsync($"/api/actorkeystore/{Guid.NewGuid()}");
  57:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
  58:     }
  59: 
@@ -81574,14 +81574,14 @@ README.md
  64:     [Test]
  65:     public async Task IndexedDid_GetAll_ShouldReturnOk()
  66:     {
- 67:         var response = await _fixture.Client.GetAsync("/api/v1/indexeddid");
+ 67:         var response = await _fixture.Client.GetAsync("/api/indexeddid");
  68:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
  69:     }
  70: 
  71:     [Test]
  72:     public async Task IndexedDid_GetById_WithValidDid_ShouldNotReturnServerError()
  73:     {
- 74:         var response = await _fixture.Client.GetAsync("/api/v1/indexeddid/did:plc:test");
+ 74:         var response = await _fixture.Client.GetAsync("/api/indexeddid/did:plc:test");
  75:         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
  76:     }
  77: 
@@ -81592,14 +81592,14 @@ README.md
  82:     [Test]
  83:     public async Task SyncState_GetAll_ShouldReturnUnauthorized()
  84:     {
- 85:         var response = await _fixture.Client.GetAsync("/api/v1/syncstate");
+ 85:         var response = await _fixture.Client.GetAsync("/api/syncstate");
  86:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
  87:     }
  88: 
  89:     [Test]
  90:     public async Task SyncState_GetById_WithRandomId_ShouldNotReturnServerError()
  91:     {
- 92:         var response = await _fixture.Client.GetAsync($"/api/v1/syncstate/{1}");
+ 92:         var response = await _fixture.Client.GetAsync($"/api/syncstate/{1}");
  93:         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
  94:     }
  95: 
@@ -81610,21 +81610,21 @@ README.md
 100:     [Test]
 101:     public async Task AtprotoRecord_GetAll_ShouldReturnUnauthorized()
 102:     {
-103:         var response = await _fixture.Client.GetAsync("/api/v1/atprotorecord");
+103:         var response = await _fixture.Client.GetAsync("/api/atprotorecord");
 104:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
 105:     }
 106: 
 107:     [Test]
 108:     public async Task AtprotoRecord_GetById_WithRandomId_ShouldNotReturnServerError()
 109:     {
-110:         var response = await _fixture.Client.GetAsync($"/api/v1/atprotorecord/{Guid.NewGuid()}");
+110:         var response = await _fixture.Client.GetAsync($"/api/atprotorecord/{Guid.NewGuid()}");
 111:         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
 112:     }
 113: 
 114:     [Test]
 115:     public async Task AtprotoRecord_Create_WithoutAuth_ShouldReturnUnauthorized()
 116:     {
-117:         var response = await _fixture.Client.PostAsJsonAsync("/api/v1/atprotorecord", new
+117:         var response = await _fixture.Client.PostAsJsonAsync("/api/atprotorecord", new
 118:         {
 119:             Did = "did:plc:test",
 120:             Collection = "app.bsky.feed.post",
@@ -81636,7 +81636,7 @@ README.md
 126:     [Test]
 127:     public async Task AtprotoRecord_Delete_WithoutAuth_ShouldReturnUnauthorized()
 128:     {
-129:         var response = await _fixture.Client.DeleteAsync($"/api/v1/atprotorecord/{Guid.NewGuid()}");
+129:         var response = await _fixture.Client.DeleteAsync($"/api/atprotorecord/{Guid.NewGuid()}");
 130:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
 131:     }
 132: 
@@ -81647,14 +81647,14 @@ README.md
 137:     [Test]
 138:     public async Task UserAuthenticationToken_GetAll_ShouldReturnUnauthorized()
 139:     {
-140:         var response = await _fixture.Client.GetAsync("/api/v1/userauthenticationtoken");
+140:         var response = await _fixture.Client.GetAsync("/api/userauthenticationtoken");
 141:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
 142:     }
 143: 
 144:     [Test]
 145:     public async Task UserAuthenticationToken_GetById_WithRandomId_ShouldNotReturnServerError()
 146:     {
-147:         var response = await _fixture.Client.GetAsync($"/api/v1/userauthenticationtoken/{Guid.NewGuid()}");
+147:         var response = await _fixture.Client.GetAsync($"/api/userauthenticationtoken/{Guid.NewGuid()}");
 148:         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
 149:     }
 150: 
@@ -81665,14 +81665,14 @@ README.md
 155:     [Test]
 156:     public async Task UserExternalLogin_GetAll_ShouldReturnUnauthorized()
 157:     {
-158:         var response = await _fixture.Client.GetAsync("/api/v1/userexternallogin");
+158:         var response = await _fixture.Client.GetAsync("/api/userexternallogin");
 159:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
 160:     }
 161: 
 162:     [Test]
 163:     public async Task UserExternalLogin_GetById_WithRandomId_ShouldNotReturnServerError()
 164:     {
-165:         var response = await _fixture.Client.GetAsync($"/api/v1/userexternallogin/{Guid.NewGuid()}");
+165:         var response = await _fixture.Client.GetAsync($"/api/userexternallogin/{Guid.NewGuid()}");
 166:         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
 167:     }
 168: 
@@ -81719,13 +81719,13 @@ README.md
  35:     #region Default HAL Response Tests
  36: 
  37:     [Test]
- 38:     [Arguments("/api/v1/organization")]
- 39:     [Arguments("/api/v1/event")]
- 40:     [Arguments("/api/v1/eventsession")]
- 41:     [Arguments("/api/v1/actor")]
- 42:     [Arguments("/api/v1/location")]
- 43:     [Arguments("/api/v1/category")]
- 44:     [Arguments("/api/v1/tag")]
+ 38:     [Arguments("/api/organization")]
+ 39:     [Arguments("/api/event")]
+ 40:     [Arguments("/api/eventsession")]
+ 41:     [Arguments("/api/actor")]
+ 42:     [Arguments("/api/location")]
+ 43:     [Arguments("/api/category")]
+ 44:     [Arguments("/api/tag")]
  45:     public async Task GetAll_WithoutPreferHeader_ShouldIncludeLinks(string endpoint)
  46:     {
  47: 
@@ -81753,12 +81753,12 @@ README.md
  69:     public async Task GetById_WithValidId_ShouldIncludeSelfLink()
  70:     {
  71: 
- 72:         var listResponse = await _fixture.Client.GetAsync("/api/v1/organization");
+ 72:         var listResponse = await _fixture.Client.GetAsync("/api/organization");
  73:         await Assert.That(listResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
  74: 
  75: 
  76:         var randomId = Guid.NewGuid();
- 77:         var response = await _fixture.Client.GetAsync($"/api/v1/organization/{randomId}");
+ 77:         var response = await _fixture.Client.GetAsync($"/api/organization/{randomId}");
  78: 
  79: 
  80:         if (response.StatusCode == HttpStatusCode.OK)
@@ -81778,13 +81778,13 @@ README.md
  94:     #region Prefer Header Tests (RFC 7240)
  95: 
  96:     [Test]
- 97:     [Arguments("/api/v1/organization")]
- 98:     [Arguments("/api/v1/event")]
- 99:     [Arguments("/api/v1/eventsession")]
-100:     [Arguments("/api/v1/actor")]
-101:     [Arguments("/api/v1/location")]
-102:     [Arguments("/api/v1/category")]
-103:     [Arguments("/api/v1/tag")]
+ 97:     [Arguments("/api/organization")]
+ 98:     [Arguments("/api/event")]
+ 99:     [Arguments("/api/eventsession")]
+100:     [Arguments("/api/actor")]
+101:     [Arguments("/api/location")]
+102:     [Arguments("/api/category")]
+103:     [Arguments("/api/tag")]
 104:     public async Task GetAll_WithPreferMinimal_ShouldExcludeLinks(string endpoint)
 105:     {
 106: 
@@ -81814,8 +81814,8 @@ README.md
 130:     }
 131: 
 132:     [Test]
-133:     [Arguments("/api/v1/organization")]
-134:     [Arguments("/api/v1/event")]
+133:     [Arguments("/api/organization")]
+134:     [Arguments("/api/event")]
 135:     public async Task GetAll_WithPreferMinimal_ShouldReturnPreferenceAppliedHeader(string endpoint)
 136:     {
 137: 
@@ -81840,7 +81840,7 @@ README.md
 156:     public async Task GetAll_WithPreferRepresentation_ShouldIncludeLinks()
 157:     {
 158: 
-159:         var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organization");
+159:         var request = new HttpRequestMessage(HttpMethod.Get, "/api/organization");
 160:         request.Headers.Add("Prefer", "return=representation");
 161: 
 162: 
@@ -81857,7 +81857,7 @@ README.md
 173:     public async Task GetAll_WithMultiplePreferValues_ShouldProcessReturnMinimal()
 174:     {
 175: 
-176:         var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organization");
+176:         var request = new HttpRequestMessage(HttpMethod.Get, "/api/organization");
 177:         request.Headers.Add("Prefer", "return=minimal, respond-async, wait=100");
 178: 
 179: 
@@ -81874,7 +81874,7 @@ README.md
 190:     public async Task GetAll_WithoutPreferHeader_ShouldNotReturnPreferenceAppliedHeader()
 191:     {
 192: 
-193:         var response = await _fixture.Client.GetAsync(WithCacheBust("/api/v1/organization"));
+193:         var response = await _fixture.Client.GetAsync(WithCacheBust("/api/organization"));
 194: 
 195: 
 196:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -81891,7 +81891,7 @@ README.md
 207:     public async Task GetAll_FirstPage_ShouldHaveCorrectPaginationLinks()
 208:     {
 209: 
-210:         var response = await _fixture.Client.GetAsync("/api/v1/organization?pageNumber=1&pageSize=5");
+210:         var response = await _fixture.Client.GetAsync("/api/organization?pageNumber=1&pageSize=5");
 211: 
 212: 
 213:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -81913,7 +81913,7 @@ README.md
 229:     public async Task GetAll_ShouldIncludePaginationMetadata()
 230:     {
 231: 
-232:         var response = await _fixture.Client.GetAsync("/api/v1/organization?pageNumber=1&pageSize=10");
+232:         var response = await _fixture.Client.GetAsync("/api/organization?pageNumber=1&pageSize=10");
 233: 
 234: 
 235:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -81936,7 +81936,7 @@ README.md
 252:     public async Task GetAll_PaginationLinks_ShouldContainCorrectParameters()
 253:     {
 254: 
-255:         var response = await _fixture.Client.GetAsync("/api/v1/event?pageNumber=1&pageSize=5");
+255:         var response = await _fixture.Client.GetAsync("/api/event?pageNumber=1&pageSize=5");
 256: 
 257: 
 258:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -81961,7 +81961,7 @@ README.md
 277:     public async Task GetAll_ShouldReturnValidHalJsonStructure()
 278:     {
 279: 
-280:         var response = await _fixture.Client.GetAsync("/api/v1/organization");
+280:         var response = await _fixture.Client.GetAsync("/api/organization");
 281: 
 282: 
 283:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -81982,7 +81982,7 @@ README.md
 298:     public async Task GetAll_LinksFormat_ShouldBeRfc8288Compliant()
 299:     {
 300: 
-301:         var response = await _fixture.Client.GetAsync("/api/v1/organization");
+301:         var response = await _fixture.Client.GetAsync("/api/organization");
 302: 
 303: 
 304:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -82007,7 +82007,7 @@ README.md
 323:     public async Task GetAll_Links_ShouldIncludeHttpMethod()
 324:     {
 325: 
-326:         var response = await _fixture.Client.GetAsync("/api/v1/organization");
+326:         var response = await _fixture.Client.GetAsync("/api/organization");
 327: 
 328: 
 329:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -82030,7 +82030,7 @@ README.md
 346:     public async Task GetAll_EmbeddedItems_ShouldHaveCorrectDtoProperties()
 347:     {
 348: 
-349:         var response = await _fixture.Client.GetAsync("/api/v1/organization");
+349:         var response = await _fixture.Client.GetAsync("/api/organization");
 350: 
 351: 
 352:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -82062,7 +82062,7 @@ README.md
 378:     public async Task GetAll_ShouldUseIanaLinkRelations()
 379:     {
 380: 
-381:         using var request = new HttpRequestMessage(HttpMethod.Get, WithCacheBust("/api/v1/organization"));
+381:         using var request = new HttpRequestMessage(HttpMethod.Get, WithCacheBust("/api/organization"));
 382:         request.Headers.CacheControl = new CacheControlHeaderValue { NoCache = true, NoStore = true };
 383:         request.Headers.Pragma.Add(new NameValueHeaderValue("no-cache"));
 384:         var response = await _fixture.Client.SendAsync(request);
@@ -82107,7 +82107,7 @@ README.md
 423:     public async Task GetAll_ShouldReturnJsonContentType()
 424:     {
 425: 
-426:         var response = await _fixture.Client.GetAsync("/api/v1/organization");
+426:         var response = await _fixture.Client.GetAsync("/api/organization");
 427: 
 428: 
 429:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -82120,7 +82120,7 @@ README.md
 436:     public async Task GetAll_WithAcceptHalJson_ShouldReturnHalJsonContentType()
 437:     {
 438: 
-439:         var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organization");
+439:         var request = new HttpRequestMessage(HttpMethod.Get, "/api/organization");
 440:         request.Headers.Add("Accept", "application/hal+json");
 441: 
 442: 
@@ -82147,7 +82147,7 @@ README.md
 463:         var content = JsonContent.Create(new { FullName = "Test" });
 464: 
 465: 
-466:         var response = await _fixture.Client.PostAsync("/api/v1/organization", content);
+466:         var response = await _fixture.Client.PostAsync("/api/organization", content);
 467: 
 468: 
 469:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
@@ -82202,13 +82202,13 @@ README.md
  29:     #region Self Link Generation
  30: 
  31:     [Test]
- 32:     [Arguments("/api/v1/organization")]
- 33:     [Arguments("/api/v1/event")]
- 34:     [Arguments("/api/v1/eventsession")]
- 35:     [Arguments("/api/v1/actor")]
- 36:     [Arguments("/api/v1/location")]
- 37:     [Arguments("/api/v1/category")]
- 38:     [Arguments("/api/v1/tag")]
+ 32:     [Arguments("/api/organization")]
+ 33:     [Arguments("/api/event")]
+ 34:     [Arguments("/api/eventsession")]
+ 35:     [Arguments("/api/actor")]
+ 36:     [Arguments("/api/location")]
+ 37:     [Arguments("/api/category")]
+ 38:     [Arguments("/api/tag")]
  39:     public async Task LinkGenerator_CollectionEndpoints_ShouldHaveSelfLink(string endpoint)
  40:     {
  41: 
@@ -82231,7 +82231,7 @@ README.md
  58: 
  59:         var hrefValue = href.GetString();
  60:         await Assert.That(hrefValue).IsNotNull();
- 61:         await Assert.That(hrefValue).StartsWith("/api/v1/");
+ 61:         await Assert.That(hrefValue).StartsWith("/api/");
  62:     }
  63: 
  64:     #endregion
@@ -82242,7 +82242,7 @@ README.md
  69:     public async Task LinkGenerator_FirstPage_ShouldHaveFirstLink()
  70:     {
  71: 
- 72:         var response = await _fixture.Client.GetAsync("/api/v1/organization?pageNumber=1&pageSize=5");
+ 72:         var response = await _fixture.Client.GetAsync("/api/organization?pageNumber=1&pageSize=5");
  73: 
  74: 
  75:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -82262,7 +82262,7 @@ README.md
  89:     public async Task LinkGenerator_FirstPage_ShouldNotHavePrevLink()
  90:     {
  91: 
- 92:         var response = await _fixture.Client.GetAsync("/api/v1/organization?pageNumber=1&pageSize=5");
+ 92:         var response = await _fixture.Client.GetAsync("/api/organization?pageNumber=1&pageSize=5");
  93: 
  94: 
  95:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -82280,7 +82280,7 @@ README.md
 107:     public async Task LinkGenerator_SelfLink_ShouldIncludePaginationParameters()
 108:     {
 109: 
-110:         var response = await _fixture.Client.GetAsync("/api/v1/organization?pageNumber=2&pageSize=10");
+110:         var response = await _fixture.Client.GetAsync("/api/organization?pageNumber=2&pageSize=10");
 111: 
 112: 
 113:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -82305,7 +82305,7 @@ README.md
 132:     public async Task LinkGenerator_ItemLinks_ShouldIncludeSelfLink()
 133:     {
 134: 
-135:         var response = await _fixture.Client.GetAsync("/api/v1/organization");
+135:         var response = await _fixture.Client.GetAsync("/api/organization");
 136: 
 137: 
 138:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -82322,7 +82322,7 @@ README.md
 149:             {
 150:                 await Assert.That(itemLinks.TryGetProperty("self", out var selfLink)).IsTrue();
 151:                 var href = selfLink.GetProperty("href").GetString();
-152:                 await Assert.That(href).Contains("/api/v1/organization/");
+152:                 await Assert.That(href).Contains("/api/organization/");
 153:             }
 154:         }
 155:     }
@@ -82331,7 +82331,7 @@ README.md
 158:     public async Task LinkGenerator_ItemLinks_ShouldIncludeCollectionLink()
 159:     {
 160: 
-161:         var response = await _fixture.Client.GetAsync("/api/v1/organization");
+161:         var response = await _fixture.Client.GetAsync("/api/organization");
 162: 
 163: 
 164:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -82348,7 +82348,7 @@ README.md
 175:             {
 176:                 await Assert.That(itemLinks.TryGetProperty("collection", out var collectionLink)).IsTrue();
 177:                 var href = collectionLink.GetProperty("href").GetString();
-178:                 await Assert.That(href).IsEqualTo("/api/v1/organization");
+178:                 await Assert.That(href).IsEqualTo("/api/organization");
 179:             }
 180:         }
 181:     }
@@ -82361,7 +82361,7 @@ README.md
 188:     public async Task LinkGenerator_AllLinks_ShouldStartWithSlash()
 189:     {
 190: 
-191:         var response = await _fixture.Client.GetAsync("/api/v1/organization");
+191:         var response = await _fixture.Client.GetAsync("/api/organization");
 192: 
 193: 
 194:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -82383,7 +82383,7 @@ README.md
 210:     public async Task LinkGenerator_AllLinks_ShouldNotBeAbsoluteUrls()
 211:     {
 212: 
-213:         var response = await _fixture.Client.GetAsync("/api/v1/organization");
+213:         var response = await _fixture.Client.GetAsync("/api/organization");
 214: 
 215: 
 216:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -82411,7 +82411,7 @@ README.md
 238:     public async Task LinkGenerator_SelfLink_ShouldHaveGetMethod()
 239:     {
 240: 
-241:         var response = await _fixture.Client.GetAsync("/api/v1/organization");
+241:         var response = await _fixture.Client.GetAsync("/api/organization");
 242: 
 243: 
 244:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -82435,7 +82435,7 @@ README.md
 262:     public async Task LinkGenerator_Events_ShouldHaveSessionsLink()
 263:     {
 264: 
-265:         var response = await _fixture.Client.GetAsync("/api/v1/event");
+265:         var response = await _fixture.Client.GetAsync("/api/event");
 266: 
 267: 
 268:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -82454,7 +82454,7 @@ README.md
 281:                 if (itemLinks.TryGetProperty("sessions", out var sessionsLink))
 282:                 {
 283:                     var href = sessionsLink.GetProperty("href").GetString();
-284:                     await Assert.That(href).Contains("/api/v1/eventsession/by-event/");
+284:                     await Assert.That(href).Contains("/api/eventsession/by-event/");
 285:                 }
 286:             }
 287:         }
@@ -82464,7 +82464,7 @@ README.md
 291:     public async Task LinkGenerator_EventSessions_ShouldHaveEventLink()
 292:     {
 293: 
-294:         var response = await _fixture.Client.GetAsync("/api/v1/eventsession");
+294:         var response = await _fixture.Client.GetAsync("/api/eventsession");
 295: 
 296: 
 297:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -82483,7 +82483,7 @@ README.md
 310:                 if (itemLinks.TryGetProperty("event", out var eventLink))
 311:                 {
 312:                     var href = eventLink.GetProperty("href").GetString();
-313:                     await Assert.That(href).Contains("/api/v1/event/");
+313:                     await Assert.That(href).Contains("/api/event/");
 314:                 }
 315:             }
 316:         }
@@ -82493,7 +82493,7 @@ README.md
 320:     public async Task LinkGenerator_Categories_ShouldHaveChildrenLink()
 321:     {
 322: 
-323:         var response = await _fixture.Client.GetAsync("/api/v1/category");
+323:         var response = await _fixture.Client.GetAsync("/api/category");
 324: 
 325: 
 326:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -82512,7 +82512,7 @@ README.md
 339:                 if (itemLinks.TryGetProperty("children", out var childrenLink))
 340:                 {
 341:                     var href = childrenLink.GetProperty("href").GetString();
-342:                     await Assert.That(href).Contains("/api/v1/category/children/");
+342:                     await Assert.That(href).Contains("/api/category/children/");
 343:                 }
 344:             }
 345:         }
@@ -82540,7 +82540,7 @@ README.md
  14: public class UserHateoasTests
  15: {
  16:     private readonly ApiTestFixture _fixture;
- 17:     private const string BaseUrl = "/api/v1/user";
+ 17:     private const string BaseUrl = "/api/user";
  18: 
  19:     public UserHateoasTests(ApiTestFixture fixture)
  20:     {
@@ -82581,7 +82581,7 @@ README.md
  55:         {
  56:             await Assert.That(links.TryGetProperty("self", out var selfLink)).IsTrue();
  57:             var href = selfLink.GetProperty("href").GetString();
- 58:             await Assert.That(href).Contains("/api/v1/user");
+ 58:             await Assert.That(href).Contains("/api/user");
  59:         }
  60:     }
  61: 
@@ -82632,7 +82632,7 @@ README.md
 106:             {
 107:                 await Assert.That(itemLinks.TryGetProperty("self", out var selfLink)).IsTrue();
 108:                 var href = selfLink.GetProperty("href").GetString();
-109:                 await Assert.That(href).Contains("/api/v1/user/");
+109:                 await Assert.That(href).Contains("/api/user/");
 110:             }
 111:         }
 112:     }
@@ -82676,7 +82676,7 @@ README.md
 150:                 if (links.TryGetProperty("actor", out var actorLink))
 151:                 {
 152:                     var href = actorLink.GetProperty("href").GetString();
-153:                     await Assert.That(href).Contains("/api/v1/actor/");
+153:                     await Assert.That(href).Contains("/api/actor/");
 154:                 }
 155:             }
 156:         }
@@ -82750,14 +82750,14 @@ README.md
  25:     [Test]
  26:     public async Task EventType_GetAll_ShouldReturnOk()
  27:     {
- 28:         var response = await _fixture.Client.GetAsync("/api/v1/eventtype");
+ 28:         var response = await _fixture.Client.GetAsync("/api/eventtype");
  29:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
  30:     }
  31: 
  32:     [Test]
  33:     public async Task EventType_GetById_WithValidId_ShouldNotReturnServerError()
  34:     {
- 35:         var response = await _fixture.Client.GetAsync("/api/v1/eventtype/1");
+ 35:         var response = await _fixture.Client.GetAsync("/api/eventtype/1");
  36:         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
  37:     }
  38: 
@@ -82768,14 +82768,14 @@ README.md
  43:     [Test]
  44:     public async Task EventStatus_GetAll_ShouldReturnOk()
  45:     {
- 46:         var response = await _fixture.Client.GetAsync("/api/v1/eventstatus");
+ 46:         var response = await _fixture.Client.GetAsync("/api/eventstatus");
  47:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
  48:     }
  49: 
  50:     [Test]
  51:     public async Task EventStatus_GetById_WithValidId_ShouldNotReturnServerError()
  52:     {
- 53:         var response = await _fixture.Client.GetAsync("/api/v1/eventstatus/1");
+ 53:         var response = await _fixture.Client.GetAsync("/api/eventstatus/1");
  54:         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
  55:     }
  56: 
@@ -82786,14 +82786,14 @@ README.md
  61:     [Test]
  62:     public async Task EventFormat_GetAll_ShouldReturnOk()
  63:     {
- 64:         var response = await _fixture.Client.GetAsync("/api/v1/eventformat");
+ 64:         var response = await _fixture.Client.GetAsync("/api/eventformat");
  65:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
  66:     }
  67: 
  68:     [Test]
  69:     public async Task EventFormat_GetById_WithValidId_ShouldNotReturnServerError()
  70:     {
- 71:         var response = await _fixture.Client.GetAsync("/api/v1/eventformat/1");
+ 71:         var response = await _fixture.Client.GetAsync("/api/eventformat/1");
  72:         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
  73:     }
  74: 
@@ -82804,14 +82804,14 @@ README.md
  79:     [Test]
  80:     public async Task VisibilityType_GetAll_ShouldReturnOk()
  81:     {
- 82:         var response = await _fixture.Client.GetAsync("/api/v1/visibilitytype");
+ 82:         var response = await _fixture.Client.GetAsync("/api/visibilitytype");
  83:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
  84:     }
  85: 
  86:     [Test]
  87:     public async Task VisibilityType_GetById_WithValidId_ShouldNotReturnServerError()
  88:     {
- 89:         var response = await _fixture.Client.GetAsync("/api/v1/visibilitytype/1");
+ 89:         var response = await _fixture.Client.GetAsync("/api/visibilitytype/1");
  90:         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
  91:     }
  92: 
@@ -82822,14 +82822,14 @@ README.md
  97:     [Test]
  98:     public async Task RegistrationMode_GetAll_ShouldReturnOk()
  99:     {
-100:         var response = await _fixture.Client.GetAsync("/api/v1/registrationmode");
+100:         var response = await _fixture.Client.GetAsync("/api/registrationmode");
 101:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 102:     }
 103: 
 104:     [Test]
 105:     public async Task RegistrationMode_GetById_WithValidId_ShouldNotReturnServerError()
 106:     {
-107:         var response = await _fixture.Client.GetAsync("/api/v1/registrationmode/1");
+107:         var response = await _fixture.Client.GetAsync("/api/registrationmode/1");
 108:         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
 109:     }
 110: 
@@ -82840,14 +82840,14 @@ README.md
 115:     [Test]
 116:     public async Task ApprovalStatus_GetAll_ShouldReturnOk()
 117:     {
-118:         var response = await _fixture.Client.GetAsync("/api/v1/approvalstatus");
+118:         var response = await _fixture.Client.GetAsync("/api/approvalstatus");
 119:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 120:     }
 121: 
 122:     [Test]
 123:     public async Task ApprovalStatus_GetById_WithValidId_ShouldNotReturnServerError()
 124:     {
-125:         var response = await _fixture.Client.GetAsync("/api/v1/approvalstatus/1");
+125:         var response = await _fixture.Client.GetAsync("/api/approvalstatus/1");
 126:         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
 127:     }
 128: 
@@ -82858,14 +82858,14 @@ README.md
 133:     [Test]
 134:     public async Task AudienceAge_GetAll_ShouldReturnOk()
 135:     {
-136:         var response = await _fixture.Client.GetAsync("/api/v1/audienceage");
+136:         var response = await _fixture.Client.GetAsync("/api/audienceage");
 137:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 138:     }
 139: 
 140:     [Test]
 141:     public async Task AudienceAge_GetById_WithValidId_ShouldNotReturnServerError()
 142:     {
-143:         var response = await _fixture.Client.GetAsync("/api/v1/audienceage/1");
+143:         var response = await _fixture.Client.GetAsync("/api/audienceage/1");
 144:         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
 145:     }
 146: 
@@ -82876,14 +82876,14 @@ README.md
 151:     [Test]
 152:     public async Task AudienceGender_GetAll_ShouldReturnOk()
 153:     {
-154:         var response = await _fixture.Client.GetAsync("/api/v1/audiencegender");
+154:         var response = await _fixture.Client.GetAsync("/api/audiencegender");
 155:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 156:     }
 157: 
 158:     [Test]
 159:     public async Task AudienceGender_GetById_WithValidId_ShouldNotReturnServerError()
 160:     {
-161:         var response = await _fixture.Client.GetAsync("/api/v1/audiencegender/1");
+161:         var response = await _fixture.Client.GetAsync("/api/audiencegender/1");
 162:         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
 163:     }
 164: 
@@ -82894,14 +82894,14 @@ README.md
 169:     [Test]
 170:     public async Task Madhab_GetAll_ShouldReturnOk()
 171:     {
-172:         var response = await _fixture.Client.GetAsync("/api/v1/madhab");
+172:         var response = await _fixture.Client.GetAsync("/api/madhab");
 173:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 174:     }
 175: 
 176:     [Test]
 177:     public async Task Madhab_GetById_WithValidId_ShouldNotReturnServerError()
 178:     {
-179:         var response = await _fixture.Client.GetAsync("/api/v1/madhab/1");
+179:         var response = await _fixture.Client.GetAsync("/api/madhab/1");
 180:         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
 181:     }
 182: 
@@ -82912,14 +82912,14 @@ README.md
 187:     [Test]
 188:     public async Task Language_GetAll_ShouldReturnOk()
 189:     {
-190:         var response = await _fixture.Client.GetAsync("/api/v1/language");
+190:         var response = await _fixture.Client.GetAsync("/api/language");
 191:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 192:     }
 193: 
 194:     [Test]
 195:     public async Task Language_GetById_WithValidId_ShouldNotReturnServerError()
 196:     {
-197:         var response = await _fixture.Client.GetAsync("/api/v1/language/1");
+197:         var response = await _fixture.Client.GetAsync("/api/language/1");
 198:         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
 199:     }
 200: 
@@ -82930,21 +82930,21 @@ README.md
 205:     [Test]
 206:     public async Task Role_GetAll_ShouldReturnOk()
 207:     {
-208:         var response = await _fixture.Client.GetAsync("/api/v1/role");
+208:         var response = await _fixture.Client.GetAsync("/api/role");
 209:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 210:     }
 211: 
 212:     [Test]
 213:     public async Task Role_GetByOrganizationScope_ShouldReturnOk()
 214:     {
-215:         var response = await _fixture.Client.GetAsync("/api/v1/role?scope=Organization");
+215:         var response = await _fixture.Client.GetAsync("/api/role?scope=Organization");
 216:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 217:     }
 218: 
 219:     [Test]
 220:     public async Task Role_GetById_WithValidId_ShouldNotReturnServerError()
 221:     {
-222:         var response = await _fixture.Client.GetAsync("/api/v1/role/1");
+222:         var response = await _fixture.Client.GetAsync("/api/role/1");
 223:         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
 224:     }
 225: 
@@ -82955,14 +82955,14 @@ README.md
 230:     [Test]
 231:     public async Task OrganizationPosition_GetAll_ShouldReturnOk()
 232:     {
-233:         var response = await _fixture.Client.GetAsync("/api/v1/organizationposition");
+233:         var response = await _fixture.Client.GetAsync("/api/organizationposition");
 234:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 235:     }
 236: 
 237:     [Test]
 238:     public async Task OrganizationPosition_GetById_WithValidId_ShouldNotReturnServerError()
 239:     {
-240:         var response = await _fixture.Client.GetAsync("/api/v1/organizationposition/1");
+240:         var response = await _fixture.Client.GetAsync("/api/organizationposition/1");
 241:         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
 242:     }
 243: 
@@ -82973,14 +82973,14 @@ README.md
 248:     [Test]
 249:     public async Task ActorType_GetAll_ShouldReturnOk()
 250:     {
-251:         var response = await _fixture.Client.GetAsync("/api/v1/actortype");
+251:         var response = await _fixture.Client.GetAsync("/api/actortype");
 252:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 253:     }
 254: 
 255:     [Test]
 256:     public async Task ActorType_GetById_WithValidId_ShouldNotReturnServerError()
 257:     {
-258:         var response = await _fixture.Client.GetAsync("/api/v1/actortype/1");
+258:         var response = await _fixture.Client.GetAsync("/api/actortype/1");
 259:         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
 260:     }
 261: 
@@ -82991,14 +82991,14 @@ README.md
 266:     [Test]
 267:     public async Task DidCustodyType_GetAll_ShouldReturnOk()
 268:     {
-269:         var response = await _fixture.Client.GetAsync("/api/v1/didcustodytype");
+269:         var response = await _fixture.Client.GetAsync("/api/didcustodytype");
 270:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 271:     }
 272: 
 273:     [Test]
 274:     public async Task DidCustodyType_GetById_WithValidId_ShouldNotReturnServerError()
 275:     {
-276:         var response = await _fixture.Client.GetAsync("/api/v1/didcustodytype/1");
+276:         var response = await _fixture.Client.GetAsync("/api/didcustodytype/1");
 277:         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
 278:     }
 279: 
@@ -83009,14 +83009,14 @@ README.md
 284:     [Test]
 285:     public async Task FileType_GetAll_ShouldReturnOk()
 286:     {
-287:         var response = await _fixture.Client.GetAsync("/api/v1/filetype");
+287:         var response = await _fixture.Client.GetAsync("/api/filetype");
 288:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 289:     }
 290: 
 291:     [Test]
 292:     public async Task FileType_GetById_WithValidId_ShouldNotReturnServerError()
 293:     {
-294:         var response = await _fixture.Client.GetAsync("/api/v1/filetype/1");
+294:         var response = await _fixture.Client.GetAsync("/api/filetype/1");
 295:         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
 296:     }
 297: 
@@ -83027,14 +83027,14 @@ README.md
 302:     [Test]
 303:     public async Task TagType_GetAll_ShouldReturnOk()
 304:     {
-305:         var response = await _fixture.Client.GetAsync("/api/v1/tagtype");
+305:         var response = await _fixture.Client.GetAsync("/api/tagtype");
 306:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 307:     }
 308: 
 309:     [Test]
 310:     public async Task TagType_GetById_WithValidId_ShouldNotReturnServerError()
 311:     {
-312:         var response = await _fixture.Client.GetAsync("/api/v1/tagtype/1");
+312:         var response = await _fixture.Client.GetAsync("/api/tagtype/1");
 313:         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
 314:     }
 315: 
@@ -83057,7 +83057,7 @@ README.md
  11: public class StorageObjectControllerTests
  12: {
  13:     private readonly ApiTestFixture _fixture;
- 14:     private const string BaseUrl = "/api/v1/storageobject";
+ 14:     private const string BaseUrl = "/api/storageobject";
  15: 
  16:     public StorageObjectControllerTests(ApiTestFixture fixture)
  17:     {
@@ -86919,7 +86919,7 @@ README.md
 10: 
 11: namespace Explore.API.Controllers;
 12: 
-13: [Route("api/v1/[controller]")]
+13: [Route("api/[controller]")]
 14: [ApiController]
 15: public class ActorTypeController : ControllerBase
 16: {
@@ -86973,7 +86973,7 @@ README.md
 10: 
 11: namespace Explore.API.Controllers;
 12: 
-13: [Route("api/v1/[controller]")]
+13: [Route("api/[controller]")]
 14: [ApiController]
 15: public class DidCustodyTypeController : ControllerBase
 16: {
@@ -87027,7 +87027,7 @@ README.md
 10: 
 11: namespace Explore.API.Controllers;
 12: 
-13: [Route("api/v1/[controller]")]
+13: [Route("api/[controller]")]
 14: [ApiController]
 15: public class EventFormatController : ControllerBase
 16: {
@@ -87081,7 +87081,7 @@ README.md
 10: 
 11: namespace Explore.API.Controllers;
 12: 
-13: [Route("api/v1/[controller]")]
+13: [Route("api/[controller]")]
 14: [ApiController]
 15: public class EventStatusController : ControllerBase
 16: {
@@ -87134,7 +87134,7 @@ README.md
  9: 
 10: namespace Explore.API.Controllers;
 11: 
-12: [Route("api/v1/[controller]")]
+12: [Route("api/[controller]")]
 13: [ApiController]
 14: public class EventTypeController : ControllerBase
 15: {
@@ -87201,7 +87201,7 @@ README.md
 10: 
 11: namespace Explore.API.Controllers;
 12: 
-13: [Route("api/v1/[controller]")]
+13: [Route("api/[controller]")]
 14: [ApiController]
 15: public class FileTypeController : ControllerBase
 16: {
@@ -87259,7 +87259,7 @@ README.md
  14: 
  15: namespace Explore.API.Controllers;
  16: 
- 17: [Route("api/v1/[controller]")]
+ 17: [Route("api/[controller]")]
  18: [ApiController]
  19: public class InstanceOnboardingController : ControllerBase
  20: {
@@ -87512,7 +87512,7 @@ README.md
  7: 
  8: namespace Explore.API.Controllers;
  9: 
-10: [Route("api/v1/[controller]")]
+10: [Route("api/[controller]")]
 11: [ApiController]
 12: public class LanguageController : ControllerBase
 13: {
@@ -87569,7 +87569,7 @@ README.md
 10: 
 11: namespace Explore.API.Controllers;
 12: 
-13: [Route("api/v1/[controller]")]
+13: [Route("api/[controller]")]
 14: [ApiController]
 15: public class MadhabController : ControllerBase
 16: {
@@ -87623,7 +87623,7 @@ README.md
 10: 
 11: namespace Explore.API.Controllers;
 12: 
-13: [Route("api/v1/[controller]")]
+13: [Route("api/[controller]")]
 14: [ApiController]
 15: public class OrganizationPositionController : ControllerBase
 16: {
@@ -87677,7 +87677,7 @@ README.md
 10: 
 11: namespace Explore.API.Controllers;
 12: 
-13: [Route("api/v1/[controller]")]
+13: [Route("api/[controller]")]
 14: [ApiController]
 15: public class RegistrationModeController : ControllerBase
 16: {
@@ -87728,7 +87728,7 @@ README.md
  7: 
  8: namespace Explore.API.Controllers;
  9: 
-10: [Route("api/v1/[controller]")]
+10: [Route("api/[controller]")]
 11: [ApiController]
 12: public class TagTypeController : ControllerBase
 13: {
@@ -87775,7 +87775,7 @@ README.md
 10: 
 11: namespace Explore.API.Controllers;
 12: 
-13: [Route("api/v1/[controller]")]
+13: [Route("api/[controller]")]
 14: [ApiController]
 15: public class VisibilityTypeController : ControllerBase
 16: {
@@ -102460,7 +102460,7 @@ README.md
 195:             }
 196: 
 197:             // Optionally allow selected anonymous endpoints to stay non-interruptive
-198:             var isAnonymousApi = path.StartsWith("/api/v1/public", StringComparison.OrdinalIgnoreCase);
+198:             var isAnonymousApi = path.StartsWith("/api/public", StringComparison.OrdinalIgnoreCase);
 199:             if (!isAnonymousApi)
 200:             {
 201:                 _navigationManager.NavigateTo(
@@ -102541,8 +102541,8 @@ README.md
  40:         ClusterId = "explore-api", // ID of the cluster to forward to
  41:         Match = new RouteMatch
  42:         {
- 43:             // All requests starting with /api/v1/ will be proxied
- 44:             Path = "/api/v1/{**catchall}"
+ 43:             // All requests starting with /api/ will be proxied
+ 44:             Path = "/api/{**catchall}"
  45:         }
  46:     }
  47: };
@@ -102585,7 +102585,7 @@ README.md
  84: ### Key Points
  85: 
  86: *   **`exploreApiBaseUrl`**: Should be configured in `appsettings.json` or environment variables.
- 87: *   **`Path = "/api/v1/{**catchall}"`**: This route captures all requests intended for the backend API.
+ 87: *   **`Path = "/api/{**catchall}"`**: This route captures all requests intended for the backend API.
  88: *   **`AddTransforms`**: This is where the magic happens. It intercepts the outgoing request from the BFF to the API, extracts the JWT from the user's session cookie (which was obtained during OIDC login), and attaches it as an `Authorization: Bearer` header. This makes the backend API oblivious to the cookie-based authentication, only seeing standard JWTs.
  89: 
  90: ---
@@ -103724,7 +103724,7 @@ README.md
 610: 
 611:     private async Task LoadData()
 612:     {
-613:         _data = await Http.GetFromJsonAsync<List<{Entity}Dto>>("api/v1/{entities}");
+613:         _data = await Http.GetFromJsonAsync<List<{Entity}Dto>>("api/{entities}");
 614:         // StateHasChanged() NOT needed - Blazor will re-render after this async method completes
 615:     }
 616: 
@@ -103965,7 +103965,7 @@ README.md
 196:     private async Task SyncToServer()
 197:     {
 198:         // Make HTTP call to backend API
-199:         // await Http.PostAsJsonAsync("api/v1/{entities}/drafts", draft{Entity});
+199:         // await Http.PostAsJsonAsync("api/{entities}/drafts", draft{Entity});
 200:     }
 201: }
 202: ```
@@ -104117,7 +104117,7 @@ README.md
 348:         {
 349:             // Fetch data here if it shouldn't run on the server prerender,
 350:             // or if it's dependent on client-side state.
-351:             // _{entities} = await Http.GetFromJsonAsync<List<{Entity}ListDto>>("api/v1/{entities}");
+351:             // _{entities} = await Http.GetFromJsonAsync<List<{Entity}ListDto>>("api/{entities}");
 352:             // StateHasChanged(); // Required if you update state after async operation in OnAfterRenderAsync
 353:         }
 354:     }
@@ -107573,7 +107573,7 @@ README.md
  11: public class ActorControllerTests
  12: {
  13:     private readonly ApiTestFixture _fixture;
- 14:     private const string BaseUrl = "/api/v1/actor";
+ 14:     private const string BaseUrl = "/api/actor";
  15: 
  16:     public ActorControllerTests(ApiTestFixture fixture)
  17:     {
@@ -107979,7 +107979,7 @@ README.md
 20:     {
 21: 
 22: 
-23:         var response = await _fixture.Client.GetAsync("/api/v1/event");
+23:         var response = await _fixture.Client.GetAsync("/api/event");
 24: 
 25: 
 26:         if (response.StatusCode != HttpStatusCode.OK)
@@ -107998,7 +107998,7 @@ README.md
 39:     public async Task GetById_WithInvalidId_ShouldReturnNotFound()
 40:     {
 41: 
-42:         var response = await _fixture.Client.GetAsync($"/api/v1/event/{Guid.NewGuid()}");
+42:         var response = await _fixture.Client.GetAsync($"/api/event/{Guid.NewGuid()}");
 43: 
 44: 
 45:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
@@ -108035,21 +108035,21 @@ README.md
  25:     [Test]
  26:     public async Task Tenant_GetAll_ShouldReturnUnauthorized()
  27:     {
- 28:         var response = await _fixture.Client.GetAsync("/api/v1/tenant");
+ 28:         var response = await _fixture.Client.GetAsync("/api/tenant");
  29:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
  30:     }
  31: 
  32:     [Test]
  33:     public async Task Tenant_GetById_WithRandomId_ShouldNotReturnServerError()
  34:     {
- 35:         var response = await _fixture.Client.GetAsync($"/api/v1/tenant/{Guid.NewGuid()}");
+ 35:         var response = await _fixture.Client.GetAsync($"/api/tenant/{Guid.NewGuid()}");
  36:         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
  37:     }
  38: 
  39:     [Test]
  40:     public async Task Tenant_Create_WithoutAuth_ShouldReturnUnauthorized()
  41:     {
- 42:         var response = await _fixture.Client.PostAsJsonAsync("/api/v1/tenant", new
+ 42:         var response = await _fixture.Client.PostAsJsonAsync("/api/tenant", new
  43:         {
  44:             FullName = "Test Tenant",
  45:             Slug = "test-tenant",
@@ -108065,21 +108065,21 @@ README.md
  55:     [Test]
  56:     public async Task TenantUser_GetAll_ShouldReturnUnauthorized()
  57:     {
- 58:         var response = await _fixture.Client.GetAsync("/api/v1/tenantuser");
+ 58:         var response = await _fixture.Client.GetAsync("/api/tenantuser");
  59:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
  60:     }
  61: 
  62:     [Test]
  63:     public async Task TenantUser_GetById_WithRandomId_ShouldNotReturnServerError()
  64:     {
- 65:         var response = await _fixture.Client.GetAsync($"/api/v1/tenantuser/{1}");
+ 65:         var response = await _fixture.Client.GetAsync($"/api/tenantuser/{1}");
  66:         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
  67:     }
  68: 
  69:     [Test]
  70:     public async Task TenantUser_Create_WithoutAuth_ShouldReturnUnauthorized()
  71:     {
- 72:         var response = await _fixture.Client.PostAsJsonAsync("/api/v1/tenantuser", new
+ 72:         var response = await _fixture.Client.PostAsJsonAsync("/api/tenantuser", new
  73:         {
  74:             UserId = Guid.NewGuid(),
  75:             TenantId = Guid.NewGuid(),
@@ -108095,14 +108095,14 @@ README.md
  85:     [Test]
  86:     public async Task TenantSettings_GetAll_ShouldReturnUnauthorized()
  87:     {
- 88:         var response = await _fixture.Client.GetAsync("/api/v1/tenantsettings");
+ 88:         var response = await _fixture.Client.GetAsync("/api/tenantsettings");
  89:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
  90:     }
  91: 
  92:     [Test]
  93:     public async Task TenantSettings_GetById_WithRandomId_ShouldNotReturnServerError()
  94:     {
- 95:         var response = await _fixture.Client.GetAsync($"/api/v1/tenantsettings/{1}");
+ 95:         var response = await _fixture.Client.GetAsync($"/api/tenantsettings/{1}");
  96:         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
  97:     }
  98: 
@@ -110340,7 +110340,7 @@ README.md
  9: 
 10: namespace Explore.API.Controllers;
 11: 
-12: [Route("api/v1/[controller]")]
+12: [Route("api/[controller]")]
 13: [ApiController]
 14: public class ApprovalStatusController : ControllerBase
 15: {
@@ -110407,7 +110407,7 @@ README.md
 10: 
 11: namespace Explore.API.Controllers;
 12: 
-13: [Route("api/v1/[controller]")]
+13: [Route("api/[controller]")]
 14: [ApiController]
 15: public class AudienceAgeController : ControllerBase
 16: {
@@ -110466,7 +110466,7 @@ README.md
 10: 
 11: namespace Explore.API.Controllers;
 12: 
-13: [Route("api/v1/[controller]")]
+13: [Route("api/[controller]")]
 14: [ApiController]
 15: public class AudienceGenderController : ControllerBase
 16: {
@@ -110527,7 +110527,7 @@ README.md
  12: 
  13: namespace Explore.API.Controllers;
  14: 
- 15: [Route("api/v1/[controller]")]
+ 15: [Route("api/[controller]")]
  16: [ApiController]
  17: public class EventSessionAgendaItemController : ControllerBase
  18: {
@@ -110673,7 +110673,7 @@ README.md
  13: 
  14: namespace Explore.API.Controllers;
  15: 
- 16: [Route("api/v1/[controller]")]
+ 16: [Route("api/[controller]")]
  17: [ApiController]
  18: [Authorize]
  19: public class OrganizationMemberController : ControllerBase
@@ -115029,7 +115029,7 @@ README.md
  65:         {
  66:             response.Success = false;
  67:             response.Message = "Current user is not synchronized in the local database.";
- 68:             response.Errors = new List<string> { "Call /api/v1/User/sync before completing onboarding." };
+ 68:             response.Errors = new List<string> { "Call /api/User/sync before completing onboarding." };
  69:             return response;
  70:         }
  71: 
@@ -119161,7 +119161,7 @@ README.md
  58:     Keycloak-->>-BFF: Returns JWTs
  59:     BFF-->>-Browser: Stores tokens in secure, HttpOnly cookie & redirects
  60: 
- 61:     Browser->>+BFF: Makes API call (/api/v1/...)
+ 61:     Browser->>+BFF: Makes API call (/api/...)
  62:     BFF->>+API: YARP proxy reads token from cookie, attaches as "Authorization: Bearer" header
  63:     API->>API: Validates JWT signature & claims
  64:     API-->>-BFF: Returns data
@@ -119422,7 +119422,7 @@ README.md
 133:         ClusterId = "{project}-api",
 134:         Match = new RouteMatch
 135:         {
-136:             Path = "/api/v1/{**catchall}"  // Catch all API routes
+136:             Path = "/api/{**catchall}"  // Catch all API routes
 137:         }
 138:     }
 139: };
@@ -119470,7 +119470,7 @@ README.md
 181:         ClusterId = "explore-api",
 182:         Match = new RouteMatch
 183:         {
-184:             Path = "/api/v1/{**catchall}"  // Catch all API routes
+184:             Path = "/api/{**catchall}"  // Catch all API routes
 185:         }
 186:     }
 187: };
@@ -120908,7 +120908,7 @@ README.md
  11: public class CategoryControllerTests
  12: {
  13:     private readonly ApiTestFixture _fixture;
- 14:     private const string BaseUrl = "/api/v1/category";
+ 14:     private const string BaseUrl = "/api/category";
  15: 
  16:     public CategoryControllerTests(ApiTestFixture fixture)
  17:     {
@@ -121062,28 +121062,28 @@ README.md
  27:     [Test]
  28:     public async Task EventCategories_GetAll_ShouldReturnNotFound()
  29:     {
- 30:         var response = await _fixture.Client.GetAsync("/api/v1/eventcategories");
+ 30:         var response = await _fixture.Client.GetAsync("/api/eventcategories");
  31:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
  32:     }
  33: 
  34:     [Test]
  35:     public async Task EventCategories_GetById_WithRandomId_ShouldNotReturnServerError()
  36:     {
- 37:         var response = await _fixture.Client.GetAsync($"/api/v1/eventcategories/{1}");
+ 37:         var response = await _fixture.Client.GetAsync($"/api/eventcategories/{1}");
  38:         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
  39:     }
  40: 
  41:     [Test]
  42:     public async Task EventCategories_Create_ShouldReturnNotFound()
  43:     {
- 44:         var response = await _fixture.Client.PostAsJsonAsync("/api/v1/eventcategories", new { EventId = Guid.NewGuid(), CategoryId = Guid.NewGuid() });
+ 44:         var response = await _fixture.Client.PostAsJsonAsync("/api/eventcategories", new { EventId = Guid.NewGuid(), CategoryId = Guid.NewGuid() });
  45:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
  46:     }
  47: 
  48:     [Test]
  49:     public async Task EventCategories_Delete_ShouldReturnNotFound()
  50:     {
- 51:         var response = await _fixture.Client.DeleteAsync($"/api/v1/eventcategories/{1}");
+ 51:         var response = await _fixture.Client.DeleteAsync($"/api/eventcategories/{1}");
  52:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
  53:     }
  54: 
@@ -121094,28 +121094,28 @@ README.md
  59:     [Test]
  60:     public async Task EventTags_GetAll_ShouldReturnNotFound()
  61:     {
- 62:         var response = await _fixture.Client.GetAsync("/api/v1/eventtags");
+ 62:         var response = await _fixture.Client.GetAsync("/api/eventtags");
  63:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
  64:     }
  65: 
  66:     [Test]
  67:     public async Task EventTags_GetById_WithRandomId_ShouldNotReturnServerError()
  68:     {
- 69:         var response = await _fixture.Client.GetAsync($"/api/v1/eventtags/{1}");
+ 69:         var response = await _fixture.Client.GetAsync($"/api/eventtags/{1}");
  70:         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
  71:     }
  72: 
  73:     [Test]
  74:     public async Task EventTags_Create_ShouldReturnNotFound()
  75:     {
- 76:         var response = await _fixture.Client.PostAsJsonAsync("/api/v1/eventtags", new { EventId = Guid.NewGuid(), TagId = Guid.NewGuid() });
+ 76:         var response = await _fixture.Client.PostAsJsonAsync("/api/eventtags", new { EventId = Guid.NewGuid(), TagId = Guid.NewGuid() });
  77:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
  78:     }
  79: 
  80:     [Test]
  81:     public async Task EventTags_Delete_ShouldReturnNotFound()
  82:     {
- 83:         var response = await _fixture.Client.DeleteAsync($"/api/v1/eventtags/{1}");
+ 83:         var response = await _fixture.Client.DeleteAsync($"/api/eventtags/{1}");
  84:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
  85:     }
  86: 
@@ -121126,28 +121126,28 @@ README.md
  91:     [Test]
  92:     public async Task EventSessionLanguage_GetAll_ShouldReturnNotFound()
  93:     {
- 94:         var response = await _fixture.Client.GetAsync("/api/v1/eventsessionlanguage");
+ 94:         var response = await _fixture.Client.GetAsync("/api/eventsessionlanguage");
  95:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
  96:     }
  97: 
  98:     [Test]
  99:     public async Task EventSessionLanguage_GetById_WithRandomId_ShouldNotReturnServerError()
 100:     {
-101:         var response = await _fixture.Client.GetAsync($"/api/v1/eventsessionlanguage/{1}");
+101:         var response = await _fixture.Client.GetAsync($"/api/eventsessionlanguage/{1}");
 102:         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
 103:     }
 104: 
 105:     [Test]
 106:     public async Task EventSessionLanguage_Create_ShouldReturnNotFound()
 107:     {
-108:         var response = await _fixture.Client.PostAsJsonAsync("/api/v1/eventsessionlanguage", new { EventSessionId = Guid.NewGuid(), LanguageId = 1 });
+108:         var response = await _fixture.Client.PostAsJsonAsync("/api/eventsessionlanguage", new { EventSessionId = Guid.NewGuid(), LanguageId = 1 });
 109:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
 110:     }
 111: 
 112:     [Test]
 113:     public async Task EventSessionLanguage_Delete_ShouldReturnNotFound()
 114:     {
-115:         var response = await _fixture.Client.DeleteAsync($"/api/v1/eventsessionlanguage/{1}");
+115:         var response = await _fixture.Client.DeleteAsync($"/api/eventsessionlanguage/{1}");
 116:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
 117:     }
 118: 
@@ -121158,35 +121158,35 @@ README.md
 123:     [Test]
 124:     public async Task EventSessionSpeaker_GetAll_ShouldReturnNotFound()
 125:     {
-126:         var response = await _fixture.Client.GetAsync("/api/v1/eventsessionspeaker");
+126:         var response = await _fixture.Client.GetAsync("/api/eventsessionspeaker");
 127:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
 128:     }
 129: 
 130:     [Test]
 131:     public async Task EventSessionSpeaker_GetById_WithRandomId_ShouldNotReturnServerError()
 132:     {
-133:         var response = await _fixture.Client.GetAsync($"/api/v1/eventsessionspeaker/{1}");
+133:         var response = await _fixture.Client.GetAsync($"/api/eventsessionspeaker/{1}");
 134:         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
 135:     }
 136: 
 137:     [Test]
 138:     public async Task EventSessionSpeaker_GetBySession_ShouldReturnNotFound()
 139:     {
-140:         var response = await _fixture.Client.GetAsync($"/api/v1/eventsessionspeaker/by-session/{Guid.NewGuid()}");
+140:         var response = await _fixture.Client.GetAsync($"/api/eventsessionspeaker/by-session/{Guid.NewGuid()}");
 141:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
 142:     }
 143: 
 144:     [Test]
 145:     public async Task EventSessionSpeaker_Create_ShouldReturnNotFound()
 146:     {
-147:         var response = await _fixture.Client.PostAsJsonAsync("/api/v1/eventsessionspeaker", new { ActorId = Guid.NewGuid(), EventSessionId = Guid.NewGuid() });
+147:         var response = await _fixture.Client.PostAsJsonAsync("/api/eventsessionspeaker", new { ActorId = Guid.NewGuid(), EventSessionId = Guid.NewGuid() });
 148:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
 149:     }
 150: 
 151:     [Test]
 152:     public async Task EventSessionSpeaker_Delete_ShouldReturnNotFound()
 153:     {
-154:         var response = await _fixture.Client.DeleteAsync($"/api/v1/eventsessionspeaker/{1}");
+154:         var response = await _fixture.Client.DeleteAsync($"/api/eventsessionspeaker/{1}");
 155:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
 156:     }
 157: 
@@ -121197,28 +121197,28 @@ README.md
 162:     [Test]
 163:     public async Task EventSessionAgendaItem_GetAll_ShouldReturnOk()
 164:     {
-165:         var response = await _fixture.Client.GetAsync("/api/v1/eventsessionagendaitem");
+165:         var response = await _fixture.Client.GetAsync("/api/eventsessionagendaitem");
 166:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 167:     }
 168: 
 169:     [Test]
 170:     public async Task EventSessionAgendaItem_GetById_WithRandomId_ShouldNotReturnServerError()
 171:     {
-172:         var response = await _fixture.Client.GetAsync($"/api/v1/eventsessionagendaitem/{Guid.NewGuid()}");
+172:         var response = await _fixture.Client.GetAsync($"/api/eventsessionagendaitem/{Guid.NewGuid()}");
 173:         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
 174:     }
 175: 
 176:     [Test]
 177:     public async Task EventSessionAgendaItem_GetBySession_ShouldReturnOk()
 178:     {
-179:         var response = await _fixture.Client.GetAsync($"/api/v1/eventsessionagendaitem/by-session/{Guid.NewGuid()}");
+179:         var response = await _fixture.Client.GetAsync($"/api/eventsessionagendaitem/by-session/{Guid.NewGuid()}");
 180:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 181:     }
 182: 
 183:     [Test]
 184:     public async Task EventSessionAgendaItem_Create_WithoutAuth_ShouldReturnUnauthorized()
 185:     {
-186:         var response = await _fixture.Client.PostAsJsonAsync("/api/v1/eventsessionagendaitem", new
+186:         var response = await _fixture.Client.PostAsJsonAsync("/api/eventsessionagendaitem", new
 187:         {
 188:             EventSessionId = Guid.NewGuid(),
 189:             Title = "Test Agenda Item",
@@ -121231,7 +121231,7 @@ README.md
 196:     [Test]
 197:     public async Task EventSessionAgendaItem_Delete_WithoutAuth_ShouldReturnUnauthorized()
 198:     {
-199:         var response = await _fixture.Client.DeleteAsync($"/api/v1/eventsessionagendaitem/{Guid.NewGuid()}");
+199:         var response = await _fixture.Client.DeleteAsync($"/api/eventsessionagendaitem/{Guid.NewGuid()}");
 200:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
 201:     }
 202: 
@@ -121242,28 +121242,28 @@ README.md
 207:     [Test]
 208:     public async Task TagTypeTags_GetAll_ShouldReturnNotFound()
 209:     {
-210:         var response = await _fixture.Client.GetAsync("/api/v1/tagtypetags");
+210:         var response = await _fixture.Client.GetAsync("/api/tagtypetags");
 211:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
 212:     }
 213: 
 214:     [Test]
 215:     public async Task TagTypeTags_GetById_WithRandomId_ShouldNotReturnServerError()
 216:     {
-217:         var response = await _fixture.Client.GetAsync($"/api/v1/tagtypetags/{1}");
+217:         var response = await _fixture.Client.GetAsync($"/api/tagtypetags/{1}");
 218:         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
 219:     }
 220: 
 221:     [Test]
 222:     public async Task TagTypeTags_Create_ShouldReturnNotFound()
 223:     {
-224:         var response = await _fixture.Client.PostAsJsonAsync("/api/v1/tagtypetags", new { TagId = Guid.NewGuid(), TagTypeId = 1 });
+224:         var response = await _fixture.Client.PostAsJsonAsync("/api/tagtypetags", new { TagId = Guid.NewGuid(), TagTypeId = 1 });
 225:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
 226:     }
 227: 
 228:     [Test]
 229:     public async Task TagTypeTags_Delete_ShouldReturnNotFound()
 230:     {
-231:         var response = await _fixture.Client.DeleteAsync($"/api/v1/tagtypetags/{1}");
+231:         var response = await _fixture.Client.DeleteAsync($"/api/tagtypetags/{1}");
 232:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
 233:     }
 234: 
@@ -121275,21 +121275,21 @@ README.md
 240:     public async Task OrganizationMember_GetByOrganizationId_ShouldReturnOk()
 241:     {
 242: 
-243:         var response = await _fixture.Client.GetAsync($"/api/v1/organizationmember/{Guid.NewGuid()}");
+243:         var response = await _fixture.Client.GetAsync($"/api/organizationmember/{Guid.NewGuid()}");
 244:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 245:     }
 246: 
 247:     [Test]
 248:     public async Task OrganizationMember_GetById_WithRandomId_ShouldNotReturnServerError()
 249:     {
-250:         var response = await _fixture.Client.GetAsync($"/api/v1/organizationmember/{1}");
+250:         var response = await _fixture.Client.GetAsync($"/api/organizationmember/{1}");
 251:         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
 252:     }
 253: 
 254:     [Test]
 255:     public async Task OrganizationMember_Create_WithoutAuth_ShouldReturnUnauthorized()
 256:     {
-257:         var response = await _fixture.Client.PostAsJsonAsync("/api/v1/organizationmember", new
+257:         var response = await _fixture.Client.PostAsJsonAsync("/api/organizationmember", new
 258:         {
 259:             OrganizationId = Guid.NewGuid(),
 260:             UserId = Guid.NewGuid(),
@@ -121301,7 +121301,7 @@ README.md
 266:     [Test]
 267:     public async Task OrganizationMember_Delete_WithoutAuth_ShouldReturnUnauthorized()
 268:     {
-269:         var response = await _fixture.Client.DeleteAsync($"/api/v1/organizationmember/{1}");
+269:         var response = await _fixture.Client.DeleteAsync($"/api/organizationmember/{1}");
 270:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
 271:     }
 272: 
@@ -121312,21 +121312,21 @@ README.md
 277:     [Test]
 278:     public async Task OrganizationReview_GetAll_ShouldReturnOk()
 279:     {
-280:         var response = await _fixture.Client.GetAsync("/api/v1/organizationreview");
+280:         var response = await _fixture.Client.GetAsync("/api/organizationreview");
 281:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 282:     }
 283: 
 284:     [Test]
 285:     public async Task OrganizationReview_GetById_WithRandomId_ShouldNotReturnServerError()
 286:     {
-287:         var response = await _fixture.Client.GetAsync($"/api/v1/organizationreview/{Guid.NewGuid()}");
+287:         var response = await _fixture.Client.GetAsync($"/api/organizationreview/{Guid.NewGuid()}");
 288:         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
 289:     }
 290: 
 291:     [Test]
 292:     public async Task OrganizationReview_Create_WithoutAuth_ShouldReturnUnauthorized()
 293:     {
-294:         var response = await _fixture.Client.PostAsJsonAsync("/api/v1/organizationreview", new
+294:         var response = await _fixture.Client.PostAsJsonAsync("/api/organizationreview", new
 295:         {
 296:             OrganizationId = Guid.NewGuid(),
 297:             Rating = 5,
@@ -121339,7 +121339,7 @@ README.md
 304:     public async Task OrganizationReview_Delete_ShouldReturnMethodNotAllowed()
 305:     {
 306: 
-307:         var response = await _fixture.Client.DeleteAsync($"/api/v1/organizationreview/{Guid.NewGuid()}");
+307:         var response = await _fixture.Client.DeleteAsync($"/api/organizationreview/{Guid.NewGuid()}");
 308:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.MethodNotAllowed);
 309:     }
 310: 
@@ -121350,21 +121350,21 @@ README.md
 315:     [Test]
 316:     public async Task EventRegistration_GetAll_ShouldReturnOk()
 317:     {
-318:         var response = await _fixture.Client.GetAsync("/api/v1/eventregistration");
+318:         var response = await _fixture.Client.GetAsync("/api/eventregistration");
 319:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 320:     }
 321: 
 322:     [Test]
 323:     public async Task EventRegistration_GetById_WithRandomId_ShouldNotReturnServerError()
 324:     {
-325:         var response = await _fixture.Client.GetAsync($"/api/v1/eventregistration/{Guid.NewGuid()}");
+325:         var response = await _fixture.Client.GetAsync($"/api/eventregistration/{Guid.NewGuid()}");
 326:         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
 327:     }
 328: 
 329:     [Test]
 330:     public async Task EventRegistration_Create_WithoutAuth_ShouldReturnUnauthorized()
 331:     {
-332:         var response = await _fixture.Client.PostAsJsonAsync("/api/v1/eventregistration", new
+332:         var response = await _fixture.Client.PostAsJsonAsync("/api/eventregistration", new
 333:         {
 334:             EventSessionId = Guid.NewGuid(),
 335:             UserId = Guid.NewGuid()
@@ -121375,7 +121375,7 @@ README.md
 340:     [Test]
 341:     public async Task EventRegistration_Delete_WithoutAuth_ShouldReturnUnauthorized()
 342:     {
-343:         var response = await _fixture.Client.DeleteAsync($"/api/v1/eventregistration/{Guid.NewGuid()}");
+343:         var response = await _fixture.Client.DeleteAsync($"/api/eventregistration/{Guid.NewGuid()}");
 344:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
 345:     }
 346: 
@@ -121398,7 +121398,7 @@ README.md
  11: public class LocationControllerTests
  12: {
  13:     private readonly ApiTestFixture _fixture;
- 14:     private const string BaseUrl = "/api/v1/location";
+ 14:     private const string BaseUrl = "/api/location";
  15: 
  16:     public LocationControllerTests(ApiTestFixture fixture)
  17:     {
@@ -121543,7 +121543,7 @@ README.md
  12: public class OrganizationControllerTests
  13: {
  14:     private readonly ApiTestFixture _fixture;
- 15:     private const string BaseUrl = "/api/v1/organization";
+ 15:     private const string BaseUrl = "/api/organization";
  16: 
  17:     public OrganizationControllerTests(ApiTestFixture fixture)
  18:     {
@@ -121699,7 +121699,7 @@ README.md
  11: public class TagControllerTests
  12: {
  13:     private readonly ApiTestFixture _fixture;
- 14:     private const string BaseUrl = "/api/v1/tag";
+ 14:     private const string BaseUrl = "/api/tag";
  15: 
  16:     public TagControllerTests(ApiTestFixture fixture)
  17:     {
@@ -122494,7 +122494,7 @@ README.md
  12: 
  13: namespace Explore.API.Controllers;
  14: 
- 15: [Route("api/v1/[controller]")]
+ 15: [Route("api/[controller]")]
  16: [ApiController]
  17: public class ActorKeyStoreController : ControllerBase
  18: {
@@ -122618,7 +122618,7 @@ README.md
  9: 
 10: namespace Explore.API.Controllers;
 11: 
-12: [Route("api/v1/[controller]")]
+12: [Route("api/[controller]")]
 13: [ApiController]
 14: public class AtprotoRecordController : ControllerBase
 15: {
@@ -122720,7 +122720,7 @@ README.md
  9: 
 10: namespace Explore.API.Controllers;
 11: 
-12: [Route("api/v1/[controller]")]
+12: [Route("api/[controller]")]
 13: [ApiController]
 14: public class SyncStateController : ControllerBase
 15: {
@@ -122825,7 +122825,7 @@ README.md
  12: 
  13: namespace Explore.API.Controllers;
  14: 
- 15: [Route("api/v1/[controller]")]
+ 15: [Route("api/[controller]")]
  16: [ApiController]
  17: public class TenantSettingsController : ControllerBase
  18: {
@@ -122952,7 +122952,7 @@ README.md
  12: 
  13: namespace Explore.API.Controllers;
  14: 
- 15: [Route("api/v1/[controller]")]
+ 15: [Route("api/[controller]")]
  16: [ApiController]
  17: public class TenantUserController : ControllerBase
  18: {
@@ -123079,7 +123079,7 @@ README.md
  12: 
  13: namespace Explore.API.Controllers;
  14: 
- 15: [Route("api/v1/[controller]")]
+ 15: [Route("api/[controller]")]
  16: [ApiController]
  17: public class UserAuthenticationTokenController : ControllerBase
  18: {
@@ -123206,7 +123206,7 @@ README.md
  12: 
  13: namespace Explore.API.Controllers;
  14: 
- 15: [Route("api/v1/[controller]")]
+ 15: [Route("api/[controller]")]
  16: [ApiController]
  17: public class UserExternalLoginController : ControllerBase
  18: {
@@ -128406,7 +128406,7 @@ README.md
 403: // Blazor.Client calls API
 404: @inject HttpClient Http
 405: 
-406: var {entities} = await Http.GetFromJsonAsync<List<{Entity}ListDto>>("/api/v1/{entity}");
+406: var {entities} = await Http.GetFromJsonAsync<List<{Entity}ListDto>>("/api/{entity}");
 407: ```
 408: 
 409: ---
@@ -128644,7 +128644,7 @@ README.md
 226: using Microsoft.AspNetCore.Authorization;
 227: using Microsoft.AspNetCore.Mvc;
 228: 
-229: [Route("api/v1/[controller]")]
+229: [Route("api/[controller]")]
 230: [ApiController]
 231: public class {Entity}Controller : ControllerBase
 232: {
@@ -129172,7 +129172,7 @@ README.md
 754: using Microsoft.AspNetCore.Authorization;
 755: using Microsoft.AspNetCore.Mvc;
 756: 
-757: [Route("api/v1/[controller]")]
+757: [Route("api/[controller]")]
 758: [ApiController]
 759: public class {Entity}Controller : ControllerBase
 760: {
@@ -129198,7 +129198,7 @@ README.md
 780: 
 781:     protected override async Task OnInitializedAsync()
 782:     {
-783:         _{entities} = await Http.GetFromJsonAsync<List<{Entity}ListDto>>("/api/v1/{entity}");
+783:         _{entities} = await Http.GetFromJsonAsync<List<{Entity}ListDto>>("/api/{entity}");
 784:     }
 785: }
 786: ```
@@ -129762,7 +129762,7 @@ README.md
 469: using Microsoft.AspNetCore.Mvc;
 470: 
 471: [ApiController]
-472: [Route("api/v1/[controller]")]
+472: [Route("api/[controller]")]
 473: public class {Entity}Controller : ControllerBase
 474: {
 475:     private readonly IMediator _mediator;
@@ -130204,7 +130204,7 @@ README.md
 302: using Microsoft.AspNetCore.Authorization;
 303: using Microsoft.AspNetCore.Mvc;  // ✅ OK in API layer
 304: 
-305: [Route("api/v1/[controller]")]
+305: [Route("api/[controller]")]
 306: [ApiController]
 307: public class {Entity}Controller : ControllerBase
 308: {
@@ -131050,7 +131050,7 @@ README.md
 482: using Microsoft.AspNetCore.Authorization;
 483: using Microsoft.AspNetCore.Mvc;
 484: 
-485: [Route("api/v1/[controller]")]
+485: [Route("api/[controller]")]
 486: [ApiController]
 487: public class {Entity}Controller : ControllerBase
 488: {
@@ -132062,7 +132062,7 @@ README.md
 492: using Microsoft.AspNetCore.Http;
 493: using Microsoft.AspNetCore.Mvc;
 494: 
-495: [Route("api/v1/[controller]")]
+495: [Route("api/[controller]")]
 496: [ApiController]
 497: public class {Entity}Controller : ControllerBase
 498: {
@@ -134015,7 +134015,7 @@ README.md
  16: 
  17: 
  18: 
- 19: [Route("api/v1/[controller]")]
+ 19: [Route("api/[controller]")]
  20: [ApiController]
  21: [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
  22: public class CategoryController : ControllerBase
@@ -134196,7 +134196,7 @@ README.md
  13: 
  14: namespace Explore.API.Controllers;
  15: 
- 16: [Route("api/v1/[controller]")]
+ 16: [Route("api/[controller]")]
  17: [ApiController]
  18: public class EventRegistrationController : ControllerBase
  19: {
@@ -134350,7 +134350,7 @@ README.md
  16: 
  17: 
  18: 
- 19: [Route("api/v1/[controller]")]
+ 19: [Route("api/[controller]")]
  20: [ApiController]
  21: [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
  22: public class EventSessionController : ControllerBase
@@ -134555,7 +134555,7 @@ README.md
  16: 
  17: 
  18: 
- 19: [Route("api/v1/[controller]")]
+ 19: [Route("api/[controller]")]
  20: [ApiController]
  21: [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
  22: public class LocationController : ControllerBase
@@ -134780,7 +134780,7 @@ README.md
  16: 
  17: 
  18: 
- 19: [Route("api/v1/[controller]")]
+ 19: [Route("api/[controller]")]
  20: [ApiController]
  21: [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
  22: public class TagController : ControllerBase
@@ -134965,7 +134965,7 @@ README.md
  17: 
  18: namespace Explore.API.Controllers;
  19: 
- 20: [Route("api/v1/[controller]")]
+ 20: [Route("api/[controller]")]
  21: [ApiController]
  22: public class TenantController : ControllerBase
  23: {
@@ -138197,7 +138197,7 @@ README.md
 361: 
 362: namespace {Project}.API.Controllers;
 363: 
-364: [Route("api/v1/[controller]")]
+364: [Route("api/[controller]")]
 365: [ApiController]
 366: public class {Entity}Controller : ControllerBase
 367: {
@@ -138215,7 +138215,7 @@ README.md
 379:         _logger = logger;
 380:     }
 381: 
-382:     // POST: api/v1/{entity}
+382:     // POST: api/{entity}
 383:     [HttpPost]
 384:     [EndpointSummary("Create {Entity}")]
 385:     [EndpointDescription("Creates a new {entity}. Requires authentication.")]
@@ -138237,7 +138237,7 @@ README.md
 401:         return Ok(response);
 402:     }
 403: 
-404:     // GET: api/v1/{entity}
+404:     // GET: api/{entity}
 405:     [HttpGet]
 406:     [EndpointSummary("List {Entities}")]
 407:     [EndpointDescription("Returns a list of {entities}.")]
@@ -138249,7 +138249,7 @@ README.md
 413:         return Ok({entities});
 414:     }
 415: 
-416:     // GET: api/v1/{entity}/{id}
+416:     // GET: api/{entity}/{id}
 417:     [HttpGet("{id}")]
 418:     [EndpointSummary("Get {Entity} Details")]
 419:     [EndpointDescription("Returns {entity} details.")]
@@ -138268,7 +138268,7 @@ README.md
 432:         return Ok({entity});
 433:     }
 434: 
-435:     // GET: api/v1/{entity}/my
+435:     // GET: api/{entity}/my
 436:     [HttpGet("my")]
 437:     [EndpointSummary("List My {Entities}")]
 438:     [EndpointDescription("Returns {entities} owned by the current user.")]
@@ -139341,7 +139341,7 @@ README.md
 404: ## Controller Pattern
 405: 
 406: ```csharp
-407: [Route("api/v1/[controller]")]
+407: [Route("api/[controller]")]
 408: [ApiController]
 409: public class {Entity}Controller : ControllerBase
 410: {
@@ -139494,7 +139494,7 @@ README.md
 12: 
 13: namespace Explore.API.Controllers;
 14: 
-15: [Route("api/v1/[controller]")]
+15: [Route("api/[controller]")]
 16: [ApiController]
 17: [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 18: public class OrganizationReviewController : ControllerBase
@@ -139566,7 +139566,7 @@ README.md
  12: 
  13: namespace Explore.API.Controllers;
  14: 
- 15: [Route("api/v1/[controller]")]
+ 15: [Route("api/[controller]")]
  16: [ApiController]
  17: public class StorageObjectController : ControllerBase
  18: {
@@ -141288,7 +141288,7 @@ README.md
   56: | Architecture | Clean Architecture + CQRS |
   57: | Authentication | JWT Bearer (Keycloak) |
   58: | Documentation | OpenAPI 3.0 (Scalar + Swagger) |
-  59: | Versioning | URL path (`/api/v1/`) |
+  59: | Versioning | URL path (`/api/`) |
   60: | Serialization | System.Text.Json |
   61: 
   62: ### Request Flow
@@ -141314,22 +141314,22 @@ README.md
   82: 
   83: **Generic Pattern:**
   84: ```
-  85: /api/v1/{resource}
-  86: /api/v1/{resource}/{id}
-  87: /api/v1/{resource}/{id}/{subresource}
+  85: /api/{resource}
+  86: /api/{resource}/{id}
+  87: /api/{resource}/{id}/{subresource}
   88: ```
   89: 
   90: **Generic Examples:**
-  91: - `GET /api/v1/{entity}` - List entities
-  92: - `GET /api/v1/{entity}/{id}` - Get entity details
-  93: - `GET /api/v1/{childEntity}/by-{parentEntity}/{parentId}` - Get children
-  94: - `POST /api/v1/{entity}` - Create entity
+  91: - `GET /api/{entity}` - List entities
+  92: - `GET /api/{entity}/{id}` - Get entity details
+  93: - `GET /api/{childEntity}/by-{parentEntity}/{parentId}` - Get children
+  94: - `POST /api/{entity}` - Create entity
   95: 
   96: ### Implementation Examples: ISLAMU Event
-  97: - `GET /api/v1/event` - List events
-  98: - `GET /api/v1/event/{id}` - Get event details
-  99: - `GET /api/v1/eventsession/by-event/{eventId}` - Get sessions for event
- 100: - `POST /api/v1/organization` - Create organization
+  97: - `GET /api/event` - List events
+  98: - `GET /api/event/{id}` - Get event details
+  99: - `GET /api/eventsession/by-event/{eventId}` - Get sessions for event
+ 100: - `POST /api/organization` - Create organization
  101: 
  102: ---
  103: 
@@ -141340,7 +141340,7 @@ README.md
  108: **Generic Template:**
  109: 
  110: ```csharp
- 111: [Route("api/v1/[controller]")]
+ 111: [Route("api/[controller]")]
  112: [ApiController]
  113: public class {Entity}Controller : ControllerBase
  114: {
@@ -141363,7 +141363,7 @@ README.md
  131: ### Implementation Example: ISLAMU Event
  132: 
  133: ```csharp
- 134: [Route("api/v1/[controller]")]
+ 134: [Route("api/[controller]")]
  135: [ApiController]
  136: public class EventController : ControllerBase
  137: {
@@ -141567,7 +141567,7 @@ README.md
  335: 
  336: **Request:**
  337: ```http
- 338: GET /api/v1/events/123e4567-e89b-12d3-a456-426614174000
+ 338: GET /api/events/123e4567-e89b-12d3-a456-426614174000
  339: Accept: application/hal+json
  340: ```
  341: 
@@ -141581,11 +141581,11 @@ README.md
  349:   },
  350:   "_links": {
  351:     "self": {
- 352:       "href": "/api/v1/events/123e4567-e89b-12d3-a456-426614174000",
+ 352:       "href": "/api/events/123e4567-e89b-12d3-a456-426614174000",
  353:       "method": "GET"
  354:     },
  355:     "update": {
- 356:       "href": "/api/v1/events/123e4567-e89b-12d3-a456-426614174000",
+ 356:       "href": "/api/events/123e4567-e89b-12d3-a456-426614174000",
  357:       "method": "PUT"
  358:     }
  359:   }
@@ -141598,7 +141598,7 @@ README.md
  366: 
  367: **Request:**
  368: ```http
- 369: GET /api/v1/events/123...
+ 369: GET /api/events/123...
  370: Prefer: return=minimal
  371: ```
  372: 
@@ -141728,7 +141728,7 @@ README.md
  496: 
  497: **Request:**
  498: ```http
- 499: GET /api/v1/events/123e4567-e89b-12d3-a456-426614174000
+ 499: GET /api/events/123e4567-e89b-12d3-a456-426614174000
  500: Accept: application/hal+json
  501: ```
  502: 
@@ -141744,19 +141744,19 @@ README.md
  512:   },
  513:   "_links": {
  514:     "self": {
- 515:       "href": "/api/v1/events/123e4567-e89b-12d3-a456-426614174000",
+ 515:       "href": "/api/events/123e4567-e89b-12d3-a456-426614174000",
  516:       "method": "GET"
  517:     },
  518:     "update": {
- 519:       "href": "/api/v1/events/123e4567-e89b-12d3-a456-426614174000",
+ 519:       "href": "/api/events/123e4567-e89b-12d3-a456-426614174000",
  520:       "method": "PUT"
  521:     },
  522:     "delete": {
- 523:       "href": "/api/v1/events/123e4567-e89b-12d3-a456-426614174000",
+ 523:       "href": "/api/events/123e4567-e89b-12d3-a456-426614174000",
  524:       "method": "DELETE"
  525:     },
  526:     "sessions": {
- 527:       "href": "/api/v1/events/123e4567-e89b-12d3-a456-426614174000/sessions",
+ 527:       "href": "/api/events/123e4567-e89b-12d3-a456-426614174000/sessions",
  528:       "method": "GET"
  529:     }
  530:   }
@@ -141767,7 +141767,7 @@ README.md
  535: 
  536: **Request:**
  537: ```http
- 538: GET /api/v1/events?pageNumber=1&pageSize=10
+ 538: GET /api/events?pageNumber=1&pageSize=10
  539: Accept: application/hal+json
  540: ```
  541: 
@@ -141790,19 +141790,19 @@ README.md
  558:   },
  559:   "_links": {
  560:     "self": {
- 561:       "href": "/api/v1/events?pageNumber=1&pageSize=10",
+ 561:       "href": "/api/events?pageNumber=1&pageSize=10",
  562:       "method": "GET"
  563:     },
  564:     "first": {
- 565:       "href": "/api/v1/events?pageNumber=1&pageSize=10",
+ 565:       "href": "/api/events?pageNumber=1&pageSize=10",
  566:       "method": "GET"
  567:     },
  568:     "next": {
- 569:       "href": "/api/v1/events?pageNumber=2&pageSize=10",
+ 569:       "href": "/api/events?pageNumber=2&pageSize=10",
  570:       "method": "GET"
  571:     },
  572:     "last": {
- 573:       "href": "/api/v1/events?pageNumber=5&pageSize=10",
+ 573:       "href": "/api/events?pageNumber=5&pageSize=10",
  574:       "method": "GET"
  575:     }
  576:   },
@@ -141819,7 +141819,7 @@ README.md
  587: 
  588: **Request:**
  589: ```http
- 590: GET /api/v1/events/123e4567-e89b-12d3-a456-426614174000
+ 590: GET /api/events/123e4567-e89b-12d3-a456-426614174000
  591: Prefer: return=minimal
  592: ```
  593: 
@@ -141917,12 +141917,12 @@ README.md
  685: 
  686: **Generic Pattern:**
  687: ```
- 688: GET /api/v1/{entity}?pageNumber=1&pageSize=20
+ 688: GET /api/{entity}?pageNumber=1&pageSize=20
  689: ```
  690: 
  691: **Example (ISLAMU Event):**
  692: ```
- 693: GET /api/v1/event?pageNumber=1&pageSize=20
+ 693: GET /api/event?pageNumber=1&pageSize=20
  694: ```
  695: 
  696: | Parameter | Type | Default | Max | Description |
@@ -141966,7 +141966,7 @@ README.md
  734:   "title": "An error occurred while processing your request.",
  735:   "status": 500,
  736:   "detail": "Database connection timeout",
- 737:   "instance": "/api/v1/events"
+ 737:   "instance": "/api/events"
  738: }
  739: ```
  740: 
@@ -142180,40 +142180,40 @@ README.md
  948: 
  949: | Resource | Endpoint | Description |
  950: |----------|----------|-------------|
- 951: | Events | `/api/v1/event` | Event management |
- 952: | Event Sessions | `/api/v1/eventsession` | Session management |
- 953: | Organizations | `/api/v1/organization` | Organization management |
- 954: | Registrations | `/api/v1/eventregistration` | Event registration |
- 955: | Locations | `/api/v1/location` | Venue management |
- 956: | Categories | `/api/v1/category` | Event categories |
- 957: | Tags | `/api/v1/tag` | Event tags |
+ 951: | Events | `/api/event` | Event management |
+ 952: | Event Sessions | `/api/eventsession` | Session management |
+ 953: | Organizations | `/api/organization` | Organization management |
+ 954: | Registrations | `/api/eventregistration` | Event registration |
+ 955: | Locations | `/api/location` | Venue management |
+ 956: | Categories | `/api/category` | Event categories |
+ 957: | Tags | `/api/tag` | Event tags |
  958: 
  959: ### Lookup Tables (Read-Only)
  960: 
  961: | Resource | Endpoint | Description |
  962: |----------|----------|-------------|
- 963: | Event Types | `/api/v1/eventtype` | Conference, Webinar, etc. |
- 964: | Event Formats | `/api/v1/eventformat` | In-person, Online, Hybrid |
- 965: | Event Statuses | `/api/v1/eventstatus` | Draft, Published, etc. |
- 966: | Audience Ages | `/api/v1/audienceage` | Children, Youth, Adults |
- 967: | Audience Genders | `/api/v1/audiencegender` | Men, Women, Mixed |
- 968: | Madhabs | `/api/v1/madhab` | Islamic jurisprudence schools |
- 969: | Languages | `/api/v1/language` | Event languages |
- 970: | Registration Modes | `/api/v1/registrationmode` | Registration options |
+ 963: | Event Types | `/api/eventtype` | Conference, Webinar, etc. |
+ 964: | Event Formats | `/api/eventformat` | In-person, Online, Hybrid |
+ 965: | Event Statuses | `/api/eventstatus` | Draft, Published, etc. |
+ 966: | Audience Ages | `/api/audienceage` | Children, Youth, Adults |
+ 967: | Audience Genders | `/api/audiencegender` | Men, Women, Mixed |
+ 968: | Madhabs | `/api/madhab` | Islamic jurisprudence schools |
+ 969: | Languages | `/api/language` | Event languages |
+ 970: | Registration Modes | `/api/registrationmode` | Registration options |
  971: 
  972: ### User & Identity
  973: 
  974: | Resource | Endpoint | Description |
  975: |----------|----------|-------------|
- 976: | Users | `/api/v1/user` | User management |
- 977: | Actors | `/api/v1/actor` | Identity (user/org) actors |
- 978: | Organization Members | `/api/v1/organizationmember` | Org membership |
+ 976: | Users | `/api/user` | User management |
+ 977: | Actors | `/api/actor` | Identity (user/org) actors |
+ 978: | Organization Members | `/api/organizationmember` | Org membership |
  979: 
  980: ### Storage
  981: 
  982: | Resource | Endpoint | Description |
  983: |----------|----------|-------------|
- 984: | Storage Objects | `/api/v1/storageobject` | File/image storage |
+ 984: | Storage Objects | `/api/storageobject` | File/image storage |
  985: 
  986: ---
  987: 
@@ -142435,7 +142435,7 @@ README.md
 117:     participant Handler
 118:     participant Repository
 119: 
-120:     Client->>Controller: HTTP Request (e.g., POST /api/v1/{entity})
+120:     Client->>Controller: HTTP Request (e.g., POST /api/{entity})
 121:     Controller->>MediatR: `_mediator.Send(command)`
 122:     MediatR->>Handler: `Handle(command)`
 123:     Handler->>Repository: `_repository.Create(entity)`
@@ -142479,7 +142479,7 @@ README.md
 161: 
 162: -   The **BFF** (`{Project}.Blazor`) handles the OIDC authentication flow with your identity provider (e.g., Keycloak) and maintains the user session in a secure, `HttpOnly` cookie.
 163: -   The **WASM Client** (`{Project}.Blazor.Client`) is "dumb" regarding authentication; it simply sends the cookie with each request to the BFF.
-164: -   The **BFF** uses **YARP** as a reverse proxy. When a request for `/api/v1/...` arrives, it reads the access token from the session cookie and forwards the request to the `{Project}.API` backend with a `Authorization: Bearer <token>` header.
+164: -   The **BFF** uses **YARP** as a reverse proxy. When a request for `/api/...` arrives, it reads the access token from the session cookie and forwards the request to the `{Project}.API` backend with a `Authorization: Bearer <token>` header.
 165: -   This architecture ensures **no tokens are ever exposed to the browser**.
 166: 
 167: ### Implementation Example: ISLAMU Event
@@ -143509,7 +143509,7 @@ README.md
  11: 
  12: namespace Explore.API.Controllers;
  13: 
- 14: [Route("api/v1/indexeddid")]
+ 14: [Route("api/indexeddid")]
  15: [ApiController]
  16: [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
  17: public class IndexedDidController : ControllerBase
@@ -143621,7 +143621,7 @@ README.md
  10: 
  11: namespace Explore.API.Controllers;
  12: 
- 13: [Route("api/v1/[controller]")]
+ 13: [Route("api/[controller]")]
  14: [ApiController]
  15: public class UserController : ControllerBase
  16: {
@@ -144513,7 +144513,7 @@ README.md
  79: $token = $response.access_token
  80: 
  81: # Test API endpoint with obtained token
- 82: Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}" `
+ 82: Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}" `
  83:     -Headers @{ Authorization = "Bearer $token" } `
  84:     -Verbose
  85: ```
@@ -144654,13 +144654,13 @@ README.md
  67: 
  68: ```powershell
  69: # ✅ GET endpoints should succeed without auth (AllowAnonymous)
- 70: Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}" -Method GET
+ 70: Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}" -Method GET
  71: 
  72: # Expected: 200 OK with {entity} list
  73: 
  74: # ❌ POST without auth should fail with 401
  75: try {
- 76:     Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}" `
+ 76:     Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}" `
  77:         -Method POST `
  78:         -ContentType "application/json" `
  79:         -Body '{"title": "Test {Entity}"}'
@@ -144680,7 +144680,7 @@ README.md
  93: ```powershell
  94: # ❌ Invalid token format
  95: try {
- 96:     Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}" `
+ 96:     Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}" `
  97:         -Method POST `
  98:         -Headers @{ Authorization = "Bearer invalid-token-here" } `
  99:         -ContentType "application/json" `
@@ -144703,7 +144703,7 @@ README.md
 116: $tokenUserA = "eyJhbGciOiJSUzI1..."
 117: 
 118: # User A creates an {entity}
-119: $createResponse = Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}" `
+119: $createResponse = Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}" `
 120:     -Method POST `
 121:     -Headers @{ Authorization = "Bearer $tokenUserA" } `
 122:     -ContentType "application/json" `
@@ -144725,7 +144725,7 @@ README.md
 138: 
 139: # ❌ User B tries to update User A's {entity} (should fail)
 140: try {
-141:     Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}/${entity}Id" `
+141:     Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}/${entity}Id" `
 142:         -Method PUT `
 143:         -Headers @{ Authorization = "Bearer $tokenUserB" } `
 144:         -ContentType "application/json" `
@@ -144744,7 +144744,7 @@ README.md
 157: 
 158: # ❌ User B tries to delete User A's {entity} (should fail)
 159: try {
-160:     Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}/${entity}Id" `
+160:     Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}/${entity}Id" `
 161:         -Method DELETE `
 162:         -Headers @{ Authorization = "Bearer $tokenUserB" }
 163: } catch {
@@ -144769,7 +144769,7 @@ README.md
 182: 
 183: # ❌ Regular user tries to verify {relatedEntity} (admin-only)
 184: try {
-185:     Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{relatedEntity}/{id}/verify" `
+185:     Invoke-RestMethod -Uri "https://localhost:7001/api/{relatedEntity}/{id}/verify" `
 186:         -Method POST `
 187:         -Headers @{ Authorization = "Bearer $tokenUser" }
 188: } catch {
@@ -144779,7 +144779,7 @@ README.md
 192: # Expected: 403 Forbidden
 193: 
 194: # ✅ Admin verifies {relatedEntity} (should succeed)
-195: Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{relatedEntity}/{id}/verify" `
+195: Invoke-RestMethod -Uri "https://localhost:7001/api/{relatedEntity}/{id}/verify" `
 196:     -Method POST `
 197:     -Headers @{ Authorization = "Bearer $tokenAdmin" }
 198: 
@@ -144797,7 +144797,7 @@ README.md
 210: 
 211: # ❌ Missing required fields
 212: try {
-213:     Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}" `
+213:     Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}" `
 214:         -Method POST `
 215:         -Headers @{ Authorization = "Bearer $token" } `
 216:         -ContentType "application/json" `
@@ -144811,7 +144811,7 @@ README.md
 224: 
 225: # ❌ Invalid FK references
 226: try {
-227:     Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}" `
+227:     Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}" `
 228:         -Method POST `
 229:         -Headers @{ Authorization = "Bearer $token" } `
 230:         -ContentType "application/json" `
@@ -144842,7 +144842,7 @@ README.md
 255: 
 256: # ❌ SQL injection in query parameter
 257: try {
-258:     Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}?search=' OR 1=1--" `
+258:     Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}?search=' OR 1=1--" `
 259:         -Headers @{ Authorization = "Bearer $token" }
 260: } catch {
 261:     # Should either return 400 or safe results (no database error)
@@ -144861,7 +144861,7 @@ README.md
 274: $token = "eyJhbGciOiJSUzI1..."
 275: 
 276: # Create {entity} with XSS payload
-277: $response = Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}" `
+277: $response = Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}" `
 278:     -Method POST `
 279:     -Headers @{ Authorization = "Bearer $token" } `
 280:     -ContentType "application/json" `
@@ -144888,13 +144888,13 @@ README.md
 301: 
 302: ```powershell
 303: # ❌ Request from unauthorized origin
-304: $response = Invoke-WebRequest -Uri "https://localhost:7001/api/v1/{entity}" `
+304: $response = Invoke-WebRequest -Uri "https://localhost:7001/api/{entity}" `
 305:     -Headers @{ Origin = "https://malicious-site.com" }
 306: 
 307: $response.Headers["Access-Control-Allow-Origin"]  # Should NOT be malicious-site.com
 308: 
 309: # ✅ Request from allowed origin
-310: $response = Invoke-WebRequest -Uri "https://localhost:7001/api/v1/{entity}" `
+310: $response = Invoke-WebRequest -Uri "https://localhost:7001/api/{entity}" `
 311:     -Headers @{ Origin = "https://localhost:7002" }
 312: 
 313: $response.Headers["Access-Control-Allow-Origin"]  # Should be https://localhost:7002
@@ -144910,7 +144910,7 @@ README.md
 323: $token = "eyJhbGciOiJSUzI1..."
 324: 
 325: # ✅ CREATE: Create new {entity} (returns BaseCommandResponse<Guid>)
-326: $createResponse = Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}" `
+326: $createResponse = Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}" `
 327:     -Method POST `
 328:     -Headers @{ Authorization = "Bearer $token" } `
 329:     -ContentType "application/json" `
@@ -144934,17 +144934,17 @@ README.md
 347: ${entity}Id = $createResponse.id
 348: 
 349: # ✅ READ: Get {entity} by ID (returns {Entity}Dto)
-350: ${entity} = Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}/${entity}Id"
+350: ${entity} = Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}/${entity}Id"
 351: 
 352: # Expected: 200 OK with {entity} details
 353: 
 354: # ✅ LIST: Get all {entities} (returns List<{Entity}ListDto>)
-355: ${entities} = Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}"
+355: ${entities} = Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}"
 356: 
 357: # Expected: 200 OK with list of {entities}
 358: 
 359: # ✅ UPDATE: Update {entity} (returns BaseCommandResponse<Guid>)
-360: $updateResponse = Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}/${entity}Id" `
+360: $updateResponse = Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}/${entity}Id" `
 361:     -Method PUT `
 362:     -Headers @{ Authorization = "Bearer $token" } `
 363:     -ContentType "application/json" `
@@ -144958,7 +144958,7 @@ README.md
 371: $updateResponse.success  # Should be $true
 372: 
 373: # ✅ DELETE: Delete {entity} (returns bool/NoContent)
-374: Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}/${entity}Id" `
+374: Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}/${entity}Id" `
 375:     -Method DELETE `
 376:     -Headers @{ Authorization = "Bearer $token" }
 377: 
@@ -144966,7 +144966,7 @@ README.md
 379: 
 380: # ❌ Verify deletion: Get deleted {entity}
 381: try {
-382:     Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}/${entity}Id"
+382:     Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}/${entity}Id"
 383: } catch {
 384:     $_.Exception.Response.StatusCode  # Should be 404
 385: }
@@ -145126,7 +145126,7 @@ README.md
 539:     public async Task Get{Entities}_WithoutAuth_Returns200()
 540:     {
 541:         // Arrange & Act - GET is AllowAnonymous
-542:         var response = await _client.GetAsync("/api/v1/{entity}");
+542:         var response = await _client.GetAsync("/api/{entity}");
 543: 
 544:         // Assert - Should succeed (public read access)
 545:         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -145139,7 +145139,7 @@ README.md
 552:         var dto = new { title = "Test {Entity}" };
 553: 
 554:         // Act - POST requires auth
-555:         var response = await _client.PostAsJsonAsync("/api/v1/{entity}", dto);
+555:         var response = await _client.PostAsJsonAsync("/api/{entity}", dto);
 556: 
 557:         // Assert
 558:         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -145163,7 +145163,7 @@ README.md
 576:         };
 577: 
 578:         // Act
-579:         var response = await _client.PostAsJsonAsync("/api/v1/{entity}", dto);
+579:         var response = await _client.PostAsJsonAsync("/api/{entity}", dto);
 580: 
 581:         // Assert - Returns BaseCommandResponse<Guid>
 582:         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -145182,7 +145182,7 @@ README.md
 595:         var invalid{Entity} = new { description = "Missing title and required FKs" };
 596: 
 597:         // Act
-598:         var response = await _client.PostAsJsonAsync("/api/v1/{entity}", invalid{Entity});
+598:         var response = await _client.PostAsJsonAsync("/api/{entity}", invalid{Entity});
 599: 
 600:         // Assert - FluentValidation returns errors
 601:         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -145197,7 +145197,7 @@ README.md
 610: 
 611:         // User A creates {entity}
 612:         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokenUserA);
-613:         var createResponse = await _client.PostAsJsonAsync("/api/v1/{entity}", new
+613:         var createResponse = await _client.PostAsJsonAsync("/api/{entity}", new
 614:         {
 615:             title = "Test {Entity}",
 616:             {lookupEntity}Id = 1,
@@ -145213,14 +145213,14 @@ README.md
 626:         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokenUserB);
 627: 
 628:         // Act
-629:         var deleteResponse = await _client.DeleteAsync($"/api/v1/{entity}/{{{entity}Id}}");
+629:         var deleteResponse = await _client.DeleteAsync($"/api/{entity}/{{{entity}Id}}");
 630: 
 631:         // Assert
 632:         Assert.Equal(HttpStatusCode.Forbidden, deleteResponse.StatusCode);
 633: 
 634:         // Cleanup
 635:         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokenUserA);
-636:         await _client.DeleteAsync($"/api/v1/{entity}/{{{entity}Id}}");
+636:         await _client.DeleteAsync($"/api/{entity}/{{{entity}Id}}");
 637:     }
 638: 
 639:     private async Task<string> GetValidToken(string username = "testuser@example.com")
@@ -145237,7 +145237,7 @@ README.md
 650: Use this checklist for each endpoint:
 651: 
 652: ```markdown
-653: ## Endpoint: GET /api/v1/{entity}
+653: ## Endpoint: GET /api/{entity}
 654: 
 655: - [x] Unauthenticated request returns 200 (AllowAnonymous)
 656: - [ ] Returns List<{Entity}ListDto>
@@ -145246,7 +145246,7 @@ README.md
 659: - [ ] SQL injection attempts blocked
 660: - [ ] CORS headers correct
 661: 
-662: ## Endpoint: POST /api/v1/{entity}
+662: ## Endpoint: POST /api/{entity}
 663: 
 664: - [ ] Unauthenticated request returns 401
 665: - [ ] Valid data creates {entity} (returns BaseCommandResponse<Guid> with success=true)
@@ -145256,7 +145256,7 @@ README.md
 669: - [ ] SQL injection blocked
 670: - [ ] XSS payloads sanitized
 671: 
-672: ## Endpoint: PUT /api/v1/{entity}/{id}
+672: ## Endpoint: PUT /api/{entity}/{id}
 673: 
 674: - [ ] Unauthenticated request returns 401
 675: - [ ] Owner can update (returns BaseCommandResponse<Guid>)
@@ -145264,7 +145264,7 @@ README.md
 677: - [ ] Invalid ID returns 404
 678: - [ ] Validation errors return 400
 679: 
-680: ## Endpoint: DELETE /api/v1/{entity}/{id}
+680: ## Endpoint: DELETE /api/{entity}/{id}
 681: 
 682: - [ ] Unauthenticated request returns 401
 683: - [ ] Owner can delete (204)
@@ -145283,7 +145283,7 @@ README.md
 696: | **XSS** | `<script>alert('XSS')</script>` | HTML encoded |
 697: | **CSRF** | Cross-origin POST without token | CORS error or 401 |
 698: | **Mass Assignment** | Send extra fields in DTO | Extra fields ignored |
-699: | **Insecure Direct Object Reference** | Access `/api/v1/{entity}/{other-user-id}` | 403 Forbidden |
+699: | **Insecure Direct Object Reference** | Access `/api/{entity}/{other-user-id}` | 403 Forbidden |
 700: 
 701: ## Related Skills
 702: 
@@ -145302,7 +145302,7 @@ README.md
 715: ## Test Results: {Entity} API
 716: 
 717: ### Authentication Tests
-718: ✅ PASS: GET /api/v1/{entity} is public (AllowAnonymous)
+718: ✅ PASS: GET /api/{entity} is public (AllowAnonymous)
 719: ✅ PASS: POST without auth blocked (401)
 720: ✅ PASS: Invalid token rejected (401)
 721: ✅ PASS: Expired token rejected (401)
@@ -145324,7 +145324,7 @@ README.md
 737: ✅ PASS: CORS headers correct
 738: 
 739: ### Issues Found
-740: 1. **Critical**: Admin authorization not enforced on DELETE /api/v1/{entity}/{id}
+740: 1. **Critical**: Admin authorization not enforced on DELETE /api/{entity}/{id}
 741:    - Expected: 403 for non-admin users
 742:    - Actual: 200 (deletion succeeded)
 743:    - Fix: Add ownership/permission check in Delete{Entity}CommandHandler
@@ -146380,7 +146380,7 @@ README.md
  16: 
  17: 
  18: 
- 19: [Route("api/v1/actor")]
+ 19: [Route("api/actor")]
  20: [ApiController]
  21: [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
  22: public class ActorController : ControllerBase
@@ -147505,7 +147505,7 @@ README.md
  19: 
  20: 
  21: 
- 22: [Route("api/v1/[controller]")]
+ 22: [Route("api/[controller]")]
  23: [ApiController]
  24: [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
  25: public class EventController : ControllerBase
@@ -148039,7 +148039,7 @@ README.md
  16: 
  17: 
  18: 
- 19: [Route("api/v1/[controller]")]
+ 19: [Route("api/[controller]")]
  20: [ApiController]
  21: [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
  22: public class OrganizationController : ControllerBase
@@ -154868,7 +154868,7 @@ README.md
 518: 
 519:     app.MapOpenApi();
 520:     app.UseSwagger();
-521:     app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Explore API v1"));
+521:     app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/swagger.json", "Explore API v1"));
 522:     app.MapScalarApiReference();
 523:     app.UseCors("DevPolicy");
 524: 
@@ -155684,7 +155684,7 @@ README.md
    22:         }
    23:       }
    24:     },
-   25:     "/api/v1/actor": {
+   25:     "/api/actor": {
    26:       "get": {
    27:         "tags": [
    28:           "Actor"
@@ -155809,7 +155809,7 @@ README.md
   147:         }
   148:       }
   149:     },
-  150:     "/api/v1/actor/{id}": {
+  150:     "/api/actor/{id}": {
   151:       "get": {
   152:         "tags": [
   153:           "Actor"
@@ -156031,7 +156031,7 @@ README.md
   369:         }
   370:       }
   371:     },
-  372:     "/api/v1/actor/by-did/{did}": {
+  372:     "/api/actor/by-did/{did}": {
   373:       "get": {
   374:         "tags": [
   375:           "Actor"
@@ -156083,7 +156083,7 @@ README.md
   421:         }
   422:       }
   423:     },
-  424:     "/api/v1/actor/by-tenant/{tenantId}": {
+  424:     "/api/actor/by-tenant/{tenantId}": {
   425:       "get": {
   426:         "tags": [
   427:           "Actor"
@@ -156121,7 +156121,7 @@ README.md
   459:         }
   460:       }
   461:     },
-  462:     "/api/v1/actorkeystore": {
+  462:     "/api/actorkeystore": {
   463:       "get": {
   464:         "tags": [
   465:           "ActorKeyStore"
@@ -156230,7 +156230,7 @@ README.md
   568:         }
   569:       }
   570:     },
-  571:     "/api/v1/actorkeystore/{id}": {
+  571:     "/api/actorkeystore/{id}": {
   572:       "get": {
   573:         "tags": [
   574:           "ActorKeyStore"
@@ -156435,7 +156435,7 @@ README.md
   773:         }
   774:       }
   775:     },
-  776:     "/api/v1/actortype": {
+  776:     "/api/actortype": {
   777:       "get": {
   778:         "tags": [
   779:           "ActorType"
@@ -156475,7 +156475,7 @@ README.md
   813:         }
   814:       }
   815:     },
-  816:     "/api/v1/actortype/{id}": {
+  816:     "/api/actortype/{id}": {
   817:       "get": {
   818:         "tags": [
   819:           "ActorType"
@@ -156541,7 +156541,7 @@ README.md
   879:         }
   880:       }
   881:     },
-  882:     "/api/v1/approvalstatus": {
+  882:     "/api/approvalstatus": {
   883:       "get": {
   884:         "tags": [
   885:           "ApprovalStatus"
@@ -156611,7 +156611,7 @@ README.md
   949:         }
   950:       }
   951:     },
-  952:     "/api/v1/approvalstatus/{id}": {
+  952:     "/api/approvalstatus/{id}": {
   953:       "get": {
   954:         "tags": [
   955:           "ApprovalStatus"
@@ -156725,7 +156725,7 @@ README.md
  1063:         }
  1064:       }
  1065:     },
- 1066:     "/api/v1/atprotorecord": {
+ 1066:     "/api/atprotorecord": {
  1067:       "get": {
  1068:         "tags": [
  1069:           "AtprotoRecord"
@@ -156810,7 +156810,7 @@ README.md
  1148:         }
  1149:       }
  1150:     },
- 1151:     "/api/v1/atprotorecord/{id}": {
+ 1151:     "/api/atprotorecord/{id}": {
  1152:       "get": {
  1153:         "tags": [
  1154:           "AtprotoRecord"
@@ -156929,7 +156929,7 @@ README.md
  1267:         }
  1268:       }
  1269:     },
- 1270:     "/api/v1/audienceage": {
+ 1270:     "/api/audienceage": {
  1271:       "get": {
  1272:         "tags": [
  1273:           "AudienceAge"
@@ -156969,7 +156969,7 @@ README.md
  1307:         }
  1308:       }
  1309:     },
- 1310:     "/api/v1/audienceage/{id}": {
+ 1310:     "/api/audienceage/{id}": {
  1311:       "get": {
  1312:         "tags": [
  1313:           "AudienceAge"
@@ -157035,7 +157035,7 @@ README.md
  1373:         }
  1374:       }
  1375:     },
- 1376:     "/api/v1/audiencegender": {
+ 1376:     "/api/audiencegender": {
  1377:       "get": {
  1378:         "tags": [
  1379:           "AudienceGender"
@@ -157075,7 +157075,7 @@ README.md
  1413:         }
  1414:       }
  1415:     },
- 1416:     "/api/v1/audiencegender/{id}": {
+ 1416:     "/api/audiencegender/{id}": {
  1417:       "get": {
  1418:         "tags": [
  1419:           "AudienceGender"
@@ -157141,7 +157141,7 @@ README.md
  1479:         }
  1480:       }
  1481:     },
- 1482:     "/api/v1/category": {
+ 1482:     "/api/category": {
  1483:       "get": {
  1484:         "tags": [
  1485:           "Category"
@@ -157266,7 +157266,7 @@ README.md
  1604:         }
  1605:       }
  1606:     },
- 1607:     "/api/v1/category/{id}": {
+ 1607:     "/api/category/{id}": {
  1608:       "get": {
  1609:         "tags": [
  1610:           "Category"
@@ -157473,7 +157473,7 @@ README.md
  1811:         }
  1812:       }
  1813:     },
- 1814:     "/api/v1/didcustodytype": {
+ 1814:     "/api/didcustodytype": {
  1815:       "get": {
  1816:         "tags": [
  1817:           "DidCustodyType"
@@ -157513,7 +157513,7 @@ README.md
  1851:         }
  1852:       }
  1853:     },
- 1854:     "/api/v1/didcustodytype/{id}": {
+ 1854:     "/api/didcustodytype/{id}": {
  1855:       "get": {
  1856:         "tags": [
  1857:           "DidCustodyType"
@@ -157579,7 +157579,7 @@ README.md
  1917:         }
  1918:       }
  1919:     },
- 1920:     "/api/v1/event": {
+ 1920:     "/api/event": {
  1921:       "get": {
  1922:         "tags": [
  1923:           "Event"
@@ -157973,7 +157973,7 @@ README.md
  2311:         }
  2312:       }
  2313:     },
- 2314:     "/api/v1/event/my": {
+ 2314:     "/api/event/my": {
  2315:       "get": {
  2316:         "tags": [
  2317:           "Event"
@@ -158043,7 +158043,7 @@ README.md
  2381:         }
  2382:       }
  2383:     },
- 2384:     "/api/v1/event/{id}": {
+ 2384:     "/api/event/{id}": {
  2385:       "get": {
  2386:         "tags": [
  2387:           "Event"
@@ -158265,7 +158265,7 @@ README.md
  2603:         }
  2604:       }
  2605:     },
- 2606:     "/api/v1/event/with-sessions": {
+ 2606:     "/api/event/with-sessions": {
  2607:       "post": {
  2608:         "tags": [
  2609:           "Event"
@@ -158336,7 +158336,7 @@ README.md
  2674:         }
  2675:       }
  2676:     },
- 2677:     "/api/v1/event/{id}/aspects/islamic": {
+ 2677:     "/api/event/{id}/aspects/islamic": {
  2678:       "get": {
  2679:         "tags": [
  2680:           "Event"
@@ -158543,7 +158543,7 @@ README.md
  2881:         }
  2882:       }
  2883:     },
- 2884:     "/api/v1/event/{id}/aspects/tech": {
+ 2884:     "/api/event/{id}/aspects/tech": {
  2885:       "get": {
  2886:         "tags": [
  2887:           "Event"
@@ -158750,7 +158750,7 @@ README.md
  3088:         }
  3089:       }
  3090:     },
- 3091:     "/api/v1/eventformat": {
+ 3091:     "/api/eventformat": {
  3092:       "get": {
  3093:         "tags": [
  3094:           "EventFormat"
@@ -158790,7 +158790,7 @@ README.md
  3128:         }
  3129:       }
  3130:     },
- 3131:     "/api/v1/eventformat/{id}": {
+ 3131:     "/api/eventformat/{id}": {
  3132:       "get": {
  3133:         "tags": [
  3134:           "EventFormat"
@@ -158856,7 +158856,7 @@ README.md
  3194:         }
  3195:       }
  3196:     },
- 3197:     "/api/v1/eventregistration": {
+ 3197:     "/api/eventregistration": {
  3198:       "get": {
  3199:         "tags": [
  3200:           "EventRegistration"
@@ -159004,7 +159004,7 @@ README.md
  3342:         }
  3343:       }
  3344:     },
- 3345:     "/api/v1/eventregistration/{id}": {
+ 3345:     "/api/eventregistration/{id}": {
  3346:       "get": {
  3347:         "tags": [
  3348:           "EventRegistration"
@@ -159249,7 +159249,7 @@ README.md
  3587:         }
  3588:       }
  3589:     },
- 3590:     "/api/v1/eventregistration/by-session/{eventSessionId}": {
+ 3590:     "/api/eventregistration/by-session/{eventSessionId}": {
  3591:       "get": {
  3592:         "tags": [
  3593:           "EventRegistration"
@@ -159300,7 +159300,7 @@ README.md
  3638:         }
  3639:       }
  3640:     },
- 3641:     "/api/v1/eventregistration/by-user/{userId}": {
+ 3641:     "/api/eventregistration/by-user/{userId}": {
  3642:       "get": {
  3643:         "tags": [
  3644:           "EventRegistration"
@@ -159351,7 +159351,7 @@ README.md
  3689:         }
  3690:       }
  3691:     },
- 3692:     "/api/v1/eventsessionagendaitem": {
+ 3692:     "/api/eventsessionagendaitem": {
  3693:       "get": {
  3694:         "tags": [
  3695:           "EventSessionAgendaItem"
@@ -159459,7 +159459,7 @@ README.md
  3797:         }
  3798:       }
  3799:     },
- 3800:     "/api/v1/eventsessionagendaitem/{id}": {
+ 3800:     "/api/eventsessionagendaitem/{id}": {
  3801:       "get": {
  3802:         "tags": [
  3803:           "EventSessionAgendaItem"
@@ -159584,7 +159584,7 @@ README.md
  3922:         }
  3923:       }
  3924:     },
- 3925:     "/api/v1/eventsessionagendaitem/by-session/{sessionId}": {
+ 3925:     "/api/eventsessionagendaitem/by-session/{sessionId}": {
  3926:       "get": {
  3927:         "tags": [
  3928:           "EventSessionAgendaItem"
@@ -159635,7 +159635,7 @@ README.md
  3973:         }
  3974:       }
  3975:     },
- 3976:     "/api/v1/eventsession": {
+ 3976:     "/api/eventsession": {
  3977:       "get": {
  3978:         "tags": [
  3979:           "EventSession"
@@ -159760,7 +159760,7 @@ README.md
  4098:         }
  4099:       }
  4100:     },
- 4101:     "/api/v1/eventsession/{id}": {
+ 4101:     "/api/eventsession/{id}": {
  4102:       "get": {
  4103:         "tags": [
  4104:           "EventSession"
@@ -159967,7 +159967,7 @@ README.md
  4305:         }
  4306:       }
  4307:     },
- 4308:     "/api/v1/eventsession/by-event/{eventId}": {
+ 4308:     "/api/eventsession/by-event/{eventId}": {
  4309:       "get": {
  4310:         "tags": [
  4311:           "EventSession"
@@ -160005,7 +160005,7 @@ README.md
  4343:         }
  4344:       }
  4345:     },
- 4346:     "/api/v1/eventstatus": {
+ 4346:     "/api/eventstatus": {
  4347:       "get": {
  4348:         "tags": [
  4349:           "EventStatus"
@@ -160045,7 +160045,7 @@ README.md
  4383:         }
  4384:       }
  4385:     },
- 4386:     "/api/v1/eventstatus/{id}": {
+ 4386:     "/api/eventstatus/{id}": {
  4387:       "get": {
  4388:         "tags": [
  4389:           "EventStatus"
@@ -160111,7 +160111,7 @@ README.md
  4449:         }
  4450:       }
  4451:     },
- 4452:     "/api/v1/eventtype": {
+ 4452:     "/api/eventtype": {
  4453:       "get": {
  4454:         "tags": [
  4455:           "EventType"
@@ -160181,7 +160181,7 @@ README.md
  4519:         }
  4520:       }
  4521:     },
- 4522:     "/api/v1/eventtype/{id}": {
+ 4522:     "/api/eventtype/{id}": {
  4523:       "get": {
  4524:         "tags": [
  4525:           "EventType"
@@ -160295,7 +160295,7 @@ README.md
  4633:         }
  4634:       }
  4635:     },
- 4636:     "/api/v1/filetype": {
+ 4636:     "/api/filetype": {
  4637:       "get": {
  4638:         "tags": [
  4639:           "FileType"
@@ -160335,7 +160335,7 @@ README.md
  4673:         }
  4674:       }
  4675:     },
- 4676:     "/api/v1/filetype/{id}": {
+ 4676:     "/api/filetype/{id}": {
  4677:       "get": {
  4678:         "tags": [
  4679:           "FileType"
@@ -160401,7 +160401,7 @@ README.md
  4739:         }
  4740:       }
  4741:     },
- 4742:     "/api/v1/indexeddid": {
+ 4742:     "/api/indexeddid": {
  4743:       "get": {
  4744:         "tags": [
  4745:           "IndexedDid"
@@ -160468,7 +160468,7 @@ README.md
  4806:         }
  4807:       }
  4808:     },
- 4809:     "/api/v1/indexeddid/{did}": {
+ 4809:     "/api/indexeddid/{did}": {
  4810:       "get": {
  4811:         "tags": [
  4812:           "IndexedDid"
@@ -160579,7 +160579,7 @@ README.md
  4917:         }
  4918:       }
  4919:     },
- 4920:     "/api/v1/instanceonboarding/status": {
+ 4920:     "/api/instanceonboarding/status": {
  4921:       "get": {
  4922:         "tags": [
  4923:           "InstanceOnboarding"
@@ -160610,7 +160610,7 @@ README.md
  4948:         }
  4949:       }
  4950:     },
- 4951:     "/api/v1/instanceonboarding/settings": {
+ 4951:     "/api/instanceonboarding/settings": {
  4952:       "get": {
  4953:         "tags": [
  4954:           "InstanceOnboarding"
@@ -160750,7 +160750,7 @@ README.md
  5088:         }
  5089:       }
  5090:     },
- 5091:     "/api/v1/instanceonboarding/complete": {
+ 5091:     "/api/instanceonboarding/complete": {
  5092:       "post": {
  5093:         "tags": [
  5094:           "InstanceOnboarding"
@@ -160821,7 +160821,7 @@ README.md
  5159:         }
  5160:       }
  5161:     },
- 5162:     "/api/v1/instanceonboarding/storage-settings": {
+ 5162:     "/api/instanceonboarding/storage-settings": {
  5163:       "get": {
  5164:         "tags": [
  5165:           "InstanceOnboarding"
@@ -160956,7 +160956,7 @@ README.md
  5294:         }
  5295:       }
  5296:     },
- 5297:     "/api/v1/instanceonboarding/test-storage": {
+ 5297:     "/api/instanceonboarding/test-storage": {
  5298:       "post": {
  5299:         "tags": [
  5300:           "InstanceOnboarding"
@@ -161001,7 +161001,7 @@ README.md
  5339:         }
  5340:       }
  5341:     },
- 5342:     "/api/v1/instanceonboarding/validate-secret": {
+ 5342:     "/api/instanceonboarding/validate-secret": {
  5343:       "post": {
  5344:         "tags": [
  5345:           "InstanceOnboarding"
@@ -161080,7 +161080,7 @@ README.md
  5418:         }
  5419:       }
  5420:     },
- 5421:     "/api/v1/language": {
+ 5421:     "/api/language": {
  5422:       "get": {
  5423:         "tags": [
  5424:           "Language"
@@ -161120,7 +161120,7 @@ README.md
  5458:         }
  5459:       }
  5460:     },
- 5461:     "/api/v1/language/{id}": {
+ 5461:     "/api/language/{id}": {
  5462:       "get": {
  5463:         "tags": [
  5464:           "Language"
@@ -161166,7 +161166,7 @@ README.md
  5504:         }
  5505:       }
  5506:     },
- 5507:     "/api/v1/location": {
+ 5507:     "/api/location": {
  5508:       "get": {
  5509:         "tags": [
  5510:           "Location"
@@ -161291,7 +161291,7 @@ README.md
  5629:         }
  5630:       }
  5631:     },
- 5632:     "/api/v1/location/{id}": {
+ 5632:     "/api/location/{id}": {
  5633:       "get": {
  5634:         "tags": [
  5635:           "Location"
@@ -161498,7 +161498,7 @@ README.md
  5836:         }
  5837:       }
  5838:     },
- 5839:     "/api/v1/location/by-city/{city}": {
+ 5839:     "/api/location/by-city/{city}": {
  5840:       "get": {
  5841:         "tags": [
  5842:           "Location"
@@ -161535,7 +161535,7 @@ README.md
  5873:         }
  5874:       }
  5875:     },
- 5876:     "/api/v1/location/by-country/{country}": {
+ 5876:     "/api/location/by-country/{country}": {
  5877:       "get": {
  5878:         "tags": [
  5879:           "Location"
@@ -161572,7 +161572,7 @@ README.md
  5910:         }
  5911:       }
  5912:     },
- 5913:     "/api/v1/madhab": {
+ 5913:     "/api/madhab": {
  5914:       "get": {
  5915:         "tags": [
  5916:           "Madhab"
@@ -161612,7 +161612,7 @@ README.md
  5950:         }
  5951:       }
  5952:     },
- 5953:     "/api/v1/madhab/{id}": {
+ 5953:     "/api/madhab/{id}": {
  5954:       "get": {
  5955:         "tags": [
  5956:           "Madhab"
@@ -161678,7 +161678,7 @@ README.md
  6016:         }
  6017:       }
  6018:     },
- 6019:     "/api/v1/module/available": {
+ 6019:     "/api/module/available": {
  6020:       "get": {
  6021:         "tags": [
  6022:           "Module"
@@ -161718,7 +161718,7 @@ README.md
  6056:         }
  6057:       }
  6058:     },
- 6059:     "/api/v1/module/enabled": {
+ 6059:     "/api/module/enabled": {
  6060:       "get": {
  6061:         "tags": [
  6062:           "Module"
@@ -161758,7 +161758,7 @@ README.md
  6096:         }
  6097:       }
  6098:     },
- 6099:     "/api/v1/module/{moduleKey}/enabled": {
+ 6099:     "/api/module/{moduleKey}/enabled": {
  6100:       "get": {
  6101:         "tags": [
  6102:           "Module"
@@ -161799,7 +161799,7 @@ README.md
  6137:         }
  6138:       }
  6139:     },
- 6140:     "/api/v1/module/{moduleKey}/schema": {
+ 6140:     "/api/module/{moduleKey}/schema": {
  6141:       "get": {
  6142:         "tags": [
  6143:           "Module"
@@ -161860,7 +161860,7 @@ README.md
  6198:         }
  6199:       }
  6200:     },
- 6201:     "/api/v1/module/{moduleKey}/enable": {
+ 6201:     "/api/module/{moduleKey}/enable": {
  6202:       "post": {
  6203:         "tags": [
  6204:           "Module"
@@ -161961,7 +161961,7 @@ README.md
  6299:         }
  6300:       }
  6301:     },
- 6302:     "/api/v1/module/{moduleKey}/disable": {
+ 6302:     "/api/module/{moduleKey}/disable": {
  6303:       "post": {
  6304:         "tags": [
  6305:           "Module"
@@ -162062,7 +162062,7 @@ README.md
  6400:         }
  6401:       }
  6402:     },
- 6403:     "/api/v1/organization": {
+ 6403:     "/api/organization": {
  6404:       "get": {
  6405:         "tags": [
  6406:           "Organization"
@@ -162187,7 +162187,7 @@ README.md
  6525:         }
  6526:       }
  6527:     },
- 6528:     "/api/v1/organization/my": {
+ 6528:     "/api/organization/my": {
  6529:       "get": {
  6530:         "tags": [
  6531:           "Organization"
@@ -162257,7 +162257,7 @@ README.md
  6595:         }
  6596:       }
  6597:     },
- 6598:     "/api/v1/organization/{id}": {
+ 6598:     "/api/organization/{id}": {
  6599:       "get": {
  6600:         "tags": [
  6601:           "Organization"
@@ -162479,7 +162479,7 @@ README.md
  6817:         }
  6818:       }
  6819:     },
- 6820:     "/api/v1/organization/updatestatustype/{id}": {
+ 6820:     "/api/organization/updatestatustype/{id}": {
  6821:       "put": {
  6822:         "tags": [
  6823:           "Organization"
@@ -162568,7 +162568,7 @@ README.md
  6906:         }
  6907:       }
  6908:     },
- 6909:     "/api/v1/organizationmember/{organizationId}": {
+ 6909:     "/api/organizationmember/{organizationId}": {
  6910:       "get": {
  6911:         "tags": [
  6912:           "OrganizationMember"
@@ -162617,7 +162617,7 @@ README.md
  6955:         }
  6956:       }
  6957:     },
- 6958:     "/api/v1/organizationmember": {
+ 6958:     "/api/organizationmember": {
  6959:       "post": {
  6960:         "tags": [
  6961:           "OrganizationMember"
@@ -162666,7 +162666,7 @@ README.md
  7004:         }
  7005:       }
  7006:     },
- 7007:     "/api/v1/organizationmember/role": {
+ 7007:     "/api/organizationmember/role": {
  7008:       "put": {
  7009:         "tags": [
  7010:           "OrganizationMember"
@@ -162715,7 +162715,7 @@ README.md
  7053:         }
  7054:       }
  7055:     },
- 7056:     "/api/v1/organizationmember/invitations": {
+ 7056:     "/api/organizationmember/invitations": {
  7057:       "get": {
  7058:         "tags": [
  7059:           "OrganizationMember"
@@ -162753,7 +162753,7 @@ README.md
  7091:         }
  7092:       }
  7093:     },
- 7094:     "/api/v1/organizationmember/invitations/{id}/accept": {
+ 7094:     "/api/organizationmember/invitations/{id}/accept": {
  7095:       "post": {
  7096:         "tags": [
  7097:           "OrganizationMember"
@@ -162793,7 +162793,7 @@ README.md
  7131:         }
  7132:       }
  7133:     },
- 7134:     "/api/v1/organizationmember/invitations/{id}/decline": {
+ 7134:     "/api/organizationmember/invitations/{id}/decline": {
  7135:       "post": {
  7136:         "tags": [
  7137:           "OrganizationMember"
@@ -162833,7 +162833,7 @@ README.md
  7171:         }
  7172:       }
  7173:     },
- 7174:     "/api/v1/organizationmember/{id}": {
+ 7174:     "/api/organizationmember/{id}": {
  7175:       "delete": {
  7176:         "tags": [
  7177:           "OrganizationMember"
@@ -162873,7 +162873,7 @@ README.md
  7211:         }
  7212:       }
  7213:     },
- 7214:     "/api/v1/organizationposition": {
+ 7214:     "/api/organizationposition": {
  7215:       "get": {
  7216:         "tags": [
  7217:           "OrganizationPosition"
@@ -162913,7 +162913,7 @@ README.md
  7251:         }
  7252:       }
  7253:     },
- 7254:     "/api/v1/organizationposition/{id}": {
+ 7254:     "/api/organizationposition/{id}": {
  7255:       "get": {
  7256:         "tags": [
  7257:           "OrganizationPosition"
@@ -162979,7 +162979,7 @@ README.md
  7317:         }
  7318:       }
  7319:     },
- 7320:     "/api/v1/organizationreview": {
+ 7320:     "/api/organizationreview": {
  7321:       "get": {
  7322:         "tags": [
  7323:           "OrganizationReview"
@@ -163046,7 +163046,7 @@ README.md
  7384:         }
  7385:       }
  7386:     },
- 7387:     "/api/v1/organizationreview/{organizationId}": {
+ 7387:     "/api/organizationreview/{organizationId}": {
  7388:       "get": {
  7389:         "tags": [
  7390:           "OrganizationReview"
@@ -163087,7 +163087,7 @@ README.md
  7425:         }
  7426:       }
  7427:     },
- 7428:     "/api/v1/organizationreview/user/{userId}": {
+ 7428:     "/api/organizationreview/user/{userId}": {
  7429:       "get": {
  7430:         "tags": [
  7431:           "OrganizationReview"
@@ -163128,7 +163128,7 @@ README.md
  7466:         }
  7467:       }
  7468:     },
- 7469:     "/api/v1/publicexperience/settings": {
+ 7469:     "/api/publicexperience/settings": {
  7470:       "get": {
  7471:         "tags": [
  7472:           "PublicExperience"
@@ -163159,7 +163159,7 @@ README.md
  7497:         }
  7498:       }
  7499:     },
- 7500:     "/api/v1/registrationmode": {
+ 7500:     "/api/registrationmode": {
  7501:       "get": {
  7502:         "tags": [
  7503:           "RegistrationMode"
@@ -163199,7 +163199,7 @@ README.md
  7537:         }
  7538:       }
  7539:     },
- 7540:     "/api/v1/registrationmode/{id}": {
+ 7540:     "/api/registrationmode/{id}": {
  7541:       "get": {
  7542:         "tags": [
  7543:           "RegistrationMode"
@@ -163265,7 +163265,7 @@ README.md
  7603:         }
  7604:       }
  7605:     },
- 7606:     "/api/v1/role": {
+ 7606:     "/api/role": {
  7607:       "get": {
  7608:         "tags": [
  7609:           "Role"
@@ -163315,7 +163315,7 @@ README.md
  7653:         }
  7654:       }
  7655:     },
- 7656:     "/api/v1/role/{id}": {
+ 7656:     "/api/role/{id}": {
  7657:       "get": {
  7658:         "tags": [
  7659:           "Role"
@@ -163382,7 +163382,7 @@ README.md
  7720:         }
  7721:       }
  7722:     },
- 7723:     "/api/v1/storageobject": {
+ 7723:     "/api/storageobject": {
  7724:       "get": {
  7725:         "tags": [
  7726:           "StorageObject"
@@ -163530,7 +163530,7 @@ README.md
  7868:         }
  7869:       }
  7870:     },
- 7871:     "/api/v1/storageobject/{id}": {
+ 7871:     "/api/storageobject/{id}": {
  7872:       "get": {
  7873:         "tags": [
  7874:           "StorageObject"
@@ -163775,7 +163775,7 @@ README.md
  8113:         }
  8114:       }
  8115:     },
- 8116:     "/api/v1/storageobject/file/{fileKey}": {
+ 8116:     "/api/storageobject/file/{fileKey}": {
  8117:       "get": {
  8118:         "tags": [
  8119:           "StorageObject"
@@ -163799,7 +163799,7 @@ README.md
  8137:         }
  8138:       }
  8139:     },
- 8140:     "/api/v1/storageobject/{id}/presigned-url": {
+ 8140:     "/api/storageobject/{id}/presigned-url": {
  8141:       "get": {
  8142:         "tags": [
  8143:           "StorageObject"
@@ -163874,7 +163874,7 @@ README.md
  8212:         }
  8213:       }
  8214:     },
- 8215:     "/api/v1/storageobject/presigned-url-by-key/{objectKey}": {
+ 8215:     "/api/storageobject/presigned-url-by-key/{objectKey}": {
  8216:       "get": {
  8217:         "tags": [
  8218:           "StorageObject"
@@ -163948,7 +163948,7 @@ README.md
  8286:         }
  8287:       }
  8288:     },
- 8289:     "/api/v1/storageobject/generate-upload-url": {
+ 8289:     "/api/storageobject/generate-upload-url": {
  8290:       "post": {
  8291:         "tags": [
  8292:           "StorageObject"
@@ -164039,7 +164039,7 @@ README.md
  8377:         }
  8378:       }
  8379:     },
- 8380:     "/api/v1/syncstate": {
+ 8380:     "/api/syncstate": {
  8381:       "get": {
  8382:         "tags": [
  8383:           "SyncState"
@@ -164124,7 +164124,7 @@ README.md
  8462:         }
  8463:       }
  8464:     },
- 8465:     "/api/v1/syncstate/{id}": {
+ 8465:     "/api/syncstate/{id}": {
  8466:       "get": {
  8467:         "tags": [
  8468:           "SyncState"
@@ -164255,7 +164255,7 @@ README.md
  8593:         }
  8594:       }
  8595:     },
- 8596:     "/api/v1/tag": {
+ 8596:     "/api/tag": {
  8597:       "get": {
  8598:         "tags": [
  8599:           "Tag"
@@ -164380,7 +164380,7 @@ README.md
  8718:         }
  8719:       }
  8720:     },
- 8721:     "/api/v1/tag/{id}": {
+ 8721:     "/api/tag/{id}": {
  8722:       "get": {
  8723:         "tags": [
  8724:           "Tag"
@@ -164587,7 +164587,7 @@ README.md
  8925:         }
  8926:       }
  8927:     },
- 8928:     "/api/v1/tagtype": {
+ 8928:     "/api/tagtype": {
  8929:       "get": {
  8930:         "tags": [
  8931:           "TagType"
@@ -164625,7 +164625,7 @@ README.md
  8963:         }
  8964:       }
  8965:     },
- 8966:     "/api/v1/tagtype/{id}": {
+ 8966:     "/api/tagtype/{id}": {
  8967:       "get": {
  8968:         "tags": [
  8969:           "TagType"
@@ -164669,7 +164669,7 @@ README.md
  9007:         }
  9008:       }
  9009:     },
- 9010:     "/api/v1/tenant": {
+ 9010:     "/api/tenant": {
  9011:       "get": {
  9012:         "tags": [
  9013:           "Tenant"
@@ -164778,7 +164778,7 @@ README.md
  9116:         }
  9117:       }
  9118:     },
- 9119:     "/api/v1/tenant/{id}": {
+ 9119:     "/api/tenant/{id}": {
  9120:       "get": {
  9121:         "tags": [
  9122:           "Tenant"
@@ -164983,7 +164983,7 @@ README.md
  9321:         }
  9322:       }
  9323:     },
- 9324:     "/api/v1/tenant/navigation": {
+ 9324:     "/api/tenant/navigation": {
  9325:       "get": {
  9326:         "tags": [
  9327:           "Tenant"
@@ -165092,7 +165092,7 @@ README.md
  9430:         }
  9431:       }
  9432:     },
- 9433:     "/api/v1/tenant/navigation/{id}": {
+ 9433:     "/api/tenant/navigation/{id}": {
  9434:       "put": {
  9435:         "tags": [
  9436:           "Tenant"
@@ -165254,7 +165254,7 @@ README.md
  9592:         }
  9593:       }
  9594:     },
- 9595:     "/api/v1/tenant/navigation/reorder": {
+ 9595:     "/api/tenant/navigation/reorder": {
  9596:       "put": {
  9597:         "tags": [
  9598:           "Tenant"
@@ -165334,7 +165334,7 @@ README.md
  9672:         }
  9673:       }
  9674:     },
- 9675:     "/api/v1/tenantonboarding/status": {
+ 9675:     "/api/tenantonboarding/status": {
  9676:       "get": {
  9677:         "tags": [
  9678:           "TenantOnboarding"
@@ -165365,7 +165365,7 @@ README.md
  9703:         }
  9704:       }
  9705:     },
- 9706:     "/api/v1/tenantonboarding/settings": {
+ 9706:     "/api/tenantonboarding/settings": {
  9707:       "get": {
  9708:         "tags": [
  9709:           "TenantOnboarding"
@@ -165485,7 +165485,7 @@ README.md
  9823:         }
  9824:       }
  9825:     },
- 9826:     "/api/v1/tenantonboarding/complete": {
+ 9826:     "/api/tenantonboarding/complete": {
  9827:       "post": {
  9828:         "tags": [
  9829:           "TenantOnboarding"
@@ -165576,7 +165576,7 @@ README.md
  9914:         }
  9915:       }
  9916:     },
- 9917:     "/api/v1/tenantsettings": {
+ 9917:     "/api/tenantsettings": {
  9918:       "get": {
  9919:         "tags": [
  9920:           "TenantSettings"
@@ -165685,7 +165685,7 @@ README.md
 10023:         }
 10024:       }
 10025:     },
-10026:     "/api/v1/tenantsettings/{id}": {
+10026:     "/api/tenantsettings/{id}": {
 10027:       "get": {
 10028:         "tags": [
 10029:           "TenantSettings"
@@ -165890,7 +165890,7 @@ README.md
 10228:         }
 10229:       }
 10230:     },
-10231:     "/api/v1/tenantuser": {
+10231:     "/api/tenantuser": {
 10232:       "get": {
 10233:         "tags": [
 10234:           "TenantUser"
@@ -165999,7 +165999,7 @@ README.md
 10337:         }
 10338:       }
 10339:     },
-10340:     "/api/v1/tenantuser/{id}": {
+10340:     "/api/tenantuser/{id}": {
 10341:       "get": {
 10342:         "tags": [
 10343:           "TenantUser"
@@ -166204,7 +166204,7 @@ README.md
 10542:         }
 10543:       }
 10544:     },
-10545:     "/api/v1/userauthenticationtoken": {
+10545:     "/api/userauthenticationtoken": {
 10546:       "get": {
 10547:         "tags": [
 10548:           "UserAuthenticationToken"
@@ -166313,7 +166313,7 @@ README.md
 10651:         }
 10652:       }
 10653:     },
-10654:     "/api/v1/userauthenticationtoken/{id}": {
+10654:     "/api/userauthenticationtoken/{id}": {
 10655:       "get": {
 10656:         "tags": [
 10657:           "UserAuthenticationToken"
@@ -166518,7 +166518,7 @@ README.md
 10856:         }
 10857:       }
 10858:     },
-10859:     "/api/v1/user/sync": {
+10859:     "/api/user/sync": {
 10860:       "post": {
 10861:         "tags": [
 10862:           "User"
@@ -166549,7 +166549,7 @@ README.md
 10887:         }
 10888:       }
 10889:     },
-10890:     "/api/v1/user": {
+10890:     "/api/user": {
 10891:       "get": {
 10892:         "tags": [
 10893:           "User"
@@ -166635,7 +166635,7 @@ README.md
 10973:         }
 10974:       }
 10975:     },
-10976:     "/api/v1/user/{userId}/organizations": {
+10976:     "/api/user/{userId}/organizations": {
 10977:       "get": {
 10978:         "tags": [
 10979:           "User"
@@ -166686,7 +166686,7 @@ README.md
 11024:         }
 11025:       }
 11026:     },
-11027:     "/api/v1/userexternallogin": {
+11027:     "/api/userexternallogin": {
 11028:       "get": {
 11029:         "tags": [
 11030:           "UserExternalLogin"
@@ -166795,7 +166795,7 @@ README.md
 11133:         }
 11134:       }
 11135:     },
-11136:     "/api/v1/userexternallogin/{id}": {
+11136:     "/api/userexternallogin/{id}": {
 11137:       "get": {
 11138:         "tags": [
 11139:           "UserExternalLogin"
@@ -167000,7 +167000,7 @@ README.md
 11338:         }
 11339:       }
 11340:     },
-11341:     "/api/v1/visibilitytype": {
+11341:     "/api/visibilitytype": {
 11342:       "get": {
 11343:         "tags": [
 11344:           "VisibilityType"
@@ -167040,7 +167040,7 @@ README.md
 11378:         }
 11379:       }
 11380:     },
-11381:     "/api/v1/visibilitytype/{id}": {
+11381:     "/api/visibilitytype/{id}": {
 11382:       "get": {
 11383:         "tags": [
 11384:           "VisibilityType"

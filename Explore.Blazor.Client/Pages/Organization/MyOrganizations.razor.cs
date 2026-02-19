@@ -53,7 +53,7 @@ public partial class MyOrganizations : ComponentBase
         {
             Logger.LogInformation("[MyOrganizations] Loading organizations...");
 
-            // GetMyOrganizationsAsync calls /api/v1/organization/my which extracts user from JWT
+            // GetMyOrganizationsAsync calls /api/organization/my which extracts user from JWT
             var orgs = await OrganizationService.GetMyOrganizationsAsync();
 
             if (orgs == null || orgs.Count == 0)

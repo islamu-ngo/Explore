@@ -78,7 +78,7 @@ The `ProblemDetails` object conforms to RFC 7807, providing a structured way to 
   "title": "An unexpected error occurred.",
   "status": 500,
   "detail": "Please try again later. If the problem persists, contact support.",
-  "instance": "/api/v1/{entity}/some-failing-endpoint"
+  "instance": "/api/{entity}/some-failing-endpoint"
 }
 ```
 

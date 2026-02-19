@@ -1493,11 +1493,11 @@ README.md
 446: #### Task 4.1: Create TenantInvitationController
 447: - **File**: `Explore.API/Controllers/TenantInvitationController.cs` (NEW)
 448: - **Endpoints**:
-449:   - `POST /api/v1/tenant-invitations` — Create invitation (TenantAdmin+)
-450:   - `GET /api/v1/tenant-invitations/{token}` — Get invitation by token (AllowAnonymous)
-451:   - `POST /api/v1/tenant-invitations/{token}/accept` — Accept invitation (Authorize)
-452:   - `GET /api/v1/tenant-invitations` — List pending invitations for tenant (TenantAdmin+)
-453:   - `DELETE /api/v1/tenant-invitations/{id}` — Revoke invitation (TenantAdmin+)
+449:   - `POST /api/tenant-invitations` — Create invitation (TenantAdmin+)
+450:   - `GET /api/tenant-invitations/{token}` — Get invitation by token (AllowAnonymous)
+451:   - `POST /api/tenant-invitations/{token}/accept` — Accept invitation (Authorize)
+452:   - `GET /api/tenant-invitations` — List pending invitations for tenant (TenantAdmin+)
+453:   - `DELETE /api/tenant-invitations/{id}` — Revoke invitation (TenantAdmin+)
 454: - **Acceptance Criteria**:
 455:   - [ ] All endpoints follow existing API conventions (thin controllers, MediatR)
 456:   - [ ] Proper authorization attributes
@@ -1508,7 +1508,7 @@ README.md
 461: 
 462: #### Task 4.2: Add Self-Service Registration Endpoint
 463: - **File**: `Explore.API/Controllers/TenantController.cs` (existing)
-464: - **Endpoint**: `POST /api/v1/tenants/register` — Self-service tenant creation
+464: - **Endpoint**: `POST /api/tenants/register` — Self-service tenant creation
 465: - **Attribute**: `[Authorize]` (any authenticated user), NOT `[BlockInSingleTenant]`
 466: - **Acceptance Criteria**:
 467:   - [ ] Endpoint delegates to `SelfServiceTenantRegistrationCommand`
@@ -1522,9 +1522,9 @@ README.md
 475: #### Task 4.3: Add Tenant Lifecycle Endpoints
 476: - **File**: `Explore.API/Controllers/TenantController.cs` (existing)
 477: - **Endpoints**:
-478:   - `POST /api/v1/tenants/{id}/suspend` — Suspend tenant
-479:   - `POST /api/v1/tenants/{id}/reactivate` — Reactivate tenant
-480:   - `POST /api/v1/tenants/{id}/archive` — Archive tenant
+478:   - `POST /api/tenants/{id}/suspend` — Suspend tenant
+479:   - `POST /api/tenants/{id}/reactivate` — Reactivate tenant
+480:   - `POST /api/tenants/{id}/archive` — Archive tenant
 481: - **All**: `[Authorize]` + InstanceAdmin only
 482: - **Effort**: S
 483: - **Skills**: `cqrs-mediatr-guidelines`, `auth-patterns`
@@ -1532,7 +1532,7 @@ README.md
 485: 
 486: #### Task 4.4: Add Onboarding Step Save Endpoint
 487: - **File**: `Explore.API/Controllers/TenantOnboardingController.cs` (existing)
-488: - **Endpoint**: `PUT /api/v1/tenant-onboarding/steps/{stepId}` — Save single wizard step
+488: - **Endpoint**: `PUT /api/tenant-onboarding/steps/{stepId}` — Save single wizard step
 489: - **Acceptance Criteria**:
 490:   - [ ] Delegates to SaveOnboardingStepCommand
 491:   - [ ] Returns updated progress
@@ -1903,7 +1903,7 @@ README.md
 143: 
 144: - [ ] **Task 4.2**: Add self-service registration endpoint
 145:   - File: `Explore.API/Controllers/TenantController.cs`
-146:   - Endpoint: POST /api/v1/tenants/register
+146:   - Endpoint: POST /api/tenants/register
 147:   - Dependencies: Task 2.2
 148: 
 149: - [ ] **Task 4.3**: Add tenant lifecycle endpoints
@@ -1913,7 +1913,7 @@ README.md
 153: 
 154: - [ ] **Task 4.4**: Add onboarding step save endpoint
 155:   - File: `Explore.API/Controllers/TenantOnboardingController.cs`
-156:   - Endpoint: PUT /api/v1/tenant-onboarding/steps/{stepId}
+156:   - Endpoint: PUT /api/tenant-onboarding/steps/{stepId}
 157:   - Dependencies: Task 2.7
 158: 
 159: - [ ] **Task 4.5**: Update Cerbos policies
@@ -2667,7 +2667,7 @@ README.md
  33:         var terminal = new CaptureHandler();
  34:         handler.InnerHandler = terminal;
  35: 
- 36:         var request = new HttpRequestMessage(HttpMethod.Get, "https://localhost/api/v1/protected");
+ 36:         var request = new HttpRequestMessage(HttpMethod.Get, "https://localhost/api/protected");
  37:         var response = await handler.InvokeAsync(request);
  38: 
  39:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -2696,7 +2696,7 @@ README.md
  62:         var terminal = new CaptureHandler();
  63:         handler.InnerHandler = terminal;
  64: 
- 65:         var request = new HttpRequestMessage(HttpMethod.Get, "https://localhost/api/v1/protected");
+ 65:         var request = new HttpRequestMessage(HttpMethod.Get, "https://localhost/api/protected");
  66:         var response = await handler.InvokeAsync(request);
  67: 
  68:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -2726,7 +2726,7 @@ README.md
  92:         var terminal = new CaptureHandler();
  93:         handler.InnerHandler = terminal;
  94: 
- 95:         var request = new HttpRequestMessage(HttpMethod.Get, "https://localhost/api/v1/protected");
+ 95:         var request = new HttpRequestMessage(HttpMethod.Get, "https://localhost/api/protected");
  96:         var response = await handler.InvokeAsync(request);
  97: 
  98:         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -2917,7 +2917,7 @@ README.md
  30:         await Assert.That(result.Count).IsEqualTo(2);
  31:         await Assert.That(handler.LastRequest).IsNotNull();
  32:         await Assert.That(handler.LastRequest!.Method).IsEqualTo(HttpMethod.Get);
- 33:         await Assert.That(handler.LastRequest.RequestUri!.PathAndQuery).IsEqualTo("/api/v1/tenant/navigation");
+ 33:         await Assert.That(handler.LastRequest.RequestUri!.PathAndQuery).IsEqualTo("/api/tenant/navigation");
  34:     }
  35: 
  36:     [Test]
@@ -2957,7 +2957,7 @@ README.md
  70:         await Assert.That(result.Message).Contains("API error");
  71:         await Assert.That(handler.LastRequest).IsNotNull();
  72:         await Assert.That(handler.LastRequest!.Method).IsEqualTo(HttpMethod.Post);
- 73:         await Assert.That(handler.LastRequest.RequestUri!.PathAndQuery).IsEqualTo("/api/v1/tenant/navigation");
+ 73:         await Assert.That(handler.LastRequest.RequestUri!.PathAndQuery).IsEqualTo("/api/tenant/navigation");
  74:     }
  75: 
  76:     [Test]
@@ -2985,7 +2985,7 @@ README.md
  98:         await Assert.That(result!.Success).IsTrue();
  99:         await Assert.That(handler.LastRequest).IsNotNull();
 100:         await Assert.That(handler.LastRequest!.Method).IsEqualTo(HttpMethod.Put);
-101:         await Assert.That(handler.LastRequest.RequestUri!.PathAndQuery).IsEqualTo($"/api/v1/tenant/navigation/{linkId}");
+101:         await Assert.That(handler.LastRequest.RequestUri!.PathAndQuery).IsEqualTo($"/api/tenant/navigation/{linkId}");
 102:     }
 103: 
 104:     [Test]
@@ -3030,7 +3030,7 @@ README.md
 143:         await Assert.That(result!.Success).IsTrue();
 144:         await Assert.That(handler.LastRequest).IsNotNull();
 145:         await Assert.That(handler.LastRequest!.Method).IsEqualTo(HttpMethod.Put);
-146:         await Assert.That(handler.LastRequest.RequestUri!.PathAndQuery).IsEqualTo("/api/v1/tenant/navigation/reorder");
+146:         await Assert.That(handler.LastRequest.RequestUri!.PathAndQuery).IsEqualTo("/api/tenant/navigation/reorder");
 147:     }
 148: 
 149:     private TenantNavigationService CreateService(HttpMessageHandler handler)
@@ -4020,11 +4020,11 @@ README.md
 10: 
 11: ## Route and Method Conventions
 12: 
-13: - Collection read: `GET /api/v1/{entities}` -> query request -> paginated DTO result.
-14: - Item read: `GET /api/v1/{entities}/{id}` -> query request -> item DTO or `404`.
-15: - Create: `POST /api/v1/{entities}` -> command -> `BaseCommandResponse<Guid>` and `201 Created`.
-16: - Update: `PUT /api/v1/{entities}/{id}` -> command -> `BaseCommandResponse<Guid>` and `200 OK`.
-17: - Delete: `DELETE /api/v1/{entities}/{id}` -> command -> `bool` and `204`/`404`.
+13: - Collection read: `GET /api/{entities}` -> query request -> paginated DTO result.
+14: - Item read: `GET /api/{entities}/{id}` -> query request -> item DTO or `404`.
+15: - Create: `POST /api/{entities}` -> command -> `BaseCommandResponse<Guid>` and `201 Created`.
+16: - Update: `PUT /api/{entities}/{id}` -> command -> `BaseCommandResponse<Guid>` and `200 OK`.
+17: - Delete: `DELETE /api/{entities}/{id}` -> command -> `bool` and `204`/`404`.
 18: 
 19: Use route constraints for clarity (`{id:guid}`) where applicable.
 20: 
@@ -4165,7 +4165,7 @@ README.md
 43:   "title": "Validation failed",
 44:   "status": 400,
 45:   "detail": "One or more validation errors occurred.",
-46:   "instance": "/api/v1/events",
+46:   "instance": "/api/events",
 47:   "traceId": "00-1f6...",
 48:   "errors": {
 49:     "title": ["Title is required"],
@@ -7601,12 +7601,12 @@ README.md
 238: The following endpoints are ready to use (implemented this session):
 239: 
 240: ```
-241: GET    /api/v1/Event/{id}/aspects/islamic    - Get Islamic aspect
-242: PUT    /api/v1/Event/{id}/aspects/islamic    - Create/Update Islamic aspect
-243: DELETE /api/v1/Event/{id}/aspects/islamic    - Delete Islamic aspect
-244: GET    /api/v1/Event/{id}/aspects/tech       - Get Tech aspect
-245: PUT    /api/v1/Event/{id}/aspects/tech       - Create/Update Tech aspect
-246: DELETE /api/v1/Event/{id}/aspects/tech       - Delete Tech aspect
+241: GET    /api/Event/{id}/aspects/islamic    - Get Islamic aspect
+242: PUT    /api/Event/{id}/aspects/islamic    - Create/Update Islamic aspect
+243: DELETE /api/Event/{id}/aspects/islamic    - Delete Islamic aspect
+244: GET    /api/Event/{id}/aspects/tech       - Get Tech aspect
+245: PUT    /api/Event/{id}/aspects/tech       - Create/Update Tech aspect
+246: DELETE /api/Event/{id}/aspects/tech       - Delete Tech aspect
 247: ```
 248: 
 249: **NSwag Client Methods** (should be generated):
@@ -10383,7 +10383,7 @@ README.md
 150: - [ ] Document ResourceAssembler pattern
 151:   - [ ] IResourceAssembler<TDto, TListDto> interface
 152:   - [ ] How to implement custom assemblers
-153: - [ ] Add complete example response (GET /api/v1/events)
+153: - [ ] Add complete example response (GET /api/events)
 154: - [ ] Document RouteNames constants usage
 155: - [ ] Cross-reference CODEBASE_INSIGHTS.md section 14
 156: 
@@ -13436,7 +13436,7 @@ README.md
 461: 
 462: #### Task 5.4: Integration test — connection test endpoint (optional)
 463: - **File**: `Event.API.IntegrationTests/Features/EmailConnectionTests.cs`
-464: - **What**: Test that the `/api/v1/admin/email/test-connection` endpoint works
+464: - **What**: Test that the `/api/admin/email/test-connection` endpoint works
 465: - **Acceptance Criteria**:
 466:   - [ ] Uses WebApplicationFactory
 467:   - [ ] Mocks SMTP (no real connection)
@@ -13450,7 +13450,7 @@ README.md
 475: 
 476: #### Task 6.1: Add email test connection endpoint
 477: - **File**: Add to existing admin controller or create `Explore.API/Controllers/EmailController.cs`
-478: - **What**: `POST /api/v1/admin/email/test-connection` — tests current SMTP configuration
+478: - **What**: `POST /api/admin/email/test-connection` — tests current SMTP configuration
 479: - **Authorization**: `[Authorize(Roles = "Admin")]`
 480: - **Response**: `EmailResult` (success/failure + timing)
 481: - **Acceptance Criteria**:
@@ -13461,7 +13461,7 @@ README.md
 486: 
 487: #### Task 6.2: Add send test email endpoint (optional)
 488: - **File**: Same controller
-489: - **What**: `POST /api/v1/admin/email/send-test` — sends a test email to verify end-to-end
+489: - **What**: `POST /api/admin/email/send-test` — sends a test email to verify end-to-end
 490: - **Authorization**: `[Authorize(Roles = "Admin")]`
 491: - **Body**: `{ "to": "admin@example.com" }`
 492: - **Response**: `EmailResult`
@@ -13644,8 +13644,8 @@ README.md
 64: ## Phase 6: Admin API Endpoint ⏳ NOT STARTED
 65: **Effort: S (~30min) | Depends on: Phase 2**
 66: 
-67: - [ ] **6.1** Add `POST /api/v1/admin/email/test-connection` endpoint
-68: - [ ] **6.2** Add `POST /api/v1/admin/email/send-test` endpoint (optional)
+67: - [ ] **6.1** Add `POST /api/admin/email/test-connection` endpoint
+68: - [ ] **6.2** Add `POST /api/admin/email/send-test` endpoint (optional)
 69: 
 70: ---
 71: 
@@ -14999,8 +14999,8 @@ README.md
 115: - **Task 4.1: Create Admin Impersonation API Endpoints**
 116:   - **File**: `Explore.API/Controllers/AdminController.cs` (or a new `ImpersonationController.cs`)
 117:   - **Acceptance Criteria**:
-118:     - [ ] Create `POST /api/v1/admin/impersonation/start` endpoint that maps to the `StartImpersonationCommand`.
-119:     - [ ] Create `POST /api/v1/admin/impersonation/stop` endpoint that maps to the `StopImpersonationCommand`.
+118:     - [ ] Create `POST /api/admin/impersonation/start` endpoint that maps to the `StartImpersonationCommand`.
+119:     - [ ] Create `POST /api/admin/impersonation/stop` endpoint that maps to the `StopImpersonationCommand`.
 120:     - [ ] Both endpoints must be protected and require the Instance Administrator role.
 121:   - **Effort**: M
 122:   - **Note**: These endpoints will likely be called from the Blazor BFF, not directly from the client.
@@ -15433,7 +15433,7 @@ README.md
 312: # Configuration
 313: $ApiProjectPath = "Explore.API"
 314: $ApiUrl = "https://localhost:7039"
-315: $SwaggerUrl = "$ApiUrl/swagger/v1/swagger.json"
+315: $SwaggerUrl = "$ApiUrl/swagger/swagger.json"
 316: $OutputSwaggerPath = "Explore.API/swagger.json"
 317: $ClientOutputPath = "Explore.Blazor.Client/Clients/EventApiClient.g.cs"
 318: $MaxWaitSeconds = 60
@@ -15953,11 +15953,11 @@ README.md
  85: ### Task 4.1: Update `TenantController`
  86: - **File**: `Explore.API/Controllers/TenantController.cs`
  87: - **Endpoints**:
- 88:   - `GET /api/v1/tenant/navigation` (Anonymous/Public) - Cached 5-10m.
- 89:   - `POST /api/v1/tenant/navigation` (Admin only)
- 90:   - `PUT /api/v1/tenant/navigation/{id}` (Admin only)
- 91:   - `DELETE /api/v1/tenant/navigation/{id}` (Admin only)
- 92:   - `PUT /api/v1/tenant/navigation/reorder` (Admin only)
+ 88:   - `GET /api/tenant/navigation` (Anonymous/Public) - Cached 5-10m.
+ 89:   - `POST /api/tenant/navigation` (Admin only)
+ 90:   - `PUT /api/tenant/navigation/{id}` (Admin only)
+ 91:   - `DELETE /api/tenant/navigation/{id}` (Admin only)
+ 92:   - `PUT /api/tenant/navigation/reorder` (Admin only)
  93: 
  94: ---
  95: 
@@ -16242,7 +16242,7 @@ README.md
  75:         .Expire(TimeSpan.FromSeconds(30))
  76:         .Tag("api"));
  77: 
- 78:     // Cache GET /api/v1/event for 60 seconds
+ 78:     // Cache GET /api/event for 60 seconds
  79:     options.AddPolicy("Events", builder => builder
  80:         .Expire(TimeSpan.FromSeconds(60))
  81:         .Tag("events")
@@ -16591,7 +16591,7 @@ README.md
 424: 
 425: ### 9. API Versioning Middleware
 426: 
-427: **Current State**: Manual URL path versioning (`/api/v1/`)
+427: **Current State**: Manual URL path versioning (`/api/`)
 428: **Recommendation**: Use official API Versioning package for enterprise features
 429: 
 430: ```csharp
@@ -20886,11 +20886,11 @@ README.md
 157: 
 158: **Example Structure**:
 159: ```markdown
-160: ### POST /api/v1/event
+160: ### POST /api/event
 161: 
 162: **cURL Example**:
 163: ```bash
-164: curl -X POST https://api.example.com/api/v1/event \
+164: curl -X POST https://api.example.com/api/event \
 165:   -H "Authorization: Bearer YOUR_TOKEN" \
 166:   -H "Content-Type: application/json" \
 167:   -d '{
@@ -20911,7 +20911,7 @@ README.md
 182: 
 183: **JavaScript Example**:
 184: ```javascript
-185: const response = await fetch('https://api.example.com/api/v1/event', {
+185: const response = await fetch('https://api.example.com/api/event', {
 186:   method: 'POST',
 187:   headers: {
 188:     'Authorization': 'Bearer YOUR_TOKEN',
@@ -23025,7 +23025,7 @@ README.md
 468: ### API Documentation
 469: - **Scalar UI**: Interactive API explorer at `/scalar/v1`
 470: - **Swagger UI**: OpenAPI documentation at `/swagger`
-471: - **OpenAPI Spec**: Machine-readable spec at `/swagger/v1/swagger.json`
+471: - **OpenAPI Spec**: Machine-readable spec at `/swagger/swagger.json`
 472: 
 473: ---
 474: 
@@ -36572,7 +36572,7 @@ README.md
  15: {
  16:     private readonly HttpClient _httpClient;
  17:     private readonly ILogger<TenantNavigationService> _logger;
- 18:     private const string ApiEndpoint = "/api/v1/tenant/navigation";
+ 18:     private const string ApiEndpoint = "/api/tenant/navigation";
  19: 
  20:     public TenantNavigationService(HttpClient httpClient, ILogger<TenantNavigationService> logger)
  21:     {
@@ -36777,7 +36777,7 @@ README.md
  28:         try
  29:         {
  30:             var client = _httpClientFactory.CreateClient("BffClient");
- 31:             return await client.GetFromJsonAsync<TenantOnboardingStatusModel>("api/v1/TenantOnboarding/status");
+ 31:             return await client.GetFromJsonAsync<TenantOnboardingStatusModel>("api/TenantOnboarding/status");
  32:         }
  33:         catch (Exception ex)
  34:         {
@@ -36791,7 +36791,7 @@ README.md
  42:         try
  43:         {
  44:             var client = _httpClientFactory.CreateClient("BffClient");
- 45:             var result = await client.GetFromJsonAsync<TenantPolicySettingsModel>("api/v1/TenantOnboarding/settings");
+ 45:             var result = await client.GetFromJsonAsync<TenantPolicySettingsModel>("api/TenantOnboarding/settings");
  46:             return result ?? new TenantPolicySettingsModel();
  47:         }
  48:         catch (Exception ex)
@@ -36803,12 +36803,12 @@ README.md
  54: 
  55:     public async Task<InstanceCommandResponseModel> CompleteAsync(TenantPolicySettingsModel settings)
  56:     {
- 57:         return await SendAsync(HttpMethod.Post, "api/v1/TenantOnboarding/complete", settings);
+ 57:         return await SendAsync(HttpMethod.Post, "api/TenantOnboarding/complete", settings);
  58:     }
  59: 
  60:     public async Task<InstanceCommandResponseModel> UpdateSettingsAsync(TenantPolicySettingsModel settings)
  61:     {
- 62:         return await SendAsync(HttpMethod.Put, "api/v1/TenantOnboarding/settings", settings);
+ 62:         return await SendAsync(HttpMethod.Put, "api/TenantOnboarding/settings", settings);
  63:     }
  64: 
  65:     private async Task<InstanceCommandResponseModel> SendAsync(HttpMethod method, string url, TenantPolicySettingsModel settings)
@@ -40224,16 +40224,16 @@ README.md
 264: 
 265: | Category | Controller | Routes |
 266: |----------|------------|--------|
-267: | **Events** | `EventController` | `/api/v1/event` |
-268: | **Sessions** | `EventSessionController` | `/api/v1/eventsession` |
-269: | **Organizations** | `OrganizationController` | `/api/v1/organization` |
-270: | **Actors** | `ActorController` | `/api/v1/actor` |
-271: | **Locations** | `LocationController` | `/api/v1/location` |
-272: | **Categories** | `CategoryController` | `/api/v1/category` |
-273: | **Tags** | `TagController` | `/api/v1/tag` |
-274: | **Users** | `UserController` | `/api/v1/user` |
-275: | **Tenants** | `TenantController` | `/api/v1/tenant` |
-276: | **Storage** | `StorageObjectController` | `/api/v1/storageobject` |
+267: | **Events** | `EventController` | `/api/event` |
+268: | **Sessions** | `EventSessionController` | `/api/eventsession` |
+269: | **Organizations** | `OrganizationController` | `/api/organization` |
+270: | **Actors** | `ActorController` | `/api/actor` |
+271: | **Locations** | `LocationController` | `/api/location` |
+272: | **Categories** | `CategoryController` | `/api/category` |
+273: | **Tags** | `TagController` | `/api/tag` |
+274: | **Users** | `UserController` | `/api/user` |
+275: | **Tenants** | `TenantController` | `/api/tenant` |
+276: | **Storage** | `StorageObjectController` | `/api/storageobject` |
 277: 
 278: ### HATEOAS Support
 279: 
@@ -40763,11 +40763,11 @@ README.md
 208: 
 209: | Controller | Route |
 210: |---|---|
-211: | `EventController` | `api/v1/event` |
-212: | `OrganizationController` | `api/v1/organization` |
-213: | `EventSessionController` | `api/v1/eventsession` |
+211: | `EventController` | `api/event` |
+212: | `OrganizationController` | `api/organization` |
+213: | `EventSessionController` | `api/eventsession` |
 214: 
-215: Route convention: `api/v1/[controller]` (controller name lowercased, no hyphens).
+215: Route convention: `api/[controller]` (controller name lowercased, no hyphens).
 216: 
 217: ---
 218: 
@@ -40900,7 +40900,7 @@ README.md
 345: 5. **Queries** = `Get{Entity}{Suffix}Request` in `Features/{Entities}/Requests/Queries/`
 346: 6. **Handlers** = mirror command/query name + `Handler` suffix
 347: 7. **Repositories** = `I{Entity}Repository` (interface) / `{Entity}Repository` (impl)
-348: 8. **Controllers** = `{Entity}Controller`, route `api/v1/[controller]`
+348: 8. **Controllers** = `{Entity}Controller`, route `api/[controller]`
 349: 9. **Blazor pages** = `{Action}{Entity}.razor` or `{Entity}{Action}.razor` (varies by area)
 350: 10. **Client services** = `{Entity}Service` / `I{Entity}Service`
 351: 11. **DB columns** = snake_case (automatic via EF Core convention)
@@ -47282,7 +47282,7 @@ README.md
  32:         try
  33:         {
  34:             var client = _httpClientFactory.CreateClient("BffClient");
- 35:             return await client.GetFromJsonAsync<InstanceOnboardingStatusModel>("api/v1/InstanceOnboarding/status");
+ 35:             return await client.GetFromJsonAsync<InstanceOnboardingStatusModel>("api/InstanceOnboarding/status");
  36:         }
  37:         catch (Exception ex)
  38:         {
@@ -47296,7 +47296,7 @@ README.md
  46:         try
  47:         {
  48:             var client = _httpClientFactory.CreateClient("BffClient");
- 49:             var result = await client.GetFromJsonAsync<InstanceGovernanceSettingsModel>("api/v1/InstanceOnboarding/settings");
+ 49:             var result = await client.GetFromJsonAsync<InstanceGovernanceSettingsModel>("api/InstanceOnboarding/settings");
  50:             return result ?? new InstanceGovernanceSettingsModel();
  51:         }
  52:         catch (Exception ex)
@@ -47311,7 +47311,7 @@ README.md
  61:         try
  62:         {
  63:             var client = _httpClientFactory.CreateClient("BffClient");
- 64:             var response = await client.PostAsJsonAsync("api/v1/InstanceOnboarding/validate-secret", new { secret });
+ 64:             var response = await client.PostAsJsonAsync("api/InstanceOnboarding/validate-secret", new { secret });
  65:             var result = await response.Content.ReadFromJsonAsync<SetupSecretValidationResult>();
  66:             return result ?? new SetupSecretValidationResult { Valid = false };
  67:         }
@@ -47324,12 +47324,12 @@ README.md
  74: 
  75:     public async Task<InstanceCommandResponseModel> CompleteAsync(InstanceGovernanceSettingsModel settings)
  76:     {
- 77:         return await SendAsync(HttpMethod.Post, "api/v1/InstanceOnboarding/complete", settings);
+ 77:         return await SendAsync(HttpMethod.Post, "api/InstanceOnboarding/complete", settings);
  78:     }
  79: 
  80:     public async Task<InstanceCommandResponseModel> UpdateSettingsAsync(InstanceGovernanceSettingsModel settings)
  81:     {
- 82:         return await SendAsync(HttpMethod.Put, "api/v1/InstanceOnboarding/settings", settings);
+ 82:         return await SendAsync(HttpMethod.Put, "api/InstanceOnboarding/settings", settings);
  83:     }
  84: 
  85:     public async Task<InstanceStorageSettingsModel> GetStorageSettingsAsync()
@@ -47337,7 +47337,7 @@ README.md
  87:         try
  88:         {
  89:             var client = _httpClientFactory.CreateClient("BffClient");
- 90:             var result = await client.GetFromJsonAsync<InstanceStorageSettingsModel>("api/v1/InstanceOnboarding/storage-settings");
+ 90:             var result = await client.GetFromJsonAsync<InstanceStorageSettingsModel>("api/InstanceOnboarding/storage-settings");
  91:             return result ?? new InstanceStorageSettingsModel();
  92:         }
  93:         catch (Exception ex)
@@ -47352,7 +47352,7 @@ README.md
 102:         try
 103:         {
 104:             var client = _httpClientFactory.CreateClient("BffClient");
-105:             using var request = new HttpRequestMessage(HttpMethod.Put, "api/v1/InstanceOnboarding/storage-settings")
+105:             using var request = new HttpRequestMessage(HttpMethod.Put, "api/InstanceOnboarding/storage-settings")
 106:             {
 107:                 Content = JsonContent.Create(settings)
 108:             };
@@ -47390,7 +47390,7 @@ README.md
 140:         try
 141:         {
 142:             var client = _httpClientFactory.CreateClient("BffClient");
-143:             var response = await client.PostAsync("api/v1/InstanceOnboarding/test-storage", null);
+143:             var response = await client.PostAsync("api/InstanceOnboarding/test-storage", null);
 144:             var result = await response.Content.ReadFromJsonAsync<StorageConnectionTestResult>();
 145:             return result ?? new StorageConnectionTestResult { Success = false, Message = "Empty response." };
 146:         }
@@ -47540,7 +47540,7 @@ README.md
 26:         try
 27:         {
 28:             var client = _httpClientFactory.CreateClient("BffClient");
-29:             return await client.GetFromJsonAsync<PublicExperienceSettingsModel>("api/v1/PublicExperience/settings");
+29:             return await client.GetFromJsonAsync<PublicExperienceSettingsModel>("api/PublicExperience/settings");
 30:         }
 31:         catch (Exception ex)
 32:         {
@@ -48541,7 +48541,7 @@ README.md
 195:             }
 196: 
 197:             // Optionally allow selected anonymous endpoints to stay non-interruptive
-198:             var isAnonymousApi = path.StartsWith("/api/v1/public", StringComparison.OrdinalIgnoreCase);
+198:             var isAnonymousApi = path.StartsWith("/api/public", StringComparison.OrdinalIgnoreCase);
 199:             if (!isAnonymousApi)
 200:             {
 201:                 _navigationManager.NavigateTo(
@@ -48622,8 +48622,8 @@ README.md
  40:         ClusterId = "explore-api", // ID of the cluster to forward to
  41:         Match = new RouteMatch
  42:         {
- 43:             // All requests starting with /api/v1/ will be proxied
- 44:             Path = "/api/v1/{**catchall}"
+ 43:             // All requests starting with /api/ will be proxied
+ 44:             Path = "/api/{**catchall}"
  45:         }
  46:     }
  47: };
@@ -48666,7 +48666,7 @@ README.md
  84: ### Key Points
  85: 
  86: *   **`exploreApiBaseUrl`**: Should be configured in `appsettings.json` or environment variables.
- 87: *   **`Path = "/api/v1/{**catchall}"`**: This route captures all requests intended for the backend API.
+ 87: *   **`Path = "/api/{**catchall}"`**: This route captures all requests intended for the backend API.
  88: *   **`AddTransforms`**: This is where the magic happens. It intercepts the outgoing request from the BFF to the API, extracts the JWT from the user's session cookie (which was obtained during OIDC login), and attaches it as an `Authorization: Bearer` header. This makes the backend API oblivious to the cookie-based authentication, only seeing standard JWTs.
  89: 
  90: ---
@@ -51268,7 +51268,7 @@ README.md
 610: 
 611:     private async Task LoadData()
 612:     {
-613:         _data = await Http.GetFromJsonAsync<List<{Entity}Dto>>("api/v1/{entities}");
+613:         _data = await Http.GetFromJsonAsync<List<{Entity}Dto>>("api/{entities}");
 614:         // StateHasChanged() NOT needed - Blazor will re-render after this async method completes
 615:     }
 616: 
@@ -52309,7 +52309,7 @@ README.md
 196:     private async Task SyncToServer()
 197:     {
 198:         // Make HTTP call to backend API
-199:         // await Http.PostAsJsonAsync("api/v1/{entities}/drafts", draft{Entity});
+199:         // await Http.PostAsJsonAsync("api/{entities}/drafts", draft{Entity});
 200:     }
 201: }
 202: ```
@@ -52461,7 +52461,7 @@ README.md
 348:         {
 349:             // Fetch data here if it shouldn't run on the server prerender,
 350:             // or if it's dependent on client-side state.
-351:             // _{entities} = await Http.GetFromJsonAsync<List<{Entity}ListDto>>("api/v1/{entities}");
+351:             // _{entities} = await Http.GetFromJsonAsync<List<{Entity}ListDto>>("api/{entities}");
 352:             // StateHasChanged(); // Required if you update state after async operation in OnAfterRenderAsync
 353:         }
 354:     }
@@ -54462,7 +54462,7 @@ README.md
  78:   "title": "An unexpected error occurred.",
  79:   "status": 500,
  80:   "detail": "Please try again later. If the problem persists, contact support.",
- 81:   "instance": "/api/v1/{entity}/some-failing-endpoint"
+ 81:   "instance": "/api/{entity}/some-failing-endpoint"
  82: }
  83: ```
  84: 
@@ -54582,7 +54582,7 @@ README.md
  71:     {
  72:         try
  73:         {
- 74:             _{entities} = await Http.GetFromJsonAsync<List<{Entity}ListDto>>("api/v1/{entity}");
+ 74:             _{entities} = await Http.GetFromJsonAsync<List<{Entity}ListDto>>("api/{entity}");
  75:         }
  76:         catch (Exception ex)
  77:         {
@@ -55217,7 +55217,7 @@ README.md
  23: 
  24: namespace {Project}.API.Controllers;
  25: 
- 26: [Route("api/v1/[controller]")]
+ 26: [Route("api/[controller]")]
  27: [ApiController]
  28: public class {Entity}Controller : ControllerBase
  29: {
@@ -55297,7 +55297,7 @@ README.md
 103: ### Test Error Capture
 104: 
 105: ```bash
-106: curl -v https://localhost:7001/api/v1/{entity}/sentry/test-error
+106: curl -v https://localhost:7001/api/{entity}/sentry/test-error
 107: ```
 108: 
 109: *Expected Sentry Outcome*: An error event should appear in your Sentry dashboard, with tags like `test:true` and `endpoint:sentry/test-error`, and the message "This is a test Sentry exception from the API!". If you have `UseExceptionHandler` configured, the client will receive a `ProblemDetails` response.
@@ -55305,7 +55305,7 @@ README.md
 111: ### Test Performance Tracking
 112: 
 113: ```bash
-114: curl -v https://localhost:7001/api/v1/{entity}/sentry/test-performance
+114: curl -v https://localhost:7001/api/{entity}/sentry/test-performance
 115: ```
 116: 
 117: *Expected Sentry Outcome*: A transaction named `test.performance` with operation `manual-api-endpoint` should appear in your Sentry dashboard's "Performance" section. The duration should be around 1.5 seconds, and you should see a child span named `db.query` (simulate_db_call) within it.
@@ -57926,7 +57926,7 @@ README.md
 157:         ?
 158:    EventApiClient ? BFF (/api/admin/organizations)
 159:         ?
-160:    BFF ? API (/api/v1/Organization)
+160:    BFF ? API (/api/Organization)
 161:         ?
 162:    API ? OrganizationRepository ? Database
 163:         ?
@@ -60638,7 +60638,7 @@ README.md
 133:         ClusterId = "{project}-api",
 134:         Match = new RouteMatch
 135:         {
-136:             Path = "/api/v1/{**catchall}"  // Catch all API routes
+136:             Path = "/api/{**catchall}"  // Catch all API routes
 137:         }
 138:     }
 139: };
@@ -60686,7 +60686,7 @@ README.md
 181:         ClusterId = "explore-api",
 182:         Match = new RouteMatch
 183:         {
-184:             Path = "/api/v1/{**catchall}"  // Catch all API routes
+184:             Path = "/api/{**catchall}"  // Catch all API routes
 185:         }
 186:     }
 187: };
@@ -66936,8 +66936,8 @@ README.md
  12: {
  13:     private static readonly string[] AnonymousApiPathPrefixes =
  14:     [
- 15:         "/api/v1/publicexperience/settings",
- 16:         "/api/v1/instanceonboarding/status"
+ 15:         "/api/publicexperience/settings",
+ 16:         "/api/instanceonboarding/status"
  17:     ];
  18: 
  19:     private readonly NavigationManager _nav;
@@ -68271,7 +68271,7 @@ README.md
  58:     Keycloak-->>-BFF: Returns JWTs
  59:     BFF-->>-Browser: Stores tokens in secure, HttpOnly cookie & redirects
  60: 
- 61:     Browser->>+BFF: Makes API call (/api/v1/...)
+ 61:     Browser->>+BFF: Makes API call (/api/...)
  62:     BFF->>+API: YARP proxy reads token from cookie, attaches as "Authorization: Bearer" header
  63:     API->>API: Validates JWT signature & claims
  64:     API-->>-BFF: Returns data
@@ -73920,7 +73920,7 @@ README.md
 403: // Blazor.Client calls API
 404: @inject HttpClient Http
 405: 
-406: var {entities} = await Http.GetFromJsonAsync<List<{Entity}ListDto>>("/api/v1/{entity}");
+406: var {entities} = await Http.GetFromJsonAsync<List<{Entity}ListDto>>("/api/{entity}");
 407: ```
 408: 
 409: ---
@@ -74158,7 +74158,7 @@ README.md
 226: using Microsoft.AspNetCore.Authorization;
 227: using Microsoft.AspNetCore.Mvc;
 228: 
-229: [Route("api/v1/[controller]")]
+229: [Route("api/[controller]")]
 230: [ApiController]
 231: public class {Entity}Controller : ControllerBase
 232: {
@@ -74686,7 +74686,7 @@ README.md
 754: using Microsoft.AspNetCore.Authorization;
 755: using Microsoft.AspNetCore.Mvc;
 756: 
-757: [Route("api/v1/[controller]")]
+757: [Route("api/[controller]")]
 758: [ApiController]
 759: public class {Entity}Controller : ControllerBase
 760: {
@@ -74712,7 +74712,7 @@ README.md
 780: 
 781:     protected override async Task OnInitializedAsync()
 782:     {
-783:         _{entities} = await Http.GetFromJsonAsync<List<{Entity}ListDto>>("/api/v1/{entity}");
+783:         _{entities} = await Http.GetFromJsonAsync<List<{Entity}ListDto>>("/api/{entity}");
 784:     }
 785: }
 786: ```
@@ -75276,7 +75276,7 @@ README.md
 469: using Microsoft.AspNetCore.Mvc;
 470: 
 471: [ApiController]
-472: [Route("api/v1/[controller]")]
+472: [Route("api/[controller]")]
 473: public class {Entity}Controller : ControllerBase
 474: {
 475:     private readonly IMediator _mediator;
@@ -75718,7 +75718,7 @@ README.md
 302: using Microsoft.AspNetCore.Authorization;
 303: using Microsoft.AspNetCore.Mvc;  // ✅ OK in API layer
 304: 
-305: [Route("api/v1/[controller]")]
+305: [Route("api/[controller]")]
 306: [ApiController]
 307: public class {Entity}Controller : ControllerBase
 308: {
@@ -76564,7 +76564,7 @@ README.md
 482: using Microsoft.AspNetCore.Authorization;
 483: using Microsoft.AspNetCore.Mvc;
 484: 
-485: [Route("api/v1/[controller]")]
+485: [Route("api/[controller]")]
 486: [ApiController]
 487: public class {Entity}Controller : ControllerBase
 488: {
@@ -77576,7 +77576,7 @@ README.md
 492: using Microsoft.AspNetCore.Http;
 493: using Microsoft.AspNetCore.Mvc;
 494: 
-495: [Route("api/v1/[controller]")]
+495: [Route("api/[controller]")]
 496: [ApiController]
 497: public class {Entity}Controller : ControllerBase
 498: {
@@ -82720,7 +82720,7 @@ README.md
 361: 
 362: namespace {Project}.API.Controllers;
 363: 
-364: [Route("api/v1/[controller]")]
+364: [Route("api/[controller]")]
 365: [ApiController]
 366: public class {Entity}Controller : ControllerBase
 367: {
@@ -82738,7 +82738,7 @@ README.md
 379:         _logger = logger;
 380:     }
 381: 
-382:     // POST: api/v1/{entity}
+382:     // POST: api/{entity}
 383:     [HttpPost]
 384:     [EndpointSummary("Create {Entity}")]
 385:     [EndpointDescription("Creates a new {entity}. Requires authentication.")]
@@ -82760,7 +82760,7 @@ README.md
 401:         return Ok(response);
 402:     }
 403: 
-404:     // GET: api/v1/{entity}
+404:     // GET: api/{entity}
 405:     [HttpGet]
 406:     [EndpointSummary("List {Entities}")]
 407:     [EndpointDescription("Returns a list of {entities}.")]
@@ -82772,7 +82772,7 @@ README.md
 413:         return Ok({entities});
 414:     }
 415: 
-416:     // GET: api/v1/{entity}/{id}
+416:     // GET: api/{entity}/{id}
 417:     [HttpGet("{id}")]
 418:     [EndpointSummary("Get {Entity} Details")]
 419:     [EndpointDescription("Returns {entity} details.")]
@@ -82791,7 +82791,7 @@ README.md
 432:         return Ok({entity});
 433:     }
 434: 
-435:     // GET: api/v1/{entity}/my
+435:     // GET: api/{entity}/my
 436:     [HttpGet("my")]
 437:     [EndpointSummary("List My {Entities}")]
 438:     [EndpointDescription("Returns {entities} owned by the current user.")]
@@ -83532,7 +83532,7 @@ README.md
 404: ## Controller Pattern
 405: 
 406: ```csharp
-407: [Route("api/v1/[controller]")]
+407: [Route("api/[controller]")]
 408: [ApiController]
 409: public class {Entity}Controller : ControllerBase
 410: {
@@ -86075,8 +86075,8 @@ README.md
 270: 
 271:     private static bool IsAnonymousAllowedPath(string pathAndQuery)
 272:     {
-273:         return pathAndQuery.Contains("/api/v1/PublicExperience/settings", StringComparison.OrdinalIgnoreCase)
-274:             || pathAndQuery.Contains("/api/v1/InstanceOnboarding/status", StringComparison.OrdinalIgnoreCase);
+273:         return pathAndQuery.Contains("/api/PublicExperience/settings", StringComparison.OrdinalIgnoreCase)
+274:             || pathAndQuery.Contains("/api/InstanceOnboarding/status", StringComparison.OrdinalIgnoreCase);
 275:     }
 276: }
 ````
@@ -86596,7 +86596,7 @@ README.md
   56: | Architecture | Clean Architecture + CQRS |
   57: | Authentication | JWT Bearer (Keycloak) |
   58: | Documentation | OpenAPI 3.0 (Scalar + Swagger) |
-  59: | Versioning | URL path (`/api/v1/`) |
+  59: | Versioning | URL path (`/api/`) |
   60: | Serialization | System.Text.Json |
   61: 
   62: ### Request Flow
@@ -86622,22 +86622,22 @@ README.md
   82: 
   83: **Generic Pattern:**
   84: ```
-  85: /api/v1/{resource}
-  86: /api/v1/{resource}/{id}
-  87: /api/v1/{resource}/{id}/{subresource}
+  85: /api/{resource}
+  86: /api/{resource}/{id}
+  87: /api/{resource}/{id}/{subresource}
   88: ```
   89: 
   90: **Generic Examples:**
-  91: - `GET /api/v1/{entity}` - List entities
-  92: - `GET /api/v1/{entity}/{id}` - Get entity details
-  93: - `GET /api/v1/{childEntity}/by-{parentEntity}/{parentId}` - Get children
-  94: - `POST /api/v1/{entity}` - Create entity
+  91: - `GET /api/{entity}` - List entities
+  92: - `GET /api/{entity}/{id}` - Get entity details
+  93: - `GET /api/{childEntity}/by-{parentEntity}/{parentId}` - Get children
+  94: - `POST /api/{entity}` - Create entity
   95: 
   96: ### Implementation Examples: ISLAMU Event
-  97: - `GET /api/v1/event` - List events
-  98: - `GET /api/v1/event/{id}` - Get event details
-  99: - `GET /api/v1/eventsession/by-event/{eventId}` - Get sessions for event
- 100: - `POST /api/v1/organization` - Create organization
+  97: - `GET /api/event` - List events
+  98: - `GET /api/event/{id}` - Get event details
+  99: - `GET /api/eventsession/by-event/{eventId}` - Get sessions for event
+ 100: - `POST /api/organization` - Create organization
  101: 
  102: ---
  103: 
@@ -86648,7 +86648,7 @@ README.md
  108: **Generic Template:**
  109: 
  110: ```csharp
- 111: [Route("api/v1/[controller]")]
+ 111: [Route("api/[controller]")]
  112: [ApiController]
  113: public class {Entity}Controller : ControllerBase
  114: {
@@ -86671,7 +86671,7 @@ README.md
  131: ### Implementation Example: ISLAMU Event
  132: 
  133: ```csharp
- 134: [Route("api/v1/[controller]")]
+ 134: [Route("api/[controller]")]
  135: [ApiController]
  136: public class EventController : ControllerBase
  137: {
@@ -86875,7 +86875,7 @@ README.md
  335: 
  336: **Request:**
  337: ```http
- 338: GET /api/v1/events/123e4567-e89b-12d3-a456-426614174000
+ 338: GET /api/events/123e4567-e89b-12d3-a456-426614174000
  339: Accept: application/hal+json
  340: ```
  341: 
@@ -86889,11 +86889,11 @@ README.md
  349:   },
  350:   "_links": {
  351:     "self": {
- 352:       "href": "/api/v1/events/123e4567-e89b-12d3-a456-426614174000",
+ 352:       "href": "/api/events/123e4567-e89b-12d3-a456-426614174000",
  353:       "method": "GET"
  354:     },
  355:     "update": {
- 356:       "href": "/api/v1/events/123e4567-e89b-12d3-a456-426614174000",
+ 356:       "href": "/api/events/123e4567-e89b-12d3-a456-426614174000",
  357:       "method": "PUT"
  358:     }
  359:   }
@@ -86906,7 +86906,7 @@ README.md
  366: 
  367: **Request:**
  368: ```http
- 369: GET /api/v1/events/123...
+ 369: GET /api/events/123...
  370: Prefer: return=minimal
  371: ```
  372: 
@@ -87036,7 +87036,7 @@ README.md
  496: 
  497: **Request:**
  498: ```http
- 499: GET /api/v1/events/123e4567-e89b-12d3-a456-426614174000
+ 499: GET /api/events/123e4567-e89b-12d3-a456-426614174000
  500: Accept: application/hal+json
  501: ```
  502: 
@@ -87052,19 +87052,19 @@ README.md
  512:   },
  513:   "_links": {
  514:     "self": {
- 515:       "href": "/api/v1/events/123e4567-e89b-12d3-a456-426614174000",
+ 515:       "href": "/api/events/123e4567-e89b-12d3-a456-426614174000",
  516:       "method": "GET"
  517:     },
  518:     "update": {
- 519:       "href": "/api/v1/events/123e4567-e89b-12d3-a456-426614174000",
+ 519:       "href": "/api/events/123e4567-e89b-12d3-a456-426614174000",
  520:       "method": "PUT"
  521:     },
  522:     "delete": {
- 523:       "href": "/api/v1/events/123e4567-e89b-12d3-a456-426614174000",
+ 523:       "href": "/api/events/123e4567-e89b-12d3-a456-426614174000",
  524:       "method": "DELETE"
  525:     },
  526:     "sessions": {
- 527:       "href": "/api/v1/events/123e4567-e89b-12d3-a456-426614174000/sessions",
+ 527:       "href": "/api/events/123e4567-e89b-12d3-a456-426614174000/sessions",
  528:       "method": "GET"
  529:     }
  530:   }
@@ -87075,7 +87075,7 @@ README.md
  535: 
  536: **Request:**
  537: ```http
- 538: GET /api/v1/events?pageNumber=1&pageSize=10
+ 538: GET /api/events?pageNumber=1&pageSize=10
  539: Accept: application/hal+json
  540: ```
  541: 
@@ -87098,19 +87098,19 @@ README.md
  558:   },
  559:   "_links": {
  560:     "self": {
- 561:       "href": "/api/v1/events?pageNumber=1&pageSize=10",
+ 561:       "href": "/api/events?pageNumber=1&pageSize=10",
  562:       "method": "GET"
  563:     },
  564:     "first": {
- 565:       "href": "/api/v1/events?pageNumber=1&pageSize=10",
+ 565:       "href": "/api/events?pageNumber=1&pageSize=10",
  566:       "method": "GET"
  567:     },
  568:     "next": {
- 569:       "href": "/api/v1/events?pageNumber=2&pageSize=10",
+ 569:       "href": "/api/events?pageNumber=2&pageSize=10",
  570:       "method": "GET"
  571:     },
  572:     "last": {
- 573:       "href": "/api/v1/events?pageNumber=5&pageSize=10",
+ 573:       "href": "/api/events?pageNumber=5&pageSize=10",
  574:       "method": "GET"
  575:     }
  576:   },
@@ -87127,7 +87127,7 @@ README.md
  587: 
  588: **Request:**
  589: ```http
- 590: GET /api/v1/events/123e4567-e89b-12d3-a456-426614174000
+ 590: GET /api/events/123e4567-e89b-12d3-a456-426614174000
  591: Prefer: return=minimal
  592: ```
  593: 
@@ -87225,12 +87225,12 @@ README.md
  685: 
  686: **Generic Pattern:**
  687: ```
- 688: GET /api/v1/{entity}?pageNumber=1&pageSize=20
+ 688: GET /api/{entity}?pageNumber=1&pageSize=20
  689: ```
  690: 
  691: **Example (ISLAMU Event):**
  692: ```
- 693: GET /api/v1/event?pageNumber=1&pageSize=20
+ 693: GET /api/event?pageNumber=1&pageSize=20
  694: ```
  695: 
  696: | Parameter | Type | Default | Max | Description |
@@ -87274,7 +87274,7 @@ README.md
  734:   "title": "An error occurred while processing your request.",
  735:   "status": 500,
  736:   "detail": "Database connection timeout",
- 737:   "instance": "/api/v1/events"
+ 737:   "instance": "/api/events"
  738: }
  739: ```
  740: 
@@ -87488,40 +87488,40 @@ README.md
  948: 
  949: | Resource | Endpoint | Description |
  950: |----------|----------|-------------|
- 951: | Events | `/api/v1/event` | Event management |
- 952: | Event Sessions | `/api/v1/eventsession` | Session management |
- 953: | Organizations | `/api/v1/organization` | Organization management |
- 954: | Registrations | `/api/v1/eventregistration` | Event registration |
- 955: | Locations | `/api/v1/location` | Venue management |
- 956: | Categories | `/api/v1/category` | Event categories |
- 957: | Tags | `/api/v1/tag` | Event tags |
+ 951: | Events | `/api/event` | Event management |
+ 952: | Event Sessions | `/api/eventsession` | Session management |
+ 953: | Organizations | `/api/organization` | Organization management |
+ 954: | Registrations | `/api/eventregistration` | Event registration |
+ 955: | Locations | `/api/location` | Venue management |
+ 956: | Categories | `/api/category` | Event categories |
+ 957: | Tags | `/api/tag` | Event tags |
  958: 
  959: ### Lookup Tables (Read-Only)
  960: 
  961: | Resource | Endpoint | Description |
  962: |----------|----------|-------------|
- 963: | Event Types | `/api/v1/eventtype` | Conference, Webinar, etc. |
- 964: | Event Formats | `/api/v1/eventformat` | In-person, Online, Hybrid |
- 965: | Event Statuses | `/api/v1/eventstatus` | Draft, Published, etc. |
- 966: | Audience Ages | `/api/v1/audienceage` | Children, Youth, Adults |
- 967: | Audience Genders | `/api/v1/audiencegender` | Men, Women, Mixed |
- 968: | Madhabs | `/api/v1/madhab` | Islamic jurisprudence schools |
- 969: | Languages | `/api/v1/language` | Event languages |
- 970: | Registration Modes | `/api/v1/registrationmode` | Registration options |
+ 963: | Event Types | `/api/eventtype` | Conference, Webinar, etc. |
+ 964: | Event Formats | `/api/eventformat` | In-person, Online, Hybrid |
+ 965: | Event Statuses | `/api/eventstatus` | Draft, Published, etc. |
+ 966: | Audience Ages | `/api/audienceage` | Children, Youth, Adults |
+ 967: | Audience Genders | `/api/audiencegender` | Men, Women, Mixed |
+ 968: | Madhabs | `/api/madhab` | Islamic jurisprudence schools |
+ 969: | Languages | `/api/language` | Event languages |
+ 970: | Registration Modes | `/api/registrationmode` | Registration options |
  971: 
  972: ### User & Identity
  973: 
  974: | Resource | Endpoint | Description |
  975: |----------|----------|-------------|
- 976: | Users | `/api/v1/user` | User management |
- 977: | Actors | `/api/v1/actor` | Identity (user/org) actors |
- 978: | Organization Members | `/api/v1/organizationmember` | Org membership |
+ 976: | Users | `/api/user` | User management |
+ 977: | Actors | `/api/actor` | Identity (user/org) actors |
+ 978: | Organization Members | `/api/organizationmember` | Org membership |
  979: 
  980: ### Storage
  981: 
  982: | Resource | Endpoint | Description |
  983: |----------|----------|-------------|
- 984: | Storage Objects | `/api/v1/storageobject` | File/image storage |
+ 984: | Storage Objects | `/api/storageobject` | File/image storage |
  985: 
  986: ---
  987: 
@@ -87743,7 +87743,7 @@ README.md
 117:     participant Handler
 118:     participant Repository
 119: 
-120:     Client->>Controller: HTTP Request (e.g., POST /api/v1/{entity})
+120:     Client->>Controller: HTTP Request (e.g., POST /api/{entity})
 121:     Controller->>MediatR: `_mediator.Send(command)`
 122:     MediatR->>Handler: `Handle(command)`
 123:     Handler->>Repository: `_repository.Create(entity)`
@@ -87787,7 +87787,7 @@ README.md
 161: 
 162: -   The **BFF** (`{Project}.Blazor`) handles the OIDC authentication flow with your identity provider (e.g., Keycloak) and maintains the user session in a secure, `HttpOnly` cookie.
 163: -   The **WASM Client** (`{Project}.Blazor.Client`) is "dumb" regarding authentication; it simply sends the cookie with each request to the BFF.
-164: -   The **BFF** uses **YARP** as a reverse proxy. When a request for `/api/v1/...` arrives, it reads the access token from the session cookie and forwards the request to the `{Project}.API` backend with a `Authorization: Bearer <token>` header.
+164: -   The **BFF** uses **YARP** as a reverse proxy. When a request for `/api/...` arrives, it reads the access token from the session cookie and forwards the request to the `{Project}.API` backend with a `Authorization: Bearer <token>` header.
 165: -   This architecture ensures **no tokens are ever exposed to the browser**.
 166: 
 167: ### Implementation Example: ISLAMU Event
@@ -89329,7 +89329,7 @@ README.md
  79: $token = $response.access_token
  80: 
  81: # Test API endpoint with obtained token
- 82: Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}" `
+ 82: Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}" `
  83:     -Headers @{ Authorization = "Bearer $token" } `
  84:     -Verbose
  85: ```
@@ -89470,13 +89470,13 @@ README.md
  67: 
  68: ```powershell
  69: # ✅ GET endpoints should succeed without auth (AllowAnonymous)
- 70: Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}" -Method GET
+ 70: Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}" -Method GET
  71: 
  72: # Expected: 200 OK with {entity} list
  73: 
  74: # ❌ POST without auth should fail with 401
  75: try {
- 76:     Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}" `
+ 76:     Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}" `
  77:         -Method POST `
  78:         -ContentType "application/json" `
  79:         -Body '{"title": "Test {Entity}"}'
@@ -89496,7 +89496,7 @@ README.md
  93: ```powershell
  94: # ❌ Invalid token format
  95: try {
- 96:     Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}" `
+ 96:     Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}" `
  97:         -Method POST `
  98:         -Headers @{ Authorization = "Bearer invalid-token-here" } `
  99:         -ContentType "application/json" `
@@ -89519,7 +89519,7 @@ README.md
 116: $tokenUserA = "eyJhbGciOiJSUzI1..."
 117: 
 118: # User A creates an {entity}
-119: $createResponse = Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}" `
+119: $createResponse = Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}" `
 120:     -Method POST `
 121:     -Headers @{ Authorization = "Bearer $tokenUserA" } `
 122:     -ContentType "application/json" `
@@ -89541,7 +89541,7 @@ README.md
 138: 
 139: # ❌ User B tries to update User A's {entity} (should fail)
 140: try {
-141:     Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}/${entity}Id" `
+141:     Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}/${entity}Id" `
 142:         -Method PUT `
 143:         -Headers @{ Authorization = "Bearer $tokenUserB" } `
 144:         -ContentType "application/json" `
@@ -89560,7 +89560,7 @@ README.md
 157: 
 158: # ❌ User B tries to delete User A's {entity} (should fail)
 159: try {
-160:     Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}/${entity}Id" `
+160:     Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}/${entity}Id" `
 161:         -Method DELETE `
 162:         -Headers @{ Authorization = "Bearer $tokenUserB" }
 163: } catch {
@@ -89585,7 +89585,7 @@ README.md
 182: 
 183: # ❌ Regular user tries to verify {relatedEntity} (admin-only)
 184: try {
-185:     Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{relatedEntity}/{id}/verify" `
+185:     Invoke-RestMethod -Uri "https://localhost:7001/api/{relatedEntity}/{id}/verify" `
 186:         -Method POST `
 187:         -Headers @{ Authorization = "Bearer $tokenUser" }
 188: } catch {
@@ -89595,7 +89595,7 @@ README.md
 192: # Expected: 403 Forbidden
 193: 
 194: # ✅ Admin verifies {relatedEntity} (should succeed)
-195: Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{relatedEntity}/{id}/verify" `
+195: Invoke-RestMethod -Uri "https://localhost:7001/api/{relatedEntity}/{id}/verify" `
 196:     -Method POST `
 197:     -Headers @{ Authorization = "Bearer $tokenAdmin" }
 198: 
@@ -89613,7 +89613,7 @@ README.md
 210: 
 211: # ❌ Missing required fields
 212: try {
-213:     Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}" `
+213:     Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}" `
 214:         -Method POST `
 215:         -Headers @{ Authorization = "Bearer $token" } `
 216:         -ContentType "application/json" `
@@ -89627,7 +89627,7 @@ README.md
 224: 
 225: # ❌ Invalid FK references
 226: try {
-227:     Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}" `
+227:     Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}" `
 228:         -Method POST `
 229:         -Headers @{ Authorization = "Bearer $token" } `
 230:         -ContentType "application/json" `
@@ -89658,7 +89658,7 @@ README.md
 255: 
 256: # ❌ SQL injection in query parameter
 257: try {
-258:     Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}?search=' OR 1=1--" `
+258:     Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}?search=' OR 1=1--" `
 259:         -Headers @{ Authorization = "Bearer $token" }
 260: } catch {
 261:     # Should either return 400 or safe results (no database error)
@@ -89677,7 +89677,7 @@ README.md
 274: $token = "eyJhbGciOiJSUzI1..."
 275: 
 276: # Create {entity} with XSS payload
-277: $response = Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}" `
+277: $response = Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}" `
 278:     -Method POST `
 279:     -Headers @{ Authorization = "Bearer $token" } `
 280:     -ContentType "application/json" `
@@ -89704,13 +89704,13 @@ README.md
 301: 
 302: ```powershell
 303: # ❌ Request from unauthorized origin
-304: $response = Invoke-WebRequest -Uri "https://localhost:7001/api/v1/{entity}" `
+304: $response = Invoke-WebRequest -Uri "https://localhost:7001/api/{entity}" `
 305:     -Headers @{ Origin = "https://malicious-site.com" }
 306: 
 307: $response.Headers["Access-Control-Allow-Origin"]  # Should NOT be malicious-site.com
 308: 
 309: # ✅ Request from allowed origin
-310: $response = Invoke-WebRequest -Uri "https://localhost:7001/api/v1/{entity}" `
+310: $response = Invoke-WebRequest -Uri "https://localhost:7001/api/{entity}" `
 311:     -Headers @{ Origin = "https://localhost:7002" }
 312: 
 313: $response.Headers["Access-Control-Allow-Origin"]  # Should be https://localhost:7002
@@ -89726,7 +89726,7 @@ README.md
 323: $token = "eyJhbGciOiJSUzI1..."
 324: 
 325: # ✅ CREATE: Create new {entity} (returns BaseCommandResponse<Guid>)
-326: $createResponse = Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}" `
+326: $createResponse = Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}" `
 327:     -Method POST `
 328:     -Headers @{ Authorization = "Bearer $token" } `
 329:     -ContentType "application/json" `
@@ -89750,17 +89750,17 @@ README.md
 347: ${entity}Id = $createResponse.id
 348: 
 349: # ✅ READ: Get {entity} by ID (returns {Entity}Dto)
-350: ${entity} = Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}/${entity}Id"
+350: ${entity} = Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}/${entity}Id"
 351: 
 352: # Expected: 200 OK with {entity} details
 353: 
 354: # ✅ LIST: Get all {entities} (returns List<{Entity}ListDto>)
-355: ${entities} = Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}"
+355: ${entities} = Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}"
 356: 
 357: # Expected: 200 OK with list of {entities}
 358: 
 359: # ✅ UPDATE: Update {entity} (returns BaseCommandResponse<Guid>)
-360: $updateResponse = Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}/${entity}Id" `
+360: $updateResponse = Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}/${entity}Id" `
 361:     -Method PUT `
 362:     -Headers @{ Authorization = "Bearer $token" } `
 363:     -ContentType "application/json" `
@@ -89774,7 +89774,7 @@ README.md
 371: $updateResponse.success  # Should be $true
 372: 
 373: # ✅ DELETE: Delete {entity} (returns bool/NoContent)
-374: Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}/${entity}Id" `
+374: Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}/${entity}Id" `
 375:     -Method DELETE `
 376:     -Headers @{ Authorization = "Bearer $token" }
 377: 
@@ -89782,7 +89782,7 @@ README.md
 379: 
 380: # ❌ Verify deletion: Get deleted {entity}
 381: try {
-382:     Invoke-RestMethod -Uri "https://localhost:7001/api/v1/{entity}/${entity}Id"
+382:     Invoke-RestMethod -Uri "https://localhost:7001/api/{entity}/${entity}Id"
 383: } catch {
 384:     $_.Exception.Response.StatusCode  # Should be 404
 385: }
@@ -89942,7 +89942,7 @@ README.md
 539:     public async Task Get{Entities}_WithoutAuth_Returns200()
 540:     {
 541:         // Arrange & Act - GET is AllowAnonymous
-542:         var response = await _client.GetAsync("/api/v1/{entity}");
+542:         var response = await _client.GetAsync("/api/{entity}");
 543: 
 544:         // Assert - Should succeed (public read access)
 545:         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -89955,7 +89955,7 @@ README.md
 552:         var dto = new { title = "Test {Entity}" };
 553: 
 554:         // Act - POST requires auth
-555:         var response = await _client.PostAsJsonAsync("/api/v1/{entity}", dto);
+555:         var response = await _client.PostAsJsonAsync("/api/{entity}", dto);
 556: 
 557:         // Assert
 558:         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -89979,7 +89979,7 @@ README.md
 576:         };
 577: 
 578:         // Act
-579:         var response = await _client.PostAsJsonAsync("/api/v1/{entity}", dto);
+579:         var response = await _client.PostAsJsonAsync("/api/{entity}", dto);
 580: 
 581:         // Assert - Returns BaseCommandResponse<Guid>
 582:         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -89998,7 +89998,7 @@ README.md
 595:         var invalid{Entity} = new { description = "Missing title and required FKs" };
 596: 
 597:         // Act
-598:         var response = await _client.PostAsJsonAsync("/api/v1/{entity}", invalid{Entity});
+598:         var response = await _client.PostAsJsonAsync("/api/{entity}", invalid{Entity});
 599: 
 600:         // Assert - FluentValidation returns errors
 601:         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -90013,7 +90013,7 @@ README.md
 610: 
 611:         // User A creates {entity}
 612:         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokenUserA);
-613:         var createResponse = await _client.PostAsJsonAsync("/api/v1/{entity}", new
+613:         var createResponse = await _client.PostAsJsonAsync("/api/{entity}", new
 614:         {
 615:             title = "Test {Entity}",
 616:             {lookupEntity}Id = 1,
@@ -90029,14 +90029,14 @@ README.md
 626:         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokenUserB);
 627: 
 628:         // Act
-629:         var deleteResponse = await _client.DeleteAsync($"/api/v1/{entity}/{{{entity}Id}}");
+629:         var deleteResponse = await _client.DeleteAsync($"/api/{entity}/{{{entity}Id}}");
 630: 
 631:         // Assert
 632:         Assert.Equal(HttpStatusCode.Forbidden, deleteResponse.StatusCode);
 633: 
 634:         // Cleanup
 635:         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokenUserA);
-636:         await _client.DeleteAsync($"/api/v1/{entity}/{{{entity}Id}}");
+636:         await _client.DeleteAsync($"/api/{entity}/{{{entity}Id}}");
 637:     }
 638: 
 639:     private async Task<string> GetValidToken(string username = "testuser@example.com")
@@ -90053,7 +90053,7 @@ README.md
 650: Use this checklist for each endpoint:
 651: 
 652: ```markdown
-653: ## Endpoint: GET /api/v1/{entity}
+653: ## Endpoint: GET /api/{entity}
 654: 
 655: - [x] Unauthenticated request returns 200 (AllowAnonymous)
 656: - [ ] Returns List<{Entity}ListDto>
@@ -90062,7 +90062,7 @@ README.md
 659: - [ ] SQL injection attempts blocked
 660: - [ ] CORS headers correct
 661: 
-662: ## Endpoint: POST /api/v1/{entity}
+662: ## Endpoint: POST /api/{entity}
 663: 
 664: - [ ] Unauthenticated request returns 401
 665: - [ ] Valid data creates {entity} (returns BaseCommandResponse<Guid> with success=true)
@@ -90072,7 +90072,7 @@ README.md
 669: - [ ] SQL injection blocked
 670: - [ ] XSS payloads sanitized
 671: 
-672: ## Endpoint: PUT /api/v1/{entity}/{id}
+672: ## Endpoint: PUT /api/{entity}/{id}
 673: 
 674: - [ ] Unauthenticated request returns 401
 675: - [ ] Owner can update (returns BaseCommandResponse<Guid>)
@@ -90080,7 +90080,7 @@ README.md
 677: - [ ] Invalid ID returns 404
 678: - [ ] Validation errors return 400
 679: 
-680: ## Endpoint: DELETE /api/v1/{entity}/{id}
+680: ## Endpoint: DELETE /api/{entity}/{id}
 681: 
 682: - [ ] Unauthenticated request returns 401
 683: - [ ] Owner can delete (204)
@@ -90099,7 +90099,7 @@ README.md
 696: | **XSS** | `<script>alert('XSS')</script>` | HTML encoded |
 697: | **CSRF** | Cross-origin POST without token | CORS error or 401 |
 698: | **Mass Assignment** | Send extra fields in DTO | Extra fields ignored |
-699: | **Insecure Direct Object Reference** | Access `/api/v1/{entity}/{other-user-id}` | 403 Forbidden |
+699: | **Insecure Direct Object Reference** | Access `/api/{entity}/{other-user-id}` | 403 Forbidden |
 700: 
 701: ## Related Skills
 702: 
@@ -90118,7 +90118,7 @@ README.md
 715: ## Test Results: {Entity} API
 716: 
 717: ### Authentication Tests
-718: ✅ PASS: GET /api/v1/{entity} is public (AllowAnonymous)
+718: ✅ PASS: GET /api/{entity} is public (AllowAnonymous)
 719: ✅ PASS: POST without auth blocked (401)
 720: ✅ PASS: Invalid token rejected (401)
 721: ✅ PASS: Expired token rejected (401)
@@ -90140,7 +90140,7 @@ README.md
 737: ✅ PASS: CORS headers correct
 738: 
 739: ### Issues Found
-740: 1. **Critical**: Admin authorization not enforced on DELETE /api/v1/{entity}/{id}
+740: 1. **Critical**: Admin authorization not enforced on DELETE /api/{entity}/{id}
 741:    - Expected: 403 for non-admin users
 742:    - Actual: 200 (deletion succeeded)
 743:    - Fix: Add ownership/permission check in Delete{Entity}CommandHandler
@@ -94867,7 +94867,7 @@ README.md
 598: 
 599: 
 600:             using var httpClient = _httpClientFactory.CreateClient("BffClient");
-601:             var response = await httpClient.GetAsync($"/api/v1/StorageObject/presigned-url-by-key/{objectKey}?expirationMinutes=60");
+601:             var response = await httpClient.GetAsync($"/api/StorageObject/presigned-url-by-key/{objectKey}?expirationMinutes=60");
 602: 
 603:             if (response.IsSuccessStatusCode)
 604:             {
@@ -94896,7 +94896,7 @@ README.md
 627:         try
 628:         {
 629:             using var httpClient = _httpClientFactory.CreateClient("BffClient");
-630:             var response = await httpClient.GetAsync($"/api/v1/StorageObject/{storageObjectId}/presigned-url?expirationMinutes=60");
+630:             var response = await httpClient.GetAsync($"/api/StorageObject/{storageObjectId}/presigned-url?expirationMinutes=60");
 631: 
 632:             if (response.IsSuccessStatusCode)
 633:             {
@@ -101048,7 +101048,7 @@ README.md
  2074:                     var urlBuilder_ = new System.Text.StringBuilder();
  2075: 
  2076: 
- 2077:                     urlBuilder_.Append("api/v1/actor");
+ 2077:                     urlBuilder_.Append("api/actor");
  2078:                     urlBuilder_.Append('?');
  2079:                     if (pageNumber != null)
  2080:                     {
@@ -101142,7 +101142,7 @@ README.md
  2168:                     var urlBuilder_ = new System.Text.StringBuilder();
  2169: 
  2170: 
- 2171:                     urlBuilder_.Append("api/v1/actor");
+ 2171:                     urlBuilder_.Append("api/actor");
  2172: 
  2173:                     PrepareRequest(client_, request_, urlBuilder_);
  2174: 
@@ -101242,7 +101242,7 @@ README.md
  2268:                     var urlBuilder_ = new System.Text.StringBuilder();
  2269: 
  2270: 
- 2271:                     urlBuilder_.Append("api/v1/actor/");
+ 2271:                     urlBuilder_.Append("api/actor/");
  2272:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  2273: 
  2274:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -101340,7 +101340,7 @@ README.md
  2366:                     var urlBuilder_ = new System.Text.StringBuilder();
  2367: 
  2368: 
- 2369:                     urlBuilder_.Append("api/v1/actor/");
+ 2369:                     urlBuilder_.Append("api/actor/");
  2370:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  2371: 
  2372:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -101451,7 +101451,7 @@ README.md
  2477:                     var urlBuilder_ = new System.Text.StringBuilder();
  2478: 
  2479: 
- 2480:                     urlBuilder_.Append("api/v1/actor/");
+ 2480:                     urlBuilder_.Append("api/actor/");
  2481:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  2482: 
  2483:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -101557,7 +101557,7 @@ README.md
  2583:                     var urlBuilder_ = new System.Text.StringBuilder();
  2584: 
  2585: 
- 2586:                     urlBuilder_.Append("api/v1/actor/by-did/");
+ 2586:                     urlBuilder_.Append("api/actor/by-did/");
  2587:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(did, System.Globalization.CultureInfo.InvariantCulture)));
  2588: 
  2589:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -101648,7 +101648,7 @@ README.md
  2674:                     var urlBuilder_ = new System.Text.StringBuilder();
  2675: 
  2676: 
- 2677:                     urlBuilder_.Append("api/v1/actor/by-tenant/");
+ 2677:                     urlBuilder_.Append("api/actor/by-tenant/");
  2678:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(tenantId, System.Globalization.CultureInfo.InvariantCulture)));
  2679: 
  2680:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -101726,7 +101726,7 @@ README.md
  2752:                     var urlBuilder_ = new System.Text.StringBuilder();
  2753: 
  2754: 
- 2755:                     urlBuilder_.Append("api/v1/actorkeystore");
+ 2755:                     urlBuilder_.Append("api/actorkeystore");
  2756: 
  2757:                     PrepareRequest(client_, request_, urlBuilder_);
  2758: 
@@ -101810,7 +101810,7 @@ README.md
  2836:                     var urlBuilder_ = new System.Text.StringBuilder();
  2837: 
  2838: 
- 2839:                     urlBuilder_.Append("api/v1/actorkeystore");
+ 2839:                     urlBuilder_.Append("api/actorkeystore");
  2840: 
  2841:                     PrepareRequest(client_, request_, urlBuilder_);
  2842: 
@@ -101900,7 +101900,7 @@ README.md
  2926:                     var urlBuilder_ = new System.Text.StringBuilder();
  2927: 
  2928: 
- 2929:                     urlBuilder_.Append("api/v1/actorkeystore/");
+ 2929:                     urlBuilder_.Append("api/actorkeystore/");
  2930:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  2931: 
  2932:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -101998,7 +101998,7 @@ README.md
  3024:                     var urlBuilder_ = new System.Text.StringBuilder();
  3025: 
  3026: 
- 3027:                     urlBuilder_.Append("api/v1/actorkeystore/");
+ 3027:                     urlBuilder_.Append("api/actorkeystore/");
  3028:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  3029: 
  3030:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -102098,7 +102098,7 @@ README.md
  3124:                     var urlBuilder_ = new System.Text.StringBuilder();
  3125: 
  3126: 
- 3127:                     urlBuilder_.Append("api/v1/actorkeystore/");
+ 3127:                     urlBuilder_.Append("api/actorkeystore/");
  3128:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  3129: 
  3130:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -102181,7 +102181,7 @@ README.md
  3207:                     var urlBuilder_ = new System.Text.StringBuilder();
  3208: 
  3209: 
- 3210:                     urlBuilder_.Append("api/v1/actortype");
+ 3210:                     urlBuilder_.Append("api/actortype");
  3211: 
  3212:                     PrepareRequest(client_, request_, urlBuilder_);
  3213: 
@@ -102261,7 +102261,7 @@ README.md
  3287:                     var urlBuilder_ = new System.Text.StringBuilder();
  3288: 
  3289: 
- 3290:                     urlBuilder_.Append("api/v1/actortype/");
+ 3290:                     urlBuilder_.Append("api/actortype/");
  3291:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  3292: 
  3293:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -102349,7 +102349,7 @@ README.md
  3375:                     var urlBuilder_ = new System.Text.StringBuilder();
  3376: 
  3377: 
- 3378:                     urlBuilder_.Append("api/v1/approvalstatus");
+ 3378:                     urlBuilder_.Append("api/approvalstatus");
  3379: 
  3380:                     PrepareRequest(client_, request_, urlBuilder_);
  3381: 
@@ -102426,7 +102426,7 @@ README.md
  3452:                     var urlBuilder_ = new System.Text.StringBuilder();
  3453: 
  3454: 
- 3455:                     urlBuilder_.Append("api/v1/approvalstatus");
+ 3455:                     urlBuilder_.Append("api/approvalstatus");
  3456: 
  3457:                     PrepareRequest(client_, request_, urlBuilder_);
  3458: 
@@ -102495,7 +102495,7 @@ README.md
  3521:                     var urlBuilder_ = new System.Text.StringBuilder();
  3522: 
  3523: 
- 3524:                     urlBuilder_.Append("api/v1/approvalstatus/");
+ 3524:                     urlBuilder_.Append("api/approvalstatus/");
  3525:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  3526: 
  3527:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -102576,7 +102576,7 @@ README.md
  3602:                     var urlBuilder_ = new System.Text.StringBuilder();
  3603: 
  3604: 
- 3605:                     urlBuilder_.Append("api/v1/approvalstatus/");
+ 3605:                     urlBuilder_.Append("api/approvalstatus/");
  3606:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  3607: 
  3608:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -102645,7 +102645,7 @@ README.md
  3671:                     var urlBuilder_ = new System.Text.StringBuilder();
  3672: 
  3673: 
- 3674:                     urlBuilder_.Append("api/v1/approvalstatus/");
+ 3674:                     urlBuilder_.Append("api/approvalstatus/");
  3675:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  3676: 
  3677:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -102712,7 +102712,7 @@ README.md
  3738:                     var urlBuilder_ = new System.Text.StringBuilder();
  3739: 
  3740: 
- 3741:                     urlBuilder_.Append("api/v1/atprotorecord");
+ 3741:                     urlBuilder_.Append("api/atprotorecord");
  3742: 
  3743:                     PrepareRequest(client_, request_, urlBuilder_);
  3744: 
@@ -102790,7 +102790,7 @@ README.md
  3816:                     var urlBuilder_ = new System.Text.StringBuilder();
  3817: 
  3818: 
- 3819:                     urlBuilder_.Append("api/v1/atprotorecord");
+ 3819:                     urlBuilder_.Append("api/atprotorecord");
  3820: 
  3821:                     PrepareRequest(client_, request_, urlBuilder_);
  3822: 
@@ -102864,7 +102864,7 @@ README.md
  3890:                     var urlBuilder_ = new System.Text.StringBuilder();
  3891: 
  3892: 
- 3893:                     urlBuilder_.Append("api/v1/atprotorecord/");
+ 3893:                     urlBuilder_.Append("api/atprotorecord/");
  3894:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  3895: 
  3896:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -102946,7 +102946,7 @@ README.md
  3972:                     var urlBuilder_ = new System.Text.StringBuilder();
  3973: 
  3974: 
- 3975:                     urlBuilder_.Append("api/v1/atprotorecord/");
+ 3975:                     urlBuilder_.Append("api/atprotorecord/");
  3976:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  3977: 
  3978:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -103020,7 +103020,7 @@ README.md
  4046:                     var urlBuilder_ = new System.Text.StringBuilder();
  4047: 
  4048: 
- 4049:                     urlBuilder_.Append("api/v1/atprotorecord/");
+ 4049:                     urlBuilder_.Append("api/atprotorecord/");
  4050:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  4051: 
  4052:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -103093,7 +103093,7 @@ README.md
  4119:                     var urlBuilder_ = new System.Text.StringBuilder();
  4120: 
  4121: 
- 4122:                     urlBuilder_.Append("api/v1/audienceage");
+ 4122:                     urlBuilder_.Append("api/audienceage");
  4123: 
  4124:                     PrepareRequest(client_, request_, urlBuilder_);
  4125: 
@@ -103173,7 +103173,7 @@ README.md
  4199:                     var urlBuilder_ = new System.Text.StringBuilder();
  4200: 
  4201: 
- 4202:                     urlBuilder_.Append("api/v1/audienceage/");
+ 4202:                     urlBuilder_.Append("api/audienceage/");
  4203:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  4204: 
  4205:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -103261,7 +103261,7 @@ README.md
  4287:                     var urlBuilder_ = new System.Text.StringBuilder();
  4288: 
  4289: 
- 4290:                     urlBuilder_.Append("api/v1/audiencegender");
+ 4290:                     urlBuilder_.Append("api/audiencegender");
  4291: 
  4292:                     PrepareRequest(client_, request_, urlBuilder_);
  4293: 
@@ -103341,7 +103341,7 @@ README.md
  4367:                     var urlBuilder_ = new System.Text.StringBuilder();
  4368: 
  4369: 
- 4370:                     urlBuilder_.Append("api/v1/audiencegender/");
+ 4370:                     urlBuilder_.Append("api/audiencegender/");
  4371:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  4372: 
  4373:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -103429,7 +103429,7 @@ README.md
  4455:                     var urlBuilder_ = new System.Text.StringBuilder();
  4456: 
  4457: 
- 4458:                     urlBuilder_.Append("api/v1/category");
+ 4458:                     urlBuilder_.Append("api/category");
  4459:                     urlBuilder_.Append('?');
  4460:                     if (pageNumber != null)
  4461:                     {
@@ -103523,7 +103523,7 @@ README.md
  4549:                     var urlBuilder_ = new System.Text.StringBuilder();
  4550: 
  4551: 
- 4552:                     urlBuilder_.Append("api/v1/category");
+ 4552:                     urlBuilder_.Append("api/category");
  4553: 
  4554:                     PrepareRequest(client_, request_, urlBuilder_);
  4555: 
@@ -103623,7 +103623,7 @@ README.md
  4649:                     var urlBuilder_ = new System.Text.StringBuilder();
  4650: 
  4651: 
- 4652:                     urlBuilder_.Append("api/v1/category/");
+ 4652:                     urlBuilder_.Append("api/category/");
  4653:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  4654: 
  4655:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -103721,7 +103721,7 @@ README.md
  4747:                     var urlBuilder_ = new System.Text.StringBuilder();
  4748: 
  4749: 
- 4750:                     urlBuilder_.Append("api/v1/category/");
+ 4750:                     urlBuilder_.Append("api/category/");
  4751:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  4752: 
  4753:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -103832,7 +103832,7 @@ README.md
  4858:                     var urlBuilder_ = new System.Text.StringBuilder();
  4859: 
  4860: 
- 4861:                     urlBuilder_.Append("api/v1/category/");
+ 4861:                     urlBuilder_.Append("api/category/");
  4862:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  4863: 
  4864:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -103925,7 +103925,7 @@ README.md
  4951:                     var urlBuilder_ = new System.Text.StringBuilder();
  4952: 
  4953: 
- 4954:                     urlBuilder_.Append("api/v1/didcustodytype");
+ 4954:                     urlBuilder_.Append("api/didcustodytype");
  4955: 
  4956:                     PrepareRequest(client_, request_, urlBuilder_);
  4957: 
@@ -104005,7 +104005,7 @@ README.md
  5031:                     var urlBuilder_ = new System.Text.StringBuilder();
  5032: 
  5033: 
- 5034:                     urlBuilder_.Append("api/v1/didcustodytype/");
+ 5034:                     urlBuilder_.Append("api/didcustodytype/");
  5035:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  5036: 
  5037:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -104093,7 +104093,7 @@ README.md
  5119:                     var urlBuilder_ = new System.Text.StringBuilder();
  5120: 
  5121: 
- 5122:                     urlBuilder_.Append("api/v1/event");
+ 5122:                     urlBuilder_.Append("api/event");
  5123:                     urlBuilder_.Append('?');
  5124:                     if (pageNumber != null)
  5125:                     {
@@ -104303,7 +104303,7 @@ README.md
  5329:                     var urlBuilder_ = new System.Text.StringBuilder();
  5330: 
  5331: 
- 5332:                     urlBuilder_.Append("api/v1/event");
+ 5332:                     urlBuilder_.Append("api/event");
  5333: 
  5334:                     PrepareRequest(client_, request_, urlBuilder_);
  5335: 
@@ -104400,7 +104400,7 @@ README.md
  5426:                     var urlBuilder_ = new System.Text.StringBuilder();
  5427: 
  5428: 
- 5429:                     urlBuilder_.Append("api/v1/event/my");
+ 5429:                     urlBuilder_.Append("api/event/my");
  5430:                     urlBuilder_.Append('?');
  5431:                     if (pageNumber != null)
  5432:                     {
@@ -104500,7 +104500,7 @@ README.md
  5526:                     var urlBuilder_ = new System.Text.StringBuilder();
  5527: 
  5528: 
- 5529:                     urlBuilder_.Append("api/v1/event/");
+ 5529:                     urlBuilder_.Append("api/event/");
  5530:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  5531: 
  5532:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -104598,7 +104598,7 @@ README.md
  5624:                     var urlBuilder_ = new System.Text.StringBuilder();
  5625: 
  5626: 
- 5627:                     urlBuilder_.Append("api/v1/event/");
+ 5627:                     urlBuilder_.Append("api/event/");
  5628:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  5629: 
  5630:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -104709,7 +104709,7 @@ README.md
  5735:                     var urlBuilder_ = new System.Text.StringBuilder();
  5736: 
  5737: 
- 5738:                     urlBuilder_.Append("api/v1/event/");
+ 5738:                     urlBuilder_.Append("api/event/");
  5739:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  5740: 
  5741:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -104819,7 +104819,7 @@ README.md
  5845:                     var urlBuilder_ = new System.Text.StringBuilder();
  5846: 
  5847: 
- 5848:                     urlBuilder_.Append("api/v1/event/with-sessions");
+ 5848:                     urlBuilder_.Append("api/event/with-sessions");
  5849: 
  5850:                     PrepareRequest(client_, request_, urlBuilder_);
  5851: 
@@ -104919,7 +104919,7 @@ README.md
  5945:                     var urlBuilder_ = new System.Text.StringBuilder();
  5946: 
  5947: 
- 5948:                     urlBuilder_.Append("api/v1/event/");
+ 5948:                     urlBuilder_.Append("api/event/");
  5949:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  5950:                     urlBuilder_.Append("/aspects/islamic");
  5951: 
@@ -105018,7 +105018,7 @@ README.md
  6044:                     var urlBuilder_ = new System.Text.StringBuilder();
  6045: 
  6046: 
- 6047:                     urlBuilder_.Append("api/v1/event/");
+ 6047:                     urlBuilder_.Append("api/event/");
  6048:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  6049:                     urlBuilder_.Append("/aspects/islamic");
  6050: 
@@ -105130,7 +105130,7 @@ README.md
  6156:                     var urlBuilder_ = new System.Text.StringBuilder();
  6157: 
  6158: 
- 6159:                     urlBuilder_.Append("api/v1/event/");
+ 6159:                     urlBuilder_.Append("api/event/");
  6160:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  6161:                     urlBuilder_.Append("/aspects/islamic");
  6162: 
@@ -105227,7 +105227,7 @@ README.md
  6253:                     var urlBuilder_ = new System.Text.StringBuilder();
  6254: 
  6255: 
- 6256:                     urlBuilder_.Append("api/v1/event/");
+ 6256:                     urlBuilder_.Append("api/event/");
  6257:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  6258:                     urlBuilder_.Append("/aspects/tech");
  6259: 
@@ -105326,7 +105326,7 @@ README.md
  6352:                     var urlBuilder_ = new System.Text.StringBuilder();
  6353: 
  6354: 
- 6355:                     urlBuilder_.Append("api/v1/event/");
+ 6355:                     urlBuilder_.Append("api/event/");
  6356:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  6357:                     urlBuilder_.Append("/aspects/tech");
  6358: 
@@ -105438,7 +105438,7 @@ README.md
  6464:                     var urlBuilder_ = new System.Text.StringBuilder();
  6465: 
  6466: 
- 6467:                     urlBuilder_.Append("api/v1/event/");
+ 6467:                     urlBuilder_.Append("api/event/");
  6468:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  6469:                     urlBuilder_.Append("/aspects/tech");
  6470: 
@@ -105532,7 +105532,7 @@ README.md
  6558:                     var urlBuilder_ = new System.Text.StringBuilder();
  6559: 
  6560: 
- 6561:                     urlBuilder_.Append("api/v1/eventformat");
+ 6561:                     urlBuilder_.Append("api/eventformat");
  6562: 
  6563:                     PrepareRequest(client_, request_, urlBuilder_);
  6564: 
@@ -105612,7 +105612,7 @@ README.md
  6638:                     var urlBuilder_ = new System.Text.StringBuilder();
  6639: 
  6640: 
- 6641:                     urlBuilder_.Append("api/v1/eventformat/");
+ 6641:                     urlBuilder_.Append("api/eventformat/");
  6642:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  6643: 
  6644:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -105700,7 +105700,7 @@ README.md
  6726:                     var urlBuilder_ = new System.Text.StringBuilder();
  6727: 
  6728: 
- 6729:                     urlBuilder_.Append("api/v1/eventregistration");
+ 6729:                     urlBuilder_.Append("api/eventregistration");
  6730:                     urlBuilder_.Append('?');
  6731:                     if (pageNumber != null)
  6732:                     {
@@ -105794,7 +105794,7 @@ README.md
  6820:                     var urlBuilder_ = new System.Text.StringBuilder();
  6821: 
  6822: 
- 6823:                     urlBuilder_.Append("api/v1/eventregistration");
+ 6823:                     urlBuilder_.Append("api/eventregistration");
  6824: 
  6825:                     PrepareRequest(client_, request_, urlBuilder_);
  6826: 
@@ -105894,7 +105894,7 @@ README.md
  6920:                     var urlBuilder_ = new System.Text.StringBuilder();
  6921: 
  6922: 
- 6923:                     urlBuilder_.Append("api/v1/eventregistration/");
+ 6923:                     urlBuilder_.Append("api/eventregistration/");
  6924:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  6925: 
  6926:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -105992,7 +105992,7 @@ README.md
  7018:                     var urlBuilder_ = new System.Text.StringBuilder();
  7019: 
  7020: 
- 7021:                     urlBuilder_.Append("api/v1/eventregistration/");
+ 7021:                     urlBuilder_.Append("api/eventregistration/");
  7022:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  7023: 
  7024:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -106102,7 +106102,7 @@ README.md
  7128:                     var urlBuilder_ = new System.Text.StringBuilder();
  7129: 
  7130: 
- 7131:                     urlBuilder_.Append("api/v1/eventregistration/");
+ 7131:                     urlBuilder_.Append("api/eventregistration/");
  7132:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  7133: 
  7134:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -106198,7 +106198,7 @@ README.md
  7224:                     var urlBuilder_ = new System.Text.StringBuilder();
  7225: 
  7226: 
- 7227:                     urlBuilder_.Append("api/v1/eventregistration/by-session/");
+ 7227:                     urlBuilder_.Append("api/eventregistration/by-session/");
  7228:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventSessionId, System.Globalization.CultureInfo.InvariantCulture)));
  7229: 
  7230:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -106279,7 +106279,7 @@ README.md
  7305:                     var urlBuilder_ = new System.Text.StringBuilder();
  7306: 
  7307: 
- 7308:                     urlBuilder_.Append("api/v1/eventregistration/by-user/");
+ 7308:                     urlBuilder_.Append("api/eventregistration/by-user/");
  7309:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(userId, System.Globalization.CultureInfo.InvariantCulture)));
  7310: 
  7311:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -106357,7 +106357,7 @@ README.md
  7383:                     var urlBuilder_ = new System.Text.StringBuilder();
  7384: 
  7385: 
- 7386:                     urlBuilder_.Append("api/v1/eventsessionagendaitem");
+ 7386:                     urlBuilder_.Append("api/eventsessionagendaitem");
  7387:                     urlBuilder_.Append('?');
  7388:                     if (pageNumber != null)
  7389:                     {
@@ -106451,7 +106451,7 @@ README.md
  7477:                     var urlBuilder_ = new System.Text.StringBuilder();
  7478: 
  7479: 
- 7480:                     urlBuilder_.Append("api/v1/eventsessionagendaitem");
+ 7480:                     urlBuilder_.Append("api/eventsessionagendaitem");
  7481: 
  7482:                     PrepareRequest(client_, request_, urlBuilder_);
  7483: 
@@ -106531,7 +106531,7 @@ README.md
  7557:                     var urlBuilder_ = new System.Text.StringBuilder();
  7558: 
  7559: 
- 7560:                     urlBuilder_.Append("api/v1/eventsessionagendaitem/");
+ 7560:                     urlBuilder_.Append("api/eventsessionagendaitem/");
  7561:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  7562: 
  7563:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -106619,7 +106619,7 @@ README.md
  7645:                     var urlBuilder_ = new System.Text.StringBuilder();
  7646: 
  7647: 
- 7648:                     urlBuilder_.Append("api/v1/eventsessionagendaitem/");
+ 7648:                     urlBuilder_.Append("api/eventsessionagendaitem/");
  7649:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  7650: 
  7651:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -106699,7 +106699,7 @@ README.md
  7725:                     var urlBuilder_ = new System.Text.StringBuilder();
  7726: 
  7727: 
- 7728:                     urlBuilder_.Append("api/v1/eventsessionagendaitem/");
+ 7728:                     urlBuilder_.Append("api/eventsessionagendaitem/");
  7729:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  7730: 
  7731:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -106775,7 +106775,7 @@ README.md
  7801:                     var urlBuilder_ = new System.Text.StringBuilder();
  7802: 
  7803: 
- 7804:                     urlBuilder_.Append("api/v1/eventsessionagendaitem/by-session/");
+ 7804:                     urlBuilder_.Append("api/eventsessionagendaitem/by-session/");
  7805:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(sessionId, System.Globalization.CultureInfo.InvariantCulture)));
  7806: 
  7807:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -106853,7 +106853,7 @@ README.md
  7879:                     var urlBuilder_ = new System.Text.StringBuilder();
  7880: 
  7881: 
- 7882:                     urlBuilder_.Append("api/v1/eventsession");
+ 7882:                     urlBuilder_.Append("api/eventsession");
  7883:                     urlBuilder_.Append('?');
  7884:                     if (pageNumber != null)
  7885:                     {
@@ -106947,7 +106947,7 @@ README.md
  7973:                     var urlBuilder_ = new System.Text.StringBuilder();
  7974: 
  7975: 
- 7976:                     urlBuilder_.Append("api/v1/eventsession");
+ 7976:                     urlBuilder_.Append("api/eventsession");
  7977: 
  7978:                     PrepareRequest(client_, request_, urlBuilder_);
  7979: 
@@ -107047,7 +107047,7 @@ README.md
  8073:                     var urlBuilder_ = new System.Text.StringBuilder();
  8074: 
  8075: 
- 8076:                     urlBuilder_.Append("api/v1/eventsession/");
+ 8076:                     urlBuilder_.Append("api/eventsession/");
  8077:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  8078: 
  8079:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -107145,7 +107145,7 @@ README.md
  8171:                     var urlBuilder_ = new System.Text.StringBuilder();
  8172: 
  8173: 
- 8174:                     urlBuilder_.Append("api/v1/eventsession/");
+ 8174:                     urlBuilder_.Append("api/eventsession/");
  8175:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  8176: 
  8177:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -107256,7 +107256,7 @@ README.md
  8282:                     var urlBuilder_ = new System.Text.StringBuilder();
  8283: 
  8284: 
- 8285:                     urlBuilder_.Append("api/v1/eventsession/");
+ 8285:                     urlBuilder_.Append("api/eventsession/");
  8286:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  8287: 
  8288:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -107352,7 +107352,7 @@ README.md
  8378:                     var urlBuilder_ = new System.Text.StringBuilder();
  8379: 
  8380: 
- 8381:                     urlBuilder_.Append("api/v1/eventsession/by-event/");
+ 8381:                     urlBuilder_.Append("api/eventsession/by-event/");
  8382:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
  8383: 
  8384:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -107430,7 +107430,7 @@ README.md
  8456:                     var urlBuilder_ = new System.Text.StringBuilder();
  8457: 
  8458: 
- 8459:                     urlBuilder_.Append("api/v1/eventstatus");
+ 8459:                     urlBuilder_.Append("api/eventstatus");
  8460: 
  8461:                     PrepareRequest(client_, request_, urlBuilder_);
  8462: 
@@ -107510,7 +107510,7 @@ README.md
  8536:                     var urlBuilder_ = new System.Text.StringBuilder();
  8537: 
  8538: 
- 8539:                     urlBuilder_.Append("api/v1/eventstatus/");
+ 8539:                     urlBuilder_.Append("api/eventstatus/");
  8540:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  8541: 
  8542:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -107598,7 +107598,7 @@ README.md
  8624:                     var urlBuilder_ = new System.Text.StringBuilder();
  8625: 
  8626: 
- 8627:                     urlBuilder_.Append("api/v1/eventtype");
+ 8627:                     urlBuilder_.Append("api/eventtype");
  8628: 
  8629:                     PrepareRequest(client_, request_, urlBuilder_);
  8630: 
@@ -107675,7 +107675,7 @@ README.md
  8701:                     var urlBuilder_ = new System.Text.StringBuilder();
  8702: 
  8703: 
- 8704:                     urlBuilder_.Append("api/v1/eventtype");
+ 8704:                     urlBuilder_.Append("api/eventtype");
  8705: 
  8706:                     PrepareRequest(client_, request_, urlBuilder_);
  8707: 
@@ -107744,7 +107744,7 @@ README.md
  8770:                     var urlBuilder_ = new System.Text.StringBuilder();
  8771: 
  8772: 
- 8773:                     urlBuilder_.Append("api/v1/eventtype/");
+ 8773:                     urlBuilder_.Append("api/eventtype/");
  8774:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  8775: 
  8776:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -107825,7 +107825,7 @@ README.md
  8851:                     var urlBuilder_ = new System.Text.StringBuilder();
  8852: 
  8853: 
- 8854:                     urlBuilder_.Append("api/v1/eventtype/");
+ 8854:                     urlBuilder_.Append("api/eventtype/");
  8855:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  8856: 
  8857:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -107894,7 +107894,7 @@ README.md
  8920:                     var urlBuilder_ = new System.Text.StringBuilder();
  8921: 
  8922: 
- 8923:                     urlBuilder_.Append("api/v1/eventtype/");
+ 8923:                     urlBuilder_.Append("api/eventtype/");
  8924:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  8925: 
  8926:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -107967,7 +107967,7 @@ README.md
  8993:                     var urlBuilder_ = new System.Text.StringBuilder();
  8994: 
  8995: 
- 8996:                     urlBuilder_.Append("api/v1/filetype");
+ 8996:                     urlBuilder_.Append("api/filetype");
  8997: 
  8998:                     PrepareRequest(client_, request_, urlBuilder_);
  8999: 
@@ -108047,7 +108047,7 @@ README.md
  9073:                     var urlBuilder_ = new System.Text.StringBuilder();
  9074: 
  9075: 
- 9076:                     urlBuilder_.Append("api/v1/filetype/");
+ 9076:                     urlBuilder_.Append("api/filetype/");
  9077:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
  9078: 
  9079:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -108129,7 +108129,7 @@ README.md
  9155:                     var urlBuilder_ = new System.Text.StringBuilder();
  9156: 
  9157: 
- 9158:                     urlBuilder_.Append("api/v1/indexeddid");
+ 9158:                     urlBuilder_.Append("api/indexeddid");
  9159: 
  9160:                     PrepareRequest(client_, request_, urlBuilder_);
  9161: 
@@ -108207,7 +108207,7 @@ README.md
  9233:                     var urlBuilder_ = new System.Text.StringBuilder();
  9234: 
  9235: 
- 9236:                     urlBuilder_.Append("api/v1/indexeddid");
+ 9236:                     urlBuilder_.Append("api/indexeddid");
  9237: 
  9238:                     PrepareRequest(client_, request_, urlBuilder_);
  9239: 
@@ -108281,7 +108281,7 @@ README.md
  9307:                     var urlBuilder_ = new System.Text.StringBuilder();
  9308: 
  9309: 
- 9310:                     urlBuilder_.Append("api/v1/indexeddid/");
+ 9310:                     urlBuilder_.Append("api/indexeddid/");
  9311:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(did, System.Globalization.CultureInfo.InvariantCulture)));
  9312: 
  9313:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -108363,7 +108363,7 @@ README.md
  9389:                     var urlBuilder_ = new System.Text.StringBuilder();
  9390: 
  9391: 
- 9392:                     urlBuilder_.Append("api/v1/indexeddid/");
+ 9392:                     urlBuilder_.Append("api/indexeddid/");
  9393:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(did, System.Globalization.CultureInfo.InvariantCulture)));
  9394: 
  9395:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -108438,7 +108438,7 @@ README.md
  9464:                     var urlBuilder_ = new System.Text.StringBuilder();
  9465: 
  9466: 
- 9467:                     urlBuilder_.Append("api/v1/indexeddid/");
+ 9467:                     urlBuilder_.Append("api/indexeddid/");
  9468:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(did, System.Globalization.CultureInfo.InvariantCulture)));
  9469: 
  9470:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -108511,7 +108511,7 @@ README.md
  9537:                     var urlBuilder_ = new System.Text.StringBuilder();
  9538: 
  9539: 
- 9540:                     urlBuilder_.Append("api/v1/instanceonboarding/status");
+ 9540:                     urlBuilder_.Append("api/instanceonboarding/status");
  9541: 
  9542:                     PrepareRequest(client_, request_, urlBuilder_);
  9543: 
@@ -108588,7 +108588,7 @@ README.md
  9614:                     var urlBuilder_ = new System.Text.StringBuilder();
  9615: 
  9616: 
- 9617:                     urlBuilder_.Append("api/v1/instanceonboarding/settings");
+ 9617:                     urlBuilder_.Append("api/instanceonboarding/settings");
  9618: 
  9619:                     PrepareRequest(client_, request_, urlBuilder_);
  9620: 
@@ -108682,7 +108682,7 @@ README.md
  9708:                     var urlBuilder_ = new System.Text.StringBuilder();
  9709: 
  9710: 
- 9711:                     urlBuilder_.Append("api/v1/instanceonboarding/settings");
+ 9711:                     urlBuilder_.Append("api/instanceonboarding/settings");
  9712: 
  9713:                     PrepareRequest(client_, request_, urlBuilder_);
  9714: 
@@ -108786,7 +108786,7 @@ README.md
  9812:                     var urlBuilder_ = new System.Text.StringBuilder();
  9813: 
  9814: 
- 9815:                     urlBuilder_.Append("api/v1/instanceonboarding/complete");
+ 9815:                     urlBuilder_.Append("api/instanceonboarding/complete");
  9816: 
  9817:                     PrepareRequest(client_, request_, urlBuilder_);
  9818: 
@@ -108873,7 +108873,7 @@ README.md
  9899:                     var urlBuilder_ = new System.Text.StringBuilder();
  9900: 
  9901: 
- 9902:                     urlBuilder_.Append("api/v1/instanceonboarding/storage-settings");
+ 9902:                     urlBuilder_.Append("api/instanceonboarding/storage-settings");
  9903: 
  9904:                     PrepareRequest(client_, request_, urlBuilder_);
  9905: 
@@ -108967,7 +108967,7 @@ README.md
  9993:                     var urlBuilder_ = new System.Text.StringBuilder();
  9994: 
  9995: 
- 9996:                     urlBuilder_.Append("api/v1/instanceonboarding/storage-settings");
+ 9996:                     urlBuilder_.Append("api/instanceonboarding/storage-settings");
  9997: 
  9998:                     PrepareRequest(client_, request_, urlBuilder_);
  9999: 
@@ -109065,7 +109065,7 @@ README.md
 10091:                     var urlBuilder_ = new System.Text.StringBuilder();
 10092: 
 10093: 
-10094:                     urlBuilder_.Append("api/v1/instanceonboarding/test-storage");
+10094:                     urlBuilder_.Append("api/instanceonboarding/test-storage");
 10095: 
 10096:                     PrepareRequest(client_, request_, urlBuilder_);
 10097: 
@@ -109152,7 +109152,7 @@ README.md
 10178:                     var urlBuilder_ = new System.Text.StringBuilder();
 10179: 
 10180: 
-10181:                     urlBuilder_.Append("api/v1/language");
+10181:                     urlBuilder_.Append("api/language");
 10182: 
 10183:                     PrepareRequest(client_, request_, urlBuilder_);
 10184: 
@@ -109232,7 +109232,7 @@ README.md
 10258:                     var urlBuilder_ = new System.Text.StringBuilder();
 10259: 
 10260: 
-10261:                     urlBuilder_.Append("api/v1/language/");
+10261:                     urlBuilder_.Append("api/language/");
 10262:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 10263: 
 10264:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -109310,7 +109310,7 @@ README.md
 10336:                     var urlBuilder_ = new System.Text.StringBuilder();
 10337: 
 10338: 
-10339:                     urlBuilder_.Append("api/v1/location");
+10339:                     urlBuilder_.Append("api/location");
 10340:                     urlBuilder_.Append('?');
 10341:                     if (pageNumber != null)
 10342:                     {
@@ -109404,7 +109404,7 @@ README.md
 10430:                     var urlBuilder_ = new System.Text.StringBuilder();
 10431: 
 10432: 
-10433:                     urlBuilder_.Append("api/v1/location");
+10433:                     urlBuilder_.Append("api/location");
 10434: 
 10435:                     PrepareRequest(client_, request_, urlBuilder_);
 10436: 
@@ -109504,7 +109504,7 @@ README.md
 10530:                     var urlBuilder_ = new System.Text.StringBuilder();
 10531: 
 10532: 
-10533:                     urlBuilder_.Append("api/v1/location/");
+10533:                     urlBuilder_.Append("api/location/");
 10534:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 10535: 
 10536:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -109602,7 +109602,7 @@ README.md
 10628:                     var urlBuilder_ = new System.Text.StringBuilder();
 10629: 
 10630: 
-10631:                     urlBuilder_.Append("api/v1/location/");
+10631:                     urlBuilder_.Append("api/location/");
 10632:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 10633: 
 10634:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -109713,7 +109713,7 @@ README.md
 10739:                     var urlBuilder_ = new System.Text.StringBuilder();
 10740: 
 10741: 
-10742:                     urlBuilder_.Append("api/v1/location/");
+10742:                     urlBuilder_.Append("api/location/");
 10743:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 10744: 
 10745:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -109809,7 +109809,7 @@ README.md
 10835:                     var urlBuilder_ = new System.Text.StringBuilder();
 10836: 
 10837: 
-10838:                     urlBuilder_.Append("api/v1/location/by-city/");
+10838:                     urlBuilder_.Append("api/location/by-city/");
 10839:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(city, System.Globalization.CultureInfo.InvariantCulture)));
 10840: 
 10841:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -109890,7 +109890,7 @@ README.md
 10916:                     var urlBuilder_ = new System.Text.StringBuilder();
 10917: 
 10918: 
-10919:                     urlBuilder_.Append("api/v1/location/by-country/");
+10919:                     urlBuilder_.Append("api/location/by-country/");
 10920:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(country, System.Globalization.CultureInfo.InvariantCulture)));
 10921: 
 10922:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -109968,7 +109968,7 @@ README.md
 10994:                     var urlBuilder_ = new System.Text.StringBuilder();
 10995: 
 10996: 
-10997:                     urlBuilder_.Append("api/v1/madhab");
+10997:                     urlBuilder_.Append("api/madhab");
 10998: 
 10999:                     PrepareRequest(client_, request_, urlBuilder_);
 11000: 
@@ -110048,7 +110048,7 @@ README.md
 11074:                     var urlBuilder_ = new System.Text.StringBuilder();
 11075: 
 11076: 
-11077:                     urlBuilder_.Append("api/v1/madhab/");
+11077:                     urlBuilder_.Append("api/madhab/");
 11078:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 11079: 
 11080:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -110136,7 +110136,7 @@ README.md
 11162:                     var urlBuilder_ = new System.Text.StringBuilder();
 11163: 
 11164: 
-11165:                     urlBuilder_.Append("api/v1/module/available");
+11165:                     urlBuilder_.Append("api/module/available");
 11166: 
 11167:                     PrepareRequest(client_, request_, urlBuilder_);
 11168: 
@@ -110213,7 +110213,7 @@ README.md
 11239:                     var urlBuilder_ = new System.Text.StringBuilder();
 11240: 
 11241: 
-11242:                     urlBuilder_.Append("api/v1/module/enabled");
+11242:                     urlBuilder_.Append("api/module/enabled");
 11243: 
 11244:                     PrepareRequest(client_, request_, urlBuilder_);
 11245: 
@@ -110293,7 +110293,7 @@ README.md
 11319:                     var urlBuilder_ = new System.Text.StringBuilder();
 11320: 
 11321: 
-11322:                     urlBuilder_.Append("api/v1/module/");
+11322:                     urlBuilder_.Append("api/module/");
 11323:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(moduleKey, System.Globalization.CultureInfo.InvariantCulture)));
 11324:                     urlBuilder_.Append("/enabled");
 11325: 
@@ -110375,7 +110375,7 @@ README.md
 11401:                     var urlBuilder_ = new System.Text.StringBuilder();
 11402: 
 11403: 
-11404:                     urlBuilder_.Append("api/v1/module/");
+11404:                     urlBuilder_.Append("api/module/");
 11405:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(moduleKey, System.Globalization.CultureInfo.InvariantCulture)));
 11406:                     urlBuilder_.Append("/schema");
 11407: 
@@ -110468,7 +110468,7 @@ README.md
 11494:                     var urlBuilder_ = new System.Text.StringBuilder();
 11495: 
 11496: 
-11497:                     urlBuilder_.Append("api/v1/module/");
+11497:                     urlBuilder_.Append("api/module/");
 11498:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(moduleKey, System.Globalization.CultureInfo.InvariantCulture)));
 11499:                     urlBuilder_.Append("/enable");
 11500: 
@@ -110581,7 +110581,7 @@ README.md
 11607:                     var urlBuilder_ = new System.Text.StringBuilder();
 11608: 
 11609: 
-11610:                     urlBuilder_.Append("api/v1/module/");
+11610:                     urlBuilder_.Append("api/module/");
 11611:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(moduleKey, System.Globalization.CultureInfo.InvariantCulture)));
 11612:                     urlBuilder_.Append("/disable");
 11613: 
@@ -110690,7 +110690,7 @@ README.md
 11716:                     var urlBuilder_ = new System.Text.StringBuilder();
 11717: 
 11718: 
-11719:                     urlBuilder_.Append("api/v1/organization");
+11719:                     urlBuilder_.Append("api/organization");
 11720:                     urlBuilder_.Append('?');
 11721:                     if (pageNumber != null)
 11722:                     {
@@ -110784,7 +110784,7 @@ README.md
 11810:                     var urlBuilder_ = new System.Text.StringBuilder();
 11811: 
 11812: 
-11813:                     urlBuilder_.Append("api/v1/organization");
+11813:                     urlBuilder_.Append("api/organization");
 11814: 
 11815:                     PrepareRequest(client_, request_, urlBuilder_);
 11816: 
@@ -110881,7 +110881,7 @@ README.md
 11907:                     var urlBuilder_ = new System.Text.StringBuilder();
 11908: 
 11909: 
-11910:                     urlBuilder_.Append("api/v1/organization/my");
+11910:                     urlBuilder_.Append("api/organization/my");
 11911:                     urlBuilder_.Append('?');
 11912:                     if (pageNumber != null)
 11913:                     {
@@ -110981,7 +110981,7 @@ README.md
 12007:                     var urlBuilder_ = new System.Text.StringBuilder();
 12008: 
 12009: 
-12010:                     urlBuilder_.Append("api/v1/organization/");
+12010:                     urlBuilder_.Append("api/organization/");
 12011:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 12012: 
 12013:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -111079,7 +111079,7 @@ README.md
 12105:                     var urlBuilder_ = new System.Text.StringBuilder();
 12106: 
 12107: 
-12108:                     urlBuilder_.Append("api/v1/organization/");
+12108:                     urlBuilder_.Append("api/organization/");
 12109:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 12110: 
 12111:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -111190,7 +111190,7 @@ README.md
 12216:                     var urlBuilder_ = new System.Text.StringBuilder();
 12217: 
 12218: 
-12219:                     urlBuilder_.Append("api/v1/organization/");
+12219:                     urlBuilder_.Append("api/organization/");
 12220:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 12221: 
 12222:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -111303,7 +111303,7 @@ README.md
 12329:                     var urlBuilder_ = new System.Text.StringBuilder();
 12330: 
 12331: 
-12332:                     urlBuilder_.Append("api/v1/organization/updatestatustype/");
+12332:                     urlBuilder_.Append("api/organization/updatestatustype/");
 12333:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 12334: 
 12335:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -111403,7 +111403,7 @@ README.md
 12429:                     var urlBuilder_ = new System.Text.StringBuilder();
 12430: 
 12431: 
-12432:                     urlBuilder_.Append("api/v1/organizationmember/");
+12432:                     urlBuilder_.Append("api/organizationmember/");
 12433:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(organizationId, System.Globalization.CultureInfo.InvariantCulture)));
 12434: 
 12435:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -111482,7 +111482,7 @@ README.md
 12508:                     var urlBuilder_ = new System.Text.StringBuilder();
 12509: 
 12510: 
-12511:                     urlBuilder_.Append("api/v1/organizationmember");
+12511:                     urlBuilder_.Append("api/organizationmember");
 12512: 
 12513:                     PrepareRequest(client_, request_, urlBuilder_);
 12514: 
@@ -111560,7 +111560,7 @@ README.md
 12586:                     var urlBuilder_ = new System.Text.StringBuilder();
 12587: 
 12588: 
-12589:                     urlBuilder_.Append("api/v1/organizationmember/role");
+12589:                     urlBuilder_.Append("api/organizationmember/role");
 12590: 
 12591:                     PrepareRequest(client_, request_, urlBuilder_);
 12592: 
@@ -111631,7 +111631,7 @@ README.md
 12657:                     var urlBuilder_ = new System.Text.StringBuilder();
 12658: 
 12659: 
-12660:                     urlBuilder_.Append("api/v1/organizationmember/invitations");
+12660:                     urlBuilder_.Append("api/organizationmember/invitations");
 12661: 
 12662:                     PrepareRequest(client_, request_, urlBuilder_);
 12663: 
@@ -111706,7 +111706,7 @@ README.md
 12732:                     var urlBuilder_ = new System.Text.StringBuilder();
 12733: 
 12734: 
-12735:                     urlBuilder_.Append("api/v1/organizationmember/invitations/");
+12735:                     urlBuilder_.Append("api/organizationmember/invitations/");
 12736:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 12737:                     urlBuilder_.Append("/accept");
 12738: 
@@ -111783,7 +111783,7 @@ README.md
 12809:                     var urlBuilder_ = new System.Text.StringBuilder();
 12810: 
 12811: 
-12812:                     urlBuilder_.Append("api/v1/organizationmember/invitations/");
+12812:                     urlBuilder_.Append("api/organizationmember/invitations/");
 12813:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 12814:                     urlBuilder_.Append("/decline");
 12815: 
@@ -111859,7 +111859,7 @@ README.md
 12885:                     var urlBuilder_ = new System.Text.StringBuilder();
 12886: 
 12887: 
-12888:                     urlBuilder_.Append("api/v1/organizationmember/");
+12888:                     urlBuilder_.Append("api/organizationmember/");
 12889:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 12890: 
 12891:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -111937,7 +111937,7 @@ README.md
 12963:                     var urlBuilder_ = new System.Text.StringBuilder();
 12964: 
 12965: 
-12966:                     urlBuilder_.Append("api/v1/organizationposition");
+12966:                     urlBuilder_.Append("api/organizationposition");
 12967: 
 12968:                     PrepareRequest(client_, request_, urlBuilder_);
 12969: 
@@ -112017,7 +112017,7 @@ README.md
 13043:                     var urlBuilder_ = new System.Text.StringBuilder();
 13044: 
 13045: 
-13046:                     urlBuilder_.Append("api/v1/organizationposition/");
+13046:                     urlBuilder_.Append("api/organizationposition/");
 13047:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 13048: 
 13049:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -112099,7 +112099,7 @@ README.md
 13125:                     var urlBuilder_ = new System.Text.StringBuilder();
 13126: 
 13127: 
-13128:                     urlBuilder_.Append("api/v1/organizationreview");
+13128:                     urlBuilder_.Append("api/organizationreview");
 13129: 
 13130:                     PrepareRequest(client_, request_, urlBuilder_);
 13131: 
@@ -112177,7 +112177,7 @@ README.md
 13203:                     var urlBuilder_ = new System.Text.StringBuilder();
 13204: 
 13205: 
-13206:                     urlBuilder_.Append("api/v1/organizationreview");
+13206:                     urlBuilder_.Append("api/organizationreview");
 13207: 
 13208:                     PrepareRequest(client_, request_, urlBuilder_);
 13209: 
@@ -112251,7 +112251,7 @@ README.md
 13277:                     var urlBuilder_ = new System.Text.StringBuilder();
 13278: 
 13279: 
-13280:                     urlBuilder_.Append("api/v1/organizationreview/");
+13280:                     urlBuilder_.Append("api/organizationreview/");
 13281:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(organizationId, System.Globalization.CultureInfo.InvariantCulture)));
 13282: 
 13283:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -112326,7 +112326,7 @@ README.md
 13352:                     var urlBuilder_ = new System.Text.StringBuilder();
 13353: 
 13354: 
-13355:                     urlBuilder_.Append("api/v1/organizationreview/user/");
+13355:                     urlBuilder_.Append("api/organizationreview/user/");
 13356:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(userId, System.Globalization.CultureInfo.InvariantCulture)));
 13357: 
 13358:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -112404,7 +112404,7 @@ README.md
 13430:                     var urlBuilder_ = new System.Text.StringBuilder();
 13431: 
 13432: 
-13433:                     urlBuilder_.Append("api/v1/organizationrole");
+13433:                     urlBuilder_.Append("api/organizationrole");
 13434: 
 13435:                     PrepareRequest(client_, request_, urlBuilder_);
 13436: 
@@ -112484,7 +112484,7 @@ README.md
 13510:                     var urlBuilder_ = new System.Text.StringBuilder();
 13511: 
 13512: 
-13513:                     urlBuilder_.Append("api/v1/organizationrole/");
+13513:                     urlBuilder_.Append("api/organizationrole/");
 13514:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 13515: 
 13516:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -112572,7 +112572,7 @@ README.md
 13598:                     var urlBuilder_ = new System.Text.StringBuilder();
 13599: 
 13600: 
-13601:                     urlBuilder_.Append("api/v1/publicexperience/settings");
+13601:                     urlBuilder_.Append("api/publicexperience/settings");
 13602: 
 13603:                     PrepareRequest(client_, request_, urlBuilder_);
 13604: 
@@ -112649,7 +112649,7 @@ README.md
 13675:                     var urlBuilder_ = new System.Text.StringBuilder();
 13676: 
 13677: 
-13678:                     urlBuilder_.Append("api/v1/registrationmode");
+13678:                     urlBuilder_.Append("api/registrationmode");
 13679: 
 13680:                     PrepareRequest(client_, request_, urlBuilder_);
 13681: 
@@ -112729,7 +112729,7 @@ README.md
 13755:                     var urlBuilder_ = new System.Text.StringBuilder();
 13756: 
 13757: 
-13758:                     urlBuilder_.Append("api/v1/registrationmode/");
+13758:                     urlBuilder_.Append("api/registrationmode/");
 13759:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 13760: 
 13761:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -112817,7 +112817,7 @@ README.md
 13843:                     var urlBuilder_ = new System.Text.StringBuilder();
 13844: 
 13845: 
-13846:                     urlBuilder_.Append("api/v1/storageobject");
+13846:                     urlBuilder_.Append("api/storageobject");
 13847:                     urlBuilder_.Append('?');
 13848:                     if (pageNumber != null)
 13849:                     {
@@ -112911,7 +112911,7 @@ README.md
 13937:                     var urlBuilder_ = new System.Text.StringBuilder();
 13938: 
 13939: 
-13940:                     urlBuilder_.Append("api/v1/storageobject");
+13940:                     urlBuilder_.Append("api/storageobject");
 13941: 
 13942:                     PrepareRequest(client_, request_, urlBuilder_);
 13943: 
@@ -113011,7 +113011,7 @@ README.md
 14037:                     var urlBuilder_ = new System.Text.StringBuilder();
 14038: 
 14039: 
-14040:                     urlBuilder_.Append("api/v1/storageobject/");
+14040:                     urlBuilder_.Append("api/storageobject/");
 14041:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 14042: 
 14043:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -113109,7 +113109,7 @@ README.md
 14135:                     var urlBuilder_ = new System.Text.StringBuilder();
 14136: 
 14137: 
-14138:                     urlBuilder_.Append("api/v1/storageobject/");
+14138:                     urlBuilder_.Append("api/storageobject/");
 14139:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 14140: 
 14141:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -113219,7 +113219,7 @@ README.md
 14245:                     var urlBuilder_ = new System.Text.StringBuilder();
 14246: 
 14247: 
-14248:                     urlBuilder_.Append("api/v1/storageobject/");
+14248:                     urlBuilder_.Append("api/storageobject/");
 14249:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 14250: 
 14251:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -113314,7 +113314,7 @@ README.md
 14340:                     var urlBuilder_ = new System.Text.StringBuilder();
 14341: 
 14342: 
-14343:                     urlBuilder_.Append("api/v1/storageobject/file/");
+14343:                     urlBuilder_.Append("api/storageobject/file/");
 14344:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(fileKey, System.Globalization.CultureInfo.InvariantCulture)));
 14345: 
 14346:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -113390,7 +113390,7 @@ README.md
 14416:                     var urlBuilder_ = new System.Text.StringBuilder();
 14417: 
 14418: 
-14419:                     urlBuilder_.Append("api/v1/storageobject/");
+14419:                     urlBuilder_.Append("api/storageobject/");
 14420:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 14421:                     urlBuilder_.Append("/presigned-url");
 14422:                     urlBuilder_.Append('?');
@@ -113488,7 +113488,7 @@ README.md
 14514:                     var urlBuilder_ = new System.Text.StringBuilder();
 14515: 
 14516: 
-14517:                     urlBuilder_.Append("api/v1/storageobject/presigned-url-by-key/");
+14517:                     urlBuilder_.Append("api/storageobject/presigned-url-by-key/");
 14518:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(objectKey, System.Globalization.CultureInfo.InvariantCulture)));
 14519:                     urlBuilder_.Append('?');
 14520:                     if (expirationMinutes != null)
@@ -113589,7 +113589,7 @@ README.md
 14615:                     var urlBuilder_ = new System.Text.StringBuilder();
 14616: 
 14617: 
-14618:                     urlBuilder_.Append("api/v1/storageobject/generate-upload-url");
+14618:                     urlBuilder_.Append("api/storageobject/generate-upload-url");
 14619: 
 14620:                     PrepareRequest(client_, request_, urlBuilder_);
 14621: 
@@ -113680,7 +113680,7 @@ README.md
 14706:                     var urlBuilder_ = new System.Text.StringBuilder();
 14707: 
 14708: 
-14709:                     urlBuilder_.Append("api/v1/syncstate");
+14709:                     urlBuilder_.Append("api/syncstate");
 14710: 
 14711:                     PrepareRequest(client_, request_, urlBuilder_);
 14712: 
@@ -113758,7 +113758,7 @@ README.md
 14784:                     var urlBuilder_ = new System.Text.StringBuilder();
 14785: 
 14786: 
-14787:                     urlBuilder_.Append("api/v1/syncstate");
+14787:                     urlBuilder_.Append("api/syncstate");
 14788: 
 14789:                     PrepareRequest(client_, request_, urlBuilder_);
 14790: 
@@ -113832,7 +113832,7 @@ README.md
 14858:                     var urlBuilder_ = new System.Text.StringBuilder();
 14859: 
 14860: 
-14861:                     urlBuilder_.Append("api/v1/syncstate/");
+14861:                     urlBuilder_.Append("api/syncstate/");
 14862:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 14863: 
 14864:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -113914,7 +113914,7 @@ README.md
 14940:                     var urlBuilder_ = new System.Text.StringBuilder();
 14941: 
 14942: 
-14943:                     urlBuilder_.Append("api/v1/syncstate/");
+14943:                     urlBuilder_.Append("api/syncstate/");
 14944:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 14945: 
 14946:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -113988,7 +113988,7 @@ README.md
 15014:                     var urlBuilder_ = new System.Text.StringBuilder();
 15015: 
 15016: 
-15017:                     urlBuilder_.Append("api/v1/syncstate/");
+15017:                     urlBuilder_.Append("api/syncstate/");
 15018:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 15019: 
 15020:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -114061,7 +114061,7 @@ README.md
 15087:                     var urlBuilder_ = new System.Text.StringBuilder();
 15088: 
 15089: 
-15090:                     urlBuilder_.Append("api/v1/tag");
+15090:                     urlBuilder_.Append("api/tag");
 15091:                     urlBuilder_.Append('?');
 15092:                     if (pageNumber != null)
 15093:                     {
@@ -114155,7 +114155,7 @@ README.md
 15181:                     var urlBuilder_ = new System.Text.StringBuilder();
 15182: 
 15183: 
-15184:                     urlBuilder_.Append("api/v1/tag");
+15184:                     urlBuilder_.Append("api/tag");
 15185: 
 15186:                     PrepareRequest(client_, request_, urlBuilder_);
 15187: 
@@ -114255,7 +114255,7 @@ README.md
 15281:                     var urlBuilder_ = new System.Text.StringBuilder();
 15282: 
 15283: 
-15284:                     urlBuilder_.Append("api/v1/tag/");
+15284:                     urlBuilder_.Append("api/tag/");
 15285:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 15286: 
 15287:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -114353,7 +114353,7 @@ README.md
 15379:                     var urlBuilder_ = new System.Text.StringBuilder();
 15380: 
 15381: 
-15382:                     urlBuilder_.Append("api/v1/tag/");
+15382:                     urlBuilder_.Append("api/tag/");
 15383:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 15384: 
 15385:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -114464,7 +114464,7 @@ README.md
 15490:                     var urlBuilder_ = new System.Text.StringBuilder();
 15491: 
 15492: 
-15493:                     urlBuilder_.Append("api/v1/tag/");
+15493:                     urlBuilder_.Append("api/tag/");
 15494:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 15495: 
 15496:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -114551,7 +114551,7 @@ README.md
 15577:                     var urlBuilder_ = new System.Text.StringBuilder();
 15578: 
 15579: 
-15580:                     urlBuilder_.Append("api/v1/tagtype");
+15580:                     urlBuilder_.Append("api/tagtype");
 15581: 
 15582:                     PrepareRequest(client_, request_, urlBuilder_);
 15583: 
@@ -114625,7 +114625,7 @@ README.md
 15651:                     var urlBuilder_ = new System.Text.StringBuilder();
 15652: 
 15653: 
-15654:                     urlBuilder_.Append("api/v1/tagtype/");
+15654:                     urlBuilder_.Append("api/tagtype/");
 15655:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 15656: 
 15657:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -114703,7 +114703,7 @@ README.md
 15729:                     var urlBuilder_ = new System.Text.StringBuilder();
 15730: 
 15731: 
-15732:                     urlBuilder_.Append("api/v1/tenant");
+15732:                     urlBuilder_.Append("api/tenant");
 15733: 
 15734:                     PrepareRequest(client_, request_, urlBuilder_);
 15735: 
@@ -114787,7 +114787,7 @@ README.md
 15813:                     var urlBuilder_ = new System.Text.StringBuilder();
 15814: 
 15815: 
-15816:                     urlBuilder_.Append("api/v1/tenant");
+15816:                     urlBuilder_.Append("api/tenant");
 15817: 
 15818:                     PrepareRequest(client_, request_, urlBuilder_);
 15819: 
@@ -114877,7 +114877,7 @@ README.md
 15903:                     var urlBuilder_ = new System.Text.StringBuilder();
 15904: 
 15905: 
-15906:                     urlBuilder_.Append("api/v1/tenant/");
+15906:                     urlBuilder_.Append("api/tenant/");
 15907:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 15908: 
 15909:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -114975,7 +114975,7 @@ README.md
 16001:                     var urlBuilder_ = new System.Text.StringBuilder();
 16002: 
 16003: 
-16004:                     urlBuilder_.Append("api/v1/tenant/");
+16004:                     urlBuilder_.Append("api/tenant/");
 16005:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 16006: 
 16007:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -115075,7 +115075,7 @@ README.md
 16101:                     var urlBuilder_ = new System.Text.StringBuilder();
 16102: 
 16103: 
-16104:                     urlBuilder_.Append("api/v1/tenant/");
+16104:                     urlBuilder_.Append("api/tenant/");
 16105:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 16106: 
 16107:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -115158,7 +115158,7 @@ README.md
 16184:                     var urlBuilder_ = new System.Text.StringBuilder();
 16185: 
 16186: 
-16187:                     urlBuilder_.Append("api/v1/tenant/navigation");
+16187:                     urlBuilder_.Append("api/tenant/navigation");
 16188: 
 16189:                     PrepareRequest(client_, request_, urlBuilder_);
 16190: 
@@ -115242,7 +115242,7 @@ README.md
 16268:                     var urlBuilder_ = new System.Text.StringBuilder();
 16269: 
 16270: 
-16271:                     urlBuilder_.Append("api/v1/tenant/navigation");
+16271:                     urlBuilder_.Append("api/tenant/navigation");
 16272: 
 16273:                     PrepareRequest(client_, request_, urlBuilder_);
 16274: 
@@ -115339,7 +115339,7 @@ README.md
 16365:                     var urlBuilder_ = new System.Text.StringBuilder();
 16366: 
 16367: 
-16368:                     urlBuilder_.Append("api/v1/tenant/navigation/");
+16368:                     urlBuilder_.Append("api/tenant/navigation/");
 16369:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 16370: 
 16371:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -115440,7 +115440,7 @@ README.md
 16466:                     var urlBuilder_ = new System.Text.StringBuilder();
 16467: 
 16468: 
-16469:                     urlBuilder_.Append("api/v1/tenant/navigation/");
+16469:                     urlBuilder_.Append("api/tenant/navigation/");
 16470:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 16471: 
 16472:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -115535,7 +115535,7 @@ README.md
 16561:                     var urlBuilder_ = new System.Text.StringBuilder();
 16562: 
 16563: 
-16564:                     urlBuilder_.Append("api/v1/tenant/navigation/reorder");
+16564:                     urlBuilder_.Append("api/tenant/navigation/reorder");
 16565: 
 16566:                     PrepareRequest(client_, request_, urlBuilder_);
 16567: 
@@ -115622,7 +115622,7 @@ README.md
 16648:                     var urlBuilder_ = new System.Text.StringBuilder();
 16649: 
 16650: 
-16651:                     urlBuilder_.Append("api/v1/tenantonboarding/status");
+16651:                     urlBuilder_.Append("api/tenantonboarding/status");
 16652: 
 16653:                     PrepareRequest(client_, request_, urlBuilder_);
 16654: 
@@ -115699,7 +115699,7 @@ README.md
 16725:                     var urlBuilder_ = new System.Text.StringBuilder();
 16726: 
 16727: 
-16728:                     urlBuilder_.Append("api/v1/tenantonboarding/settings");
+16728:                     urlBuilder_.Append("api/tenantonboarding/settings");
 16729: 
 16730:                     PrepareRequest(client_, request_, urlBuilder_);
 16731: 
@@ -115783,7 +115783,7 @@ README.md
 16809:                     var urlBuilder_ = new System.Text.StringBuilder();
 16810: 
 16811: 
-16812:                     urlBuilder_.Append("api/v1/tenantonboarding/settings");
+16812:                     urlBuilder_.Append("api/tenantonboarding/settings");
 16813: 
 16814:                     PrepareRequest(client_, request_, urlBuilder_);
 16815: 
@@ -115887,7 +115887,7 @@ README.md
 16913:                     var urlBuilder_ = new System.Text.StringBuilder();
 16914: 
 16915: 
-16916:                     urlBuilder_.Append("api/v1/tenantonboarding/complete");
+16916:                     urlBuilder_.Append("api/tenantonboarding/complete");
 16917: 
 16918:                     PrepareRequest(client_, request_, urlBuilder_);
 16919: 
@@ -115984,7 +115984,7 @@ README.md
 17010:                     var urlBuilder_ = new System.Text.StringBuilder();
 17011: 
 17012: 
-17013:                     urlBuilder_.Append("api/v1/tenantsettings");
+17013:                     urlBuilder_.Append("api/tenantsettings");
 17014: 
 17015:                     PrepareRequest(client_, request_, urlBuilder_);
 17016: 
@@ -116068,7 +116068,7 @@ README.md
 17094:                     var urlBuilder_ = new System.Text.StringBuilder();
 17095: 
 17096: 
-17097:                     urlBuilder_.Append("api/v1/tenantsettings");
+17097:                     urlBuilder_.Append("api/tenantsettings");
 17098: 
 17099:                     PrepareRequest(client_, request_, urlBuilder_);
 17100: 
@@ -116158,7 +116158,7 @@ README.md
 17184:                     var urlBuilder_ = new System.Text.StringBuilder();
 17185: 
 17186: 
-17187:                     urlBuilder_.Append("api/v1/tenantsettings/");
+17187:                     urlBuilder_.Append("api/tenantsettings/");
 17188:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 17189: 
 17190:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -116256,7 +116256,7 @@ README.md
 17282:                     var urlBuilder_ = new System.Text.StringBuilder();
 17283: 
 17284: 
-17285:                     urlBuilder_.Append("api/v1/tenantsettings/");
+17285:                     urlBuilder_.Append("api/tenantsettings/");
 17286:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 17287: 
 17288:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -116356,7 +116356,7 @@ README.md
 17382:                     var urlBuilder_ = new System.Text.StringBuilder();
 17383: 
 17384: 
-17385:                     urlBuilder_.Append("api/v1/tenantsettings/");
+17385:                     urlBuilder_.Append("api/tenantsettings/");
 17386:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 17387: 
 17388:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -116439,7 +116439,7 @@ README.md
 17465:                     var urlBuilder_ = new System.Text.StringBuilder();
 17466: 
 17467: 
-17468:                     urlBuilder_.Append("api/v1/tenantuser");
+17468:                     urlBuilder_.Append("api/tenantuser");
 17469: 
 17470:                     PrepareRequest(client_, request_, urlBuilder_);
 17471: 
@@ -116523,7 +116523,7 @@ README.md
 17549:                     var urlBuilder_ = new System.Text.StringBuilder();
 17550: 
 17551: 
-17552:                     urlBuilder_.Append("api/v1/tenantuser");
+17552:                     urlBuilder_.Append("api/tenantuser");
 17553: 
 17554:                     PrepareRequest(client_, request_, urlBuilder_);
 17555: 
@@ -116613,7 +116613,7 @@ README.md
 17639:                     var urlBuilder_ = new System.Text.StringBuilder();
 17640: 
 17641: 
-17642:                     urlBuilder_.Append("api/v1/tenantuser/");
+17642:                     urlBuilder_.Append("api/tenantuser/");
 17643:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 17644: 
 17645:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -116711,7 +116711,7 @@ README.md
 17737:                     var urlBuilder_ = new System.Text.StringBuilder();
 17738: 
 17739: 
-17740:                     urlBuilder_.Append("api/v1/tenantuser/");
+17740:                     urlBuilder_.Append("api/tenantuser/");
 17741:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 17742: 
 17743:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -116811,7 +116811,7 @@ README.md
 17837:                     var urlBuilder_ = new System.Text.StringBuilder();
 17838: 
 17839: 
-17840:                     urlBuilder_.Append("api/v1/tenantuser/");
+17840:                     urlBuilder_.Append("api/tenantuser/");
 17841:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 17842: 
 17843:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -116894,7 +116894,7 @@ README.md
 17920:                     var urlBuilder_ = new System.Text.StringBuilder();
 17921: 
 17922: 
-17923:                     urlBuilder_.Append("api/v1/userauthenticationtoken");
+17923:                     urlBuilder_.Append("api/userauthenticationtoken");
 17924: 
 17925:                     PrepareRequest(client_, request_, urlBuilder_);
 17926: 
@@ -116978,7 +116978,7 @@ README.md
 18004:                     var urlBuilder_ = new System.Text.StringBuilder();
 18005: 
 18006: 
-18007:                     urlBuilder_.Append("api/v1/userauthenticationtoken");
+18007:                     urlBuilder_.Append("api/userauthenticationtoken");
 18008: 
 18009:                     PrepareRequest(client_, request_, urlBuilder_);
 18010: 
@@ -117068,7 +117068,7 @@ README.md
 18094:                     var urlBuilder_ = new System.Text.StringBuilder();
 18095: 
 18096: 
-18097:                     urlBuilder_.Append("api/v1/userauthenticationtoken/");
+18097:                     urlBuilder_.Append("api/userauthenticationtoken/");
 18098:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 18099: 
 18100:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -117166,7 +117166,7 @@ README.md
 18192:                     var urlBuilder_ = new System.Text.StringBuilder();
 18193: 
 18194: 
-18195:                     urlBuilder_.Append("api/v1/userauthenticationtoken/");
+18195:                     urlBuilder_.Append("api/userauthenticationtoken/");
 18196:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 18197: 
 18198:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -117266,7 +117266,7 @@ README.md
 18292:                     var urlBuilder_ = new System.Text.StringBuilder();
 18293: 
 18294: 
-18295:                     urlBuilder_.Append("api/v1/userauthenticationtoken/");
+18295:                     urlBuilder_.Append("api/userauthenticationtoken/");
 18296:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 18297: 
 18298:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -117350,7 +117350,7 @@ README.md
 18376:                     var urlBuilder_ = new System.Text.StringBuilder();
 18377: 
 18378: 
-18379:                     urlBuilder_.Append("api/v1/user/sync");
+18379:                     urlBuilder_.Append("api/user/sync");
 18380: 
 18381:                     PrepareRequest(client_, request_, urlBuilder_);
 18382: 
@@ -117421,7 +117421,7 @@ README.md
 18447:                     var urlBuilder_ = new System.Text.StringBuilder();
 18448: 
 18449: 
-18450:                     urlBuilder_.Append("api/v1/user");
+18450:                     urlBuilder_.Append("api/user");
 18451: 
 18452:                     PrepareRequest(client_, request_, urlBuilder_);
 18453: 
@@ -117499,7 +117499,7 @@ README.md
 18525:                     var urlBuilder_ = new System.Text.StringBuilder();
 18526: 
 18527: 
-18528:                     urlBuilder_.Append("api/v1/user");
+18528:                     urlBuilder_.Append("api/user");
 18529: 
 18530:                     PrepareRequest(client_, request_, urlBuilder_);
 18531: 
@@ -117569,7 +117569,7 @@ README.md
 18595:                     var urlBuilder_ = new System.Text.StringBuilder();
 18596: 
 18597: 
-18598:                     urlBuilder_.Append("api/v1/user");
+18598:                     urlBuilder_.Append("api/user");
 18599: 
 18600:                     PrepareRequest(client_, request_, urlBuilder_);
 18601: 
@@ -117644,7 +117644,7 @@ README.md
 18670:                     var urlBuilder_ = new System.Text.StringBuilder();
 18671: 
 18672: 
-18673:                     urlBuilder_.Append("api/v1/user/");
+18673:                     urlBuilder_.Append("api/user/");
 18674:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(userId, System.Globalization.CultureInfo.InvariantCulture)));
 18675:                     urlBuilder_.Append("/organizations");
 18676: 
@@ -117723,7 +117723,7 @@ README.md
 18749:                     var urlBuilder_ = new System.Text.StringBuilder();
 18750: 
 18751: 
-18752:                     urlBuilder_.Append("api/v1/userexternallogin");
+18752:                     urlBuilder_.Append("api/userexternallogin");
 18753: 
 18754:                     PrepareRequest(client_, request_, urlBuilder_);
 18755: 
@@ -117807,7 +117807,7 @@ README.md
 18833:                     var urlBuilder_ = new System.Text.StringBuilder();
 18834: 
 18835: 
-18836:                     urlBuilder_.Append("api/v1/userexternallogin");
+18836:                     urlBuilder_.Append("api/userexternallogin");
 18837: 
 18838:                     PrepareRequest(client_, request_, urlBuilder_);
 18839: 
@@ -117897,7 +117897,7 @@ README.md
 18923:                     var urlBuilder_ = new System.Text.StringBuilder();
 18924: 
 18925: 
-18926:                     urlBuilder_.Append("api/v1/userexternallogin/");
+18926:                     urlBuilder_.Append("api/userexternallogin/");
 18927:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 18928: 
 18929:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -117995,7 +117995,7 @@ README.md
 19021:                     var urlBuilder_ = new System.Text.StringBuilder();
 19022: 
 19023: 
-19024:                     urlBuilder_.Append("api/v1/userexternallogin/");
+19024:                     urlBuilder_.Append("api/userexternallogin/");
 19025:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 19026: 
 19027:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -118095,7 +118095,7 @@ README.md
 19121:                     var urlBuilder_ = new System.Text.StringBuilder();
 19122: 
 19123: 
-19124:                     urlBuilder_.Append("api/v1/userexternallogin/");
+19124:                     urlBuilder_.Append("api/userexternallogin/");
 19125:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 19126: 
 19127:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -118178,7 +118178,7 @@ README.md
 19204:                     var urlBuilder_ = new System.Text.StringBuilder();
 19205: 
 19206: 
-19207:                     urlBuilder_.Append("api/v1/userrole");
+19207:                     urlBuilder_.Append("api/userrole");
 19208: 
 19209:                     PrepareRequest(client_, request_, urlBuilder_);
 19210: 
@@ -118258,7 +118258,7 @@ README.md
 19284:                     var urlBuilder_ = new System.Text.StringBuilder();
 19285: 
 19286: 
-19287:                     urlBuilder_.Append("api/v1/userrole/");
+19287:                     urlBuilder_.Append("api/userrole/");
 19288:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 19289: 
 19290:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -118346,7 +118346,7 @@ README.md
 19372:                     var urlBuilder_ = new System.Text.StringBuilder();
 19373: 
 19374: 
-19375:                     urlBuilder_.Append("api/v1/visibilitytype");
+19375:                     urlBuilder_.Append("api/visibilitytype");
 19376: 
 19377:                     PrepareRequest(client_, request_, urlBuilder_);
 19378: 
@@ -118426,7 +118426,7 @@ README.md
 19452:                     var urlBuilder_ = new System.Text.StringBuilder();
 19453: 
 19454: 
-19455:                     urlBuilder_.Append("api/v1/visibilitytype/");
+19455:                     urlBuilder_.Append("api/visibilitytype/");
 19456:                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 19457: 
 19458:                     PrepareRequest(client_, request_, urlBuilder_);
@@ -128535,7 +128535,7 @@ README.md
 329:         ClusterId = "explore-api",
 330:         Match = new RouteMatch
 331:         {
-332:             Path = "/api/v1/{**catchall}"
+332:             Path = "/api/{**catchall}"
 333:         }
 334:     }
 335: };
@@ -128740,7 +128740,7 @@ README.md
 534:         {
 535:             var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
 536:             var statusClient = clientFactory.CreateClient("BffClient");
-537:             var status = await statusClient.GetFromJsonAsync<InstanceOnboardingStatusModel>("api/v1/InstanceOnboarding/status");
+537:             var status = await statusClient.GetFromJsonAsync<InstanceOnboardingStatusModel>("api/InstanceOnboarding/status");
 538:             isCompleted = status?.IsCompleted == true;
 539:         }
 540:         catch (Exception ex)

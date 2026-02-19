@@ -4,7 +4,7 @@ namespace Explore.Application.DTOs.Actor;
 
 /// <summary>
 /// Full Actor details with navigation properties
-/// Used for GET /api/v1/actor/{id}
+/// Used for GET /api/actor/{id}
 /// </summary>
 public class ActorDto
 {

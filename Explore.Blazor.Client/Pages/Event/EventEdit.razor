@@ -12,7 +12,7 @@
 @using Explore.Blazor.Client.Helpers
 @using Explore.Blazor.Client.Components
 @attribute [Authorize]
-@attribute [StreamRendering]
+@rendermode @(new InteractiveAutoRenderMode(prerender: false))
 @inject IEventService EventService
 @inject IOrganizationService OrganizationService
 @inject IAdminService AdminService

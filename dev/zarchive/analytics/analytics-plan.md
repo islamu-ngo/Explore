@@ -402,7 +402,7 @@ RuntimeAnalyticsProvider.TrackAsync(...)
 - **Acceptance Criteria:**
   - [ ] Injectable service wrapping `IJSRuntime` calls to `analytics-bridge.js`
   - [ ] Methods mirror `IAnalyticsProvider`: `TrackAsync`, `IdentifyAsync`, `PageViewAsync`
-  - [ ] Initialized on app startup with provider config from server payload (`/api/v1/PublicExperience/settings`)
+  - [ ] Initialized on app startup with provider config from server payload (`/api/PublicExperience/settings`)
   - [ ] Error handling: catch JS interop failures, log, swallow
 - **Effort:** S
 - **Dependencies:** Task 5.1

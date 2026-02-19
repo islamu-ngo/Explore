@@ -7,7 +7,7 @@
 @using Blazouter.Services
 @using Microsoft.Extensions.Logging
 @attribute [Authorize]
-@attribute [StreamRendering]
+@rendermode @(new InteractiveAutoRenderMode(prerender: false))
 
 <PageTitle>Organization Details</PageTitle>
 

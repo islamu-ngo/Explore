@@ -80,7 +80,7 @@ public class TechEventStrategy : IEventStrategy
         yield return new StrategyLink
         {
             Rel = "tech-aspect",
-            Href = $"/api/v1/events/{@event.Id}/aspects/tech",
+            Href = $"/api/events/{@event.Id}/aspects/tech",
             Method = "GET",
             Title = "Tech event details"
         };

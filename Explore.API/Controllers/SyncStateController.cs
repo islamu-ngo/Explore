@@ -26,7 +26,7 @@ public class SyncStateController : ControllerBase
         _logger = logger;
     }
 
-    // GET: api/v1/syncstate
+    // GET: api/syncstate
     [HttpGet]
     [Authorize]
     [OutputCache(PolicyName = "ListData")]
@@ -36,7 +36,7 @@ public class SyncStateController : ControllerBase
         return Ok(syncStates);
     }
 
-    // GET: api/v1/syncstate/{id}
+    // GET: api/syncstate/{id}
     [HttpGet("{id}")]
     [Authorize]
     [OutputCache(PolicyName = "DetailData")]
@@ -51,7 +51,7 @@ public class SyncStateController : ControllerBase
         return Ok(syncState);
     }
 
-    // POST: api/v1/syncstate
+    // POST: api/syncstate
     [HttpPost]
     [Authorize]
     public async Task<ActionResult<BaseCommandResponse<int>>> Create([FromBody] CreateSyncStateDto dto, CancellationToken cancellationToken = default)
@@ -61,7 +61,7 @@ public class SyncStateController : ControllerBase
         return Ok(response);
     }
 
-    // PUT: api/v1/syncstate/{id}
+    // PUT: api/syncstate/{id}
     [HttpPut("{id}")]
     [Authorize]
     public async Task<ActionResult<BaseCommandResponse<int>>> Update(int id, [FromBody] UpdateSyncStateDto dto, CancellationToken cancellationToken = default)
@@ -82,7 +82,7 @@ public class SyncStateController : ControllerBase
         return Ok(response);
     }
 
-    // DELETE: api/v1/syncstate/{id}
+    // DELETE: api/syncstate/{id}
     [HttpDelete("{id}")]
     [Authorize]
     public async Task<ActionResult> Delete(int id, CancellationToken cancellationToken = default)

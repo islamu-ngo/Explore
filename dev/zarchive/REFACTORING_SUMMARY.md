@@ -37,7 +37,7 @@ Comprehensive documentation covering:
 
 ## Endpoint Mappings
 
-### Primary Endpoints (`/api/v1/...`)
+### Primary Endpoints (`/api/...`)
 | HTTP Method | Path | NSwag Method | Auth Required |
 |-------------|------|--------------|---------------|
 | GET | `/Organization` | `OrganizationAllAsync()` | No |

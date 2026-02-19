@@ -331,7 +331,7 @@ var proxyRoutes = new[]
         ClusterId = "explore-api",
         Match = new RouteMatch
         {
-            Path = "/api/v1/{**catchall}"
+            Path = "/api/{**catchall}"
         }
     }
 };
@@ -553,7 +553,7 @@ app.Use(async (ctx, next) =>
         {
             var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
             var statusClient = clientFactory.CreateClient("BffClient");
-            var status = await statusClient.GetFromJsonAsync<InstanceOnboardingStatusModel>("api/v1/InstanceOnboarding/status");
+            var status = await statusClient.GetFromJsonAsync<InstanceOnboardingStatusModel>("api/InstanceOnboarding/status");
             isCompleted = status?.IsCompleted == true;
         }
         catch (Exception ex)
@@ -919,7 +919,7 @@ app.MapRazorComponents<App>()
     .AddInteractiveWebAssemblyRenderMode()
     .AddAdditionalAssemblies(typeof(Explore.Blazor.Client._Imports).Assembly);
 
-// Map reverse proxy LAST - it should only handle /api/v1/* routes
+// Map reverse proxy LAST - it should only handle /api/* routes
 app.MapReverseProxy();
 
 await app.RunAsync();

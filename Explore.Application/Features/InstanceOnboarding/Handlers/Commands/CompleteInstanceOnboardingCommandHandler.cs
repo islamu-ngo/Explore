@@ -68,7 +68,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         {
             response.Success = false;
             response.Message = "Current user is not synchronized in the local database.";
-            response.Errors = new List<string> { "Call /api/v1/User/sync before completing onboarding." };
+            response.Errors = new List<string> { "Call /api/User/sync before completing onboarding." };
             return response;
         }
 

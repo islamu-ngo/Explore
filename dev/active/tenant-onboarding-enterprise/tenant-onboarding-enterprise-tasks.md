@@ -200,7 +200,7 @@
 
 - [ ] **Task 4.2**: Add self-service registration endpoint
   - File: `Explore.API/Controllers/TenantController.cs`
-  - Endpoint: POST /api/v1/tenants/register
+  - Endpoint: POST /api/tenants/register
   - Dependencies: Task 2.2
 
 - [ ] **Task 4.3**: Add tenant lifecycle endpoints + lifecycle history
@@ -210,7 +210,7 @@
 
 - [ ] **Task 4.4**: Add onboarding step save endpoint
   - File: `Explore.API/Controllers/TenantOnboardingController.cs`
-  - Endpoint: PUT /api/v1/tenant-onboarding/steps/{stepId}
+  - Endpoint: PUT /api/tenant-onboarding/steps/{stepId}
   - Dependencies: Task 2.7
 
 - [ ] **Task 4.5**: Update Cerbos policies

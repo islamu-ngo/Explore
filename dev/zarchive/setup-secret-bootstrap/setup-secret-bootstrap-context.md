@@ -109,7 +109,7 @@ ISetupSecretProvider (Application layer - interface)
 15. **REFINEMENT 1: Timeout enforced at provider level** - `ValidateSecret()` returns false if `DateTime.UtcNow - InstanceStartedAt > 60 minutes`. Boot timestamp captured at constructor time (NOT from DB — `InstanceBootstrapState.CreatedAt` is set at completion, not boot). Prevents API-level bypass by malicious actors who skip the UI.
 16. **REFINEMENT 2: `Console.WriteLine` for secret logging** - Guarantees visibility in all environments (bypasses Serilog log-level filters). Matches established Infisical bootstrap pattern in codebase (`InfisicalConfigurationProvider.cs` lines 60-123). `LogWarning` used for structured context alongside.
 17. **REFINEMENT 3: YARP header sanitization** - `Remove("X-Setup-Secret")` BEFORE `Add()` in YARP `AddRequestTransform`. Prevents "Header Injection" where external user spoofs the secret header to bypass BFF validation.
-18. **ARCHITECTURAL CORRECTION: Blazor BFF is a separate deployable** — No access to Application/Infrastructure layers. Secret validation and logging are API-only concerns. BFF communicates with API via HTTP/YARP only. Task 1.5 (BFF startup logging) removed. Task 3.1 moved from BFF endpoint to API endpoint (`POST /api/v1/InstanceOnboarding/validate-secret`).
+18. **ARCHITECTURAL CORRECTION: Blazor BFF is a separate deployable** — No access to Application/Infrastructure layers. Secret validation and logging are API-only concerns. BFF communicates with API via HTTP/YARP only. Task 1.5 (BFF startup logging) removed. Task 3.1 moved from BFF endpoint to API endpoint (`POST /api/InstanceOnboarding/validate-secret`).
 
 ---
 

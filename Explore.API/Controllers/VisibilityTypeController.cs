@@ -23,7 +23,7 @@ public class VisibilityTypeController : ControllerBase
         _mediator = mediator;
     }
 
-    // GET: api/v1/visibilitytype
+    // GET: api/visibilitytype
     [HttpGet]
     [EndpointSummary("Get all Visibility Types")]
     [EndpointDescription("Retrieve a list of all event visibility types (Public, Private, Unlisted)")]
@@ -36,7 +36,7 @@ public class VisibilityTypeController : ControllerBase
         return Ok(visibilityTypes);
     }
 
-    // GET: api/v1/visibilitytype/{id}
+    // GET: api/visibilitytype/{id}
     [HttpGet("{id}")]
     [EndpointSummary("Get Visibility Type by ID")]
     [EndpointDescription("Retrieve details of a specific event visibility type")]

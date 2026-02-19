@@ -5,7 +5,7 @@
 @using MudBlazor
 
 @attribute [Authorize]
-@attribute [StreamRendering]
+@rendermode @(new InteractiveAutoRenderMode(prerender: false))
 
 @inject ITenantNavigationService NavigationService
 @inject IDialogService DialogService

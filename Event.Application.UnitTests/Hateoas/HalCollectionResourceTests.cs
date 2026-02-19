@@ -23,7 +23,7 @@ public class HalCollectionResourceTests
         };
         var links = new Dictionary<string, HalLink>
         {
-            [LinkRelations.Self] = HalLink.Create("/api/v1/test?pageNumber=1&pageSize=10")
+            [LinkRelations.Self] = HalLink.Create("/api/test?pageNumber=1&pageSize=10")
         };
 
         // Act
@@ -52,7 +52,7 @@ public class HalCollectionResourceTests
         var items = new List<HalResource<TestListDto>>();
         var links = new Dictionary<string, HalLink>
         {
-            [LinkRelations.Self] = HalLink.Create("/api/v1/test")
+            [LinkRelations.Self] = HalLink.Create("/api/test")
         };
 
         // Act
@@ -80,11 +80,11 @@ public class HalCollectionResourceTests
         };
         var links = new Dictionary<string, HalLink>
         {
-            [LinkRelations.Self] = HalLink.Create("/api/v1/test?pageNumber=2&pageSize=10"),
-            [LinkRelations.First] = HalLink.Create("/api/v1/test?pageNumber=1&pageSize=10"),
-            [LinkRelations.Prev] = HalLink.Create("/api/v1/test?pageNumber=1&pageSize=10"),
-            [LinkRelations.Next] = HalLink.Create("/api/v1/test?pageNumber=3&pageSize=10"),
-            [LinkRelations.Last] = HalLink.Create("/api/v1/test?pageNumber=5&pageSize=10")
+            [LinkRelations.Self] = HalLink.Create("/api/test?pageNumber=2&pageSize=10"),
+            [LinkRelations.First] = HalLink.Create("/api/test?pageNumber=1&pageSize=10"),
+            [LinkRelations.Prev] = HalLink.Create("/api/test?pageNumber=1&pageSize=10"),
+            [LinkRelations.Next] = HalLink.Create("/api/test?pageNumber=3&pageSize=10"),
+            [LinkRelations.Last] = HalLink.Create("/api/test?pageNumber=5&pageSize=10")
         };
 
         // Act
@@ -115,10 +115,10 @@ public class HalCollectionResourceTests
         };
         var links = new Dictionary<string, HalLink>
         {
-            [LinkRelations.Self] = HalLink.Create("/api/v1/test?pageNumber=1&pageSize=10"),
-            [LinkRelations.First] = HalLink.Create("/api/v1/test?pageNumber=1&pageSize=10"),
-            [LinkRelations.Next] = HalLink.Create("/api/v1/test?pageNumber=2&pageSize=10"),
-            [LinkRelations.Last] = HalLink.Create("/api/v1/test?pageNumber=3&pageSize=10")
+            [LinkRelations.Self] = HalLink.Create("/api/test?pageNumber=1&pageSize=10"),
+            [LinkRelations.First] = HalLink.Create("/api/test?pageNumber=1&pageSize=10"),
+            [LinkRelations.Next] = HalLink.Create("/api/test?pageNumber=2&pageSize=10"),
+            [LinkRelations.Last] = HalLink.Create("/api/test?pageNumber=3&pageSize=10")
             // No "prev" link for first page
         };
 
@@ -146,10 +146,10 @@ public class HalCollectionResourceTests
         };
         var links = new Dictionary<string, HalLink>
         {
-            [LinkRelations.Self] = HalLink.Create("/api/v1/test?pageNumber=3&pageSize=10"),
-            [LinkRelations.First] = HalLink.Create("/api/v1/test?pageNumber=1&pageSize=10"),
-            [LinkRelations.Prev] = HalLink.Create("/api/v1/test?pageNumber=2&pageSize=10"),
-            [LinkRelations.Last] = HalLink.Create("/api/v1/test?pageNumber=3&pageSize=10")
+            [LinkRelations.Self] = HalLink.Create("/api/test?pageNumber=3&pageSize=10"),
+            [LinkRelations.First] = HalLink.Create("/api/test?pageNumber=1&pageSize=10"),
+            [LinkRelations.Prev] = HalLink.Create("/api/test?pageNumber=2&pageSize=10"),
+            [LinkRelations.Last] = HalLink.Create("/api/test?pageNumber=3&pageSize=10")
             // No "next" link for last page
         };
 

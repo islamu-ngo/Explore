@@ -150,7 +150,7 @@
 - [ ] Document ResourceAssembler pattern
   - [ ] IResourceAssembler<TDto, TListDto> interface
   - [ ] How to implement custom assemblers
-- [ ] Add complete example response (GET /api/v1/events)
+- [ ] Add complete example response (GET /api/events)
 - [ ] Document RouteNames constants usage
 - [ ] Cross-reference CODEBASE_INSIGHTS.md section 14
 

@@ -157,7 +157,7 @@ LoadOrganizationRequests()
         ?
    EventApiClient ? BFF (/api/admin/organizations)
         ?
-   BFF ? API (/api/v1/Organization)
+   BFF ? API (/api/Organization)
         ?
    API ? OrganizationRepository ? Database
         ?

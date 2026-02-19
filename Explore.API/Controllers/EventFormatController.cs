@@ -23,7 +23,7 @@ public class EventFormatController : ControllerBase
         _mediator = mediator;
     }
 
-    // GET: api/v1/eventformat
+    // GET: api/eventformat
     [HttpGet]
     [EndpointSummary("Get all Event Formats")]
     [EndpointDescription("Retrieve a list of all event delivery formats (In-person Local, Digital Online, Hybrid)")]
@@ -36,7 +36,7 @@ public class EventFormatController : ControllerBase
         return Ok(eventFormats);
     }
 
-    // GET: api/v1/eventformat/{id}
+    // GET: api/eventformat/{id}
     [HttpGet("{id}")]
     [EndpointSummary("Get Event Format by ID")]
     [EndpointDescription("Retrieve details of a specific event delivery format")]

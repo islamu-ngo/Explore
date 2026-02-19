@@ -461,7 +461,7 @@ Find and update any code that references the old `IEmailSender` / `Email` / `Ema
 
 #### Task 5.4: Integration test — connection test endpoint (optional)
 - **File**: `Event.API.IntegrationTests/Features/EmailConnectionTests.cs`
-- **What**: Test that the `/api/v1/admin/email/test-connection` endpoint works
+- **What**: Test that the `/api/admin/email/test-connection` endpoint works
 - **Acceptance Criteria**:
   - [ ] Uses WebApplicationFactory
   - [ ] Mocks SMTP (no real connection)
@@ -475,7 +475,7 @@ Optional but recommended: An admin endpoint to test SMTP connectivity from the U
 
 #### Task 6.1: Add email test connection endpoint
 - **File**: Add to existing admin controller or create `Explore.API/Controllers/EmailController.cs`
-- **What**: `POST /api/v1/admin/email/test-connection` — tests current SMTP configuration
+- **What**: `POST /api/admin/email/test-connection` — tests current SMTP configuration
 - **Authorization**: `[Authorize(Roles = "Admin")]`
 - **Response**: `EmailResult` (success/failure + timing)
 - **Acceptance Criteria**:
@@ -486,7 +486,7 @@ Optional but recommended: An admin endpoint to test SMTP connectivity from the U
 
 #### Task 6.2: Add send test email endpoint (optional)
 - **File**: Same controller
-- **What**: `POST /api/v1/admin/email/send-test` — sends a test email to verify end-to-end
+- **What**: `POST /api/admin/email/send-test` — sends a test email to verify end-to-end
 - **Authorization**: `[Authorize(Roles = "Admin")]`
 - **Body**: `{ "to": "admin@example.com" }`
 - **Response**: `EmailResult`

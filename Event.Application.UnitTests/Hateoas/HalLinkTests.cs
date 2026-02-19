@@ -13,7 +13,7 @@ public class HalLinkTests
     public async Task Create_ShouldCreateLinkWithHrefOnly()
     {
         // Arrange
-        var href = "/api/v1/resource/123";
+        var href = "/api/resource/123";
 
         // Act
         var link = HalLink.Create(href);
@@ -29,7 +29,7 @@ public class HalLinkTests
     public async Task CreateAction_ShouldCreateLinkWithMethod()
     {
         // Arrange
-        var href = "/api/v1/resource/123";
+        var href = "/api/resource/123";
         var method = "DELETE";
 
         // Act
@@ -44,7 +44,7 @@ public class HalLinkTests
     public async Task CreateTemplated_ShouldCreateTemplatedLink()
     {
         // Arrange
-        var hrefTemplate = "/api/v1/resource{?page,size}";
+        var hrefTemplate = "/api/resource{?page,size}";
         var title = "Search resources";
 
         // Act
@@ -60,7 +60,7 @@ public class HalLinkTests
     public async Task CreateTemplated_WithoutTitle_ShouldHaveNullTitle()
     {
         // Arrange
-        var hrefTemplate = "/api/v1/resource{?page}";
+        var hrefTemplate = "/api/resource{?page}";
 
         // Act
         var link = HalLink.CreateTemplated(hrefTemplate);
@@ -76,7 +76,7 @@ public class HalLinkTests
         // Arrange & Act
         var link = new HalLink
         {
-            Href = "/api/v1/resource",
+            Href = "/api/resource",
             Method = "POST",
             Templated = false,
             Title = "Create Resource",
@@ -86,7 +86,7 @@ public class HalLinkTests
         };
 
         // Assert
-        await Assert.That(link.Href).IsEqualTo("/api/v1/resource");
+        await Assert.That(link.Href).IsEqualTo("/api/resource");
         await Assert.That(link.Method).IsEqualTo("POST");
         await Assert.That(link.Templated).IsEqualTo(false);
         await Assert.That(link.Title).IsEqualTo("Create Resource");

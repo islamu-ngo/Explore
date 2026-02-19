@@ -31,7 +31,7 @@ public class TenantOnboardingService : ITenantOnboardingService
         try
         {
             var client = _httpClientFactory.CreateClient("BffClient");
-            return await client.GetFromJsonAsync<TenantOnboardingStatusModel>("api/v1/TenantOnboarding/status");
+            return await client.GetFromJsonAsync<TenantOnboardingStatusModel>("api/TenantOnboarding/status");
         }
         catch (Exception ex)
         {
@@ -45,7 +45,7 @@ public class TenantOnboardingService : ITenantOnboardingService
         try
         {
             var client = _httpClientFactory.CreateClient("BffClient");
-            var result = await client.GetFromJsonAsync<TenantPolicySettingsModel>("api/v1/TenantOnboarding/settings");
+            var result = await client.GetFromJsonAsync<TenantPolicySettingsModel>("api/TenantOnboarding/settings");
             return result ?? new TenantPolicySettingsModel();
         }
         catch (Exception ex)
@@ -57,12 +57,12 @@ public class TenantOnboardingService : ITenantOnboardingService
 
     public async Task<InstanceCommandResponseModel> CompleteAsync(TenantPolicySettingsModel settings)
     {
-        return await SendAsync(HttpMethod.Post, "api/v1/TenantOnboarding/complete", settings);
+        return await SendAsync(HttpMethod.Post, "api/TenantOnboarding/complete", settings);
     }
 
     public async Task<InstanceCommandResponseModel> UpdateSettingsAsync(TenantPolicySettingsModel settings)
     {
-        return await SendAsync(HttpMethod.Put, "api/v1/TenantOnboarding/settings", settings);
+        return await SendAsync(HttpMethod.Put, "api/TenantOnboarding/settings", settings);
     }
 
     private async Task<InstanceCommandResponseModel> SendAsync(HttpMethod method, string url, TenantPolicySettingsModel settings)

@@ -264,16 +264,16 @@ All entities implement `ITenantEntity` with `TenantId` for data isolation:
 
 | Category | Controller | Routes |
 |----------|------------|--------|
-| **Events** | `EventController` | `/api/v1/event` |
-| **Sessions** | `EventSessionController` | `/api/v1/eventsession` |
-| **Organizations** | `OrganizationController` | `/api/v1/organization` |
-| **Actors** | `ActorController` | `/api/v1/actor` |
-| **Locations** | `LocationController` | `/api/v1/location` |
-| **Categories** | `CategoryController` | `/api/v1/category` |
-| **Tags** | `TagController` | `/api/v1/tag` |
-| **Users** | `UserController` | `/api/v1/user` |
-| **Tenants** | `TenantController` | `/api/v1/tenant` |
-| **Storage** | `StorageObjectController` | `/api/v1/storageobject` |
+| **Events** | `EventController` | `/api/event` |
+| **Sessions** | `EventSessionController` | `/api/eventsession` |
+| **Organizations** | `OrganizationController` | `/api/organization` |
+| **Actors** | `ActorController` | `/api/actor` |
+| **Locations** | `LocationController` | `/api/location` |
+| **Categories** | `CategoryController` | `/api/category` |
+| **Tags** | `TagController` | `/api/tag` |
+| **Users** | `UserController` | `/api/user` |
+| **Tenants** | `TenantController` | `/api/tenant` |
+| **Storage** | `StorageObjectController` | `/api/storageobject` |
 
 ### HATEOAS Support
 

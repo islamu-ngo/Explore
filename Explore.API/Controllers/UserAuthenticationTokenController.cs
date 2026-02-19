@@ -25,7 +25,7 @@ public class UserAuthenticationTokenController : ControllerBase
         _mediator = mediator;
     }
 
-    // GET: api/v1/userauthenticationtoken
+    // GET: api/userauthenticationtoken
     [HttpGet]
     [EndpointSummary("Get all User Authentication Tokens")]
     [EndpointDescription("Retrieve a list of all user authentication tokens")]
@@ -38,7 +38,7 @@ public class UserAuthenticationTokenController : ControllerBase
         return Ok(tokens);
     }
 
-    // GET: api/v1/userauthenticationtoken/{id}
+    // GET: api/userauthenticationtoken/{id}
     [HttpGet("{id}")]
     [EndpointSummary("Get User Authentication Token by ID")]
     [EndpointDescription("Retrieve details of a specific user authentication token")]
@@ -57,7 +57,7 @@ public class UserAuthenticationTokenController : ControllerBase
         return Ok(token);
     }
 
-    // POST: api/v1/userauthenticationtoken
+    // POST: api/userauthenticationtoken
     [HttpPost]
     [EndpointSummary("Create new User Authentication Token")]
     [EndpointDescription("Create a new user authentication token")]
@@ -77,7 +77,7 @@ public class UserAuthenticationTokenController : ControllerBase
         return Ok(response);
     }
 
-    // PUT: api/v1/userauthenticationtoken/{id}
+    // PUT: api/userauthenticationtoken/{id}
     [HttpPut("{id}")]
     [EndpointSummary("Update User Authentication Token")]
     [EndpointDescription("Update an existing user authentication token")]
@@ -103,7 +103,7 @@ public class UserAuthenticationTokenController : ControllerBase
         return Ok(response);
     }
 
-    // DELETE: api/v1/userauthenticationtoken/{id}
+    // DELETE: api/userauthenticationtoken/{id}
     [HttpDelete("{id}")]
     [EndpointSummary("Delete User Authentication Token")]
     [EndpointDescription("Delete a user authentication token")]

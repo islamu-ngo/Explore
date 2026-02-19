@@ -10,11 +10,11 @@ Use this guide when wiring HTTP endpoints to MediatR commands/queries.
 
 ## Route and Method Conventions
 
-- Collection read: `GET /api/v1/{entities}` -> query request -> paginated DTO result.
-- Item read: `GET /api/v1/{entities}/{id}` -> query request -> item DTO or `404`.
-- Create: `POST /api/v1/{entities}` -> command -> `BaseCommandResponse<Guid>` and `201 Created`.
-- Update: `PUT /api/v1/{entities}/{id}` -> command -> `BaseCommandResponse<Guid>` and `200 OK`.
-- Delete: `DELETE /api/v1/{entities}/{id}` -> command -> `bool` and `204`/`404`.
+- Collection read: `GET /api/{entities}` -> query request -> paginated DTO result.
+- Item read: `GET /api/{entities}/{id}` -> query request -> item DTO or `404`.
+- Create: `POST /api/{entities}` -> command -> `BaseCommandResponse<Guid>` and `201 Created`.
+- Update: `PUT /api/{entities}/{id}` -> command -> `BaseCommandResponse<Guid>` and `200 OK`.
+- Delete: `DELETE /api/{entities}/{id}` -> command -> `bool` and `204`/`404`.
 
 Use route constraints for clarity (`{id:guid}`) where applicable.
 

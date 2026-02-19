@@ -25,7 +25,7 @@ public class TenantSettingsController : ControllerBase
         _mediator = mediator;
     }
 
-    // GET: api/v1/tenantsettings
+    // GET: api/tenantsettings
     [HttpGet]
     [EndpointSummary("Get all Tenant Settings")]
     [EndpointDescription("Retrieve a list of all tenant settings")]
@@ -38,7 +38,7 @@ public class TenantSettingsController : ControllerBase
         return Ok(tenantSettings);
     }
 
-    // GET: api/v1/tenantsettings/{id}
+    // GET: api/tenantsettings/{id}
     [HttpGet("{id}")]
     [EndpointSummary("Get Tenant Settings by ID")]
     [EndpointDescription("Retrieve details of specific tenant settings")]
@@ -57,7 +57,7 @@ public class TenantSettingsController : ControllerBase
         return Ok(tenantSettings);
     }
 
-    // POST: api/v1/tenantsettings
+    // POST: api/tenantsettings
     [HttpPost]
     [EndpointSummary("Create new Tenant Settings")]
     [EndpointDescription("Create new tenant settings")]
@@ -77,7 +77,7 @@ public class TenantSettingsController : ControllerBase
         return Ok(response);
     }
 
-    // PUT: api/v1/tenantsettings/{id}
+    // PUT: api/tenantsettings/{id}
     [HttpPut("{id}")]
     [EndpointSummary("Update Tenant Settings")]
     [EndpointDescription("Update existing tenant settings")]
@@ -103,7 +103,7 @@ public class TenantSettingsController : ControllerBase
         return Ok(response);
     }
 
-    // DELETE: api/v1/tenantsettings/{id}
+    // DELETE: api/tenantsettings/{id}
     [HttpDelete("{id}")]
     [EndpointSummary("Delete Tenant Settings")]
     [EndpointDescription("Delete tenant settings")]
