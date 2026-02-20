@@ -16,6 +16,7 @@ public class CreateEventWithSessionsDtoValidator : AbstractValidator<CreateEvent
     private readonly IAudienceGenderRepository _audienceGenderRepository;
     private readonly IEventTypeRepository _eventTypeRepository;
     private readonly IOrganizationRepository _organizationRepository;
+    private readonly IGroupRepository _groupRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly ILocationRepository _locationRepository;
     private readonly IRegistrationModeRepository _registrationModeRepository;
@@ -26,6 +27,7 @@ public class CreateEventWithSessionsDtoValidator : AbstractValidator<CreateEvent
         IAudienceGenderRepository audienceGenderRepository,
         IEventTypeRepository eventTypeRepository,
         IOrganizationRepository organizationRepository,
+        IGroupRepository groupRepository,
         IStorageObjectRepository storageObjectRepository,
         ILocationRepository locationRepository,
         IRegistrationModeRepository registrationModeRepository,
@@ -35,6 +37,7 @@ public class CreateEventWithSessionsDtoValidator : AbstractValidator<CreateEvent
         _audienceGenderRepository = audienceGenderRepository;
         _eventTypeRepository = eventTypeRepository;
         _organizationRepository = organizationRepository;
+        _groupRepository = groupRepository;
         _storageObjectRepository = storageObjectRepository;
         _locationRepository = locationRepository;
         _registrationModeRepository = registrationModeRepository;
@@ -87,6 +90,19 @@ public class CreateEventWithSessionsDtoValidator : AbstractValidator<CreateEvent
             })
             .When(p => p.OrganizationId.HasValue)
             .WithMessage("Organization does not exist.");
+
+        RuleFor(p => p.GroupId)
+            .MustAsync(async (id, cancellation) =>
+            {
+                if (!id.HasValue) return true;
+                return await _groupRepository.Exists(id.Value);
+            })
+            .When(p => p.GroupId.HasValue)
+            .WithMessage("Group does not exist.");
+
+        RuleFor(p => p)
+            .Must(p => !(p.OrganizationId.HasValue && p.GroupId.HasValue))
+            .WithMessage("OrganizationId and GroupId cannot both be provided.");
 
         RuleFor(p => p.Price)
             .GreaterThanOrEqualTo(0)

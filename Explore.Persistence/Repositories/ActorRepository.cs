@@ -75,6 +75,13 @@ public class ActorRepository : GenericRepository<Actor, Guid>, IActorRepository
             .FirstOrDefaultAsync(a => a.OrganizationId == organizationId);
     }
 
+    public async Task<Actor?> GetActorByGroupId(Guid groupId)
+    {
+        return await _dbContext.Actors
+            .AsNoTracking()
+            .FirstOrDefaultAsync(a => a.GroupId == groupId);
+    }
+
     public async Task<(List<Actor> Items, int TotalCount)> GetActorsWithDetailsPaged(int pageNumber, int pageSize)
     {
         var query = _dbContext.Actors

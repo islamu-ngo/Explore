@@ -119,6 +119,10 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IOrganizationMemberRepository, OrganizationMemberRepository>();
         services.AddScoped<IOrganizationReviewRepository, OrganizationReviewRepository>();
 
+        // Group Repositories
+        services.AddScoped<IGroupRepository, GroupRepository>();
+        services.AddScoped<IGroupMemberRepository, GroupMemberRepository>();
+
         // Event Repositories
         services.AddScoped<IEventRepository, EventRepository>();
         services.AddScoped<IEventSessionRepository, EventSessionRepository>();

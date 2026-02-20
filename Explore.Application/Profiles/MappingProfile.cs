@@ -20,6 +20,8 @@ using Explore.Application.DTOs.EventStatus;
 using Explore.Application.DTOs.EventTags;
 using Explore.Application.DTOs.EventType;
 using Explore.Application.DTOs.FileType;
+using Explore.Application.DTOs.Group;
+using Explore.Application.DTOs.GroupMember;
 using Explore.Application.DTOs.IndexedDid;
 using Explore.Application.DTOs.Language;
 using Explore.Application.DTOs.Location;
@@ -182,6 +184,41 @@ public class MappingProfile : Profile
         // EVENT TYPE MAPPINGS (Readonly Lookup)
         // ============================================
         CreateMap<EventType, EventTypeListDto>().ReverseMap();
+
+        // ============================================
+        // GROUP MAPPINGS
+        // ============================================
+        CreateMap<Group, GroupDto>()
+            .ForMember(dest => dest.ApprovalStatusFullName, opt => opt.MapFrom(src => src.ApprovalStatus != null ? src.ApprovalStatus.FullName : null))
+            .ForMember(dest => dest.ApprovalStatusMasterCode, opt => opt.MapFrom(src => src.ApprovalStatus != null ? src.ApprovalStatus.MasterCode : null))
+            .ForMember(dest => dest.TenantFullName, opt => opt.MapFrom(src => src.Tenant != null ? src.Tenant.FullName : null))
+            .ForMember(dest => dest.ActorDisplayName, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.DisplayName : null))
+            .ForMember(dest => dest.ActorHandle, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.Handle : null))
+            .ForMember(dest => dest.ActorProfilePictureId, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.ProfilePictureId : null))
+            .ForMember(dest => dest.ActorProfilePictureUri, opt => opt.MapFrom(src => src.Actor != null && src.Actor.ProfilePicture != null ? src.Actor.ProfilePicture.Uri : null));
+        CreateMap<Group, GroupListDto>()
+            .ForMember(dest => dest.ApprovalStatusFullName, opt => opt.MapFrom(src => src.ApprovalStatus != null ? src.ApprovalStatus.FullName : null))
+            .ForMember(dest => dest.ActorProfilePictureId, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.ProfilePictureId : null))
+            .ForMember(dest => dest.ActorProfilePictureUri, opt => opt.MapFrom(src => src.Actor != null && src.Actor.ProfilePicture != null ? src.Actor.ProfilePicture.Uri : null));
+        CreateMap<CreateGroupDto, Group>();
+        CreateMap<UpdateGroupDto, Group>();
+        CreateMap<UpdateGroupApprovalStatusDto, Group>();
+
+        // ============================================
+        // GROUP MEMBER MAPPINGS
+        // ============================================
+        CreateMap<GroupMember, GroupMemberDto>()
+            .ForMember(dest => dest.GroupFullName, opt => opt.MapFrom(src => src.Group != null ? src.Group.FullName : null))
+            .ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null))
+            .ForMember(dest => dest.UserFullName, opt => opt.MapFrom(src => src.User != null ? $"{src.User.FirstName} {src.User.LastName}" : null))
+            .ForMember(dest => dest.RoleName, opt => opt.MapFrom(src => src.Role != null ? src.Role.FullName : null));
+        CreateMap<GroupMember, GroupMemberListDto>()
+            .ForMember(dest => dest.GroupFullName, opt => opt.MapFrom(src => src.Group != null ? src.Group.FullName : null))
+            .ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null))
+            .ForMember(dest => dest.UserFullName, opt => opt.MapFrom(src => src.User != null ? $"{src.User.FirstName} {src.User.LastName}" : null))
+            .ForMember(dest => dest.RoleName, opt => opt.MapFrom(src => src.Role != null ? src.Role.FullName : null));
+        CreateMap<AddGroupMemberDto, GroupMember>();
+        CreateMap<UpdateGroupMemberRoleDto, GroupMember>();
 
         // ============================================
         // ORGANIZATION MAPPINGS

@@ -1,3 +1,6 @@
+// ABOUTME: Loads public landing metrics and featured events for anonymous visitors.
+// ABOUTME: Persists prerendered payload to avoid hydration loading flicker.
+
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
@@ -19,9 +22,18 @@ public partial class LandingPageForNonUsers
     private bool _isLoading = true;
     private string? _errorMessage;
 
+    [PersistentState]
+    public LandingPageForNonUsersState? PersistedState { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
+        if (TryRestoreState())
+        {
+            return;
+        }
+
         await LoadDataAsync();
+        PersistState();
     }
 
     private async Task LoadDataAsync()
@@ -80,4 +92,36 @@ public partial class LandingPageForNonUsers
 
     private async Task ScrollToRegister()
         => await JS.InvokeVoidAsync("eval", "document.getElementById('register').scrollIntoView({behavior:'smooth',block:'start'});");
+
+    private bool TryRestoreState()
+    {
+        if (PersistedState == null)
+        {
+            return false;
+        }
+
+        _events = PersistedState.Events;
+        _membersCount = PersistedState.MembersCount;
+        _eventsCount = PersistedState.EventsCount;
+        _isLoading = false;
+        _errorMessage = null;
+        return true;
+    }
+
+    private void PersistState()
+    {
+        PersistedState = new LandingPageForNonUsersState
+        {
+            Events = _events.ToList(),
+            MembersCount = _membersCount,
+            EventsCount = _eventsCount
+        };
+    }
+
+    public sealed class LandingPageForNonUsersState
+    {
+        public List<EventListDto> Events { get; init; } = new();
+        public int MembersCount { get; init; }
+        public int EventsCount { get; init; }
+    }
 }

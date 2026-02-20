@@ -1,3 +1,6 @@
+// ABOUTME: Loads and displays organization profile details and recent reviews.
+// ABOUTME: Persists prerendered organization payload to prevent hydration flicker.
+
 using Blazouter.Services;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Helpers;
@@ -26,6 +29,9 @@ public partial class OrganizationProfile
 
     private string? _errorMessage;
 
+    [PersistentState]
+    public OrganizationProfileState? PersistedState { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
         // Get route parameter from Blazouter
@@ -33,6 +39,11 @@ public partial class OrganizationProfile
         if (Guid.TryParse(idStr, out var id))
         {
             Id = id;
+        }
+
+        if (TryRestoreState())
+        {
+            return;
         }
 
         _isLoading = true;
@@ -46,6 +57,8 @@ public partial class OrganizationProfile
             _appearance = OrganizationAppearanceMetadataHelper.Parse(_organization?.MetadataJson);
             _bannerStyle = OrganizationAppearanceMetadataHelper.BuildBannerStyle(_appearance, "#1f6feb");
             Logger.LogDebug("Loaded organization {OrganizationId} with {ReviewCount} reviews", Id, _reviews.Count);
+
+            PersistState();
         }
         catch (Exception ex)
         {
@@ -69,5 +82,38 @@ public partial class OrganizationProfile
             return ImageHelper.GetOrganizationPlaceholder(null, "ORG");
 
         return ImageHelper.GetOrganizationPlaceholder(null, _organization.FullName);
+    }
+
+    private bool TryRestoreState()
+    {
+        if (PersistedState == null || PersistedState.OrganizationId != Id)
+        {
+            return false;
+        }
+
+        _organization = PersistedState.Organization;
+        _reviews = PersistedState.Reviews;
+        _appearance = OrganizationAppearanceMetadataHelper.Parse(_organization?.MetadataJson);
+        _bannerStyle = OrganizationAppearanceMetadataHelper.BuildBannerStyle(_appearance, "#1f6feb");
+        _isLoading = false;
+        _errorMessage = null;
+        return true;
+    }
+
+    private void PersistState()
+    {
+        PersistedState = new OrganizationProfileState
+        {
+            OrganizationId = Id,
+            Organization = _organization,
+            Reviews = _reviews.ToList()
+        };
+    }
+
+    public sealed class OrganizationProfileState
+    {
+        public Guid OrganizationId { get; init; }
+        public OrganizationDto? Organization { get; init; }
+        public List<OrganizationReviewDto> Reviews { get; init; } = new();
     }
 }

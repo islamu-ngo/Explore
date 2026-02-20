@@ -79,6 +79,15 @@
                                                 </span>
                                             </MudRadio>
                                         </MudPaper>
+
+                                        <MudPaper Elevation="0" Class="pa-4 border-solid border-1 mud-border-lines-default rounded-lg">
+                                            <MudRadio Value="@("group")" Color="Color.Primary" Disabled="@(_myGroups == null || !_myGroups.Any())">
+                                                <span class="d-flex align-center gap-2">
+                                                    <MudIcon Icon="@Icons.Material.Filled.Groups" Size="Size.Small" />
+                                                    <MudText>A Group</MudText>
+                                                </span>
+                                            </MudRadio>
+                                        </MudPaper>
                                     </MudStack>
                                 </MudRadioGroup>
 
@@ -122,6 +131,42 @@
                                     {
                                         <MudAlert Severity="Severity.Error" Class="mb-4">
                                             @_organizationRoleError
+                                        </MudAlert>
+                                    }
+                                }
+
+                                @if (_publisherMode == "group")
+                                {
+                                    @if (_myGroups != null && _myGroups.Any())
+                                    {
+                                        <MudSelect Value="_selectedGroupId"
+                                                   T="Guid?"
+                                                   Label="Select Group"
+                                                   Variant="Variant.Outlined"
+                                                   AnchorOrigin="Origin.BottomCenter"
+                                                   Required="true"
+                                                   Class="mb-4"
+                                                   ValueChanged="OnGroupSelected">
+                                            <MudSelectItem T="Guid?" Value="@((Guid?)null)">-- Select a group --</MudSelectItem>
+                                            @foreach (var group in _myGroups)
+                                            {
+                                                <MudSelectItem @key="group.Id" T="Guid?" Value="@((Guid?)group.Id)">
+                                                    @group.FullName @(group.CurrentUserRole.HasValue ? $"({GetRoleName(group.CurrentUserRole.Value)})" : "")
+                                                </MudSelectItem>
+                                            }
+                                        </MudSelect>
+                                    }
+                                    else
+                                    {
+                                        <MudAlert Severity="Severity.Warning" Class="mb-4">
+                                            You are not a member of any groups. Create or join a group first.
+                                        </MudAlert>
+                                    }
+
+                                    @if (!string.IsNullOrEmpty(_groupRoleError))
+                                    {
+                                        <MudAlert Severity="Severity.Error" Class="mb-4">
+                                            @_groupRoleError
                                         </MudAlert>
                                     }
                                 }
@@ -372,7 +417,7 @@
                         <MudButton ButtonType="ButtonType.Submit"
                                    Variant="Variant.Filled"
                                    Color="Color.Primary"
-                                   Disabled="@(isProcessing || _isUploadingImage || !string.IsNullOrEmpty(_organizationRoleError))"
+                                   Disabled="@(isProcessing || _isUploadingImage || !string.IsNullOrEmpty(_organizationRoleError) || !string.IsNullOrEmpty(_groupRoleError))"
                                    StartIcon="@(isProcessing || _isUploadingImage ? null : Icons.Material.Filled.Save)"
                                    Class="rounded-pill px-6">
                             @if (isProcessing)

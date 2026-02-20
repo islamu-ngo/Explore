@@ -1,5 +1,5 @@
 // ABOUTME: Code-behind for the Create Event page.
-// Allows users to create events as themselves (user-reported) or as an organization they have admin rights to.
+// Allows users to create events as themselves (user-reported), an organization, or a group they can publish for.
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Components;
@@ -18,6 +18,7 @@ public partial class CreateEvent
 {
     [Inject] protected IEventService EventService { get; set; } = null!;
     [Inject] protected IOrganizationService OrganizationService { get; set; } = null!;
+    [Inject] protected IGroupService GroupService { get; set; } = null!;
     [Inject] protected IUserService UserService { get; set; } = null!;
     [Inject] protected IAdminService AdminService { get; set; } = null!;
     [Inject] protected IImageStorageService ImageStorageService { get; set; } = null!;
@@ -33,6 +34,12 @@ public partial class CreateEvent
     private Guid? _selectedOrganizationId;
     private ICollection<OrganizationListDto>? _myOrganizations;
     private string _organizationRoleError = string.Empty;
+    private Guid? _selectedGroupId;
+    private ICollection<GroupPublisherListDto>? _myGroups;
+    private string _groupRoleError = string.Empty;
+
+    private const int GroupCreatorRoleId = 30;
+    private const int GroupAdminRoleId = 31;
 
     private Guid? _currentUserId;
     private CreateEventDto createDto = new();
@@ -99,6 +106,24 @@ public partial class CreateEvent
                 if (!RoleHelper.CanManage(org.CurrentUserRole))
                 {
                     _organizationRoleError = "You don't have the authority to perform that action. Only Creator, Co-Owner, or Admin roles can publish events.";
+                }
+            }
+        }
+    }
+
+    private void OnGroupSelected(Guid? groupId)
+    {
+        _selectedGroupId = groupId;
+        _groupRoleError = string.Empty;
+
+        if (groupId.HasValue && _myGroups != null)
+        {
+            var group = _myGroups.FirstOrDefault(g => g.Id == groupId.Value);
+            if (group?.CurrentUserRole != null)
+            {
+                if (!CanPublishAsGroup(group.CurrentUserRole))
+                {
+                    _groupRoleError = "You don't have the authority to publish events for this group. Only Creator or Admin roles can publish events.";
                 }
             }
         }
@@ -259,6 +284,17 @@ public partial class CreateEvent
                 _myOrganizations = new List<OrganizationListDto>();
             }
 
+            try
+            {
+                _myGroups = await GroupService.GetMyGroupsAsync();
+                Logger.LogInformation("Loaded {Count} groups for publisher selector", _myGroups?.Count ?? 0);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error loading user groups");
+                _myGroups = new List<GroupPublisherListDto>();
+            }
+
             // Load dropdown data in parallel
             var eventTypesTask = AdminService.GetEventTypesAsync();
             var audienceGendersTask = AdminService.GetAudienceGendersAsync();
@@ -318,6 +354,20 @@ public partial class CreateEvent
             }
         }
 
+        if (_publisherMode == "group")
+        {
+            if (!_selectedGroupId.HasValue)
+            {
+                errorMessage = "Please select a group.";
+                return false;
+            }
+            if (!string.IsNullOrEmpty(_groupRoleError))
+            {
+                errorMessage = _groupRoleError;
+                return false;
+            }
+        }
+
         // DTO field validation (Title, EventTypeId, etc.) is handled by CreateEventDtoValidator via FluentValidation
 
         if (sessions == null || !sessions.Any())
@@ -359,6 +409,7 @@ public partial class CreateEvent
 
             // Set publisher context: null = personal (user-reported), Guid = organization
             createDto.OrganizationId = _publisherMode == "organization" ? _selectedOrganizationId : null;
+            createDto.GroupId = _publisherMode == "group" ? _selectedGroupId : null;
             createDto.FeaturedImageId = featuredImageId;
             createDto.MadhabId = selectedMadhabId;
             createDto.MetadataJson = EventAppearanceMetadataHelper.Upsert(createDto.MetadataJson, _appearance);
@@ -371,7 +422,11 @@ public partial class CreateEvent
             createDto.LastSessionDate = latestEnd;
 
             // Create Event
-            Logger.LogInformation("Creating event record (publisherMode={Mode}, organizationId={OrgId})", _publisherMode, createDto.OrganizationId);
+            Logger.LogInformation(
+                "Creating event record (publisherMode={Mode}, organizationId={OrgId}, groupId={GroupId})",
+                _publisherMode,
+                createDto.OrganizationId,
+                createDto.GroupId);
             var response = await EventService.CreateEventAsync(createDto);
 
             if (response?.Success == true && response.Id.HasValue && response.Id != Guid.Empty)
@@ -541,8 +596,23 @@ public partial class CreateEvent
             if (org != null) return $"Publishing for {org.FullName}";
         }
 
+        if (_publisherMode == "group" && _selectedGroupId.HasValue && _myGroups != null)
+        {
+            var group = _myGroups.FirstOrDefault(g => g.Id == _selectedGroupId.Value);
+            if (group != null) return $"Publishing for {group.FullName}";
+        }
+
         return "Select who is publishing this event";
     }
 
-    private static string GetRoleName(int roleId) => RoleHelper.GetRoleName(roleId);
+    private static string GetRoleName(int roleId) => roleId switch
+    {
+        GroupCreatorRoleId => "Group Creator",
+        GroupAdminRoleId => "Group Admin",
+        32 => "Group Moderator",
+        33 => "Group Member",
+        _ => RoleHelper.GetRoleName(roleId)
+    };
+
+    private static bool CanPublishAsGroup(int? roleId) => roleId is GroupCreatorRoleId or GroupAdminRoleId;
 }

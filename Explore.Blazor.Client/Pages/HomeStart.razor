@@ -1,9 +1,8 @@
-@page "/"
 @using Explore.Blazor.Client.Pages.Event
 @using Explore.Blazor.Client.Pages.Landing
 @inject IStartupRoutingService StartupRoutingService
 @inject NavigationManager Navigation
-@rendermode @(new InteractiveAutoRenderMode(prerender: false))
+@rendermode @(new InteractiveAutoRenderMode(prerender: true))
 
 @switch (_state)
 {
@@ -29,6 +28,9 @@
     private RootState _state = RootState.Loading;
     private bool _isInitialized;
 
+    [PersistentState]
+    public RootState? PersistedRootState { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
         if (_isInitialized)
@@ -37,6 +39,13 @@
         }
 
         _isInitialized = true;
+
+        if (PersistedRootState.HasValue)
+        {
+            _state = PersistedRootState.Value;
+            return;
+        }
+
         await ResolveRootAsync();
     }
 
@@ -53,14 +62,16 @@
                 return;
             case StartupRouteDecision.PublicLanding:
                 _state = RootState.ShowLanding;
+                PersistedRootState = _state;
                 return;
             default:
                 _state = RootState.ShowEvents;
+                PersistedRootState = _state;
                 return;
         }
     }
 
-    private enum RootState
+    public enum RootState
     {
         Loading,
         ShowLanding,

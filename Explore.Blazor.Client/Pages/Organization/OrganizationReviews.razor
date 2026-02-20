@@ -10,7 +10,7 @@
 @inject NavigationManager Navigation
 @inject RouterStateService RouterState
 @inject ILogger<OrganizationReviews> Logger
-@rendermode @(new InteractiveAutoRenderMode(prerender: false))
+@rendermode @(new InteractiveAutoRenderMode(prerender: true))
 
 <PageTitle>Organization Reviews</PageTitle>
 <MudContainer Class="organization-reviews">
@@ -106,8 +106,9 @@
     private OrganizationDto? _organization;
     private List<OrganizationReviewDto> _reviews = new();
     private bool _isLoading = true;
+    [PersistentState]
+    public OrganizationReviewsState? PersistedState { get; set; }
 
-    // Client-only load state (no prerender persistence)
     private string? _errorMessage;
 
     protected override async Task OnInitializedAsync()
@@ -119,6 +120,11 @@
             Id = id;
         }
 
+        if (TryRestoreState())
+        {
+            return;
+        }
+
         _isLoading = true;
         _errorMessage = null;
 
@@ -128,6 +134,8 @@
             _organization = await OrganizationService.GetOrganizationByIdAsync(Id);
             _reviews = (await OrganizationReviewService.GetReviewsByOrganizationId(Id)).ToList();
             Logger.LogDebug("Loaded organization {OrganizationId} with {ReviewCount} reviews", Id, _reviews.Count);
+
+            PersistState();
         }
         catch (Exception ex)
         {
@@ -140,12 +148,39 @@
         }
     }
 
-    // PersistData removed: no PersistentComponentState usage in client-only rendering mode.
-
-    // Dispose removed: no persistence subscription to dispose.
-
     private void GoBack()
     {
         Navigation.NavigateTo($"/organization/profile/{Id}");
+    }
+
+    private bool TryRestoreState()
+    {
+        if (PersistedState == null || PersistedState.OrganizationId != Id)
+        {
+            return false;
+        }
+
+        _organization = PersistedState.Organization;
+        _reviews = PersistedState.Reviews;
+        _isLoading = false;
+        _errorMessage = null;
+        return true;
+    }
+
+    private void PersistState()
+    {
+        PersistedState = new OrganizationReviewsState
+        {
+            OrganizationId = Id,
+            Organization = _organization,
+            Reviews = _reviews.ToList()
+        };
+    }
+
+    public sealed class OrganizationReviewsState
+    {
+        public Guid OrganizationId { get; init; }
+        public OrganizationDto? Organization { get; init; }
+        public List<OrganizationReviewDto> Reviews { get; init; } = new();
     }
 }

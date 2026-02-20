@@ -85,6 +85,15 @@ public class ExploreDbContext : DbContext
         modelBuilder.Entity<OrganizationReview>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
 
+        // ===== Group Entities =====
+        modelBuilder.Entity<Group>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+
+        modelBuilder.Entity<GroupMember>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+
         // ===== Actor Entities =====
         // Entities with both Tenant and Soft Delete filters
         modelBuilder.Entity<Actor>()
@@ -241,6 +250,10 @@ public class ExploreDbContext : DbContext
     public DbSet<OrganizationMember> OrganizationMembers { get; set; }
     public DbSet<OrganizationPosition> OrganizationPositions { get; set; }
     public DbSet<OrganizationReview> OrganizationReviews { get; set; }
+
+    // ===== Group Entities =====
+    public DbSet<Group> Groups { get; set; }
+    public DbSet<GroupMember> GroupMembers { get; set; }
 
     // ===== Events =====
     public DbSet<Event> Events { get; set; }

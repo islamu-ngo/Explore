@@ -97,6 +97,16 @@ public static class MockServiceFactory
     }
 
     /// <summary>
+    /// Creates a mock IGroupService with default empty responses.
+    /// </summary>
+    public static IGroupService CreateGroupService()
+    {
+        var mock = Substitute.For<IGroupService>();
+        mock.GetMyGroupsAsync().Returns(new List<GroupPublisherListDto>());
+        return mock;
+    }
+
+    /// <summary>
     /// Creates a mock IAuthStateService with authenticated user defaults.
     /// </summary>
     /// <param name="userId">User ID as Guid (converted to string for JWT claim compatibility)</param>
@@ -297,6 +307,7 @@ public static class MockServiceFactory
         services.AddSingleton(CreateEventApiClient());
         services.AddSingleton(CreateEventService());
         services.AddSingleton(CreateOrganizationService());
+        services.AddSingleton(CreateGroupService());
         services.AddSingleton(CreateAuthStateService(userId, tenantId));
         services.AddSingleton(CreateUserService());
         services.AddSingleton(CreateCategoryService());

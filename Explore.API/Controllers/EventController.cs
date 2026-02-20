@@ -232,8 +232,9 @@ public class EventController : ControllerBase
     /// </summary>
     [HttpPost(Name = RouteNames.CreateEvent)]
     [EndpointSummary("Create Event")]
-    [EndpointDescription("Creates a new event. If OrganizationId is provided, the event is created under that organization " +
-        "(user must be admin). If null, the event is created under the user's personal actor.")]
+    [EndpointDescription("Creates a new event. If OrganizationId is provided, the event is created under that organization. " +
+        "If GroupId is provided, the event is created under that group. " +
+        "If neither is provided, the event is created under the user's personal actor when tenant policy allows user-reported publishing.")]
     [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
@@ -261,7 +262,8 @@ public class EventController : ControllerBase
     [HttpPost("with-sessions")]
     [EndpointSummary("Create Event with Sessions")]
     [EndpointDescription("Creates a new event along with its sessions in a single transaction. " +
-        "At least one session is required. FirstSessionDate and LastSessionDate are computed automatically from the sessions.")]
+        "At least one session is required. FirstSessionDate and LastSessionDate are computed automatically from the sessions. " +
+        "OrganizationId and GroupId are optional and mutually exclusive publisher contexts.")]
     [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]

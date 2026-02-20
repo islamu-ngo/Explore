@@ -25,6 +25,16 @@ public static class PermissionCodes
     public const string OrganizationMemberUpdate = "organization_member:update";
     public const string OrganizationMemberDelete = "organization_member:delete";
 
+    // ===== Group =====
+    public const string GroupManage = "group:manage";
+    public const string GroupUpdate = "group:update";
+    public const string GroupDelete = "group:delete";
+
+    // ===== Group Member =====
+    public const string GroupMemberCreate = "group_member:create";
+    public const string GroupMemberUpdate = "group_member:update";
+    public const string GroupMemberDelete = "group_member:delete";
+
     // ===== Event Session =====
     public const string EventSessionCreate = "event_session:create";
     public const string EventSessionUpdate = "event_session:update";

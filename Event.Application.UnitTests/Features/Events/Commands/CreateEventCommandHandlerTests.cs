@@ -24,6 +24,9 @@ public class CreateEventCommandHandlerTests
     private readonly IActorRepository _actorRepository;
     private readonly IOrganizationRepository _organizationRepository;
     private readonly IOrganizationMemberRepository _organizationMemberRepository;
+    private readonly IGroupRepository _groupRepository;
+    private readonly IGroupMemberRepository _groupMemberRepository;
+    private readonly ITenantSettingsRepository _tenantSettingsRepository;
     private readonly IAudienceAgeRepository _audienceAgeRepository;
     private readonly IAudienceGenderRepository _audienceGenderRepository;
     private readonly IEventTypeRepository _eventTypeRepository;
@@ -41,6 +44,9 @@ public class CreateEventCommandHandlerTests
         _actorRepository = Substitute.For<IActorRepository>();
         _organizationRepository = Substitute.For<IOrganizationRepository>();
         _organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
+        _groupRepository = Substitute.For<IGroupRepository>();
+        _groupMemberRepository = Substitute.For<IGroupMemberRepository>();
+        _tenantSettingsRepository = Substitute.For<ITenantSettingsRepository>();
         _audienceAgeRepository = Substitute.For<IAudienceAgeRepository>();
         _audienceGenderRepository = Substitute.For<IAudienceGenderRepository>();
         _eventTypeRepository = Substitute.For<IEventTypeRepository>();
@@ -59,6 +65,9 @@ public class CreateEventCommandHandlerTests
             _actorRepository,
             _organizationRepository,
             _organizationMemberRepository,
+            _groupRepository,
+            _groupMemberRepository,
+            _tenantSettingsRepository,
             _audienceAgeRepository,
             _audienceGenderRepository,
             _eventTypeRepository,

@@ -11,6 +11,7 @@ using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionAgendaItem;
+using Explore.Application.DTOs.Group;
 using Explore.Application.DTOs.IndexedDid;
 using Explore.Application.DTOs.Location;
 using Explore.Application.DTOs.Organization;
@@ -63,6 +64,11 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ILinkPolicy<CategoryDto>, CategoryDetailLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<CategoryListDto>, CategoryCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<CategoryDto, CategoryListDto>, CategoryResourceAssembler>();
+
+        // Group
+        services.AddScoped<ILinkPolicy<GroupDto>, GroupDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<GroupListDto>, GroupCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<GroupDto, GroupListDto>, GroupResourceAssembler>();
 
         // Tag
         services.AddScoped<ILinkPolicy<TagDto>, TagDetailLinkPolicy>();

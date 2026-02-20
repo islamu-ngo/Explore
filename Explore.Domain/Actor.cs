@@ -28,6 +28,10 @@ public class Actor : ITenantEntity, IAuditableEntity, ISoftDeletable
     public Guid? OrganizationId { get; set; }
     public Organization? Organization { get; set; }
 
+    [ForeignKey(nameof(GroupId))]
+    public Guid? GroupId { get; set; }
+    public Group? Group { get; set; }
+
     [ForeignKey("Tenant")]
     public Guid TenantId { get; set; }
 

@@ -13,6 +13,7 @@ public class CreateEventDtoValidatorTests
     private readonly IAudienceGenderRepository _audienceGenderRepository;
     private readonly IEventTypeRepository _eventTypeRepository;
     private readonly IOrganizationRepository _organizationRepository;
+    private readonly IGroupRepository _groupRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly CreateEventDtoValidator _validator;
 
@@ -22,6 +23,7 @@ public class CreateEventDtoValidatorTests
         _audienceGenderRepository = Substitute.For<IAudienceGenderRepository>();
         _eventTypeRepository = Substitute.For<IEventTypeRepository>();
         _organizationRepository = Substitute.For<IOrganizationRepository>();
+        _groupRepository = Substitute.For<IGroupRepository>();
         _storageObjectRepository = Substitute.For<IStorageObjectRepository>();
 
         _validator = new CreateEventDtoValidator(
@@ -29,6 +31,7 @@ public class CreateEventDtoValidatorTests
             _audienceGenderRepository,
             _eventTypeRepository,
             _organizationRepository,
+            _groupRepository,
             _storageObjectRepository
         );
     }
@@ -131,5 +134,27 @@ public class CreateEventDtoValidatorTests
         await Assert.That(result.Errors.Any(e => e.PropertyName == "EventTypeId")).IsTrue();
         await Assert.That(result.Errors.Any(e => e.PropertyName == "AudienceGenderId")).IsTrue();
         await Assert.That(result.Errors.Any(e => e.PropertyName == "AudienceAgeId")).IsTrue();
+    }
+
+    [Test]
+    public async Task Validate_WithOrganizationAndGroupSet_ReturnsError()
+    {
+        // Arrange
+        var dto = new CreateEventDto
+        {
+            Title = "Valid Event",
+            OrganizationId = Guid.NewGuid(),
+            GroupId = Guid.NewGuid()
+        };
+
+        _organizationRepository.Exists(dto.OrganizationId.Value).Returns(true);
+        _groupRepository.Exists(dto.GroupId.Value).Returns(true);
+
+        // Act
+        var result = await _validator.ValidateAsync(dto);
+
+        // Assert
+        await Assert.That(result.IsValid).IsFalse();
+        await Assert.That(result.Errors.Any(e => e.ErrorMessage.Contains("cannot both be provided"))).IsTrue();
     }
 }

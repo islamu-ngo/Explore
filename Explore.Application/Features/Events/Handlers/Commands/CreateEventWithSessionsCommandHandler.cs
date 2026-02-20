@@ -13,6 +13,7 @@ using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Constants;
+using Explore.Domain.Enums;
 using MediatR;
 
 namespace Explore.Application.Features.Events.Handlers.Commands;
@@ -29,6 +30,9 @@ public class CreateEventWithSessionsCommandHandler : IRequestHandler<CreateEvent
     private readonly IActorRepository _actorRepository;
     private readonly IOrganizationRepository _organizationRepository;
     private readonly IOrganizationMemberRepository _organizationMemberRepository;
+    private readonly IGroupRepository _groupRepository;
+    private readonly IGroupMemberRepository _groupMemberRepository;
+    private readonly ITenantSettingsRepository _tenantSettingsRepository;
     private readonly IAudienceAgeRepository _audienceAgeRepository;
     private readonly IAudienceGenderRepository _audienceGenderRepository;
     private readonly IEventTypeRepository _eventTypeRepository;
@@ -47,6 +51,9 @@ public class CreateEventWithSessionsCommandHandler : IRequestHandler<CreateEvent
         IActorRepository actorRepository,
         IOrganizationRepository organizationRepository,
         IOrganizationMemberRepository organizationMemberRepository,
+        IGroupRepository groupRepository,
+        IGroupMemberRepository groupMemberRepository,
+        ITenantSettingsRepository tenantSettingsRepository,
         IAudienceAgeRepository audienceAgeRepository,
         IAudienceGenderRepository audienceGenderRepository,
         IEventTypeRepository eventTypeRepository,
@@ -64,6 +71,9 @@ public class CreateEventWithSessionsCommandHandler : IRequestHandler<CreateEvent
         _actorRepository = actorRepository;
         _organizationRepository = organizationRepository;
         _organizationMemberRepository = organizationMemberRepository;
+        _groupRepository = groupRepository;
+        _groupMemberRepository = groupMemberRepository;
+        _tenantSettingsRepository = tenantSettingsRepository;
         _audienceAgeRepository = audienceAgeRepository;
         _audienceGenderRepository = audienceGenderRepository;
         _eventTypeRepository = eventTypeRepository;
@@ -89,6 +99,7 @@ public class CreateEventWithSessionsCommandHandler : IRequestHandler<CreateEvent
             _audienceGenderRepository,
             _eventTypeRepository,
             _organizationRepository,
+            _groupRepository,
             _storageObjectRepository,
             _locationRepository,
             _registrationModeRepository,
@@ -106,6 +117,10 @@ public class CreateEventWithSessionsCommandHandler : IRequestHandler<CreateEvent
         // ===== RESOLVE ACTOR ID =====
         Guid actorId;
         var dto = request.EventWithSessionsDto;
+        var tenantSettings = await _tenantSettingsRepository.GetByTenant(_tenantContext.TenantId);
+        var publishingPolicy = tenantSettings?.EventPublishingPolicy == (int)EventPublishingPolicyEnum.OrganizationAndGroupOnly
+            ? EventPublishingPolicyEnum.OrganizationAndGroupOnly
+            : EventPublishingPolicyEnum.OrganizationGroupAndUserReported;
 
         if (dto.OrganizationId.HasValue)
         {
@@ -140,9 +155,49 @@ public class CreateEventWithSessionsCommandHandler : IRequestHandler<CreateEvent
 
             actorId = organizationActor.Id;
         }
+        else if (dto.GroupId.HasValue)
+        {
+            var groupId = dto.GroupId.Value;
+            var hasPermission = await _groupMemberRepository.HasPermissionInGroup(groupId, currentUserId, PermissionCodes.EventCreate);
+            if (!hasPermission)
+            {
+                response.Success = false;
+                response.Message = "You do not have permission to create events for this group.";
+                response.Errors = new List<string>
+                {
+                    "Your role in the group does not include event creation permission."
+                };
+                return response;
+            }
+
+            var groupActor = await _actorRepository.GetActorByGroupId(groupId);
+            if (groupActor == null)
+            {
+                response.Success = false;
+                response.Message = "Group does not have an associated actor.";
+                response.Errors = new List<string>
+                {
+                    "The group is not properly configured. Please contact support."
+                };
+                return response;
+            }
+
+            actorId = groupActor.Id;
+        }
         else
         {
             // PERSONAL CONTEXT
+            if (publishingPolicy == EventPublishingPolicyEnum.OrganizationAndGroupOnly)
+            {
+                response.Success = false;
+                response.Message = "Personal event publishing is disabled for this tenant.";
+                response.Errors = new List<string>
+                {
+                    "Select an organization or group to publish this event."
+                };
+                return response;
+            }
+
             var userActor = await _actorRepository.GetActorByUserId(currentUserId);
             if (userActor == null)
             {
@@ -192,7 +247,7 @@ public class CreateEventWithSessionsCommandHandler : IRequestHandler<CreateEvent
             TenantId = _tenantContext.TenantId,
             Tenant = null!,
             TotalViews = 0,
-            IsUserReported = !dto.OrganizationId.HasValue,
+            IsUserReported = !dto.OrganizationId.HasValue && !dto.GroupId.HasValue,
             VisibilityType = null!,
             EventStatus = null!,
             EventFormat = null!,

@@ -63,6 +63,7 @@ builder.Services.AddScoped<ILazyAssemblyLoader, LazyAssemblyLoaderService>();
 
 builder.Services.AddScoped<IEventService, EventService>();
 builder.Services.AddScoped<IOrganizationService, OrganizationService>();
+builder.Services.AddScoped<IGroupService, GroupService>();
 builder.Services.AddScoped<IOrganizationMemberService, OrganizationMemberService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<ILandingPageService, LandingPageService>();

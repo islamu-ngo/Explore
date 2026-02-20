@@ -1,5 +1,7 @@
+using Explore.Blazor.Client.Services;
 using MudBlazor;
 using MudBlazor.Services;
+using NSubstitute;
 
 namespace Explore.Blazor.Client.Tests.Common;
 
@@ -53,6 +55,10 @@ public class BlazorTestContext : Bunit.TestContext
 
         // Add common infrastructure services
         Services.AddLogging();
+
+        var groupService = Substitute.For<IGroupService>();
+        groupService.GetMyGroupsAsync().Returns(new List<GroupPublisherListDto>());
+        Services.AddSingleton(groupService);
     }
 
     /// <summary>

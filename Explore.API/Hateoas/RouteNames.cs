@@ -184,6 +184,21 @@ public static class RouteNames
 
     #endregion
 
+    #region Group Routes
+
+    public const string GetGroups = "GetGroups";
+    public const string GetGroupById = "GetGroupById";
+    public const string GetMyGroups = "GetMyGroups";
+    public const string CreateGroup = "CreateGroup";
+    public const string UpdateGroup = "UpdateGroup";
+    public const string DeleteGroup = "DeleteGroup";
+    public const string GetGroupMembers = "GetGroupMembers";
+    public const string CreateGroupMember = "CreateGroupMember";
+    public const string UpdateGroupMember = "UpdateGroupMember";
+    public const string DeleteGroupMember = "DeleteGroupMember";
+
+    #endregion
+
     #region Event Session Agenda Item Routes
 
     public const string GetEventSessionAgendaItemById = "GetEventSessionAgendaItemById";

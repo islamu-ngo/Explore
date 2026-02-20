@@ -41,10 +41,16 @@ public class CreateEventWithSessionsDto
     public int AudienceAgeId { get; set; }
 
     /// <summary>
-    /// Optional organization ID. If null, event is created under user's personal actor.
-    /// If provided, user must be an admin of the organization.
+    /// Optional organization ID. If provided, user must have event:create permission.
+    /// Mutually exclusive with GroupId.
     /// </summary>
     public Guid? OrganizationId { get; set; }
+
+    /// <summary>
+    /// Optional group ID. If provided, user must have event:create permission in the group.
+    /// Mutually exclusive with OrganizationId.
+    /// </summary>
+    public Guid? GroupId { get; set; }
 
     /// <summary>
     /// Optional event price.

@@ -1,7 +1,11 @@
+// ABOUTME: Event detail page logic for loading event data, sessions, and registration status.
+// ABOUTME: Manages dialogs and persistent state for SEO-friendly prerender hydration.
+
 using Blazouter.Services;
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Components;
+using Explore.Blazor.Client.Components.Event;
 using Explore.Blazor.Client.Helpers;
-using Explore.Blazor.Client.Serialization;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Contracts;
 using Microsoft.AspNetCore.Components;
@@ -16,8 +20,6 @@ namespace Explore.Blazor.Client.Pages.Event;
 /// </summary>
 public partial class EventDetail : ComponentBase
 {
-    private const string EventStateKey = "event-detail.state";
-
     [Inject] private NavigationManager Navigation { get; set; } = default!;
     [Inject] private IEventService EventService { get; set; } = default!;
     [Inject] private IDialogService DialogService { get; set; } = default!;
@@ -26,7 +28,9 @@ public partial class EventDetail : ComponentBase
     [Inject] private IUserService UserService { get; set; } = default!;
     [Inject] private Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
     [Inject] private IEventAspectService EventAspectService { get; set; } = default!;
-    [Inject] private PersistentComponentState ComponentState { get; set; } = default!;
+
+    [PersistentState]
+    public EventDetailState? PersistedState { get; set; }
 
     // Changed from private to protected to be accessible by Razor view
     [Inject] protected ILogger<EventDetail> Logger { get; set; } = default!;
@@ -122,18 +126,17 @@ public partial class EventDetail : ComponentBase
 
     private bool TryRestoreState()
     {
-        if (!ComponentState.TryTakeFromJson<EventDetailState>(EventStateKey, out var state) || state == null)
+        if (PersistedState == null || PersistedState.EventId != EventId)
         {
             return false;
         }
 
-        EventId = state.EventId;
-        _eventDetails = state.EventDetails;
-        _eventSessions = state.EventSessions;
-        _primarySession = state.PrimarySession;
-        _islamicAspect = state.IslamicAspect;
-        _techAspect = state.TechAspect;
-        _appearance = state.Appearance ?? new EventAppearanceSettings();
+        _eventDetails = PersistedState.EventDetails;
+        _eventSessions = PersistedState.EventSessions;
+        _primarySession = PersistedState.PrimarySession;
+        _islamicAspect = PersistedState.IslamicAspect;
+        _techAspect = PersistedState.TechAspect;
+        _appearance = PersistedState.Appearance ?? new EventAppearanceSettings();
         _isLoading = false;
         _isCheckingRegistration = true;
         _isCheckingAuth = true;
@@ -153,7 +156,7 @@ public partial class EventDetail : ComponentBase
 
     private void PersistState()
     {
-        var state = new EventDetailState
+        PersistedState = new EventDetailState
         {
             EventId = EventId,
             EventDetails = _eventDetails,
@@ -163,11 +166,9 @@ public partial class EventDetail : ComponentBase
             TechAspect = _techAspect,
             Appearance = _appearance
         };
-
-        ComponentState.PersistAsJson(EventStateKey, state);
     }
 
-    internal sealed class EventDetailState
+    public sealed class EventDetailState
     {
         public Guid EventId { get; init; }
         public EventDto? EventDetails { get; init; }
@@ -176,17 +177,6 @@ public partial class EventDetail : ComponentBase
         public EventIslamicAspectDto? IslamicAspect { get; init; }
         public EventTechAspectDto? TechAspect { get; init; }
         public EventAppearanceSettings? Appearance { get; init; }
-    }
-
-    private static Type ResolveComponentType(string componentTypeName)
-    {
-        var type = Type.GetType(componentTypeName, throwOnError: false);
-        if (type != null)
-        {
-            return type;
-        }
-
-        throw new InvalidOperationException($"Component type '{componentTypeName}' was not found.");
     }
 
     /// <summary>
@@ -480,8 +470,7 @@ public partial class EventDetail : ComponentBase
                 Position = DialogPosition.Center
             };
 
-            var dialog = DialogService.Show(
-                ResolveComponentType("Explore.Blazor.Client.Components.Event.SessionSelectionDialog"),
+            var dialog = await DialogService.ShowAsync<SessionSelectionDialog>(
                 "Select Session",
                 parameters,
                 options);
@@ -529,8 +518,7 @@ public partial class EventDetail : ComponentBase
             Position = DialogPosition.Center
         };
 
-        var dialog = DialogService.Show(
-            ResolveComponentType("Explore.Blazor.Client.Components.EventRegistration"),
+        var dialog = await DialogService.ShowAsync<EventRegistration>(
             "Register",
             parameters,
             options);
@@ -626,8 +614,7 @@ public partial class EventDetail : ComponentBase
             FullWidth = true
         };
 
-        var dialog = DialogService.Show(
-            ResolveComponentType("Explore.Blazor.Client.Components.Event.DeleteEventDialog"),
+        var dialog = await DialogService.ShowAsync<DeleteEventDialog>(
             "Delete Event",
             parameters,
             options);
@@ -677,8 +664,7 @@ public partial class EventDetail : ComponentBase
             FullWidth = true
         };
 
-        var dialog = DialogService.Show(
-            ResolveComponentType("Explore.Blazor.Client.Components.Event.IslamicAspectEditDialog"),
+        var dialog = await DialogService.ShowAsync<IslamicAspectEditDialog>(
             existingAspect == null ? "Add Islamic Characteristics" : "Edit Islamic Characteristics",
             parameters,
             options);
@@ -726,8 +712,7 @@ public partial class EventDetail : ComponentBase
             FullWidth = true
         };
 
-        var dialog = DialogService.Show(
-            ResolveComponentType("Explore.Blazor.Client.Components.Event.TechAspectEditDialog"),
+        var dialog = await DialogService.ShowAsync<TechAspectEditDialog>(
             existingAspect == null ? "Add Tech Characteristics" : "Edit Tech Characteristics",
             parameters,
             options);

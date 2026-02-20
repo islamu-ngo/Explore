@@ -27,5 +27,11 @@ public enum RoleEnum
     OrgAdmin = 22,
     OrgModerator = 23,
     OrgMember = 24,
-    OrgViewer = 25
+    OrgViewer = 25,
+
+    // Group scope (30-39)
+    GroupCreator = 30,
+    GroupAdmin = 31,
+    GroupModerator = 32,
+    GroupMember = 33
 }

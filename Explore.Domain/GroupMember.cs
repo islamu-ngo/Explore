@@ -1,0 +1,40 @@
+// ABOUTME: Domain entity representing a user's membership within a Group.
+// ABOUTME: Links Group to User with a role, similar to OrganizationMember but without position.
+
+using System;
+using System.ComponentModel.DataAnnotations.Schema;
+using Explore.Domain.Interfaces;
+
+namespace Explore.Domain;
+
+public class GroupMember : ITenantEntity, IAuditableEntity, ISoftDeletable
+{
+    public Guid Id { get; set; }
+
+    [ForeignKey("Group")]
+    public Guid GroupId { get; set; }
+    public required Group Group { get; set; }
+
+    [ForeignKey("User")]
+    public Guid UserId { get; set; }
+    public required User User { get; set; }
+
+    [ForeignKey("Role")]
+    public int RoleId { get; set; }
+    public required Role Role { get; set; }
+
+    [ForeignKey("Tenant")]
+    public Guid TenantId { get; set; }
+    public required Tenant Tenant { get; set; }
+
+    // Audit fields
+    public DateTime CreatedAt { get; set; }
+    public Guid? CreatedBy { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public Guid? UpdatedBy { get; set; }
+
+    // Soft delete fields
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public Guid? DeletedBy { get; set; }
+}

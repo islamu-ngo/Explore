@@ -8,6 +8,6 @@
     "Domain": "Active (DDD)",
     "Infra": "Active (EF Core)"
   },
-  "RecentFocus": "Unknown (tenant-onboarding-enterprise-context.md)",
-  "LastUpdate": "2026-02-18 19:52:48"
+  "RecentFocus": "Frontend (EventList.razor.cs)",
+  "LastUpdate": "2026-02-19 17:41:20"
 }

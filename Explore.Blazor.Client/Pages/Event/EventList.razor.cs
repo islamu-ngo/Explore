@@ -1,4 +1,8 @@
+// ABOUTME: Event list page logic for loading filters, events, and registrations.
+// ABOUTME: Preserves initial prerender results to avoid hydration flicker on SEO pages.
+
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Components;
 using Explore.Blazor.Client.Components.Event;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
@@ -9,7 +13,7 @@ using MudBlazor;
 
 namespace Explore.Blazor.Client.Pages.Event;
 
-public partial class EventList
+public partial class EventList : ComponentBase
 {
     [Inject] protected NavigationManager Navigation { get; set; } = null!;
     [Inject] protected IEventService EventService { get; set; } = null!;
@@ -22,6 +26,9 @@ public partial class EventList
     [Inject] protected IPublicExperienceService PublicExperienceService { get; set; } = null!;
     [Inject] protected ILogger<EventList> Logger { get; set; } = null!;
 
+    [PersistentState]
+    public EventListState? PersistedState { get; set; }
+
     private EventFilterBar? _filterBar;
     private string? _errorMessage;
     private string? _successMessage;
@@ -33,6 +40,7 @@ public partial class EventList
     private bool isLoading = true;
     private bool _eventsLoaded = false;
     private bool _dataLoaded = false;
+    private bool _usePersistedEvents = false;
 
     private Virtualize<EventListDto>? _virtualize;
     private int _totalCount;
@@ -72,6 +80,11 @@ public partial class EventList
             // Defer search query set until filter bar is ready or handle in LoadEvents
         }
 
+        if (TryRestoreState())
+        {
+            return;
+        }
+
         var settings = await PublicExperienceService.GetSettingsAsync();
         if (settings != null)
         {
@@ -81,6 +94,44 @@ public partial class EventList
 
         await LoadDataAsync();
         await LoadUserRegistrationsAsync();
+    }
+
+    private bool TryRestoreState()
+    {
+        if (PersistedState == null)
+        {
+            return false;
+        }
+
+        _isIslamicModuleEnabled = PersistedState.IsIslamicModuleEnabled;
+        _isTechModuleEnabled = PersistedState.IsTechModuleEnabled;
+
+        eventTypes = PersistedState.EventTypes;
+        audienceGenders = PersistedState.AudienceGenders;
+        audienceAges = PersistedState.AudienceAges;
+        eventStatuses = PersistedState.EventStatuses;
+        eventFormats = PersistedState.EventFormats;
+        categories = PersistedState.Categories;
+        tags = PersistedState.Tags;
+        madhabs = PersistedState.Madhabs;
+        locations = PersistedState.Locations;
+        registrationModes = PersistedState.RegistrationModes;
+        languages = PersistedState.Languages;
+
+        BuildLookupMaps();
+        _dataLoaded = true;
+        _totalCount = PersistedState.TotalCount;
+        _eventsLoaded = true;
+        isLoading = false;
+        _usePersistedEvents = true;
+
+        _ = InvokeAsync(async () =>
+        {
+            await LoadUserRegistrationsAsync();
+            StateHasChanged();
+        });
+
+        return true;
     }
 
     private async Task LoadUserRegistrationsAsync()
@@ -164,7 +215,7 @@ public partial class EventList
             BuildLookupMaps();
             _dataLoaded = true;
             // Don't set isLoading = false here. Wait for the first batch of events.
-            // isLoading = false; 
+            // isLoading = false;
         }
         catch (Exception ex)
         {
@@ -175,6 +226,12 @@ public partial class EventList
 
     private async ValueTask<ItemsProviderResult<EventListDto>> LoadEventsAsync(ItemsProviderRequest request)
     {
+        if (_usePersistedEvents && PersistedState != null && request.StartIndex == PersistedState.InitialStartIndex)
+        {
+            _usePersistedEvents = false;
+            return new ItemsProviderResult<EventListDto>(PersistedState.InitialItems, PersistedState.TotalCount);
+        }
+
         var pageSize = Math.Max(request.Count, 20);
         var pageNumber = (request.StartIndex / pageSize) + 1;
 
@@ -267,6 +324,29 @@ public partial class EventList
         if (isLoading) isLoading = false;
         StateHasChanged();
 
+        if (PersistedState == null && request.StartIndex == 0)
+        {
+            PersistedState = new EventListState
+            {
+                InitialItems = result.Items.ToList(),
+                TotalCount = result.TotalCount,
+                InitialStartIndex = request.StartIndex,
+                IsIslamicModuleEnabled = _isIslamicModuleEnabled,
+                IsTechModuleEnabled = _isTechModuleEnabled,
+                EventTypes = eventTypes.ToList(),
+                AudienceGenders = audienceGenders.ToList(),
+                AudienceAges = audienceAges.ToList(),
+                EventStatuses = eventStatuses.ToList(),
+                EventFormats = eventFormats.ToList(),
+                Categories = categories.ToList(),
+                Tags = tags.ToList(),
+                Madhabs = madhabs.ToList(),
+                Locations = locations.ToList(),
+                RegistrationModes = registrationModes.ToList(),
+                Languages = languages.ToList()
+            };
+        }
+
         return new ItemsProviderResult<EventListDto>(result.Items, result.TotalCount);
     }
 
@@ -284,7 +364,7 @@ public partial class EventList
     {
         var parameters = new DialogParameters { ["EventId"] = evt.Id, ["EventTitle"] = evt.Title };
         var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = await DialogService.ShowAsync<DeleteEventDialog>("Delete Event", parameters, options);
+        var dialog = await DialogService.ShowAsync<Explore.Blazor.Client.Components.Event.DeleteEventDialog>("Delete Event", parameters, options);
         var result = await dialog.Result;
         if (result != null && !result.Canceled)
         {
@@ -395,5 +475,25 @@ public partial class EventList
     private string GetActorInitials(string? displayName)
     {
         return DisplayHelper.GetInitials(displayName);
+    }
+
+    public sealed class EventListState
+    {
+        public List<EventListDto> InitialItems { get; init; } = new();
+        public int TotalCount { get; init; }
+        public int InitialStartIndex { get; init; }
+        public bool IsIslamicModuleEnabled { get; init; }
+        public bool IsTechModuleEnabled { get; init; }
+        public List<EventTypeListDto> EventTypes { get; init; } = new();
+        public List<AudienceGenderListDto> AudienceGenders { get; init; } = new();
+        public List<AudienceAgeListDto> AudienceAges { get; init; } = new();
+        public List<EventStatusListDto> EventStatuses { get; init; } = new();
+        public List<EventFormatListDto> EventFormats { get; init; } = new();
+        public List<CategoryListDto> Categories { get; init; } = new();
+        public List<TagListDto> Tags { get; init; } = new();
+        public List<MadhabListDto> Madhabs { get; init; } = new();
+        public List<LocationListDto> Locations { get; init; } = new();
+        public List<RegistrationModeListDto> RegistrationModes { get; init; } = new();
+        public List<LanguageListDto> Languages { get; init; } = new();
     }
 }

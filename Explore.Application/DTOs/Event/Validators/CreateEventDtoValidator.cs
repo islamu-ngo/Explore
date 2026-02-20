@@ -12,6 +12,7 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
     private readonly IAudienceGenderRepository _audienceGenderRepository;
     private readonly IEventTypeRepository _eventTypeRepository;
     private readonly IOrganizationRepository _organizationRepository;
+    private readonly IGroupRepository _groupRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
 
     public CreateEventDtoValidator(
@@ -19,12 +20,14 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
         IAudienceGenderRepository audienceGenderRepository,
         IEventTypeRepository eventTypeRepository,
         IOrganizationRepository organizationRepository,
+        IGroupRepository groupRepository,
         IStorageObjectRepository storageObjectRepository)
     {
         _audienceAgeRepository = audienceAgeRepository;
         _audienceGenderRepository = audienceGenderRepository;
         _eventTypeRepository = eventTypeRepository;
         _organizationRepository = organizationRepository;
+        _groupRepository = groupRepository;
         _storageObjectRepository = storageObjectRepository;
 
         RuleFor(p => p.Title)
@@ -82,6 +85,20 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
             })
             .When(p => p.OrganizationId.HasValue)
             .WithMessage("Organization does not exist.");
+
+        // GroupId is optional - if provided, validate it exists
+        RuleFor(p => p.GroupId)
+            .MustAsync(async (id, cancellation) =>
+            {
+                if (!id.HasValue) return true;
+                return await _groupRepository.Exists(id.Value);
+            })
+            .When(p => p.GroupId.HasValue)
+            .WithMessage("Group does not exist.");
+
+        RuleFor(p => p)
+            .Must(p => !(p.OrganizationId.HasValue && p.GroupId.HasValue))
+            .WithMessage("OrganizationId and GroupId cannot both be provided.");
 
         RuleFor(p => p.Price)
             .GreaterThanOrEqualTo(0)

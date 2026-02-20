@@ -20,10 +20,17 @@ public class CreateEventDto
 
     /// <summary>
     /// Optional: The organization that owns this event.
-    /// If null, the event is created under the user's personal actor.
-    /// If provided, the user must be an admin of the organization.
+    /// If provided, the user must have event:create permission in the organization.
+    /// Mutually exclusive with GroupId.
     /// </summary>
     public Guid? OrganizationId { get; set; }
+
+    /// <summary>
+    /// Optional: The group that owns this event.
+    /// If provided, the user must have event:create permission in the group.
+    /// Mutually exclusive with OrganizationId.
+    /// </summary>
+    public Guid? GroupId { get; set; }
 
     // Pricing
     public decimal? Price { get; set; }

@@ -28,8 +28,18 @@ else
     private bool isLoading = true;
     private bool isAuthenticated = false;
 
+    [PersistentState]
+    public HomeState? PersistedState { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
+        if (PersistedState != null)
+        {
+            isAuthenticated = PersistedState.IsAuthenticated;
+            isLoading = false;
+            return;
+        }
+
         try
         {
             var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
@@ -43,6 +53,12 @@ else
         finally
         {
             isLoading = false;
+            PersistedState = new HomeState { IsAuthenticated = isAuthenticated };
         }
+    }
+
+    public sealed class HomeState
+    {
+        public bool IsAuthenticated { get; init; }
     }
 }

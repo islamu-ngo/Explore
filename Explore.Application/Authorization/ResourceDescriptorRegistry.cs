@@ -9,6 +9,7 @@ using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionAgendaItem;
+using Explore.Application.DTOs.Group;
 using Explore.Application.DTOs.IndexedDid;
 using Explore.Application.DTOs.Location;
 using Explore.Application.DTOs.Organization;
@@ -33,6 +34,10 @@ public static class ResourceDescriptorRegistry
         // Organization
         [typeof(OrganizationDto)] = "organization",
         [typeof(OrganizationListDto)] = "organization",
+
+        // Group
+        [typeof(GroupDto)] = "group",
+        [typeof(GroupListDto)] = "group",
 
         // Tenant Settings
         [typeof(TenantSettingsDto)] = "tenant_setting",

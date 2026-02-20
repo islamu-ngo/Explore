@@ -35,6 +35,11 @@ public class Organization : ITenantEntity, IAuditableEntity, ISoftDeletable
     public DateTime? UpdatedAt { get; set; }
     public Guid? UpdatedBy { get; set; }
 
+    // Approval audit fields
+    public DateTime? ApprovedAt { get; set; }
+    public Guid? ApprovedBy { get; set; }
+    public string? ApprovalNotes { get; set; }
+
     // Soft delete fields
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAt { get; set; }

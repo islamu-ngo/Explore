@@ -7,5 +7,6 @@ public enum RoleScopeEnum
 {
     Platform = 0,
     Tenant = 1,
-    Organization = 2
+    Organization = 2,
+    Group = 3
 }

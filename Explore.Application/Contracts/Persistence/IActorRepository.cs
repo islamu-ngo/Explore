@@ -20,4 +20,9 @@ public interface IActorRepository : IGenericRepository<Actor, Guid>
     /// Gets the Actor associated with a specific Organization.
     /// </summary>
     Task<Actor?> GetActorByOrganizationId(Guid organizationId);
+
+    /// <summary>
+    /// Gets the Actor associated with a specific Group.
+    /// </summary>
+    Task<Actor?> GetActorByGroupId(Guid groupId);
 }

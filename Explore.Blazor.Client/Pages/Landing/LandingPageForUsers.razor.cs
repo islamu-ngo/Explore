@@ -1,3 +1,6 @@
+// ABOUTME: Loads featured events for authenticated users on the landing page.
+// ABOUTME: Persists initial SSR payload to prevent hydration loading flashes.
+
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
@@ -16,9 +19,18 @@ public partial class LandingPageForUsers
     private ICollection<EventListDto> _events = new List<EventListDto>();
     private bool _isLoading = true;
 
+    [PersistentState]
+    public LandingPageForUsersState? PersistedState { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
+        if (TryRestoreState())
+        {
+            return;
+        }
+
         await LoadDataAsync();
+        PersistState();
     }
 
     private async Task LoadDataAsync()
@@ -56,5 +68,30 @@ public partial class LandingPageForUsers
     private string TruncateText(string? text, int maxLength)
     {
         return StringHelper.TruncateText(text, maxLength);
+    }
+
+    private bool TryRestoreState()
+    {
+        if (PersistedState == null)
+        {
+            return false;
+        }
+
+        _events = PersistedState.Events;
+        _isLoading = false;
+        return true;
+    }
+
+    private void PersistState()
+    {
+        PersistedState = new LandingPageForUsersState
+        {
+            Events = _events.ToList()
+        };
+    }
+
+    public sealed class LandingPageForUsersState
+    {
+        public List<EventListDto> Events { get; init; } = new();
     }
 }
