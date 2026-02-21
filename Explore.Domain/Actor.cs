@@ -2,10 +2,7 @@
 // An actor can be either a User or an Organization and is the entity that performs actions.
 
 using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text;
 using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
@@ -37,14 +34,47 @@ public class Actor : ITenantEntity, IAuditableEntity, ISoftDeletable
 
     public required Tenant Tenant { get; set; }
 
-    public required string DisplayName { get; set; }
+    /// <summary>
+    /// 1:1 extension table containing actor-identifying fields.
+    /// </summary>
+    public ActorPii? Pii { get; set; }
+
+    [NotMapped]
+    public string DisplayName
+    {
+        get => Pii?.DisplayName ?? null!;
+        set
+        {
+            EnsurePii();
+            Pii!.DisplayName = value;
+        }
+    }
 
     [ForeignKey("ProfilePictureStorage")]
     public Guid? ProfilePictureId { get; set; }
     public StorageObject? ProfilePicture { get; set; }
 
-    public string? Did { get; set; }
-    public string? Handle { get; set; }
+    [NotMapped]
+    public string? Did
+    {
+        get => Pii?.Did;
+        set
+        {
+            EnsurePii();
+            Pii!.Did = value;
+        }
+    }
+
+    [NotMapped]
+    public string? Handle
+    {
+        get => Pii?.Handle;
+        set
+        {
+            EnsurePii();
+            Pii!.Handle = value;
+        }
+    }
 
     [ForeignKey("DidCustodyType")]
     public int? DidCustodyTypeId { get; set; }
@@ -54,7 +84,17 @@ public class Actor : ITenantEntity, IAuditableEntity, ISoftDeletable
     public string? Description { get; set; }
     public DateTime? IndexedAt { get; set; }
     public string? ProfilePictureCid { get; set; }
-    public string? ProfilePictureUri { get; set; }
+
+    [NotMapped]
+    public string? ProfilePictureUri
+    {
+        get => Pii?.ProfilePictureUri;
+        set
+        {
+            EnsurePii();
+            Pii!.ProfilePictureUri = value;
+        }
+    }
 
     // Audit fields
     public DateTime CreatedAt { get; set; }
@@ -66,4 +106,13 @@ public class Actor : ITenantEntity, IAuditableEntity, ISoftDeletable
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAt { get; set; }
     public Guid? DeletedBy { get; set; }
+
+    private void EnsurePii()
+    {
+        Pii ??= new ActorPii
+        {
+            Actor = this,
+            DisplayName = null!
+        };
+    }
 }

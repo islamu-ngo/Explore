@@ -34,6 +34,7 @@ public class ActorKeyStoreRepository : GenericRepository<ActorKeyStore, Guid>, I
         return await _dbContext.ActorKeyStores
             .AsNoTracking()
             .Include(k => k.Actor)
+                .ThenInclude(a => a!.Pii)
             .FirstOrDefaultAsync(k => k.Id == id);
     }
 
@@ -42,6 +43,7 @@ public class ActorKeyStoreRepository : GenericRepository<ActorKeyStore, Guid>, I
         return await _dbContext.ActorKeyStores
             .AsNoTracking()
             .Include(k => k.Actor)
+                .ThenInclude(a => a!.Pii)
             .ToListAsync();
     }
 }

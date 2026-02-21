@@ -33,6 +33,7 @@ public class UserAuthenticationTokenRepository : GenericRepository<UserAuthentic
         return await _dbContext.UserAuthenticationTokens
             .AsNoTracking()
             .Include(t => t.User)
+                .ThenInclude(u => u!.Pii)
             .FirstOrDefaultAsync(t => t.Id == id);
     }
 
@@ -41,6 +42,7 @@ public class UserAuthenticationTokenRepository : GenericRepository<UserAuthentic
         return await _dbContext.UserAuthenticationTokens
             .AsNoTracking()
             .Include(t => t.User)
+                .ThenInclude(u => u!.Pii)
             .ToListAsync();
     }
 }

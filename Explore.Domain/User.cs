@@ -7,9 +7,44 @@ namespace Explore.Domain;
 public class User : IAuditableEntity, ISoftDeletable
 {
     public Guid Id { get; set; }
-    public string Email { get; set; }
-    public string FirstName { get; set; }
-    public string LastName { get; set; }
+
+    /// <summary>
+    /// 1:1 extension table containing sensitive user identity fields.
+    /// </summary>
+    public UserPii? Pii { get; set; }
+
+    [NotMapped]
+    public string Email
+    {
+        get => Pii?.Email ?? null!;
+        set
+        {
+            EnsurePii();
+            Pii!.Email = value;
+        }
+    }
+
+    [NotMapped]
+    public string FirstName
+    {
+        get => Pii?.FirstName ?? null!;
+        set
+        {
+            EnsurePii();
+            Pii!.FirstName = value;
+        }
+    }
+
+    [NotMapped]
+    public string LastName
+    {
+        get => Pii?.LastName ?? null!;
+        set
+        {
+            EnsurePii();
+            Pii!.LastName = value;
+        }
+    }
 
     /// <summary>
     /// Every User SHOULD have an associated Actor for identity in the system.
@@ -35,4 +70,15 @@ public class User : IAuditableEntity, ISoftDeletable
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAt { get; set; }
     public Guid? DeletedBy { get; set; }
+
+    private void EnsurePii()
+    {
+        Pii ??= new UserPii
+        {
+            User = this,
+            Email = null!,
+            FirstName = null!,
+            LastName = null!
+        };
+    }
 }

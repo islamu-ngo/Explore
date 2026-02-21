@@ -26,7 +26,7 @@ public class OrganizationTests
     [Test]
     public async Task RequiredProperties_AreMarkedAsRequired_ExpectedBehavior()
     {
-        await Assert.That(IsRequiredProperty<Organization>(nameof(Organization.FullName))).IsTrue();
+        await Assert.That(IsRequiredProperty<OrganizationPii>(nameof(OrganizationPii.FullName))).IsTrue();
         await Assert.That(IsRequiredProperty<Organization>(nameof(Organization.ApprovalStatus))).IsTrue();
         await Assert.That(IsRequiredProperty<Organization>(nameof(Organization.Tenant))).IsTrue();
     }

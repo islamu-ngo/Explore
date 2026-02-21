@@ -1,5 +1,4 @@
 using System;
-
 namespace Explore.Application.DTOs.EventSession;
 
 public class EventSessionDto
@@ -34,6 +33,13 @@ public class EventSessionDto
     public int? RegistrationModeId { get; set; }
     public string? RegistrationModeFullName { get; set; }
     public string? RegistrationModeMasterCode { get; set; }
+
+    // Pricing
+    public decimal? Price { get; set; }
+    public string? CurrencyCode { get; set; }
+
+    // Optional Islamic extension for this session
+    public EventSessionIslamicAspectDto? IslamicAspect { get; set; }
 
     // Tenant
     public Guid TenantId { get; set; }

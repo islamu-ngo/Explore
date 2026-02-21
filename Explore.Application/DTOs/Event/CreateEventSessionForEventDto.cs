@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Explore.Application.DTOs.EventSession;
 
 namespace Explore.Application.DTOs.Event;
 
@@ -43,6 +44,17 @@ public class CreateEventSessionForEventDto
     /// Optional registration mode ID.
     /// </summary>
     public int? RegistrationModeId { get; set; }
+
+    /// <summary>
+    /// Optional session-level pricing override.
+    /// </summary>
+    public decimal? Price { get; set; }
+    public string? CurrencyCode { get; set; }
+
+    /// <summary>
+    /// Optional Islamic extension for this session.
+    /// </summary>
+    public EventSessionIslamicAspectDto? IslamicAspect { get; set; }
 
     /// <summary>
     /// Optional list of language IDs for this session.

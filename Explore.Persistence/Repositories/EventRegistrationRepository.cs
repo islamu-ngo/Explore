@@ -29,6 +29,7 @@ public class EventRegistrationRepository : GenericRepository<EventRegistration, 
         return await _dbContext.EventRegistrations
             .AsNoTracking()
             .Include(r => r.User)
+                .ThenInclude(u => u!.Pii)
             .Include(r => r.ApprovalStatus)
             .Where(r => r.EventSessionId == eventSessionId)
             .ToListAsync();
@@ -58,6 +59,7 @@ public class EventRegistrationRepository : GenericRepository<EventRegistration, 
             .AsNoTracking()
             .AsSplitQuery()
             .Include(r => r.User)
+                .ThenInclude(u => u!.Pii)
             .Include(r => r.EventSession)
                 .ThenInclude(s => s.Event)
             .Include(r => r.ApprovalStatus)

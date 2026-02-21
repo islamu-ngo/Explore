@@ -18,6 +18,7 @@ public class EventSessionAgendaItemRepository : GenericRepository<EventSessionAg
         return await _dbContext.EventSessionAgendaItems
             .AsNoTracking()
             .Include(a => a.Location)
+                .ThenInclude(l => l!.Pii)
             .Where(a => a.EventSessionId == eventSessionId)
             .OrderBy(a => a.StartTime)
             .ToListAsync();
@@ -30,6 +31,7 @@ public class EventSessionAgendaItemRepository : GenericRepository<EventSessionAg
             .Include(a => a.EventSession)
                 .ThenInclude(s => s.Event)
             .Include(a => a.Location)
+                .ThenInclude(l => l!.Pii)
             .OrderByDescending(a => a.StartTime);
 
         var totalCount = await query.CountAsync();

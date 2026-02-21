@@ -9,12 +9,6 @@ namespace Explore.Persistence.Repositories;
 
 public class OrganizationRepository : GenericRepository<Organization, Guid>, IOrganizationRepository
 {
-    private static readonly Func<ExploreDbContext, Guid, Task<Organization?>> GetByIdCompiled =
-        EF.CompileAsyncQuery((ExploreDbContext ctx, Guid id) =>
-            ctx.Organizations
-                .AsNoTracking()
-                .FirstOrDefault(o => o.Id == id));
-
     private readonly ExploreDbContext _dbContext;
 
     public OrganizationRepository(ExploreDbContext dbContext) : base(dbContext)
@@ -24,7 +18,9 @@ public class OrganizationRepository : GenericRepository<Organization, Guid>, IOr
 
     public new async Task<Organization?> GetById(Guid id)
     {
-        return await GetByIdCompiled(_dbContext, id);
+        return await _dbContext.Organizations
+            .Include(o => o.Pii)
+            .FirstOrDefaultAsync(o => o.Id == id);
     }
 
     public async Task<List<Organization>> GetOrganizationsWithDetails()
@@ -32,7 +28,10 @@ public class OrganizationRepository : GenericRepository<Organization, Guid>, IOr
         return await _dbContext.Organizations
             .AsNoTracking()
             .AsSplitQuery()
+            .Include(o => o.Pii)
             .Include(o => o.ApprovalStatus)
+            .Include(o => o.Actor)
+                .ThenInclude(a => a!.Pii)
             .Include(o => o.Actor)
                 .ThenInclude(a => a!.ProfilePicture)
             .Include(o => o.Tenant)
@@ -44,12 +43,18 @@ public class OrganizationRepository : GenericRepository<Organization, Guid>, IOr
         return await _dbContext.Organizations
             .AsNoTrackingWithIdentityResolution()
             .AsSplitQuery()
+            .Include(o => o.Pii)
             .Include(o => o.ApprovalStatus)
+            .Include(o => o.Actor)
+                .ThenInclude(a => a!.Pii)
             .Include(o => o.Actor)
                 .ThenInclude(a => a!.ProfilePicture)
             .Include(o => o.Tenant)
             .Include(o => o.Members)
                 .ThenInclude(m => m.User)
+            .Include(o => o.Members)
+                .ThenInclude(m => m.User)
+                .ThenInclude(u => u!.Pii)
             .Include(o => o.Members)
                 .ThenInclude(m => m.Role)
             .Include(o => o.Members)
@@ -62,7 +67,10 @@ public class OrganizationRepository : GenericRepository<Organization, Guid>, IOr
         return await _dbContext.Organizations
             .AsNoTracking()
             .AsSplitQuery()
+            .Include(o => o.Pii)
             .Include(o => o.ApprovalStatus)
+            .Include(o => o.Actor)
+                .ThenInclude(a => a!.Pii)
             .Include(o => o.Actor)
                 .ThenInclude(a => a!.ProfilePicture)
             .Include(o => o.Members)
@@ -76,11 +84,14 @@ public class OrganizationRepository : GenericRepository<Organization, Guid>, IOr
         var query = _dbContext.Organizations
             .AsNoTracking()
             .AsSplitQuery()
+            .Include(o => o.Pii)
             .Include(o => o.ApprovalStatus)
+            .Include(o => o.Actor)
+                .ThenInclude(a => a!.Pii)
             .Include(o => o.Actor)
                 .ThenInclude(a => a!.ProfilePicture)
             .Include(o => o.Tenant)
-            .OrderBy(o => o.FullName);
+            .OrderBy(o => o.Pii != null ? o.Pii.FullName : string.Empty);
 
         var totalCount = await query.CountAsync();
         var items = await query
@@ -96,13 +107,16 @@ public class OrganizationRepository : GenericRepository<Organization, Guid>, IOr
         var query = _dbContext.Organizations
             .AsNoTracking()
             .AsSplitQuery()
+            .Include(o => o.Pii)
             .Include(o => o.ApprovalStatus)
+            .Include(o => o.Actor)
+                .ThenInclude(a => a!.Pii)
             .Include(o => o.Actor)
                 .ThenInclude(a => a!.ProfilePicture)
             .Include(o => o.Members)
                 .ThenInclude(m => m.Role)
             .Where(o => o.Members.Any(m => m.UserId == userId))
-            .OrderBy(o => o.FullName);
+            .OrderBy(o => o.Pii != null ? o.Pii.FullName : string.Empty);
 
         var totalCount = await query.CountAsync();
         var items = await query

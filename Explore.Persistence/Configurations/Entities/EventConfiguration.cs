@@ -28,6 +28,7 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         builder.Property(e => e.EventUrl).HasMaxLength(500);
         builder.Property(e => e.ExternalRegistrationUrl).HasMaxLength(500);
         builder.Property(e => e.Timezone).HasMaxLength(100);
+        builder.Property(e => e.Price).HasPrecision(19, 4);
 
         builder.HasOne(e => e.EventType)
             .WithMany()
@@ -121,6 +122,10 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         // Slug lookup (for URL-friendly event access)
         builder.HasIndex(e => new { e.TenantId, e.Slug })
             .HasDatabaseName("ix_events_tenant_slug");
+
+        builder.ToTable(t => t.HasCheckConstraint(
+            "CK_Event_NonNegativePrice",
+            "price IS NULL OR price >= 0"));
 
         // NOTE: Business entity seed data moved to DatabaseSeeder for conditional (Development-only) seeding.
         // See Explore.Persistence/Seed/DatabaseSeeder.cs and SeedData.cs

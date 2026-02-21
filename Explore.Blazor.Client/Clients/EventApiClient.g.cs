@@ -21748,6 +21748,16 @@ namespace Explore.Blazor.Client.Clients
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? RegistrationModeId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("price")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)(?:\.\d+)?$")]
+        public double? Price { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("currencyCode")]
+        public string? CurrencyCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("islamicAspect")]
+        public EventSessionIslamicAspectDto? IslamicAspect { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
         public System.Guid? TenantId { get; set; } = default!;
 
@@ -21788,6 +21798,16 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("registrationModeId")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? RegistrationModeId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("price")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)(?:\.\d+)?$")]
+        public double? Price { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("currencyCode")]
+        public string? CurrencyCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("islamicAspect")]
+        public EventSessionIslamicAspectDto? IslamicAspect { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("languageIds")]
         public System.Collections.Generic.ICollection<int>? LanguageIds { get; set; } = default!;
@@ -23243,8 +23263,49 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("registrationModeMasterCode")]
         public string? RegistrationModeMasterCode { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("price")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)(?:\.\d+)?$")]
+        public double? Price { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("currencyCode")]
+        public string? CurrencyCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("islamicAspect")]
+        public IslamicAspect2? IslamicAspect { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
         public System.Guid? TenantId { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class EventSessionIslamicAspectDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("startTimeType")]
+        public int? StartTimeType { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("referencePrayer")]
+        public int? ReferencePrayer { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("offsetMinutes")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? OffsetMinutes { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("requiresWudu")]
+        public bool? RequiresWudu { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ritualRequirementsJson")]
+        public string? RitualRequirementsJson { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -23379,6 +23440,16 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("registrationModeFullName")]
         public string? RegistrationModeFullName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("price")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)(?:\.\d+)?$")]
+        public double? Price { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("currencyCode")]
+        public string? CurrencyCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("islamicAspect")]
+        public IslamicAspect3? IslamicAspect { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -24652,7 +24723,7 @@ namespace Explore.Blazor.Client.Clients
         public System.Collections.Generic.ICollection<string>? AvailableAspects { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("islamicAspect")]
-        public IslamicAspect2? IslamicAspect { get; set; } = default!;
+        public IslamicAspect4? IslamicAspect { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("techAspect")]
         public TechAspect2? TechAspect { get; set; } = default!;
@@ -24748,6 +24819,16 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("registrationModeMasterCode")]
         public string? RegistrationModeMasterCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("price")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)(?:\.\d+)?$")]
+        public double? Price { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("currencyCode")]
+        public string? CurrencyCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("islamicAspect")]
+        public IslamicAspect5? IslamicAspect { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
         public System.Guid? TenantId { get; set; } = default!;
@@ -27269,6 +27350,16 @@ namespace Explore.Blazor.Client.Clients
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? RegistrationModeId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("price")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)(?:\.\d+)?$")]
+        public double? Price { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("currencyCode")]
+        public string? CurrencyCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("islamicAspect")]
+        public EventSessionIslamicAspectDto? IslamicAspect { get; set; } = default!;
+
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
         [System.Text.Json.Serialization.JsonExtensionData]
@@ -28334,6 +28425,68 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class IslamicAspect2
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("startTimeType")]
+        public int? StartTimeType { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("referencePrayer")]
+        public int? ReferencePrayer { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("offsetMinutes")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? OffsetMinutes { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("requiresWudu")]
+        public bool? RequiresWudu { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ritualRequirementsJson")]
+        public string? RitualRequirementsJson { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class IslamicAspect3
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("startTimeType")]
+        public int? StartTimeType { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("referencePrayer")]
+        public int? ReferencePrayer { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("offsetMinutes")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? OffsetMinutes { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("requiresWudu")]
+        public bool? RequiresWudu { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ritualRequirementsJson")]
+        public string? RitualRequirementsJson { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class Anonymous
     {
         /// <summary>
@@ -28404,7 +28557,7 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class IslamicAspect2
+    public partial class IslamicAspect4
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("madhabId")]
@@ -28518,6 +28671,37 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("title")]
         public string? Title { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class IslamicAspect5
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("startTimeType")]
+        public int? StartTimeType { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("referencePrayer")]
+        public int? ReferencePrayer { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("offsetMinutes")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? OffsetMinutes { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("requiresWudu")]
+        public bool? RequiresWudu { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ritualRequirementsJson")]
+        public string? RitualRequirementsJson { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 

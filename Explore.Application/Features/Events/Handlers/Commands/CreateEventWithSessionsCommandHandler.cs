@@ -26,6 +26,7 @@ public class CreateEventWithSessionsCommandHandler : IRequestHandler<CreateEvent
 {
     private readonly IEventRepository _eventRepository;
     private readonly IEventSessionRepository _eventSessionRepository;
+    private readonly IEventSessionIslamicAspectRepository _eventSessionIslamicAspectRepository;
     private readonly IEventSessionLanguageRepository _eventSessionLanguageRepository;
     private readonly IActorRepository _actorRepository;
     private readonly IOrganizationRepository _organizationRepository;
@@ -47,6 +48,7 @@ public class CreateEventWithSessionsCommandHandler : IRequestHandler<CreateEvent
     public CreateEventWithSessionsCommandHandler(
         IEventRepository eventRepository,
         IEventSessionRepository eventSessionRepository,
+        IEventSessionIslamicAspectRepository eventSessionIslamicAspectRepository,
         IEventSessionLanguageRepository eventSessionLanguageRepository,
         IActorRepository actorRepository,
         IOrganizationRepository organizationRepository,
@@ -67,6 +69,7 @@ public class CreateEventWithSessionsCommandHandler : IRequestHandler<CreateEvent
     {
         _eventRepository = eventRepository;
         _eventSessionRepository = eventSessionRepository;
+        _eventSessionIslamicAspectRepository = eventSessionIslamicAspectRepository;
         _eventSessionLanguageRepository = eventSessionLanguageRepository;
         _actorRepository = actorRepository;
         _organizationRepository = organizationRepository;
@@ -292,11 +295,28 @@ public class CreateEventWithSessionsCommandHandler : IRequestHandler<CreateEvent
                 MaxAudienceAttendees = sessionDto.MaxAudienceAttendees,
                 CurrentAudienceAttendees = 0,
                 RegistrationModeId = sessionDto.RegistrationModeId ?? (dto.IsRegistrationRequired ? 1 : null),
+                Price = sessionDto.Price,
+                CurrencyCode = sessionDto.CurrencyCode,
                 Slug = GenerateSlug(string.IsNullOrWhiteSpace(sessionDto.Title) ? $"{@event.Title}-session-{sessionIndex}" : sessionDto.Title)
             };
 
             eventSession = await _eventSessionRepository.Create(eventSession);
             Console.WriteLine($"[CREATE EVENT WITH SESSIONS] EventSession {sessionIndex} created with ID: {eventSession.Id}");
+
+            if (sessionDto.IslamicAspect != null)
+            {
+                var islamicAspect = new EventSessionIslamicAspect
+                {
+                    EventSessionId = eventSession.Id,
+                    StartTimeType = sessionDto.IslamicAspect.StartTimeType,
+                    ReferencePrayer = sessionDto.IslamicAspect.ReferencePrayer,
+                    OffsetMinutes = sessionDto.IslamicAspect.OffsetMinutes,
+                    RequiresWudu = sessionDto.IslamicAspect.RequiresWudu,
+                    RitualRequirementsJson = sessionDto.IslamicAspect.RitualRequirementsJson
+                };
+
+                await _eventSessionIslamicAspectRepository.Create(islamicAspect);
+            }
 
             // Create session-language associations
             foreach (var languageId in sessionDto.LanguageIds)

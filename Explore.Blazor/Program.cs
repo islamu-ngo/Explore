@@ -351,8 +351,8 @@ var proxyRoutes = new[]
 {
     new RouteConfig
     {
-        RouteId = "explore-api",
-        ClusterId = "explore-api",
+        RouteId = "event-api",
+        ClusterId = "event-api",
         Match = new RouteMatch
         {
             Path = "/api/{**catchall}"
@@ -364,7 +364,7 @@ var proxyClusters = new[]
 {
     new ClusterConfig
     {
-        ClusterId = "explore-api",
+        ClusterId = "event-api",
         Destinations = new Dictionary<string, DestinationConfig>
         {
             ["primary"] = new() { Address = exploreApiBaseUrl }

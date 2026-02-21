@@ -25,26 +25,6 @@ public class OrganizationConfiguration : IEntityTypeConfiguration<Organization>
             .HasDefaultValueSql("NOW()")
             .IsRequired();
 
-        builder.Property(e => e.FullName)
-            .HasMaxLength(500)
-            .IsRequired();
-
-        builder.Property(e => e.Email)
-            .HasMaxLength(500)
-            .IsRequired();
-
-        builder.Property(e => e.Country)
-            .HasMaxLength(200);
-
-        builder.Property(e => e.City)
-            .HasMaxLength(200);
-
-        builder.Property(e => e.Address)
-            .HasMaxLength(500);
-
-        builder.Property(e => e.Postcode)
-            .HasMaxLength(50);
-
         builder.Property(e => e.WebsiteUrl)
             .HasMaxLength(500);
 
@@ -66,15 +46,22 @@ public class OrganizationConfiguration : IEntityTypeConfiguration<Organization>
             .HasForeignKey(e => e.ActorId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        builder.HasOne(e => e.Pii)
+            .WithOne(e => e.Organization)
+            .HasForeignKey<OrganizationPii>(e => e.OrganizationId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Navigation(e => e.Pii).AutoInclude();
+
         // ===== Performance Indexes =====
 
         // Primary listing query: active organizations per tenant with approval status
         builder.HasIndex(e => new { e.TenantId, e.IsDeleted, e.ApprovalStatusId })
             .HasDatabaseName("ix_organizations_tenant_active_status");
 
-        // Organization search by name
-        builder.HasIndex(e => new { e.TenantId, e.FullName })
-            .HasDatabaseName("ix_organizations_tenant_name");
+        // Organization search by tenant.
+        builder.HasIndex(e => e.TenantId)
+            .HasDatabaseName("ix_organizations_tenant");
 
         // NOTE: Business entity seed data moved to DatabaseSeeder for conditional (Development-only) seeding.
         // See Explore.Persistence/Seed/DatabaseSeeder.cs and SeedData.cs

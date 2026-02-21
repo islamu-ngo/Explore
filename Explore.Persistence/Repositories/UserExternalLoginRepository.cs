@@ -33,6 +33,7 @@ public class UserExternalLoginRepository : GenericRepository<UserExternalLogin, 
         return await _dbContext.UserExternalLogins
             .AsNoTracking()
             .Include(l => l.User)
+                .ThenInclude(u => u!.Pii)
             .FirstOrDefaultAsync(l => l.Id == id);
     }
 
@@ -41,6 +42,7 @@ public class UserExternalLoginRepository : GenericRepository<UserExternalLogin, 
         return await _dbContext.UserExternalLogins
             .AsNoTracking()
             .Include(l => l.User)
+                .ThenInclude(u => u!.Pii)
             .ToListAsync();
     }
 }

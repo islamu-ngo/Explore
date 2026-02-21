@@ -13,17 +13,27 @@ public class ActorRepository : GenericRepository<Actor, Guid>, IActorRepository
         _dbContext = dbContext;
     }
 
+    public new async Task<Actor?> GetById(Guid id)
+    {
+        return await _dbContext.Actors
+            .Include(a => a.Pii)
+            .FirstOrDefaultAsync(a => a.Id == id);
+    }
+
     public async Task<Actor?> GetActorWithDetails(Guid id)
     {
         return await _dbContext.Actors
             .AsNoTracking()
             .AsSplitQuery()
+            .Include(a => a.Pii)
             .Include(a => a.ActorType)
             .Include(a => a.DidCustodyType)
             .Include(a => a.ProfilePicture)
             .Include(a => a.Tenant)
             .Include(a => a.User)
+                .ThenInclude(u => u!.Pii)
             .Include(a => a.Organization)
+                .ThenInclude(o => o!.Pii)
             .FirstOrDefaultAsync(a => a.Id == id);
     }
 
@@ -31,22 +41,25 @@ public class ActorRepository : GenericRepository<Actor, Guid>, IActorRepository
     {
         return await _dbContext.Actors
             .AsNoTracking()
+            .Include(a => a.Pii)
             .Include(a => a.ActorType)
-            .FirstOrDefaultAsync(a => a.Did == did);
+            .FirstOrDefaultAsync(a => a.Pii != null && a.Pii.Did == did);
     }
 
     public async Task<Actor?> GetActorByHandle(string handle)
     {
         return await _dbContext.Actors
             .AsNoTracking()
+            .Include(a => a.Pii)
             .Include(a => a.ActorType)
-            .FirstOrDefaultAsync(a => a.Handle == handle);
+            .FirstOrDefaultAsync(a => a.Pii != null && a.Pii.Handle == handle);
     }
 
     public async Task<List<Actor>> GetActorsByTenant(Guid tenantId)
     {
         return await _dbContext.Actors
             .AsNoTracking()
+            .Include(a => a.Pii)
             .Include(a => a.ActorType)
             .Where(a => a.TenantId == tenantId)
             .ToListAsync();
@@ -56,13 +69,14 @@ public class ActorRepository : GenericRepository<Actor, Guid>, IActorRepository
     {
         return await _dbContext.Actors
             .AsNoTracking()
-            .AnyAsync(a => a.Did == did);
+            .AnyAsync(a => a.Pii != null && a.Pii.Did == did);
     }
 
     public async Task<Actor?> GetActorByUserId(Guid userId)
     {
         return await _dbContext.Actors
             .AsNoTracking()
+            .Include(a => a.Pii)
             .Include(a => a.ActorType)
             .FirstOrDefaultAsync(a => a.UserId == userId);
     }
@@ -71,6 +85,7 @@ public class ActorRepository : GenericRepository<Actor, Guid>, IActorRepository
     {
         return await _dbContext.Actors
             .AsNoTracking()
+            .Include(a => a.Pii)
             .Include(a => a.ActorType)
             .FirstOrDefaultAsync(a => a.OrganizationId == organizationId);
     }
@@ -79,6 +94,7 @@ public class ActorRepository : GenericRepository<Actor, Guid>, IActorRepository
     {
         return await _dbContext.Actors
             .AsNoTracking()
+            .Include(a => a.Pii)
             .FirstOrDefaultAsync(a => a.GroupId == groupId);
     }
 
@@ -87,6 +103,7 @@ public class ActorRepository : GenericRepository<Actor, Guid>, IActorRepository
         var query = _dbContext.Actors
             .AsNoTracking()
             .AsSplitQuery()
+            .Include(a => a.Pii)
             .Include(a => a.ActorType)
             .Include(a => a.DidCustodyType)
             .Include(a => a.ProfilePicture)

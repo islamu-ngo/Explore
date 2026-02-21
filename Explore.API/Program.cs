@@ -146,14 +146,14 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGenWithAuth(builder.Configuration);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 
-// Configure native OpenAPI (for /openapi/explore-api.json endpoint)
+// Configure native OpenAPI (for /openapi/event-api.json endpoint)
 // Register document transformer to add missing DTO schemas that are hidden inside HAL wrappers
-builder.Services.AddOpenApi("explore-api", options =>
+builder.Services.AddOpenApi("event-api", options =>
 {
     options.ShouldInclude = (description) => true;
     options.AddDocumentTransformer((document, _, _) =>
     {
-        document.Info.Title = "Explore API";
+        document.Info.Title = "Event API";
         document.Info.Version = "v0.1";
         return Task.CompletedTask;
     });

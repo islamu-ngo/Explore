@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Explore.Domain;
 using Explore.Application.Contracts.Persistence;
 using FluentValidation;
 
@@ -169,7 +170,44 @@ public class CreateEventWithSessionsDtoValidator : AbstractValidator<CreateEvent
                     .GreaterThan(0)
                     .When(s => s.MaxAudienceAttendees.HasValue)
                     .WithMessage("Maximum audience attendees must be greater than 0.");
+
+                session.RuleFor(s => s.Price)
+                    .GreaterThanOrEqualTo(0)
+                    .When(s => s.Price.HasValue)
+                    .WithMessage("Session price must be greater than or equal to 0.");
+
+                session.RuleFor(s => s.CurrencyCode)
+                    .MaximumLength(3)
+                    .When(s => !string.IsNullOrWhiteSpace(s.CurrencyCode))
+                    .WithMessage("Session currency code must be a valid 3-letter code.");
             });
+
+        RuleFor(p => p.Sessions)
+            .Must(sessions =>
+            {
+                foreach (var session in sessions)
+                {
+                    if (session.IslamicAspect == null)
+                    {
+                        continue;
+                    }
+
+                    if (session.IslamicAspect.StartTimeType == SessionStartTimeType.Fixed)
+                    {
+                        continue;
+                    }
+
+                    if (!session.LocationId.HasValue
+                        || !session.IslamicAspect.ReferencePrayer.HasValue
+                        || !session.IslamicAspect.OffsetMinutes.HasValue)
+                    {
+                        return false;
+                    }
+                }
+
+                return true;
+            })
+            .WithMessage("Islamic session scheduling requires LocationId, ReferencePrayer, and OffsetMinutes when StartTimeType is RelativeToPrayer.");
 
         // Validate LocationId exists for each session that has one
         RuleFor(p => p.Sessions)

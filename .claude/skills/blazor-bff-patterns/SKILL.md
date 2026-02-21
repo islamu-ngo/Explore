@@ -177,8 +177,8 @@ var proxyRoutes = new[]
 {
     new RouteConfig
     {
-        RouteId = "explore-api",
-        ClusterId = "explore-api",
+        RouteId = "event-api",
+        ClusterId = "event-api",
         Match = new RouteMatch
         {
             Path = "/api/{**catchall}"  // Catch all API routes

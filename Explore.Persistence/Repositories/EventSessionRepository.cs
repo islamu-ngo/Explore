@@ -20,7 +20,9 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
             .AsSplitQuery()
             .Include(s => s.Event)
             .Include(s => s.Location)
+                .ThenInclude(l => l!.Pii)
             .Include(s => s.RegistrationMode)
+            .Include(s => s.IslamicAspect)
             .FirstOrDefaultAsync(s => s.Id == id);
     }
 
@@ -31,7 +33,9 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
             .AsSplitQuery()
             .Include(s => s.Event)
             .Include(s => s.Location)
+                .ThenInclude(l => l!.Pii)
             .Include(s => s.RegistrationMode)
+            .Include(s => s.IslamicAspect)
             .Where(s => s.EventId == eventId)
             .OrderBy(s => s.StartTime)
             .ToListAsync();
@@ -43,6 +47,7 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
             .AsNoTracking()
             .Include(s => s.Event)
             .Include(s => s.RegistrationMode)
+            .Include(s => s.IslamicAspect)
             .Where(s => s.LocationId == locationId)
             .OrderBy(s => s.StartTime)
             .ToListAsync();
@@ -55,7 +60,9 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
             .AsSplitQuery()
             .Include(s => s.Event)
             .Include(s => s.Location)
+                .ThenInclude(l => l!.Pii)
             .Include(s => s.RegistrationMode)
+            .Include(s => s.IslamicAspect)
             .OrderByDescending(s => s.StartTime);
 
         var totalCount = await query.CountAsync();

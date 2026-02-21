@@ -32,7 +32,8 @@
         }
         else
         {
-            <MudStepper @bind-ActiveIndex="_activeStep"
+            <MudStepper @key="_stepperKey"
+                        @bind-ActiveIndex="_activeStep"
                         Elevation="0"
                         NonLinear="false"
                         ShowResetButton="false">
@@ -289,6 +290,7 @@
     private UserDto? _currentUser;
     private FirstHostSetupChoice _firstHostSetupChoice = FirstHostSetupChoice.None;
     private string _completeButtonLabel = "Complete Instance Onboarding";
+    private string _stepperKey = "single";
 
     private bool IsSingleTenantMode => _model.DeploymentMode.Equals("SingleTenant", StringComparison.OrdinalIgnoreCase);
     private bool IsMultiTenantMode => _model.DeploymentMode.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase);
@@ -322,6 +324,8 @@
             _model.AllowTenantWhiteLabeling = false;
         }
 
+        _stepperKey = IsSingleTenantMode ? "single" : "multi";
+
         _isLoading = false;
     }
 
@@ -347,10 +351,17 @@
 
     private void OnDeploymentModeChanged(string deploymentMode)
     {
+        var wasSingleTenantMode = IsSingleTenantMode;
+
         _model.DeploymentMode = string.IsNullOrWhiteSpace(deploymentMode) ? "SingleTenant" : deploymentMode.Trim();
         if (!IsMultiTenantMode)
         {
             _model.AllowTenantWhiteLabeling = false;
+        }
+
+        if (wasSingleTenantMode != IsSingleTenantMode)
+        {
+            _stepperKey = IsSingleTenantMode ? "single" : "multi";
         }
 
         if (_activeStep > LastStepIndex)

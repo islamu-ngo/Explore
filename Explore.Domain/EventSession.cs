@@ -10,6 +10,7 @@ public class EventSession : ITenantEntity, IAuditableEntity, ISoftDeletable
     [ForeignKey("Event")]
     public Guid EventId { get; set; }
     public required Event Event { get; set; }
+
     public DateTimeOffset StartTime { get; set; }
     public DateTimeOffset EndTime { get; set; }
     [ForeignKey("Location")]
@@ -25,6 +26,18 @@ public class EventSession : ITenantEntity, IAuditableEntity, ISoftDeletable
     [ForeignKey("RegistrationMode")]
     public int? RegistrationModeId { get; set; }
     public RegistrationMode? RegistrationMode { get; set; }
+
+    /// <summary>
+    /// Optional session-level pricing override.
+    /// </summary>
+    public decimal? Price { get; set; }
+    public string? CurrencyCode { get; set; }
+
+    /// <summary>
+    /// Optional Islamic extension stored in a dedicated vertical-partition table.
+    /// </summary>
+    public EventSessionIslamicAspect? IslamicAspect { get; set; }
+
     public string? Description { get; set; }
 
     // Audit fields
@@ -37,4 +50,10 @@ public class EventSession : ITenantEntity, IAuditableEntity, ISoftDeletable
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAt { get; set; }
     public Guid? DeletedBy { get; set; }
+}
+
+public enum SessionStartTimeType
+{
+    Fixed = 0,
+    RelativeToPrayer = 1
 }

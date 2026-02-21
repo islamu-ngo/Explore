@@ -284,14 +284,17 @@ public class MappingProfile : Profile
         // ============================================
         // EVENT SESSION MAPPINGS
         // ============================================
+        CreateMap<EventSessionIslamicAspect, EventSessionIslamicAspectDto>().ReverseMap();
         CreateMap<EventSession, EventSessionDto>()
             .ForMember(dest => dest.EventTitle, opt => opt.MapFrom(src => src.Event != null ? src.Event.Title : null))
             .ForMember(dest => dest.LocationFullName, opt => opt.MapFrom(src => src.Location != null ? src.Location.FullName : null));
         CreateMap<EventSession, EventSessionListDto>()
             .ForMember(dest => dest.EventTitle, opt => opt.MapFrom(src => src.Event != null ? src.Event.Title : null))
             .ForMember(dest => dest.LocationFullName, opt => opt.MapFrom(src => src.Location != null ? src.Location.FullName : null));
-        CreateMap<CreateEventSessionDto, EventSession>();
-        CreateMap<UpdateEventSessionDto, EventSession>();
+        CreateMap<CreateEventSessionDto, EventSession>()
+            .ForMember(dest => dest.IslamicAspect, opt => opt.Ignore());
+        CreateMap<UpdateEventSessionDto, EventSession>()
+            .ForMember(dest => dest.IslamicAspect, opt => opt.Ignore());
 
         // ============================================
         // LOCATION MAPPINGS

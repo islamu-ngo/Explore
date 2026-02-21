@@ -1,12 +1,12 @@
 {
   "openapi": "3.1.1",
   "info": {
-    "title": "Explore API",
+    "title": "Event API",
     "version": "v0.1"
   },
   "servers": [
     {
-      "url": "https://localhost:54615/"
+      "url": "https://localhost:50312/"
     }
   ],
   "paths": {
@@ -13716,6 +13716,31 @@
             ],
             "format": "int32"
           },
+          "price": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "currencyCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "islamicAspect": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EventSessionIslamicAspectDto"
+              }
+            ]
+          },
           "tenantId": {
             "type": "string",
             "format": "uuid"
@@ -13769,6 +13794,31 @@
               "string"
             ],
             "format": "int32"
+          },
+          "price": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "currencyCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "islamicAspect": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EventSessionIslamicAspectDto"
+              }
+            ]
           },
           "languageIds": {
             "type": "array",
@@ -15761,9 +15811,89 @@
               "string"
             ]
           },
+          "price": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "currencyCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "islamicAspect": {
+            "type": "object",
+            "properties": {
+              "startTimeType": {
+                "type": "integer"
+              },
+              "referencePrayer": {
+                "type": "integer"
+              },
+              "offsetMinutes": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "null",
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "requiresWudu": {
+                "type": "boolean"
+              },
+              "ritualRequirementsJson": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              }
+            }
+          },
           "tenantId": {
             "type": "string",
             "format": "uuid"
+          }
+        }
+      },
+      "EventSessionIslamicAspectDto": {
+        "type": "object",
+        "properties": {
+          "startTimeType": {
+            "$ref": "#/components/schemas/SessionStartTimeType"
+          },
+          "referencePrayer": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PrayerTime"
+              }
+            ]
+          },
+          "offsetMinutes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "requiresWudu": {
+            "type": "boolean"
+          },
+          "ritualRequirementsJson": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -15945,6 +16075,50 @@
               "null",
               "string"
             ]
+          },
+          "price": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "currencyCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "islamicAspect": {
+            "type": "object",
+            "properties": {
+              "startTimeType": {
+                "type": "integer"
+              },
+              "referencePrayer": {
+                "type": "integer"
+              },
+              "offsetMinutes": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "null",
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "requiresWudu": {
+                "type": "boolean"
+              },
+              "ritualRequirementsJson": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              }
+            }
           }
         }
       },
@@ -17725,6 +17899,50 @@
               "string"
             ]
           },
+          "price": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "currencyCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "islamicAspect": {
+            "type": "object",
+            "properties": {
+              "startTimeType": {
+                "type": "integer"
+              },
+              "referencePrayer": {
+                "type": "integer"
+              },
+              "offsetMinutes": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "null",
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "requiresWudu": {
+                "type": "boolean"
+              },
+              "ritualRequirementsJson": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              }
+            }
+          },
           "tenantId": {
             "type": "string",
             "format": "uuid"
@@ -19298,6 +19516,9 @@
           }
         }
       },
+      "SessionStartTimeType": {
+        "type": "integer"
+      },
       "SkillLevel": {
         "type": "integer"
       },
@@ -20464,6 +20685,31 @@
               "string"
             ],
             "format": "int32"
+          },
+          "price": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "currencyCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "islamicAspect": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EventSessionIslamicAspectDto"
+              }
+            ]
           }
         }
       },

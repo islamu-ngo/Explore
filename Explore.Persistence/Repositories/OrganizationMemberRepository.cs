@@ -23,7 +23,9 @@ public class OrganizationMemberRepository : GenericRepository<OrganizationMember
             .AsNoTracking()
             .AsSplitQuery()
             .Include(m => m.User)
+                .ThenInclude(u => u!.Pii)
             .Include(m => m.Organization)
+                .ThenInclude(o => o!.Pii)
             .Include(m => m.Role)
             .Include(m => m.OrganizationPosition)
             .ToListAsync();
@@ -35,7 +37,9 @@ public class OrganizationMemberRepository : GenericRepository<OrganizationMember
             .AsNoTracking()
             .AsSplitQuery()
             .Include(m => m.User)
+                .ThenInclude(u => u!.Pii)
             .Include(m => m.Organization)
+                .ThenInclude(o => o!.Pii)
             .Include(m => m.Role)
             .Include(m => m.OrganizationPosition)
             .FirstOrDefaultAsync(m => m.Id == id);
@@ -47,6 +51,7 @@ public class OrganizationMemberRepository : GenericRepository<OrganizationMember
             .AsNoTracking()
             .AsSplitQuery()
             .Include(m => m.User)
+                .ThenInclude(u => u!.Pii)
             .Include(m => m.Role)
             .Include(m => m.OrganizationPosition)
             .Where(m => m.OrganizationId == organizationId)
@@ -58,6 +63,7 @@ public class OrganizationMemberRepository : GenericRepository<OrganizationMember
         return await _dbContext.OrganizationMembers
             .AsNoTracking()
             .Include(m => m.User)
+                .ThenInclude(u => u!.Pii)
             .Where(m => m.OrganizationId == organizationId)
             .Select(m => m.User)
             .ToListAsync();
@@ -68,6 +74,7 @@ public class OrganizationMemberRepository : GenericRepository<OrganizationMember
         return await _dbContext.OrganizationMembers
             .AsNoTracking()
             .Include(m => m.Organization)
+                .ThenInclude(o => o!.Pii)
             .Where(m => m.UserId == userId)
             .Select(m => m.Organization)
             .ToListAsync();
@@ -79,6 +86,8 @@ public class OrganizationMemberRepository : GenericRepository<OrganizationMember
             .AsNoTracking()
             .Include(m => m.Organization)
                 .ThenInclude(o => o.ApprovalStatus)
+            .Include(m => m.Organization)
+                .ThenInclude(o => o.Pii)
             .Include(m => m.Role)
             .Where(m => m.UserId == userId)
             .ToListAsync();
@@ -96,8 +105,10 @@ public class OrganizationMemberRepository : GenericRepository<OrganizationMember
         return await _dbContext.OrganizationMembers
             .AsNoTracking()
             .Include(m => m.Organization)
+                .ThenInclude(o => o!.Pii)
             .Include(m => m.User)
-            .Where(m => m.User.Email == email)
+                .ThenInclude(u => u!.Pii)
+            .Where(m => m.User.Pii != null && m.User.Pii.Email == email)
             .ToListAsync();
     }
 
@@ -107,6 +118,7 @@ public class OrganizationMemberRepository : GenericRepository<OrganizationMember
             .AsNoTracking()
             .Include(m => m.Role)
             .Include(m => m.Organization)
+                .ThenInclude(o => o!.Pii)
             .FirstOrDefaultAsync(m => m.OrganizationId == organizationId && m.UserId == userId);
     }
 

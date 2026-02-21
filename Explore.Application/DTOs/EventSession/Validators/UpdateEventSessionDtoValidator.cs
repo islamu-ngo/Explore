@@ -1,4 +1,5 @@
 using Explore.Application.Contracts.Persistence;
+using Explore.Domain;
 using FluentValidation;
 
 namespace Explore.Application.DTOs.EventSession.Validators;
@@ -67,5 +68,32 @@ public class UpdateEventSessionDtoValidator : AbstractValidator<UpdateEventSessi
                 var exists = await _registrationModeRepository.Exists(id.Value);
                 return exists;
             }).WithMessage("{PropertyName} does not exist.");
+
+        RuleFor(p => p.Price)
+            .GreaterThanOrEqualTo(0).When(p => p.Price.HasValue)
+            .WithMessage("{PropertyName} must be greater than or equal to 0.");
+
+        RuleFor(p => p.CurrencyCode)
+            .MaximumLength(3).When(p => !string.IsNullOrWhiteSpace(p.CurrencyCode))
+            .WithMessage("{PropertyName} must be a valid 3-letter currency code.");
+
+        RuleFor(p => p)
+            .Must(p =>
+            {
+                if (p.IslamicAspect == null)
+                {
+                    return true;
+                }
+
+                if (p.IslamicAspect.StartTimeType == SessionStartTimeType.Fixed)
+                {
+                    return true;
+                }
+
+                return p.IslamicAspect.ReferencePrayer.HasValue
+                    && p.IslamicAspect.OffsetMinutes.HasValue
+                    && p.LocationId.HasValue;
+            })
+            .WithMessage("Islamic session scheduling requires LocationId, ReferencePrayer, and OffsetMinutes when StartTimeType is RelativeToPrayer.");
     }
 }

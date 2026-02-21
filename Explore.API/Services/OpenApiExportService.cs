@@ -68,7 +68,7 @@ public class OpenApiExportService : BackgroundService
         // Use native OpenAPI endpoint. Swashbuckle has version incompatibility with .NET 10's
         // Microsoft.OpenApi 2.x library. The native endpoint works, and HalSchemaTransformer
         // can be enabled once .NET 10 Preview 4+ is available with AddSchemaTransformer API.
-        var openApiSchemaUri = $"{baseUrl}/openapi/explore-api.json";
+        var openApiSchemaUri = $"{baseUrl}/openapi/event-api.json";
 
         _logger.LogInformation("Fetching OpenAPI spec from {Url}", openApiSchemaUri);
 

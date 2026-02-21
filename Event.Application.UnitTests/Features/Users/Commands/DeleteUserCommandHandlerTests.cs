@@ -1,4 +1,4 @@
-using AutoMapper;
+using System;
 using Event.Application.UnitTests.Common;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Exceptions;
@@ -16,16 +16,28 @@ namespace Event.Application.UnitTests.Features.Users.Commands;
 public class DeleteUserCommandHandlerTests
 {
     private readonly IUserRepository _userRepository;
-    private readonly IMapper _mapper;
+    private readonly IGenericRepository<UserPii, Guid> _userPiiRepository;
+    private readonly IUserAuthenticationTokenRepository _userAuthenticationTokenRepository;
+    private readonly IActorRepository _actorRepository;
+    private readonly IGenericRepository<ActorPii, Guid> _actorPiiRepository;
     private readonly HybridCache _cache;
     private readonly DeleteUserCommandHandler _handler;
 
     public DeleteUserCommandHandlerTests()
     {
         _userRepository = Substitute.For<IUserRepository>();
-        _mapper = Substitute.For<IMapper>();
+        _userPiiRepository = Substitute.For<IGenericRepository<UserPii, Guid>>();
+        _userAuthenticationTokenRepository = Substitute.For<IUserAuthenticationTokenRepository>();
+        _actorRepository = Substitute.For<IActorRepository>();
+        _actorPiiRepository = Substitute.For<IGenericRepository<ActorPii, Guid>>();
         _cache = Substitute.For<HybridCache>();
-        _handler = new DeleteUserCommandHandler(_userRepository, _mapper, _cache);
+        _handler = new DeleteUserCommandHandler(
+            _userRepository,
+            _userPiiRepository,
+            _userAuthenticationTokenRepository,
+            _actorRepository,
+            _actorPiiRepository,
+            _cache);
     }
 
     [Test]
@@ -40,6 +52,9 @@ public class DeleteUserCommandHandlerTests
 
         _userRepository.GetById(userId).Returns(user);
         _userRepository.Delete(user).Returns(Task.CompletedTask);
+        _userPiiRepository.GetById(userId).Returns((UserPii?)null);
+        _userAuthenticationTokenRepository.GetByUser(userId).Returns(new List<UserAuthenticationToken>());
+        _actorRepository.GetActorByUserId(userId).Returns((Actor?)null);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -77,12 +92,16 @@ public class DeleteUserCommandHandlerTests
 
         _userRepository.GetById(userId).Returns(user);
         _userRepository.Delete(user).Returns(Task.CompletedTask);
+        _userPiiRepository.GetById(userId).Returns((UserPii?)null);
+        _userAuthenticationTokenRepository.GetByUser(userId).Returns(new List<UserAuthenticationToken>());
+        _actorRepository.GetActorByUserId(userId).Returns((Actor?)null);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
         await Assert.That(result).IsEqualTo(Unit.Value);
-        await _userRepository.Received(1).Delete(Arg.Is<User>(u => u.Id == userId && u.Email == "test@example.com"));
+        await _userRepository.Received(1).Delete(Arg.Is<User>(u =>
+            u.Id == userId));
     }
 }

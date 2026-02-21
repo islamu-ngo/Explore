@@ -17,6 +17,10 @@ public class OrganizationReviewRepository : GenericRepository<OrganizationReview
     {
         return await _dbContext.Set<OrganizationReview>()
             .AsNoTracking()
+            .Include(r => r.Organization)
+                .ThenInclude(o => o!.Pii)
+            .Include(r => r.User)
+                .ThenInclude(u => u!.Pii)
             .Where(r => r.OrganizationId == organizationId)
             .OrderByDescending(r => r.CreatedAt)
             .ToListAsync();
@@ -27,6 +31,10 @@ public class OrganizationReviewRepository : GenericRepository<OrganizationReview
         return await _dbContext.Set<OrganizationReview>()
             .AsNoTracking()
             .Include(r => r.Event)
+            .Include(r => r.Organization)
+                .ThenInclude(o => o!.Pii)
+            .Include(r => r.User)
+                .ThenInclude(u => u!.Pii)
             .Where(r => r.UserId == userId)
             .OrderByDescending(r => r.CreatedAt)
             .ToListAsync();

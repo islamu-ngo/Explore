@@ -70,6 +70,17 @@ public class ExploreDbContext : DbContext
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
         modelBuilder.Entity<EventSessionAgendaItem>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+        modelBuilder.Entity<EventSessionIslamicAspect>()
+            .HasQueryFilter(QueryFilterNames.Tenant,
+                e => TenantContext == null
+                    || (e.EventSession != null && e.EventSession.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty)));
+
+        // Lookup extension: global event types (TenantId = null) + tenant-specific custom event types
+        modelBuilder.Entity<EventType>()
+            .HasQueryFilter(QueryFilterNames.Tenant,
+                e => e.TenantId == null
+                    || TenantContext == null
+                    || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
 
         // ===== Organization Entities =====
         // Entities with both Tenant and Soft Delete filters
@@ -100,6 +111,11 @@ public class ExploreDbContext : DbContext
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
             .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
 
+        modelBuilder.Entity<ActorPii>()
+            .HasQueryFilter(QueryFilterNames.Tenant,
+                e => TenantContext == null
+                    || (e.Actor != null && e.Actor.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty)));
+
         // Actor-related (tenant only - no soft delete)
         modelBuilder.Entity<ActorKeyStore>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
@@ -109,13 +125,26 @@ public class ExploreDbContext : DbContext
         modelBuilder.Entity<User>()
             .HasQueryFilter(QueryFilterNames.SoftDelete, u => !u.IsDeleted);
 
+        modelBuilder.Entity<UserPii>()
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => e.User != null && !e.User.IsDeleted);
+
         // ===== Location Entity =====
         modelBuilder.Entity<Location>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
 
+        modelBuilder.Entity<LocationPii>()
+            .HasQueryFilter(QueryFilterNames.Tenant,
+                e => TenantContext == null
+                    || (e.Location != null && e.Location.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty)));
+
         // ===== Storage Entity =====
         modelBuilder.Entity<StorageObject>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+
+        modelBuilder.Entity<OrganizationPii>()
+            .HasQueryFilter(QueryFilterNames.Tenant,
+                e => TenantContext == null
+                    || (e.Organization != null && e.Organization.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty)));
 
         // ===== Category and Tag Entities =====
         modelBuilder.Entity<Category>()
@@ -231,6 +260,7 @@ public class ExploreDbContext : DbContext
 
     // ===== Users & Authentication =====
     public DbSet<User> Users { get; set; }
+    public DbSet<UserPii> UserPii { get; set; }
     public DbSet<UserAuthenticationToken> UserAuthenticationTokens { get; set; }
     public DbSet<UserExternalLogin> UserExternalLogins { get; set; }
 
@@ -241,12 +271,14 @@ public class ExploreDbContext : DbContext
 
     // ===== Actors (Federation/ATProto) =====
     public DbSet<Actor> Actors { get; set; }
+    public DbSet<ActorPii> ActorPii { get; set; }
     public DbSet<ActorType> ActorTypes { get; set; }
     public DbSet<DidCustodyType> DidCustodyTypes { get; set; }
     public DbSet<ActorKeyStore> ActorKeyStores { get; set; }
 
     // ===== Organizations =====
     public DbSet<Organization> Organizations { get; set; }
+    public DbSet<OrganizationPii> OrganizationPii { get; set; }
     public DbSet<OrganizationMember> OrganizationMembers { get; set; }
     public DbSet<OrganizationPosition> OrganizationPositions { get; set; }
     public DbSet<OrganizationReview> OrganizationReviews { get; set; }
@@ -258,6 +290,7 @@ public class ExploreDbContext : DbContext
     // ===== Events =====
     public DbSet<Event> Events { get; set; }
     public DbSet<EventSession> EventSessions { get; set; }
+    public DbSet<EventSessionIslamicAspect> EventSessionIslamicAspects { get; set; }
     public DbSet<EventRegistration> EventRegistrations { get; set; }
     public DbSet<EventSessionLanguage> EventSessionLanguages { get; set; }
     public DbSet<EventSessionSpeaker> EventSessionSpeakers { get; set; }
@@ -290,6 +323,7 @@ public class ExploreDbContext : DbContext
 
     // ===== Locations =====
     public DbSet<Location> Locations { get; set; }
+    public DbSet<LocationPii> LocationPii { get; set; }
 
     // ===== Storage =====
     public DbSet<StorageObject> StorageObjects { get; set; }

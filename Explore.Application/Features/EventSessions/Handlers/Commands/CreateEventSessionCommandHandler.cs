@@ -19,6 +19,7 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
     private readonly IEventRepository _eventRepository;
     private readonly ILocationRepository _locationRepository;
     private readonly IRegistrationModeRepository _registrationModeRepository;
+    private readonly IEventSessionIslamicAspectRepository _eventSessionIslamicAspectRepository;
     private readonly ITenantContext _tenantContext;
     private readonly IMapper _mapper;
 
@@ -27,6 +28,7 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
         IEventRepository eventRepository,
         ILocationRepository locationRepository,
         IRegistrationModeRepository registrationModeRepository,
+        IEventSessionIslamicAspectRepository eventSessionIslamicAspectRepository,
         ITenantContext tenantContext,
         IMapper mapper)
     {
@@ -34,6 +36,7 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
         _eventRepository = eventRepository;
         _locationRepository = locationRepository;
         _registrationModeRepository = registrationModeRepository;
+        _eventSessionIslamicAspectRepository = eventSessionIslamicAspectRepository;
         _tenantContext = tenantContext;
         _mapper = mapper;
     }
@@ -60,6 +63,15 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
         eventSession.TenantId = _tenantContext.TenantId;
 
         eventSession = await _eventSessionRepository.Create(eventSession);
+
+        if (request.EventSessionDto.IslamicAspect != null)
+        {
+            var islamicAspect = _mapper.Map<EventSessionIslamicAspect>(request.EventSessionDto.IslamicAspect);
+            islamicAspect.EventSessionId = eventSession.Id;
+            islamicAspect.EventSession = null;
+
+            await _eventSessionIslamicAspectRepository.Create(islamicAspect);
+        }
 
         response.Success = true;
         response.Id = eventSession.Id;

@@ -22,6 +22,8 @@ public class StorageObjectRepository : GenericRepository<StorageObject, Guid>, I
             .AsNoTracking()
             .Include(f => f.FileType)
             .Include(f => f.Tenant)
+            .Include(f => f.Actor)
+                .ThenInclude(a => a!.Pii)
             .ToListAsync();
     }
 
@@ -31,6 +33,8 @@ public class StorageObjectRepository : GenericRepository<StorageObject, Guid>, I
             .AsNoTracking()
             .Include(f => f.FileType)
             .Include(f => f.Tenant)
+            .Include(f => f.Actor)
+                .ThenInclude(a => a!.Pii)
             .FirstOrDefaultAsync(f => f.Id == id);
     }
 
@@ -39,6 +43,8 @@ public class StorageObjectRepository : GenericRepository<StorageObject, Guid>, I
         var query = _dbContext.StorageObjects
             .AsNoTracking()
             .Include(f => f.FileType)
+            .Include(f => f.Actor)
+                .ThenInclude(a => a!.Pii)
             .OrderByDescending(f => f.Id);
 
         var totalCount = await query.CountAsync();

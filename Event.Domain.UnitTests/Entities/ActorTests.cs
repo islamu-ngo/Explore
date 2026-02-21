@@ -28,7 +28,7 @@ public class ActorTests
     {
         await Assert.That(IsRequiredProperty<Actor>(nameof(Actor.ActorType))).IsTrue();
         await Assert.That(IsRequiredProperty<Actor>(nameof(Actor.Tenant))).IsTrue();
-        await Assert.That(IsRequiredProperty<Actor>(nameof(Actor.DisplayName))).IsTrue();
+        await Assert.That(IsRequiredProperty<ActorPii>(nameof(ActorPii.DisplayName))).IsTrue();
     }
 
     [Test]

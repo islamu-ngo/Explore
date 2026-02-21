@@ -10,6 +10,12 @@ public class EventSessionConfiguration : IEntityTypeConfiguration<EventSession>
     {
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
 
+        builder.Property(e => e.Price)
+            .HasPrecision(19, 4);
+
+        builder.Property(e => e.CurrencyCode)
+            .HasMaxLength(3);
+
         builder.Property(e => e.Title).HasMaxLength(500);
         builder.Property(e => e.Slug).HasMaxLength(500);
         builder.Property(e => e.Description).HasMaxLength(500);
@@ -28,5 +34,12 @@ public class EventSessionConfiguration : IEntityTypeConfiguration<EventSession>
             .WithMany()
             .HasForeignKey(e => e.TenantId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.ToTable(t =>
+        {
+            t.HasCheckConstraint(
+                "CK_EventSession_NonNegativePrice",
+                "price IS NULL OR price >= 0");
+        });
     }
 }

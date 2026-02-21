@@ -119,7 +119,7 @@ services:
       <<: [*keycloak-env, *secrets-env]
       ASPNETCORE_URLS: http://+:8080
       ASPNETCORE_ENVIRONMENT: Production
-      EXPLORE_API_BASE_URL: ${EXPLORE_API_BASE_URL:-http://explore-api:8080/}
+      EXPLORE_API_BASE_URL: ${EXPLORE_API_BASE_URL:-http://eventapi:8080/}
       Keycloak__Authority: ${KEYCLOAK_PUBLIC_URL:-http://keycloak.localhost:8080}/realms/${KEYCLOAK_REALM:-explore}
       Keycloak__MetadataAddress: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}/realms/${KEYCLOAK_REALM:-explore}/.well-known/openid-configuration
       Keycloak__Realm: ${KEYCLOAK_REALM:-explore}

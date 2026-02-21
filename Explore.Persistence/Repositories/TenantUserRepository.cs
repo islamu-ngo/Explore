@@ -36,6 +36,7 @@ public class TenantUserRepository : GenericRepository<TenantUser, Guid>, ITenant
         return await _dbContext.TenantUsers
             .AsNoTracking()
             .Include(tu => tu.User)
+                .ThenInclude(u => u!.Pii)
             .Include(tu => tu.Role)
             .Where(tu => tu.TenantId == tenantId)
             .ToListAsync();
@@ -47,6 +48,7 @@ public class TenantUserRepository : GenericRepository<TenantUser, Guid>, ITenant
             .AsNoTracking()
             .AsSplitQuery()
             .Include(tu => tu.User)
+                .ThenInclude(u => u!.Pii)
             .Include(tu => tu.Tenant)
             .Include(tu => tu.Role)
             .FirstOrDefaultAsync(tu => tu.Id == id);
@@ -58,6 +60,7 @@ public class TenantUserRepository : GenericRepository<TenantUser, Guid>, ITenant
             .AsNoTracking()
             .AsSplitQuery()
             .Include(tu => tu.User)
+                .ThenInclude(u => u!.Pii)
             .Include(tu => tu.Tenant)
             .Include(tu => tu.Role)
             .ToListAsync();

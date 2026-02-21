@@ -20,6 +20,7 @@ public class GroupMemberRepository : GenericRepository<GroupMember, Guid>, IGrou
             .AsNoTracking()
             .AsSplitQuery()
             .Include(m => m.User)
+                .ThenInclude(u => u!.Pii)
             .Include(m => m.Group)
             .Include(m => m.Role)
             .ToListAsync();
@@ -31,6 +32,7 @@ public class GroupMemberRepository : GenericRepository<GroupMember, Guid>, IGrou
             .AsNoTracking()
             .AsSplitQuery()
             .Include(m => m.User)
+                .ThenInclude(u => u!.Pii)
             .Include(m => m.Group)
             .Include(m => m.Role)
             .FirstOrDefaultAsync(m => m.Id == id);
@@ -42,6 +44,7 @@ public class GroupMemberRepository : GenericRepository<GroupMember, Guid>, IGrou
             .AsNoTracking()
             .AsSplitQuery()
             .Include(m => m.User)
+                .ThenInclude(u => u!.Pii)
             .Include(m => m.Role)
             .Where(m => m.GroupId == groupId)
             .ToListAsync();

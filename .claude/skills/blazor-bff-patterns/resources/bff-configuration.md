@@ -51,7 +51,7 @@ var proxyClusters = new[]
 {
     new ClusterConfig
     {
-        ClusterId = "explore-api", // Must match the ClusterId in RouteConfig
+        ClusterId = "event-api", // Must match the ClusterId in RouteConfig
         Destinations = new Dictionary<string, DestinationConfig>
         {
             // Define one or more destinations for the cluster

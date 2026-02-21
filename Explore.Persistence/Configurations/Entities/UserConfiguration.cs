@@ -12,9 +12,6 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
     {
         builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
 
-        builder.Property(e => e.Email).HasMaxLength(500).IsRequired();
-        builder.Property(e => e.FirstName).HasMaxLength(500).IsRequired();
-        builder.Property(e => e.LastName).HasMaxLength(500).IsRequired();
         builder.Property(e => e.AuthProvider).HasMaxLength(500);
         builder.Property(e => e.AuthProviderId).HasMaxLength(500);
 
@@ -24,8 +21,12 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasForeignKey(e => e.ActorId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Unique index on email
-        builder.HasIndex(e => e.Email).IsUnique();
+        builder.HasOne(e => e.Pii)
+            .WithOne(e => e.User)
+            .HasForeignKey<UserPii>(e => e.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Navigation(e => e.Pii).AutoInclude();
 
         // NOTE: Business entity seed data moved to DatabaseSeeder for conditional (Development-only) seeding.
         // See Explore.Persistence/Seed/DatabaseSeeder.cs and SeedData.cs

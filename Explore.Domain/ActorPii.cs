@@ -1,0 +1,15 @@
+// ABOUTME: Stores actor-identifying fields in a dedicated extension table.
+// Uses a 1:1 shared primary-key relationship with Actor for hard-deleteable PII.
+
+namespace Explore.Domain;
+
+public class ActorPii
+{
+    public Guid ActorId { get; set; }
+    public Actor? Actor { get; set; }
+
+    public required string DisplayName { get; set; }
+    public string? Did { get; set; }
+    public string? Handle { get; set; }
+    public string? ProfilePictureUri { get; set; }
+}

@@ -1,0 +1,33 @@
+// ABOUTME: Configures the user_pii extension table with strict 1:1 PK/FK to users.
+// Stores removable user-identifying fields separately from the core user record.
+
+namespace Explore.Persistence.Configurations.Entities;
+
+using Explore.Domain;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+public class UserPiiConfiguration : IEntityTypeConfiguration<UserPii>
+{
+    public void Configure(EntityTypeBuilder<UserPii> builder)
+    {
+        builder.ToTable("user_pii");
+
+        builder.HasKey(e => e.UserId);
+
+        builder.Property(e => e.Email)
+            .HasMaxLength(500)
+            .IsRequired();
+
+        builder.Property(e => e.FirstName)
+            .HasMaxLength(500)
+            .IsRequired();
+
+        builder.Property(e => e.LastName)
+            .HasMaxLength(500)
+            .IsRequired();
+
+        builder.HasIndex(e => e.Email)
+            .IsUnique();
+    }
+}

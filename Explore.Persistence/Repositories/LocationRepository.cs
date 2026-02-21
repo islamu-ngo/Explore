@@ -6,12 +6,6 @@ namespace Explore.Persistence.Repositories;
 
 public class LocationRepository : GenericRepository<Location, Guid>, ILocationRepository
 {
-    private static readonly Func<ExploreDbContext, Guid, Task<Location?>> GetByIdCompiled =
-        EF.CompileAsyncQuery((ExploreDbContext ctx, Guid id) =>
-            ctx.Locations
-                .AsNoTracking()
-                .FirstOrDefault(l => l.Id == id));
-
     private readonly ExploreDbContext _dbContext;
 
     public LocationRepository(ExploreDbContext dbContext) : base(dbContext)
@@ -21,13 +15,16 @@ public class LocationRepository : GenericRepository<Location, Guid>, ILocationRe
 
     public new async Task<Location?> GetById(Guid id)
     {
-        return await GetByIdCompiled(_dbContext, id);
+        return await _dbContext.Locations
+            .Include(l => l.Pii)
+            .FirstOrDefaultAsync(l => l.Id == id);
     }
 
     public async Task<List<Location>> GetLocationsByTenant(Guid tenantId)
     {
         return await _dbContext.Locations
             .AsNoTracking()
+            .Include(l => l.Pii)
             .Where(l => l.TenantId == tenantId)
             .ToListAsync();
     }
@@ -36,6 +33,7 @@ public class LocationRepository : GenericRepository<Location, Guid>, ILocationRe
     {
         return await _dbContext.Locations
             .AsNoTracking()
+            .Include(l => l.Pii)
             .Where(l => l.City == city)
             .ToListAsync();
     }
@@ -44,6 +42,7 @@ public class LocationRepository : GenericRepository<Location, Guid>, ILocationRe
     {
         return await _dbContext.Locations
             .AsNoTracking()
+            .Include(l => l.Pii)
             .Where(l => l.Country == country)
             .ToListAsync();
     }
@@ -52,6 +51,7 @@ public class LocationRepository : GenericRepository<Location, Guid>, ILocationRe
     {
         var query = _dbContext.Locations
             .AsNoTracking()
+            .Include(l => l.Pii)
             .OrderBy(l => l.FullName);
 
         var totalCount = await query.CountAsync();

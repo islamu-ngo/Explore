@@ -18,6 +18,7 @@ public class EventSessionSpeakerRepository : GenericRepository<EventSessionSpeak
         return await _dbContext.EventSessionSpeakers
             .AsNoTracking()
             .Include(s => s.Actor)
+                .ThenInclude(a => a!.Pii)
             .Where(s => s.EventSessionId == eventSessionId)
             .ToListAsync();
     }
@@ -36,6 +37,7 @@ public class EventSessionSpeakerRepository : GenericRepository<EventSessionSpeak
         var query = _dbContext.EventSessionSpeakers
             .AsNoTracking()
             .Include(s => s.Actor)
+                .ThenInclude(a => a!.Pii)
             .Include(s => s.EventSession)
                 .ThenInclude(es => es.Event)
             .OrderByDescending(s => s.Id);

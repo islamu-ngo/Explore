@@ -30,6 +30,7 @@ public class TenantMemberRepository : GenericRepository<TenantMember, Guid>, ITe
         return await _dbContext.TenantMembers
             .AsNoTracking()
             .Include(x => x.User)
+                .ThenInclude(u => u!.Pii)
             .Include(x => x.Role)
             .Where(x => x.TenantId == tenantId)
             .ToListAsync();

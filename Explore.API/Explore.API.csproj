@@ -8,7 +8,7 @@
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
 	<OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)\obj</OpenApiDocumentsDirectory>
 	<OpenApiGenerateDocuments>true</OpenApiGenerateDocuments>
-	<OpenApiDefaultDocumentName>explore-api</OpenApiDefaultDocumentName>
+	<OpenApiDefaultDocumentName>event-api</OpenApiDefaultDocumentName>
   </PropertyGroup>
 
   <ItemGroup>

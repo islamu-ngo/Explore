@@ -13,8 +13,6 @@ public class LocationConfiguration : IEntityTypeConfiguration<Location>
         builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
 
         builder.Property(e => e.FullName).HasMaxLength(500).IsRequired();
-        builder.Property(e => e.Address).HasMaxLength(500).IsRequired();
-        builder.Property(e => e.Postcode).HasMaxLength(500).IsRequired();
         builder.Property(e => e.Country).HasMaxLength(500).IsRequired();
         builder.Property(e => e.City).HasMaxLength(500).IsRequired();
         builder.Property(e => e.Timezone).HasMaxLength(500);
@@ -23,6 +21,13 @@ public class LocationConfiguration : IEntityTypeConfiguration<Location>
             .WithMany()
             .HasForeignKey(e => e.TenantId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(e => e.Pii)
+            .WithOne(e => e.Location)
+            .HasForeignKey<LocationPii>(e => e.LocationId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Navigation(e => e.Pii).AutoInclude();
 
         // ===== Performance Indexes =====
 
