@@ -1,9 +1,9 @@
-// ABOUTME: Service for loading group publishing options for the current authenticated user.
-// ABOUTME: Uses direct HTTP access to support Group endpoints before client regeneration.
+// ABOUTME: Service for group creation, membership administration, and settings management in Blazor.
+// ABOUTME: Uses generated API client where possible and JSON parsing for Group detail HAL payloads.
 
 using System.Net.Http.Json;
 using System.Text.Json;
-using Explore.Blazor.Client.Models.Responses;
+using Explore.Blazor.Client.Clients;
 
 namespace Explore.Blazor.Client.Services;
 
@@ -11,17 +11,25 @@ public interface IGroupService
 {
     Task<ICollection<GroupPublisherListDto>> GetMyGroupsAsync();
     Task<bool> CreateGroupAsync(string fullName, string? description = null);
+    Task<GroupAdminDetailsModel?> GetGroupDetailsAsync(Guid groupId);
+    Task<BaseCommandResponseOfGuid?> UpdateGroupAsync(Guid groupId, UpdateGroupDto group);
+    Task<ICollection<GroupMemberDto>> GetGroupMembersAsync(Guid groupId);
+    Task<BaseCommandResponseOfGuid?> AddGroupMemberAsync(AddGroupMemberDto member);
+    Task<BaseCommandResponseOfGuid?> UpdateGroupMemberRoleAsync(UpdateGroupMemberRoleDto updateDto);
+    Task<BaseCommandResponseOfGuid?> DeleteGroupMemberAsync(Guid memberId);
 }
 
 public class GroupService : IGroupService
 {
     private readonly HttpClient _httpClient;
+    private readonly IEventApiClient _apiClient;
     private readonly ILogger<GroupService> _logger;
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
-    public GroupService(HttpClient httpClient, ILogger<GroupService> logger)
+    public GroupService(HttpClient httpClient, IEventApiClient apiClient, ILogger<GroupService> logger)
     {
         _httpClient = httpClient;
+        _apiClient = apiClient;
         _logger = logger;
     }
 
@@ -33,29 +41,20 @@ public class GroupService : IGroupService
             return false;
         }
 
-        var request = new CreateGroupRequest
-        {
-            FullName = fullName.Trim(),
-            Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim()
-        };
-
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("api/group", request);
-            if (!response.IsSuccessStatusCode)
+            var response = await _apiClient.CreateGroupAsync(new CreateGroupDto
             {
-                _logger.LogWarning("[GroupService.CreateGroupAsync] API error creating group. StatusCode: {StatusCode}", response.StatusCode);
-                return false;
-            }
+                FullName = fullName.Trim(),
+                Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim()
+            });
 
-            var content = await response.Content.ReadAsStringAsync();
-            if (string.IsNullOrWhiteSpace(content))
-            {
-                return true;
-            }
-
-            var commandResponse = JsonSerializer.Deserialize<BaseCommandResponse<Guid>>(content, JsonOptions);
-            return commandResponse?.Success ?? true;
+            return response.Success == true;
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[GroupService.CreateGroupAsync] API error creating group. StatusCode: {StatusCode}", ex.StatusCode);
+            return false;
         }
         catch (Exception ex)
         {
@@ -102,6 +101,112 @@ public class GroupService : IGroupService
         }
     }
 
+    public async Task<GroupAdminDetailsModel?> GetGroupDetailsAsync(Guid groupId)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"api/Group/{groupId}");
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("[GroupService.GetGroupDetailsAsync] API error fetching group. GroupId: {GroupId}, StatusCode: {StatusCode}", groupId, response.StatusCode);
+                return null;
+            }
+
+            var content = await response.Content.ReadAsStringAsync();
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                return null;
+            }
+
+            using var document = JsonDocument.Parse(content);
+            var root = document.RootElement;
+
+            return new GroupAdminDetailsModel
+            {
+                Id = ReadGuid(root, "id") ?? groupId,
+                FullName = ReadString(root, "fullName") ?? string.Empty,
+                Description = ReadString(root, "description"),
+                MetadataJson = ReadString(root, "metadataJson"),
+                ActorProfilePictureUri = ReadString(root, "actorProfilePictureUri")
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[GroupService.GetGroupDetailsAsync] Unexpected error fetching group. GroupId: {GroupId}", groupId);
+            return null;
+        }
+    }
+
+    public async Task<BaseCommandResponseOfGuid?> UpdateGroupAsync(Guid groupId, UpdateGroupDto group)
+    {
+        try
+        {
+            return await _apiClient.UpdateGroupAsync(groupId, group);
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[GroupService.UpdateGroupAsync] API error updating group. GroupId: {GroupId}, StatusCode: {StatusCode}", groupId, ex.StatusCode);
+            throw;
+        }
+    }
+
+    public async Task<ICollection<GroupMemberDto>> GetGroupMembersAsync(Guid groupId)
+    {
+        try
+        {
+            return await _apiClient.GetGroupMembersAsync(groupId) ?? new List<GroupMemberDto>();
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[GroupService.GetGroupMembersAsync] API error fetching group members. GroupId: {GroupId}, StatusCode: {StatusCode}", groupId, ex.StatusCode);
+            return new List<GroupMemberDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[GroupService.GetGroupMembersAsync] Unexpected error fetching group members. GroupId: {GroupId}", groupId);
+            return new List<GroupMemberDto>();
+        }
+    }
+
+    public async Task<BaseCommandResponseOfGuid?> AddGroupMemberAsync(AddGroupMemberDto member)
+    {
+        try
+        {
+            return await _apiClient.CreateGroupMemberAsync(member);
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[GroupService.AddGroupMemberAsync] API error adding group member. StatusCode: {StatusCode}", ex.StatusCode);
+            throw;
+        }
+    }
+
+    public async Task<BaseCommandResponseOfGuid?> UpdateGroupMemberRoleAsync(UpdateGroupMemberRoleDto updateDto)
+    {
+        try
+        {
+            return await _apiClient.UpdateGroupMemberAsync(updateDto);
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[GroupService.UpdateGroupMemberRoleAsync] API error updating group member role. StatusCode: {StatusCode}", ex.StatusCode);
+            throw;
+        }
+    }
+
+    public async Task<BaseCommandResponseOfGuid?> DeleteGroupMemberAsync(Guid memberId)
+    {
+        try
+        {
+            return await _apiClient.DeleteGroupMemberAsync(memberId);
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[GroupService.DeleteGroupMemberAsync] API error deleting group member. MemberId: {MemberId}, StatusCode: {StatusCode}", memberId, ex.StatusCode);
+            throw;
+        }
+    }
+
     private static bool TryReadHalEmbeddedItems(JsonElement root, out List<GroupPublisherListDto> items)
     {
         items = new List<GroupPublisherListDto>();
@@ -133,10 +238,25 @@ public class GroupService : IGroupService
         return false;
     }
 
-    private sealed class CreateGroupRequest
+    private static string? ReadString(JsonElement root, string propertyName)
     {
-        public string FullName { get; set; } = string.Empty;
-        public string? Description { get; set; }
+        if (!root.TryGetProperty(propertyName, out var property))
+        {
+            return null;
+        }
+
+        return property.ValueKind switch
+        {
+            JsonValueKind.String => property.GetString(),
+            JsonValueKind.Null => null,
+            _ => property.ToString()
+        };
+    }
+
+    private static Guid? ReadGuid(JsonElement root, string propertyName)
+    {
+        var raw = ReadString(root, propertyName);
+        return Guid.TryParse(raw, out var value) ? value : null;
     }
 }
 
@@ -144,6 +264,14 @@ public class GroupPublisherListDto
 {
     public Guid Id { get; set; }
     public string FullName { get; set; } = string.Empty;
-
     public int? CurrentUserRole { get; set; }
+}
+
+public class GroupAdminDetailsModel
+{
+    public Guid Id { get; set; }
+    public string FullName { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string? MetadataJson { get; set; }
+    public string? ActorProfilePictureUri { get; set; }
 }

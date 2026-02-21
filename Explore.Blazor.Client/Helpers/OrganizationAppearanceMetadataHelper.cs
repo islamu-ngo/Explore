@@ -8,11 +8,13 @@ namespace Explore.Blazor.Client.Helpers;
 
 public sealed class OrganizationAppearanceSettings
 {
+    public string ProfileImageUrl { get; set; } = string.Empty;
     public string BackgroundColor { get; set; } = string.Empty;
     public string BackgroundMediaUrl { get; set; } = string.Empty;
     public string BackgroundEffect { get; set; } = "None";
 
     public bool IsEmpty =>
+        string.IsNullOrWhiteSpace(ProfileImageUrl) &&
         string.IsNullOrWhiteSpace(BackgroundColor) &&
         string.IsNullOrWhiteSpace(BackgroundMediaUrl) &&
         (string.IsNullOrWhiteSpace(BackgroundEffect) ||
@@ -41,6 +43,7 @@ public static class OrganizationAppearanceMetadataHelper
 
             return new OrganizationAppearanceSettings
             {
+                ProfileImageUrl = appearance["profileImageUrl"]?.GetValue<string>() ?? string.Empty,
                 BackgroundColor = appearance["backgroundColor"]?.GetValue<string>() ?? string.Empty,
                 BackgroundMediaUrl = appearance["backgroundMediaUrl"]?.GetValue<string>() ?? string.Empty,
                 BackgroundEffect = appearance["backgroundEffect"]?.GetValue<string>() ?? "None"
@@ -72,6 +75,7 @@ public static class OrganizationAppearanceMetadataHelper
         {
             root[AppearanceNode] = new JsonObject
             {
+                ["profileImageUrl"] = NullIfWhiteSpace(appearance.ProfileImageUrl),
                 ["backgroundColor"] = NullIfWhiteSpace(appearance.BackgroundColor),
                 ["backgroundMediaUrl"] = NullIfWhiteSpace(appearance.BackgroundMediaUrl),
                 ["backgroundEffect"] = string.IsNullOrWhiteSpace(appearance.BackgroundEffect) ? "None" : appearance.BackgroundEffect.Trim()

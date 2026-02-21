@@ -1,0 +1,189 @@
+@* ABOUTME: Sidebar layout component for Group Admin Settings. *@
+@* ABOUTME: Loads group settings and coordinates profile/branding and member administration sections. *@
+
+@using MudBlazor
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Helpers
+@using Explore.Blazor.Client.Services
+
+@inject IGroupService GroupService
+@inject ISnackbar Snackbar
+
+<div class="settings-layout">
+    <MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
+        @if (_isLoading)
+        {
+            <MudStack AlignItems="AlignItems.Center" Class="py-12">
+                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-4">Loading group settings...</MudText>
+            </MudStack>
+        }
+        else if (_group is null)
+        {
+            <MudAlert Severity="Severity.Warning" Class="mb-4">Group not found.</MudAlert>
+        }
+        else
+        {
+            <div class="settings-header mb-8">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    @if (!string.IsNullOrWhiteSpace(GetAvatarUri()))
+                    {
+                        <MudAvatar Size="Size.Large" Rounded="true">
+                            <MudImage Src="@GetAvatarUri()" Alt="@_group.FullName" ObjectFit="ObjectFit.Cover" />
+                        </MudAvatar>
+                    }
+                    else
+                    {
+                        <MudAvatar Size="Size.Large" Color="Color.Primary" Variant="Variant.Filled" Rounded="true">
+                            @(_group.FullName.Length > 0 ? _group.FullName[..1].ToUpperInvariant() : "G")
+                        </MudAvatar>
+                    }
+                    <div>
+                        <MudText Typo="Typo.h4" Style="font-weight: 800;">@_group.FullName</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">Manage group members, profile details, and white-label branding.</MudText>
+                    </div>
+                </MudStack>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">@_errorMessage</MudAlert>
+            }
+
+            <MudGrid Spacing="4">
+                <MudItem xs="12" sm="12" md="3">
+                    <MudPaper Elevation="0" Class="settings-sidebar pa-0 rounded-lg border-solid border-1 mud-border-lines-default">
+                        <MudList T="string" Dense="false" DisablePadding="true">
+                            <MudListItem Icon="@Icons.Material.Filled.Tune"
+                                         Text="Profile & Branding"
+                                         Class="@GetNavItemClass("profile")"
+                                         OnClick="@(() => SelectSection("profile"))" />
+                            <MudListItem Icon="@Icons.Material.Filled.Groups"
+                                         Text="Members"
+                                         Class="@GetNavItemClass("members")"
+                                         OnClick="@(() => SelectSection("members"))" />
+                        </MudList>
+                    </MudPaper>
+                </MudItem>
+
+                <MudItem xs="12" sm="12" md="9">
+                    <MudPaper Elevation="0" Class="settings-content pa-6 rounded-lg border-solid border-1 mud-border-lines-default">
+                        @if (_currentSection == "profile")
+                        {
+                            <GroupProfileSection Model="_model"
+                                                 Branding="_branding"
+                                                 IsSaving="_isSaving"
+                                                 OnSave="SaveAsync" />
+                        }
+                        else if (_currentSection == "members")
+                        {
+                            <GroupMembersSection GroupId="GroupId" />
+                        }
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        }
+    </MudContainer>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public Guid GroupId { get; set; }
+
+    private GroupAdminDetailsModel? _group;
+    private UpdateGroupDto _model = new() { FullName = string.Empty };
+    private GroupBrandingSettings _branding = new();
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private string? _errorMessage;
+    private string _currentSection = "profile";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadGroupAsync();
+    }
+
+    private async Task LoadGroupAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        try
+        {
+            _group = await GroupService.GetGroupDetailsAsync(GroupId);
+            if (_group != null)
+            {
+                _model = new UpdateGroupDto
+                {
+                    FullName = _group.FullName,
+                    Description = _group.Description,
+                    MetadataJson = _group.MetadataJson
+                };
+                _branding = GroupBrandingMetadataHelper.Parse(_group.MetadataJson);
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to load group settings: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_model.FullName))
+        {
+            _errorMessage = "Group name is required.";
+            return;
+        }
+
+        _isSaving = true;
+        _errorMessage = null;
+        try
+        {
+            _model.MetadataJson = GroupBrandingMetadataHelper.Upsert(_model.MetadataJson, _branding);
+            var response = await GroupService.UpdateGroupAsync(GroupId, _model);
+
+            if (response?.Success == true)
+            {
+                Snackbar.Add("Group settings saved.", Severity.Success);
+                await LoadGroupAsync();
+                return;
+            }
+
+            _errorMessage = string.IsNullOrWhiteSpace(response?.Message)
+                ? "Failed to save group settings."
+                : response!.Message;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to save group settings: {ex.Message}";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private string? GetAvatarUri()
+    {
+        if (!string.IsNullOrWhiteSpace(_branding.PictureUrl))
+        {
+            return _branding.PictureUrl.Trim();
+        }
+
+        return _group?.ActorProfilePictureUri;
+    }
+
+    private void SelectSection(string section)
+    {
+        _currentSection = section;
+    }
+
+    private string GetNavItemClass(string section)
+    {
+        return _currentSection == section ? "settings-nav-active" : "";
+    }
+}

@@ -1,0 +1,385 @@
+@* ABOUTME: Group member management section for inviting, role updates, and removals. *@
+@* ABOUTME: Allows actions only to GroupCreator and GroupAdmin members of the current group. *@
+
+@using System.Security.Claims
+@using MudBlazor
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Helpers
+@using Explore.Blazor.Client.Services
+
+@inject IGroupService GroupService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<div class="settings-section">
+    <div class="settings-section-header">
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">Group Members</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+            Add new members and manage group roles.
+        </MudText>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">@_errorMessage</MudAlert>
+    }
+
+    @if (_isLoading)
+    {
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Small" />
+    }
+    else
+    {
+        @if (_canManage)
+        {
+            <MudPaper Elevation="0" Class="pa-4 mb-4 rounded-lg border-solid border-1 mud-border-lines-default">
+                <MudText Typo="Typo.subtitle2" Class="mb-3" Style="font-weight: 600;">Invite Member</MudText>
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_inviteEmail"
+                                      Label="Member Email"
+                                      Variant="Variant.Outlined"
+                                      InputType="InputType.Email"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Email" />
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudSelect T="int"
+                                   Label="Role"
+                                   Variant="Variant.Outlined"
+                                   @bind-Value="_inviteRole">
+                            @foreach (var role in RoleHelper.GetAssignableGroupRoles())
+                            {
+                                <MudSelectItem Value="@role.Id">@role.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="2" Class="d-flex align-center">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.PersonAdd"
+                                   OnClick="InviteMemberAsync"
+                                   Disabled="_isInviting"
+                                   FullWidth="true">
+                            @(_isInviting ? "Inviting..." : "Invite")
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mb-4">
+                You can view members, but only group administrators can make changes.
+            </MudAlert>
+        }
+
+        <MudTable Items="_members" Hover="true" Striped="true" Elevation="0">
+            <HeaderContent>
+                <MudTh>Member</MudTh>
+                <MudTh>Email</MudTh>
+                <MudTh>Role</MudTh>
+                @if (_canManage)
+                {
+                    <MudTh Style="text-align:right">Actions</MudTh>
+                }
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Member">
+                    <div class="d-flex align-center gap-2">
+                        <MudAvatar Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">
+                            @GetInitial(context)
+                        </MudAvatar>
+                        <MudText Typo="Typo.body2" Style="font-weight: 600;">@(context.UserFullName ?? context.UserEmail ?? "Unknown")</MudText>
+                    </div>
+                </MudTd>
+                <MudTd DataLabel="Email">
+                    <MudText Typo="Typo.body2">@context.UserEmail</MudText>
+                </MudTd>
+                <MudTd DataLabel="Role">
+                    <MudChip T="string"
+                             Color="@RoleHelper.GetGroupRoleColor(context.RoleId)"
+                             Size="Size.Small"
+                             Variant="Variant.Filled">
+                        @RoleHelper.GetGroupRoleName(context.RoleId)
+                    </MudChip>
+                </MudTd>
+                @if (_canManage)
+                {
+                    <MudTd DataLabel="Actions" Style="text-align:right">
+                        @if (context.Id.HasValue)
+                        {
+                            <MudStack Row="true" Spacing="1" Justify="Justify.FlexEnd" AlignItems="AlignItems.Center">
+                                <MudSelect T="int"
+                                           Value="@GetPendingRole(context)"
+                                           ValueChanged="@((value) => SetPendingRole(context, value))"
+                                           Dense="true"
+                                           Disabled="@IsCreator(context)"
+                                           Variant="Variant.Outlined"
+                                           Style="min-width: 150px;">
+                                    <MudSelectItem Value="@RoleHelper.GroupCreator">Creator</MudSelectItem>
+                                    @foreach (var role in RoleHelper.GetAssignableGroupRoles())
+                                    {
+                                        <MudSelectItem Value="@role.Id">@role.Name</MudSelectItem>
+                                    }
+                                </MudSelect>
+                                <MudIconButton Icon="@Icons.Material.Filled.Save"
+                                               Color="Color.Primary"
+                                               Disabled="@(!IsRoleChanged(context) || IsCreator(context) || _busyMemberId == context.Id)"
+                                               OnClick="@(() => SaveRoleAsync(context))"
+                                               Title="Save role" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Color="Color.Error"
+                                               Disabled="@(IsCreator(context) || _busyMemberId == context.Id)"
+                                               OnClick="@(() => RemoveMemberAsync(context))"
+                                               Title="Remove member" />
+                            </MudStack>
+                        }
+                    </MudTd>
+                }
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true">
+                    No members found for this group.
+                </MudAlert>
+            </NoRecordsContent>
+        </MudTable>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public Guid GroupId { get; set; }
+
+    private readonly List<GroupMemberDto> _members = [];
+    private readonly Dictionary<Guid, int> _pendingRoles = [];
+    private bool _isLoading = true;
+    private bool _isInviting;
+    private bool _canManage;
+    private string? _errorMessage;
+    private Guid? _currentUserId;
+    private Guid? _busyMemberId;
+
+    private string _inviteEmail = string.Empty;
+    private int _inviteRole = RoleHelper.GroupMember;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        try
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            _currentUserId = ExtractUserId(authState.User);
+
+            _members.Clear();
+            _members.AddRange(await GroupService.GetGroupMembersAsync(GroupId));
+
+            _pendingRoles.Clear();
+            foreach (var member in _members.Where(m => m.Id.HasValue))
+            {
+                _pendingRoles[member.Id!.Value] = member.RoleId ?? RoleHelper.GroupMember;
+            }
+
+            var me = _members.FirstOrDefault(m => m.UserId == _currentUserId);
+            _canManage = RoleHelper.CanManageGroup(me?.RoleId);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to load members: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task InviteMemberAsync()
+    {
+        if (!_canManage)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_inviteEmail))
+        {
+            Snackbar.Add("Email is required.", Severity.Warning);
+            return;
+        }
+
+        _isInviting = true;
+        _errorMessage = null;
+        try
+        {
+            var response = await GroupService.AddGroupMemberAsync(new AddGroupMemberDto
+            {
+                GroupId = GroupId,
+                Email = _inviteEmail.Trim(),
+                Role = _inviteRole
+            });
+
+            if (response?.Success == true)
+            {
+                Snackbar.Add("Member added successfully.", Severity.Success);
+                _inviteEmail = string.Empty;
+                _inviteRole = RoleHelper.GroupMember;
+                await LoadAsync();
+                return;
+            }
+
+            _errorMessage = string.IsNullOrWhiteSpace(response?.Message)
+                ? "Failed to add member."
+                : response!.Message;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to add member: {ex.Message}";
+        }
+        finally
+        {
+            _isInviting = false;
+        }
+    }
+
+    private async Task SaveRoleAsync(GroupMemberDto member)
+    {
+        if (!_canManage || !member.Id.HasValue)
+        {
+            return;
+        }
+
+        _busyMemberId = member.Id.Value;
+        _errorMessage = null;
+        try
+        {
+            var response = await GroupService.UpdateGroupMemberRoleAsync(new UpdateGroupMemberRoleDto
+            {
+                Id = member.Id.Value,
+                Role = GetPendingRole(member)
+            });
+
+            if (response?.Success == true)
+            {
+                Snackbar.Add("Member role updated.", Severity.Success);
+                await LoadAsync();
+                return;
+            }
+
+            _errorMessage = string.IsNullOrWhiteSpace(response?.Message)
+                ? "Failed to update member role."
+                : response!.Message;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to update member role: {ex.Message}";
+        }
+        finally
+        {
+            _busyMemberId = null;
+        }
+    }
+
+    private async Task RemoveMemberAsync(GroupMemberDto member)
+    {
+        if (!_canManage || !member.Id.HasValue)
+        {
+            return;
+        }
+
+        var confirmed = await DialogService.ShowMessageBox(
+            "Remove Member",
+            $"Are you sure you want to remove {(member.UserEmail ?? member.UserFullName ?? "this member")} from the group?",
+            yesText: "Remove",
+            cancelText: "Cancel");
+
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        _busyMemberId = member.Id.Value;
+        _errorMessage = null;
+        try
+        {
+            var response = await GroupService.DeleteGroupMemberAsync(member.Id.Value);
+            if (response?.Success == true)
+            {
+                Snackbar.Add("Member removed.", Severity.Success);
+                await LoadAsync();
+                return;
+            }
+
+            _errorMessage = string.IsNullOrWhiteSpace(response?.Message)
+                ? "Failed to remove member."
+                : response!.Message;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to remove member: {ex.Message}";
+        }
+        finally
+        {
+            _busyMemberId = null;
+        }
+    }
+
+    private int GetPendingRole(GroupMemberDto member)
+    {
+        if (!member.Id.HasValue)
+        {
+            return member.RoleId ?? RoleHelper.GroupMember;
+        }
+
+        if (_pendingRoles.TryGetValue(member.Id.Value, out var pending))
+        {
+            return pending;
+        }
+
+        var current = member.RoleId ?? RoleHelper.GroupMember;
+        _pendingRoles[member.Id.Value] = current;
+        return current;
+    }
+
+    private void SetPendingRole(GroupMemberDto member, int roleId)
+    {
+        if (!member.Id.HasValue)
+        {
+            return;
+        }
+
+        _pendingRoles[member.Id.Value] = roleId;
+    }
+
+    private bool IsRoleChanged(GroupMemberDto member)
+    {
+        return member.Id.HasValue
+            && _pendingRoles.TryGetValue(member.Id.Value, out var pending)
+            && pending != (member.RoleId ?? RoleHelper.GroupMember);
+    }
+
+    private static bool IsCreator(GroupMemberDto member)
+    {
+        return member.RoleId == RoleHelper.GroupCreator;
+    }
+
+    private static string GetInitial(GroupMemberDto member)
+    {
+        var value = member.UserFullName ?? member.UserEmail;
+        return string.IsNullOrWhiteSpace(value) ? "?" : value[..1].ToUpperInvariant();
+    }
+
+    private static Guid? ExtractUserId(ClaimsPrincipal user)
+    {
+        var raw = user.FindFirst("sub")?.Value
+            ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? user.FindFirst("sid")?.Value;
+
+        return Guid.TryParse(raw, out var id) ? id : null;
+    }
+}

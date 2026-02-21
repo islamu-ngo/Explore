@@ -140,7 +140,7 @@
                                     <div class="navbar__dropdown-divider"></div>
                                     <div class="navbar__dropdown-section-label">Admin</div>
 
-                                    @if (IsInstanceOrTenantAdmin(context.User))
+                                    @if (IsInstanceAdmin(context.User))
                                     {
                                         <a href="/admin" class="navbar__dropdown-item" @onclick="CloseDropdown">
                                             <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Size="Size.Small" />
@@ -156,7 +156,7 @@
                                         </a>
                                     }
 
-                                    @if (IsInstanceOrTenantAdmin(context.User))
+                                    @if (IsTenantAdmin(context.User))
                                     {
                                         <a href="/admin/tenant/settings" class="navbar__dropdown-item" @onclick="CloseDropdown">
                                             <MudIcon Icon="@Icons.Material.Filled.Domain" Size="Size.Small" />

@@ -12,6 +12,7 @@
 @using Explore.Blazor.Client.Pages.Admin.Instance
 @using Explore.Blazor.Client.Pages.Admin.Tenant
 @using Explore.Blazor.Client.Pages.Admin.Organization
+@using Explore.Blazor.Client.Pages.Admin.Group
 @using Explore.Blazor.Client.Pages.Landing
 @using Explore.Blazor.Client.Pages.Onboarding
 @using Explore.Blazor.Client.Providers
@@ -38,7 +39,9 @@
     private List<RouteConfig> _routes = new();
     private static List<Type> RequireAuthenticated() => [typeof(AuthenticatedRouteGuard)];
     private static List<Type> RequireAdmin() => [typeof(AdminRouteGuard)];
+    private static List<Type> RequireTenantAdmin() => [typeof(TenantAdminRouteGuard)];
     private static List<Type> RequireOrgAdmin() => [typeof(OrgAdminRouteGuard)];
+    private static List<Type> RequireGroupAdmin() => [typeof(GroupAdminRouteGuard)];
 
     protected override void OnInitialized()
     {
@@ -102,8 +105,9 @@
 
             // Admin settings routes
             new RouteConfig { Path = "/admin/instance/settings", Component = typeof(InstanceAdminSettings), Transition = RouteTransition.Fade, Guards = RequireAdmin() },
-            new RouteConfig { Path = "/admin/tenant/settings", Component = typeof(TenantAdminSettings), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+            new RouteConfig { Path = "/admin/tenant/settings", Component = typeof(TenantAdminSettings), Transition = RouteTransition.Fade, Guards = RequireTenantAdmin() },
             new RouteConfig { Path = "/admin/organization/:OrganizationId/settings", Component = typeof(OrganizationAdminSettings), Transition = RouteTransition.Fade, Guards = RequireOrgAdmin() },
+            new RouteConfig { Path = "/admin/group/:GroupId/settings", Component = typeof(GroupAdminSettings), Transition = RouteTransition.Fade, Guards = RequireGroupAdmin() },
 
             // Admin lookup table routes
             new RouteConfig { Path = "/admin/lookup-tables", Component = typeof(LookupTables), Transition = RouteTransition.Fade, Guards = RequireAdmin() },

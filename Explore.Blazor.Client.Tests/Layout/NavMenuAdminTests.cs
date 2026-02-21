@@ -9,8 +9,8 @@ namespace Explore.Blazor.Client.Tests.Layout;
 /// <summary>
 /// Tests for the NavMenu admin section rendering behavior.
 /// Admin links are shown based on the user's admin authority claims:
-/// - Instance admin: Admin Dashboard, Instance Settings, Tenant Settings
-/// - Tenant admin: Admin Dashboard, Tenant Settings (no Instance Settings)
+/// - Instance admin: Admin Dashboard + Instance Settings
+/// - Tenant admin: Tenant Settings only
 /// - Organization admin: Organization Settings link(s)
 /// - Regular user: no admin section at all
 /// </summary>
@@ -77,14 +77,14 @@ public class NavMenuAdminTests : IDisposable
         var cut = _ctx.RenderComponent<NavMenu>();
         OpenDropdown(cut);
 
-        // Assert -- instance admin sees Dashboard, Instance Settings, and Tenant Settings
+        // Assert -- instance admin sees Dashboard and Instance Settings only
         await Assert.That(cut.Markup).Contains("Admin Dashboard");
         await Assert.That(cut.Markup).Contains("Instance Settings");
-        await Assert.That(cut.Markup).Contains("Tenant Settings");
+        await Assert.That(cut.Markup).DoesNotContain("Tenant Settings");
     }
 
     [Test]
-    public async Task NavMenu_TenantAdmin_ShowsDashboardAndTenantSettings_NotInstanceSettings()
+    public async Task NavMenu_TenantAdmin_ShowsTenantSettingsOnly()
     {
         // Arrange
         var tenantId = AuthenticationTestConstants.DefaultTenantId;
@@ -98,8 +98,8 @@ public class NavMenuAdminTests : IDisposable
         var cut = _ctx.RenderComponent<NavMenu>();
         OpenDropdown(cut);
 
-        // Assert -- tenant admin sees Dashboard and Tenant Settings but NOT Instance Settings
-        await Assert.That(cut.Markup).Contains("Admin Dashboard");
+        // Assert -- tenant admin sees Tenant Settings but not instance-level links
+        await Assert.That(cut.Markup).DoesNotContain("Admin Dashboard");
         await Assert.That(cut.Markup).Contains("Tenant Settings");
         await Assert.That(cut.Markup).DoesNotContain("Instance Settings");
     }
@@ -165,10 +165,10 @@ public class NavMenuAdminTests : IDisposable
         var cut = _ctx.RenderComponent<NavMenu>();
         OpenDropdown(cut);
 
-        // Assert -- sees all platform admin links plus the org link
+        // Assert -- sees instance admin links plus the org link
         await Assert.That(cut.Markup).Contains("Admin Dashboard");
         await Assert.That(cut.Markup).Contains("Instance Settings");
-        await Assert.That(cut.Markup).Contains("Tenant Settings");
+        await Assert.That(cut.Markup).DoesNotContain("Tenant Settings");
         await Assert.That(cut.Markup).Contains($"/admin/organization/{orgId}/settings");
     }
 
@@ -189,7 +189,7 @@ public class NavMenuAdminTests : IDisposable
         // Assert
         await Assert.That(cut.Markup).Contains("href=\"/admin\"");
         await Assert.That(cut.Markup).Contains("href=\"/admin/instance/settings\"");
-        await Assert.That(cut.Markup).Contains("href=\"/admin/tenant/settings\"");
+        await Assert.That(cut.Markup).DoesNotContain("href=\"/admin/tenant/settings\"");
     }
 
     [Test]
@@ -208,7 +208,7 @@ public class NavMenuAdminTests : IDisposable
         OpenDropdown(cut);
 
         // Assert
-        await Assert.That(cut.Markup).Contains("href=\"/admin\"");
+        await Assert.That(cut.Markup).DoesNotContain("href=\"/admin\"");
         await Assert.That(cut.Markup).Contains("href=\"/admin/tenant/settings\"");
         await Assert.That(cut.Markup).DoesNotContain("href=\"/admin/instance/settings\"");
     }

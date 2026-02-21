@@ -1,5 +1,5 @@
 // ABOUTME: Unit tests for OrgAdminRouteGuard that restricts organization admin routes to users
-// with org-specific admin claims, or broader instance/tenant admin authority.
+// with org-specific organization admin claims for the targeted organization.
 
 using Blazouter.Models;
 using Explore.Blazor.Client.Routing.Guards;
@@ -132,9 +132,9 @@ public class OrgAdminRouteGuardTests
     #region CanActivateAsync — Allow scenarios
 
     [Test]
-    public async Task CanActivateAsync_InstanceAdmin_ReturnsTrue()
+    public async Task CanActivateAsync_InstanceAdmin_ReturnsFalse()
     {
-        // Arrange — instance admin has broader authority over all orgs
+        // Arrange — instance admin alone does not grant org route access
         var principal = new AuthenticationTestBuilder()
             .WithUser(AuthenticationTestConstants.AdminUserId, "Instance Admin")
             .WithClaim("explore:admin:instance", "true")
@@ -151,13 +151,13 @@ public class OrgAdminRouteGuardTests
         var result = await guard.CanActivateAsync(routeMatch);
 
         // Assert
-        await Assert.That(result).IsTrue();
+        await Assert.That(result).IsFalse();
     }
 
     [Test]
-    public async Task CanActivateAsync_TenantAdmin_ReturnsTrue()
+    public async Task CanActivateAsync_TenantAdmin_ReturnsFalse()
     {
-        // Arrange — tenant admin has broader authority over all orgs in their tenant
+        // Arrange — tenant admin alone does not grant org route access
         var principal = new AuthenticationTestBuilder()
             .WithUser(AuthenticationTestConstants.AdminUserId, "Tenant Admin")
             .WithClaim("explore:admin:tenant", AuthenticationTestConstants.DefaultTenantId.ToString())
@@ -174,7 +174,7 @@ public class OrgAdminRouteGuardTests
         var result = await guard.CanActivateAsync(routeMatch);
 
         // Assert
-        await Assert.That(result).IsTrue();
+        await Assert.That(result).IsFalse();
     }
 
     [Test]

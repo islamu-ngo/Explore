@@ -131,7 +131,7 @@ public class NamingConventionTests
     /// <summary>
     /// Ensures no types reference removed entity names from the pre-refactor authorization model.
     /// OrganizationRole and TenantAdministratorRole were replaced by the unified Role entity.
-    /// Note: UserRole remains a valid membership/link entity in the current model.
+    /// Note: PlatformUserRole remains a valid membership/link entity in the current model.
     /// TenantAdministrator was replaced by TenantMember.
     /// </summary>
     [Test]

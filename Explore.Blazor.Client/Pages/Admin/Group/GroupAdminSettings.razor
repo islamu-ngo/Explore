@@ -1,0 +1,18 @@
+@* ABOUTME: Page wrapper for the Group Admin Settings sidebar layout. *@
+@* ABOUTME: Routes to /admin/group/:id/settings and requires group admin membership. *@
+
+@page "/admin/group/{GroupId:guid}/settings"
+@using Explore.Blazor.Client.Components.Admin.Group
+@using Microsoft.AspNetCore.Authorization
+
+@attribute [Authorize]
+@rendermode @(new InteractiveAutoRenderMode(prerender: false))
+
+<PageTitle>Group Settings</PageTitle>
+
+<GroupAdminSettingsLayout GroupId="GroupId" />
+
+@code {
+    [Parameter]
+    public Guid GroupId { get; set; }
+}

@@ -8,11 +8,11 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Explore.Persistence.Configurations.Entities;
 
-public class UserRoleConfiguration : IEntityTypeConfiguration<UserRole>
+public class PlatformUserRoleConfiguration : IEntityTypeConfiguration<PlatformUserRole>
 {
-    public void Configure(EntityTypeBuilder<UserRole> builder)
+    public void Configure(EntityTypeBuilder<PlatformUserRole> builder)
     {
-        builder.ToTable("UserRoles");
+        builder.ToTable("PlatformUserRoles");
 
         builder.HasKey(e => e.Id);
 

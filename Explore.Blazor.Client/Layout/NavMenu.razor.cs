@@ -134,11 +134,10 @@ public partial class NavMenu
                && user.HasClaim(c => c.Type == "explore:admin:instance");
     }
 
-    private static bool IsInstanceOrTenantAdmin(ClaimsPrincipal user)
+    private static bool IsTenantAdmin(ClaimsPrincipal user)
     {
         return user.Identity?.IsAuthenticated == true
-               && (user.HasClaim(c => c.Type == "explore:admin:instance")
-                   || user.HasClaim(c => c.Type == "explore:admin:tenant"));
+               && user.HasClaim(c => c.Type == "explore:admin:tenant");
     }
 
     private static IEnumerable<string> GetAdminOrganizationIds(ClaimsPrincipal user)

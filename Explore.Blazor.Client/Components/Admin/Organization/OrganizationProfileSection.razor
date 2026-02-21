@@ -1,16 +1,19 @@
-@* ABOUTME: Displays a read-only overview of organization profile information (name, contact, address, website). *@
-@* ABOUTME: Part of the Organization Admin Settings sidebar layout, with a link to the full profile page. *@
+@* ABOUTME: Editable organization profile section with member-facing branding controls. *@
+@* ABOUTME: Supports name/info updates, picture URL, and banner white-label customization. *@
 
 @using MudBlazor
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Helpers
 @using Explore.Blazor.Client.Services
+
 @inject IOrganizationService OrganizationService
-@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
 
 <div class="settings-section">
     <div class="settings-section-header">
         <MudText Typo="Typo.h5" Style="font-weight: 700;">Organization Profile</MudText>
         <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
-            Overview of your organization's public profile information.
+            Update organization information, picture, and white-label banner styling.
         </MudText>
     </div>
 
@@ -26,54 +29,121 @@
     }
     else
     {
-        <MudStack Spacing="3">
-            <MudPaper Elevation="0" Class="pa-4 border-solid border-1 mud-border-lines-default rounded-lg">
-                <MudStack Spacing="2">
-                    <div class="d-flex align-center gap-2">
-                        <MudText Typo="Typo.h6" Style="font-weight: 600;">@_organization.FullName</MudText>
-                        @if (_organization.ApprovalStatusId == ApprovalStatusApproved)
-                        {
-                            <MudIcon Icon="@Icons.Material.Filled.Verified"
-                                     Color="Color.Primary"
-                                     Title="Verified"
-                                     Size="Size.Small" />
-                        }
-                    </div>
+        @if (!string.IsNullOrWhiteSpace(_errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Dense="true" Class="mb-3">
+                @_errorMessage
+            </MudAlert>
+        }
 
-                    @if (!string.IsNullOrWhiteSpace(_organization.Email))
-                    {
-                        <div class="d-flex align-center gap-2">
-                            <MudIcon Icon="@Icons.Material.Filled.Email" Size="Size.Small" Color="Color.Secondary" />
-                            <MudText Typo="Typo.body2">@_organization.Email</MudText>
-                        </div>
-                    }
+        <MudGrid Spacing="3">
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_model.FullName"
+                              Label="Organization Name"
+                              Variant="Variant.Outlined"
+                              Required="true" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="_model.Email"
+                              Label="Email"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              InputType="InputType.Email" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="_model.WebsiteUrl"
+                              Label="Website URL"
+                              Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="_model.Address"
+                              Label="Address"
+                              Variant="Variant.Outlined"
+                              Required="true" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudNumericField @bind-Value="_model.Postcode"
+                                 Label="Postcode"
+                                 Variant="Variant.Outlined"
+                                 HideSpinButtons="true"
+                                 Min="0" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="_model.City"
+                              Label="City"
+                              Variant="Variant.Outlined"
+                              Required="true" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="_model.Country"
+                              Label="Country"
+                              Variant="Variant.Outlined"
+                              Required="true" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_appearance.ProfileImageUrl"
+                              Label="Profile Image URL"
+                              Variant="Variant.Outlined"
+                              Placeholder="https://..." />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="_appearance.BackgroundColor"
+                              Label="Banner Color"
+                              Variant="Variant.Outlined"
+                              InputType="InputType.Color" />
+            </MudItem>
+            <MudItem xs="12" sm="8">
+                <MudTextField @bind-Value="_appearance.BackgroundMediaUrl"
+                              Label="Banner Media URL"
+                              Variant="Variant.Outlined"
+                              Placeholder="https://... (image or GIF)" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudSelect T="string"
+                           Label="Banner Effect"
+                           Variant="Variant.Outlined"
+                           @bind-Value="_appearance.BackgroundEffect">
+                    <MudSelectItem Value="@("None")">None</MudSelectItem>
+                    <MudSelectItem Value="@("SoftOverlay")">Soft Overlay</MudSelectItem>
+                    <MudSelectItem Value="@("StrongOverlay")">Strong Overlay</MudSelectItem>
+                    <MudSelectItem Value="@("Blur")">Blur</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
 
-                    @if (!string.IsNullOrWhiteSpace(_organization.WebsiteUrl))
-                    {
-                        <div class="d-flex align-center gap-2">
-                            <MudIcon Icon="@Icons.Material.Filled.Language" Size="Size.Small" Color="Color.Secondary" />
-                            <MudLink Href="@_organization.WebsiteUrl" Target="_blank" Typo="Typo.body2" Color="Color.Primary">
-                                @_organization.WebsiteUrl
-                            </MudLink>
-                        </div>
-                    }
+        <MudDivider Class="my-4" />
 
-                    @if (HasAddress)
-                    {
-                        <div class="d-flex align-center gap-2">
-                            <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Color="Color.Secondary" />
-                            <MudText Typo="Typo.body2">@FormatAddress()</MudText>
-                        </div>
-                    }
-                </MudStack>
-            </MudPaper>
+        <MudText Typo="Typo.subtitle2" Class="mb-2">Preview</MudText>
+        <MudPaper Elevation="0"
+                  Class="pa-6 rounded-lg border-solid border-1 mud-border-lines-default"
+                  Style="@OrganizationAppearanceMetadataHelper.BuildBannerStyle(_appearance, "#1f6feb")">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                @if (!string.IsNullOrWhiteSpace(GetProfileImageUri()))
+                {
+                    <MudAvatar Size="Size.Large" Rounded="true">
+                        <MudImage Src="@GetProfileImageUri()" Alt="@_model.FullName" ObjectFit="ObjectFit.Cover" />
+                    </MudAvatar>
+                }
+                else
+                {
+                    <MudAvatar Size="Size.Large" Color="Color.Primary" Variant="Variant.Filled" Rounded="true">
+                        @(_model.FullName.Length > 0 ? _model.FullName[..1].ToUpperInvariant() : "O")
+                    </MudAvatar>
+                }
+                <div>
+                    <MudText Typo="Typo.h6" Style="font-weight: 700; color: white;">@_model.FullName</MudText>
+                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">@_model.City, @_model.Country</MudText>
+                </div>
+            </MudStack>
+        </MudPaper>
 
-            <MudButton Variant="Variant.Outlined"
+        <MudStack Row="true" Justify="Justify.FlexEnd" Class="mt-4">
+            <MudButton Variant="Variant.Filled"
                        Color="Color.Primary"
-                       StartIcon="@Icons.Material.Filled.OpenInNew"
-                       OnClick="NavigateToProfile"
-                       FullWidth="true">
-                View Full Profile
+                       OnClick="SaveAsync"
+                       Disabled="@_saving"
+                       StartIcon="@(_saving ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Save)">
+                @(_saving ? "Saving..." : "Save Organization Settings")
             </MudButton>
         </MudStack>
     }
@@ -83,17 +153,44 @@
     [Parameter, EditorRequired]
     public Guid OrganizationId { get; set; }
 
-    private const int ApprovalStatusApproved = 2;
-
     private OrganizationDto? _organization;
+    private UpdateOrganizationDto _model = new();
+    private OrganizationAppearanceSettings _appearance = new();
     private bool _loading = true;
+    private bool _saving;
+    private string? _errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadOrganizationAsync();
+    }
+
+    private async Task LoadOrganizationAsync()
+    {
         _loading = true;
+        _errorMessage = null;
         try
         {
             _organization = await OrganizationService.GetOrganizationByIdAsync(OrganizationId);
+            if (_organization != null)
+            {
+                _model = new UpdateOrganizationDto
+                {
+                    FullName = _organization.FullName ?? string.Empty,
+                    Email = _organization.Email ?? string.Empty,
+                    WebsiteUrl = _organization.WebsiteUrl,
+                    Address = _organization.Address ?? string.Empty,
+                    City = _organization.City ?? string.Empty,
+                    Country = _organization.Country ?? string.Empty,
+                    Postcode = int.TryParse(_organization.Postcode, out var postcode) ? postcode : null,
+                    MetadataJson = _organization.MetadataJson
+                };
+                _appearance = OrganizationAppearanceMetadataHelper.Parse(_organization.MetadataJson);
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to load organization profile: {ex.Message}";
         }
         finally
         {
@@ -101,29 +198,53 @@
         }
     }
 
-    private bool HasAddress =>
-        !string.IsNullOrWhiteSpace(_organization?.Address) ||
-        !string.IsNullOrWhiteSpace(_organization?.City) ||
-        !string.IsNullOrWhiteSpace(_organization?.Country);
-
-    private string FormatAddress()
+    private async Task SaveAsync()
     {
-        var parts = new List<string>();
+        if (string.IsNullOrWhiteSpace(_model.FullName)
+            || string.IsNullOrWhiteSpace(_model.Email)
+            || string.IsNullOrWhiteSpace(_model.Address)
+            || string.IsNullOrWhiteSpace(_model.City)
+            || string.IsNullOrWhiteSpace(_model.Country))
+        {
+            _errorMessage = "Please complete all required fields.";
+            return;
+        }
 
-        if (!string.IsNullOrWhiteSpace(_organization?.Address))
-            parts.Add(_organization.Address);
-        if (!string.IsNullOrWhiteSpace(_organization?.City))
-            parts.Add(_organization.City);
-        if (!string.IsNullOrWhiteSpace(_organization?.Postcode))
-            parts.Add(_organization.Postcode);
-        if (!string.IsNullOrWhiteSpace(_organization?.Country))
-            parts.Add(_organization.Country);
+        _saving = true;
+        _errorMessage = null;
+        try
+        {
+            _model.MetadataJson = OrganizationAppearanceMetadataHelper.Upsert(_model.MetadataJson, _appearance);
+            var response = await OrganizationService.UpdateOrganizationAsync(OrganizationId, _model);
 
-        return string.Join(", ", parts);
+            if (response?.Success == true)
+            {
+                Snackbar.Add("Organization profile updated.", Severity.Success);
+                await LoadOrganizationAsync();
+                return;
+            }
+
+            _errorMessage = string.IsNullOrWhiteSpace(response?.Message)
+                ? "Failed to update organization profile."
+                : response!.Message;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to update organization profile: {ex.Message}";
+        }
+        finally
+        {
+            _saving = false;
+        }
     }
 
-    private void NavigateToProfile()
+    private string? GetProfileImageUri()
     {
-        Navigation.NavigateTo($"/organization/{OrganizationId}");
+        if (!string.IsNullOrWhiteSpace(_appearance.ProfileImageUrl))
+        {
+            return _appearance.ProfileImageUrl.Trim();
+        }
+
+        return _organization?.ActorProfilePictureUri;
     }
 }

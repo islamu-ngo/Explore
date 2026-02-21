@@ -16,7 +16,7 @@ namespace Explore.Application.Features.Events.Handlers.Commands;
 /// Handles event deletion with role-based authorization and cascading soft delete.
 ///
 /// Authorization hierarchy:
-/// 1. System Admin (UserRole = "Admin") - Can delete any event
+/// 1. System Admin (PlatformUserRole = "Admin") - Can delete any event
 /// 2. Organization Creator/CoOwner/Admin (RoleId 1,2,3) - Can delete organization events
 /// 3. Event Owner (Actor.UserId == current user) - Can delete personal events
 ///
@@ -186,7 +186,7 @@ public class DeleteEventCommandHandler : IRequestHandler<DeleteEventCommand, boo
         try
         {
             // Use targeted query: Check if user has admin tenant assignment
-            // This avoids loading ALL UserRoles and ALL TenantUsers into memory (O(1) vs O(n))
+            // This avoids loading ALL PlatformUserRoles and ALL TenantUsers into memory (O(1) vs O(n))
             var tenantUsers = await _tenantUserRepository.GetByUser(userId);
             return tenantUsers.Any(tu => tu.Role?.MasterCode != null &&
                 tu.Role.MasterCode.Equals("Admin", StringComparison.OrdinalIgnoreCase));

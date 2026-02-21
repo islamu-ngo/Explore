@@ -1,0 +1,81 @@
+/* ABOUTME: Scoped CSS for GroupAdminSettingsLayout matching the admin settings sidebar pattern. */
+/* ABOUTME: Keeps section navigation responsive while preserving consistent settings panel visuals. */
+
+.settings-layout {
+    background: var(--mud-palette-background);
+}
+
+.settings-header {
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+    padding-bottom: 1.5rem;
+}
+
+.settings-sidebar {
+    position: sticky;
+    top: 1rem;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+}
+
+.settings-sidebar ::deep .mud-list {
+    padding: 0;
+}
+
+.settings-sidebar ::deep .mud-list-item {
+    padding: 0.75rem 1rem;
+    border-left: 3px solid transparent;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    color: var(--mud-palette-text-secondary);
+}
+
+.settings-sidebar ::deep .mud-list-item:hover {
+    background-color: var(--mud-palette-action-default-hover);
+    color: var(--mud-palette-text-primary);
+}
+
+.settings-sidebar ::deep .mud-list-item.settings-nav-active {
+    border-left-color: var(--mud-palette-primary);
+    background-color: var(--mud-palette-action-default-hover);
+    color: var(--mud-palette-primary);
+    font-weight: 600;
+}
+
+.settings-content {
+    min-height: 500px;
+}
+
+@media (max-width: 960px) {
+    .settings-sidebar {
+        position: relative;
+        top: 0;
+        max-height: none;
+        margin-bottom: 2rem;
+    }
+
+    .settings-sidebar ::deep .mud-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .settings-sidebar ::deep .mud-list-item {
+        flex: 1;
+        min-width: 170px;
+        border-left: none;
+        border-bottom: 3px solid transparent;
+        text-align: center;
+    }
+
+    .settings-sidebar ::deep .mud-list-item.settings-nav-active {
+        border-left: none;
+        border-bottom-color: var(--mud-palette-primary);
+    }
+}
+
+@media (max-width: 600px) {
+    .settings-sidebar ::deep .mud-list-item {
+        flex: 1 1 calc(50% - 0.25rem);
+        min-width: auto;
+    }
+}

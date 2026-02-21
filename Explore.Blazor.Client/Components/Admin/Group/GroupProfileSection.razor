@@ -1,0 +1,130 @@
+@* ABOUTME: Editable profile and white-label branding section for group administration. *@
+@* ABOUTME: Updates group name, description, picture URL, and banner style metadata. *@
+
+@using MudBlazor
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Helpers
+
+<div class="settings-section">
+    <div class="settings-section-header">
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">Profile & Branding</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+            Configure group identity, member-facing details, and white-label visuals.
+        </MudText>
+    </div>
+
+    <MudGrid Spacing="3">
+        <MudItem xs="12">
+            <MudTextField @bind-Value="Model.FullName"
+                          Label="Group Name"
+                          Variant="Variant.Outlined"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Groups"
+                          Required="true"
+                          RequiredError="Group name is required" />
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudTextField @bind-Value="Model.Description"
+                          Label="Description"
+                          Variant="Variant.Outlined"
+                          Lines="4" />
+        </MudItem>
+
+        <MudItem xs="12" sm="6">
+            <MudTextField @bind-Value="Branding.PictureUrl"
+                          Label="Picture URL"
+                          Variant="Variant.Outlined"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Image" />
+        </MudItem>
+
+        <MudItem xs="12" sm="6">
+            <MudTextField @bind-Value="Branding.BannerColor"
+                          Label="Banner Color"
+                          Variant="Variant.Outlined"
+                          InputType="InputType.Color" />
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudTextField @bind-Value="Branding.BannerMediaUrl"
+                          Label="Banner Media URL"
+                          Variant="Variant.Outlined"
+                          Placeholder="https://... (image or GIF)" />
+        </MudItem>
+
+        <MudItem xs="12" sm="6">
+            <MudSelect T="string"
+                       Label="Banner Effect"
+                       Variant="Variant.Outlined"
+                       @bind-Value="Branding.BannerEffect">
+                <MudSelectItem Value="@("None")">None</MudSelectItem>
+                <MudSelectItem Value="@("SoftOverlay")">Soft Overlay</MudSelectItem>
+                <MudSelectItem Value="@("StrongOverlay")">Strong Overlay</MudSelectItem>
+                <MudSelectItem Value="@("Blur")">Blur</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+    </MudGrid>
+
+    <MudDivider Class="my-4" />
+
+    <MudText Typo="Typo.subtitle2" Class="mb-2">Preview</MudText>
+    <MudPaper Elevation="0"
+              Class="pa-6 rounded-lg border-solid border-1 mud-border-lines-default"
+              Style="@GetPreviewStyle()">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            @if (!string.IsNullOrWhiteSpace(Branding.PictureUrl))
+            {
+                <MudAvatar Size="Size.Large" Rounded="true">
+                    <MudImage Src="@Branding.PictureUrl" Alt="Group picture preview" ObjectFit="ObjectFit.Cover" />
+                </MudAvatar>
+            }
+            else
+            {
+                <MudAvatar Size="Size.Large" Color="Color.Primary" Variant="Variant.Filled" Rounded="true">
+                    @(Model.FullName.Length > 0 ? Model.FullName[..1].ToUpperInvariant() : "G")
+                </MudAvatar>
+            }
+            <div>
+                <MudText Typo="Typo.h6" Style="font-weight: 700; color: white;">@Model.FullName</MudText>
+                @if (!string.IsNullOrWhiteSpace(Model.Description))
+                {
+                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">@Model.Description</MudText>
+                }
+            </div>
+        </MudStack>
+    </MudPaper>
+
+    <MudStack Row="true" Justify="Justify.FlexEnd" Class="mt-4">
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="@(() => OnSave.InvokeAsync())"
+                   Disabled="IsSaving"
+                   StartIcon="@(_isSavingIcon)">
+            @(IsSaving ? "Saving..." : "Save Group Settings")
+        </MudButton>
+    </MudStack>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public UpdateGroupDto Model { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public GroupBrandingSettings Branding { get; set; } = null!;
+
+    [Parameter]
+    public bool IsSaving { get; set; }
+
+    [Parameter]
+    public EventCallback OnSave { get; set; }
+
+    private string _isSavingIcon => IsSaving
+        ? Icons.Material.Filled.HourglassEmpty
+        : Icons.Material.Filled.Save;
+
+    private string GetPreviewStyle()
+    {
+        return GroupBrandingMetadataHelper.BuildBannerStyle(Branding, "#334155");
+    }
+}

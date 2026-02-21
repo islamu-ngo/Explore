@@ -225,7 +225,7 @@ public class ExploreDbContext : DbContext
     public DbSet<TenantOnboardingState> TenantOnboardingStates { get; set; }
     public DbSet<TenantInvitation> TenantInvitations { get; set; }
     public DbSet<TenantLifecycleLog> TenantLifecycleLogs { get; set; }
-    public DbSet<UserRole> UserRoles { get; set; }
+    public DbSet<PlatformUserRole> PlatformUserRoles { get; set; }
     public DbSet<TenantNavigationLink> TenantNavigationLinks { get; set; }
     public DbSet<InstanceBootstrapState> InstanceBootstrapStates { get; set; }
 

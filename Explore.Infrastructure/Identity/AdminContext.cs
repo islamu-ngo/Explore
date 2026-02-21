@@ -5,6 +5,7 @@ using System.Security.Claims;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain.Constants;
+using Explore.Domain.Enums;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -19,7 +20,8 @@ namespace Explore.Infrastructure.Identity;
 public class AdminContext : IAdminContext, IAdminCacheInvalidator
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly IUserRoleRepository _userRoleRepository;
+    private readonly IPlatformUserRoleRepository _platformUserRoleRepository;
+    private readonly IInstanceBootstrapStateRepository _instanceBootstrapStateRepository;
     private readonly ITenantMemberRepository _tenantAdminRepo;
     private readonly IOrganizationMemberRepository _orgMemberRepo;
     private readonly IMemoryCache _cache;
@@ -30,14 +32,16 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
 
     public AdminContext(
         IHttpContextAccessor httpContextAccessor,
-        IUserRoleRepository userRoleRepository,
+        IPlatformUserRoleRepository platformUserRoleRepository,
+        IInstanceBootstrapStateRepository instanceBootstrapStateRepository,
         ITenantMemberRepository tenantAdminRepo,
         IOrganizationMemberRepository orgMemberRepo,
         IMemoryCache cache,
         ILogger<AdminContext> logger)
     {
         _httpContextAccessor = httpContextAccessor;
-        _userRoleRepository = userRoleRepository;
+        _platformUserRoleRepository = platformUserRoleRepository;
+        _instanceBootstrapStateRepository = instanceBootstrapStateRepository;
         _tenantAdminRepo = tenantAdminRepo;
         _orgMemberRepo = orgMemberRepo;
         _cache = cache;
@@ -73,9 +77,42 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         return await _cache.GetOrCreateAsync(cacheKey, async entry =>
         {
             entry.SlidingExpiration = CacheExpiration;
-            var isAdmin = await _userRoleRepository.IsUserPlatformAdmin(userId);
-            _logger.LogDebug("AdminContext: User {UserId} IsInstanceAdmin={IsAdmin} (from DB)", userId, isAdmin);
-            return isAdmin;
+            var isRoleAdmin = false;
+            try
+            {
+                isRoleAdmin = await _platformUserRoleRepository.IsUserPlatformAdmin(userId);
+            }
+            catch (Exception ex)
+            {
+                // Legacy deployments may not have PlatformUserRoles fully provisioned yet.
+                // Fall back to bootstrap ownership checks below.
+                _logger.LogWarning(ex, "AdminContext: failed role-based instance admin check for user {UserId}", userId);
+            }
+
+            if (isRoleAdmin)
+            {
+                _logger.LogDebug("AdminContext: User {UserId} IsInstanceAdmin=true (platform.admin role)", userId);
+                return true;
+            }
+
+            var bootstrap = await _instanceBootstrapStateRepository.GetCurrent();
+            var isBootstrapAdmin = bootstrap?.IsCompleted == true && bootstrap.CompletedByUserId == userId;
+
+            // Legacy fallback for instances completed before CompletedByUserId was tracked.
+            // In that case, default-tenant admins keep instance-admin access until role data is repaired.
+            if (!isBootstrapAdmin
+                && bootstrap?.IsCompleted == true
+                && !bootstrap.CompletedByUserId.HasValue)
+            {
+                isBootstrapAdmin = await _tenantAdminRepo.IsTenantAdmin(PlatformDefaults.DefaultTenantId, userId);
+            }
+
+            _logger.LogDebug(
+                "AdminContext: User {UserId} IsInstanceAdmin={IsAdmin} (bootstrap fallback)",
+                userId,
+                isBootstrapAdmin);
+
+            return isBootstrapAdmin;
         });
     }
 
@@ -89,7 +126,7 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         return await _cache.GetOrCreateAsync(cacheKey, async entry =>
         {
             entry.SlidingExpiration = CacheExpiration;
-            return await _tenantAdminRepo.IsTenantMember(tenantId, uid.Value);
+            return await _tenantAdminRepo.IsTenantAdmin(tenantId, uid.Value);
         });
     }
 
@@ -103,7 +140,8 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         return await _cache.GetOrCreateAsync(cacheKey, async entry =>
         {
             entry.SlidingExpiration = CacheExpiration;
-            return await _orgMemberRepo.HasPermissionInOrganization(organizationId, uid.Value, PermissionCodes.OrganizationManage);
+            var membership = await _orgMemberRepo.GetByOrganizationAndUser(organizationId, uid.Value);
+            return membership != null && IsOrganizationAdminRole(membership.RoleId);
         });
     }
 
@@ -122,7 +160,14 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         {
             entry.SlidingExpiration = CacheExpiration;
             var admins = await _tenantAdminRepo.GetByUserId(userId);
-            return (IReadOnlyList<Guid>)admins.Select(a => a.TenantId).ToList().AsReadOnly();
+            var adminTenantIds = admins
+                .Where(a => a.RoleId == (int)RoleEnum.TenantOwner || a.RoleId == (int)RoleEnum.TenantAdmin)
+                .Select(a => a.TenantId)
+                .Distinct()
+                .ToList()
+                .AsReadOnly();
+
+            return (IReadOnlyList<Guid>)adminTenantIds;
         }) ?? Array.Empty<Guid>();
     }
 
@@ -140,9 +185,23 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         return await _cache.GetOrCreateAsync(cacheKey, async entry =>
         {
             entry.SlidingExpiration = CacheExpiration;
-            var orgIds = await _orgMemberRepo.GetOrganizationIdsWhereUserHasPermission(userId, PermissionCodes.OrganizationManage);
-            return (IReadOnlyList<Guid>)orgIds.AsReadOnly();
+            var memberships = await _orgMemberRepo.GetMembershipsByUser(userId);
+            var adminOrgIds = memberships
+                .Where(m => IsOrganizationAdminRole(m.RoleId))
+                .Select(m => m.OrganizationId)
+                .Distinct()
+                .ToList()
+                .AsReadOnly();
+
+            return (IReadOnlyList<Guid>)adminOrgIds;
         }) ?? Array.Empty<Guid>();
+    }
+
+    private static bool IsOrganizationAdminRole(int roleId)
+    {
+        return roleId == (int)RoleEnum.OrgCreator
+            || roleId == (int)RoleEnum.OrgCoOwner
+            || roleId == (int)RoleEnum.OrgAdmin;
     }
 
     /// <inheritdoc />

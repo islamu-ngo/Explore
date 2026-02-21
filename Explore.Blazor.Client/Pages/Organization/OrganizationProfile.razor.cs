@@ -84,6 +84,21 @@ public partial class OrganizationProfile
         return ImageHelper.GetOrganizationPlaceholder(null, _organization.FullName);
     }
 
+    private string? GetProfileImageUri()
+    {
+        if (!string.IsNullOrWhiteSpace(_organization?.ActorProfilePictureUri))
+        {
+            return _organization.ActorProfilePictureUri;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_appearance.ProfileImageUrl))
+        {
+            return _appearance.ProfileImageUrl.Trim();
+        }
+
+        return null;
+    }
+
     private bool TryRestoreState()
     {
         if (PersistedState == null || PersistedState.OrganizationId != Id)

@@ -1,6 +1,7 @@
 // ABOUTME: Handles runtime instance governance updates by authorized instance administrators.
 // ABOUTME: Persists deployment and policy setting changes and keeps default tenant capabilities aligned.
 
+using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
@@ -15,20 +16,20 @@ namespace Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
 
 public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<UpdateInstanceGovernanceSettingsCommand, BaseCommandResponse<Guid>>
 {
-    private readonly IUserRoleRepository _userRoleRepository;
+    private readonly IAdminContext _adminContext;
     private readonly IInstanceBootstrapStateRepository _instanceBootstrapStateRepository;
     private readonly ITenantRepository _tenantRepository;
     private readonly ITenantSettingsRepository _tenantSettingsRepository;
     private readonly IInstanceGovernanceSettingService _governanceSettingService;
 
     public UpdateInstanceGovernanceSettingsCommandHandler(
-        IUserRoleRepository userRoleRepository,
+        IAdminContext adminContext,
         IInstanceBootstrapStateRepository instanceBootstrapStateRepository,
         ITenantRepository tenantRepository,
         ITenantSettingsRepository tenantSettingsRepository,
         IInstanceGovernanceSettingService governanceSettingService)
     {
-        _userRoleRepository = userRoleRepository;
+        _adminContext = adminContext;
         _instanceBootstrapStateRepository = instanceBootstrapStateRepository;
         _tenantRepository = tenantRepository;
         _tenantSettingsRepository = tenantSettingsRepository;
@@ -39,7 +40,7 @@ public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<Up
     {
         var response = new BaseCommandResponse<Guid>();
 
-        var isInstanceAdmin = await _userRoleRepository.IsUserPlatformAdmin(request.UserId);
+        var isInstanceAdmin = await _adminContext.IsInstanceAdminAsync(request.UserId, cancellationToken);
         if (!isInstanceAdmin)
         {
             response.Success = false;

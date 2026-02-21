@@ -2,6 +2,7 @@
 // ABOUTME: Combines bootstrap completion state with current user instance admin membership.
 
 using System.Text.Json;
+using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
@@ -15,20 +16,20 @@ namespace Explore.Application.Features.InstanceOnboarding.Handlers.Queries;
 public class GetInstanceOnboardingStatusQueryHandler : IRequestHandler<GetInstanceOnboardingStatusQuery, InstanceOnboardingStatusDto>
 {
     private readonly IInstanceBootstrapStateRepository _instanceBootstrapStateRepository;
-    private readonly IUserRoleRepository _userRoleRepository;
+    private readonly IAdminContext _adminContext;
     private readonly ISystemSettingRepository _systemSettingRepository;
     private readonly ICurrentUserService _currentUserService;
     private readonly ISetupSecretProvider _setupSecretProvider;
 
     public GetInstanceOnboardingStatusQueryHandler(
         IInstanceBootstrapStateRepository instanceBootstrapStateRepository,
-        IUserRoleRepository userRoleRepository,
+        IAdminContext adminContext,
         ISystemSettingRepository systemSettingRepository,
         ICurrentUserService currentUserService,
         ISetupSecretProvider setupSecretProvider)
     {
         _instanceBootstrapStateRepository = instanceBootstrapStateRepository;
-        _userRoleRepository = userRoleRepository;
+        _adminContext = adminContext;
         _systemSettingRepository = systemSettingRepository;
         _currentUserService = currentUserService;
         _setupSecretProvider = setupSecretProvider;
@@ -59,7 +60,7 @@ public class GetInstanceOnboardingStatusQueryHandler : IRequestHandler<GetInstan
             return response;
         }
 
-        response.IsCurrentUserInstanceAdmin = await _userRoleRepository.IsUserPlatformAdmin(_currentUserService.UserId.Value);
+        response.IsCurrentUserInstanceAdmin = await _adminContext.IsInstanceAdminAsync(_currentUserService.UserId.Value, cancellationToken);
         return response;
     }
 

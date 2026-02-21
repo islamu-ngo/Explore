@@ -1,5 +1,5 @@
 // ABOUTME: Unified role entity representing all role types across Platform, Tenant, and Organization scopes.
-// ABOUTME: Replaces OrganizationRole, TenantAdministratorRole, and UserRole with a single Scope-discriminated table.
+// ABOUTME: Replaces legacy OrganizationRole and TenantAdministratorRole; PlatformUserRole links users to platform roles.
 
 using System;
 using System.Collections.Generic;

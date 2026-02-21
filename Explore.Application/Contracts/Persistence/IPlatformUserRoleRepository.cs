@@ -5,9 +5,9 @@ using Explore.Domain;
 
 namespace Explore.Application.Contracts.Persistence;
 
-public interface IUserRoleRepository : IGenericRepository<UserRole, Guid>
+public interface IPlatformUserRoleRepository : IGenericRepository<PlatformUserRole, Guid>
 {
     Task<bool> IsUserPlatformAdmin(Guid userId);
-    Task<UserRole?> GetByUserAndRole(Guid userId, int roleId);
+    Task<PlatformUserRole?> GetByUserAndRole(Guid userId, int roleId);
     Task<bool> HasAnyPlatformAdmin();
 }

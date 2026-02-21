@@ -1,18 +1,21 @@
-// ABOUTME: Route guard that restricts /admin/* routes to users with DB-backed admin authority.
-// Checks for admin claims added by AdminClaimsTransformation (instance or tenant admin).
+// ABOUTME: Route guard that restricts instance admin routes to platform-scoped instance administrators.
+// Uses DB-backed admin claims first, then instance onboarding status as a fallback source of truth.
 
 using Blazouter.Interfaces;
 using Blazouter.Models;
+using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components.Authorization;
 
 namespace Explore.Blazor.Client.Routing.Guards;
 
 /// <summary>
-/// Guards admin routes by verifying the user has instance or tenant admin authority.
+/// Guards instance-admin routes by verifying the user has platform-scoped instance admin authority.
 /// Admin claims are resolved from the database by <c>AdminClaimsTransformation</c>
 /// and serialized to WASM via <c>AddAuthenticationStateSerialization</c>.
 /// </summary>
-public sealed class AdminRouteGuard(AuthenticationStateProvider authStateProvider) : IRouteGuard
+public sealed class AdminRouteGuard(
+    AuthenticationStateProvider authStateProvider,
+    IInstanceOnboardingService instanceOnboardingService) : IRouteGuard
 {
     public async Task<bool> CanActivateAsync(RouteMatch match)
     {
@@ -30,8 +33,15 @@ public sealed class AdminRouteGuard(AuthenticationStateProvider authStateProvide
 
         // DB-first authority: admin claims are added by AdminClaimsTransformation.
         // Claim types match Explore.Application.Authorization.AdminClaimTypes constants.
-        return user.HasClaim(c => c.Type == "explore:admin:instance")
-               || user.HasClaim(c => c.Type == "explore:admin:tenant");
+        if (user.HasClaim(c => c.Type == "explore:admin:instance"))
+        {
+            return true;
+        }
+
+        // Fallback for deployments where admin claims are not serialized to WASM.
+        // Use instance onboarding status as the source of truth.
+        var instanceStatus = await instanceOnboardingService.GetStatusAsync().ConfigureAwait(false);
+        return instanceStatus?.IsAuthenticated == true && instanceStatus.IsCurrentUserInstanceAdmin;
     }
 
     public async Task<string?> GetRedirectPathAsync(RouteMatch match)

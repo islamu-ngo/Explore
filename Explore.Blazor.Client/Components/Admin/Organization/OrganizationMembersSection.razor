@@ -1,10 +1,15 @@
-@* ABOUTME: Displays a summary list of organization members with name, role, and position. *@
-@* ABOUTME: Part of the Organization Admin Settings sidebar layout, with a link to the full members management page. *@
+@* ABOUTME: Organization member administration section for invite, role changes, and removals. *@
+@* ABOUTME: Enables direct member management inside Organization Admin Settings when user has admin role. *@
 
 @using MudBlazor
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Helpers
+@using Explore.Blazor.Client.Pages.Organization
+@using System.Security.Claims
 @inject IOrganizationMemberService MemberService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 
 <div class="settings-section">
@@ -19,7 +24,26 @@
     {
         <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Small" />
     }
-    else if (!_members.Any())
+    else if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Dense="true" Class="mb-3">
+            @_errorMessage
+        </MudAlert>
+    }
+
+    @if (_canManage)
+    {
+        <MudStack Row="true" Justify="Justify.FlexEnd" Class="mb-3">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.PersonAdd"
+                       OnClick="OpenInviteDialog">
+                Invite Member
+            </MudButton>
+        </MudStack>
+    }
+
+    @if (!_members.Any())
     {
         <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true">
             No members found for this organization.
@@ -27,54 +51,67 @@
     }
     else
     {
-        <MudStack Spacing="2">
-            <MudPaper Elevation="0" Class="pa-0 border-solid border-1 mud-border-lines-default rounded-lg overflow-hidden">
-                <MudList T="OrganizationMemberDto" Dense="true" DisablePadding="true">
-                    @foreach (var member in _members.Take(MaxPreviewCount))
-                    {
-                        <MudListItem>
-                            <div class="d-flex align-center justify-space-between w-100">
-                                <div class="d-flex align-center gap-3">
-                                    <MudAvatar Color="Color.Primary" Size="Size.Small" Variant="Variant.Outlined">
-                                        @GetInitial(member)
-                                    </MudAvatar>
-                                    <div>
-                                        <MudText Typo="Typo.body2" Style="font-weight: 600;">
-                                            @(member.UserFullName ?? member.UserEmail ?? "Unknown")
-                                        </MudText>
-                                        @if (!string.IsNullOrWhiteSpace(member.OrganizationPositionFullName))
-                                        {
-                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                                @member.OrganizationPositionFullName
-                                            </MudText>
-                                        }
-                                    </div>
-                                </div>
-                                 <MudChip T="string"
-                                         Color="@RoleHelper.GetRoleColor(member.RoleId)"
-                                         Size="Size.Small"
-                                         Variant="Variant.Filled">
-                                    @RoleHelper.GetRoleName(member.RoleId)
-                                </MudChip>
-                            </div>
-                        </MudListItem>
-                    }
-                </MudList>
-            </MudPaper>
+        <MudTable Items="_members" Hover="true" Striped="true" Elevation="0">
+            <HeaderContent>
+                <MudTh>Member</MudTh>
+                <MudTh>Role</MudTh>
+                @if (_canManage)
+                {
+                    <MudTh Style="text-align:right">Actions</MudTh>
+                }
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Member">
+                    <div class="d-flex align-center gap-2">
+                        <MudAvatar Color="Color.Primary" Size="Size.Small" Variant="Variant.Outlined">
+                            @GetInitial(context)
+                        </MudAvatar>
+                        <div>
+                            <MudText Typo="Typo.body2" Style="font-weight: 600;">
+                                @(context.UserFullName ?? context.UserEmail ?? "Unknown")
+                            </MudText>
+                            @if (!string.IsNullOrWhiteSpace(context.OrganizationPositionFullName))
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    @context.OrganizationPositionFullName
+                                </MudText>
+                            }
+                        </div>
+                    </div>
+                </MudTd>
+                <MudTd DataLabel="Role">
+                    <MudChip T="string"
+                             Color="@RoleHelper.GetRoleColor(context.RoleId)"
+                             Size="Size.Small"
+                             Variant="Variant.Filled">
+                        @RoleHelper.GetRoleName(context.RoleId)
+                    </MudChip>
+                </MudTd>
+                @if (_canManage)
+                {
+                    <MudTd DataLabel="Actions" Style="text-align:right">
+                        @if (context.RoleId != RoleHelper.OrgCreator)
+                        {
+                            <MudMenu Icon="@Icons.Material.Filled.MoreVert"
+                                     Size="Size.Small"
+                                     Dense="true"
+                                     AnchorOrigin="Origin.BottomRight"
+                                     TransformOrigin="Origin.TopRight">
+                                <MudMenuItem OnClick="@(() => OpenEditRoleDialog(context))" Icon="@Icons.Material.Filled.Edit">Change Role</MudMenuItem>
+                                <MudMenuItem OnClick="@(() => RemoveMember(context))" Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error">Remove</MudMenuItem>
+                            </MudMenu>
+                        }
+                    </MudTd>
+                }
+            </RowTemplate>
+        </MudTable>
 
-            @if (_members.Count > MaxPreviewCount)
-            {
-                <MudText Typo="Typo.caption" Color="Color.Secondary" Align="Align.Center">
-                    Showing @MaxPreviewCount of @_members.Count members
-                </MudText>
-            }
-
+        <MudStack Row="true" Justify="Justify.FlexEnd" Class="mt-3">
             <MudButton Variant="Variant.Outlined"
                        Color="Color.Primary"
                        StartIcon="@Icons.Material.Filled.People"
-                       OnClick="NavigateToMembers"
-                       FullWidth="true">
-                Manage Members
+                       OnClick="NavigateToMembers">
+                Open Full Members Page
             </MudButton>
         </MudStack>
     }
@@ -84,18 +121,41 @@
     [Parameter, EditorRequired]
     public Guid OrganizationId { get; set; }
 
-    private const int MaxPreviewCount = 5;
-
     private List<OrganizationMemberDto> _members = new();
     private bool _loading = true;
+    private bool _canManage;
+    private Guid? _currentUserId;
+    private string? _errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadMembers();
+    }
+
+    private static string GetInitial(OrganizationMemberDto member)
+    {
+        var name = member.UserFullName ?? member.UserEmail;
+        return string.IsNullOrEmpty(name) ? "?" : name[..1].ToUpperInvariant();
+    }
+
+    private async Task LoadMembers()
+    {
         _loading = true;
+        _errorMessage = null;
         try
         {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            _currentUserId = ExtractUserId(authState.User);
+
             var result = await MemberService.GetMembersAsync(OrganizationId);
             _members = result?.ToList() ?? new List<OrganizationMemberDto>();
+
+            var me = _members.FirstOrDefault(m => m.UserId == _currentUserId);
+            _canManage = RoleHelper.CanManage(me?.RoleId);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to load members: {ex.Message}";
         }
         finally
         {
@@ -103,10 +163,86 @@
         }
     }
 
-    private static string GetInitial(OrganizationMemberDto member)
+    private async Task OpenInviteDialog()
     {
-        var name = member.UserFullName ?? member.UserEmail;
-        return string.IsNullOrEmpty(name) ? "?" : name[..1].ToUpperInvariant();
+        if (!_canManage)
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters
+        {
+            ["OrganizationId"] = OrganizationId
+        };
+        var dialog = await DialogService.ShowAsync<InviteMemberDialog>("Invite Member", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            Snackbar.Add("Member invited.", Severity.Success);
+            await LoadMembers();
+        }
+    }
+
+    private async Task OpenEditRoleDialog(OrganizationMemberDto member)
+    {
+        if (!_canManage)
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters
+        {
+            ["Member"] = member,
+            ["OrganizationId"] = OrganizationId
+        };
+        var dialog = await DialogService.ShowAsync<EditMemberRoleDialog>("Change Role", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            Snackbar.Add("Member role updated.", Severity.Success);
+            await LoadMembers();
+        }
+    }
+
+    private async Task RemoveMember(OrganizationMemberDto member)
+    {
+        if (!_canManage || !member.Id.HasValue)
+        {
+            return;
+        }
+
+        bool? result = await DialogService.ShowMessageBox(
+            "Remove Member",
+            $"Are you sure you want to remove {member.UserEmail ?? member.UserFullName ?? "this member"}?",
+            yesText: "Remove",
+            cancelText: "Cancel");
+
+        if (result != true)
+        {
+            return;
+        }
+
+        try
+        {
+            await MemberService.DeleteMemberAsync(member.Id.Value);
+            Snackbar.Add("Member removed.", Severity.Success);
+            await LoadMembers();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to remove member: {ex.Message}";
+        }
+    }
+
+    private static Guid? ExtractUserId(ClaimsPrincipal user)
+    {
+        var raw = user.FindFirst("sub")?.Value
+            ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? user.FindFirst("sid")?.Value;
+
+        return Guid.TryParse(raw, out var userId) ? userId : null;
     }
 
     private void NavigateToMembers()

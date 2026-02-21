@@ -19,6 +19,12 @@ public static class RoleHelper
     public const int OrgMember = 24;
     public const int OrgViewer = 25;
 
+    // Group-scope role IDs matching RoleEnum
+    public const int GroupCreator = 30;
+    public const int GroupAdmin = 31;
+    public const int GroupModerator = 32;
+    public const int GroupMember = 33;
+
     /// <summary>
     /// Checks if the given role ID has management permissions (Creator, CoOwner, or Admin).
     /// </summary>
@@ -26,6 +32,15 @@ public static class RoleHelper
     {
         if (!roleId.HasValue) return false;
         return roleId.Value is OrgCreator or OrgCoOwner or OrgAdmin;
+    }
+
+    /// <summary>
+    /// Checks if the given role ID has group management permissions (Creator or Admin).
+    /// </summary>
+    public static bool CanManageGroup(int? roleId)
+    {
+        if (!roleId.HasValue) return false;
+        return roleId.Value is GroupCreator or GroupAdmin;
     }
 
     /// <summary>
@@ -79,5 +94,39 @@ public static class RoleHelper
         (OrgModerator, "Moderator"),
         (OrgMember, "Member"),
         (OrgViewer, "Viewer")
+    ];
+
+    /// <summary>
+    /// Returns a human-readable name for the group role.
+    /// </summary>
+    public static string GetGroupRoleName(int? roleId) => roleId switch
+    {
+        GroupCreator => "Creator",
+        GroupAdmin => "Admin",
+        GroupModerator => "Moderator",
+        GroupMember => "Member",
+        _ => "Unknown"
+    };
+
+    /// <summary>
+    /// Returns a MudBlazor Color for the group role badge.
+    /// </summary>
+    public static Color GetGroupRoleColor(int? roleId) => roleId switch
+    {
+        GroupCreator => Color.Primary,
+        GroupAdmin => Color.Info,
+        GroupModerator => Color.Warning,
+        GroupMember => Color.Success,
+        _ => Color.Default
+    };
+
+    /// <summary>
+    /// Returns assignable group roles for group membership administration.
+    /// </summary>
+    public static IReadOnlyList<(int Id, string Name)> GetAssignableGroupRoles() =>
+    [
+        (GroupAdmin, "Admin"),
+        (GroupModerator, "Moderator"),
+        (GroupMember, "Member")
     ];
 }

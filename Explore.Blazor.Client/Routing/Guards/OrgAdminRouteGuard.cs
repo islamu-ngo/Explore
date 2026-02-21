@@ -1,5 +1,5 @@
-// ABOUTME: Route guard that restricts org admin routes to users with org-admin authority for the specific org.
-// Also allows instance and tenant admins who have broader authority over all organizations.
+// ABOUTME: Route guard that restricts org admin routes to org-scoped administrators for the specific org.
+// ABOUTME: Requires organization admin claims derived from OrganizationMember role assignments.
 
 using System.Text.RegularExpressions;
 using Blazouter.Interfaces;
@@ -10,18 +10,14 @@ namespace Explore.Blazor.Client.Routing.Guards;
 
 /// <summary>
 /// Guards organization admin routes by verifying the user has admin authority for the
-/// specific organization in the route. Checks for:
-/// 1. Instance admin (full access to all orgs)
-/// 2. Tenant admin (full access to orgs in their tenant)
-/// 3. Organization admin (access to their specific org)
+/// specific organization in the route.
+/// Requires a matching organization-admin claim for the targeted organization ID.
 /// The organization ID is extracted from the route path via regex.
 /// </summary>
 public sealed partial class OrgAdminRouteGuard(AuthenticationStateProvider authStateProvider) : IRouteGuard
 {
     // Claim type constants matching Explore.Application.Authorization.AdminClaimTypes.
     // Duplicated here because Blazor.Client does not reference Application.
-    private const string InstanceAdminClaim = "explore:admin:instance";
-    private const string TenantAdminClaim = "explore:admin:tenant";
     private const string OrgAdminClaim = "explore:admin:organization";
 
     public async Task<bool> CanActivateAsync(RouteMatch match)
@@ -36,13 +32,6 @@ public sealed partial class OrgAdminRouteGuard(AuthenticationStateProvider authS
         if (user.Identity?.IsAuthenticated != true)
         {
             return false;
-        }
-
-        // Instance admins and tenant admins have broader authority
-        if (user.HasClaim(c => c.Type == InstanceAdminClaim)
-            || user.HasClaim(c => c.Type == TenantAdminClaim))
-        {
-            return true;
         }
 
         // Extract organization ID from the route path (e.g., /admin/organization/{guid}/settings)

@@ -17,7 +17,7 @@ namespace Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
 public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<CompleteInstanceOnboardingCommand, BaseCommandResponse<Guid>>
 {
     private readonly IInstanceBootstrapStateRepository _instanceBootstrapStateRepository;
-    private readonly IUserRoleRepository _userRoleRepository;
+    private readonly IPlatformUserRoleRepository _platformUserRoleRepository;
     private readonly ITenantMemberRepository _tenantMemberRepository;
     private readonly IRoleRepository _roleRepository;
     private readonly IUserRepository _userRepository;
@@ -29,7 +29,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
 
     public CompleteInstanceOnboardingCommandHandler(
         IInstanceBootstrapStateRepository instanceBootstrapStateRepository,
-        IUserRoleRepository userRoleRepository,
+        IPlatformUserRoleRepository platformUserRoleRepository,
         ITenantMemberRepository tenantMemberRepository,
         IRoleRepository roleRepository,
         IUserRepository userRepository,
@@ -40,7 +40,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         IAdminCacheInvalidator adminCacheInvalidator)
     {
         _instanceBootstrapStateRepository = instanceBootstrapStateRepository;
-        _userRoleRepository = userRoleRepository;
+        _platformUserRoleRepository = platformUserRoleRepository;
         _tenantMemberRepository = tenantMemberRepository;
         _roleRepository = roleRepository;
         _userRepository = userRepository;
@@ -174,13 +174,13 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
             return;
         }
 
-        var existing = await _userRoleRepository.GetByUserAndRole(userId, platformAdminRole.Id);
+        var existing = await _platformUserRoleRepository.GetByUserAndRole(userId, platformAdminRole.Id);
         if (existing != null)
         {
             return;
         }
 
-        await _userRoleRepository.Create(new UserRole
+        await _platformUserRoleRepository.Create(new PlatformUserRole
         {
             UserId = userId,
             User = null!,

@@ -5,7 +5,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Explore.Domain;
 
-public class UserRole
+public class PlatformUserRole
 {
     public Guid Id { get; set; }
 

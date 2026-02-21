@@ -24,9 +24,9 @@
                     <div class="organization-profile__banner" style="@_bannerStyle"></div>
                     <div class="organization-profile__header-content">
                         <div class="organization-profile__avatar-wrapper">
-                            @if (!string.IsNullOrEmpty(_organization.ActorProfilePictureUri))
+                            @if (!string.IsNullOrEmpty(GetProfileImageUri()))
                             {
-                                <MudImage Src="@_organization.ActorProfilePictureUri"
+                                <MudImage Src="@GetProfileImageUri()"
                                           Alt="@($"{_organization.FullName} Logo")"
                                           Class="organization-profile__avatar-image"
                                           ObjectFit="ObjectFit.Cover" />
