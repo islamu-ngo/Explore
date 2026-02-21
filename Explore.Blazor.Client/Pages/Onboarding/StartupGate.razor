@@ -1,8 +1,6 @@
 @page "/startup"
 @using MudBlazor
 @inject IInstanceOnboardingService InstanceOnboardingService
-@inject ITenantOnboardingService TenantOnboardingService
-@inject IPublicExperienceService PublicExperienceService
 @inject NavigationManager Navigation
 @inject ILogger<StartupGate> Logger
 @rendermode @(new InteractiveAutoRenderMode(prerender: false))
@@ -49,22 +47,14 @@
                 return;
             }
 
-            if (instanceStatus.IsAuthenticated)
+            if (instanceStatus.IsAuthenticated &&
+                instanceStatus.SelectedDeploymentMode?.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase) == true)
             {
-                if (instanceStatus.SelectedDeploymentMode?.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase) == true)
-                {
-                    var tenantStatus = await TenantOnboardingService.GetStatusAsync();
-                    if (tenantStatus != null &&
-                        !tenantStatus.IsCompleted &&
-                        (tenantStatus.IsCurrentUserTenantAdministrator || tenantStatus.IsCurrentUserPlatformAdministrator))
-                    {
-                        Navigation.NavigateTo("/onboarding/tenant");
-                        return;
-                    }
-                }
+                Navigation.NavigateTo("/admin/instance/settings");
+                return;
             }
 
-            Navigation.NavigateTo("/");
+            Navigation.NavigateTo("/events");
         }
         catch (Exception ex)
         {

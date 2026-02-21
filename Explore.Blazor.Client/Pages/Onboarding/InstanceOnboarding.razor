@@ -1,13 +1,16 @@
 @page "/onboarding/instance"
 @using MudBlazor
 @using Microsoft.AspNetCore.Authorization
+@using Explore.Blazor.Client.Clients
 @layout SetupLayout
 @attribute [Authorize]
 @rendermode @(new InteractiveAutoRenderMode(prerender: false))
 @inject IInstanceOnboardingService InstanceOnboardingService
+@inject IGroupService GroupService
 @inject IUserService UserService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
+@inject ILogger<InstanceOnboarding> Logger
 @inject IJSRuntime JSRuntime
 @inject HttpClient Http
 
@@ -29,125 +32,282 @@
         }
         else
         {
-            <MudStack Spacing="3">
-                <MudText Typo="Typo.h6">Platform Governance</MudText>
-                <MudText Typo="Typo.caption" Class="mb-1">Fields marked "(Required)" must be provided before completing onboarding.</MudText>
+            <MudStepper @bind-ActiveIndex="_activeStep"
+                        Elevation="0"
+                        NonLinear="false"
+                        ShowResetButton="false">
+                <ChildContent>
+                    <MudStep Title="Deployment">
+                    <MudStack Spacing="3">
+                        <MudText Typo="Typo.h6">Platform Governance</MudText>
+                        <MudText Typo="Typo.caption" Class="mb-1">Fields marked "(Required)" must be provided before completing onboarding.</MudText>
 
-                <MudSelect T="string" Label="Deployment Mode (Required)" @bind-Value="_model.DeploymentMode" Variant="Variant.Outlined" Required="true" RequiredError="Deployment mode is required.">
-                    <MudSelectItem Value="@("SingleTenant")">Single Tenant</MudSelectItem>
-                    <MudSelectItem Value="@("MultiTenant")">Multi Tenant</MudSelectItem>
-                </MudSelect>
-                <MudText Typo="Typo.caption">
-                    Single Tenant merges instance and tenant administration. Multi Tenant enables tenant-level onboarding and separation.
-                </MudText>
+                        <MudSelect T="string"
+                                   Label="Deployment Mode (Required)"
+                                   Value="_model.DeploymentMode"
+                                   ValueChanged="OnDeploymentModeChanged"
+                                   Variant="Variant.Outlined"
+                                   Required="true"
+                                   RequiredError="Deployment mode is required.">
+                            <MudSelectItem Value="@("SingleTenant")">Single Tenant</MudSelectItem>
+                            <MudSelectItem Value="@("MultiTenant")">Multi Tenant</MudSelectItem>
+                        </MudSelect>
+                        <MudText Typo="Typo.caption">
+                            Single Tenant merges instance and tenant administration. Multi Tenant enables tenant-level onboarding and separation.
+                        </MudText>
 
-                <MudSwitch T="bool" @bind-Value="_model.AllowTenantSelfServiceRegistration" Color="Color.Primary">
-                    Allow tenant self-service registration
-                </MudSwitch>
-                <MudSwitch T="bool"
-                           @bind-Value="_model.AllowTenantWhiteLabeling"
-                           Disabled="@(!_model.DeploymentMode.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase))"
-                           Color="Color.Primary">
-                    Allow tenant white-label branding
-                </MudSwitch>
-                @if (!_model.DeploymentMode.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase))
-                {
-                    <MudText Typo="Typo.caption">Tenant white-labeling is only available in multi-tenant mode.</MudText>
-                }
-                <MudSelect T="string" Label="Default Public Home Page (Required)" @bind-Value="_model.DefaultPublicHomePage" Variant="Variant.Outlined" Required="true" RequiredError="Default public home page is required.">
-                    <MudSelectItem Value="@("EventList")">Event List</MudSelectItem>
-                    <MudSelectItem Value="@("LandingPage")">Landing Page</MudSelectItem>
-                </MudSelect>
-                <MudSwitch T="bool" @bind-Value="_model.LockTenantHomePagePreference" Color="Color.Primary">
-                    Lock tenant home page preference
-                </MudSwitch>
+                        <MudSwitch T="bool" @bind-Value="_model.AllowTenantSelfServiceRegistration" Color="Color.Primary">
+                            Allow tenant self-service registration
+                        </MudSwitch>
+                        <MudSwitch T="bool"
+                                   @bind-Value="_model.AllowTenantWhiteLabeling"
+                                   Disabled="@(!IsMultiTenantMode)"
+                                   Color="Color.Primary">
+                            Allow tenant white-label branding
+                        </MudSwitch>
+                        @if (!IsMultiTenantMode)
+                        {
+                            <MudText Typo="Typo.caption">Tenant white-labeling is only available in multi-tenant mode.</MudText>
+                        }
 
-                <MudDivider />
-                <MudText Typo="Typo.h6">Domain Governance</MudText>
-                <MudTextField Label="Instance Base Domain (Optional)"
-                              Variant="Variant.Outlined"
-                              @bind-Value="_model.InstanceBaseDomain"
-                              Placeholder="example.com"
-                              HelperText="Used for tenant subdomains (e.g., tenant.example.com)." />
-                <MudSwitch T="bool" @bind-Value="_model.AllowTenantCustomDomains" Color="Color.Primary">
-                    Allow tenant custom domains
-                </MudSwitch>
-                <MudSwitch T="bool" @bind-Value="_model.LockTenantSubdomain" Color="Color.Primary">
-                    Lock tenant subdomain changes
-                </MudSwitch>
-                <MudSwitch T="bool" @bind-Value="_model.LockTenantCustomDomain" Color="Color.Primary">
-                    Lock tenant custom domain changes
-                </MudSwitch>
+                        <MudSelect T="string"
+                                   Label="Default Public Home Page (Required)"
+                                   @bind-Value="_model.DefaultPublicHomePage"
+                                   Variant="Variant.Outlined"
+                                   Required="true"
+                                   RequiredError="Default public home page is required.">
+                            <MudSelectItem Value="@("EventList")">Event List</MudSelectItem>
+                            <MudSelectItem Value="@("LandingPage")">Landing Page</MudSelectItem>
+                        </MudSelect>
 
-                <MudDivider />
-                <MudText Typo="Typo.h6">Policy Defaults</MudText>
-                <MudSwitch T="bool" @bind-Value="_model.EnableIslamicModule" Color="Color.Primary">
-                    Enable Islamic module
-                </MudSwitch>
-                <MudSwitch T="bool" @bind-Value="_model.EnableTechModule" Color="Color.Primary">
-                    Enable Tech module
-                </MudSwitch>
-                <MudSwitch T="bool" @bind-Value="_model.AllowUserSubmittedEvents" Color="Color.Primary">
-                    Allow user-submitted events
-                </MudSwitch>
-                <MudSwitch T="bool" @bind-Value="_model.RequireOrganizationVerification" Color="Color.Primary">
-                    Require organization verification
-                </MudSwitch>
-                <MudSwitch T="bool" @bind-Value="_model.AllowTenantToOmitVerification" Color="Color.Primary">
-                    Allow tenant admins to omit organization verification
-                </MudSwitch>
+                        <MudSwitch T="bool" @bind-Value="_model.LockTenantHomePagePreference" Color="Color.Primary">
+                            Lock tenant home page preference
+                        </MudSwitch>
+                    </MudStack>
+                    </MudStep>
 
-                <MudDivider />
-                <MudText Typo="Typo.h6">Default Branding</MudText>
-                <MudTextField Label="Brand Display Name (Required)"
-                              Variant="Variant.Outlined"
-                              Required="true"
-                              RequiredError="Brand display name is required."
-                              @bind-Value="_model.DefaultBrandDisplayName" />
-                <MudTextField Label="Brand Logo URL (Optional)"
-                              Variant="Variant.Outlined"
-                              @bind-Value="_model.DefaultBrandLogoUrl" />
-                <MudTextField Label="Brand Favicon URL (Optional)"
-                              Variant="Variant.Outlined"
-                              @bind-Value="_model.DefaultBrandFaviconUrl" />
-                <MudTextField Label="Advanced: Custom CSS URL (Optional)"
-                              Variant="Variant.Outlined"
-                              @bind-Value="_model.DefaultBrandCustomCssUrl"
-                              HelperText="Optional advanced override for platform-level custom stylesheet." />
-                <MudSwitch T="bool" @bind-Value="_model.LockTenantBrandDisplayName" Color="Color.Primary">
-                    Lock tenant brand display name
-                </MudSwitch>
-                <MudSwitch T="bool" @bind-Value="_model.LockTenantBrandLogoUrl" Color="Color.Primary">
-                    Lock tenant brand logo
-                </MudSwitch>
-                <MudSwitch T="bool" @bind-Value="_model.LockTenantBrandFaviconUrl" Color="Color.Primary">
-                    Lock tenant brand favicon
-                </MudSwitch>
-                <MudSwitch T="bool" @bind-Value="_model.LockTenantBrandCustomCssUrl" Color="Color.Primary">
-                    Lock tenant custom CSS URL
-                </MudSwitch>
+                    <MudStep Title="Instance Settings">
+                    <MudStack Spacing="3">
+                        <MudDivider />
+                        <MudText Typo="Typo.h6">Domain Governance</MudText>
+                        <MudTextField Label="Instance Base Domain (Optional)"
+                                      Variant="Variant.Outlined"
+                                      @bind-Value="_model.InstanceBaseDomain"
+                                      Placeholder="example.com"
+                                      HelperText="Used for tenant subdomains (e.g., tenant.example.com)." />
+                        <MudSwitch T="bool" @bind-Value="_model.AllowTenantCustomDomains" Color="Color.Primary">
+                            Allow tenant custom domains
+                        </MudSwitch>
+                        <MudSwitch T="bool" @bind-Value="_model.LockTenantSubdomain" Color="Color.Primary">
+                            Lock tenant subdomain changes
+                        </MudSwitch>
+                        <MudSwitch T="bool" @bind-Value="_model.LockTenantCustomDomain" Color="Color.Primary">
+                            Lock tenant custom domain changes
+                        </MudSwitch>
 
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           OnClick="CompleteOnboardingAsync"
-                           Disabled="_isSaving">
-                    Complete Instance Onboarding
-                </MudButton>
-            </MudStack>
+                        <MudDivider />
+                        <MudText Typo="Typo.h6">Policy Defaults</MudText>
+                        <MudSwitch T="bool" @bind-Value="_model.EnableIslamicModule" Color="Color.Primary">
+                            Enable Islamic module
+                        </MudSwitch>
+                        <MudSwitch T="bool" @bind-Value="_model.EnableTechModule" Color="Color.Primary">
+                            Enable Tech module
+                        </MudSwitch>
+                        <MudSwitch T="bool" @bind-Value="_model.AllowUserSubmittedEvents" Color="Color.Primary">
+                            Allow user-submitted events
+                        </MudSwitch>
+                        <MudSwitch T="bool" @bind-Value="_model.RequireOrganizationVerification" Color="Color.Primary">
+                            Require organization verification
+                        </MudSwitch>
+                        <MudSwitch T="bool" @bind-Value="_model.AllowTenantToOmitVerification" Color="Color.Primary">
+                            Allow tenant admins to omit organization verification
+                        </MudSwitch>
+
+                        <MudDivider />
+                        <MudText Typo="Typo.h6">Default Branding</MudText>
+                        <MudTextField Label="Brand Display Name (Required)"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      RequiredError="Brand display name is required."
+                                      @bind-Value="_model.DefaultBrandDisplayName" />
+                        <MudTextField Label="Brand Logo URL (Optional)"
+                                      Variant="Variant.Outlined"
+                                      @bind-Value="_model.DefaultBrandLogoUrl" />
+                        <MudTextField Label="Brand Favicon URL (Optional)"
+                                      Variant="Variant.Outlined"
+                                      @bind-Value="_model.DefaultBrandFaviconUrl" />
+                        <MudTextField Label="Advanced: Custom CSS URL (Optional)"
+                                      Variant="Variant.Outlined"
+                                      @bind-Value="_model.DefaultBrandCustomCssUrl"
+                                      HelperText="Optional advanced override for platform-level custom stylesheet." />
+                        <MudSwitch T="bool" @bind-Value="_model.LockTenantBrandDisplayName" Color="Color.Primary">
+                            Lock tenant brand display name
+                        </MudSwitch>
+                        <MudSwitch T="bool" @bind-Value="_model.LockTenantBrandLogoUrl" Color="Color.Primary">
+                            Lock tenant brand logo
+                        </MudSwitch>
+                        <MudSwitch T="bool" @bind-Value="_model.LockTenantBrandFaviconUrl" Color="Color.Primary">
+                            Lock tenant brand favicon
+                        </MudSwitch>
+                        <MudSwitch T="bool" @bind-Value="_model.LockTenantBrandCustomCssUrl" Color="Color.Primary">
+                            Lock tenant custom CSS URL
+                        </MudSwitch>
+                    </MudStack>
+                    </MudStep>
+
+                    @if (IsSingleTenantMode)
+                    {
+                        <MudStep Title="First Host Setup">
+                        <MudStack Spacing="3">
+                            <MudText Typo="Typo.h6">Set Up Your First Host</MudText>
+                            <MudText Typo="Typo.body2">
+                                Choose how you want to publish events first. This avoids friction later when selecting publisher context during event creation.
+                            </MudText>
+
+                            <MudPaper Class="pa-3">
+                                <MudStack Spacing="1">
+                                    <MudButton Variant="@GetFirstHostButtonVariant(FirstHostSetupChoice.Personal)"
+                                               Color="@GetFirstHostButtonColor(FirstHostSetupChoice.Personal)"
+                                               StartIcon="@Icons.Material.Filled.Person"
+                                               OnClick="@(() => SelectFirstHost(FirstHostSetupChoice.Personal))"
+                                               FullWidth="true">
+                                        Publish Under My Account
+                                    </MudButton>
+                                    <MudText Typo="Typo.caption">Quickest start. You can still add group/organization later.</MudText>
+                                </MudStack>
+                            </MudPaper>
+
+                            <MudPaper Class="pa-3">
+                                <MudStack Spacing="1">
+                                    <MudButton Variant="@GetFirstHostButtonVariant(FirstHostSetupChoice.GroupQuickSetup)"
+                                               Color="@GetFirstHostButtonColor(FirstHostSetupChoice.GroupQuickSetup)"
+                                               StartIcon="@Icons.Material.Filled.Groups"
+                                               OnClick="@(() => SelectFirstHost(FirstHostSetupChoice.GroupQuickSetup))"
+                                               FullWidth="true">
+                                        Group (Informal Quick Setup)
+                                    </MudButton>
+                                    <MudText Typo="Typo.caption">We create a starter group for you automatically.</MudText>
+                                </MudStack>
+                            </MudPaper>
+
+                            <MudPaper Class="pa-3">
+                                <MudStack Spacing="1">
+                                    <MudButton Variant="@GetFirstHostButtonVariant(FirstHostSetupChoice.Organization)"
+                                               Color="@GetFirstHostButtonColor(FirstHostSetupChoice.Organization)"
+                                               StartIcon="@Icons.Material.Filled.Business"
+                                               OnClick="@(() => SelectFirstHost(FirstHostSetupChoice.Organization))"
+                                               FullWidth="true">
+                                        Organization (Formal Setup)
+                                    </MudButton>
+                                    <MudText Typo="Typo.caption">For legal entity publishing. We redirect you to complete organization details.</MudText>
+                                </MudStack>
+                            </MudPaper>
+
+                            <MudPaper Class="pa-3">
+                                <MudStack Spacing="1">
+                                    <MudButton Variant="@GetFirstHostButtonVariant(FirstHostSetupChoice.DoLater)"
+                                               Color="@GetFirstHostButtonColor(FirstHostSetupChoice.DoLater)"
+                                               StartIcon="@Icons.Material.Filled.Schedule"
+                                               OnClick="@(() => SelectFirstHost(FirstHostSetupChoice.DoLater))"
+                                               FullWidth="true">
+                                        I Will Do This Later
+                                    </MudButton>
+                                    <MudText Typo="Typo.caption">Continue now and configure hosting entities later.</MudText>
+                                </MudStack>
+                            </MudPaper>
+                        </MudStack>
+                        </MudStep>
+                    }
+
+                    <MudStep Title="Review & Complete">
+                    <MudStack Spacing="2">
+                        <MudText Typo="Typo.h6">Review</MudText>
+                        <MudText Typo="Typo.body2"><strong>Deployment Mode:</strong> @(_model.DeploymentMode)</MudText>
+                        <MudText Typo="Typo.body2"><strong>Default Public Home Page:</strong> @(_model.DefaultPublicHomePage)</MudText>
+                        @if (IsSingleTenantMode)
+                        {
+                            <MudText Typo="Typo.body2"><strong>First Host Choice:</strong> @GetFirstHostChoiceLabel()</MudText>
+                        }
+
+                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+                            @GetCompletionRedirectHint()
+                        </MudAlert>
+                    </MudStack>
+                    </MudStep>
+                </ChildContent>
+
+                <ActionContent Context="stepper">
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Default"
+                               Disabled="@(_activeStep == 0 || _isSaving)"
+                               OnClick="@(() => stepper.PreviousStepAsync())">
+                        Back
+                    </MudButton>
+                    <MudSpacer />
+
+                    @if (_activeStep < LastStepIndex)
+                    {
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   OnClick="@(() => GoToNextStepAsync(stepper))"
+                                   Disabled="@(_isSaving || IsNextDisabled)">
+                            Next
+                        </MudButton>
+                    }
+                    else
+                    {
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   OnClick="CompleteOnboardingAsync"
+                                   Disabled="@(_isSaving || IsCompleteDisabled)">
+                            @_completeButtonLabel
+                        </MudButton>
+                    }
+                </ActionContent>
+            </MudStepper>
         }
     </MudPaper>
 </MudContainer>
 
 @code {
+    private enum FirstHostSetupChoice
+    {
+        None = 0,
+        Personal = 1,
+        GroupQuickSetup = 2,
+        Organization = 3,
+        DoLater = 4
+    }
+
+    private const int FirstHostStepIndex = 2;
     private InstanceGovernanceSettingsModel _model = new();
     private bool _isLoading = true;
     private bool _isSaving;
     private string? _errorMessage;
     private bool _setupSecretSynced;
+    private int _activeStep;
+    private UserDto? _currentUser;
+    private FirstHostSetupChoice _firstHostSetupChoice = FirstHostSetupChoice.None;
+    private string _completeButtonLabel = "Complete Instance Onboarding";
+
+    private bool IsSingleTenantMode => _model.DeploymentMode.Equals("SingleTenant", StringComparison.OrdinalIgnoreCase);
+    private bool IsMultiTenantMode => _model.DeploymentMode.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase);
+    private int LastStepIndex => IsSingleTenantMode ? 3 : 2;
+    private bool IsFirstHostSelectionMissing => IsSingleTenantMode && _firstHostSetupChoice == FirstHostSetupChoice.None;
+    private bool IsNextDisabled => _activeStep == FirstHostStepIndex && IsFirstHostSelectionMissing;
+    private bool IsCompleteDisabled => IsFirstHostSelectionMissing;
 
     protected override async Task OnInitializedAsync()
     {
-        await UserService.SyncUserAsync();
+        try
+        {
+            await UserService.SyncUserAsync();
+            _currentUser = await UserService.GetCurrentUserAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Could not fully hydrate user context during instance onboarding.");
+        }
 
         var status = await InstanceOnboardingService.GetStatusAsync();
         if (status?.IsCompleted == true)
@@ -157,6 +317,11 @@
         }
 
         _model = await InstanceOnboardingService.GetSettingsAsync();
+        if (!IsMultiTenantMode)
+        {
+            _model.AllowTenantWhiteLabeling = false;
+        }
+
         _isLoading = false;
     }
 
@@ -180,23 +345,172 @@
         }
     }
 
+    private void OnDeploymentModeChanged(string deploymentMode)
+    {
+        _model.DeploymentMode = string.IsNullOrWhiteSpace(deploymentMode) ? "SingleTenant" : deploymentMode.Trim();
+        if (!IsMultiTenantMode)
+        {
+            _model.AllowTenantWhiteLabeling = false;
+        }
+
+        if (_activeStep > LastStepIndex)
+        {
+            _activeStep = LastStepIndex;
+        }
+
+        _errorMessage = null;
+    }
+
+    private async Task GoToNextStepAsync(MudStepper stepper)
+    {
+        _errorMessage = null;
+
+        if (IsNextDisabled)
+        {
+            _errorMessage = "Please choose how you want to set up your first host before continuing.";
+            return;
+        }
+
+        await stepper.NextStepAsync();
+    }
+
+    private void SelectFirstHost(FirstHostSetupChoice choice)
+    {
+        _firstHostSetupChoice = choice;
+        _errorMessage = null;
+    }
+
+    private Variant GetFirstHostButtonVariant(FirstHostSetupChoice choice) =>
+        _firstHostSetupChoice == choice ? Variant.Filled : Variant.Outlined;
+
+    private Color GetFirstHostButtonColor(FirstHostSetupChoice choice) =>
+        _firstHostSetupChoice == choice ? Color.Primary : Color.Default;
+
+    private string GetFirstHostChoiceLabel()
+    {
+        return _firstHostSetupChoice switch
+        {
+            FirstHostSetupChoice.Personal => "Publish under my account",
+            FirstHostSetupChoice.GroupQuickSetup => "Group (informal quick setup)",
+            FirstHostSetupChoice.Organization => "Organization (formal setup)",
+            FirstHostSetupChoice.DoLater => "I will do this later",
+            _ => "Not selected"
+        };
+    }
+
+    private string GetCompletionRedirectHint()
+    {
+        if (IsMultiTenantMode)
+        {
+            return "After completion, you will be redirected to instance administration pages.";
+        }
+
+        return _firstHostSetupChoice switch
+        {
+            FirstHostSetupChoice.Organization => "After completion, you will be redirected to create your organization profile first.",
+            _ => "After completion, you will be redirected to the event list."
+        };
+    }
+
     private async Task CompleteOnboardingAsync()
     {
+        if (IsCompleteDisabled)
+        {
+            _errorMessage = "Please choose how you want to set up your first host before completing onboarding.";
+            return;
+        }
+
         _isSaving = true;
+        _completeButtonLabel = "Saving...";
         _errorMessage = null;
+
+        if (!IsMultiTenantMode)
+        {
+            _model.AllowTenantWhiteLabeling = false;
+        }
 
         var response = await InstanceOnboardingService.CompleteAsync(_model);
         _isSaving = false;
+        _completeButtonLabel = "Complete Instance Onboarding";
 
         if (response.Success)
         {
             Snackbar.Add("Instance onboarding completed.", Severity.Success);
-            Navigation.NavigateTo("/");
+            await NavigatePostCompletionAsync();
             return;
         }
 
         _errorMessage = string.IsNullOrWhiteSpace(response.Message)
             ? "Failed to complete onboarding."
             : response.Message;
+    }
+
+    private async Task NavigatePostCompletionAsync()
+    {
+        if (IsMultiTenantMode)
+        {
+            Navigation.NavigateTo("/admin/instance/settings");
+            return;
+        }
+
+        switch (_firstHostSetupChoice)
+        {
+            case FirstHostSetupChoice.Organization:
+                Snackbar.Add("Complete your organization profile now to publish events as an organization.", Severity.Info);
+                Navigation.NavigateTo("/organization/create");
+                return;
+
+            case FirstHostSetupChoice.GroupQuickSetup:
+            {
+                var created = await TryCreateQuickGroupAsync();
+                if (created)
+                {
+                    Snackbar.Add("Starter group created. You can now publish events under your group.", Severity.Success);
+                }
+                else
+                {
+                    Snackbar.Add("Could not create the starter group automatically. You can set up a group later.", Severity.Warning);
+                }
+
+                Navigation.NavigateTo("/events");
+                return;
+            }
+
+            case FirstHostSetupChoice.Personal:
+                Snackbar.Add("You can publish events under your account immediately.", Severity.Info);
+                Navigation.NavigateTo("/events");
+                return;
+
+            case FirstHostSetupChoice.DoLater:
+            default:
+                Snackbar.Add("You can set up a group or organization later from your account area.", Severity.Info);
+                Navigation.NavigateTo("/events");
+                return;
+        }
+    }
+
+    private async Task<bool> TryCreateQuickGroupAsync()
+    {
+        var groupName = BuildDefaultGroupName();
+        return await GroupService.CreateGroupAsync(groupName, "Starter group created during instance onboarding.");
+    }
+
+    private string BuildDefaultGroupName()
+    {
+        var fullName = string.Join(" ", new[] { _currentUser?.FirstName, _currentUser?.LastName }
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Select(s => s!.Trim()));
+
+        if (!string.IsNullOrWhiteSpace(fullName))
+        {
+            return $"{fullName}'s Group";
+        }
+
+        if (!string.IsNullOrWhiteSpace(_currentUser?.Username))
+        {
+            return $"{_currentUser.Username!.Trim()}'s Group";
+        }
+
+        return "My Group";
     }
 }

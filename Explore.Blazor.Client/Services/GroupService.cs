@@ -1,13 +1,16 @@
 // ABOUTME: Service for loading group publishing options for the current authenticated user.
 // ABOUTME: Uses direct HTTP access to support Group endpoints before client regeneration.
 
+using System.Net.Http.Json;
 using System.Text.Json;
+using Explore.Blazor.Client.Models.Responses;
 
 namespace Explore.Blazor.Client.Services;
 
 public interface IGroupService
 {
     Task<ICollection<GroupPublisherListDto>> GetMyGroupsAsync();
+    Task<bool> CreateGroupAsync(string fullName, string? description = null);
 }
 
 public class GroupService : IGroupService
@@ -20,6 +23,45 @@ public class GroupService : IGroupService
     {
         _httpClient = httpClient;
         _logger = logger;
+    }
+
+    public async Task<bool> CreateGroupAsync(string fullName, string? description = null)
+    {
+        if (string.IsNullOrWhiteSpace(fullName))
+        {
+            _logger.LogWarning("[GroupService.CreateGroupAsync] Group name is required.");
+            return false;
+        }
+
+        var request = new CreateGroupRequest
+        {
+            FullName = fullName.Trim(),
+            Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim()
+        };
+
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/group", request);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("[GroupService.CreateGroupAsync] API error creating group. StatusCode: {StatusCode}", response.StatusCode);
+                return false;
+            }
+
+            var content = await response.Content.ReadAsStringAsync();
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                return true;
+            }
+
+            var commandResponse = JsonSerializer.Deserialize<BaseCommandResponse<Guid>>(content, JsonOptions);
+            return commandResponse?.Success ?? true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[GroupService.CreateGroupAsync] Unexpected error creating group");
+            return false;
+        }
     }
 
     public async Task<ICollection<GroupPublisherListDto>> GetMyGroupsAsync()
@@ -89,6 +131,12 @@ public class GroupService : IGroupService
         }
 
         return false;
+    }
+
+    private sealed class CreateGroupRequest
+    {
+        public string FullName { get; set; } = string.Empty;
+        public string? Description { get; set; }
     }
 }
 

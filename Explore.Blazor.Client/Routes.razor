@@ -88,6 +88,7 @@
             new RouteConfig { Path = "/organization/:id", Component = typeof(OrganizationDetails), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
 
             // Event management routes
+            new RouteConfig { Path = "/create-event", Component = typeof(CreateEvent), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
             new RouteConfig { Path = "/organization/:organizationId/create-event", Component = typeof(CreateEvent), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
             new RouteConfig { Path = "/event/edit/:eventId", Component = typeof(EventEdit), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
             new RouteConfig { Path = "/event-created/:eventId", Component = typeof(EventCreated), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },

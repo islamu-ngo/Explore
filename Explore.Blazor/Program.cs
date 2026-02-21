@@ -195,6 +195,28 @@ builder.Services.AddHttpClient<ITenantNavigationService, TenantNavigationService
         return handler;
     });
 
+// Register GroupService with direct API access for InteractiveServer rendering.
+builder.Services.AddHttpClient<IGroupService, GroupService>(client =>
+    {
+        client.BaseAddress = new Uri(exploreApiBaseUrl);
+    })
+    .AddHttpMessageHandler<AccessTokenForwardingHandler>()
+    .ConfigurePrimaryHttpMessageHandler(() =>
+    {
+        var handler = new HttpClientHandler();
+
+        if (builder.Environment.IsDevelopment())
+        {
+            handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
+            {
+                var isLocalhost = message.RequestUri?.Host.Contains("localhost") ?? false;
+                return isLocalhost || errors == System.Net.Security.SslPolicyErrors.None;
+            };
+        }
+
+        return handler;
+    });
+
 builder.Services.AddOptions();
 
 // Log Keycloak configuration (without secrets)
