@@ -37,12 +37,14 @@ internal static class InstanceGovernanceSettingHelpers
         var brandingLogoUrl = await systemSettingRepository.GetByKey(GovernanceSettingKeys.BrandingLogoUrl);
         var brandingFaviconUrl = await systemSettingRepository.GetByKey(GovernanceSettingKeys.BrandingFaviconUrl);
         var brandingCustomCssUrl = await systemSettingRepository.GetByKey(GovernanceSettingKeys.BrandingCustomCssUrl);
+        var resolvedDeploymentMode = DeserializeString(deploymentMode?.Value, "SingleTenant");
+        var isMultiTenant = resolvedDeploymentMode.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase);
 
         return new InstanceGovernanceSettingsDto
         {
-            DeploymentMode = DeserializeString(deploymentMode?.Value, "SingleTenant"),
-            AllowTenantSelfServiceRegistration = DeserializeBoolean(tenantSelfService?.Value, false),
-            AllowTenantWhiteLabeling = DeserializeBoolean(tenantWhiteLabeling?.Value, false),
+            DeploymentMode = resolvedDeploymentMode,
+            AllowTenantSelfServiceRegistration = isMultiTenant && DeserializeBoolean(tenantSelfService?.Value, false),
+            AllowTenantWhiteLabeling = isMultiTenant && DeserializeBoolean(tenantWhiteLabeling?.Value, false),
             DefaultPublicHomePage = NormalizeHomePage(DeserializeString(defaultHomePage?.Value, DefaultPublicHomePage)),
             EnableIslamicModule = DeserializeBoolean(islamicModule?.Value, true),
             EnableTechModule = DeserializeBoolean(techModule?.Value, true),
@@ -79,6 +81,7 @@ internal static class InstanceGovernanceSettingHelpers
         settings.DefaultBrandLogoUrl = NormalizeOptionalUrl(settings.DefaultBrandLogoUrl);
         settings.DefaultBrandFaviconUrl = NormalizeOptionalUrl(settings.DefaultBrandFaviconUrl);
         settings.DefaultBrandCustomCssUrl = NormalizeOptionalUrl(settings.DefaultBrandCustomCssUrl);
+        var isMultiTenant = settings.DeploymentMode.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase);
 
         await UpsertSystemSettingAsync(
             systemSettingRepository,
@@ -94,7 +97,7 @@ internal static class InstanceGovernanceSettingHelpers
         await UpsertSystemSettingAsync(
             systemSettingRepository,
             GovernanceSettingKeys.TenantSelfServiceRegistration,
-            JsonSerializer.Serialize(settings.AllowTenantSelfServiceRegistration),
+            JsonSerializer.Serialize(isMultiTenant && settings.AllowTenantSelfServiceRegistration),
             SettingValueType.Boolean,
             false,
             "Tenant",
@@ -104,7 +107,7 @@ internal static class InstanceGovernanceSettingHelpers
         await UpsertSystemSettingAsync(
             systemSettingRepository,
             GovernanceSettingKeys.TenantWhiteLabelingEnabled,
-            JsonSerializer.Serialize(settings.DeploymentMode == "MultiTenant" && settings.AllowTenantWhiteLabeling),
+            JsonSerializer.Serialize(isMultiTenant && settings.AllowTenantWhiteLabeling),
             SettingValueType.Boolean,
             false,
             "Tenant",

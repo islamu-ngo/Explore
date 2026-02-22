@@ -75,6 +75,8 @@ public partial class CreateEvent
     // Sessions
     private List<SessionEditorModel> sessions = new();
     private EventAppearanceSettings _appearance = new();
+    private int _activeStepIndex = 0;
+    private const int LastWizardStepIndex = 4;
 
     private bool isProcessing = false;
     private Guid createdEventId = Guid.Empty;
@@ -126,6 +128,34 @@ public partial class CreateEvent
                     _groupRoleError = "You don't have the authority to publish events for this group. Only Creator or Admin roles can publish events.";
                 }
             }
+        }
+    }
+
+    private Guid? SelectedOrganizationId
+    {
+        get => _selectedOrganizationId;
+        set
+        {
+            if (_selectedOrganizationId == value)
+            {
+                return;
+            }
+
+            OnOrganizationSelected(value);
+        }
+    }
+
+    private Guid? SelectedGroupId
+    {
+        get => _selectedGroupId;
+        set
+        {
+            if (_selectedGroupId == value)
+            {
+                return;
+            }
+
+            OnGroupSelected(value);
         }
     }
 
@@ -218,18 +248,38 @@ public partial class CreateEvent
         // EventTypeId, AudienceGenderId, AudienceAgeId are now optional (nullable)
         // We do NOT want to auto-select the first item.
 
-        if (eventFormats?.Any() == true && createDto.EventFormatId == 0)
+        if (eventFormats?.Any() == true && createDto.EventFormatId is null or <= 0)
         {
             createDto.EventFormatId = eventFormats.First().Id;
         }
-        if (visibilityTypes?.Any() == true && createDto.VisibilityTypeId == 0)
+        if (visibilityTypes?.Any() == true && createDto.VisibilityTypeId is null or <= 0)
         {
             createDto.VisibilityTypeId = visibilityTypes.First().Id;
         }
-        if (createDto.EventFormatId == 0)
+        if (createDto.EventStatusId is null or <= 0)
+        {
+            createDto.EventStatusId = 1;
+        }
+
+        if (!createDto.IsRegistrationRequired.HasValue)
         {
             createDto.IsRegistrationRequired = true;
-            createDto.EventFormatId = 1; // Default: In-Person
+        }
+    }
+
+    private void GoToNextStep()
+    {
+        if (_activeStepIndex < LastWizardStepIndex)
+        {
+            _activeStepIndex++;
+        }
+    }
+
+    private void GoToPreviousStep()
+    {
+        if (_activeStepIndex > 0)
+        {
+            _activeStepIndex--;
         }
     }
 
@@ -381,6 +431,11 @@ public partial class CreateEvent
 
     private async Task HandleSubmit()
     {
+        if (_activeStepIndex != LastWizardStepIndex)
+        {
+            return;
+        }
+
         if (!ValidateForm())
         {
             return;
@@ -412,6 +467,10 @@ public partial class CreateEvent
             createDto.GroupId = _publisherMode == "group" ? _selectedGroupId : null;
             createDto.FeaturedImageId = featuredImageId;
             createDto.MadhabId = selectedMadhabId;
+            createDto.IsRegistrationRequired = sessions.Any(s => s.RegistrationModeId is > 0);
+            createDto.EventStatusId ??= 1;
+            createDto.VisibilityTypeId ??= 1;
+            createDto.EventFormatId ??= 1;
             createDto.MetadataJson = EventAppearanceMetadataHelper.Upsert(createDto.MetadataJson, _appearance);
 
             // Calculate Event Start/End dates from Sessions

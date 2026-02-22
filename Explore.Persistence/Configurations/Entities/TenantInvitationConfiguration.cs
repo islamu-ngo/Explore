@@ -12,8 +12,6 @@ public class TenantInvitationConfiguration : IEntityTypeConfiguration<TenantInvi
 {
     public void Configure(EntityTypeBuilder<TenantInvitation> builder)
     {
-        builder.ToTable("TenantInvitations");
-
         builder.HasKey(e => e.Id);
 
         builder.Property(e => e.Id)

@@ -12,8 +12,6 @@ public class TenantOnboardingStateConfiguration : IEntityTypeConfiguration<Tenan
 {
     public void Configure(EntityTypeBuilder<TenantOnboardingState> builder)
     {
-        builder.ToTable("TenantOnboardingStates");
-
         builder.HasKey(e => e.Id);
 
         builder.Property(e => e.Id)

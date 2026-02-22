@@ -12,8 +12,6 @@ public class InstanceBootstrapStateConfiguration : IEntityTypeConfiguration<Inst
 {
     public void Configure(EntityTypeBuilder<InstanceBootstrapState> builder)
     {
-        builder.ToTable("InstanceBootstrapStates");
-
         builder.HasKey(e => e.Id);
 
         builder.Property(e => e.Id)

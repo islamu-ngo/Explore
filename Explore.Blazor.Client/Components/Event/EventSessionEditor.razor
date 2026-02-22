@@ -78,7 +78,7 @@
                            Clearable>
                     @foreach (var location in Locations)
                     {
-                        <MudSelectItem Value="@((Guid?)location.Id)">
+                        <MudSelectItem T="Guid?" Value="@((Guid?)location.Id)">
                             @location.FullName @(!string.IsNullOrEmpty(location.City) ? $" - {location.City}" : "")
                         </MudSelectItem>
                     }
@@ -129,7 +129,12 @@
                            FullWidth>
                     @foreach (var language in Languages)
                     {
-                        <MudSelectItem Value="@language.Id">@language.FullName</MudSelectItem>
+                        if (language.Id is not int languageId)
+                        {
+                            continue;
+                        }
+
+                        <MudSelectItem T="int" Value="@languageId">@language.FullName</MudSelectItem>
                     }
                 </MudSelect>
             </MudItem>

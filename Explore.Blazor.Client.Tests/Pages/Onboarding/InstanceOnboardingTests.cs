@@ -68,6 +68,42 @@ public class InstanceOnboardingTests : IDisposable
     }
 
     [Test]
+    public async Task DeploymentStep_SingleTenant_HidesTenantSelfServiceRegistrationOption()
+    {
+        // Arrange
+        var cut = RenderForDeploymentMode("SingleTenant");
+
+        // Assert
+        cut.WaitForAssertion(() =>
+        {
+            if (cut.Markup.Contains("Allow tenant self-service registration", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Tenant self-service option should be hidden in single-tenant mode.");
+            }
+        });
+
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task DeploymentStep_MultiTenant_ShowsTenantSelfServiceRegistrationOption()
+    {
+        // Arrange
+        var cut = RenderForDeploymentMode("MultiTenant");
+
+        // Assert
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Allow tenant self-service registration", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Tenant self-service option should be visible in multi-tenant mode.");
+            }
+        });
+
+        await Task.CompletedTask;
+    }
+
+    [Test]
     public async Task CompleteOnboarding_SingleTenantPersonal_RedirectsToEvents()
     {
         // Arrange

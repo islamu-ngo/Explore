@@ -1,4 +1,6 @@
 using System.Net.Http.Json;
+using System.Net;
+using System.Net.Http.Headers;
 using System.Text.Json;
 using Explore.Blazor.Client.Clients;
 using Microsoft.AspNetCore.Components.Forms;
@@ -113,16 +115,24 @@ public class PresignedDownloadUrlResponse
 /// </summary>
 public class ImageStorageService : IImageStorageService
 {
+    private const string GenerateUploadUrlPath = "/api/storageobject/generate-upload-url";
+    private const string UploadProxyPath = "/bff/storage/upload-proxy";
     private readonly IEventApiClient _apiClient;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<ImageStorageService> _logger;
+    private readonly BffClient? _bffClient;
     private const long DefaultMaxFileSize = 10 * 1024 * 1024; // 10MB
 
-    public ImageStorageService(IEventApiClient apiClient, IHttpClientFactory httpClientFactory, ILogger<ImageStorageService> logger)
+    public ImageStorageService(
+        IEventApiClient apiClient,
+        IHttpClientFactory httpClientFactory,
+        ILogger<ImageStorageService> logger,
+        BffClient? bffClient = null)
     {
         _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
         _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _bffClient = bffClient;
     }
 
     /// <inheritdoc />
@@ -181,7 +191,13 @@ public class ImageStorageService : IImageStorageService
                 ContentType = contentType
             };
 
-            var response = await _apiClient.GenerateUploadUrlAsync(request);
+            // Use a direct BFF call first to avoid fetch failures from generated client content negotiation.
+            var response = await GetUploadUrlViaBffAsync(request);
+            if (response == null)
+            {
+                _logger.LogWarning("BFF upload URL request returned no usable response. Falling back to generated API client.");
+                response = await _apiClient.GenerateUploadUrlAsync(request);
+            }
 
             // Defensive: server might return non-null DTO but with an empty UploadUrl.
             if (response == null)
@@ -214,6 +230,70 @@ public class ImageStorageService : IImageStorageService
         {
             _logger.LogError(ex, "Error getting upload URL");
             return null;
+        }
+    }
+
+    private async Task<UploadUrlResponseDto?> GetUploadUrlViaBffAsync(UploadRequestDto request)
+    {
+        try
+        {
+            using var httpClient = _httpClientFactory.CreateClient("BffClient");
+            using var response = await httpClient.PostAsJsonAsync(GenerateUploadUrlPath, request);
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                _logger.LogWarning("Upload URL request returned 401 Unauthorized");
+                return null;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorBody = await response.Content.ReadAsStringAsync();
+                _logger.LogWarning("Upload URL request failed via BFF. Status={StatusCode}, Body={Body}",
+                    (int)response.StatusCode, errorBody);
+                return null;
+            }
+
+            return await response.Content.ReadFromJsonAsync<UploadUrlResponseDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error calling upload URL endpoint via BFF");
+            return null;
+        }
+    }
+
+    private async Task<bool> UploadImageViaBffProxyAsync(string uploadUrl, FileUploadData fileData)
+    {
+        try
+        {
+            using var form = new MultipartFormDataContent();
+            form.Add(new StringContent(uploadUrl), "uploadUrl");
+            form.Add(new StringContent(fileData.ContentType), "contentType");
+
+            using var fileContent = new ByteArrayContent(fileData.Content);
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(fileData.ContentType);
+            form.Add(fileContent, "file", fileData.FileName);
+
+            using var response = _bffClient is not null
+                ? await _bffClient.PostMultipartAsync(UploadProxyPath, form)
+                : await _httpClientFactory.CreateClient("BffClient").PostAsync(UploadProxyPath, form);
+
+            if (response.IsSuccessStatusCode)
+            {
+                _logger.LogInformation("BFF upload proxy completed successfully for {FileName}", fileData.FileName);
+                return true;
+            }
+
+            var errorBody = await response.Content.ReadAsStringAsync();
+            _logger.LogError("BFF upload proxy failed for {FileName}. Status={StatusCode}, Body={Body}",
+                fileData.FileName, (int)response.StatusCode, errorBody);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "BFF upload proxy request failed for {FileName}", fileData.FileName);
+            return false;
         }
     }
 
@@ -308,6 +388,12 @@ public class ImageStorageService : IImageStorageService
         {
             _logger.LogWarning("Invalid upload URL format: {UploadUrl} - aborting upload", uploadUrl);
             return false;
+        }
+
+        if (OperatingSystem.IsBrowser())
+        {
+            _logger.LogInformation("Browser runtime detected. Uploading via BFF proxy for {FileName}", fileData.FileName);
+            return await UploadImageViaBffProxyAsync(uploadUrl, fileData);
         }
 
         try
@@ -418,14 +504,20 @@ public class ImageStorageService : IImageStorageService
             _logger.LogDebug("S3 upload completed successfully for {FileName}", fileData.FileName);
 
             // Step 3: Create StorageObject record
-            var createDto = new CreateStorageObjectDto
+            var createDto = BuildCreateStorageObjectDto(
+                fileData.ContentType,
+                uploadResponse.ViewUrl,
+                uploadResponse.ObjectKey,
+                fileData.FileName,
+                fileData.Size);
+            if (createDto == null)
             {
-                FileTypeId = GetFileTypeId(fileData.ContentType),
-                Uri = uploadResponse.ViewUrl,
-                FullName = fileData.FileName,
-                Extension = Path.GetExtension(fileData.FileName),
-                Size = fileData.Size
-            };
+                return new ImageUploadResult
+                {
+                    Success = false,
+                    ErrorMessage = "Failed to build storage metadata for uploaded image."
+                };
+            }
 
             _logger.LogInformation("Creating StorageObject record for {FileName}", fileData.FileName);
 
@@ -435,6 +527,20 @@ public class ImageStorageService : IImageStorageService
                 createResponse = await _apiClient.StorageobjectPOSTAsync(createDto);
                 _logger.LogInformation("StorageObject API response received: Success={Success}, Id={Id}, Message={Message}",
                     createResponse?.Success, createResponse?.Id, createResponse?.Message);
+            }
+            catch (ApiException<ProblemDetails> apiEx)
+            {
+                var problemMessage = BuildProblemDetailsMessage(apiEx.Result);
+                _logger.LogError(apiEx,
+                    "StorageobjectPOSTAsync returned {StatusCode} for {FileName}. Details: {ProblemMessage}",
+                    apiEx.StatusCode,
+                    fileData.FileName,
+                    problemMessage);
+                return new ImageUploadResult
+                {
+                    Success = false,
+                    ErrorMessage = $"API call failed ({apiEx.StatusCode}): {problemMessage}"
+                };
             }
             catch (Exception apiEx)
             {
@@ -520,17 +626,41 @@ public class ImageStorageService : IImageStorageService
             }
 
             // Step 3: Create StorageObject record
-            var createDto = new CreateStorageObjectDto
+            var createDto = BuildCreateStorageObjectDto(
+                file.ContentType,
+                uploadResponse.ViewUrl,
+                uploadResponse.ObjectKey,
+                file.Name,
+                file.Size);
+            if (createDto == null)
             {
-                FileTypeId = GetFileTypeId(file.ContentType),
-                Uri = uploadResponse.ViewUrl,
-                FullName = file.Name,
-                Extension = Path.GetExtension(file.Name),
-                Size = file.Size
-            };
+                return new ImageUploadResult
+                {
+                    Success = false,
+                    ErrorMessage = "Failed to build storage metadata for uploaded image."
+                };
+            }
 
             _logger.LogInformation("Creating StorageObject record");
-            var createResponse = await _apiClient.StorageobjectPOSTAsync(createDto);
+            BaseCommandResponseOfGuid? createResponse;
+            try
+            {
+                createResponse = await _apiClient.StorageobjectPOSTAsync(createDto);
+            }
+            catch (ApiException<ProblemDetails> apiEx)
+            {
+                var problemMessage = BuildProblemDetailsMessage(apiEx.Result);
+                _logger.LogError(apiEx,
+                    "StorageobjectPOSTAsync returned {StatusCode} for {FileName}. Details: {ProblemMessage}",
+                    apiEx.StatusCode,
+                    file.Name,
+                    problemMessage);
+                return new ImageUploadResult
+                {
+                    Success = false,
+                    ErrorMessage = $"API call failed ({apiEx.StatusCode}): {problemMessage}"
+                };
+            }
 
             if (createResponse?.Success == true)
             {
@@ -703,26 +833,139 @@ public class ImageStorageService : IImageStorageService
         }
     }
 
-    private int GetFileTypeId(string contentType)
+    private CreateStorageObjectDto? BuildCreateStorageObjectDto(
+        string contentType,
+        string? viewUrl,
+        string? objectKey,
+        string fileName,
+        long size)
     {
-        return contentType.ToLower() switch
+        var uri = !string.IsNullOrWhiteSpace(viewUrl) ? viewUrl : objectKey;
+        if (string.IsNullOrWhiteSpace(uri))
         {
-            "image/jpeg" or "image/jpg" => 1,
-            "image/png" => 2,
-            "image/gif" => 3,
-            "image/webp" => 4,
-            "image/svg+xml" => 5,
-            _ => 1 // Default to JPEG
+            _logger.LogError("Cannot build CreateStorageObjectDto: both ViewUrl and ObjectKey are empty for {FileName}", fileName);
+            return null;
+        }
+
+        var extension = Path.GetExtension(fileName);
+        if (string.IsNullOrWhiteSpace(extension))
+        {
+            extension = GetDefaultExtension(contentType);
+        }
+
+        // API DTO has non-nullable Guid TenantId. Sending null from generated client causes model-binding 400.
+        return new CreateStorageObjectDto
+        {
+            FileTypeId = GetFileTypeId(contentType),
+            Uri = uri,
+            FullName = fileName,
+            Extension = extension,
+            Size = size,
+            TenantId = Guid.Empty
         };
     }
-}
 
-// Local DTO for parsing the response (matches BaseCommandResponse<Guid>)
-internal class BaseCommandResponse
-{
-    public bool Success { get; set; }
-    public string? Message { get; set; }
-    public Guid Id { get; set; }
-    public List<string>? Errors { get; set; }
-}
+    private static string BuildProblemDetailsMessage(ProblemDetails? problemDetails)
+    {
+        if (problemDetails == null)
+        {
+            return "Bad request";
+        }
 
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(problemDetails.Title))
+        {
+            parts.Add(problemDetails.Title!);
+        }
+
+        if (!string.IsNullOrWhiteSpace(problemDetails.Detail))
+        {
+            parts.Add(problemDetails.Detail!);
+        }
+
+        if (problemDetails.AdditionalProperties.TryGetValue("errors", out var errorsObject))
+        {
+            var validationErrors = FlattenValidationErrors(errorsObject);
+            if (!string.IsNullOrWhiteSpace(validationErrors))
+            {
+                parts.Add(validationErrors);
+            }
+        }
+
+        return parts.Count == 0 ? "Bad request" : string.Join(" | ", parts);
+    }
+
+    private static string FlattenValidationErrors(object? errorsObject)
+    {
+        if (errorsObject is not JsonElement errorsJson || errorsJson.ValueKind != JsonValueKind.Object)
+        {
+            return string.Empty;
+        }
+
+        var messages = new List<string>();
+        foreach (var entry in errorsJson.EnumerateObject())
+        {
+            if (entry.Value.ValueKind != JsonValueKind.Array)
+            {
+                continue;
+            }
+
+            var fieldMessages = new List<string>();
+            foreach (var item in entry.Value.EnumerateArray())
+            {
+                var message = item.GetString();
+                if (!string.IsNullOrWhiteSpace(message))
+                {
+                    fieldMessages.Add(message);
+                }
+            }
+
+            if (fieldMessages.Count > 0)
+            {
+                messages.Add($"{entry.Name}: {string.Join(", ", fieldMessages)}");
+            }
+        }
+
+        return string.Join("; ", messages);
+    }
+
+    private static string GetDefaultExtension(string contentType)
+    {
+        return contentType.ToLowerInvariant() switch
+        {
+            "image/jpeg" or "image/jpg" => ".jpg",
+            "image/png" => ".png",
+            "image/gif" => ".gif",
+            "image/webp" => ".webp",
+            "image/svg+xml" => ".svg",
+            _ => ".bin"
+        };
+    }
+
+    private int GetFileTypeId(string contentType)
+    {
+        var normalized = (contentType ?? string.Empty).Trim().ToLowerInvariant();
+        if (normalized.StartsWith("image/", StringComparison.Ordinal))
+        {
+            return 1; // FileTypeEnum.Image
+        }
+
+        if (normalized.StartsWith("video/", StringComparison.Ordinal))
+        {
+            return 3; // FileTypeEnum.Video
+        }
+
+        if (normalized.StartsWith("audio/", StringComparison.Ordinal))
+        {
+            return 4; // FileTypeEnum.Audio
+        }
+
+        if (normalized.StartsWith("text/", StringComparison.Ordinal) ||
+            normalized == "application/pdf")
+        {
+            return 2; // FileTypeEnum.Document
+        }
+
+        return 5; // FileTypeEnum.Other
+    }
+}

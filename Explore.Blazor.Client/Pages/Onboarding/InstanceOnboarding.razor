@@ -57,9 +57,12 @@
                             Single Tenant merges instance and tenant administration. Multi Tenant enables tenant-level onboarding and separation.
                         </MudText>
 
-                        <MudSwitch T="bool" @bind-Value="_model.AllowTenantSelfServiceRegistration" Color="Color.Primary">
-                            Allow tenant self-service registration
-                        </MudSwitch>
+                        @if (IsMultiTenantMode)
+                        {
+                            <MudSwitch T="bool" @bind-Value="_model.AllowTenantSelfServiceRegistration" Color="Color.Primary">
+                                Allow tenant self-service registration
+                            </MudSwitch>
+                        }
                         <MudSwitch T="bool"
                                    @bind-Value="_model.AllowTenantWhiteLabeling"
                                    Disabled="@(!IsMultiTenantMode)"
@@ -321,6 +324,7 @@
         _model = await InstanceOnboardingService.GetSettingsAsync();
         if (!IsMultiTenantMode)
         {
+            _model.AllowTenantSelfServiceRegistration = false;
             _model.AllowTenantWhiteLabeling = false;
         }
 
@@ -342,11 +346,26 @@
             return;
         }
 
+        var validationResult = await InstanceOnboardingService.ValidateSecretAsync(secret);
+        if (!validationResult.Valid)
+        {
+            await Http.DeleteAsync("/bff/setup-secret");
+            await JSRuntime.InvokeVoidAsync("sessionStorage.removeItem", "setup-secret");
+            _errorMessage = "Setup secret expired or is invalid. Please enter the current setup secret again.";
+            StateHasChanged();
+            Navigation.NavigateTo("/setup", forceLoad: true);
+            return;
+        }
+
         var syncResponse = await Http.PostAsJsonAsync("/bff/setup-secret/sync", new { Secret = secret });
         if (syncResponse.IsSuccessStatusCode)
         {
             _setupSecretSynced = true;
+            return;
         }
+
+        _errorMessage = "Could not sync setup secret for onboarding. Please return to setup and try again.";
+        StateHasChanged();
     }
 
     private void OnDeploymentModeChanged(string deploymentMode)
@@ -356,6 +375,7 @@
         _model.DeploymentMode = string.IsNullOrWhiteSpace(deploymentMode) ? "SingleTenant" : deploymentMode.Trim();
         if (!IsMultiTenantMode)
         {
+            _model.AllowTenantSelfServiceRegistration = false;
             _model.AllowTenantWhiteLabeling = false;
         }
 
@@ -437,6 +457,7 @@
 
         if (!IsMultiTenantMode)
         {
+            _model.AllowTenantSelfServiceRegistration = false;
             _model.AllowTenantWhiteLabeling = false;
         }
 

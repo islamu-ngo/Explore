@@ -128,7 +128,7 @@
     {
         if (firstRender)
         {
-            await LoadSecretFromSessionAsync();
+            await RestoreSecretFromSessionAsync();
         }
 
         await EnsureSecretSyncedForAuthenticatedSessionAsync();
@@ -197,17 +197,32 @@
         Navigation.NavigateTo("/auth/login?returnUrl=/setup", forceLoad: true);
     }
 
-    private async Task LoadSecretFromSessionAsync()
+    private async Task RestoreSecretFromSessionAsync()
     {
-        var storedSecret = await JSRuntime.InvokeAsync<string?>("sessionStorage.getItem", "setup-secret");
-        _hasStoredSecret = !string.IsNullOrWhiteSpace(storedSecret);
-
-        if (_hasStoredSecret)
+        var storedSecret = (await JSRuntime.InvokeAsync<string?>("sessionStorage.getItem", "setup-secret"))?.Trim();
+        if (string.IsNullOrWhiteSpace(storedSecret))
         {
-            _secret = storedSecret!.Trim();
-            _validationSucceeded = true;
+            _hasStoredSecret = false;
+            _validationSucceeded = false;
+            _secret = string.Empty;
+            StateHasChanged();
+            return;
         }
 
+        var validationResult = await InstanceOnboardingService.ValidateSecretAsync(storedSecret);
+        if (!validationResult.Valid)
+        {
+            await ClearStoredSecretAsync();
+            _errorMessage = "Stored setup secret is no longer valid. Please enter the current setup secret.";
+            StateHasChanged();
+            return;
+        }
+
+        _hasStoredSecret = true;
+        _secret = storedSecret;
+        _validationSucceeded = true;
+        _isSecretSyncedForAuthenticatedSession = false;
+        _errorMessage = null;
         StateHasChanged();
     }
 

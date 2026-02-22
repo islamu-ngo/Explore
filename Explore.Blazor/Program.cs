@@ -830,6 +830,96 @@ app.MapPost("/bff/theme", (HttpContext ctx) =>
     return Results.BadRequest();
 }).ExcludeFromDescription();
 
+app.MapPost("/bff/storage/upload-proxy", async (
+    HttpContext ctx,
+    IHttpClientFactory clientFactory,
+    ILoggerFactory loggerFactory,
+    CancellationToken cancellationToken) =>
+{
+    const long maxUploadBytes = 10 * 1024 * 1024;
+    var logger = loggerFactory.CreateLogger("StorageUploadProxy");
+
+    if (!ctx.Request.HasFormContentType)
+    {
+        return Results.BadRequest(new { error = "Request must be multipart/form-data." });
+    }
+
+    var form = await ctx.Request.ReadFormAsync(cancellationToken);
+    var uploadUrl = form["uploadUrl"].ToString();
+    var contentType = form["contentType"].ToString();
+    var file = form.Files.GetFile("file");
+
+    if (file is null || file.Length == 0)
+    {
+        return Results.BadRequest(new { error = "File is required." });
+    }
+
+    if (file.Length > maxUploadBytes)
+    {
+        return Results.BadRequest(new { error = "File exceeds max size (10MB)." });
+    }
+
+    if (!Uri.TryCreate(uploadUrl, UriKind.Absolute, out var uploadUri) ||
+        !string.Equals(uploadUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+    {
+        return Results.BadRequest(new { error = "Invalid upload URL." });
+    }
+
+    var query = uploadUri.Query;
+    if (!query.Contains("X-Amz-Algorithm", StringComparison.OrdinalIgnoreCase) ||
+        !query.Contains("X-Amz-Signature", StringComparison.OrdinalIgnoreCase))
+    {
+        logger.LogWarning("Rejected upload proxy request for non-presigned URL host {Host}", uploadUri.Host);
+        return Results.BadRequest(new { error = "Upload URL must be pre-signed." });
+    }
+
+    if (string.IsNullOrWhiteSpace(contentType))
+    {
+        contentType = string.IsNullOrWhiteSpace(file.ContentType)
+            ? "application/octet-stream"
+            : file.ContentType;
+    }
+
+    if (!MediaTypeHeaderValue.TryParse(contentType, out var mediaTypeHeader))
+    {
+        return Results.BadRequest(new { error = "Invalid content type." });
+    }
+
+    try
+    {
+        using var s3Client = clientFactory.CreateClient("S3Upload");
+        await using var stream = file.OpenReadStream();
+        using var content = new StreamContent(stream);
+        content.Headers.ContentType = mediaTypeHeader;
+
+        using var response = await s3Client.PutAsync(uploadUri, content, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            logger.LogWarning(
+                "Upload proxy failed for host {Host}. Status={StatusCode}, Body={Body}",
+                uploadUri.Host,
+                (int)response.StatusCode,
+                responseBody);
+
+            return Results.Json(
+                new { error = "Storage upload failed.", statusCode = (int)response.StatusCode },
+                statusCode: StatusCodes.Status502BadGateway);
+        }
+
+        return Results.Ok();
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Upload proxy exception for host {Host}", uploadUri.Host);
+        return Results.Json(
+            new { error = "Storage upload failed due to an internal proxy error." },
+            statusCode: StatusCodes.Status502BadGateway);
+    }
+})
+.RequireAuthorization()
+.ExcludeFromDescription();
+
 app.MapPost("/bff/setup-secret", async (HttpContext ctx) =>
 {
     var setupSecretSessionService = ctx.RequestServices.GetRequiredService<ISetupSecretSessionService>();
@@ -838,24 +928,17 @@ app.MapPost("/bff/setup-secret", async (HttpContext ctx) =>
 
     if (string.IsNullOrWhiteSpace(secret))
     {
-        return Results.BadRequest();
+        return Results.BadRequest(new { error = "Setup secret is required." });
     }
 
-    ctx.Response.Cookies.Append("setup-secret", secret, new CookieOptions
+    var validation = await ValidateSetupSecretAsync(ctx, secret, ctx.RequestAborted);
+    if (!validation.IsValid)
     {
-        MaxAge = TimeSpan.FromMinutes(60),
-        Path = "/",
-        SameSite = SameSiteMode.Lax,
-        HttpOnly = true,
-        Secure = !app.Environment.IsDevelopment()
-    });
-
-    var userId = ctx.User.FindFirst("sub")?.Value
-        ?? ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-    if (!string.IsNullOrWhiteSpace(userId))
-    {
-        setupSecretSessionService.SetForUser(userId, secret);
+        ClearSetupSecret(ctx, setupSecretSessionService, !app.Environment.IsDevelopment());
+        return Results.Json(new { error = validation.Error }, statusCode: validation.StatusCode);
     }
+
+    PersistSetupSecret(ctx, setupSecretSessionService, secret, !app.Environment.IsDevelopment());
 
     return Results.Ok();
 }).ExcludeFromDescription();
@@ -867,26 +950,23 @@ app.MapPost("/bff/setup-secret/sync", async (HttpContext ctx) =>
     var secret = payload?.Secret?.Trim();
     if (string.IsNullOrWhiteSpace(secret))
     {
-        return Results.BadRequest();
+        return Results.BadRequest(new { error = "Setup secret is required." });
     }
 
-    var userId = ctx.User.FindFirst("sub")?.Value
-        ?? ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    var userId = ResolveUserId(ctx);
     if (string.IsNullOrWhiteSpace(userId))
     {
         return Results.Unauthorized();
     }
 
-    setupSecretSessionService.SetForUser(userId, secret);
-
-    ctx.Response.Cookies.Append("setup-secret", secret, new CookieOptions
+    var validation = await ValidateSetupSecretAsync(ctx, secret, ctx.RequestAborted);
+    if (!validation.IsValid)
     {
-        MaxAge = TimeSpan.FromMinutes(60),
-        Path = "/",
-        SameSite = SameSiteMode.Lax,
-        HttpOnly = true,
-        Secure = !app.Environment.IsDevelopment()
-    });
+        ClearSetupSecret(ctx, setupSecretSessionService, !app.Environment.IsDevelopment(), userId);
+        return Results.Json(new { error = validation.Error }, statusCode: validation.StatusCode);
+    }
+
+    PersistSetupSecret(ctx, setupSecretSessionService, secret, !app.Environment.IsDevelopment(), userId);
 
     return Results.Ok();
 }).ExcludeFromDescription();
@@ -894,20 +974,7 @@ app.MapPost("/bff/setup-secret/sync", async (HttpContext ctx) =>
 app.MapDelete("/bff/setup-secret", (HttpContext ctx) =>
 {
     var setupSecretSessionService = ctx.RequestServices.GetRequiredService<ISetupSecretSessionService>();
-    ctx.Response.Cookies.Delete("setup-secret", new CookieOptions
-    {
-        Path = "/",
-        SameSite = SameSiteMode.Lax,
-        HttpOnly = true,
-        Secure = !app.Environment.IsDevelopment()
-    });
-
-    var userId = ctx.User.FindFirst("sub")?.Value
-        ?? ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-    if (!string.IsNullOrWhiteSpace(userId))
-    {
-        setupSecretSessionService.ClearForUser(userId);
-    }
+    ClearSetupSecret(ctx, setupSecretSessionService, !app.Environment.IsDevelopment());
 
     return Results.Ok();
 }).ExcludeFromDescription();
@@ -948,7 +1015,125 @@ app.MapReverseProxy();
 
 await app.RunAsync();
 
+static async Task<SetupSecretValidationGatewayResult> ValidateSetupSecretAsync(HttpContext ctx, string secret, CancellationToken cancellationToken)
+{
+    var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
+    var logger = ctx.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("SetupSecretGateway");
+
+    try
+    {
+        var client = clientFactory.CreateClient("BffClient");
+        var payload = new SetupSecretCookieRequest { Secret = secret };
+        using var response = await client.PostAsJsonAsync("api/InstanceOnboarding/validate-secret", payload, cancellationToken);
+
+        SetupSecretValidationResponse? body = null;
+        try
+        {
+            body = await response.Content.ReadFromJsonAsync<SetupSecretValidationResponse>(cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogDebug(ex, "Could not parse setup secret validation response body.");
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.Gone)
+        {
+            return new SetupSecretValidationGatewayResult(
+                IsValid: false,
+                StatusCode: StatusCodes.Status410Gone,
+                Error: body?.Error ?? "Setup already completed.");
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return new SetupSecretValidationGatewayResult(
+                IsValid: false,
+                StatusCode: StatusCodes.Status502BadGateway,
+                Error: "Could not validate setup secret at this time.");
+        }
+
+        if (body?.Valid == true)
+        {
+            return new SetupSecretValidationGatewayResult(
+                IsValid: true,
+                StatusCode: StatusCodes.Status200OK,
+                Error: string.Empty);
+        }
+
+        return new SetupSecretValidationGatewayResult(
+            IsValid: false,
+            StatusCode: StatusCodes.Status400BadRequest,
+            Error: body?.Error ?? "Invalid setup secret.");
+    }
+    catch (Exception ex)
+    {
+        logger.LogWarning(ex, "Setup secret validation request failed.");
+        return new SetupSecretValidationGatewayResult(
+            IsValid: false,
+            StatusCode: StatusCodes.Status503ServiceUnavailable,
+            Error: "Could not validate setup secret at this time.");
+    }
+}
+
+static void PersistSetupSecret(
+    HttpContext ctx,
+    ISetupSecretSessionService setupSecretSessionService,
+    string secret,
+    bool secureCookie,
+    string? userId = null)
+{
+    ctx.Response.Cookies.Append("setup-secret", secret, new CookieOptions
+    {
+        MaxAge = TimeSpan.FromMinutes(60),
+        Path = "/",
+        SameSite = SameSiteMode.Lax,
+        HttpOnly = true,
+        Secure = secureCookie
+    });
+
+    var resolvedUserId = string.IsNullOrWhiteSpace(userId) ? ResolveUserId(ctx) : userId;
+    if (!string.IsNullOrWhiteSpace(resolvedUserId))
+    {
+        setupSecretSessionService.SetForUser(resolvedUserId, secret);
+    }
+}
+
+static void ClearSetupSecret(
+    HttpContext ctx,
+    ISetupSecretSessionService setupSecretSessionService,
+    bool secureCookie,
+    string? userId = null)
+{
+    ctx.Response.Cookies.Delete("setup-secret", new CookieOptions
+    {
+        Path = "/",
+        SameSite = SameSiteMode.Lax,
+        HttpOnly = true,
+        Secure = secureCookie
+    });
+
+    var resolvedUserId = string.IsNullOrWhiteSpace(userId) ? ResolveUserId(ctx) : userId;
+    if (!string.IsNullOrWhiteSpace(resolvedUserId))
+    {
+        setupSecretSessionService.ClearForUser(resolvedUserId);
+    }
+}
+
+static string? ResolveUserId(HttpContext ctx)
+{
+    return ctx.User.FindFirst("sub")?.Value
+        ?? ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+}
+
 file sealed class SetupSecretCookieRequest
 {
     public string? Secret { get; set; }
 }
+
+file sealed class SetupSecretValidationResponse
+{
+    public bool Valid { get; set; }
+    public string? Error { get; set; }
+}
+
+file sealed record SetupSecretValidationGatewayResult(bool IsValid, int StatusCode, string Error);

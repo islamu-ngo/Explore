@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using Microsoft.JSInterop;
+using System.Net.Http;
 
 namespace Explore.Blazor.Client.Services;
 
@@ -27,7 +28,7 @@ public sealed class BffClient
     public async Task<HttpResponseMessage> PostAsync<T>(string path, T body)
     {
         var token = await GetXsrfAsync();
-        var req = new HttpRequestMessage(HttpMethod.Post, path)
+        using var req = new HttpRequestMessage(HttpMethod.Post, path)
         {
             Content = JsonContent.Create(body)
         };
@@ -35,5 +36,14 @@ public sealed class BffClient
         return await _http.SendAsync(req);
     }
 
-    // Add PutAsync/DeleteAsync similar to PostAsync…
+    public async Task<HttpResponseMessage> PostMultipartAsync(string path, MultipartFormDataContent content)
+    {
+        var token = await GetXsrfAsync();
+        using var req = new HttpRequestMessage(HttpMethod.Post, path)
+        {
+            Content = content
+        };
+        req.Headers.Add("X-CSRF-TOKEN", token);
+        return await _http.SendAsync(req);
+    }
 }

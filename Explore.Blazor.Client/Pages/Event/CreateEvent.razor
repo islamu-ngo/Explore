@@ -6,7 +6,7 @@
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Authorization
-@rendermode @(new InteractiveAutoRenderMode(prerender: false))
+@rendermode InteractiveAuto
 @attribute [Authorize]
 
 <PageTitle>Create Event</PageTitle>
@@ -55,7 +55,7 @@
                 <EditForm Model="createDto" OnValidSubmit="@HandleSubmit">
                     <FluentValidationValidator />
 
-                    <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" Color="Color.Transparent" SliderColor="Color.Primary">
+                    <MudTabs @bind-ActivePanelIndex="_activeStepIndex" Elevation="0" Rounded="true" ApplyEffectsToContainer="true" Color="Color.Transparent" SliderColor="Color.Primary">
                         <MudTabPanel Text="Publish As" Icon="@Icons.Material.Filled.AccountCircle">
                             <div class="py-6">
                                 <MudText Typo="Typo.h6" Class="mb-4">Who is publishing this event?</MudText>
@@ -103,18 +103,17 @@
                                 {
                                     @if (_myOrganizations != null && _myOrganizations.Any())
                                     {
-                                        <MudSelect Value="_selectedOrganizationId"
+                                        <MudSelect @bind-Value="SelectedOrganizationId"
                                                    T="Guid?"
                                                    Label="Select Organization"
                                                    Variant="Variant.Outlined"
                                                    AnchorOrigin="Origin.BottomCenter"
                                                    Required="true"
-                                                   Class="mb-4"
-                                                   ValueChanged="OnOrganizationSelected">
+                                                   Class="mb-4">
                                             <MudSelectItem T="Guid?" Value="@((Guid?)null)">-- Select an organization --</MudSelectItem>
-                                            @foreach (var org in _myOrganizations)
+                                            @foreach (var org in _myOrganizations.Where(o => o.Id.HasValue))
                                             {
-                                                <MudSelectItem @key="org.Id" T="Guid?" Value="@((Guid?)org.Id)">
+                                                <MudSelectItem @key="org.Id" T="Guid?" Value="@org.Id">
                                                     @org.FullName @(org.CurrentUserRole.HasValue ? $"({GetRoleName((int)org.CurrentUserRole.Value)})" : "")
                                                 </MudSelectItem>
                                             }
@@ -139,18 +138,17 @@
                                 {
                                     @if (_myGroups != null && _myGroups.Any())
                                     {
-                                        <MudSelect Value="_selectedGroupId"
+                                        <MudSelect @bind-Value="SelectedGroupId"
                                                    T="Guid?"
                                                    Label="Select Group"
                                                    Variant="Variant.Outlined"
                                                    AnchorOrigin="Origin.BottomCenter"
                                                    Required="true"
-                                                   Class="mb-4"
-                                                   ValueChanged="OnGroupSelected">
+                                                   Class="mb-4">
                                             <MudSelectItem T="Guid?" Value="@((Guid?)null)">-- Select a group --</MudSelectItem>
                                             @foreach (var group in _myGroups)
                                             {
-                                                <MudSelectItem @key="group.Id" T="Guid?" Value="@((Guid?)group.Id)">
+                                                <MudSelectItem @key="group.Id" T="Guid?" Value="@group.Id">
                                                     @group.FullName @(group.CurrentUserRole.HasValue ? $"({GetRoleName(group.CurrentUserRole.Value)})" : "")
                                                 </MudSelectItem>
                                             }
@@ -356,7 +354,12 @@
                                                 {
                                                     @foreach (var c in allCategories)
                                                     {
-                                                        <MudSelectItem @key="c.Id" Value="@c.Id">@c.FullName</MudSelectItem>
+                                                        if (c.Id is not Guid categoryId)
+                                                        {
+                                                            continue;
+                                                        }
+
+                                                        <MudSelectItem T="Guid" @key="categoryId" Value="@categoryId">@c.FullName</MudSelectItem>
                                                     }
                                                 }
                                             </MudSelect>
@@ -365,7 +368,12 @@
                                                 {
                                                     @foreach (var t in allTags)
                                                     {
-                                                        <MudSelectItem @key="t.Id" Value="@t.Id">@t.FullName</MudSelectItem>
+                                                        if (t.Id is not Guid tagId)
+                                                        {
+                                                            continue;
+                                                        }
+
+                                                        <MudSelectItem T="Guid" @key="tagId" Value="@tagId">@t.FullName</MudSelectItem>
                                                     }
                                                 }
                                             </MudSelect>
@@ -412,29 +420,57 @@
 
                     <MudDivider Class="my-4" />
 
-                    <div class="d-flex justify-end gap-3">
+                    <div class="d-flex justify-space-between gap-3">
                         <MudButton Variant="Variant.Text" OnClick="@(() => Navigation.NavigateTo("/events"))" Class="rounded-pill">Cancel</MudButton>
-                        <MudButton ButtonType="ButtonType.Submit"
-                                   Variant="Variant.Filled"
-                                   Color="Color.Primary"
-                                   Disabled="@(isProcessing || _isUploadingImage || !string.IsNullOrEmpty(_organizationRoleError) || !string.IsNullOrEmpty(_groupRoleError))"
-                                   StartIcon="@(isProcessing || _isUploadingImage ? null : Icons.Material.Filled.Save)"
-                                   Class="rounded-pill px-6">
-                            @if (isProcessing)
+
+                        <div class="d-flex gap-3">
+                            <MudButton ButtonType="ButtonType.Button"
+                                       Variant="Variant.Outlined"
+                                       Color="Color.Secondary"
+                                       Disabled="@(_activeStepIndex == 0 || isProcessing || _isUploadingImage)"
+                                       StartIcon="@Icons.Material.Filled.NavigateBefore"
+                                       OnClick="GoToPreviousStep"
+                                       Class="rounded-pill">
+                                Previous
+                            </MudButton>
+
+                            @if (_activeStepIndex < LastWizardStepIndex)
                             {
-                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                                <span>Creating...</span>
-                            }
-                            else if (_isUploadingImage)
-                            {
-                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                                <span>Uploading image...</span>
+                                <MudButton ButtonType="ButtonType.Button"
+                                           Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           Disabled="@(isProcessing || _isUploadingImage || !string.IsNullOrEmpty(_organizationRoleError) || !string.IsNullOrEmpty(_groupRoleError))"
+                                           EndIcon="@Icons.Material.Filled.NavigateNext"
+                                           OnClick="GoToNextStep"
+                                           Class="rounded-pill px-6">
+                                    Next
+                                </MudButton>
                             }
                             else
                             {
-                                <span>Create Event</span>
+                                <MudButton ButtonType="ButtonType.Submit"
+                                           Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           Disabled="@(isProcessing || _isUploadingImage || !string.IsNullOrEmpty(_organizationRoleError) || !string.IsNullOrEmpty(_groupRoleError))"
+                                           StartIcon="@(isProcessing || _isUploadingImage ? null : Icons.Material.Filled.Save)"
+                                           Class="rounded-pill px-6">
+                                    @if (isProcessing)
+                                    {
+                                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                        <span>Creating...</span>
+                                    }
+                                    else if (_isUploadingImage)
+                                    {
+                                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                        <span>Uploading image...</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Create Event</span>
+                                    }
+                                </MudButton>
                             }
-                        </MudButton>
+                        </div>
                     </div>
                 </EditForm>
             </div>

@@ -12,8 +12,6 @@ public class TenantCapabilityConfiguration : IEntityTypeConfiguration<TenantCapa
 {
     public void Configure(EntityTypeBuilder<TenantCapability> builder)
     {
-        builder.ToTable("TenantCapabilities");
-
         builder.Property(c => c.Id).HasDefaultValueSql("uuidv7()");
         builder.Property(c => c.ConfigurationJson).HasColumnType("jsonb");
 

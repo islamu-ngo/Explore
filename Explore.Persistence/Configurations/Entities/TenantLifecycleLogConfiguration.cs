@@ -12,8 +12,6 @@ public class TenantLifecycleLogConfiguration : IEntityTypeConfiguration<TenantLi
 {
     public void Configure(EntityTypeBuilder<TenantLifecycleLog> builder)
     {
-        builder.ToTable("TenantLifecycleLogs");
-
         builder.HasKey(e => e.Id);
 
         builder.Property(e => e.Id)

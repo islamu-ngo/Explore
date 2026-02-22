@@ -12,8 +12,6 @@ public class PlatformUserRoleConfiguration : IEntityTypeConfiguration<PlatformUs
 {
     public void Configure(EntityTypeBuilder<PlatformUserRole> builder)
     {
-        builder.ToTable("PlatformUserRoles");
-
         builder.HasKey(e => e.Id);
 
         builder.Property(e => e.Id)

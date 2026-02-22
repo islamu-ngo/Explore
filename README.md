@@ -40,6 +40,9 @@ ISLAMU Event is a **self-hostable event discovery and management platform** that
 - **The ISLAMU-hosted instance is Islamic-focused**: Our public instance at [event.openislamu.org](https://event.openislamu.org) is curated for Islamic events and community needs
 - **White-label ready**: Rebrand and customize the platform for your specific use case with full control over branding, policies, and features
 
+
+![Event List Screenshot][event-list-image]
+
 ## ✨ Why ISLAMU Event
 
 ### Key Differentiators
@@ -380,6 +383,7 @@ Banner from: [support-palestine-banner repository][support-palestine-banner-sour
 [back-to-top]: https://img.shields.io/badge/-BACK_TO_TOP-151515?style=flat-square
 [back-to-top-link]: #readme-top
 [islamu-platform]: https://event.openislamu.org
+[event-list-image]: images/event-list-image.png
 [roadmap-link]: https://sites.plane.so/views/b8b7d9fced694f5a9d9a546e9d40d988
 [roadmap-image]: images/Roadmap%20Kanban%20View.png
 [code-of-conduct]: CODE_OF_CONDUCT.md

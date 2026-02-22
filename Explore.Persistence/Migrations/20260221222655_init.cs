@@ -223,7 +223,7 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "InstanceBootstrapStates",
+                name: "instance_bootstrap_states",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -267,7 +267,7 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "ModuleDefinitions",
+                name: "module_definitions",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
@@ -623,55 +623,7 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "tenant_navigation_links",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    label = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    url = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    icon = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    order = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
-                    open_in_new_tab = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
-                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_tenant_navigation_links", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_tenant_navigation_links_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "tenant_setting_overrides",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    setting_key = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
-                    value = table.Column<string>(type: "text", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_tenant_setting_overrides", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_tenant_setting_overrides_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "TenantCapabilities",
+                name: "tenant_capabilities",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
@@ -692,7 +644,7 @@ namespace Explore.Persistence.Migrations
                     table.ForeignKey(
                         name: "fk_tenant_capabilities_module_definitions_module_id",
                         column: x => x.module_id,
-                        principalTable: "ModuleDefinitions",
+                        principalTable: "module_definitions",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
@@ -704,7 +656,7 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "TenantInvitations",
+                name: "tenant_invitations",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -741,7 +693,7 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "TenantLifecycleLogs",
+                name: "tenant_lifecycle_logs",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -780,7 +732,31 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "TenantOnboardingStates",
+                name: "tenant_navigation_links",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    label = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    url = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    icon = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    order = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    open_in_new_tab = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_tenant_navigation_links", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_tenant_navigation_links_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "tenant_onboarding_states",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -798,6 +774,30 @@ namespace Explore.Persistence.Migrations
                     table.PrimaryKey("pk_tenant_onboarding_states", x => x.id);
                     table.ForeignKey(
                         name: "fk_tenant_onboarding_states_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "tenant_setting_overrides",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    setting_key = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
+                    value = table.Column<string>(type: "text", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_tenant_setting_overrides", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_tenant_setting_overrides_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalTable: "tenants",
                         principalColumn: "id",
@@ -1295,7 +1295,7 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "PlatformUserRoles",
+                name: "platform_user_roles",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -2357,12 +2357,12 @@ namespace Explore.Persistence.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "ix_module_definitions_display_order",
-                table: "ModuleDefinitions",
+                table: "module_definitions",
                 column: "display_order");
 
             migrationBuilder.CreateIndex(
                 name: "ix_module_definitions_module_key",
-                table: "ModuleDefinitions",
+                table: "module_definitions",
                 column: "module_key",
                 unique: true);
 
@@ -2476,17 +2476,17 @@ namespace Explore.Persistence.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "ix_platform_user_roles_role_id",
-                table: "PlatformUserRoles",
+                table: "platform_user_roles",
                 column: "role_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_platform_user_roles_user_id",
-                table: "PlatformUserRoles",
+                table: "platform_user_roles",
                 column: "user_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_platform_user_roles_user_id_role_id",
-                table: "PlatformUserRoles",
+                table: "platform_user_roles",
                 columns: new[] { "user_id", "role_id" },
                 unique: true);
 
@@ -2559,6 +2559,53 @@ namespace Explore.Persistence.Migrations
                 column: "tenant_id");
 
             migrationBuilder.CreateIndex(
+                name: "ix_tenant_capabilities_module_id",
+                table: "tenant_capabilities",
+                column: "module_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_tenant_capabilities_tenant_id_module_id",
+                table: "tenant_capabilities",
+                columns: new[] { "tenant_id", "module_id" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_tenant_invitations_role_id",
+                table: "tenant_invitations",
+                column: "role_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_tenant_invitations_tenant_id_email",
+                table: "tenant_invitations",
+                columns: new[] { "tenant_id", "email" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_tenant_invitations_token",
+                table: "tenant_invitations",
+                column: "token",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_tenant_lifecycle_logs_new_status_id",
+                table: "tenant_lifecycle_logs",
+                column: "new_status_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_tenant_lifecycle_logs_old_status_id",
+                table: "tenant_lifecycle_logs",
+                column: "old_status_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_tenant_lifecycle_logs_tenant_id_transitioned_at",
+                table: "tenant_lifecycle_logs",
+                columns: new[] { "tenant_id", "transitioned_at" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_tenant_lifecycle_logs_transitioned_by_user_id",
+                table: "tenant_lifecycle_logs",
+                column: "transitioned_by_user_id");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_tenant_members_role_id",
                 table: "tenant_members",
                 column: "role_id");
@@ -2582,6 +2629,12 @@ namespace Explore.Persistence.Migrations
                 name: "ix_tenant_navigation_links_tenant_id_order",
                 table: "tenant_navigation_links",
                 columns: new[] { "tenant_id", "order" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_tenant_onboarding_states_tenant_id",
+                table: "tenant_onboarding_states",
+                column: "tenant_id",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_tenant_setting_overrides_tenant_id_setting_key",
@@ -2618,59 +2671,6 @@ namespace Explore.Persistence.Migrations
                 name: "ix_tenant_users_user_id",
                 table: "tenant_users",
                 column: "user_id");
-
-            migrationBuilder.CreateIndex(
-                name: "ix_tenant_capabilities_module_id",
-                table: "TenantCapabilities",
-                column: "module_id");
-
-            migrationBuilder.CreateIndex(
-                name: "ix_tenant_capabilities_tenant_id_module_id",
-                table: "TenantCapabilities",
-                columns: new[] { "tenant_id", "module_id" },
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "ix_tenant_invitations_role_id",
-                table: "TenantInvitations",
-                column: "role_id");
-
-            migrationBuilder.CreateIndex(
-                name: "ix_tenant_invitations_tenant_id_email",
-                table: "TenantInvitations",
-                columns: new[] { "tenant_id", "email" });
-
-            migrationBuilder.CreateIndex(
-                name: "ix_tenant_invitations_token",
-                table: "TenantInvitations",
-                column: "token",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "ix_tenant_lifecycle_logs_new_status_id",
-                table: "TenantLifecycleLogs",
-                column: "new_status_id");
-
-            migrationBuilder.CreateIndex(
-                name: "ix_tenant_lifecycle_logs_old_status_id",
-                table: "TenantLifecycleLogs",
-                column: "old_status_id");
-
-            migrationBuilder.CreateIndex(
-                name: "ix_tenant_lifecycle_logs_tenant_id_transitioned_at",
-                table: "TenantLifecycleLogs",
-                columns: new[] { "tenant_id", "transitioned_at" });
-
-            migrationBuilder.CreateIndex(
-                name: "ix_tenant_lifecycle_logs_transitioned_by_user_id",
-                table: "TenantLifecycleLogs",
-                column: "transitioned_by_user_id");
-
-            migrationBuilder.CreateIndex(
-                name: "ix_tenant_onboarding_states_tenant_id",
-                table: "TenantOnboardingStates",
-                column: "tenant_id",
-                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_tenants_slug",
@@ -2831,7 +2831,7 @@ namespace Explore.Persistence.Migrations
                 name: "indexed_dids");
 
             migrationBuilder.DropTable(
-                name: "InstanceBootstrapStates");
+                name: "instance_bootstrap_states");
 
             migrationBuilder.DropTable(
                 name: "location_pii");
@@ -2852,7 +2852,7 @@ namespace Explore.Persistence.Migrations
                 name: "pds_sync_outbox");
 
             migrationBuilder.DropTable(
-                name: "PlatformUserRoles");
+                name: "platform_user_roles");
 
             migrationBuilder.DropTable(
                 name: "role_permissions");
@@ -2867,10 +2867,22 @@ namespace Explore.Persistence.Migrations
                 name: "tag_type_tags");
 
             migrationBuilder.DropTable(
+                name: "tenant_capabilities");
+
+            migrationBuilder.DropTable(
+                name: "tenant_invitations");
+
+            migrationBuilder.DropTable(
+                name: "tenant_lifecycle_logs");
+
+            migrationBuilder.DropTable(
                 name: "tenant_members");
 
             migrationBuilder.DropTable(
                 name: "tenant_navigation_links");
+
+            migrationBuilder.DropTable(
+                name: "tenant_onboarding_states");
 
             migrationBuilder.DropTable(
                 name: "tenant_setting_overrides");
@@ -2880,18 +2892,6 @@ namespace Explore.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "tenant_users");
-
-            migrationBuilder.DropTable(
-                name: "TenantCapabilities");
-
-            migrationBuilder.DropTable(
-                name: "TenantInvitations");
-
-            migrationBuilder.DropTable(
-                name: "TenantLifecycleLogs");
-
-            migrationBuilder.DropTable(
-                name: "TenantOnboardingStates");
 
             migrationBuilder.DropTable(
                 name: "user_authentication_tokens");
@@ -2924,7 +2924,7 @@ namespace Explore.Persistence.Migrations
                 name: "tags");
 
             migrationBuilder.DropTable(
-                name: "ModuleDefinitions");
+                name: "module_definitions");
 
             migrationBuilder.DropTable(
                 name: "roles");

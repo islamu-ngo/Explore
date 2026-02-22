@@ -12,8 +12,6 @@ public class ModuleDefinitionConfiguration : IEntityTypeConfiguration<ModuleDefi
 {
     public void Configure(EntityTypeBuilder<ModuleDefinition> builder)
     {
-        builder.ToTable("ModuleDefinitions");
-
         builder.Property(m => m.Id).HasDefaultValueSql("uuidv7()");
         builder.Property(m => m.ModuleKey).HasMaxLength(50).IsRequired();
         builder.Property(m => m.Name).HasMaxLength(100).IsRequired();
@@ -28,4 +26,3 @@ public class ModuleDefinitionConfiguration : IEntityTypeConfiguration<ModuleDefi
         // Seed default modules
     }
 }
-

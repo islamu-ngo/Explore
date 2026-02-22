@@ -9,7 +9,7 @@
         "default-src 'self';",
         $"script-src 'self' 'wasm-unsafe-eval' 'unsafe-hashes' 'sha256-qnHnQs7NjQNHHNYv/I9cW+I62HzDJjbnyS/OFzqlix0=' 'nonce-{cspNonce}';",
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;",
-        "connect-src 'self' ws: wss:;",
+        "connect-src 'self' https: http: ws: wss:;",
         "img-src 'self' data: https: blob:;",
         "font-src 'self' https://fonts.gstatic.com;",
         "object-src 'none';",

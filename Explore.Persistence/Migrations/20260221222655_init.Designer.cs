@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Explore.Persistence.Migrations
 {
     [DbContext(typeof(ExploreDbContext))]
-    [Migration("20260221170929_init")]
+    [Migration("20260221222655_init")]
     partial class init
     {
         /// <inheritdoc />
@@ -1892,7 +1892,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_instance_bootstrap_states");
 
-                    b.ToTable("InstanceBootstrapStates", (string)null);
+                    b.ToTable("instance_bootstrap_states", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Language", b =>
@@ -2097,7 +2097,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_module_definitions_module_key");
 
-                    b.ToTable("ModuleDefinitions", (string)null);
+                    b.ToTable("module_definitions", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Modules.TenantCapability", b =>
@@ -2158,7 +2158,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_tenant_capabilities_tenant_id_module_id");
 
-                    b.ToTable("TenantCapabilities", (string)null);
+                    b.ToTable("tenant_capabilities", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Organization", b =>
@@ -2649,7 +2649,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_platform_user_roles_user_id_role_id");
 
-                    b.ToTable("PlatformUserRoles", (string)null);
+                    b.ToTable("platform_user_roles", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationMode", b =>
@@ -3183,7 +3183,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "Email")
                         .HasDatabaseName("ix_tenant_invitations_tenant_id_email");
 
-                    b.ToTable("TenantInvitations", (string)null);
+                    b.ToTable("tenant_invitations", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantLifecycleLog", b =>
@@ -3253,7 +3253,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "TransitionedAt")
                         .HasDatabaseName("ix_tenant_lifecycle_logs_tenant_id_transitioned_at");
 
-                    b.ToTable("TenantLifecycleLogs", (string)null);
+                    b.ToTable("tenant_lifecycle_logs", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantMember", b =>
@@ -3426,7 +3426,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_tenant_onboarding_states_tenant_id");
 
-                    b.ToTable("TenantOnboardingStates", (string)null);
+                    b.ToTable("tenant_onboarding_states", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantSetting", b =>
