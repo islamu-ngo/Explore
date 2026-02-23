@@ -194,24 +194,34 @@ erDiagram
 The system supports **modular event types** through aspect entities that extend the base `Event` entity with domain-specific fields. This pattern allows different event types to have specialized properties while maintaining a consistent core event model.
 
 #### EventIslamicAspect
-*   **Purpose**: Extends `Event` with Islamic-specific fields for religious events (e.g., prayer times, gender segregation, madhab compatibility).
+*   **Purpose**: Extends `Event` with Islamic-specific fields for religious events (prayer-relative scheduling, gender segregation, madhab).
 *   **Key Fields**:
-    -   `PrayerTimesAvailable` (bool) - Indicates if prayer facilities are provided
-    -   `GenderSegregated` (bool) - Indicates gender-separated seating/areas
-    -   `MadhabFocus` - Primary Islamic jurisprudence school
-    -   `IslamicCalendarDate` - Date in Hijri calendar
+    -   `ReferencePrayer` (`PrayerTime`) - Fajr, Sunrise, Dhuhr, Asr, Maghrib, Isha
+    -   `PrayerTimeOffset` (int) - Minutes offset from the referenced prayer
+    -   `GenderMode` (`GenderSegregationMode`) - Mixed, MenOnly, WomenOnly, Segregated, Family
+    -   `IncludesQuranRecitation` (bool)
+    -   `PrimaryLanguageId` (int?) - Lookup ID for Islamic content language
 *   **Relationship**: One-to-one with `Event` (optional)
 *   **Module Governance**: Enabled per-tenant via `TenantCapability` table
+
+**Enum References**:
+- `PrayerTime`: Fajr (1), Sunrise (2), Dhuhr (3), Asr (4), Maghrib (5), Isha (6)
+- `GenderSegregationMode`: Mixed (0), MenOnly (1), WomenOnly (2), Segregated (3), Family (4)
 
 #### EventTechAspect
 *   **Purpose**: Extends `Event` with technology-specific fields for tech conferences, workshops, and hackathons.
 *   **Key Fields**:
-    -   `TechStack` (string) - Primary technologies covered (e.g., ".NET, React, Azure")
-    -   `SkillLevel` (enum) - Target audience skill level (Beginner, Intermediate, Advanced, Expert)
-    -   `Platform` (string) - Development platform focus (Web, Mobile, Desktop, Cloud)
-    -   `HandsOnLab` (bool) - Indicates if hands-on coding exercises included
+    -   `GithubRepoUrl` (string?) - Repository link
+    -   `HackathonTrack` (string?) - Competition track name
+    -   `SkillLevel` (`SkillLevel`) - AllLevels, Beginner, Intermediate, Advanced
+    -   `TechStackTags` (string?) - Comma-separated tech tags
+    -   `RequiresLaptop` (bool)
+    -   `IsCodingCompetition` (bool)
 *   **Relationship**: One-to-one with `Event` (optional)
 *   **Module Governance**: Enabled per-tenant via `TenantCapability` table
+
+**Enum References**:
+- `SkillLevel`: AllLevels (0), Beginner (1), Intermediate (2), Advanced (3)
 
 #### Module Resolution Strategy Pattern
 
@@ -230,7 +240,7 @@ var islamicAspect = await _islamicModuleService.GetAspectAsync(eventId);
 if (islamicAspect != null)
 {
     // Event has Islamic-specific data
-    dto.PrayerTimes = islamicAspect.PrayerTimesAvailable;
+    dto.ReferencePrayer = islamicAspect.ReferencePrayer;
 }
 ```
 

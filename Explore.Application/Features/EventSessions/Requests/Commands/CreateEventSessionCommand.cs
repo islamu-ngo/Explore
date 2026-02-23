@@ -1,11 +1,15 @@
 using System;
+using Explore.Application.Authorization;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.Responses;
 using MediatR;
 
 namespace Explore.Application.Features.EventSessions.Requests.Commands;
 
-public class CreateEventSessionCommand : IRequest<BaseCommandResponse<Guid>>
+[AuthorizeResource("event_session", PermissionAction.Create)]
+public class CreateEventSessionCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public required CreateEventSessionDto EventSessionDto { get; set; }
+
+    string? ISecureRequest.ResourceId => EventSessionDto.EventId.ToString();
 }

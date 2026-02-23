@@ -25,7 +25,7 @@ Render policy is configured in instance governance settings with two layers:
 
 | Preset | Purpose | Default Behavior |
 |------|---------|------------------|
-| `SeoBalanced` | Recommended default | `InteractiveAuto` + prerender off globally, with public SEO prerender on |
+| `SeoBalanced` | Recommended default | `InteractiveAuto` + prerender off globally, but `public-seo` prerender enabled |
 | `AllPrerendered` | Maximum crawler-first HTML output | `InteractiveAuto` + prerender on for all route groups |
 | `AllInteractiveAutoNoPrerender` | Fast interactive startup | `InteractiveAuto` + prerender off for all route groups |
 | `CustomAdvanced` | Fine-grained control | Enables explicit per-route-group mode/prerender controls |
@@ -34,22 +34,22 @@ Render policy is configured in instance governance settings with two layers:
 
 | Route Group | Intent |
 |------------|--------|
-| `public-seo` | Public listing/detail routes where SEO and prerendering matter most |
-| `operational` | Authenticated workflows and day-to-day interaction surfaces |
-| `admin` | Administrative routes and control panels |
-| `onboarding` | Setup/startup/onboarding flows |
+| `public-seo` | `/`, `/events`, `/welcome`, `/home`, `/event/detail/*` |
+| `operational` | Everything else (authenticated or standard workflows) |
+| `admin` | `/admin/*` |
+| `onboarding` | `/setup`, `/startup`, `/onboarding/*` |
 
 ---
 
 ## Onboarding Guardrail (Invariant)
 
-Onboarding routes must never run in `InteractiveServer` mode.
+Onboarding routes are **forced to `InteractiveServer` at runtime** for instant interactivity, even though governance settings prevent administrators from selecting it.
 
 Enforcement is layered:
 
-- Application validation rejects invalid onboarding mode combinations
-- Command handler emits warning telemetry for rejected onboarding violations
-- Runtime resolver normalizes/guards onboarding behavior
+- Application validation rejects onboarding render-mode settings that attempt to set `InteractiveServer`
+- Settings normalization forces `DisallowInteractiveServerOnOnboarding = true`
+- Runtime resolver overrides onboarding render mode to `InteractiveServer` regardless of configuration
 - Admin UI advanced selector excludes `InteractiveServer` for onboarding
 
 Covered onboarding routes include:
@@ -105,6 +105,27 @@ The runtime policy payload includes:
   - `OnboardingRenderMode`, `OnboardingPrerenderEnabled`
 - guardrail flag:
   - `DisallowInteractiveServerOnOnboarding`
+
+## Governance Keys
+
+Render policies are persisted in `SystemSetting` using the canonical keys from `GovernanceSettingKeys.Routing.RenderPolicy`:
+
+| Setting Key | Purpose |
+|-------------|---------|
+| `routing.render_policy.version` | Render policy schema version (default `1`) |
+| `routing.render_policy.preset` | Selected preset (`SeoBalanced`, `AllPrerendered`, `AllInteractiveAutoNoPrerender`, `CustomAdvanced`) |
+| `routing.render_policy.advanced_enabled` | Enable route-group overrides |
+| `routing.render_policy.onboarding.disallow_interactive_server` | Guardrail flag (always true) |
+| `routing.render_policy.global.render_mode` | Global fallback render mode |
+| `routing.render_policy.global.prerender_enabled` | Global fallback prerender flag |
+| `routing.render_policy.public_seo.render_mode` | Public SEO render mode override |
+| `routing.render_policy.public_seo.prerender_enabled` | Public SEO prerender override |
+| `routing.render_policy.operational.render_mode` | Operational render mode override |
+| `routing.render_policy.operational.prerender_enabled` | Operational prerender override |
+| `routing.render_policy.admin.render_mode` | Admin render mode override |
+| `routing.render_policy.admin.prerender_enabled` | Admin prerender override |
+| `routing.render_policy.onboarding.render_mode` | Onboarding render mode override (validated to exclude `InteractiveServer`) |
+| `routing.render_policy.onboarding.prerender_enabled` | Onboarding prerender override |
 
 ---
 

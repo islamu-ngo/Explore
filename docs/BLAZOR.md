@@ -1,6 +1,6 @@
 # Blazor Frontend Architecture
 
-> **Project-Agnostic Blazor Hybrid UI Guide**
+> **Project-Agnostic Blazor Web App UI Guide**
 >
 > Placeholders use `{Placeholder}` syntax - see [TEMPLATE_GLOSSARY.md](TEMPLATE_GLOSSARY.md).
 

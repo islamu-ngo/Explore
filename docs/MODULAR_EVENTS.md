@@ -5,7 +5,7 @@
 > This document describes how the platform supports deep customization for different
 > cultural, religious, and domain-specific event types through the aspect pattern.
 
-**Last Updated**: January 2026
+**Last Updated**: February 2026
 
 ---
 
@@ -28,7 +28,7 @@ Events are the core aggregate of the platform. Rather than using inheritance to 
 |-----------|----------|---------|
 | **Core Event** | Universal properties | Title, date, organization, status |
 | **Islamic Aspect** | Religious customization | Madhab, prayer time offset, gender segregation |
-| **Tech Aspect** | Technical events | GitHub repo, hackathon track |
+| **Tech Aspect** | Technical events | Skill level, tech stack tags, hackathon flags |
 | **Educational Aspect** | Learning events | Certification, prerequisites |
 
 ### Why Not Inheritance?
@@ -51,9 +51,11 @@ Events are the core aggregate of the platform. Rather than using inheritance to 
 | Attribute | Purpose | Values |
 |-----------|---------|--------|
 | **Madhab** | Jurisprudence school | Hanafi, Maliki, Shafi'i, Hanbali, Mixed |
-| **Prayer Time Offset** | Schedule relative to prayer | Minutes before/after Fajr, Dhuhr, etc. |
-| **Gender Segregation** | Attendance policy | Men-only, Women-only, Segregated, Mixed |
-| **Language Mode** | Primary language | Arabic, English, Urdu, etc. |
+| **Reference Prayer** | Prayer used for scheduling | Fajr, Sunrise, Dhuhr, Asr, Maghrib, Isha |
+| **Prayer Offset** | Schedule relative to prayer | Minutes before/after reference prayer |
+| **Gender Segregation** | Attendance policy | Men-only, Women-only, Segregated, Mixed, Family |
+| **Quran Recitation** | Includes recitation | Boolean flag |
+| **Primary Language** | Islamic content language | Language lookup ID |
 
 ### Prayer-Based Scheduling
 
@@ -88,8 +90,10 @@ Instead of absolute times, events can be scheduled relative to prayer times:
 |-----------|---------|---------|
 | **Repository URL** | Code repository link | GitHub, GitLab URL |
 | **Hackathon Track** | Competition category | AI, Web, Mobile |
-| **Skill Level** | Required expertise | Beginner, Intermediate, Advanced |
+| **Skill Level** | Required expertise | AllLevels, Beginner, Intermediate, Advanced |
 | **Stack Tags** | Technologies used | .NET, React, Python |
+| **Requires Laptop** | Device requirement | Boolean flag |
+| **Coding Competition** | Competitive format | Boolean flag |
 
 ---
 
@@ -193,9 +197,9 @@ Events can be queried by aspect presence:
 | Query | Returns |
 |-------|---------|
 | All events | Events regardless of aspects |
-| Islamic events | Events with Islamic aspect |
-| Tech events | Events with Tech aspect |
-| Islamic tech events | Events with both aspects |
+| Islamic events | Events with Islamic aspect (when module enabled) |
+| Tech events | Events with Tech aspect (when module enabled) |
+| Islamic tech events | Events with both aspects (when both modules enabled) |
 
 ### Aspect-Specific Filters
 
@@ -205,8 +209,15 @@ Within an aspect, specific filters apply:
 |--------|--------|---------|
 | By Madhab | Islamic | "Hanafi events only" |
 | By Gender | Islamic | "Women-only events" |
-| By Track | Tech | "AI hackathon events" |
+| By Prayer | Islamic | "Maghrib-relative events" |
+| By Recitation | Islamic | "Includes Quran recitation" |
+| By Skill Level | Tech | "Beginner-friendly" |
 | By Stack | Tech | ".NET events" |
+| By Competition | Tech | "Hackathon events" |
+
+### Module-Conditional Filters
+
+Aspect filters in the event list API are **silently ignored** when the corresponding module is disabled for the tenant. This keeps the endpoint stable across tenant configurations while preventing invalid combinations.
 
 ---
 

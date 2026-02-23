@@ -23,6 +23,7 @@ public class CerbosAuthorizationService : IAuthorizationProvider
     private readonly CerbosPrincipalBuilder _principalBuilder;
     private readonly IAdminContext _adminContext;
     private readonly ISettingsResolver _settingsResolver;
+    private readonly ITenantContext _tenantContext;
     private readonly ILogger<CerbosAuthorizationService> _logger;
     private readonly CerbosSettings _settings;
 
@@ -45,7 +46,7 @@ public class CerbosAuthorizationService : IAuthorizationProvider
         _principalBuilder = principalBuilder;
         _adminContext = adminContext;
         _settingsResolver = settingsResolver;
-        _ = tenantContext;
+        _tenantContext = tenantContext;
         _logger = logger;
         _settings = settings.Value;
     }
@@ -123,20 +124,35 @@ public class CerbosAuthorizationService : IAuthorizationProvider
         }
     }
 
-    private static CerbosResourceAction[] BuildResources(IReadOnlyList<AuthorizationCheck> checks)
+    private CerbosResourceAction[] BuildResources(IReadOnlyList<AuthorizationCheck> checks)
     {
+        var tenantId = _tenantContext.TenantId;
+
         return checks
-            .Select(check => new CerbosResourceAction
+            .Select(check =>
             {
-                Resource = new CerbosResource
+                var attr = check.ResourceAttributes is null
+                    ? new Dictionary<string, object>()
+                    : new Dictionary<string, object>(check.ResourceAttributes);
+
+                // Auto-enrich with tenantId from current context when not explicitly provided.
+                // Required for Cerbos derived role evaluation (tenant_admin checks resource.attr.tenantId).
+                if (!attr.ContainsKey("tenantId") && tenantId != Guid.Empty)
+                    attr["tenantId"] = tenantId.ToString();
+
+                return new CerbosResourceAction
                 {
-                    Kind = check.ResourceKind,
-                    Id = check.ResourceId,
-                    Attr = check.ResourceAttributes is null
-                        ? new Dictionary<string, object>()
-                        : new Dictionary<string, object>(check.ResourceAttributes)
-                },
-                Actions = [check.Action]
+                    Resource = new CerbosResource
+                    {
+                        Kind = check.ResourceKind,
+                        Id = check.ResourceId,
+                        Attr = attr,
+                        // Scope enables per-tenant policy overrides. When a tenant has custom policies,
+                        // Cerbos resolves the most specific scoped policy and falls back to root.
+                        Scope = tenantId != Guid.Empty ? tenantId.ToString() : null
+                    },
+                    Actions = [check.Action]
+                };
             })
             .ToArray();
     }
@@ -259,6 +275,12 @@ internal class CerbosResource
     public string Kind { get; set; } = string.Empty;
     public string Id { get; set; } = string.Empty;
     public IDictionary<string, object> Attr { get; set; } = new Dictionary<string, object>();
+
+    /// <summary>
+    /// Scope for per-tenant policy overrides. When set, Cerbos resolves the most specific
+    /// scoped policy matching this scope and falls back to the root policy.
+    /// </summary>
+    public string? Scope { get; set; }
 }
 
 internal class CerbosResourceAction

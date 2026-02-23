@@ -7,7 +7,9 @@
 
 ## Overview
 
-The platform supports three deployment tiers, designed to grow with your community:
+The platform supports three deployment tiers, designed to grow with your community.
+
+**Last Updated**: February 2026
 
 | Tier | Name | Target | Authorization | Database | Cerbos |
 |------|------|--------|---------------|----------|--------|
@@ -43,7 +45,7 @@ The simplest deployment. A single Docker Compose stack running all services on o
 
 | Service | Configuration | Notes |
 |---------|---------------|-------|
-| PostgreSQL | Single instance, shared by app + Keycloak | `docker-compose up -d` |
+| PostgreSQL | Single instance, shared by app + Keycloak | `docker compose up -d` |
 | Keycloak | Single instance | Handles OIDC/OAuth 2.0 |
 | API | Single instance | `AuthorizationProvider = "local"` |
 | Blazor BFF | Single instance | Cookie-based auth, YARP proxy |
@@ -115,7 +117,7 @@ A production-ready deployment with high availability for authorization and datab
 - `RuntimeAuthorizationProvider` delegates to `CerbosAuthorizationProvider` (primary)
 - Circuit breaker (Polly): trips after 50% failure rate over 30s, breaks for 15s
 - On Cerbos failure: automatic fallback to `LocalAuthorizationProvider`
-- PolicySyncService pushes role-permission changes to both Cerbos instances via Admin API
+- PolicySyncService pushes role-permission changes to Cerbos via Admin API
 
 ### Resource Estimates
 
@@ -193,7 +195,7 @@ Enterprise-grade deployment with full isolation, zero blast radius between tenan
 
 - Cerbos cluster with N instances behind dedicated load balancer
 - Each instance reads from dedicated Cerbos PostgreSQL cluster
-- PolicySyncService broadcasts to all instances via Admin API
+- PolicySyncService broadcasts to Cerbos via Admin API
 - Audit logs shipped to Loki for centralized analysis
 - Circuit breaker per-instance with shared state via Redis
 

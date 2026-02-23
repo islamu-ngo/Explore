@@ -4,7 +4,7 @@
 >
 > This index provides comprehensive navigation to all project documentation, optimized for both human developers and AI assistants.
 >
-> **Last Generated**: January 2026 | **Scan Level**: Exhaustive
+> **Last Generated**: February 2026 | **Scan Level**: Exhaustive
 
 ---
 
@@ -15,7 +15,7 @@
 | **Getting Started** | [README.md](../README.md) • [CONTRIBUTING.md](CONTRIBUTING.md) |
 | **Architecture** | [ARCHITECTURE.md](ARCHITECTURE.md) • [QUICK_REFERENCE.md](QUICK_REFERENCE.md) |
 | **Development** | [GOVERNANCE.md](GOVERNANCE.md) • [CLAUDE.md](../CLAUDE.md) |
-| **Domain** | [DOMAIN.md](DOMAIN.md) • [Schema](../schema/islamu-event.md) |
+| **Domain** | [DOMAIN.md](DOMAIN.md) • [Schema](../schemas/islamu-event.md) |
 | **Operations** | [OPERATIONS.md](OPERATIONS.md) • [TROUBLESHOOTING.md](TROUBLESHOOTING.md) |
 
 ---
@@ -29,9 +29,9 @@
 | **Repository Type** | Monolith |
 | **Architecture** | Clean Architecture + CQRS + BFF |
 | **Primary Language** | C# |
-| **Framework** | .NET 10 (API) / .NET 9 (Blazor) |
-| **Frontend** | Blazor Server + WASM |
-| **Database** | PostgreSQL with EF Core 10 |
+| **Framework** | .NET 10 (API + Blazor) |
+| **Frontend** | Blazor Web App (InteractiveAuto, Server + WASM) |
+| **Database** | PostgreSQL 18 with EF Core 10 |
 | **Authentication** | Keycloak OIDC/OAuth2 |
 
 ### Project Structure
@@ -158,7 +158,7 @@ Explore/
 
 | Technology | Purpose |
 |------------|---------|
-| PostgreSQL 16 | Primary database |
+| PostgreSQL 18 | Primary database |
 | Keycloak 26 | Identity provider |
 | MinIO | Object storage |
 | Docker | Containerization |
@@ -303,7 +303,7 @@ dotnet run --project Explore.API
 dotnet run --project Explore.Blazor
 
 # Docker Compose (full stack)
-docker-compose up -d
+docker compose up -d
 ```
 
 ### Key Files for Development
@@ -371,4 +371,4 @@ This index was generated using the BMAD Document Project workflow:
 
 ---
 
-*Last Updated: January 2026*
+*Last Updated: February 2026*

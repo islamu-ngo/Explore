@@ -34,7 +34,7 @@ The analysis was conducted using 5 parallel background agents:
 *   **Documentation Gaps:**
     *   **HATEOAS Strategy:** No guidance on when to use HAL+JSON vs plain JSON.
     *   **Caching:** Dual-layer caching (OutputCache + HybridCache) and invalidation patterns are undocumented.
-    *   **Filtering:** Module-conditional filtering (Islamic/Tech aspects) is unexplained.
+*   **Filtering:** Module-conditional filtering (Islamic/Tech aspects) is now documented in `API.md` (Event List Filters).
 
 ### 3.2. Blazor UI Layer
 **Status:** 🟢 Good Architecture / 🔴 Low Doc Coverage
@@ -46,7 +46,7 @@ The analysis was conducted using 5 parallel background agents:
 *   **Implementation Gaps:**
     *   **CSS Isolation:** Only 52% coverage.
     *   **State Management:** Filter state lost on navigation; no global state store.
-    *   **Render Modes:** No clear policy for `InteractiveAuto` vs `InteractiveServer`.
+    *   **Render Modes:** Runtime render policy is documented in `RENDER_POLICIES.md` (presets, route groups, onboarding override).
 *   **Documentation Gaps:**
     *   **Component APIs:** Missing XML docs for `[Parameter]` properties.
     *   **CSS Strategy:** No documentation on the BEM vs Isolation strategy.

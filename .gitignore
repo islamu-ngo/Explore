@@ -31,10 +31,11 @@ temp/
 
 # MCP config
 .mcp.json
-
+    
 # contains mcp secrets
 .gemini/settings.json
-
+.copilot/mcp-config.json
+    
 # Mono auto generated files
 mono_crash.*
 

@@ -5,7 +5,7 @@
 > This document describes how the platform supports both dedicated single-tenant
 > and shared multi-tenant deployments from a single codebase.
 
-**Last Updated**: January 2026
+**Last Updated**: February 2026
 
 ---
 
@@ -28,7 +28,7 @@ The platform supports two deployment modes from the **same codebase**:
 
 Instead of maintaining two codebases:
 1. Multi-tenant code is the foundation
-2. Single-tenant mode forces `TenantId = Default`
+2. Single-tenant mode forces the default tenant at runtime
 3. Tenant management UI is hidden/shown based on mode
 4. Mode can be switched at runtime
 
@@ -62,7 +62,7 @@ Instead of maintaining two codebases:
 ### Multi-Tenant Mode
 
 **Behavior**:
-- `TenantId` resolved from subdomain or header
+- `TenantId` resolved from header → custom domain → subdomain → default tenant
 - Full tenant management UI visible
 - Clear separation between Instance and Tenant Admin
 - Tenant-specific routing (e.g., `mosque.app.com`)
@@ -79,8 +79,7 @@ Instead of maintaining two codebases:
 ### Single-Tenant Default
 
 1. Application installs with seeded data:
-   - `DeploymentMode = Single`
-   - `RegistrationPolicy = Closed`
+   - `deployment.mode = SingleTenant`
    - Default tenant created
 2. First user visits application
 3. Middleware detects single mode, forces default tenant
@@ -135,18 +134,17 @@ Multi-tenant → Single-tenant is possible with constraints:
 
 | Mechanism | Options |
 |-----------|---------|
-| **Subdomain** | `tenant1.app.com` → Tenant1 |
 | **Header** | `X-Tenant-Id: tenant1` → Tenant1 |
-| **Path** | `/tenants/tenant1/...` → Tenant1 |
-| **Claim** | JWT contains tenant ID → Tenant from token |
+| **Custom Domain** | `events.tenant1.org` → Tenant1 |
+| **Subdomain** | `tenant1.app.com` → Tenant1 |
+| **Default** | Fallback to default tenant |
 
 ### Resolution Priority
 
-1. Explicit header (highest priority)
-2. JWT claim
+1. Explicit header (`X-Tenant-Id`)
+2. Custom domain
 3. Subdomain
-4. Path segment
-5. Default tenant (fallback)
+4. Default tenant (fallback)
 
 ---
 
@@ -156,9 +154,7 @@ Multi-tenant → Single-tenant is possible with constraints:
 
 | Setting | Values | Description |
 |---------|--------|-------------|
-| `DeploymentMode` | `Single` / `Multi` | Current mode |
-| `TenantRegistrationPolicy` | `Open` / `InviteOnly` / `Closed` | New tenant policy |
-| `DefaultTenantId` | Tenant ID | Virtual tenant for single mode |
+| `deployment.mode` | `SingleTenant` / `MultiTenant` | Current mode (SystemSetting) |
 
 ### Environment Overrides
 
@@ -166,9 +162,7 @@ For containerized deployments:
 
 | Environment Variable | Purpose |
 |---------------------|---------|
-| `DEPLOYMENT_MODE` | Force mode (overrides database) |
-| `DEFAULT_TENANT_ID` | Custom default tenant |
-| `ALLOW_MODE_SWITCH` | Enable/disable runtime switching |
+| *(None)* | Deployment mode is resolved from SystemSettings at runtime |
 
 ---
 

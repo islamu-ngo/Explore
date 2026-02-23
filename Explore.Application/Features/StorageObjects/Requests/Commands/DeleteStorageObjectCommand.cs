@@ -1,8 +1,12 @@
+using Explore.Application.Authorization;
 using MediatR;
 
 namespace Explore.Application.Features.StorageObjects.Requests.Commands;
 
-public class DeleteStorageObjectCommand : IRequest<bool>
+[AuthorizeResource("storage_object", PermissionAction.Delete)]
+public class DeleteStorageObjectCommand : IRequest<bool>, ISecureRequest
 {
     public Guid Id { get; set; }
+
+    string? ISecureRequest.ResourceId => Id.ToString();
 }

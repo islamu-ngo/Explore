@@ -8,6 +8,7 @@ using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace Explore.API.Controllers;
 
@@ -118,6 +119,30 @@ public class UserController : ControllerBase
 
         Console.WriteLine($"[USER API] User found: {user.Email}");
         return Ok(user);
+    }
+
+    /// <summary>
+    /// Returns the admin authority of the current authenticated user.
+    /// Used by the BFF claims transformation to enrich the ClaimsPrincipal with admin claims.
+    /// </summary>
+    [HttpGet("admin-authority")]
+    [Authorize]
+    [EndpointSummary("Get current user's admin authority")]
+    [EndpointDescription("Returns instance, tenant, and organization admin status for the authenticated user. Consumed by BFF claims transformation.")]
+    public async Task<ActionResult<AdminAuthorityDto>> GetAdminAuthority(CancellationToken cancellationToken = default)
+    {
+        var userId = User.FindFirst("sub")?.Value
+                     ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var guidUserId))
+        {
+            return BadRequest("Invalid User ID in token");
+        }
+
+        var query = new GetAdminAuthorityRequest { UserId = guidUserId };
+        var authority = await _mediator.Send(query, cancellationToken);
+
+        return Ok(authority);
     }
 
     /// <summary>

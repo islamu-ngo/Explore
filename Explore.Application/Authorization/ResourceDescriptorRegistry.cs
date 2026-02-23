@@ -124,6 +124,7 @@ public static class ResourceDescriptorRegistry
             PermissionAction.Create => "create",
             PermissionAction.Update => "update",
             PermissionAction.Delete => "delete",
+            PermissionAction.ManageMembers => "manage_members",
             _ => throw new ArgumentOutOfRangeException(nameof(action), action, null)
         };
     }

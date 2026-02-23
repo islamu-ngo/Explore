@@ -733,6 +733,83 @@ GET /api/event?pageNumber=1&pageSize=20
 
 ---
 
+## 6.1. Event List Filters
+
+The `GET /api/event` endpoint supports a rich set of query parameters. Filters are optional and can be combined.
+
+### Core Filters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `searchTerm` | string | Free-text search across title and description |
+| `formatId` | int | Event format (lookup ID) |
+| `eventTypeId` | int | Event type (lookup ID) |
+| `eventStatusId` | int | Event status (lookup ID) |
+| `madhabId` | int | Madhab (lookup ID) |
+| `audienceGenderId` | int | Audience gender (lookup ID) |
+| `audienceAgeId` | int | Audience age (lookup ID) |
+| `dateFrom` | DateOnly | First session date on/after |
+| `dateTo` | DateOnly | First session date on/before |
+
+### Subquery Filters (Junction Tables)
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `categoryId` | Guid | Category via `EventCategories` |
+| `locationId` | Guid | Session location via `EventSessions` |
+| `languageId` | int | Session language via `EventSessionLanguages` |
+| `registrationModeId` | int | Registration mode via `EventSessions` |
+
+### Tag Filters (Include/Exclude)
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `includedTagIds` | List<Guid> | Tags to include |
+| `excludedTagIds` | List<Guid> | Tags to exclude |
+| `inclusionMode` | `and`/`or` | AND = must have all tags, OR = any tag (default AND) |
+| `exclusionMode` | `and`/`or` | OR = exclude if any tag, AND = exclude only if all tags (default OR) |
+
+### JSONB Metadata Filters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `metadataJsonContains` | string | JSON fragment matched with `@>` |
+| `metadataJsonKeyExists` | string | JSON key existence check (`?`) |
+
+### Islamic Aspect Filters (Module-Conditional)
+
+Applied only when the Islamic module is enabled for the tenant; otherwise silently ignored.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `hasIslamicAspect` | bool | Only events with Islamic aspect |
+| `genderModeId` | int | Gender segregation mode |
+| `includesQuranRecitation` | bool | Includes Quran recitation |
+| `referencePrayerId` | int | Reference prayer (`PrayerTime`) |
+| `islamicPrimaryLanguageId` | int | Islamic content primary language |
+
+### Tech Aspect Filters (Module-Conditional)
+
+Applied only when the Tech module is enabled for the tenant; otherwise silently ignored.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `hasTechAspect` | bool | Only events with Tech aspect |
+| `skillLevelId` | int | Required skill level |
+| `isCodingCompetition` | bool | Coding competition only |
+| `isHackathon` | bool | Hackathon only |
+| `requiresLaptop` | bool | Requires laptop |
+| `techStackTag` | string | Case-insensitive tag match in tech stack |
+
+### Sorting
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `sortBy` | string | `date` | `date`, `title`, `views`, `createdAt` |
+| `sortDescending` | bool | true | Sort direction |
+
+---
+
 ## 7. Error Handling
 
 ### Standardization

@@ -4,6 +4,7 @@
 namespace Explore.Application.Features.EventAspects.Requests.Commands;
 
 using System;
+using Explore.Application.Authorization;
 using Explore.Application.DTOs.EventAspects;
 using Explore.Application.Responses;
 using MediatR;
@@ -11,7 +12,8 @@ using MediatR;
 /// <summary>
 /// Command to create or update the Tech aspect for an event.
 /// </summary>
-public class UpsertEventTechAspectCommand : IRequest<BaseCommandResponse<Guid>>
+[AuthorizeResource("event", PermissionAction.Update)]
+public class UpsertEventTechAspectCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     /// <summary>
     /// The event ID to attach the Tech aspect to.
@@ -22,4 +24,6 @@ public class UpsertEventTechAspectCommand : IRequest<BaseCommandResponse<Guid>>
     /// The Tech aspect data to create or update.
     /// </summary>
     public CreateUpdateTechAspectDto AspectDto { get; set; } = null!;
+
+    string? ISecureRequest.ResourceId => EventId.ToString();
 }

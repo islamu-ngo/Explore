@@ -496,9 +496,11 @@
 
     private async Task NavigatePostCompletionAsync()
     {
+        // forceLoad: true triggers a full HTTP request so the BFF's IClaimsTransformation
+        // runs and enriches the cookie principal with freshly-assigned admin claims.
         if (IsMultiTenantMode)
         {
-            Navigation.NavigateTo("/admin/instance/settings");
+            Navigation.NavigateTo("/admin/instance/settings", forceLoad: true);
             return;
         }
 
@@ -506,7 +508,7 @@
         {
             case FirstHostSetupChoice.Organization:
                 Snackbar.Add("Complete your organization profile now to publish events as an organization.", Severity.Info);
-                Navigation.NavigateTo("/organization/create");
+                Navigation.NavigateTo("/organization/create", forceLoad: true);
                 return;
 
             case FirstHostSetupChoice.GroupQuickSetup:
@@ -521,19 +523,19 @@
                     Snackbar.Add("Could not create the starter group automatically. You can set up a group later.", Severity.Warning);
                 }
 
-                Navigation.NavigateTo("/events");
+                Navigation.NavigateTo("/events", forceLoad: true);
                 return;
             }
 
             case FirstHostSetupChoice.Personal:
                 Snackbar.Add("You can publish events under your account immediately.", Severity.Info);
-                Navigation.NavigateTo("/events");
+                Navigation.NavigateTo("/events", forceLoad: true);
                 return;
 
             case FirstHostSetupChoice.DoLater:
             default:
                 Snackbar.Add("You can set up a group or organization later from your account area.", Severity.Info);
-                Navigation.NavigateTo("/events");
+                Navigation.NavigateTo("/events", forceLoad: true);
                 return;
         }
     }

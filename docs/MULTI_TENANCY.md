@@ -5,7 +5,7 @@
 > This document describes the multi-tenancy model, authority hierarchy, and data isolation patterns.
 > For implementation details and code patterns, see the relevant skills in `.claude/skills/`.
 
-**Last Updated**: January 2026
+**Last Updated**: February 2026
 
 ---
 
@@ -104,8 +104,17 @@ Every tenant-scoped entity implements `ITenantEntity`:
 |-------|-----------|
 | **Database** | Global query filters on `TenantId` |
 | **Application** | Tenant context injected per-request |
-| **API** | Middleware validates tenant claims |
+| **API** | TenantContext resolves tenant per request |
 | **UI** | Routes scoped to tenant context |
+
+### Tenant Resolution Priority
+
+Tenant resolution follows a strict priority order in `TenantContext`:
+
+1. `X-Tenant-Id` HTTP header (explicit selection)
+2. Custom domain lookup (checks `TenantSetting` for matching domain)
+3. Subdomain extraction (extracts from host, looks up tenant by subdomain or slug)
+4. Default tenant (from configuration or hardcoded fallback)
 
 ### Cross-Tenant Operations
 

@@ -5,7 +5,7 @@
 > This document describes the aspect-based extensibility model that enables deep customization
 > without database schema changes or application restarts.
 
-**Last Updated**: January 2026
+**Last Updated**: February 2026
 
 ---
 
@@ -57,8 +57,8 @@ Aspects are optional 1:1 relationships using **shared primary key**:
 | Table | Purpose | Links To |
 |-------|---------|----------|
 | `Events` | Core event data | - |
-| `EventIslamicDetails` | Islamic-specific attributes | `Events.Id` |
-| `EventTechDetails` | Tech-specific attributes | `Events.Id` |
+| `EventIslamicAspect` | Islamic-specific attributes | `Events.Id` |
+| `EventTechAspect` | Tech-specific attributes | `Events.Id` |
 
 **Key Design**: The aspect table's primary key IS also its foreign key to the core entity.
 
@@ -69,8 +69,8 @@ An event that is **both** Islamic and Tech simply has rows in all relevant table
 | Event #100 | Has Row In |
 |------------|------------|
 | Core data | `Events` |
-| Islamic data | `EventIslamicDetails` |
-| Tech data | `EventTechDetails` |
+| Islamic data | `EventIslamicAspect` |
+| Tech data | `EventTechAspect` |
 
 ---
 
@@ -112,9 +112,9 @@ Business logic adapts per-request without application restart:
 
 | Module | Strategy Interface | Implementation |
 |--------|-------------------|----------------|
-| Islamic | `ISchedulingStrategy` | Calculates time based on prayer schedule |
-| Tech | `ISchedulingStrategy` | Standard datetime scheduling |
-| Default | `ISchedulingStrategy` | Fallback implementation |
+| Islamic | `IEventStrategy` | IslamicEventStrategy (validation, aspect handling) |
+| Tech | `IEventStrategy` | TechEventStrategy (validation, aspect handling) |
+| Default | `IEventStrategy` | Default event behavior |
 
 ### Policy Engine
 
@@ -166,8 +166,8 @@ Frontend dynamically renders components based on aspect presence:
 
 | Aspect Type | Renders Component |
 |-------------|-------------------|
-| `Islamic` | Prayer time selector, Madhab dropdown |
-| `Tech` | GitHub link, hackathon track |
+| `Islamic` | Prayer timing, gender mode, madhab, recitation flags |
+| `Tech` | Skill level, tech stack tags, hackathon flags |
 | (none) | Generic form only |
 
 ---

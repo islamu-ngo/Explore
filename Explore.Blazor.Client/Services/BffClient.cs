@@ -4,6 +4,10 @@ using Microsoft.JSInterop;
 
 namespace Explore.Blazor.Client.Services;
 
+/// <summary>
+/// BFF HTTP facade that adds XSRF tokens to mutating requests.
+/// All API calls from WASM route through the BFF reverse proxy (YARP).
+/// </summary>
 public sealed class BffClient
 {
     private readonly HttpClient _http;
@@ -22,10 +26,14 @@ public sealed class BffClient
         return await _mod.InvokeAsync<string>("getCookie", "XSRF-TOKEN");
     }
 
-    public Task<T?> GetAsync<T>(string path) =>
-        _http.GetFromJsonAsync<T>(path);
+    // ── GET ──────────────────────────────────────────────────────────────
 
-    public async Task<HttpResponseMessage> PostAsync<T>(string path, T body)
+    public Task<T?> GetAsync<T>(string path, CancellationToken ct = default) =>
+        _http.GetFromJsonAsync<T>(path, ct);
+
+    // ── POST ─────────────────────────────────────────────────────────────
+
+    public async Task<HttpResponseMessage> PostAsync<T>(string path, T body, CancellationToken ct = default)
     {
         var token = await GetXsrfAsync();
         using var req = new HttpRequestMessage(HttpMethod.Post, path)
@@ -33,10 +41,10 @@ public sealed class BffClient
             Content = JsonContent.Create(body)
         };
         req.Headers.Add("X-CSRF-TOKEN", token);
-        return await _http.SendAsync(req);
+        return await _http.SendAsync(req, ct);
     }
 
-    public async Task<HttpResponseMessage> PostMultipartAsync(string path, MultipartFormDataContent content)
+    public async Task<HttpResponseMessage> PostMultipartAsync(string path, MultipartFormDataContent content, CancellationToken ct = default)
     {
         var token = await GetXsrfAsync();
         using var req = new HttpRequestMessage(HttpMethod.Post, path)
@@ -44,6 +52,67 @@ public sealed class BffClient
             Content = content
         };
         req.Headers.Add("X-CSRF-TOKEN", token);
-        return await _http.SendAsync(req);
+        return await _http.SendAsync(req, ct);
+    }
+
+    // ── PUT ──────────────────────────────────────────────────────────────
+
+    public async Task<HttpResponseMessage> PutAsync<T>(string path, T body, CancellationToken ct = default)
+    {
+        var token = await GetXsrfAsync();
+        using var req = new HttpRequestMessage(HttpMethod.Put, path)
+        {
+            Content = JsonContent.Create(body)
+        };
+        req.Headers.Add("X-CSRF-TOKEN", token);
+        return await _http.SendAsync(req, ct);
+    }
+
+    // ── DELETE ────────────────────────────────────────────────────────────
+
+    public async Task<HttpResponseMessage> DeleteAsync(string path, CancellationToken ct = default)
+    {
+        var token = await GetXsrfAsync();
+        using var req = new HttpRequestMessage(HttpMethod.Delete, path);
+        req.Headers.Add("X-CSRF-TOKEN", token);
+        return await _http.SendAsync(req, ct);
+    }
+
+    // ── PATCH ─────────────────────────────────────────────────────────────
+
+    public async Task<HttpResponseMessage> PatchAsync<T>(string path, T body, CancellationToken ct = default)
+    {
+        var token = await GetXsrfAsync();
+        using var req = new HttpRequestMessage(HttpMethod.Patch, path)
+        {
+            Content = JsonContent.Create(body)
+        };
+        req.Headers.Add("X-CSRF-TOKEN", token);
+        return await _http.SendAsync(req, ct);
+    }
+
+    // ── Typed response helpers ───────────────────────────────────────────
+
+    /// <summary>
+    /// Sends a mutating request and deserializes the JSON response body.
+    /// Returns <c>default</c> when the response is not a success status code.
+    /// </summary>
+    public async Task<TResponse?> SendAsync<TBody, TResponse>(
+        HttpMethod method, string path, TBody body, CancellationToken ct = default)
+    {
+        var token = await GetXsrfAsync();
+        using var req = new HttpRequestMessage(method, path)
+        {
+            Content = JsonContent.Create(body)
+        };
+        req.Headers.Add("X-CSRF-TOKEN", token);
+
+        var response = await _http.SendAsync(req, ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            return default;
+        }
+
+        return await response.Content.ReadFromJsonAsync<TResponse>(ct);
     }
 }

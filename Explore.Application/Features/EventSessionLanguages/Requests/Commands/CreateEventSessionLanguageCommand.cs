@@ -1,10 +1,14 @@
+using Explore.Application.Authorization;
 using Explore.Application.DTOs.EventSessionLanguage;
 using Explore.Application.Responses;
 using MediatR;
 
 namespace Explore.Application.Features.EventSessionLanguages.Requests.Commands;
 
-public class CreateEventSessionLanguageCommand : IRequest<BaseCommandResponse<int>>
+[AuthorizeResource("event_session", PermissionAction.Update)]
+public class CreateEventSessionLanguageCommand : IRequest<BaseCommandResponse<int>>, ISecureRequest
 {
     public required CreateEventSessionLanguageDto EventSessionLanguageDto { get; set; }
+
+    string? ISecureRequest.ResourceId => EventSessionLanguageDto.EventSessionId.ToString();
 }

@@ -28,7 +28,7 @@ The easiest way to run the full stack (API, Blazor, Database, Keycloak, Cerbos) 
     The `migration-service` container will automatically apply database migrations and seed default data. Wait for it to complete (check logs with `docker-compose logs -f migration-service`).
 
 4.  **Access the application:**
-    *   **Main UI:** [https://localhost:7001](https://localhost:7001)
+*   **Main UI:** [https://localhost:7002](https://localhost:7002)
     *   **Keycloak Admin:** [http://localhost:8080](http://localhost:8080) (user: `admin`, pass: `admin`)
     *   **Mailpit (Email):** [http://localhost:8025](http://localhost:8025)
 
@@ -67,7 +67,7 @@ docker-compose restart postgres
 ```
 
 ### Keycloak Redirect Loop
-Ensure you are accessing via `https://localhost:7001`. The OIDC configuration requires HTTPS.
+Ensure you are accessing via `https://localhost:7002`. The OIDC configuration requires HTTPS.
 
 ### "Tenant Not Found"
 Ensure you are using the correct header or domain. In local dev, the default tenant is automatically resolved for `localhost`.

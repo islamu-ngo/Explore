@@ -12,5 +12,6 @@ public enum PermissionAction
     Read,
     Create,
     Update,
-    Delete
+    Delete,
+    ManageMembers
 }

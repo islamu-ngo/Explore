@@ -6,10 +6,12 @@
 
 The long-term vision includes **ATProto-first federation** with an **ActivityPub gateway**, but HTTP federation endpoints are **not currently implemented** in `Explore.API`.
 
+**Last Updated**: February 2026
+
 ## Core Value Proposition
 
 | Component | Value |
-  |-----------|-------|
+|-----------|-------|
 | **Software** | Multi-tenant federated event platform (AGPL) |
 | **Primary Instance** | Trusted Islamic event directory with verification |
 | **Filtering System** | Culturally-appropriate discovery (age, gender, madhab) |
@@ -128,15 +130,15 @@ The long-term vision includes **ATProto-first federation** with an **ActivityPub
 |--------|---------|-------------|
 | **Audience Age** | Children, Youth, Adults, Seniors, All Ages | Target demographic |
 | **Gender** | Men-only, Women-only, Mixed, Family | Audience type |
-| **Location** | Country, Region, City, Radius | Geographic filtering with PostGIS |
+| **Location** | Venue, online, or hybrid | Session location filters |
 | **Language** | Arabic, English, French, etc. | Event language |
 | **Event Type** | Webinar, Conference | Event Type |
 | **Madhab** | Hanafi, Maliki, Shafi'i, Hanbali | Islamic jurisprudence school |
 | **Category** | Aqidah, Fiqh, Tafsir, Hadith, etc. | Event classification |
-| **Tag** | Mohammed Hijab, Mufti Menk etc... | Event tags |
+| **Tag** | Sheikh, workshop, community | Event tags |
 | **TagType** | Person, Channel, oeuvres | Tag classification |
 | **TagTypeTags** | Specific tags within TagType | e.g., Person → Mohammed Hijab |
-| **Event Format** | In-person Local (physical), Digital (online), Hybrid | Event format |
+| **Event Format** | In-person, Online, Hybrid | Event format |
 | **Date/Time** | Upcoming, This Week, This Month, Custom | Temporal filtering |
 | **Verification** | Verified only, All | Trust level |
 
@@ -145,7 +147,7 @@ The long-term vision includes **ATProto-first federation** with an **ActivityPub
 **Dynamic Prayer-Relative Scheduling**:
 
 - Events can be scheduled relative to prayer times (e.g., "15 minutes after Maghrib")
-- exact times based on event geolocation using Third-party API
+- Exact times can be resolved using prayer-time providers when configured
 
 ## Moderation System
 

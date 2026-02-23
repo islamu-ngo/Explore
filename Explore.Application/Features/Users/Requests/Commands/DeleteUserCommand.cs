@@ -1,8 +1,12 @@
+using Explore.Application.Authorization;
 using MediatR;
 
 namespace Explore.Application.Features.Users.Requests.Commands;
 
-public class DeleteUserCommand : IRequest<Unit>
+[AuthorizeResource("user", PermissionAction.Delete)]
+public class DeleteUserCommand : IRequest<Unit>, ISecureRequest
 {
     public Guid UserId { get; set; }
+
+    string? ISecureRequest.ResourceId => UserId.ToString();
 }

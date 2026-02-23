@@ -1,4 +1,5 @@
 using System;
+using Explore.Application.Authorization;
 using MediatR;
 
 namespace Explore.Application.Features.Tenants.Requests.Commands;
@@ -7,10 +8,13 @@ namespace Explore.Application.Features.Tenants.Requests.Commands;
 /// Command to delete a tenant.
 /// Returns true if the tenant was successfully deleted, false if not found.
 /// </summary>
-public class DeleteTenantCommand : IRequest<bool>
+[AuthorizeResource("tenant", PermissionAction.Delete)]
+public class DeleteTenantCommand : IRequest<bool>, ISecureRequest
 {
     /// <summary>
     /// The ID of the tenant to delete.
     /// </summary>
     public Guid Id { get; set; }
+
+    string? ISecureRequest.ResourceId => Id.ToString();
 }

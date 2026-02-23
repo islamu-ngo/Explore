@@ -1,9 +1,13 @@
 using System;
+using Explore.Application.Authorization;
 using MediatR;
 
 namespace Explore.Application.Features.Locations.Requests.Commands;
 
-public class DeleteLocationCommand : IRequest<bool>
+[AuthorizeResource("location", PermissionAction.Delete)]
+public class DeleteLocationCommand : IRequest<bool>, ISecureRequest
 {
     public Guid Id { get; set; }
+
+    string? ISecureRequest.ResourceId => Id.ToString();
 }

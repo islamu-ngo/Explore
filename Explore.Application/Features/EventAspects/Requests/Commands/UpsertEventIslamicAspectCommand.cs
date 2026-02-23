@@ -4,6 +4,7 @@
 namespace Explore.Application.Features.EventAspects.Requests.Commands;
 
 using System;
+using Explore.Application.Authorization;
 using Explore.Application.DTOs.EventAspects;
 using Explore.Application.Responses;
 using MediatR;
@@ -11,7 +12,8 @@ using MediatR;
 /// <summary>
 /// Command to create or update the Islamic aspect for an event.
 /// </summary>
-public class UpsertEventIslamicAspectCommand : IRequest<BaseCommandResponse<Guid>>
+[AuthorizeResource("event", PermissionAction.Update)]
+public class UpsertEventIslamicAspectCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     /// <summary>
     /// The event ID to attach the Islamic aspect to.
@@ -22,4 +24,6 @@ public class UpsertEventIslamicAspectCommand : IRequest<BaseCommandResponse<Guid
     /// The Islamic aspect data to create or update.
     /// </summary>
     public CreateUpdateIslamicAspectDto AspectDto { get; set; } = null!;
+
+    string? ISecureRequest.ResourceId => EventId.ToString();
 }

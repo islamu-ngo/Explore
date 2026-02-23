@@ -75,62 +75,22 @@ The platform supports two primary deployment modes:
 services:
   explore-api:
     environment:
-      # Deployment Mode
-      - EXPLORE__MULTITENANCY__ENABLED=false          # true for SaaS mode
-      - EXPLORE__MULTITENANCY__DEFAULT_TENANT=default # Used when disabled
-      
-      # Instance Identity (Single-Instance Mode)
-      - EXPLORE__INSTANCE__NAME=ISLAMU Event
-      - EXPLORE__INSTANCE__DOMAIN=events.islamu.ngo
-      - EXPLORE__INSTANCE__DESCRIPTION=Islamic Event Discovery Platform
+      # Deployment mode is resolved from SystemSettings at runtime
 ```
 
 ## Blazor Rendering Modes
 
-The platform supports **three Blazor rendering modes** configurable via environment variables:
+The platform supports **three Blazor rendering modes** via runtime render-policy governance settings:
 
 | Mode | Description | Use Case |
 |------|-------------|----------|
-| **Server** | Server-side rendering | real-time updates |
-| **WebAssembly** | Client-side rendering in browser | Offline capability, reduced server load |
-| **Auto** | Server initially, then WebAssembly | Best of both worlds (recommended) |
+| **InteractiveServer** | Server-side rendering | real-time updates |
+| **InteractiveWebAssembly** | Client-side rendering in browser | Offline capability, reduced server load |
+| **InteractiveAuto** | Server initially, then WebAssembly | Best of both worlds (recommended) |
 
 ### Configuration
 
-```yaml
-# docker-compose.yml
-services:
-  explore-blazor:
-    environment:
-      # Blazor Rendering Mode: Server | WebAssembly | Auto
-      - BLAZOR__RENDER_MODE=Auto
-      
-      # Additional Blazor Settings
-      - BLAZOR__PRERENDER=true                    # Enable prerendering for SEO
-      - BLAZOR__DETAILED_ERRORS=false             # Show detailed errors (dev only)
-      - BLAZOR__WEBSOCKET_COMPRESSION=true        # Compress SignalR traffic
-```
-
-```csharp
-// Program.cs - Runtime configuration
-var renderMode = builder.Configuration["Blazor:RenderMode"] ?? "Auto";
-
-builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents()
-    .AddInteractiveWebAssemblyComponents();
-
-// In App.razor - Dynamic render mode
-@code {
-    private IComponentRenderMode RenderMode => 
-        Configuration["Blazor:RenderMode"] switch
-        {
-            "Server" => RenderMode.InteractiveServer,
-            "WebAssembly" => RenderMode.InteractiveWebAssembly,
-            "Auto" => RenderMode.InteractiveAuto,
-            _ => RenderMode.InteractiveAuto
-        };
-}
-```
+Render policy is controlled by SystemSettings (`routing.render_policy.*`) and resolved at runtime by the Blazor client. See [RENDER_POLICIES.md](RENDER_POLICIES.md) for presets and route-group overrides.
 
 ## Observability Pipeline (Aspire + Serilog + OpenTelemetry + Loki)
 

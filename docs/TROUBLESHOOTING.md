@@ -215,10 +215,10 @@ If you see duplicate key errors:
 | Service | URL |
 |---------|-----|
 | Aspire Dashboard | `https://localhost:17225` |
-| API | `https://localhost:7001` |
+| API | `https://localhost:7039` |
 | Blazor | `https://localhost:7002` |
-| Scalar API Docs | `https://localhost:7001/scalar/v1` |
-| Swagger UI | `https://localhost:7001/swagger` |
+| Scalar API Docs | `https://localhost:7039/scalar/v1` |
+| Swagger UI | `https://localhost:7039/swagger` |
 
 ---
 

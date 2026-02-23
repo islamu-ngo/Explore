@@ -1,11 +1,21 @@
+using Explore.Application.Authorization;
 using Explore.Application.DTOs.OrganizationMember;
 using Explore.Application.Responses;
 using MediatR;
 
 namespace Explore.Application.Features.OrganizationMembers.Requests.Commands;
 
-public class AddOrganizationMemberCommand : IRequest<BaseCommandResponse<Guid>>
+[AuthorizeResource("organization_member", PermissionAction.Create)]
+public class AddOrganizationMemberCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public required AddOrganizationMemberDto AddOrganizationMemberDto { get; set; }
     public required string RequesterUserId { get; set; } // To check permissions
+
+    string? ISecureRequest.ResourceId => AddOrganizationMemberDto.OrganizationId.ToString();
+
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes =>
+        new Dictionary<string, object>
+        {
+            ["organizationId"] = AddOrganizationMemberDto.OrganizationId.ToString()
+        };
 }
